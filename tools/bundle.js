@@ -2,13 +2,24 @@
 /* Inlines index.html, the stylesheet and every script into one standalone
  * HTML file. The game already runs from index.html with no build step; this
  * exists so the whole thing can be handed over, hosted or emailed as a single
- * file. Usage: node tools/bundle.js [outfile] */
+ * file.
+ *
+ *   node tools/bundle.js [outfile]
+ *   node tools/bundle.js --artifact [outfile]
+ *
+ * --artifact emits a fragment instead of a document (title, style, markup,
+ * script - no doctype/html/head/body), which is what a host that supplies its
+ * own page skeleton expects. */
 'use strict';
 const fs = require('fs');
 const path = require('path');
 
 const root = path.resolve(__dirname, '..');
-const out = process.argv[2] || path.join(root, 'dist', 'wowsurvivors2.html');
+const args = process.argv.slice(2);
+const artifact = args.includes('--artifact');
+const named = args.find((a) => !a.startsWith('--'));
+const out = named || path.join(root, 'dist',
+  artifact ? 'wowsurvivors2.artifact.html' : 'wowsurvivors2.html');
 
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
@@ -27,13 +38,22 @@ const bodies = scripts.map((src) => {
   return `/* ===== ${src} ===== */\n${code}`;
 }).join('\n');
 
-let result = html
-  .replace(/<link rel="stylesheet" href="[^"]+">/, `<style>\n${styles}\n</style>`)
-  .replace(/<!--[\s\S]*?-->\s*/g, '')
-  .replace(/<script src="[^"]+"><\/script>\s*/g, '');
-
-// Drop the now-empty script block and append one combined script before </body>.
-result = result.replace('</body>', `<script>\n${bodies}\n</script>\n</body>`);
+let result;
+if (artifact) {
+  // Just the parts a host skeleton does not already provide.
+  const body = html.replace(/[\s\S]*<body>([\s\S]*?)<\/body>[\s\S]*/, '$1')
+    .replace(/<!--[\s\S]*?-->\s*/g, '')
+    .replace(/<script src="[^"]+"><\/script>\s*/g, '')
+    .trim();
+  result = `<title>WoWSurvivors 2</title>\n<style>\n${styles}\n</style>\n${body}\n<script>\n${bodies}\n</script>\n`;
+} else {
+  result = html
+    .replace(/<link rel="stylesheet" href="[^"]+">/, `<style>\n${styles}\n</style>`)
+    .replace(/<!--[\s\S]*?-->\s*/g, '')
+    .replace(/<script src="[^"]+"><\/script>\s*/g, '');
+  // Drop the now-empty script block and append one combined script.
+  result = result.replace('</body>', `<script>\n${bodies}\n</script>\n</body>`);
+}
 
 fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, result);
