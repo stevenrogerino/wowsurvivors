@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>WoWSurvivors 2</title>
+<meta name="description" content="A Warcraft-flavoured arcade survival game. Move, survive, and let your weapons do the rest.">
+<meta name="color-scheme" content="dark">
+<link rel="stylesheet" href="src/ui/arclite.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%230b0d12'/><circle cx='50' cy='50' r='30' fill='none' stroke='%23f5c56b' stroke-width='8' stroke-dasharray='120 60'/></svg>">
+</head>
+<body>
+  <div id="stage">
+    <canvas id="game-canvas"></canvas>
+    <div id="hud" class="hidden"></div>
+    <div id="overlay" class="hidden"></div>
+    <div id="stick"><div class="nub"></div></div>
+  </div>
+
+  <!-- Classic scripts in dependency order, so the game runs straight off the
+       filesystem (file://) with no build step and no module CORS rules. -->
+  <script src="src/core/util.js"></script>
+  <script src="src/data/config.js"></script>
+  <script src="src/core/save.js"></script>
+  <script src="src/core/input.js"></script>
+
+  <script src="src/data/characters.js"></script>
+  <script src="src/data/weapons.js"></script>
+  <script src="src/data/enemies.js"></script>
+  <script src="src/data/bosses.js"></script>
+  <script src="src/data/maps.js"></script>
+  <script src="src/data/upgrades.js"></script>
+  <script src="src/data/meta.js"></script>
+  <script src="src/data/blessings.js"></script>
+  <script src="src/data/combos.js"></script>
+  <script src="src/data/achievements.js"></script>
+
+  <script src="src/render/sprites.js"></script>
+  <script src="src/render/icons.js"></script>
+  <script src="src/audio/audio.js"></script>
+
+  <script src="src/game/fx.js"></script>
+  <script src="src/game/projectile.js"></script>
+  <script src="src/game/enemy.js"></script>
+  <script src="src/game/weapon.js"></script>
+  <script src="src/game/player.js"></script>
+  <script src="src/game/xp.js"></script>
+  <script src="src/game/pickup.js"></script>
+  <script src="src/game/familiar.js"></script>
+  <script src="src/game/combos.js"></script>
+  <script src="src/game/achievements.js"></script>
+  <script src="src/game/waves.js"></script>
+  <script src="src/game/levelup.js"></script>
+  <script src="src/game/arena.js"></script>
+  <script src="src/game/game.js"></script>
+
+  <script src="src/render/renderer.js"></script>
+  <script src="src/ui/ui.js"></script>
+  <script src="src/main.js"></script>
+</body>
+</html>
