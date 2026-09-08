@@ -85,15 +85,13 @@ best or unlock is lost. That migration table is the one place in the shipped
 source that still names the old vocabulary, and it is exempt from the guard for
 exactly that reason.
 
-## `addon/` — the ancestor, and the one thing that cannot ship
+## The ancestor, removed
 
-`addon/` holds the original Lua addon this game was ported from. It runs inside
-the World of Warcraft retail client and draws on the client's own textures,
-fonts and sounds, so it is Warcraft through and through and there is no
-renaming it into something shippable.
+Emberwatch was ported from a personal Lua addon that ran inside the World of
+Warcraft client and drew on that client's own textures, fonts and sounds. There
+was no renaming it into something shippable, so it has been deleted from the
+tree rather than carried along beside a game meant to be sold. It remains in
+git history at `ddd9d28` for anyone who wants it back.
 
-It is kept because it is the author's own work and the origin of everything
-here. It is **not** part of Emberwatch, is never built into any bundle, and
-**must be excluded from any commercial distribution** — move it to its own
-repository, or strip it from the release. `tools/check-original.js` prints a
-reminder on every single run until it is gone.
+Nothing in Emberwatch depends on it, and nothing in Emberwatch came from it
+except the design of the game — which is the author's own.

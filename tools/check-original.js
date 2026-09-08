@@ -91,25 +91,9 @@ const EXEMPT = new Set([
 const SKIP_OPEN = '== legacy-name map: begin ==';
 const SKIP_CLOSE = '== legacy-name map: end ==';
 
-/* addon/ is the original World of Warcraft addon this game was ported FROM.
- * It is Lua that runs inside the retail client and draws on the client's own
- * textures and sounds, so it is Warcraft through and through and always will
- * be - there is no renaming it into something shippable.
- *
- * It is exempted rather than scanned because it is not part of Emberwatch and
- * never gets built into anything. It is NOT deleted, because it is the
- * author's own work and the ancestor of everything here.
- *
- * But it must never be silent. A directory of Warcraft addon source sitting in
- * the repository of a game you intend to sell is exactly the sort of thing
- * that is obvious on the day it is added and forgotten a year later, so this
- * says so on every single run until somebody deals with it. */
-const ANCESTOR = 'addon';
-
 function walk(dir, out = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === 'node_modules' || entry.name === '.git') continue;
-    if (dir === ROOT && entry.name === ANCESTOR) continue;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) walk(full, out);
     else if (/\.(js|css|html|md)$/.test(entry.name)) out.push(full);
@@ -165,12 +149,3 @@ if (shimmed.length) {
     + `table in ${where} - a compatibility shim, never shown to a player)`);
 }
 
-if (fs.existsSync(path.join(ROOT, ANCESTOR))) {
-  console.log('');
-  console.log('NOTE: addon/ is still here. That is the original World of Warcraft');
-  console.log('      addon this game was ported from - Lua that runs in the retail');
-  console.log('      client, drawing on the client\'s own art and sound. It is not');
-  console.log('      built into anything and not scanned above, but it CANNOT ship');
-  console.log('      with a commercial release. Move it to its own repository, or');
-  console.log('      exclude it from the distribution, before selling anything.');
-}
