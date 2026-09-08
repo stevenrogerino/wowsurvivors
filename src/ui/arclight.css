@@ -1,5 +1,5 @@
 /* ===========================================================================
-   ARCLIGHT UI - the design language for Emberwatch.
+   ARCLIGHT UI - the design language for The Ember Watch.
    Obsidian substrate, arc light for everything that measures or matters.
    See docs/ARCLIGHT-UI.md for the rules this file implements.
    ======================================================================== */
@@ -277,15 +277,22 @@ html, body {
 /* -- the logotype ------------------------------------------------------
    This was one thin, widely tracked word, which is the typographic default
    of every dark dashboard ever built. A game's name should have weight and a
-   material. So: a cool light qualifier, the name struck in gilt with a real
-   metal ramp - highlight along the top third, shadow through the middle,
-   warm bounce underneath. Two words, one of them lit: the ember inside the
-   watch, which is the whole title said in type. */
+   material. So: a small cool article, EMBER struck in gilt with a real metal
+   ramp - highlight along the top third, shadow through the middle, warm
+   bounce underneath - and WATCH in cold grey beside it. One warm word held
+   inside something grey and steady, which is the whole title said in type. */
 #title-wrap { text-align: center; }
 #title-wrap .game-title {
   margin: 0; display: flex; align-items: baseline; justify-content: flex-start;
   gap: .16em; text-transform: uppercase;
   font-size: clamp(28px, 4.6vw, 50px); line-height: 1;
+}
+/* The article: small, cold and set back, so it reads as grammar rather than
+   as a third word competing with the two that matter. Optical, not metric -
+   it sits on the same baseline but a third of the size. */
+#title-wrap .game-title .art {
+  font-size: .4em; font-weight: 400; letter-spacing: .3em;
+  color: var(--ink-faint); align-self: baseline; margin-right: .05em;
 }
 #title-wrap .game-title .wm {
   font-weight: 300; letter-spacing: .17em; color: #cdd4e4;

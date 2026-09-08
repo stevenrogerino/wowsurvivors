@@ -1,4 +1,11 @@
-<title>Emberwatch</title>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>The Ember Watch</title>
+<meta name="description" content="An arcade survival game. Hold the light for thirty minutes; your weapons do the rest.">
+<meta name="color-scheme" content="dark">
 <style>
 /* ===== src/ui/fonts.css ===== */
 /* Arclight typefaces, embedded.
@@ -46,7 +53,7 @@
 
 /* ===== src/ui/arclight.css ===== */
 /* ===========================================================================
-   ARCLIGHT UI - the design language for Emberwatch.
+   ARCLIGHT UI - the design language for The Ember Watch.
    Obsidian substrate, arc light for everything that measures or matters.
    See docs/ARCLIGHT-UI.md for the rules this file implements.
    ======================================================================== */
@@ -324,15 +331,22 @@ html, body {
 /* -- the logotype ------------------------------------------------------
    This was one thin, widely tracked word, which is the typographic default
    of every dark dashboard ever built. A game's name should have weight and a
-   material. So: a cool light qualifier, the name struck in gilt with a real
-   metal ramp - highlight along the top third, shadow through the middle,
-   warm bounce underneath. Two words, one of them lit: the ember inside the
-   watch, which is the whole title said in type. */
+   material. So: a small cool article, EMBER struck in gilt with a real metal
+   ramp - highlight along the top third, shadow through the middle, warm
+   bounce underneath - and WATCH in cold grey beside it. One warm word held
+   inside something grey and steady, which is the whole title said in type. */
 #title-wrap { text-align: center; }
 #title-wrap .game-title {
   margin: 0; display: flex; align-items: baseline; justify-content: flex-start;
   gap: .16em; text-transform: uppercase;
   font-size: clamp(28px, 4.6vw, 50px); line-height: 1;
+}
+/* The article: small, cold and set back, so it reads as grammar rather than
+   as a third word competing with the two that matter. Optical, not metric -
+   it sits on the same baseline but a third of the size. */
+#title-wrap .game-title .art {
+  font-size: .4em; font-weight: 400; letter-spacing: .3em;
+  color: var(--ink-faint); align-self: baseline; margin-right: .05em;
 }
 #title-wrap .game-title .wm {
   font-weight: 300; letter-spacing: .17em; color: #cdd4e4;
@@ -1344,7 +1358,10 @@ input[type=range]::-moz-range-thumb {
 }
 
 </style>
-<div id="stage">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%230b0d12'/><circle cx='50' cy='50' r='30' fill='none' stroke='%23f5c56b' stroke-width='8' stroke-dasharray='120 60'/></svg>">
+</head>
+<body>
+  <div id="stage">
     <canvas id="game-canvas"></canvas>
     <div id="hud" class="hidden"></div>
     <div id="overlay" class="hidden"></div>
@@ -1357,14 +1374,15 @@ input[type=range]::-moz-range-thumb {
           <path d="M44 90 L52 96 L46 104" />
         </svg>
         <div class="rotate-title">Turn your device</div>
-        <div class="rotate-body">Emberwatch is played wide. Landscape gives you
+        <div class="rotate-body">The Ember Watch is played wide. Landscape gives you
           the whole battlefield instead of a quarter of it.</div>
       </div>
     </div>
   </div>
-<script>
+
+  <script>
 /* ===== src/core/util.js ===== */
-/* Emberwatch - core utilities.
+/* The Ember Watch - core utilities.
  * Loaded first; every other file hangs off the global WS namespace, mirroring
  * the addon's `WS` table so ported logic reads the same. Classic scripts (no
  * ES modules) so the game runs straight off the filesystem. */
@@ -1742,6 +1760,13 @@ window.WS = window.WS || {};
 'use strict';
 (function (WS) {
 
+  /* The storage key is deliberately NOT the game's display name.
+   *
+   * A key is an address, not a title. Every player who has ever launched this
+   * build has their account sitting at this exact string, and renaming it to
+   * follow a change of title would strand all of them - so it stays put, and
+   * it stays put through every future rename too. Only the words on screen
+   * change; the drawer they are kept in does not. */
   const KEY = 'emberwatch.save.v1';
   const LEGACY_KEY = 'wowsurvivors2.save.v1';
   const SCHEMA = 2;
@@ -1749,7 +1774,7 @@ window.WS = window.WS || {};
   /* The rename, carried across a save.
    *
    * Schema 1 stored zones, creatures, bosses, discoveries and achievements
-   * under the names the game used before it was Emberwatch, and those names
+   * under the names the game used before the rename, and those names
    * are the KEYS of the codex - so a straight rename would have silently
    * emptied every bestiary count, every personal best and every unlock a
    * player had earned. Nobody should pay for our vocabulary changing.
@@ -1760,7 +1785,7 @@ window.WS = window.WS || {};
    * where it is, untouched, because a migration that deletes the only copy of
    * the thing it is migrating has no way back if it is wrong. */
   /* == legacy-name map: begin ==
-   * Everything between these markers names the pre-Emberwatch vocabulary,
+   * Everything between these markers names the pre-rename vocabulary,
    * because rewriting a key requires saying what it used to be. This is a
    * compatibility shim, not content: none of it is ever shown to a player,
    * and it exists solely so nobody loses a codex they filled in. The
@@ -1981,7 +2006,7 @@ window.WS = window.WS || {};
       let raw = null;
       try {
         raw = localStorage.getItem(KEY);
-        // No Emberwatch save? Look for one from before the rename, and adopt
+        // Nothing at our key? Look for one from before the rename, and adopt
         // it rather than greeting a returning player with an empty account.
         if (raw === null) raw = localStorage.getItem(LEGACY_KEY);
       } catch (e) { /* private mode */ }
@@ -3675,6 +3700,776 @@ window.WS = window.WS || {};
 
 })(window.WS);
 
+/* ===== src/render/hero.js ===== */
+/* The survivor.
+ *
+ * This is the most-looked-at drawing in the game: it is on screen for every
+ * frame of every run, in the roster tile you pick from, and in the HUD
+ * portrait beside your health. It is drawn from scratch here, on its own, so
+ * that it can be judged and changed as one thing.
+ *
+ * THREE RULES DECIDE EVERYTHING BELOW.
+ *
+ * 1. THE SILHOUETTE CARRIES THE CHARACTER. At the size it is actually played
+ *    - a 34px figure among a hundred enemies - nobody reads a face. They read
+ *    an outline. So the classes differ first in shape (a hooded slip of a
+ *    rogue, a horned ruinseeker, a paladin twice as wide at the shoulder) and
+ *    only then in detail, and every part of the rig exists to make that
+ *    outline legible against a dark, busy ground.
+ *
+ * 2. THE TINT IS AN ACCENT, NOT A UNIFORM. Each survivor carries an identity
+ *    colour that also drives their HUD. Painting the whole body in it was the
+ *    old approach and it fails at both ends of the range: the priest is
+ *    [1,1,1], so she was a white blob with no interior form at all, and the
+ *    shaman is a saturated [0,0.44,0.87] whose shaded side is nearly the
+ *    colour of the ground he stands on. Here the body is built from a
+ *    controlled neutral ramp - obsidian cloth, warm leather, cold steel - and
+ *    the tint appears where a colour should appear: cloak, tabard, gem, eyes,
+ *    the light on the weapon. Everyone is readable, everyone is still
+ *    instantly theirs.
+ *
+ * 3. LIGHT COMES FROM ONE PLACE. Up and to the left, warm, the same for every
+ *    surface, plus a gold rim along the lit edges and a cool bounce beneath.
+ *    Flat fills read as clip-art; one consistent light is most of what
+ *    separates a drawing from a diagram. The rim is not painted shape by
+ *    shape - it is taken from the finished silhouette, so it is exactly
+ *    correct for every class and costs the same for all of them.
+ *
+ * The rig is a 100-unit box. The feet plant at y=88, which is the anchor the
+ * renderer and the portrait both align to; nothing here may move it. */
+'use strict';
+(function (WS) {
+
+  /* ------------------------------------------------------------ skeleton -- */
+  /* One set of proportions, heroic-chibi: the head is a third of the figure,
+   * because at 34px a realistic 1/7 head is four pixels of nothing. */
+  const GROUND = 88;
+  const HEAD_CY = 23, HEAD_RX = 11.5, HEAD_RY = 13;
+  /* Nothing may reach the top of the box.
+   *
+   * The sprite is one square canvas and anything drawn past its edge is cut
+   * with a straight line - which on a halo or a glow is instantly visible as a
+   * flat top. Measured: the priest and paladin haloes and the mage's staff gem
+   * each bled over sixty pixels into the canvas edge before this constant
+   * existed. Everything tall is now placed against CEIL and the guard rail
+   * fails the build if a single pixel of any survivor touches the frame. */
+  const CEIL = 6;
+  const NECK_Y = 34, SHOULDER_Y = 41, WAIST_Y = 60, HIP_Y = 63, FOOT_Y = 88;
+
+  const BUILDS = {
+    slim: { sh: 12.5, chest: 12, waist: 9, hip: 10, arm: 4.0, leg: 4.6 },
+    normal: { sh: 14.5, chest: 13.5, waist: 10.5, hip: 11, arm: 4.6, leg: 5.2 },
+    heavy: { sh: 19, chest: 16.5, waist: 13, hip: 12.5, arm: 5.8, leg: 6.2 },
+  };
+
+  /* ------------------------------------------------------------- colour --- */
+  /* A ramp is five values off one base, lit from the same place every time.
+   * Named for what they are rather than how bright: `key` is the plane facing
+   * the light, `core` the body colour, `shade` the turn away, `deep` the
+   * occluded underside, `line` the edge where a form meets what is behind it. */
+  function ramp(base) {
+    return {
+      key: WS.hex(WS.mix(base, [1, 1, 1], 0.34)),
+      core: WS.hex(base),
+      shade: WS.hex(WS.shade(base, 0.66)),
+      deep: WS.hex(WS.shade(base, 0.40)),
+      line: WS.hex(WS.shade(base, 0.22)),
+    };
+  }
+
+  const CLOTH = ramp([0.30, 0.33, 0.42]);   // obsidian weave, the default garment
+  const DARKCLOTH = ramp([0.17, 0.18, 0.25]); // what a hood's inside is made of
+  const LEATHER = ramp([0.42, 0.30, 0.19]);
+  const STEEL = ramp([0.60, 0.65, 0.75]);
+  const GOLD = ramp([0.72, 0.55, 0.24]);
+  const SKIN = ramp([0.80, 0.62, 0.47]);
+  const WOOD = ramp([0.40, 0.29, 0.18]);
+
+  // The one light in the scene, and the rim it throws.
+  const RIM = 'rgba(245,197,107,.85)';      // arc gold, along the lit edges
+  const BOUNCE = 'rgba(96,124,168,.5)';     // cold floor light, underneath
+
+  /* ------------------------------------------------------------ drawing --- */
+  /** A shaded fill: one gradient running along the light's axis, so every
+   *  surface in the figure turns the same way. */
+  function lit(g, r, x0, y0, x1, y1) {
+    const grd = g.createLinearGradient(x0, y0, x1, y1);
+    grd.addColorStop(0, r.key);
+    grd.addColorStop(0.42, r.core);
+    grd.addColorStop(1, r.shade);
+    g.fillStyle = grd;
+    return grd;
+  }
+
+  function blob(g, cx, cy, rx, ry, r, rot) {
+    g.save();
+    g.translate(cx, cy);
+    if (rot) g.rotate(rot);
+    lit(g, r, -rx, -ry, rx * 0.8, ry);
+    g.beginPath(); g.ellipse(0, 0, rx, ry, 0, 0, WS.TAU); g.fill();
+    g.restore();
+  }
+
+  function panel(g, pts, r) {
+    let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
+    for (const [x, y] of pts) {
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+    }
+    lit(g, r, minX, minY, maxX, maxY);
+    g.beginPath();
+    g.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+    g.closePath(); g.fill();
+  }
+
+  /** A limb: a round-capped stroke, which is the cheapest honest capsule. */
+  function limb(g, x0, y0, x1, y1, w, r, flat) {
+    const grd = g.createLinearGradient(x0 - w, y0, x1 + w, y1);
+    grd.addColorStop(0, flat ? r.shade : r.key);
+    grd.addColorStop(1, flat ? r.deep : r.shade);
+    g.strokeStyle = grd; g.lineWidth = w; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+  }
+
+  function glow(g, x, y, rad, colour, alpha) {
+    const grd = g.createRadialGradient(x, y, 0, x, y, rad);
+    grd.addColorStop(0, colour);
+    grd.addColorStop(1, 'rgba(0,0,0,0)');
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    g.globalAlpha = alpha === undefined ? 0.85 : alpha;
+    g.fillStyle = grd;
+    g.beginPath(); g.arc(x, y, rad, 0, WS.TAU); g.fill();
+    g.restore();
+  }
+
+  /** A tapered limb: wide at the joint, narrow at the wrist.
+   *
+   *  Constant-width capsules with a ball on the end were the first attempt and
+   *  every survivor came out a shop mannequin - an arm that is the same
+   *  thickness at the shoulder and the wrist has no direction, and a hand
+   *  wider than the wrist it hangs off reads as a ball joint. A taper costs
+   *  one polygon and is most of what makes a limb look grown rather than
+   *  assembled. */
+  function taper(g, x0, y0, x1, y1, w0, w1, r, flat) {
+    const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len, ny = dx / len;
+    const grd = g.createLinearGradient(x0 - w0, y0, x1 + w1, y1);
+    grd.addColorStop(0, flat ? r.shade : r.key);
+    grd.addColorStop(0.5, flat ? r.deep : r.core);
+    grd.addColorStop(1, flat ? r.deep : r.shade);
+    g.fillStyle = grd;
+    g.beginPath();
+    g.moveTo(x0 + nx * w0, y0 + ny * w0);
+    g.lineTo(x1 + nx * w1, y1 + ny * w1);
+    g.arc(x1, y1, w1, Math.atan2(ny, nx), Math.atan2(-ny, -nx));
+    g.lineTo(x0 - nx * w0, y0 - ny * w0);
+    g.arc(x0, y0, w0, Math.atan2(-ny, -nx), Math.atan2(ny, nx));
+    g.closePath(); g.fill();
+  }
+
+  /* --------------------------------------------------------------- head --- */
+  /** The skull, as one path, so the fill and every clip that follows agree on
+   *  where the head actually is. Wide at the cranium, tapering to a jaw. */
+  function skull(g, cx) {
+    g.beginPath();
+    g.moveTo(cx - HEAD_RX, HEAD_CY - 2);
+    g.bezierCurveTo(cx - HEAD_RX, HEAD_CY - HEAD_RY * 1.42, cx + HEAD_RX, HEAD_CY - HEAD_RY * 1.42,
+      cx + HEAD_RX, HEAD_CY - 2);
+    g.bezierCurveTo(cx + HEAD_RX, HEAD_CY + HEAD_RY * 0.66, cx + HEAD_RX * 0.42, HEAD_CY + HEAD_RY,
+      cx, HEAD_CY + HEAD_RY);
+    g.bezierCurveTo(cx - HEAD_RX * 0.42, HEAD_CY + HEAD_RY, cx - HEAD_RX, HEAD_CY + HEAD_RY * 0.66,
+      cx - HEAD_RX, HEAD_CY - 2);
+    g.closePath();
+  }
+
+  /** Eyes: two almonds, set into sockets that follow their shape.
+   *
+   *  The version before this laid a full-width dark bar across the face and
+   *  put two pale pills in it, and every survivor in the roster looked like
+   *  they were wearing a sleep mask. The bar is the whole mistake: a shadow
+   *  that spans the face is a blindfold, a shadow that hugs each eye is a
+   *  socket. They stay large on purpose - at 34px in a crowd the eyes ARE the
+   *  face - but an almond at that size reads as a look, where a rectangle
+   *  reads as equipment. */
+  function eyes(g, cx, y, C, tight, lit2) {
+    const dx = 3.9;
+    for (const dir of [-1, 1]) {
+      g.save();
+      g.translate(cx + dir * dx, y);
+      g.rotate(dir * -0.16);
+      if (tight) {
+        // Nothing but the light: inside a hood or a helm there is no face to
+        // see, so the eye IS the glow and it is the survivor's own colour.
+        g.fillStyle = C.eye;
+        g.beginPath(); g.ellipse(0, 0, 1.9, 1.25, 0, 0, WS.TAU); g.fill();
+      } else {
+        /* A dark eye with a catchlight, not a pale pill.
+         *
+         * Every earlier attempt made the eye the BRIGHTEST thing on the face,
+         * and a bright shape on a light ground has no weight - the whole
+         * roster stared out with two blank ovals. Real eyes are the darkest
+         * mark on a face with one small highlight in them, and that inversion
+         * is the entire fix: it reads as an eye at portrait size and as a
+         * decisive dark mark at 34px, where a pale one dissolves. */
+        g.fillStyle = 'rgba(44,30,22,.42)';
+        g.beginPath(); g.ellipse(0, 0.5, 3.1, 2.3, 0, 0, WS.TAU); g.fill();
+        g.fillStyle = '#20161a';
+        g.beginPath(); g.ellipse(0, 0, 2.15, 1.6, 0, 0, WS.TAU); g.fill();
+        g.fillStyle = C.eye;
+        g.beginPath(); g.ellipse(-0.35, -0.4, 0.95, 0.8, 0, 0, WS.TAU); g.fill();
+      }
+      g.restore();
+      if (lit2) glow(g, cx + dir * dx, y, 5.5, C.eye, 0.5);
+    }
+    // A brow: one short dark stroke over each eye, angled in. Two marks, and
+    // the face has an expression instead of a stare.
+    g.strokeStyle = 'rgba(26,18,12,.45)';
+    g.lineWidth = 1.1; g.lineCap = 'round';
+    for (const dir of [-1, 1]) {
+      g.beginPath();
+      g.moveTo(cx + dir * 1.9, y - 3.4);
+      g.lineTo(cx + dir * 6.1, y - 2.7);
+      g.stroke();
+    }
+  }
+
+  function drawHead(g, cfg, C) {
+    const cx = 50;
+    const hooded = cfg.head === 'hood';
+    const helmed = cfg.head === 'helm';
+    const eyeY = HEAD_CY + 2;
+
+    // Neck: tapered and in shadow. A head sitting flat on a chest is a snowman.
+    taper(g, cx, NECK_Y - 5, cx, SHOULDER_Y, 3.4, 4.6, SKIN, true);
+
+    if (hooded) {
+      /* A cowl, not a cone.
+       *
+       * The first hood was a tall point over a black hole, which at any size
+       * read as something other than a rogue. A cowl sits close to the skull,
+       * peaks only a little above it, and lands on a mantle across the
+       * shoulders - and the darkness inside it is a soft falloff rather than a
+       * cut-out, so it reads as shadow instead of absence. */
+      /* The cowl follows the skull and stops just above it.
+       *
+       * Peaked at eleven units over the crown it was a cone, and a cone on a
+       * figure is a garden gnome or something worse - never a rogue. Three
+       * units of clearance, a rounded crown, and a mantle that spreads onto
+       * the shoulders instead of hanging straight: the shape now belongs to a
+       * body rather than sitting on top of one. */
+      const hr = cfg.hood || CLOTH;
+      const crown = HEAD_CY - HEAD_RY - 1.5, mantle = NECK_Y + 10;
+      /* The mantle goes down FIRST, and darker, so the cowl lands on top of it.
+       * Drawn last and lit like a face-on panel it caught the key light across
+       * its whole width and read as a pale bib hung on the chest. */
+      panel(g, [[cx - 17, mantle - 3], [cx + 15, mantle - 3],
+        [cx + 12, mantle + 6], [cx - 14, mantle + 6]],
+        { key: hr.shade, core: hr.deep, shade: hr.line });
+      lit(g, hr, cx - 15, crown, cx + 13, mantle);
+      g.beginPath();
+      g.moveTo(cx - 17, mantle);                       // the mantle spreads wide
+      g.bezierCurveTo(cx - 13.5, HEAD_CY + 2, cx - 11.5, crown + 3, cx - 1, crown);
+      g.bezierCurveTo(cx + 9, crown + 0.5, cx + 11, HEAD_CY + 2, cx + 15, mantle);
+      g.lineTo(cx + 9, mantle - 2);
+      g.bezierCurveTo(cx + 9.5, HEAD_CY - 1, cx + 8, HEAD_CY + 3, cx, HEAD_CY + 3.5);
+      g.bezierCurveTo(cx - 8, HEAD_CY + 3, cx - 9.5, HEAD_CY - 1, cx - 10, mantle - 2);
+      g.closePath(); g.fill();
+      g.save();
+      g.beginPath();
+      g.ellipse(cx, HEAD_CY + 1.5, 8.4, 8.4, 0, 0, WS.TAU);
+      g.clip();
+      const void_ = g.createRadialGradient(cx, HEAD_CY + 3, 1, cx, HEAD_CY + 1.5, 10);
+      void_.addColorStop(0, 'rgba(6,8,14,1)');
+      void_.addColorStop(0.7, 'rgba(6,8,14,.98)');
+      void_.addColorStop(1, 'rgba(6,8,14,.55)');
+      g.fillStyle = void_;
+      g.fillRect(cx - 10, HEAD_CY - 10, 20, 22);
+      g.restore();
+      eyes(g, cx, eyeY, C, true, true);
+    } else {
+      lit(g, helmed ? STEEL : SKIN, cx - HEAD_RX, HEAD_CY - HEAD_RY, cx + HEAD_RX * 0.7, HEAD_CY + HEAD_RY);
+      skull(g, cx); g.fill();
+
+      if (!helmed) {
+        /* Hair with a parting and a fringe that comes down past the temples.
+         * A symmetrical cap over the crown reads as a swimming hat; a side
+         * parting is one asymmetry and it turns the same shape into hair. */
+        g.save();
+        skull(g, cx); g.clip();
+        panel(g, [[cx - HEAD_RX - 2, HEAD_CY + 6], [cx - HEAD_RX - 2, HEAD_CY - HEAD_RY - 4],
+          [cx + HEAD_RX + 2, HEAD_CY - HEAD_RY - 4], [cx + HEAD_RX + 2, HEAD_CY + 5],
+          [cx + HEAD_RX - 2.5, HEAD_CY + 1], [cx + HEAD_RX - 3, HEAD_CY - 4],
+          [cx + 1.5, HEAD_CY - 6.5], [cx - 5.5, HEAD_CY - 4.5],
+          [cx - HEAD_RX + 3, HEAD_CY - 3], [cx - HEAD_RX + 2.5, HEAD_CY + 2]],
+          cfg.hair || DARKCLOTH);
+        // The shadow the fringe casts on the forehead - soft, and only where
+        // the hair actually is.
+        const sh = g.createLinearGradient(0, HEAD_CY - 6, 0, HEAD_CY + 1);
+        sh.addColorStop(0, 'rgba(20,12,8,.34)');
+        sh.addColorStop(1, 'rgba(20,12,8,0)');
+        g.fillStyle = sh;
+        g.fillRect(cx - HEAD_RX - 2, HEAD_CY - 6, HEAD_RX * 2 + 4, 7);
+        g.restore();
+      }
+      if (helmed) {
+        // A brow ridge and a visor slot: the two marks that make a steel dome
+        // a helm rather than an egg.
+        g.fillStyle = 'rgba(8,10,16,.9)';
+        g.beginPath();
+        g.moveTo(cx - 8.6, eyeY - 3.6); g.lineTo(cx + 8.6, eyeY - 3.6);
+        g.lineTo(cx + 7.6, eyeY + 1.6); g.lineTo(cx - 7.6, eyeY + 1.6);
+        g.closePath(); g.fill();
+        panel(g, [[cx - HEAD_RX, eyeY - 5.6], [cx + HEAD_RX, eyeY - 5.6],
+          [cx + HEAD_RX - 0.6, eyeY - 3.4], [cx - HEAD_RX + 0.6, eyeY - 3.4]], STEEL);
+        for (const dir of [-1, 1]) {
+          g.fillStyle = C.eye;
+          g.beginPath(); g.ellipse(cx + dir * 3.9, eyeY - 0.9, 1.5, 1.0, 0, 0, WS.TAU); g.fill();
+          glow(g, cx + dir * 3.9, eyeY - 0.9, 4, C.eye, 0.22);
+        }
+        // Crest, in the survivor's colour.
+        panel(g, [[cx - 2.2, CEIL + 2], [cx + 2.2, CEIL + 2],
+          [cx + 3, HEAD_CY - 5], [cx - 3, HEAD_CY - 5]], C.accentRamp);
+      } else {
+        eyes(g, cx, eyeY, C, false, false);
+      }
+    }
+
+    if (cfg.horns) {
+      /* Swept out and back, heavy at the root. Straight vertical spikes read
+       * as ears - the curve and the taper are what make them horns. */
+      for (const dir of [-1, 1]) {
+        const bx = cx + dir * 6, by = HEAD_CY - HEAD_RY + 5;
+        lit(g, C.hornRamp, bx, by, cx + dir * 19, CEIL + 1);
+        g.beginPath();
+        g.moveTo(bx, by);
+        g.bezierCurveTo(cx + dir * 13, by - 1, cx + dir * 19, by - 5, cx + dir * 20, CEIL + 1);
+        g.bezierCurveTo(cx + dir * 15, by - 8, cx + dir * 12, by - 4, cx + dir * 9.5, by - 4.5);
+        g.closePath(); g.fill();
+      }
+    }
+    if (cfg.halo) {
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      g.strokeStyle = C.accent; g.lineWidth = 1.8; g.globalAlpha = 0.9;
+      g.beginPath(); g.ellipse(cx, CEIL + 3.5, 12.5, 3.2, 0, 0, WS.TAU); g.stroke();
+      g.restore();
+      glow(g, cx, CEIL + 3.5, 9, C.accent, 0.26);
+    }
+  }
+
+  /* --------------------------------------------------------------- body --- */
+  function drawBody(g, cfg, C, b) {
+    const cx = 50;
+
+    // Far arm first, in shadow, so the near side has something to sit in front
+    // of. Depth at this scale is entirely a matter of what overlaps what.
+    taper(g, cx - b.sh + 1, SHOULDER_Y + 1, cx - b.sh - 2.5, WAIST_Y - 1,
+      b.arm * 0.62, b.arm * 0.38, C.bodyRamp, true);
+
+    if (cfg.robe) {
+      // A bell from the waist to the floor, with the hem catching the light.
+      panel(g, [[cx - b.waist, WAIST_Y - 4], [cx + b.waist, WAIST_Y - 4],
+        [cx + b.hip + 8, FOOT_Y], [cx - b.hip - 8, FOOT_Y]], C.robeRamp);
+      g.fillStyle = 'rgba(0,0,0,.30)';
+      g.beginPath(); g.moveTo(cx - b.hip - 8, FOOT_Y);
+      g.lineTo(cx + b.hip + 8, FOOT_Y); g.lineTo(cx + b.hip + 6, FOOT_Y - 4);
+      g.lineTo(cx - b.hip - 6, FOOT_Y - 4); g.closePath(); g.fill();
+      // Two folds, which is all a bell needs to stop reading as a triangle.
+      g.strokeStyle = 'rgba(0,0,0,.26)'; g.lineWidth = 1.4;
+      for (const dx of [-5, 5]) {
+        g.beginPath(); g.moveTo(cx + dx, WAIST_Y); g.lineTo(cx + dx * 2.1, FOOT_Y - 2); g.stroke();
+      }
+    } else {
+      for (const dir of [-1, 1]) {
+        const hx = cx + dir * (b.hip - b.leg * 0.5);
+        const fx = hx + dir * 1.5;
+        taper(g, hx, HIP_Y - 4, fx, FOOT_Y - 6, b.leg * 0.62, b.leg * 0.42, C.legRamp, dir < 0);
+        /* The boot is drawn as a shape with a toe, sitting ON the ground line
+         * rather than an ellipse hovering near it. Two survivors ago these
+         * were detached brown ovals and the whole cast looked like it was on
+         * casters. */
+        panel(g, [[fx - b.leg * 0.5, FOOT_Y - 8], [fx + b.leg * 0.5, FOOT_Y - 8],
+          [fx + dir * b.leg * 0.95, FOOT_Y - 1.5], [fx - dir * b.leg * 0.45, FOOT_Y - 1.5]],
+          dir < 0 ? ramp([0.26, 0.19, 0.12]) : LEATHER);
+      }
+    }
+
+    // Torso: shoulders down to waist, tapered. One shape, so the outline is one
+    // shape, which is the whole point of the silhouette rule.
+    panel(g, [[cx - b.sh, SHOULDER_Y - 2], [cx + b.sh, SHOULDER_Y - 2],
+      [cx + b.waist, WAIST_Y], [cx - b.waist, WAIST_Y]], C.bodyRamp);
+
+    if (cfg.tabard) {
+      // A band of the survivor's own colour down the chest: the single
+      // clearest way to say who this is without touching the silhouette.
+      panel(g, [[cx - 4.5, SHOULDER_Y - 1], [cx + 4.5, SHOULDER_Y - 1],
+        [cx + 5.5, cfg.robe ? WAIST_Y + 12 : WAIST_Y + 4], [cx, cfg.robe ? WAIST_Y + 16 : WAIST_Y + 8],
+        [cx - 5.5, cfg.robe ? WAIST_Y + 12 : WAIST_Y + 4]], C.accentRamp);
+    }
+
+    // Belt, always: it divides the torso and gives the waist a reason to exist.
+    panel(g, [[cx - b.waist - 0.5, WAIST_Y - 4], [cx + b.waist + 0.5, WAIST_Y - 4],
+      [cx + b.waist + 0.5, WAIST_Y], [cx - b.waist - 0.5, WAIST_Y]], LEATHER);
+    g.fillStyle = GOLD.key;
+    g.fillRect(cx - 2.6, WAIST_Y - 3.6, 5.2, 3.2);
+
+    if (cfg.pauldrons) {
+      /* A plate with a lip, not a sphere. Ellipses on the shoulders read as
+       * ball joints - the flat top and the flared skirt are what say armour. */
+      const k = cfg.pauldrons;
+      for (const dir of [-1, 1]) {
+        const px = cx + dir * (b.sh + 0.5);
+        panel(g, [[px - dir * 5 * k, SHOULDER_Y - 3.4 * k], [px + dir * 2.4 * k, SHOULDER_Y - 3.1 * k],
+          [px + dir * 4.4 * k, SHOULDER_Y - 0.6 * k], [px + dir * 4 * k, SHOULDER_Y + 2.6 * k],
+          [px - dir * 5 * k, SHOULDER_Y + 2.2 * k]], dir < 0 ? ramp([0.40, 0.44, 0.52]) : C.plateRamp);
+        if (dir > 0) {
+          g.fillStyle = 'rgba(255,255,255,.22)';
+          g.beginPath();
+          g.moveTo(px - dir * 4.4 * k, SHOULDER_Y - 3 * k);
+          g.lineTo(px + dir * 2.2 * k, SHOULDER_Y - 2.8 * k);
+          g.lineTo(px + dir * 3.4 * k, SHOULDER_Y - 1.2 * k);
+          g.lineTo(px - dir * 4.4 * k, SHOULDER_Y - 1.6 * k);
+          g.closePath(); g.fill();
+        }
+      }
+    }
+    // Collar last, over the torso and under the head: it closes the neck.
+    panel(g, [[cx - 8, SHOULDER_Y - 3], [cx + 8, SHOULDER_Y - 3],
+      [cx + 6, SHOULDER_Y + 2], [cx - 6, SHOULDER_Y + 2]], C.collarRamp);
+
+    // Near arm, over the torso, with a hand.
+    taper(g, cx + b.sh - 1, SHOULDER_Y + 1, cx + b.sh + 2, WAIST_Y - 2,
+      b.arm * 0.68, b.arm * 0.4, C.bodyRamp);
+    // A hand the width of the wrist it belongs to, not a knob on the end of it.
+    blob(g, cx + b.sh + 2.4, WAIST_Y - 0.5, b.arm * 0.44, b.arm * 0.5, SKIN);
+  }
+
+  /* ------------------------------------------------------------- cloaks --- */
+  function drawCloak(g, cfg, C, b) {
+    const cx = 50, k = cfg.cloak;
+    if (!k) return;
+    const foot = k === 'short' ? WAIST_Y + 6 : FOOT_Y - 1;
+    const flare = k === 'short' ? 5 : 11;
+    const pts = [[cx - b.sh - 1, SHOULDER_Y - 4], [cx + b.sh + 1, SHOULDER_Y - 4],
+      [cx + b.sh + flare, foot]];
+    if (k === 'tattered') {
+      // A ragged hem, cut with the same seed every time so the character does
+      // not change clothes between the roster and the run.
+      const teeth = 7;
+      for (let i = 0; i <= teeth; i++) {
+        const t = 1 - i / teeth;
+        const x = cx - b.sh - flare + (b.sh + flare) * 2 * t;
+        pts.push([x, foot - (i % 2 ? 9 : 1) - (i % 3) * 2.5]);
+      }
+    } else {
+      pts.push([cx - b.sh - flare, foot]);
+    }
+    panel(g, pts, C.cloakRamp);
+    // The lining catches the light along the shoulder line only.
+    g.fillStyle = 'rgba(255,255,255,.10)';
+    g.beginPath();
+    g.moveTo(cx - b.sh - 1, SHOULDER_Y - 4); g.lineTo(cx + b.sh + 1, SHOULDER_Y - 4);
+    g.lineTo(cx + b.sh + 2, SHOULDER_Y + 1); g.lineTo(cx - b.sh - 2, SHOULDER_Y + 1);
+    g.closePath(); g.fill();
+  }
+
+  /* ------------------------------------------------------------ weapons --- */
+  /* Each one is held, not floating: the grip lands on the near hand at
+   * (50 + sh + 2, WAIST_Y - 1), and every silhouette below is shaped to break
+   * the figure's outline so it registers at a glance. */
+  const WEAPONS = {
+    staff(g, C, b) {
+      const gx = 50 + b.sh + 3;
+      limb(g, gx - 2, FOOT_Y - 2, gx + 3, CEIL + 9, 3.2, WOOD);
+      g.fillStyle = GOLD.core;
+      g.beginPath(); g.ellipse(gx + 3, CEIL + 10, 4.6, 3, 0, 0, WS.TAU); g.fill();
+      glow(g, gx + 3, CEIL + 6, 6, C.accent, 0.9);
+      g.fillStyle = C.accentLight;
+      g.beginPath(); g.arc(gx + 3, CEIL + 6, 3.4, 0, WS.TAU); g.fill();
+    },
+    censer(g, C, b) {
+      // A lamp on a chain, swinging out from the hand. The chain is what makes
+      // the light belong to the figure rather than hover beside it.
+      const gx = 50 + b.sh + 2, hy = WAIST_Y - 2;
+      g.strokeStyle = GOLD.shade; g.lineWidth = 1.1;
+      g.beginPath(); g.moveTo(gx, hy); g.quadraticCurveTo(gx + 6, hy + 6, gx + 7, hy + 13); g.stroke();
+      panel(g, [[gx + 3, hy + 14], [gx + 11, hy + 14], [gx + 9.5, hy + 22], [gx + 4.5, hy + 22]], GOLD);
+      g.fillStyle = C.accentLight;
+      g.fillRect(gx + 5, hy + 17, 4, 4);
+      glow(g, gx + 7, hy + 19, 14, C.accent, 0.8);
+    },
+    daggers(g, C, b) {
+      /* Point-down, angled across the body. Held point-up beside each shoulder
+       * they read as wings, or as a bug's antennae - the reverse grip is both
+       * what a knife fighter actually does and the only version that keeps the
+       * blades inside the survivor's own outline. */
+      for (const dir of [-1, 1]) {
+        const hx = 50 + dir * (b.sh + 2.5);
+        g.save();
+        g.translate(hx, WAIST_Y - 1); g.rotate(dir * 2.75);
+        panel(g, [[-2.4, 0], [2.4, 0], [1.6, -19], [0, -24], [-1.6, -19]], STEEL);
+        g.fillStyle = 'rgba(255,255,255,.4)';
+        g.beginPath(); g.moveTo(0.6, -1); g.lineTo(1.3, -19); g.lineTo(0, -23);
+        g.closePath(); g.fill();
+        g.fillStyle = LEATHER.core; g.fillRect(-2.6, 0, 5.2, 6);
+        g.restore();
+      }
+    },
+    bow(g, C, b) {
+      // The limb curves away from a grip that sits IN the hand, and the string
+      // closes the shape - without it the bow was an unexplained arc in the air.
+      const gx = 50 + b.sh + 2, gy = WAIST_Y - 6, rad = 20;
+      g.strokeStyle = WOOD.core; g.lineWidth = 2.4; g.lineCap = 'round';
+      g.beginPath(); g.arc(gx, gy, rad, -1.25, 1.25); g.stroke();
+      g.strokeStyle = 'rgba(226,233,245,.7)'; g.lineWidth = 0.8;
+      g.beginPath();
+      g.moveTo(gx + rad * Math.cos(-1.25), gy + rad * Math.sin(-1.25));
+      g.lineTo(gx + rad * Math.cos(1.25), gy + rad * Math.sin(1.25));
+      g.stroke();
+      g.fillStyle = LEATHER.core;
+      g.fillRect(gx + rad - 2, gy - 5, 3.6, 10);
+      // A quiver over the far shoulder: the hunter's second silhouette cue.
+      g.save();
+      g.translate(50 - b.sh - 1, SHOULDER_Y + 4); g.rotate(-0.34);
+      panel(g, [[-3.4, -12], [3.4, -12], [2.8, 10], [-2.8, 10]], LEATHER);
+      for (const dx of [-1.8, 0.2, 2]) {
+        g.fillStyle = '#cdd5e4';
+        g.fillRect(dx, -17, 1.2, 6);
+      }
+      g.restore();
+    },
+    axe(g, C, b) {
+      /* Held, and swung from the hip. The head sat up at y=20 - level with the
+       * survivor's ear - which read as a signpost rather than a weapon; a haft
+       * angled back from the hand with the weight at shoulder height reads as
+       * something a person is about to use. */
+      const gx = 50 + b.sh + 3;
+      limb(g, gx + 6, FOOT_Y - 4, gx - 2, 33, 3, WOOD);
+      /* The bit is a fan with a curved edge and a hollow back.
+       *
+       * Two flat slabs read as a mallet; a subtle crescent with a big white
+       * highlight over it read as a banner on a pole - which is what the
+       * previous two attempts each produced. What says axe is the profile
+       * alone: narrow where it meets the haft, wide and convex at the edge,
+       * scooped out behind. So the shape does the work and the highlight is a
+       * thin line along the edge rather than a wedge across the face. */
+      const bit = 34;
+      lit(g, STEEL, gx, bit - 9, gx + 15, bit + 11);
+      g.beginPath();
+      g.moveTo(gx + 1, bit - 9);
+      g.bezierCurveTo(gx + 12, bit - 8, gx + 17, bit - 2, gx + 16, bit + 3);
+      g.bezierCurveTo(gx + 15, bit + 9, gx + 10, bit + 13, gx + 1, bit + 13);
+      g.bezierCurveTo(gx + 6, bit + 6, gx + 6, bit - 2, gx + 1, bit - 9);
+      g.closePath(); g.fill();
+      // The back cheek, shorter and darker: an axe is not symmetrical.
+      lit(g, ramp([0.38, 0.42, 0.50]), gx - 8, bit - 6, gx + 1, bit + 10);
+      g.beginPath();
+      g.moveTo(gx + 1, bit - 7);
+      g.bezierCurveTo(gx - 6, bit - 6, gx - 8, bit - 1, gx - 7, bit + 4);
+      g.bezierCurveTo(gx - 4, bit + 6, gx - 1, bit + 8, gx + 1, bit + 11);
+      g.closePath(); g.fill();
+      // The edge itself: one bright line where the steel is thinnest.
+      g.strokeStyle = 'rgba(255,255,255,.62)'; g.lineWidth = 1.1;
+      g.beginPath();
+      g.moveTo(gx + 2, bit - 8.4);
+      g.bezierCurveTo(gx + 12, bit - 7.4, gx + 16.4, bit - 2, gx + 15.4, bit + 3);
+      g.bezierCurveTo(gx + 14.4, bit + 8.6, gx + 9.6, bit + 12.4, gx + 2, bit + 12.4);
+      g.stroke();
+    },
+    greatsword(g, C, b) {
+      const gx = 50 + b.sh + 3;
+      g.save();
+      g.translate(gx, WAIST_Y - 1); g.rotate(0.30);
+      panel(g, [[-3.4, 4], [3.4, 4], [2.6, -46], [0, -53], [-2.6, -46]], STEEL);
+      g.fillStyle = 'rgba(255,255,255,.42)'; g.fillRect(-0.9, -44, 1.8, 46);
+      panel(g, [[-8, 4], [8, 4], [8, 8], [-8, 8]], GOLD);      // crossguard
+      g.fillStyle = LEATHER.core; g.fillRect(-2.4, 8, 4.8, 9);
+      g.restore();
+      glow(g, gx + 8, WAIST_Y - 26, 15, C.accent, 0.35);
+    },
+    orb(g, C, b) {
+      const gx = 50 + b.sh + 6;
+      glow(g, gx, WAIST_Y - 12, 15, C.accent, 0.95);
+      g.fillStyle = C.accentLight;
+      g.beginPath(); g.arc(gx, WAIST_Y - 12, 4.4, 0, WS.TAU); g.fill();
+      g.fillStyle = 'rgba(255,255,255,.8)';
+      g.beginPath(); g.arc(gx - 1.4, WAIST_Y - 13.4, 1.5, 0, WS.TAU); g.fill();
+    },
+    totem(g, C, b) {
+      const gx = 50 + b.sh + 4;
+      limb(g, gx, FOOT_Y - 3, gx + 2, CEIL + 12, 5.4, WOOD);
+      for (let i = 0; i < 3; i++) {
+        g.fillStyle = i === 1 ? C.accent : GOLD.core;
+        g.fillRect(gx - 2.6 + i * 0.3, CEIL + 16 + i * 11, 5.6, 3.4);
+      }
+      glow(g, gx + 1, CEIL + 14, 8, C.accent, 0.7);
+    },
+    shield(g, C, b) {
+      const sx = 50 - b.sh - 4;
+      panel(g, [[sx - 9, WAIST_Y - 22], [sx + 8, WAIST_Y - 25], [sx + 9, WAIST_Y - 4],
+        [sx, WAIST_Y + 8], [sx - 10, WAIST_Y - 4]], STEEL);
+      g.strokeStyle = GOLD.core; g.lineWidth = 1.5;
+      g.beginPath();
+      g.moveTo(sx - 8, WAIST_Y - 20); g.lineTo(sx + 7, WAIST_Y - 22.5);
+      g.stroke();
+      glow(g, sx, WAIST_Y - 11, 9, C.accent, 0.55);
+    },
+    glaives(g, C, b) {
+      for (const dir of [-1, 1]) {
+        g.save();
+        g.translate(50 + dir * (b.sh + 7), WAIST_Y - 8);
+        g.rotate(dir * 0.4);
+        g.strokeStyle = C.accentLight; g.lineWidth = 2.2; g.lineCap = 'round';
+        g.beginPath(); g.arc(0, 0, 9.5, -1.0, 1.5); g.stroke();
+        g.restore();
+        glow(g, 50 + dir * (b.sh + 7), WAIST_Y - 8, 13, C.accent, 0.5);
+      }
+    },
+  };
+
+  /* ------------------------------------------------------------- roster --- */
+  /* Ten survivors, ten silhouettes. Read down the `build`, `head` and `cloak`
+   * columns alone and no two are the same shape - which is the test. */
+  const CAST = {
+    mage: { build: 'slim', head: 'bare', robe: true, cloak: 'long', weapon: 'staff', hair: DARKCLOTH },
+    priest: { build: 'slim', head: 'bare', robe: true, cloak: 'short', halo: true, weapon: 'censer', tabard: true, hair: ramp([0.55, 0.46, 0.33]) },
+    rogue: { build: 'slim', head: 'hood', cloak: 'short', weapon: 'daggers' },
+    hunter: { build: 'normal', head: 'bare', weapon: 'bow', hair: ramp([0.30, 0.26, 0.18]) },
+    warrior: { build: 'heavy', head: 'helm', pauldrons: 2.1, weapon: 'axe' },
+    warlock: { build: 'normal', head: 'hood', robe: true, cloak: 'tattered', weapon: 'orb', hood: DARKCLOTH },
+    /* The shaman used to be a robed slim silhouette with a long cloak, which
+     * put him inside 83% of the mage's outline and 81% of the warlock's -
+     * three survivors sharing one shape. Legs and a ragged hem take him out of
+     * that cluster without touching anything else about him. */
+    shaman: { build: 'normal', head: 'bare', cloak: 'tattered', weapon: 'totem', tabard: true, hair: ramp([0.22, 0.24, 0.30]) },
+    paladin: { build: 'heavy', head: 'helm', pauldrons: 2.4, halo: true, tabard: true, weapon: 'shield' },
+    graveblade: { build: 'heavy', head: 'helm', pauldrons: 1.7, cloak: 'tattered', weapon: 'greatsword' },
+    ruinseeker: { build: 'normal', head: 'bare', horns: true, cloak: 'short', weapon: 'glaives', hair: DARKCLOTH },
+  };
+
+  /* -------------------------------------------------------------- paint --- */
+  /** Everything the tint decides, resolved once so no drawing function has to
+   *  think about colour theory in the middle of drawing a sleeve. */
+  function colours(tint, demon) {
+    const t = demon ? [0.45, 0.95, 0.25] : tint;
+    const accent = WS.mix(t, [1, 1, 1], 0.12);
+    /* A saturated hue makes poor cloth - it either glows or goes to mud - so
+     * garments take a heavily desaturated, darkened version of the identity
+     * colour and let the accent do the identifying. This is what keeps the
+     * priest [1,1,1] from being a white cut-out and the shaman [0,0.44,0.87]
+     * from disappearing into the ground. */
+    let garment = WS.mix(WS.shade(t, 0.55), [0.26, 0.28, 0.35], 0.62);
+    /* ...and a floor under it. Desaturating alone still left the warlock's
+     * plum and the rogue's olive at roughly half the paladin's value - a
+     * measured spread of 64 to 124 across the cast - which on a dark map means
+     * two survivors read as shapes and the rest as silhouettes. Anything below
+     * the floor is lifted toward the neutral cloth until it clears it, which
+     * costs the darkest garments a little of their hue and buys every one of
+     * them a body the player can see. */
+    const FLOOR = 0.30;
+    const lum = 0.2126 * garment[0] + 0.7152 * garment[1] + 0.0722 * garment[2];
+    if (lum < FLOOR) garment = WS.mix(garment, [0.34, 0.36, 0.43], (FLOOR - lum) / FLOOR);
+    return {
+      accent: WS.hex(accent),
+      /* Pulled back from white. At 0.55 toward white every gem and orb in the
+       * game came out the same pale lilac-white blob, which throws away the
+       * one thing the accent is for - saying whose it is. */
+      accentLight: WS.hex(WS.mix(t, [1, 1, 1], 0.34)),
+      /* And pulled back from full saturation for anything worn. A tabard at
+       * the raw identity colour reads as candy next to obsidian cloth and
+       * steel; a sixth of the way to the garment grey keeps it unmistakably
+       * theirs while letting it sit in the same world as the rest of the kit. */
+      accentRamp: ramp(WS.mix(WS.shade(accent, 0.82), [0.30, 0.30, 0.34], 0.17)),
+      cloakRamp: ramp(WS.mix(WS.shade(t, 0.62), [0.20, 0.21, 0.28], 0.40)),
+      robeRamp: ramp(garment),
+      bodyRamp: ramp(WS.shade(garment, 1.06)),
+      legRamp: ramp(WS.shade(garment, 0.72)),
+      collarRamp: ramp(WS.shade(garment, 0.84)),
+      plateRamp: demon ? ramp([0.35, 0.55, 0.25]) : STEEL,
+      hornRamp: demon ? ramp([0.42, 0.62, 0.28]) : ramp([0.33, 0.30, 0.34]),
+      eye: demon ? '#d9ff6b' : WS.hex(WS.mix(t, [1, 1, 1], 0.72)),
+    };
+  }
+
+  /** The finished figure, minus its light. */
+  function figure(g, cfg, C) {
+    const b = BUILDS[cfg.build] || BUILDS.normal;
+    drawCloak(g, cfg, C, b);
+    drawBody(g, cfg, C, b);
+    drawHead(g, cfg, C);
+    const w = WEAPONS[cfg.weapon];
+    if (w) w(g, C, b);
+  }
+
+  const Hero = {
+    ids: Object.keys(CAST),
+
+    /** Draw survivor `id` into `g`, filling a `size`-square canvas.
+     *
+     *  The rim and the contact shadow are taken from the finished silhouette
+     *  rather than painted part by part: the figure is rendered once, the same
+     *  image is re-tinted flat and stamped behind itself twice - up-left in arc
+     *  gold, down-right in floor blue - and then the real figure lands on top.
+     *  One pass, correct for every class automatically, and it is what makes
+     *  the shape hold together against a dark and crowded ground. */
+    draw(g, size, id, tint, demon) {
+      const cfg = CAST[id] || CAST.mage;
+      const C = colours(tint, demon);
+      const u = size / 100;
+
+      // Contact shadow on the floor, under the feet, before anything else.
+      g.save();
+      g.scale(u, u);
+      const sh = g.createRadialGradient(50, GROUND, 0, 50, GROUND, 22);
+      sh.addColorStop(0, 'rgba(0,0,0,.5)');
+      sh.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = sh;
+      g.beginPath(); g.ellipse(50, GROUND, 22, 6, 0, 0, WS.TAU); g.fill();
+      g.restore();
+
+      const body = document.createElement('canvas');
+      body.width = size; body.height = size;
+      const bg = body.getContext('2d');
+      bg.scale(u, u);
+      figure(bg, cfg, C);
+
+      const sil = document.createElement('canvas');
+      sil.width = size; sil.height = size;
+      const sg = sil.getContext('2d');
+      const stamp = (colour) => {
+        sg.clearRect(0, 0, size, size);
+        sg.globalCompositeOperation = 'source-over';
+        sg.drawImage(body, 0, 0);
+        sg.globalCompositeOperation = 'source-in';
+        sg.fillStyle = colour;
+        sg.fillRect(0, 0, size, size);
+        return sil;
+      };
+      /* The offset is in RIG units, not pixels.
+       *
+       * Tied to pixels it was a fixed 3px at portrait size and 1px in the
+       * world, which is not a light - it is an outline that thickens as you
+       * zoom in, and it read exactly like one: a gold sticker edge around
+       * every limb. At a hair over one unit it stays the same width relative
+       * to the figure at every size the game draws, which is what a light
+       * does. */
+      const off = size * 0.011;
+      g.save();
+      g.globalAlpha = 0.22;
+      g.drawImage(stamp(BOUNCE), off * 0.8, off * 0.9);    // cold bounce beneath
+      g.globalAlpha = 0.5;
+      g.drawImage(stamp(RIM), -off, -off * 1.15);          // arc gold above
+      g.restore();
+      g.drawImage(body, 0, 0);
+    },
+  };
+
+  WS.Hero = Hero;
+
+})(window.WS);
+
 /* ===== src/render/sprites.js ===== */
 /* Procedural art. Every creature, prop, gem and UI glyph is drawn once into an
  * offscreen canvas at boot and cached by (kind, tint, size), so the game ships
@@ -4571,7 +5366,9 @@ window.WS = window.WS || {};
       if (c) return c;
       const res = size * SS;
       c = make(res, res);
-      drawHero(c.getContext('2d'), res, tint, HEROES[id] || HEROES.mage, demon);
+      // The survivor is drawn by src/render/hero.js, which owns the rig, the
+      // roster and the light. This is the cache in front of it.
+      WS.Hero.draw(c.getContext('2d'), res, id, tint, demon);
       c.displaySize = size;
       cache.set(key, c);
       return c;
@@ -11596,14 +12393,17 @@ window.WS = window.WS || {};
   /* ---------------------------------------------------------- main menu -- */
   UI.openMenu = function () {
     this.hud.classList.add('hidden');
-    const s = shell('Emberwatch', 'Arclight');
+    const s = shell('The Ember Watch', 'Arclight');
 
     const title = el('div'); title.id = 'title-wrap';
     const h = el('h1', 'game-title');
-    // Two parts, because the logotype treats them differently: a cool grey
-    // first half and a second struck in gilt - the ember inside the watch,
-    // which is the whole title in one piece of type.
-    h.append(el('span', 'wm', 'Ember'), el('span', 'nm', 'watch'));
+    /* Three parts, because the logotype treats them differently: a small cool
+     * article, the EMBER struck in gilt, and the WATCH in cold grey. The lit
+     * word is the ember because the ember is the thing that is lit - one warm
+     * point held inside something grey and steady, which is the whole title
+     * said in type before a word of it is read. */
+    h.append(el('span', 'art', 'The'), el('span', 'nm', 'Ember'),
+      el('span', 'wm', 'Watch'));
     const sub = el('div', 'game-sub', 'Thirty minutes until dawn');
     title.append(h, sub, el('div', 'title-arc'));
     s.head.replaceChildren(title);
@@ -12686,13 +13486,13 @@ window.WS = window.WS || {};
     faults.sinceReport++;
     const msg = (err && err.message) || String(err);
     if (faults.count === 1) {
-      console.error('[Emberwatch] recovered from an error in the frame loop:', err);
+      console.error('[The Ember Watch] recovered from an error in the frame loop:', err);
       faults.lastMessage = msg;
     } else if (faults.sinceReport >= 60) {
       // A fault every frame is a broken build, not a blip. Say so once a
       // second at most, so the console stays readable enough to debug from.
       faults.sinceReport = 0;
-      console.error(`[Emberwatch] ${faults.count} frame errors so far, latest:`, err);
+      console.error(`[The Ember Watch] ${faults.count} frame errors so far, latest:`, err);
     }
     // Persistent faults mean the frame is not doing its job any more. Tell the
     // player rather than letting them stare at a stuttering screen - and do it
@@ -12863,3 +13663,5 @@ window.WS = window.WS || {};
 })(window.WS);
 
 </script>
+</body>
+</html>

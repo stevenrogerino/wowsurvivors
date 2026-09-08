@@ -574,14 +574,17 @@
   /* ---------------------------------------------------------- main menu -- */
   UI.openMenu = function () {
     this.hud.classList.add('hidden');
-    const s = shell('Emberwatch', 'Arclight');
+    const s = shell('The Ember Watch', 'Arclight');
 
     const title = el('div'); title.id = 'title-wrap';
     const h = el('h1', 'game-title');
-    // Two parts, because the logotype treats them differently: a cool grey
-    // first half and a second struck in gilt - the ember inside the watch,
-    // which is the whole title in one piece of type.
-    h.append(el('span', 'wm', 'Ember'), el('span', 'nm', 'watch'));
+    /* Three parts, because the logotype treats them differently: a small cool
+     * article, the EMBER struck in gilt, and the WATCH in cold grey. The lit
+     * word is the ember because the ember is the thing that is lit - one warm
+     * point held inside something grey and steady, which is the whole title
+     * said in type before a word of it is read. */
+    h.append(el('span', 'art', 'The'), el('span', 'nm', 'Ember'),
+      el('span', 'wm', 'Watch'));
     const sub = el('div', 'game-sub', 'Thirty minutes until dawn');
     title.append(h, sub, el('div', 'title-arc'));
     s.head.replaceChildren(title);

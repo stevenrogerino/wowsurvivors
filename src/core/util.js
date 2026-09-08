@@ -1,4 +1,4 @@
-/* Emberwatch - core utilities.
+/* The Ember Watch - core utilities.
  * Loaded first; every other file hangs off the global WS namespace, mirroring
  * the addon's `WS` table so ported logic reads the same. Classic scripts (no
  * ES modules) so the game runs straight off the filesystem. */

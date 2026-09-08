@@ -5,6 +5,13 @@
 'use strict';
 (function (WS) {
 
+  /* The storage key is deliberately NOT the game's display name.
+   *
+   * A key is an address, not a title. Every player who has ever launched this
+   * build has their account sitting at this exact string, and renaming it to
+   * follow a change of title would strand all of them - so it stays put, and
+   * it stays put through every future rename too. Only the words on screen
+   * change; the drawer they are kept in does not. */
   const KEY = 'emberwatch.save.v1';
   const LEGACY_KEY = 'wowsurvivors2.save.v1';
   const SCHEMA = 2;
@@ -12,7 +19,7 @@
   /* The rename, carried across a save.
    *
    * Schema 1 stored zones, creatures, bosses, discoveries and achievements
-   * under the names the game used before it was Emberwatch, and those names
+   * under the names the game used before the rename, and those names
    * are the KEYS of the codex - so a straight rename would have silently
    * emptied every bestiary count, every personal best and every unlock a
    * player had earned. Nobody should pay for our vocabulary changing.
@@ -23,7 +30,7 @@
    * where it is, untouched, because a migration that deletes the only copy of
    * the thing it is migrating has no way back if it is wrong. */
   /* == legacy-name map: begin ==
-   * Everything between these markers names the pre-Emberwatch vocabulary,
+   * Everything between these markers names the pre-rename vocabulary,
    * because rewriting a key requires saying what it used to be. This is a
    * compatibility shim, not content: none of it is ever shown to a player,
    * and it exists solely so nobody loses a codex they filled in. The
@@ -244,7 +251,7 @@
       let raw = null;
       try {
         raw = localStorage.getItem(KEY);
-        // No Emberwatch save? Look for one from before the rename, and adopt
+        // Nothing at our key? Look for one from before the rename, and adopt
         // it rather than greeting a returning player with an empty account.
         if (raw === null) raw = localStorage.getItem(LEGACY_KEY);
       } catch (e) { /* private mode */ }

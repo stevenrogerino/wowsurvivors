@@ -8,7 +8,7 @@
  * and a title - WoWSurvivors - whose first three letters are Blizzard's own
  * abbreviation for World of Warcraft.
  *
- * All of it is gone, replaced by Emberwatch's own setting. This exists so it
+ * All of it is gone, replaced by The Ember Watch's own setting. This exists so it
  * stays gone. A rename is a one-time act; keeping a codebase clean is not,
  * because the next weapon somebody adds is exactly where "Pyroblast" creeps
  * back in as a placeholder that ships.
@@ -79,7 +79,7 @@ const EXEMPT = new Set([
 /* The one region of shipped code that is allowed to say the old words.
  *
  * Renaming a saved key requires naming what it used to be, so save.js carries
- * a table mapping the pre-Emberwatch ids onto the new ones - and because the
+ * a table mapping the ids from before the rename onto the new ones - and because the
  * bundler inlines save.js, that table travels into dist/ too. Exempting the
  * whole file would have been easy and dishonest: it would let a real term
  * hide anywhere else in the save layer, and it would let the bundle claim to
@@ -135,7 +135,7 @@ if (hits.length) {
     console.error(`  ${h.rel}:${h.line}  "${h.term}"  ${h.text}`);
   }
   if (hits.length > 40) console.error(`  ...and ${hits.length - 40} more`);
-  console.error('\nEmberwatch owns every name it ships. Pick a new one.');
+  console.error('\nThe Ember Watch owns every name it ships. Pick a new one.');
   process.exit(1);
 }
 

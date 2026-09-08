@@ -893,7 +893,9 @@
       if (c) return c;
       const res = size * SS;
       c = make(res, res);
-      drawHero(c.getContext('2d'), res, tint, HEROES[id] || HEROES.mage, demon);
+      // The survivor is drawn by src/render/hero.js, which owns the rig, the
+      // roster and the light. This is the cache in front of it.
+      WS.Hero.draw(c.getContext('2d'), res, id, tint, demon);
       c.displaySize = size;
       cache.set(key, c);
       return c;

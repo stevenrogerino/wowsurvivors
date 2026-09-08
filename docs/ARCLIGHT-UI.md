@@ -1,6 +1,6 @@
 # Arclight UI
 
-The design language for **Emberwatch**. Everything on screen is either
+The design language for **The Ember Watch**. Everything on screen is either
 *obsidian* (the substrate) or *arc light* (the energy running through it).
 
 ## 1. Principles

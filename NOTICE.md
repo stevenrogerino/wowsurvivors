@@ -1,13 +1,13 @@
 # Provenance
 
-What in Emberwatch is ours, what is licensed, and what is neither. Short
+What in The Ember Watch is ours, what is licensed, and what is neither. Short
 version: **all of it is ours except two typefaces, which are used within their
 licence.**
 
 ## Ours — all of it original
 
 **Names.** The setting, the roster, the bestiary, the spell list, the
-blessings, the zones and every line of flavour text are Emberwatch's own.
+blessings, the zones and every line of flavour text are The Ember Watch's own.
 `tools/check-original.js` enforces this: it scans the whole tree and the built
 bundles against a list of ~90 borrowed terms and fails the build if any of them
 appear. Run it before you ship anything.
@@ -55,7 +55,7 @@ including a commercial one. Three conditions matter in practice:
 
 ## What used to be here, and is not any more
 
-Emberwatch began as a Warcraft fan work. It was called WoWSurvivors 2 — the
+The Ember Watch began as a Warcraft fan work. It was called WoWSurvivors 2 — the
 first three letters being Blizzard Entertainment's own abbreviation for World
 of Warcraft — and its zones, creatures, factions, spells, buffs, named items
 and boss quotes were Blizzard's intellectual property. That made it a fan
@@ -65,7 +65,7 @@ All of it has been replaced:
 
 | Was | Is |
 | --- | --- |
-| WoWSurvivors 2 | **Emberwatch** |
+| WoWSurvivors 2 | **The Ember Watch** |
 | Elwynn Forest, Westfall, Duskwood, The Barrens, Icecrown | Thornhollow, the Dustreach, Mourneholt, the Ochre Plains, the Pale Wastes |
 | murlocs, worgen, quilboar, kobolds, gnolls | gilkin, moonwretches, bristlekin, lamplings, mongrels |
 | the Defias Brotherhood, the Riverpaw, Kolkar, Razormane, Witchwing, the Scourge | the Crimson Kerchief, the Snarlpack, the Karrash, Thornhide, Shrikewing, the Pale |
@@ -87,11 +87,11 @@ exactly that reason.
 
 ## The ancestor, removed
 
-Emberwatch was ported from a personal Lua addon that ran inside the World of
+The Ember Watch was ported from a personal Lua addon that ran inside the World of
 Warcraft client and drew on that client's own textures, fonts and sounds. There
 was no renaming it into something shippable, so it has been deleted from the
 tree rather than carried along beside a game meant to be sold. It remains in
 git history at `ddd9d28` for anyone who wants it back.
 
-Nothing in Emberwatch depends on it, and nothing in Emberwatch came from it
+Nothing in The Ember Watch depends on it, and nothing in The Ember Watch came from it
 except the design of the game — which is the author's own.
