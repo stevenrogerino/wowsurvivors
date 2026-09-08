@@ -886,16 +886,23 @@
       return c;
     },
 
-    hero(id, tint, size, demon) {
+    /** @param {number} [frame] stride frame, or undefined for standing. */
+    hero(id, tint, size, demon, frame) {
       size = WS.round(size);
-      const key = `h:${id}:${WS.hex(tint)}:${size}:${demon ? 1 : 0}`;
+      const key = `h:${id}:${WS.hex(tint)}:${size}:${demon ? 1 : 0}:${frame === undefined ? 'x' : frame}`;
       let c = cache.get(key);
       if (c) return c;
       const res = size * SS;
       c = make(res, res);
       // The survivor is drawn by src/render/hero.js, which owns the rig, the
       // roster and the light. This is the cache in front of it.
-      WS.Hero.draw(c.getContext('2d'), res, id, tint, demon);
+      /* One canvas per stride frame. Baked rather than transformed because
+       * the parts that move are inside the drawing - a leg swinging from the
+       * hip, a hem lagging the body - and only the size the game is played at
+       * ever asks for more than the standing frame, so the cache grows by a
+       * few dozen small canvases and nothing else changes. */
+      WS.Hero.draw(c.getContext('2d'), res, id, tint, demon,
+        frame === undefined ? undefined : frame / WS.Hero.frames);
       c.displaySize = size;
       cache.set(key, c);
       return c;

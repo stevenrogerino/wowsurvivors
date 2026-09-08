@@ -127,7 +127,8 @@ src/game/      the simulation: player, enemy, weapon, projectile, xp, pickup,
                familiar, waves, levelup, combos, achievements, arena, game
 src/render/    procedural sprites, procedural icons, the canvas renderer
                hero.js is the survivor on its own: one rig, ten silhouettes,
-               one light, and the tint used as an accent rather than a uniform
+               one light, an eight-frame walk, and the tint used as an accent
+               rather than a uniform
 src/audio/     WebAudio synth kit and the generative per-zone score
 src/ui/        the Arclight stylesheet, its embedded faces, and the DOM layer
 tools/         the single-file bundler, and the guard rails:

@@ -53,6 +53,36 @@
   const CEIL = 6;
   const NECK_Y = 34, SHOULDER_Y = 41, WAIST_Y = 60, HIP_Y = 63, FOOT_Y = 88;
 
+  /* ------------------------------------------------------------- stride --- */
+  /* THE WALK.
+   *
+   * Every survivor was a still image that slid across the ground and bobbed.
+   * Nothing shifted its weight, nothing swung, and a figure that translates
+   * without moving its legs reads as a chess piece being pushed - which is the
+   * single widest gap between how this game looks and how it feels.
+   *
+   * It is a four-frame cycle baked into the sprite cache rather than a per-
+   * frame transform, because the parts that have to move are INSIDE the
+   * drawing: a leg swings from the hip, an arm counter-swings, a robe's hem
+   * lags behind the body, a cloak trails. None of that can be faked by moving
+   * the finished image around.
+   *
+   * `phase` runs 0..1 over one full stride. Everything below reads it through
+   * these two numbers and nothing else, so the whole cast walks in step with
+   * one rule:
+   *
+   *   swing  -1..1, the leading side. +1 is near-leg-forward.
+   *   lift    0..1, how high the body rides - peaks at the passing positions,
+   *           lowest at the two contacts, which is where the weight lands.
+   */
+  function stride(phase) {
+    const a = phase * WS.TAU;
+    return { swing: WS.sin(a), lift: WS.max(0, -WS.cos(a * 2)) };
+  }
+  const STILL = { swing: 0, lift: 0 };
+  /** How many baked frames one cycle is cut into. */
+  const FRAMES = 8;
+
   const BUILDS = {
     slim: { sh: 12.5, chest: 12, waist: 9, hip: 10, arm: 4.0, leg: 4.6 },
     normal: { sh: 14.5, chest: 13.5, waist: 10.5, hip: 11, arm: 4.6, leg: 5.2 },
@@ -513,40 +543,62 @@
   }
 
   /* --------------------------------------------------------------- body --- */
-  function drawBody(g, cfg, C, b) {
+  function drawBody(g, cfg, C, b, w, lift) {
     const cx = 50;
 
     // Far arm first, in shadow, so the near side has something to sit in front
     // of. Depth at this scale is entirely a matter of what overlaps what.
-    taper(g, cx - b.sh + 1, SHOULDER_Y + 1, cx - b.sh - 2.5, WAIST_Y - 1,
+    // Everything from the hips up rides with the lift; the legs below do not.
+    g.save(); g.translate(0, -lift);
+    // Arms oppose the legs. Swinging them WITH the legs is the thing that
+    // makes a walk cycle look wrong without anyone being able to say why.
+    taper(g, cx - b.sh + 1, SHOULDER_Y + 1, cx - b.sh - 2.5 - w.swing * 3.5, WAIST_Y - 1,
       b.arm * 0.62, b.arm * 0.38, C.bodyRamp, true);
 
     if (cfg.robe) {
       // A bell from the waist to the floor, with the hem catching the light.
-      panel(g, [[cx - b.waist, WAIST_Y - 4], [cx + b.waist, WAIST_Y - 4],
-        [cx + b.hip + 8, FOOT_Y], [cx - b.hip - 8, FOOT_Y]], C.robeRamp);
-      panel(g, [[cx - b.hip - 8, FOOT_Y], [cx + b.hip + 8, FOOT_Y],
-        [cx + b.hip + 6.5, FOOT_Y - 4.5], [cx - b.hip - 6.5, FOOT_Y - 4.5]], C.trimRamp);
+      /* A bell does not have legs, so its walk is in the hem: the skirt lags
+       * behind the hips and swings the other way. Half the cast is robed and
+       * this is the only thing that moves on them. */
+      const drag = w.swing * 4;
+      panel(g, [[cx - b.waist, WAIST_Y - 4 - lift], [cx + b.waist, WAIST_Y - 4 - lift],
+        [cx + b.hip + 8 + drag, FOOT_Y], [cx - b.hip - 8 + drag, FOOT_Y]], C.robeRamp);
+      panel(g, [[cx - b.hip - 8 + drag, FOOT_Y], [cx + b.hip + 8 + drag, FOOT_Y],
+        [cx + b.hip + 6.5 + drag, FOOT_Y - 4.5], [cx - b.hip - 6.5 + drag, FOOT_Y - 4.5]],
+        C.trimRamp);
       g.fillStyle = 'rgba(0,0,0,.30)';
-      g.beginPath(); g.moveTo(cx - b.hip - 8, FOOT_Y);
-      g.lineTo(cx + b.hip + 8, FOOT_Y); g.lineTo(cx + b.hip + 6, FOOT_Y - 1.5);
-      g.lineTo(cx - b.hip - 6.5, FOOT_Y - 1.5); g.closePath(); g.fill();
+      g.beginPath(); g.moveTo(cx - b.hip - 8 + drag, FOOT_Y);
+      g.lineTo(cx + b.hip + 8 + drag, FOOT_Y); g.lineTo(cx + b.hip + 6 + drag, FOOT_Y - 1.5);
+      g.lineTo(cx - b.hip - 6.5 + drag, FOOT_Y - 1.5); g.closePath(); g.fill();
       // Two folds, which is all a bell needs to stop reading as a triangle.
       g.strokeStyle = 'rgba(0,0,0,.26)'; g.lineWidth = 1.4;
       for (const dx of [-5, 5]) {
-        g.beginPath(); g.moveTo(cx + dx, WAIST_Y); g.lineTo(cx + dx * 2.1, FOOT_Y - 2); g.stroke();
+        g.beginPath();
+        g.moveTo(cx + dx, WAIST_Y - lift);
+        g.lineTo(cx + dx * 2.1 + drag, FOOT_Y - 2);
+        g.stroke();
       }
     } else {
       for (const dir of [-1, 1]) {
         const hx = cx + dir * (b.hip - b.leg * 0.5);
-        const fx = hx + dir * 1.5;
-        taper(g, hx, HIP_Y - 4, fx, FOOT_Y - 6, b.leg * 0.62, b.leg * 0.42, C.legRamp, dir < 0);
+        /* The near leg leads on +swing, the far leg on -swing. The foot moves
+         * and the hip does not, which is what makes it a stride rather than
+         * the whole figure sliding sideways. */
+        const lead = dir * w.swing;
+        const fx = hx + dir * 1.5 + lead * 5.5;
+        // The hip rises with the body, the foot stays on the floor, and the
+        // leg between them stretches. That is the whole mechanism.
+        const foot = FOOT_Y - 6;
+        taper(g, hx, HIP_Y - 4 - lift, fx, foot, b.leg * 0.62, b.leg * 0.42, C.legRamp, dir < 0);
         /* The boot is drawn as a shape with a toe, sitting ON the ground line
          * rather than an ellipse hovering near it. Two survivors ago these
          * were detached brown ovals and the whole cast looked like it was on
          * casters. */
-        panel(g, [[fx - b.leg * 0.5, FOOT_Y - 8], [fx + b.leg * 0.5, FOOT_Y - 8],
-          [fx + dir * b.leg * 0.95, FOOT_Y - 1.5], [fx - dir * b.leg * 0.45, FOOT_Y - 1.5]],
+        // The boot tips onto its toe as the leg goes back, and lands flat as
+        // it comes forward - two units of rotation and the foot has a roll.
+        const tilt = -lead * 2.2;
+        panel(g, [[fx - b.leg * 0.5, foot - 2], [fx + b.leg * 0.5, foot - 2],
+          [fx + dir * b.leg * 0.95, foot + 4.5 + tilt], [fx - dir * b.leg * 0.45, foot + 4.5 - tilt]],
           dir < 0 ? ramp([0.26, 0.19, 0.12]) : LEATHER);
       }
     }
@@ -812,7 +864,7 @@
       }
     }
     // Near arm, over the torso, with a hand.
-    taper(g, cx + b.sh - 1, SHOULDER_Y + 1, cx + b.sh + 2, WAIST_Y - 2,
+    taper(g, cx + b.sh - 1, SHOULDER_Y + 1, cx + b.sh + 2 + w.swing * 3.5, WAIST_Y - 2,
       b.arm * 0.68, b.arm * 0.4, C.bodyRamp);
     if (cfg.bracer) {
       // A wide cuff on the working arm. One hard edge on a soft limb, and it
@@ -822,6 +874,7 @@
       g.fillStyle = GOLD.core;
       g.fillRect(cx + b.sh - 1, WAIST_Y - 9.5, 5.6, 1.4);
     }
+    g.restore();
     /* A hand the width of the wrist it belongs to, not a knob on the end of
      * it - and in the right material. The graveblade's arm and hand were built
      * from his garment ramp, which is crimson, and hung in front of a crimson
@@ -842,27 +895,30 @@
   }
 
   /* ------------------------------------------------------------- cloaks --- */
-  function drawCloak(g, cfg, C, b) {
+  function drawCloak(g, cfg, C, b, w) {
     const cx = 50, k = cfg.cloak;
     if (!k) return;
     const foot = k === 'short' ? WAIST_Y + 6 : FOOT_Y - 1;
     const flare = k === 'short' ? 5 : 11;
+    // The cloak trails: pinned at the shoulders, loose at the hem, and it
+    // lags the body by half a beat because cloth does.
+    const trail = -w.swing * 5;
     const pts = [[cx - b.sh - 1, SHOULDER_Y - 4], [cx + b.sh + 1, SHOULDER_Y - 4],
-      [cx + b.sh + flare, foot]];
+      [cx + b.sh + flare + trail, foot]];
     if (k === 'cut') {
       /* Cut away on one side. A hem that is level all round reads as a
        * garment; one that is short over the leading leg reads as a garment
        * somebody has to move in. */
       pts.push([cx + b.sh + flare - 1, WAIST_Y + 16]);
       pts.push([cx + 2, WAIST_Y + 9]);
-      pts.push([cx - b.sh - flare, foot]);
+      pts.push([cx - b.sh - flare + trail, foot]);
     } else if (k === 'tattered') {
       // A ragged hem, cut with the same seed every time so the character does
       // not change clothes between the roster and the run.
       const teeth = 7;
       for (let i = 0; i <= teeth; i++) {
         const t = 1 - i / teeth;
-        const x = cx - b.sh - flare + (b.sh + flare) * 2 * t;
+        const x = cx - b.sh - flare + trail + (b.sh + flare) * 2 * t;
         pts.push([x, foot - (i % 2 ? 9 : 1) - (i % 3) * 2.5]);
       }
     } else {
@@ -1224,9 +1280,9 @@
    * survivor forced to one grey, no two may differ across less than 35% of
    * their drawing. The closest pair currently manage 43%.
    *
-   * WHAT THE CAST STILL WANTS is a walk. Even a two-frame lean would do more
-   * for how the game feels than any further detail on any of them; the figure
-   * currently bobs and never shifts its weight. */
+   * They walk now - see the stride block at the top of the file. What the cast
+   * still wants after that is smaller: a hurt pose, and something for the
+   * moment a survivor dies. */
   const CAST = {
     /* Each survivor carries ONE mark that is theirs alone, on top of the
      * shared rig - the method the shaman and the ruinseeker were done by, run
@@ -1341,20 +1397,37 @@
   }
 
   /** The finished figure, minus its light. */
-  function figure(g, cfg, C) {
+  function figure(g, cfg, C, w) {
     const b = BUILDS[cfg.build] || BUILDS.normal;
-    drawCloak(g, cfg, C, b);
-    drawBody(g, cfg, C, b);
+    /* THE FEET OWN THE FLOOR.
+     *
+     * The body rides up on the passing beats and drops onto each contact -
+     * that is where the weight lands - but the first version lifted the WHOLE
+     * figure, legs included, and the boots came off the ground twice a stride.
+     * A walk in which both feet leave the floor is a hop.
+     *
+     * So the lift is applied to everything from the hips up and to nothing
+     * else: the legs are drawn from a hip that moves to a foot that does not,
+     * and a robe's hem is pinned to the ground while its waist rises. The leg
+     * changing length between the two IS the walk. */
+    const lift = w.lift * 1.9;
+    g.save(); g.translate(0, -lift);
+    drawCloak(g, cfg, C, b, w);
+    g.restore();
+    drawBody(g, cfg, C, b, w, lift);
+    g.save(); g.translate(0, -lift);
     drawHead(g, cfg, C);
     // Offhand first, so the main weapon lands in front of it.
     const off = WEAPONS[cfg.offhand];
     if (off) off(g, C, b);
-    const w = WEAPONS[cfg.weapon];
-    if (w) w(g, C, b);
+    const wp = WEAPONS[cfg.weapon];
+    if (wp) wp(g, C, b);
+    g.restore();
   }
 
   const Hero = {
     ids: Object.keys(CAST),
+    frames: FRAMES,
 
     /** Draw survivor `id` into `g`, filling a `size`-square canvas.
      *
@@ -1364,8 +1437,10 @@
      *  gold, down-right in floor blue - and then the real figure lands on top.
      *  One pass, correct for every class automatically, and it is what makes
      *  the shape hold together against a dark and crowded ground. */
-    draw(g, size, id, tint, demon) {
+    /** @param {number} [phase] 0..1 through one stride; omit for standing. */
+    draw(g, size, id, tint, demon, phase) {
       const cfg = CAST[id] || CAST.mage;
+      const w = phase === undefined ? STILL : stride(phase);
       const C = colours(tint, demon, cfg.eyeColour);
       const u = size / 100;
 
@@ -1383,7 +1458,7 @@
       body.width = size; body.height = size;
       const bg = body.getContext('2d');
       bg.scale(u, u);
-      figure(bg, cfg, C);
+      figure(bg, cfg, C, w);
 
       const sil = document.createElement('canvas');
       sil.width = size; sil.height = size;

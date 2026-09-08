@@ -37,6 +37,17 @@
  *              the helm, chains, a tome, a charge, a notched blade) from being
  *              quietly dropped or duplicated later.
  *
+ *   walks      The stride must be a walk and not a hop. Every survivor is
+ *              baked into a cycle of frames, and three things have to hold
+ *              across it: the FEET STAY DOWN (the first version lifted the
+ *              whole figure, legs included, and both boots came off the floor
+ *              twice a stride - a walk where nobody is touching the ground is
+ *              a hop); the standing frame PLANTS WHERE THE WALKING ONES DO,
+ *              or the survivor jumps a pixel the moment the player presses a
+ *              key; and the drawing has to actually CHANGE, or the cycle is
+ *              eight copies of a statue and the whole thing is decoration in
+ *              the cache.
+ *
  *   visible    Every survivor must out-value the ground they stand on. The
  *              identity colours run from [1,1,1] to [0,0.44,0.87], so painting
  *              the body in them made the priest a white cut-out and the shaman
@@ -64,7 +75,11 @@
  * which the first version of that check MISSED, because it tested one survivor
  * and the one it tested carried a greatsword. Giving two survivors the same
  * configuration gives "mage and priest differ across only 3% of their drawing
- * with the tint removed - in one colour they are the same character".
+ * with the tint removed - in one colour they are the same character". Lifting
+ * the whole figure again gives "hunter's feet travel 6.7px over the stride -
+ * both boots leave the floor, which is a hop, not a walk"; flattening the
+ * stride gives "mage only changes 0.0% a frame - the stride is a statue copied
+ * eight times".
  *
  *   npm i playwright && npx playwright install chromium
  *   node tools/check-hero.js
@@ -79,6 +94,14 @@ const DIFF = 0.35;               // and must differ across this much of their dr
 const MARGIN = 18;               // luminance a survivor must clear the ground by
 const RANGE = 120;               // luminance a survivor must span, to have form
 const FILL = [0.10, 0.42];       // how much of the box the figure fills at 34px
+/* px a foot may travel over the stride, at a 120px sprite. Set from BOTH
+ * sides and it had to be: the walking build measures 2.0 and the hop measures
+ * 4.0, so the 4 this started at would have passed the exact bug it was written
+ * for. Nearly the third guard this session whose threshold was wrong before
+ * the code was. */
+const FOOT = 3;
+const STEP = 0.005;              // how far the standing plant may sit from walking
+const MOTION = 0.04;             // fraction of the figure that must move per frame
 
 (async () => {
   const browser = await chromium.launch({
@@ -165,6 +188,41 @@ const FILL = [0.10, 0.42];       // how much of the box the figure fills at 34px
       }
     }
 
+    /* The walk, read off the baked frames. */
+    const N = WS.Hero.frames, WSZ = 120;
+    const gait = ids.map((id) => {
+      const masks = [], feet = [];
+      for (let f = 0; f < N; f++) {
+        const c = WS.Sprites.hero(id, WS.Characters[id].color, WSZ, false, f);
+        const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+        const m = new Uint8Array(c.width * c.height);
+        let bottom = -1;
+        for (let i = 0, k = 0; i < d.length; i += 4, k++) {
+          if (d[i + 3] > 200) { m[k] = 1; const y = (k / c.width) | 0; if (y > bottom) bottom = y; }
+        }
+        masks.push(m); feet.push(bottom / c.height);
+      }
+      const st = WS.Sprites.hero(id, WS.Characters[id].color, WSZ);
+      const sd = st.getContext('2d').getImageData(0, 0, st.width, st.height).data;
+      let sf = -1;
+      for (let i = 0, k = 0; i < sd.length; i += 4, k++) {
+        if (sd[i + 3] > 200) { const y = (k / st.width) | 0; if (y > sf) sf = y; }
+      }
+      let motion = 0;
+      for (let f = 0; f < N; f++) {
+        const A = masks[f], B = masks[(f + 1) % N];
+        let diff = 0, area = 0;
+        for (let k = 0; k < A.length; k++) { if (A[k] || B[k]) area++; if (A[k] !== B[k]) diff++; }
+        motion += diff / Math.max(1, area);
+      }
+      return {
+        id,
+        foot: (Math.max(...feet) - Math.min(...feet)) * WSZ,
+        step: Math.abs(sf / st.height - feet[0]),
+        motion: motion / N,
+      };
+    });
+
     /* Individuality, with the tint taken out of it. */
     const grey = [0.55, 0.55, 0.58];
     const flat = {};
@@ -209,7 +267,7 @@ const FILL = [0.10, 0.42];       // how much of the box the figure fills at 34px
 
     return {
       ground,
-      worst, same,
+      worst, same, gait,
       drift, drifted,
       cast: ids.map((id) => ({
         id,
@@ -250,6 +308,20 @@ const FILL = [0.10, 0.42];       // how much of the box the figure fills at 34px
     fail.push(`${report.worst.pair} share ${report.worst.v.toFixed(2)} of one `
       + 'silhouette - at play size they are the same character');
   }
+  for (const g of report.gait) {
+    if (g.foot > FOOT) {
+      fail.push(`${g.id}'s feet travel ${g.foot.toFixed(1)}px over the stride `
+        + '- both boots leave the floor, which is a hop, not a walk');
+    }
+    if (g.step > STEP) {
+      fail.push(`${g.id} plants ${(g.step * 100).toFixed(1)}% of a body differently `
+        + 'standing than walking - they jump the moment a key goes down');
+    }
+    if (g.motion < MOTION) {
+      fail.push(`${g.id} only changes ${(g.motion * 100).toFixed(1)}% a frame `
+        + '- the stride is a statue copied eight times');
+    }
+  }
   if (report.same.v < DIFF) {
     fail.push(`${report.same.pair} differ across only `
       + `${(report.same.v * 100).toFixed(0)}% of their drawing with the tint removed `
@@ -274,5 +346,8 @@ const FILL = [0.10, 0.42];       // how much of the box the figure fills at 34px
     + `(${brightestMap}, ${brightest.toFixed(0)}) by ${(dim.mean - brightest).toFixed(0)}; `
     + `the most alike pair (${report.same.pair}) still differ across `
     + `${(report.same.v * 100).toFixed(0)}% of their drawing in one colour; `
-    + 'and every survivor draws the same pixels twice');
+    + `every survivor draws the same pixels twice; and the walk keeps its feet `
+    + `down (${Math.max(...report.gait.map((g) => g.foot)).toFixed(1)}px of travel) `
+    + `while moving at least `
+    + `${(Math.min(...report.gait.map((g) => g.motion)) * 100).toFixed(0)}% a frame`);
 })();
