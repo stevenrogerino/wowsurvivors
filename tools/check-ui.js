@@ -21,6 +21,14 @@
  *             bought. So this walks the panes with everything unlocked and
  *             ranks spent, and fails on rows of wildly unequal height or any
  *             element wider than the box holding it.
+ *   ledger    Every number the player budgets against must track the save it
+ *             is drawn from. The menu footer's "Banked" total was built once
+ *             when the menu opened and never touched again, while the Trainer
+ *             - the only screen in the game that spends gold - redrew itself
+ *             on every purchase. Measured: 100,000g, buy a 200g rank, the shop
+ *             updates its prices and the footer still reads 100.0kg until the
+ *             page is reloaded. A shop whose displayed balance is a lie is a
+ *             shop nobody can plan a purchase in.
  *   banish    Arming banish must move nothing. It used to rebuild the whole
  *             overlay: the shell animation replayed, all three cards dealt
  *             themselves in again, the scroll port re-measured (a scrollbar
@@ -76,7 +84,34 @@ const path = require('path');
     return bad;
   });
 
+  /* Never measure a surface that is still moving.
+   *
+   * Every overlay deals itself in with a translate, and while that runs the
+   * scroll geometry is briefly wrong: a level-up whose three cards fit exactly
+   * reports 14px of overflow for the first few frames and settles to 0. The
+   * scrim keys off an IntersectionObserver, which sees where the content
+   * actually IS, so it correctly stays dark - and the check, reading
+   * scrollHeight, called that a missing scrim. The two disagreed only because
+   * one of them was asked during an animation. So wait for the geometry to
+   * stop changing before asking anything, and a fixed sleep never has to be
+   * guessed at again. */
+  const settle = () => page.evaluate(() => new Promise((done) => {
+    let last = null, still = 0, frames = 0;
+    const tick = () => {
+      const now = [...document.querySelectorAll('.overlay-body')]
+        .map((b) => `${b.scrollHeight}/${b.clientHeight}`).join(',');
+      still = now === last ? still + 1 : 0;
+      last = now;
+      // Three identical frames, or a second of trying: whichever comes first,
+      // so an infinitely animating surface cannot hang the run.
+      if (still >= 3 || ++frames > 60) done();
+      else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }));
+
   const check = async (where) => {
+    await settle();
     (await scan()).forEach((x) => seen.add(where + ' ' + x));
     (await scanScrim()).forEach((x) => seen.add(where + ' ' + x));
   };
@@ -216,9 +251,59 @@ const path = require('path');
     if (after.scrollable) seen.add('banish: arming it made the body scrollable');
   }
 
+  /* ---- ledger: the footer total follows the purchases ------------------- *
+   * Driven through real clicks on the real buttons, because the bug was
+   * precisely that the code which changes the gold and the code which prints
+   * it were never wired together - anything that calls a redraw by hand would
+   * have passed while the bug was in. Three buys in a row, so a stale readout
+   * cannot coincidentally match by being one purchase behind.
+   *
+   * NEGATIVE TEST: with the footer built once (the shipped bug), this reports
+   * "ledger: 3 purchases spent 700g and the footer never moved off 100.0kg". */
+  const ledger = await page.evaluate(async () => {
+    WS.Game.state = 'menu';
+    // The progress walk above deliberately maxes every rank, which leaves the
+    // Trainer with nothing to sell. Roll it back so there is something to buy.
+    WS.Save.db.meta = {};
+    WS.Save.db.gold = 100000;
+    WS.UI.tab = 'trainer';
+    WS.UI.openMenu();
+    await new Promise((r) => requestAnimationFrame(r));
+    const read = () => (document.querySelector('.overlay-foot .bank .v') || {}).textContent;
+    const steps = [];
+    for (let i = 0; i < 3; i++) {
+      const gold = WS.Save.db.gold, shown = read();
+      const buy = document.querySelector('.overlay-body .btn.buy:not([disabled])');
+      if (!buy) break;
+      buy.click();
+      await new Promise((r) => requestAnimationFrame(r));
+      steps.push({
+        gold, shown, spent: gold - WS.Save.db.gold, now: WS.Save.db.gold,
+        nowShown: read(), want: WS.formatNumber(WS.Save.db.gold) + 'g',
+      });
+    }
+    return steps;
+  });
+  if (ledger.length < 3) {
+    seen.add(`ledger: only ${ledger.length} of 3 trainer purchases went through`);
+  }
+  const spent = ledger.reduce((t, s2) => t + s2.spent, 0);
+  const moved = ledger.some((s2) => s2.nowShown !== s2.shown);
+  if (spent <= 0) seen.add('ledger: the trainer purchases cost nothing');
+  else if (!moved) {
+    seen.add(`ledger: ${ledger.length} purchases spent ${spent}g and the footer `
+      + `never moved off ${ledger[0].shown}`);
+  }
+  for (const st of ledger) {
+    if (st.nowShown !== st.want) {
+      seen.add(`ledger: ${st.now}g banked but the footer reads ${st.nowShown} (want ${st.want})`);
+    }
+  }
+
   console.log(seen.size ? [...seen].join('\n')
     : 'ok: no bracket collisions, no false scrims, a maxed save lays out clean,'
-      + ' arming banish moves nothing');
+      + ` arming banish moves nothing, and ${ledger.length} purchases totalling `
+      + `${spent}g each land on the footer's banked total`);
   await b.close();
   process.exitCode = seen.size ? 1 : 0;
 })();

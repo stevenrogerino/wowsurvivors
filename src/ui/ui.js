@@ -597,9 +597,22 @@
       ['stats', 'Statistics'],
       ['settings', 'Settings'],
     ];
+    /* The banked total lives in the footer, but the Trainer - the one screen
+     * that spends it - lives in the pane. Building the readout once meant a
+     * purchase debited the save, redrew the shop with its new prices, and left
+     * the number the player was budgeting against sitting at its old value
+     * until the page was reloaded. Measured: buy a 200g rank out of 100,000
+     * and the footer still reads 100.0kg. So the readout is refreshed by the
+     * same render() that redraws the pane, and there is now one path by which
+     * gold changes and one place that reacts to it. */
+    const bank = el('div', 'bank');
+    const bankValue = el('span', 'v', '');
+    bank.append(el('span', 'label', 'Banked'), bankValue);
+
     const render = () => {
       for (const btn of tabs.children) btn.classList.toggle('active', btn.dataset.tab === UI.tab);
       panes.replaceChildren(UI.buildPane(UI.tab, render));
+      bankValue.textContent = WS.formatNumber(WS.Save.db.gold) + 'g';
       requestAnimationFrame(() => {
         const body = s.inner.querySelector('.overlay-body');
         if (!body) return;
@@ -615,9 +628,6 @@
     }
     s.body.append(tabs, panes);
     render();
-
-    const bank = el('div', 'bank');
-    bank.append(el('span', 'label', 'Banked'), el('span', 'v', WS.formatNumber(WS.Save.db.gold) + 'g'));
 
     const begin = el('button', 'btn primary', 'Begin Run');
     begin.addEventListener('click', () => {
