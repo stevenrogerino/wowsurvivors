@@ -11232,18 +11232,96 @@ window.WS = window.WS || {};
     ctx.restore();
   };
 
+  /* ---------------------------------------------------------- the loot --- */
+  /* THE LOOT LIGHT.
+   *
+   * Everything the player can pick up is drawn as the same sandwich: a dark
+   * pad that removes the ground underneath it, the item itself, and a core
+   * brighter than any floor in the game. Both outer layers are VALUE, not hue,
+   * and that is the whole point.
+   *
+   * The gems used to be drawn additively at as little as 0.26 alpha with no
+   * pad and no core, which meant a gem could only ever ADD to the colour under
+   * it - so the commonest gem in the game, a green one, sat on Thornhollow's
+   * green grass and disappeared. Measured against the floor beside it in RGB:
+   * 89 of colour distance across 21 pixels. That is not a piece of loot, it is
+   * a texture. The blue and violet tiers scored 127 and 132 for the same
+   * reason - the tier hue was doing all the work, and on a map that shares it
+   * there is no work being done.
+   *
+   * With a pad and a white core the read no longer depends on the tier colour
+   * at all; the colour goes back to doing the one job it is good at, which is
+   * telling you how much the gem is worth. */
+  const gemArt = new Map();
+  // The stone's radius as a fraction of the cached sprite's width.
+  const GEM_R = 0.2;
+
+  /** One cached sprite per tier: pad, facet, core. Drawn once, then blitted -
+   *  which is also cheaper than the four paths per gem this replaces, and
+   *  there can be 260 gems on the field. */
+  function gemSprite(tier, colour) {
+    const key = tier + ':' + WS.hex(colour);
+    let c = gemArt.get(key);
+    if (c) return c;
+    const R0 = 16, S = 4, res = R0 * 2 * S;      // 4x, so the facets stay clean
+    c = document.createElement('canvas');
+    c.width = c.height = res;
+    const g = c.getContext('2d');
+    g.scale(S, S);
+    const cx = R0, cy = R0, r = R0 * GEM_R;
+
+    /* The pad is deliberately TIGHT. A wide one separates the gem perfectly
+     * well and turns a field of two hundred of them into a rash of dark spots
+     * - the ground stops reading as ground. Just past the stone's own edge is
+     * enough to give it a hard border on any floor, and no more. */
+    const pad = g.createRadialGradient(cx, cy, r * 0.55, cx, cy, r * 1.75);
+    pad.addColorStop(0, 'rgba(3,5,9,.82)');
+    pad.addColorStop(0.5, 'rgba(3,5,9,.40)');
+    pad.addColorStop(1, 'rgba(3,5,9,0)');
+    g.fillStyle = pad;
+    g.beginPath(); g.arc(cx, cy, r * 1.75, 0, WS.TAU); g.fill();
+
+    // The stone: a cut diamond, lit from the same upper left as everything.
+    const body = g.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
+    /* Bright, but still the tier's colour. Taken too far toward white the
+       whole field turned into identical pale specks - which fixes visibility
+       by throwing away the one thing the colour is for, which is telling the
+       player at a glance how much is lying there. */
+    body.addColorStop(0, WS.rgb(WS.mix(colour, [1, 1, 1], 0.40), 1));
+    body.addColorStop(0.45, WS.rgb(colour, 1));
+    body.addColorStop(1, WS.rgb(WS.shade(colour, 0.5), 1));
+    g.fillStyle = body;
+    g.beginPath();
+    g.moveTo(cx, cy - r); g.lineTo(cx + r * 0.72, cy);
+    g.lineTo(cx, cy + r); g.lineTo(cx - r * 0.72, cy);
+    g.closePath(); g.fill();
+
+    // A rim, so the stone has an edge even where the pad has faded out.
+    g.strokeStyle = 'rgba(8,10,16,.85)'; g.lineWidth = 0.9;
+    g.stroke();
+
+    // The lit facet and the core. The core is near-white on every tier: it is
+    // the mark the eye actually finds, and it must not be a colour that any
+    // map can match.
+    g.fillStyle = 'rgba(255,255,255,.42)';
+    g.beginPath();
+    g.moveTo(cx, cy - r); g.lineTo(cx, cy + r); g.lineTo(cx - r * 0.72, cy);
+    g.closePath(); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.98)';
+    g.beginPath(); g.ellipse(cx - r * 0.14, cy - r * 0.18, r * 0.32, r * 0.42, 0, 0, WS.TAU); g.fill();
+
+    c.unit = R0;
+    gemArt.set(key, c);
+    return c;
+  }
+
   R.drawGems = function (ctx, time) {
     const gems = WS.XP.pool;
     const player = WS.Game.player;
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < gems.count; i++) {
       const g = gems.active[i];
       const d = WS.dist(g.x, g.y, player.x, player.y);
-      // A field of hundreds of gems must not shout. They sit quiet until the
-      // magnet takes hold, then brighten and pull a comet tail.
       const pulled = d < player.pickupRadius || WS.XP.vacuumTimer > 0;
-      // Falls off with distance: near gems read as loot, far ones as texture.
       const near = WS.clamp(1 - (d - player.pickupRadius) / 260, 0, 1);
       /* Only gems in play breathe. The pulse used to run on every gem on the
          field, and a hundred marks pulsing on independent phases is not life,
@@ -11252,8 +11330,11 @@ window.WS = window.WS || {};
          another. */
       const swell = (pulled ? 1 + 0.07 * WS.sin(time * 5 + g.spin) : 1)
         + (g.pop > 0 ? g.pop * 1.6 : 0);
-      const s = g.size * (pulled ? 1.15 : 0.75 + near * 0.2) * swell;
+      const s = g.size * (pulled ? 1.2 : 0.94 + near * 0.14) * swell;
+
       if (pulled && !this.lite) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
         const [tx, ty] = WS.normalize(g.x - player.x, g.y - player.y);
         ctx.globalAlpha = 0.4;
         ctx.strokeStyle = WS.rgb(g.colour, 1);
@@ -11263,36 +11344,101 @@ window.WS = window.WS || {};
         ctx.moveTo(g.x, g.y);
         ctx.lineTo(g.x + tx * s * 2.4, g.y + ty * s * 2.4);
         ctx.stroke();
+        ctx.restore();
       }
-      ctx.globalAlpha = pulled ? 1 : 0.26 + near * 0.34;
+
+      /* A gem at rest is quieter than one in play, but it is never a ghost.
+       * The floor here used to be 0.26, which is where the vanishing happened;
+       * loot the player has not walked to yet is still loot. */
+      ctx.globalAlpha = pulled ? 1 : 0.78 + near * 0.22;
+      const art = gemSprite(g.tier, g.colour);
+      /* The stone is GEM_R of the sprite's width, so blitting at five times
+       * `s` puts it back at exactly the radius the rest of the game means by
+       * `s`. Getting this wrong is silent and looks like a taste decision:
+       * blitted at 2.5x the gems came out at half size and simply read as
+       * "smaller than before" rather than as a bug. */
+      const w = s / GEM_R;
       ctx.save();
       ctx.translate(g.x, g.y);
       ctx.rotate(g.spin);
-      ctx.fillStyle = WS.rgb(g.colour, 0.95);
-      ctx.beginPath();
-      ctx.moveTo(0, -s); ctx.lineTo(s * 0.7, 0); ctx.lineTo(0, s); ctx.lineTo(-s * 0.7, 0);
-      ctx.closePath(); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,.5)';
-      ctx.beginPath();
-      ctx.moveTo(0, -s); ctx.lineTo(0, s); ctx.lineTo(-s * 0.7, 0);
-      ctx.closePath(); ctx.fill();
+      ctx.drawImage(art, -w / 2, -w / 2, w, w);
       ctx.restore();
     }
     ctx.globalAlpha = 1;
-    ctx.restore();
   };
+
+  /* The five that change a run: a bomb, a lodestone, an hourglass, a chest, a
+   * supply crate. These are the decisions on the field - the moments a player
+   * breaks off what they were doing and goes to get something - and they were
+   * drawn as small flat glyphs lying on the grass, which is how scenery is
+   * drawn. Measured against the floor beside them, the bomb cleared 274 of
+   * colour distance across THIRTY-FOUR PIXELS: a bright speck, not a landmark. */
+  const CALLOUT = { bomb: 1, stone: 1, hourglass: 1, chest: 1, cache: 1 };
 
   R.drawPickups = function (ctx, time) {
     const pool = WS.Pickup.pool;
     for (let i = 0; i < pool.count; i++) {
       const p = pool.active[i];
       const lift = WS.sin(p.bob) * 3;
-      shadow(ctx, p.x, p.y + p.radius * 0.7, p.radius * 0.7, 0.24);
       const size = p.type.size;
+      const y = p.y + lift;
+      const callout = CALLOUT[p.kind] || p.type.noMagnet;
+
+      /* The pad, first: a dark disc that takes the ground out from under the
+       * item, so what follows is read against black rather than against
+       * whatever the map happens to be made of. */
+      const pad = ctx.createRadialGradient(p.x, y, size * 0.18, p.x, y, size * 0.95);
+      pad.addColorStop(0, 'rgba(3,5,9,.80)');
+      pad.addColorStop(0.6, 'rgba(3,5,9,.52)');
+      pad.addColorStop(1, 'rgba(3,5,9,0)');
+      ctx.fillStyle = pad;
+      ctx.beginPath(); ctx.arc(p.x, y, size * 0.95, 0, WS.TAU); ctx.fill();
+      shadow(ctx, p.x, p.y + p.radius * 0.7, p.radius * 0.7, 0.24);
+
+      if (callout) {
+        /* A halo in the item's own colour, sitting on the pad. Colour is
+         * allowed to say WHICH thing it is; it is never asked to say that a
+         * thing is there.
+         *
+         * NOT gated behind the quality setting, unlike every other glow in the
+         * renderer. It was, and the guard rail caught what that costs: on
+         * Balanced a bomb at the trough of its pulse came to 1.85x a coin's
+         * presence, under the 2x a run-changing pickup has to hold. Balanced
+         * is allowed to drop trails, ground detail and atmosphere; it is not
+         * allowed to make the loot harder to find, because that is not a
+         * quality setting, it is a different game. There are only ever a
+         * handful of these on the field and the cost is a radial fill each. */
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        const beat = 0.5 + 0.5 * WS.sin(time * 2.6 + p.bob);
+        const halo = ctx.createRadialGradient(p.x, y, size * 0.2, p.x, y, size * (1.1 + beat * 0.3));
+        halo.addColorStop(0, WS.rgb(p.type.tint, 0.30 + beat * 0.16));
+        halo.addColorStop(1, WS.rgb(p.type.tint, 0));
+        ctx.fillStyle = halo;
+        ctx.beginPath(); ctx.arc(p.x, y, size * (1.1 + beat * 0.3), 0, WS.TAU); ctx.fill();
+        ctx.restore();
+      }
+
       const icon = WS.Icons.glyph(p.type.art, p.type.tint, size);
-      ctx.drawImage(icon, p.x - size / 2, p.y - size / 2 + lift, size, size);
+      ctx.drawImage(icon, p.x - size / 2, y - size / 2, size, size);
+
+      if (callout) {
+        // And a hard ring around it. The halo says "something is glowing
+        // here"; the ring is the edge that makes it an object.
+        ctx.save();
+        // The floor matters more than the swing: a ring that fades to a
+        // quarter alpha has a moment every couple of seconds where the object
+        // is barely outlined, and that is the moment the player looks.
+        ctx.globalAlpha = 0.72 + 0.2 * WS.sin(time * 2.6 + p.bob);
+        ctx.strokeStyle = WS.rgb(WS.mix(p.type.tint, [1, 1, 1], 0.45), 1);
+        ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.arc(p.x, y, size * 0.72, 0, WS.TAU); ctx.stroke();
+        ctx.restore();
+      }
+
       if (p.type.noMagnet) {
-        // Destination pickups get a beacon so they are findable across a field.
+        // Destination pickups keep their wider beacon: these are the ones you
+        // cross the field for, and they have to be findable from off screen.
         ctx.save();
         ctx.globalAlpha = 0.35 + 0.25 * WS.sin(time * 4);
         ctx.strokeStyle = WS.hex(p.type.tint);
@@ -11300,6 +11446,7 @@ window.WS = window.WS || {};
         ctx.beginPath(); ctx.arc(p.x, p.y, size * 0.9 + 6 * WS.sin(time * 2), 0, WS.TAU); ctx.stroke();
         ctx.restore();
       }
+      ctx.globalAlpha = 1;
     }
   };
 

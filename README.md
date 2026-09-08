@@ -118,6 +118,10 @@ tools/         the single-file bundler, and the guard rails:
                check-robust.js a thrown frame, sixteen malformed saves, a save
                               made before the rename, and a run's gold banked
                               by the autosave and by the tab going away
+               check-loot.js  gems and pickups measured in COLOUR against the
+                              floor of every map on both quality settings -
+                              a green gem on green grass fails no brightness
+                              test ever written
                check-hero.js  the survivor: nothing clipped by its own frame,
                               feet planted where the renderer expects them, no
                               two silhouettes alike, and every one of them
