@@ -713,6 +713,50 @@ html, body {
 .beast.boss { border-color: rgba(226,72,61,.3); }
 .beast.boss .beast-plate { box-shadow: inset 0 0 0 1px rgba(226,72,61,.28); }
 
+/* ------------------------------------------------------- field manual -- */
+/* The one rule nobody guesses, said at the size it deserves. Everything else
+   in this pane is ordinary rows; this is the only thing a player must read. */
+.manual-lede {
+  position: relative; margin-bottom: 20px; padding: 22px 24px;
+  border: 1px solid var(--rim-arc); border-radius: 2px;
+  background:
+    radial-gradient(120% 80% at 50% -20%, rgba(245,197,107,.10), transparent 62%),
+    linear-gradient(180deg, var(--obsidian-2), var(--obsidian));
+  box-shadow: var(--bevel-deep), var(--lift-1);
+  overflow: hidden;
+}
+.manual-lede::before {
+  content: ""; position: absolute; top: 0; left: 8%; right: 8%; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--arc), transparent);
+}
+.manual-lede-title {
+  font-size: 30px; font-weight: 600; letter-spacing: .01em; color: var(--arc-hot);
+  line-height: 1.15;
+}
+.manual-lede-body {
+  margin-top: 8px; font-size: var(--t-lead); color: var(--ink-dim);
+  line-height: 1.5; max-width: 62ch;
+}
+
+/* Two columns: the key, then what it does. The key column is sized in ch off
+   the mono face so every cap lines up down the page rather than centring. */
+.key-grid { display: flex; flex-direction: column; gap: 6px; }
+.key-row {
+  display: grid; grid-template-columns: 22ch 1fr; gap: 16px; align-items: baseline;
+  padding: 9px 14px;
+  background: var(--obsidian); border: 1px solid var(--rim); border-radius: 2px;
+  box-shadow: var(--bevel);
+}
+.key-row span { font-size: var(--t-body); color: var(--ink-dim); line-height: 1.45; }
+.key-row kbd {
+  font-family: var(--fig); font-size: var(--t-small); font-weight: 500;
+  letter-spacing: .04em; color: var(--arc-hot); white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .key-row { grid-template-columns: 1fr; gap: 3px; }
+  .manual-lede-title { font-size: 22px; }
+}
+
 /* ---------------------------------------------------------- best records */
 .record-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px;
@@ -870,10 +914,27 @@ html, body {
 #hud-timer .mode { margin-top: 7px; color: var(--arc); }
 
 /* -- boss arc ---------------------------------------------------------- */
+/* The centring lives in the keyframes, not beside them.
+ *
+ * This was `transform: translateX(-50%)` on the rule PLUS `animation:
+ * sweep-in`, and sweep-in animates `transform` - so for the 300ms of the
+ * entrance the animation's transform replaced the centring one and the bar
+ * drew from `left: 50%` with nothing pulling it back. Measured at 1280x720:
+ * it entered at x=642..1398, 380px right of where it belongs and 118px past
+ * the right edge of the screen, then snapped into place when the animation
+ * ended. Every boss arrival, on the most dramatic beat the game has.
+ *
+ * A transform cannot be half-overridden, so the fix is to stop splitting it:
+ * these keyframes carry the -50% themselves, in every frame including the
+ * last. Anything else that centres this way must do the same. */
 #hud-boss {
   position: absolute; top: 116px; left: 50%; transform: translateX(-50%);
   width: min(760px, 74vw); text-align: center;
-  animation: sweep-in .3s var(--ease-out);
+  animation: boss-in .3s var(--ease-out);
+}
+@keyframes boss-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px) scale(.994); }
+  to   { opacity: 1; transform: translateX(-50%); }
 }
 #hud-boss.hidden { display: none; }
 #hud-boss .boss-name {
@@ -997,11 +1058,35 @@ body.hud-rail #hud-passives {
 }
 
 /* -- toasts ------------------------------------------------------------ */
+/* Toasts live in the corner, not across the middle of the fight.
+ *
+ * They were centred, 460px wide and stacked three deep, which put them at the
+ * lower centre of the playfield - measured at 1280x720, y 441 to 628 of a 720
+ * tall field. That is not a margin, it is the ground directly under the
+ * survivor, who spends the whole run near the middle of the screen because
+ * the horde comes from every side. A discovery notice was covering the thing
+ * it was congratulating you on.
+ *
+ * Bottom left, rising off the arsenal, is where a log belongs: it reads as a
+ * feed attached to your kit, it is peripheral rather than central, and the
+ * eye can ignore it completely while dodging. */
 #hud-toasts {
-  position: absolute; bottom: 92px; left: 50%; transform: translateX(-50%);
-  display: flex; flex-direction: column-reverse; gap: 7px; align-items: center;
-  width: min(460px, 66vw);
+  position: absolute; bottom: 78px; left: 20px;
+  display: flex; flex-direction: column-reverse; gap: 7px; align-items: stretch;
+  /* Narrow on purpose. At 360px a three-deep stack still caught the corner of
+     the middle of the field on a 1280 screen - only by a few pixels, but the
+     whole point of moving them was that the centre is not theirs. */
+  width: min(320px, 26vw);
 }
+/* Two lines is a notice; more is a paragraph nobody reads mid-fight, and an
+   unbounded stack is what let the column climb back into the playfield. */
+.toast .t-body {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+/* The rail layout stands the arsenal up the left edge, so the feed steps
+   inward to clear it rather than stacking on top of it. */
+body.hud-rail #hud-toasts { left: 76px; bottom: 20px; }
 .toast {
   width: 100%;
   background: linear-gradient(90deg, rgba(17,20,29,.86), rgba(11,13,18,.7));
@@ -1622,6 +1707,9 @@ window.WS = window.WS || {};
       schema: SCHEMA,
       gold: 0,
       hyperArmed: false,
+      // Set the first time the manual is closed, so the primer greets a new
+      // player once and never interrupts a returning one.
+      seenManual: false,
       meta: {},
       unlocks: {
         characters: { mage: true, priest: true },
@@ -1657,17 +1745,101 @@ window.WS = window.WS || {};
     };
   }
 
-  /** Recursively fills missing keys from `src` into `dst`. */
+  const isPlain = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
+  const clone = (v) => JSON.parse(JSON.stringify(v));
+
+  /** Fills missing keys from `src` into `dst` AND enforces `src`'s types.
+   *
+   *  This only filled gaps, which is a different and much weaker promise than
+   *  it looked like: a key that was PRESENT was trusted no matter what it
+   *  held. A save carrying `"gold": "lots"` therefore sailed through, and the
+   *  string went straight into the arithmetic - measured result, a player with
+   *  NaN health, NaN damage and no way back, because every later write
+   *  persisted the NaN. It does not take malice to get there; a half-written
+   *  localStorage entry, a hand-edited save or a schema that moved underneath
+   *  an old one all land in the same place.
+   *
+   *  So the defaults are treated as the schema they already are: anything
+   *  whose type disagrees with its default, or any number that is not finite,
+   *  is replaced by the default rather than trusted. Nothing here can throw,
+   *  because the alternative to a repaired save is a player who cannot start
+   *  the game at all. */
   function merge(dst, src) {
     for (const k of Object.keys(src)) {
-      if (dst[k] === undefined || dst[k] === null) {
-        dst[k] = (typeof src[k] === 'object' && !Array.isArray(src[k]))
-          ? JSON.parse(JSON.stringify(src[k])) : src[k];
-      } else if (typeof src[k] === 'object' && !Array.isArray(src[k]) && typeof dst[k] === 'object') {
-        merge(dst[k], src[k]);
+      const want = src[k], have = dst[k];
+      if (isPlain(want)) {
+        if (!isPlain(have)) dst[k] = clone(want);
+        else merge(have, want);
+      } else if (have === undefined || have === null || typeof have !== typeof want
+        || (typeof want === 'number' && !Number.isFinite(have))) {
+        dst[k] = want;
       }
     }
     return dst;
+  }
+
+  /* The open-ended maps, which have no per-key default to check against: the
+   * codex records whatever it has seen, so its SHAPE is the only contract
+   * there is. Each is swept for values of the wrong kind, and the bad entries
+   * are dropped rather than the whole map, so one junk row cannot cost a
+   * player their bestiary. */
+  function scrubMap(map, kind) {
+    if (!isPlain(map)) return {};
+    for (const k of Object.keys(map)) {
+      const v = map[k];
+      if (kind === 'count') {
+        if (!Number.isFinite(v) || v < 0) delete map[k];
+        else map[k] = WS.floor(v);
+      } else if (!(v === true || v === false)) {
+        delete map[k];
+      }
+    }
+    return map;
+  }
+
+  function sanitize(db) {
+    db.gold = WS.max(0, WS.floor(db.gold));
+    const s = db.statistics;
+    for (const k of Object.keys(s)) {
+      if (typeof s[k] === 'number') s[k] = WS.max(0, s[k]);
+    }
+    s.bestiary = scrubMap(s.bestiary, 'count');
+    s.bosses = scrubMap(s.bosses, 'count');
+    s.families = scrubMap(s.families, 'count');
+    s.bestTime = scrubMap(s.bestTime, 'count');
+    db.achievements = scrubMap(db.achievements, 'flag');
+    db.combos = scrubMap(db.combos, 'flag');
+    db.unlocks.characters = scrubMap(db.unlocks.characters, 'flag');
+    db.unlocks.maps = scrubMap(db.unlocks.maps, 'flag');
+    db.unlocks.hyper = scrubMap(db.unlocks.hyper, 'flag');
+
+    // Trainer ranks are the one place a bad number buys real power, so they
+    // are clamped to what each upgrade actually offers rather than trusted.
+    if (!isPlain(db.meta)) db.meta = {};
+    // save.js is defined before the data tables, so read the table through the
+    // namespace at call time rather than closing over it.
+    const META = WS.MetaUpgrades || {};
+    for (const id of Object.keys(db.meta)) {
+      const m = META[id];
+      const rank = db.meta[id];
+      if (!m || !Number.isFinite(rank) || rank <= 0) delete db.meta[id];
+      else db.meta[id] = WS.clamp(WS.floor(rank), 0, m.max);
+    }
+
+    // Settings the player can reach through the UI, kept inside their ranges.
+    const st = db.settings;
+    st.effectsVolume = WS.clamp(st.effectsVolume, 0, 1);
+    st.musicVolume = WS.clamp(st.musicVolume, 0, 1);
+    if (!WS.Config.difficulties[st.difficulty]) st.difficulty = 'veteran';
+    if (st.hudLayout !== 'strip' && st.hudLayout !== 'rail') st.hudLayout = 'strip';
+    if (st.quality !== 'high' && st.quality !== 'balanced') st.quality = 'high';
+
+    // The starting roster is a floor, not a stored fact: a save that lost it
+    // would otherwise leave the player with nothing they are allowed to play.
+    db.unlocks.characters.mage = true;
+    db.unlocks.characters.priest = true;
+    db.unlocks.maps.elwynn = true;
+    return db;
   }
 
   WS.Save = {
@@ -1678,7 +1850,11 @@ window.WS = window.WS || {};
       try { raw = localStorage.getItem(KEY); } catch (e) { /* private mode */ }
       let data = null;
       if (raw) { try { data = JSON.parse(raw); } catch (e) { data = null; } }
-      this.db = merge(data || {}, defaults());
+      // A save that parses to a non-object - `null`, `7`, `"[]"` - is not a
+      // save. merge() would otherwise write the defaults onto a primitive and
+      // hand back something that is not a database.
+      if (!isPlain(data)) data = {};
+      this.db = sanitize(merge(data, defaults()));
       this.db.schema = SCHEMA;
       return this.db;
     },
@@ -9220,8 +9396,30 @@ window.WS = window.WS || {};
   R.init = function (canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
+    this.applyQuality();
     this.resize();
     window.addEventListener('resize', () => this.resize());
+  };
+
+  /* The quality switch, which until now was a setting that did nothing.
+   *
+   * `quality` sat in defaultSettings promising to drop soft shadows and bloom,
+   * and not one line of code read it. A control that lies is worse than no
+   * control: the player on the weak machine turns it down, nothing changes,
+   * and they conclude the game is simply badly made.
+   *
+   * What actually costs frames here is not the flat fills - it is the gradient
+   * objects built per entity per frame, and there can be hundreds. So the
+   * `lite` path spends flat colour where `high` spends a gradient, and drops
+   * the second-order flourishes (trails, ground graduations, the crowd ring)
+   * that are lovely and not load-bearing. The game still reads correctly; it
+   * just stops painting the parts that only ever said "this is expensive".
+   *
+   * Cached rather than read per draw call, because the read would otherwise
+   * happen a few hundred times a frame to answer a question that changes when
+   * the player opens a menu. */
+  R.applyQuality = function () {
+    this.lite = WS.Save.settings.quality === 'balanced';
   };
 
   R.resize = function () {
@@ -9530,7 +9728,7 @@ window.WS = window.WS || {};
     ctx.ellipse(p.x, p.y + p.radius * 0.7, p.radius * 1.2, p.radius * 0.48, 0, 0, WS.TAU);
     ctx.stroke();
     // A second, wider ring only while the field is crowded enough to lose them.
-    if (WS.Enemy.pool.count > 60) {
+    if (WS.Enemy.pool.count > 60 && !this.lite) {
       ctx.globalAlpha = beat * 0.4;
       ctx.beginPath();
       ctx.ellipse(p.x, p.y + p.radius * 0.7, p.radius * 1.9, p.radius * 0.76, 0, 0, WS.TAU);
@@ -9586,7 +9784,7 @@ window.WS = window.WS || {};
     ctx.ellipse(p.x, p.y + p.radius * 0.5, r, r * 0.5, 0, 0, WS.TAU);
     ctx.fill();
 
-    if (crowd > 60) {
+    if (crowd > 60 && !this.lite) {
       ctx.globalAlpha = 0.3 + 0.12 * WS.sin(time * 2.4);
       ctx.strokeStyle = '#f5c56b';
       ctx.lineWidth = 1;
@@ -9691,12 +9889,14 @@ window.WS = window.WS || {};
       // 1. Scorch. The ground goes darker under the effect, so it sits IN the
       //    world instead of floating over it.
       ctx.globalCompositeOperation = 'source-over';
+      if (!this.lite) {
       const burn = ctx.createRadialGradient(z.x, z.y, 0, z.x, z.y, R);
       burn.addColorStop(0, `rgba(0,0,0,${0.28 * fade})`);
       burn.addColorStop(0.75, `rgba(0,0,0,${0.16 * fade})`);
       burn.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = burn;
       ctx.beginPath(); ctx.arc(z.x, z.y, R, 0, WS.TAU); ctx.fill();
+      }
 
       // 2. The energy itself, hottest off-centre so it does not read as a lamp.
       ctx.globalCompositeOperation = 'lighter';
@@ -9722,7 +9922,7 @@ window.WS = window.WS || {};
       ctx.globalAlpha = 0.55 * fade;
       ctx.lineWidth = 2;
       const spin = time * 0.5 + z.phase;
-      for (let n = 0; n < 12; n++) {
+      for (let n = 0; this.lite ? false : n < 12; n++) {
         const a = spin + (n / 12) * WS.TAU;
         const ca = WS.cos(a), sa = WS.sin(a);
         ctx.beginPath();
@@ -9756,7 +9956,7 @@ window.WS = window.WS || {};
       const swell = (pulled ? 1 + 0.07 * WS.sin(time * 5 + g.spin) : 1)
         + (g.pop > 0 ? g.pop * 1.6 : 0);
       const s = g.size * (pulled ? 1.15 : 0.75 + near * 0.2) * swell;
-      if (pulled) {
+      if (pulled && !this.lite) {
         const [tx, ty] = WS.normalize(g.x - player.x, g.y - player.y);
         ctx.globalAlpha = 0.4;
         ctx.strokeStyle = WS.rgb(g.colour, 1);
@@ -9860,7 +10060,7 @@ window.WS = window.WS || {};
          fast one draws a hard line - which is the cue for how quickly a shot
          crosses the field, and the one that makes a seeking missile's curve
          legible instead of a dot teleporting along an arc. */
-      if (b.trail !== false) {
+      if (b.trail !== false && !this.lite) {
         const speed = WS.sqrt(b.vx * b.vx + b.vy * b.vy);
         // The streak has to clear the bolt's own glow, which reaches r*2.4, or
         // it just thickens the blob. At 0.055 it did exactly that.
@@ -9888,12 +10088,19 @@ window.WS = window.WS || {};
       ctx.translate(b.x, b.y);
       const ang = b.spinRate ? b.spin : WS.atan2(b.vy, b.vx);
       ctx.rotate(ang);
-      const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 2.4);
-      grd.addColorStop(0, WS.rgb(c, 0.95));
-      grd.addColorStop(0.4, WS.rgb(c, 0.45));
-      grd.addColorStop(1, WS.rgb(c, 0));
-      ctx.fillStyle = grd;
-      ctx.beginPath(); ctx.arc(0, 0, r * 2.4, 0, WS.TAU); ctx.fill();
+      // The glow is one gradient object per bolt per frame, and a busy field
+      // carries hundreds; flat colour at a smaller radius reads close enough.
+      if (this.lite) {
+        ctx.fillStyle = WS.rgb(c, 0.4);
+        ctx.beginPath(); ctx.arc(0, 0, r * 1.5, 0, WS.TAU); ctx.fill();
+      } else {
+        const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 2.4);
+        grd.addColorStop(0, WS.rgb(c, 0.95));
+        grd.addColorStop(0.4, WS.rgb(c, 0.45));
+        grd.addColorStop(1, WS.rgb(c, 0));
+        ctx.fillStyle = grd;
+        ctx.beginPath(); ctx.arc(0, 0, r * 2.4, 0, WS.TAU); ctx.fill();
+      }
       drawBoltShape(ctx, b, r);
       ctx.restore();
     }
@@ -9904,11 +10111,16 @@ window.WS = window.WS || {};
       ctx.save();
       ctx.translate(h.x, h.y);
       ctx.rotate(h.spin);
-      const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, h.radius * 2.2);
-      grd.addColorStop(0, WS.rgb(h.colour, 1));
-      grd.addColorStop(1, WS.rgb(h.colour, 0));
-      ctx.fillStyle = grd;
-      ctx.beginPath(); ctx.arc(0, 0, h.radius * 2.2, 0, WS.TAU); ctx.fill();
+      if (this.lite) {
+        ctx.fillStyle = WS.rgb(h.colour, 0.55);
+        ctx.beginPath(); ctx.arc(0, 0, h.radius * 1.4, 0, WS.TAU); ctx.fill();
+      } else {
+        const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, h.radius * 2.2);
+        grd.addColorStop(0, WS.rgb(h.colour, 1));
+        grd.addColorStop(1, WS.rgb(h.colour, 0));
+        ctx.fillStyle = grd;
+        ctx.beginPath(); ctx.arc(0, 0, h.radius * 2.2, 0, WS.TAU); ctx.fill();
+      }
       ctx.restore();
       ctx.save();
       ctx.strokeStyle = 'rgba(255,255,255,.85)';
@@ -9933,7 +10145,7 @@ window.WS = window.WS || {};
         // The path just travelled, fading behind. Without it an orbiting blade
         // is a diamond that happens to be somewhere, not one that is moving.
         const dir = o.speed >= 0 ? -1 : 1;
-        for (let k = 1; k <= 5; k++) {
+        for (let k = 1; this.lite ? false : k <= 5; k++) {
           const ta = a + dir * k * 0.11;
           ctx.globalAlpha = (1 - k / 5) * 0.35;
           ctx.fillStyle = WS.rgb(o.colour, 1);
@@ -9947,11 +10159,16 @@ window.WS = window.WS || {};
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(a + o.angle * 2);
-        const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, o.size);
-        grd.addColorStop(0, WS.rgb(o.colour, 0.9));
-        grd.addColorStop(1, WS.rgb(o.colour, 0));
-        ctx.fillStyle = grd;
-        ctx.beginPath(); ctx.arc(0, 0, o.size, 0, WS.TAU); ctx.fill();
+        if (this.lite) {
+          ctx.fillStyle = WS.rgb(o.colour, 0.5);
+          ctx.beginPath(); ctx.arc(0, 0, o.size * 0.7, 0, WS.TAU); ctx.fill();
+        } else {
+          const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, o.size);
+          grd.addColorStop(0, WS.rgb(o.colour, 0.9));
+          grd.addColorStop(1, WS.rgb(o.colour, 0));
+          ctx.fillStyle = grd;
+          ctx.beginPath(); ctx.arc(0, 0, o.size, 0, WS.TAU); ctx.fill();
+        }
         ctx.fillStyle = 'rgba(255,255,255,.9)';
         ctx.beginPath();
         ctx.moveTo(0, -o.size * 0.7); ctx.lineTo(o.size * 0.28, 0);
@@ -10004,7 +10221,7 @@ window.WS = window.WS || {};
 
       // The core: bright, and gone inside the first third. This is the hit.
       const core = WS.clamp(1 - t * 3, 0, 1);
-      if (core > 0) {
+      if (core > 0 && !this.lite) {
         const cg = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.radius * 0.7);
         cg.addColorStop(0, WS.rgb(f.colour, 0.85 * core));
         cg.addColorStop(1, WS.rgb(f.colour, 0));
@@ -10106,16 +10323,70 @@ window.WS = window.WS || {};
 
       } else if (h.shape === 'square') {
         if (h.telegraph > 0) {
-          // Safe ground reads green and steady; doomed ground reddens as the
-          // spear falls, so the choice is legible at a glance.
+          /* Safe ground and doomed ground must differ by more than hue.
+           *
+           * This was a green wash against a red one, and nothing else. Red
+           * against green is the single most common form of colour blindness
+           * there is - somewhere around one man in twelve - and the two fills
+           * were both dark and both desaturated, so for those players the
+           * arena's signature mechanic, the one that asks "which square do I
+           * stand on", was a grid of identical rectangles. Not harder. Unde-
+           * cidable.
+           *
+           * So the hue stays, because it is right for everyone who can use
+           * it, and two channels that do not depend on it are laid alongside:
+           *
+           *   TEXTURE - doomed ground fills with hazard hatching; safe ground
+           *             stays clean. Present or absent survives any palette,
+           *             and it is legible in greyscale, in a photograph, and
+           *             out of the corner of an eye.
+           *   MOTION  - that hatching tightens and brightens as the spear
+           *             falls, so the cell also says HOW LONG rather than
+           *             only WHICH, and stillness itself marks safety.
+           *
+           * The safe cells wear the corner brackets the rest of the interface
+           * uses to mean "inside the frame", which is the same word this
+           * game's UI already speaks everywhere else. */
           const k = 1 - h.telegraph / WS.Arena.tuning.spearTele;
-          ctx.fillStyle = h.safe
-            ? 'rgba(61,220,122,.14)'
-            : `rgba(226,72,61,${0.12 + 0.26 * k})`;
-          ctx.fillRect(h.x + 3, h.y + 3, h.w - 6, h.h - 6);
-          ctx.strokeStyle = h.safe ? 'rgba(110,240,160,.75)' : 'rgba(255,140,110,.75)';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(h.x + 3, h.y + 3, h.w - 6, h.h - 6);
+          const x = h.x + 3, y = h.y + 3, w = h.w - 6, hh = h.h - 6;
+
+          ctx.save();
+          if (h.safe) {
+            ctx.fillStyle = 'rgba(61,220,122,.13)';
+            ctx.fillRect(x, y, w, hh);
+            // Corner brackets: quiet, static, unmistakably "stand here".
+            ctx.strokeStyle = 'rgba(120,245,170,.85)';
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            const c = WS.min(w, hh) * 0.26;
+            for (const [cx, cy, sx, sy] of [
+              [x, y, 1, 1], [x + w, y, -1, 1], [x, y + hh, 1, -1], [x + w, y + hh, -1, -1]]) {
+              ctx.beginPath();
+              ctx.moveTo(cx + sx * c, cy);
+              ctx.lineTo(cx, cy);
+              ctx.lineTo(cx, cy + sy * c);
+              ctx.stroke();
+            }
+          } else {
+            ctx.fillStyle = `rgba(226,72,61,${(0.10 + 0.20 * k).toFixed(3)})`;
+            ctx.fillRect(x, y, w, hh);
+            // Hazard hatching, clipped to the cell, tightening as it lands.
+            ctx.beginPath(); ctx.rect(x, y, w, hh); ctx.clip();
+            const gap = 18 - 8 * k;
+            ctx.strokeStyle = `rgba(255,150,120,${(0.30 + 0.5 * k).toFixed(3)})`;
+            ctx.lineWidth = 1 + 1.6 * k;
+            ctx.beginPath();
+            for (let d = -hh; d < w; d += gap) {
+              ctx.moveTo(x + d, y + hh);
+              ctx.lineTo(x + d + hh, y);
+            }
+            ctx.stroke();
+            ctx.restore(); ctx.save();
+            ctx.strokeStyle = `rgba(255,140,110,${(0.5 + 0.45 * k).toFixed(3)})`;
+            ctx.lineWidth = 2 + 1.5 * k;
+            ctx.strokeRect(x, y, w, hh);
+          }
+          ctx.restore();
         }
 
       } else if (h.shape === 'cutter') {
@@ -11114,7 +11385,10 @@ window.WS = window.WS || {};
       WS.Save.save(); setHyperLabel(); WS.Audio.play('ui');
     });
 
-    s.foot.append(bank, el('div', 'spacer'), diff, hyper, begin);
+    const help = el('button', 'btn', 'How to play');
+    help.addEventListener('click', () => { WS.Audio.play('ui'); UI.openManual(); });
+
+    s.foot.append(bank, el('div', 'spacer'), help, diff, hyper, begin);
     this.show(s.inner);
   };
 
@@ -11601,6 +11875,8 @@ window.WS = window.WS || {};
     toggle('levelUpTooltips', 'Detailed level-up cards');
     choose('hudLayout', 'Arsenal and passives', 'Where your weapons and traits live.',
       [['strip', 'Along the foot'], ['rail', 'Up the edges']], () => UI.applyHudLayout());
+    choose('quality', 'Graphics', 'Balanced drops trails, glows and ground detail for frames on a slower machine.',
+      [['high', 'High'], ['balanced', 'Balanced']], () => WS.Renderer.applyQuality());
     toggle('mouseSteer', 'Steer with the mouse',
       'Hold the left button anywhere on the field and drag, the same as touch. '
       + 'Play one-handed, or keep both on the keys.');
@@ -11716,6 +11992,96 @@ window.WS = window.WS || {};
     ui.banish.disabled = p.banishes <= 0;
   };
 
+  /* ------------------------------------------------------- field manual --
+   * Nothing in the game said what the game was.
+   *
+   * A survivors-like has one genuinely counter-intuitive rule at its centre -
+   * you never attack; your weapons do it for you - and a player who does not
+   * know that spends their first run hammering keys, concludes the controls
+   * are broken, and leaves. Everything else can be discovered by playing.
+   * That one thing cannot, because the evidence for it looks like a bug.
+   *
+   * So this says it first, in the largest type on the page, and the rest of
+   * the manual explains the loop rather than listing keys. It is reachable
+   * three ways - from the menu, from the pause screen, and unprompted the
+   * first time the game is ever opened - because the moment someone needs it
+   * is exactly the moment they will not go hunting for it.
+   */
+  const CONTROLS = [
+    ['WASD  /  arrow keys', 'Move. On a pad, the left stick or the d-pad.'],
+    ['Touch, or hold the mouse', 'Drag anywhere on the field to steer. Mouse steering is off until you turn it on in Settings.'],
+    ['1  2  3', 'Take the matching card when you level up.'],
+    ['R  /  B', 'Reroll or banish the cards on offer, if you have any left.'],
+    ['Esc', 'Pause. Your build, the damage meter and the settings are in there.'],
+    ['Arrow keys  /  pad', 'Move around any menu. Enter or A picks.'],
+  ];
+
+  const LOOP = [
+    ['Your weapons fire themselves',
+      'You never press an attack button. Everything you carry swings, casts and reloads on its own timer, at whatever is nearest. Your whole job is where you stand.'],
+    ['Walk over the gems',
+      'Everything you kill drops experience. Gather enough and you level, and a level is a choice of three: a new weapon, a rank on one you carry, or a passive.'],
+    ['Six weapons, and no more',
+      'Take a seventh and you cannot. Ranking a weapon to 8 and learning its paired passive evolves it into something far stronger - the card tells you which passive it wants.'],
+    ['Two evolved weapons can become one',
+      'Some pairs merge into a single greater weapon and give you the slot back. The Codex remembers every pairing you find.'],
+    ['Thirty minutes is the win',
+      'Bosses arrive on a schedule and the horde never stops thickening. Survive to 30:00 and the battlefield is yours - though Death itself turns up at exactly that moment, so leaving is also a decision.'],
+    ['Gold outlives the run',
+      'You keep every coin whether you win, die or walk away. Spend it with the Trainer on permanent lessons that apply to every run after.'],
+  ];
+
+  UI.paneManual = function () {
+    const wrap = el('div');
+    wrap.style.marginTop = '16px';
+
+    const lede = el('div', 'manual-lede');
+    lede.append(el('div', 'manual-lede-title', 'You only move.'),
+      el('div', 'manual-lede-body',
+        'Your weapons attack on their own. Everything else is a consequence of where you choose to stand.'));
+    wrap.append(lede);
+
+    const head = el('div', 'codex-head');
+    head.append(el('h3', 'panel-title', 'The run'));
+    wrap.append(head);
+    const rows = el('div', 'rows');
+    for (const [title, body] of LOOP) {
+      const row = el('div', 'row');
+      const main = el('div', 'row-main');
+      main.append(el('div', 'row-name', title));
+      main.append(el('div', 'row-sub', body));
+      row.append(main);
+      rows.append(row);
+    }
+    wrap.append(rows);
+
+    const chead = el('div', 'codex-head');
+    chead.style.marginTop = '22px';
+    chead.append(el('h3', 'panel-title', 'Controls'));
+    wrap.append(chead);
+    const keys = el('div', 'key-grid');
+    for (const [k, what] of CONTROLS) {
+      const row = el('div', 'key-row');
+      row.append(el('kbd', null, k), el('span', null, what));
+      keys.append(row);
+    }
+    wrap.append(keys);
+    return wrap;
+  };
+
+  /** The manual as its own overlay, for the menu button and the first run. */
+  UI.openManual = function (onClose) {
+    const s = shell('How to play', 'Ninety seconds, and you will not need it again.');
+    s.body.append(this.paneManual());
+    const done = el('button', 'btn primary', onClose ? 'Got it' : 'Back');
+    done.addEventListener('click', () => {
+      WS.Audio.play('select');
+      if (onClose) onClose(); else UI.openMenu();
+    });
+    s.foot.append(el('div', 'spacer'), done);
+    this.show(s.inner);
+  };
+
   /* ---------------------------------------------------------- build sheet - */
   /** A panel with its inlay hairline in place. */
   function panel(cls) {
@@ -11827,10 +12193,12 @@ window.WS = window.WS || {};
       // The sheet fills the space and scrolls inside its panels; the settings
       // list is an ordinary scrolling column.
       s.body.classList.toggle('fitted', view === 'build');
-      pane.replaceChildren(view === 'build' ? buildSheet() : this.paneSettings(render, true));
+      pane.replaceChildren(view === 'build' ? buildSheet()
+        : view === 'manual' ? this.paneManual()
+          : this.paneSettings(render, true));
       this.wireScroll(s.inner);
     };
-    for (const [id, label] of [['build', 'Build'], ['settings', 'Settings']]) {
+    for (const [id, label] of [['build', 'Build'], ['manual', 'How to play'], ['settings', 'Settings']]) {
       const b = el('button', 'tab', label);
       b.type = 'button';
       b.dataset.view = id;
@@ -11990,15 +12358,70 @@ window.WS = window.WS || {};
 
   let last = 0;
 
-  function frame(now) {
-    const dt = last ? WS.min((now - last) / 1000, 0.25) : 0;
-    last = now;
-    WS.Game.update(dt);
-    WS.Renderer.draw(now / 1000);
-    WS.UI.pollMenuPad(dt);
-    if (WS.Game.player) WS.UI.updateHUD();
-    requestAnimationFrame(frame);
+  /* The frame boundary.
+   *
+   * requestAnimationFrame does not re-arm itself: whatever schedules the next
+   * frame lives at the END of this function, so ONE thrown error anywhere in
+   * the game - a renderer edge case, a bad save, a weapon combination nobody
+   * tried - meant the callback never ran again. Measured before this existed:
+   * frames after a single synthetic throw, zero; recovered, never. The screen
+   * froze on the last good frame and stayed there. In a game where a run is
+   * half an hour of accumulated build, that is the worst outcome the software
+   * has: silent, permanent, and it takes the run with it.
+   *
+   * So the loop is now unkillable. rAF is re-armed in a `finally`, before
+   * anything else can go wrong, and a throw costs one frame instead of the
+   * session. Faults are counted rather than spammed: the first is reported in
+   * full, the rest are tallied, and if they keep coming the player is told
+   * plainly and offered the way out that saves their gold, instead of being
+   * left to wonder why the game stopped moving.
+   *
+   * This is a net, not a fix. Anything caught here is a bug that should be
+   * found and killed - console.error carries the stack for exactly that. */
+  const faults = { count: 0, sinceReport: 0, notified: false, lastMessage: '' };
+
+  function onFault(err) {
+    faults.count++;
+    faults.sinceReport++;
+    const msg = (err && err.message) || String(err);
+    if (faults.count === 1) {
+      console.error('[WoWSurvivors] recovered from an error in the frame loop:', err);
+      faults.lastMessage = msg;
+    } else if (faults.sinceReport >= 60) {
+      // A fault every frame is a broken build, not a blip. Say so once a
+      // second at most, so the console stays readable enough to debug from.
+      faults.sinceReport = 0;
+      console.error(`[WoWSurvivors] ${faults.count} frame errors so far, latest:`, err);
+    }
+    // Persistent faults mean the frame is not doing its job any more. Tell the
+    // player rather than letting them stare at a stuttering screen - and do it
+    // through the toast channel, which costs nothing if it is also broken.
+    if (faults.count === 30 && !faults.notified) {
+      faults.notified = true;
+      try {
+        WS.Game.toast('Something went wrong',
+          'The game hit a repeated error and is running rough. Esc to pause - quitting to the menu keeps your gold.');
+      } catch (e) { /* the UI is the thing that is broken; nothing else to try */ }
+    }
   }
+
+  function frame(now) {
+    try {
+      const dt = last ? WS.min((now - last) / 1000, 0.25) : 0;
+      last = now;
+      WS.Game.update(dt);
+      WS.Renderer.draw(now / 1000);
+      WS.UI.pollMenuPad(dt);
+      if (WS.Game.player) WS.UI.updateHUD();
+    } catch (err) {
+      onFault(err);
+    } finally {
+      requestAnimationFrame(frame);
+    }
+  }
+
+  /** Exposed so the guard rail can assert the loop actually survives. */
+  WS.faultCount = () => faults.count;
 
   /* ---------------------------------------------------------- steering --- */
   /** A floating stick: press anywhere on the field and drag to steer.
@@ -12093,7 +12516,20 @@ window.WS = window.WS || {};
     window.addEventListener('keydown', arm);
 
     WS.Renderer.buildScenery(WS.Maps[WS.Config.startMap]);
-    WS.UI.openMenu();
+    /* A survivors-like has one rule nobody can guess - that you never attack -
+     * and a player who does not know it reads their first run as broken
+     * controls. So the manual greets a brand new save once, before the menu,
+     * and is never shown again unprompted; it stays reachable from the menu
+     * footer and the pause screen for anyone who wants it back. */
+    if (WS.Save.db.seenManual) {
+      WS.UI.openMenu();
+    } else {
+      WS.UI.openManual(() => {
+        WS.Save.db.seenManual = true;
+        WS.Save.save();
+        WS.UI.openMenu();
+      });
+    }
     requestAnimationFrame(frame);
   }
 

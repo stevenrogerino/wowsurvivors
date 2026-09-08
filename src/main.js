@@ -5,15 +5,70 @@
 
   let last = 0;
 
-  function frame(now) {
-    const dt = last ? WS.min((now - last) / 1000, 0.25) : 0;
-    last = now;
-    WS.Game.update(dt);
-    WS.Renderer.draw(now / 1000);
-    WS.UI.pollMenuPad(dt);
-    if (WS.Game.player) WS.UI.updateHUD();
-    requestAnimationFrame(frame);
+  /* The frame boundary.
+   *
+   * requestAnimationFrame does not re-arm itself: whatever schedules the next
+   * frame lives at the END of this function, so ONE thrown error anywhere in
+   * the game - a renderer edge case, a bad save, a weapon combination nobody
+   * tried - meant the callback never ran again. Measured before this existed:
+   * frames after a single synthetic throw, zero; recovered, never. The screen
+   * froze on the last good frame and stayed there. In a game where a run is
+   * half an hour of accumulated build, that is the worst outcome the software
+   * has: silent, permanent, and it takes the run with it.
+   *
+   * So the loop is now unkillable. rAF is re-armed in a `finally`, before
+   * anything else can go wrong, and a throw costs one frame instead of the
+   * session. Faults are counted rather than spammed: the first is reported in
+   * full, the rest are tallied, and if they keep coming the player is told
+   * plainly and offered the way out that saves their gold, instead of being
+   * left to wonder why the game stopped moving.
+   *
+   * This is a net, not a fix. Anything caught here is a bug that should be
+   * found and killed - console.error carries the stack for exactly that. */
+  const faults = { count: 0, sinceReport: 0, notified: false, lastMessage: '' };
+
+  function onFault(err) {
+    faults.count++;
+    faults.sinceReport++;
+    const msg = (err && err.message) || String(err);
+    if (faults.count === 1) {
+      console.error('[WoWSurvivors] recovered from an error in the frame loop:', err);
+      faults.lastMessage = msg;
+    } else if (faults.sinceReport >= 60) {
+      // A fault every frame is a broken build, not a blip. Say so once a
+      // second at most, so the console stays readable enough to debug from.
+      faults.sinceReport = 0;
+      console.error(`[WoWSurvivors] ${faults.count} frame errors so far, latest:`, err);
+    }
+    // Persistent faults mean the frame is not doing its job any more. Tell the
+    // player rather than letting them stare at a stuttering screen - and do it
+    // through the toast channel, which costs nothing if it is also broken.
+    if (faults.count === 30 && !faults.notified) {
+      faults.notified = true;
+      try {
+        WS.Game.toast('Something went wrong',
+          'The game hit a repeated error and is running rough. Esc to pause - quitting to the menu keeps your gold.');
+      } catch (e) { /* the UI is the thing that is broken; nothing else to try */ }
+    }
   }
+
+  function frame(now) {
+    try {
+      const dt = last ? WS.min((now - last) / 1000, 0.25) : 0;
+      last = now;
+      WS.Game.update(dt);
+      WS.Renderer.draw(now / 1000);
+      WS.UI.pollMenuPad(dt);
+      if (WS.Game.player) WS.UI.updateHUD();
+    } catch (err) {
+      onFault(err);
+    } finally {
+      requestAnimationFrame(frame);
+    }
+  }
+
+  /** Exposed so the guard rail can assert the loop actually survives. */
+  WS.faultCount = () => faults.count;
 
   /* ---------------------------------------------------------- steering --- */
   /** A floating stick: press anywhere on the field and drag to steer.
@@ -108,7 +163,20 @@
     window.addEventListener('keydown', arm);
 
     WS.Renderer.buildScenery(WS.Maps[WS.Config.startMap]);
-    WS.UI.openMenu();
+    /* A survivors-like has one rule nobody can guess - that you never attack -
+     * and a player who does not know it reads their first run as broken
+     * controls. So the manual greets a brand new save once, before the menu,
+     * and is never shown again unprompted; it stays reachable from the menu
+     * footer and the pause screen for anyone who wants it back. */
+    if (WS.Save.db.seenManual) {
+      WS.UI.openMenu();
+    } else {
+      WS.UI.openManual(() => {
+        WS.Save.db.seenManual = true;
+        WS.Save.save();
+        WS.UI.openMenu();
+      });
+    }
     requestAnimationFrame(frame);
   }
 

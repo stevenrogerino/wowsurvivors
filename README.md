@@ -46,7 +46,9 @@ node tools/bundle.js       # -> dist/wowsurvivors2.html
 | **R** / **B** | reroll / banish a level-up offer |
 | **Esc** | pause (full build sheet and damage meter) |
 
-Your weapons fire on their own. Everything else is where you stand.
+Your weapons fire on their own. Everything else is where you stand — which is
+the one rule nobody guesses, so the game says it before the first run and keeps
+it under **How to play**, in the menu and behind Esc.
 
 ## The run
 
@@ -105,7 +107,15 @@ tools/         the single-file bundler, and the guard rails:
                check-icons.js glyphs clipped by their field, roster size
                check-nav.js   spatial menu navigation and the focus ring
                check-steer.js mouse and touch steering, and its hand-back
+               check-hud.js   HUD inside the screen and off the middle of the
+                              field, and the arena read with no colour at all
+               check-robust.js a thrown frame, and sixteen malformed saves
 ```
+
+Every guard carries the bug it was written for in its header, and every one of
+them has been run against the broken code to confirm it actually fails there —
+`check-hud.js` found its own texture threshold set too low that way, passing a
+build it was supposed to reject.
 
 - **Simulation** runs at a fixed 60 Hz with a per-frame catch-up cap, so a
   frame hitch never becomes a death spiral of ticks. The playfield is a fixed

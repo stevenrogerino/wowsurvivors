@@ -653,7 +653,10 @@
       WS.Save.save(); setHyperLabel(); WS.Audio.play('ui');
     });
 
-    s.foot.append(bank, el('div', 'spacer'), diff, hyper, begin);
+    const help = el('button', 'btn', 'How to play');
+    help.addEventListener('click', () => { WS.Audio.play('ui'); UI.openManual(); });
+
+    s.foot.append(bank, el('div', 'spacer'), help, diff, hyper, begin);
     this.show(s.inner);
   };
 
@@ -1140,6 +1143,8 @@
     toggle('levelUpTooltips', 'Detailed level-up cards');
     choose('hudLayout', 'Arsenal and passives', 'Where your weapons and traits live.',
       [['strip', 'Along the foot'], ['rail', 'Up the edges']], () => UI.applyHudLayout());
+    choose('quality', 'Graphics', 'Balanced drops trails, glows and ground detail for frames on a slower machine.',
+      [['high', 'High'], ['balanced', 'Balanced']], () => WS.Renderer.applyQuality());
     toggle('mouseSteer', 'Steer with the mouse',
       'Hold the left button anywhere on the field and drag, the same as touch. '
       + 'Play one-handed, or keep both on the keys.');
@@ -1255,6 +1260,96 @@
     ui.banish.disabled = p.banishes <= 0;
   };
 
+  /* ------------------------------------------------------- field manual --
+   * Nothing in the game said what the game was.
+   *
+   * A survivors-like has one genuinely counter-intuitive rule at its centre -
+   * you never attack; your weapons do it for you - and a player who does not
+   * know that spends their first run hammering keys, concludes the controls
+   * are broken, and leaves. Everything else can be discovered by playing.
+   * That one thing cannot, because the evidence for it looks like a bug.
+   *
+   * So this says it first, in the largest type on the page, and the rest of
+   * the manual explains the loop rather than listing keys. It is reachable
+   * three ways - from the menu, from the pause screen, and unprompted the
+   * first time the game is ever opened - because the moment someone needs it
+   * is exactly the moment they will not go hunting for it.
+   */
+  const CONTROLS = [
+    ['WASD  /  arrow keys', 'Move. On a pad, the left stick or the d-pad.'],
+    ['Touch, or hold the mouse', 'Drag anywhere on the field to steer. Mouse steering is off until you turn it on in Settings.'],
+    ['1  2  3', 'Take the matching card when you level up.'],
+    ['R  /  B', 'Reroll or banish the cards on offer, if you have any left.'],
+    ['Esc', 'Pause. Your build, the damage meter and the settings are in there.'],
+    ['Arrow keys  /  pad', 'Move around any menu. Enter or A picks.'],
+  ];
+
+  const LOOP = [
+    ['Your weapons fire themselves',
+      'You never press an attack button. Everything you carry swings, casts and reloads on its own timer, at whatever is nearest. Your whole job is where you stand.'],
+    ['Walk over the gems',
+      'Everything you kill drops experience. Gather enough and you level, and a level is a choice of three: a new weapon, a rank on one you carry, or a passive.'],
+    ['Six weapons, and no more',
+      'Take a seventh and you cannot. Ranking a weapon to 8 and learning its paired passive evolves it into something far stronger - the card tells you which passive it wants.'],
+    ['Two evolved weapons can become one',
+      'Some pairs merge into a single greater weapon and give you the slot back. The Codex remembers every pairing you find.'],
+    ['Thirty minutes is the win',
+      'Bosses arrive on a schedule and the horde never stops thickening. Survive to 30:00 and the battlefield is yours - though Death itself turns up at exactly that moment, so leaving is also a decision.'],
+    ['Gold outlives the run',
+      'You keep every coin whether you win, die or walk away. Spend it with the Trainer on permanent lessons that apply to every run after.'],
+  ];
+
+  UI.paneManual = function () {
+    const wrap = el('div');
+    wrap.style.marginTop = '16px';
+
+    const lede = el('div', 'manual-lede');
+    lede.append(el('div', 'manual-lede-title', 'You only move.'),
+      el('div', 'manual-lede-body',
+        'Your weapons attack on their own. Everything else is a consequence of where you choose to stand.'));
+    wrap.append(lede);
+
+    const head = el('div', 'codex-head');
+    head.append(el('h3', 'panel-title', 'The run'));
+    wrap.append(head);
+    const rows = el('div', 'rows');
+    for (const [title, body] of LOOP) {
+      const row = el('div', 'row');
+      const main = el('div', 'row-main');
+      main.append(el('div', 'row-name', title));
+      main.append(el('div', 'row-sub', body));
+      row.append(main);
+      rows.append(row);
+    }
+    wrap.append(rows);
+
+    const chead = el('div', 'codex-head');
+    chead.style.marginTop = '22px';
+    chead.append(el('h3', 'panel-title', 'Controls'));
+    wrap.append(chead);
+    const keys = el('div', 'key-grid');
+    for (const [k, what] of CONTROLS) {
+      const row = el('div', 'key-row');
+      row.append(el('kbd', null, k), el('span', null, what));
+      keys.append(row);
+    }
+    wrap.append(keys);
+    return wrap;
+  };
+
+  /** The manual as its own overlay, for the menu button and the first run. */
+  UI.openManual = function (onClose) {
+    const s = shell('How to play', 'Ninety seconds, and you will not need it again.');
+    s.body.append(this.paneManual());
+    const done = el('button', 'btn primary', onClose ? 'Got it' : 'Back');
+    done.addEventListener('click', () => {
+      WS.Audio.play('select');
+      if (onClose) onClose(); else UI.openMenu();
+    });
+    s.foot.append(el('div', 'spacer'), done);
+    this.show(s.inner);
+  };
+
   /* ---------------------------------------------------------- build sheet - */
   /** A panel with its inlay hairline in place. */
   function panel(cls) {
@@ -1366,10 +1461,12 @@
       // The sheet fills the space and scrolls inside its panels; the settings
       // list is an ordinary scrolling column.
       s.body.classList.toggle('fitted', view === 'build');
-      pane.replaceChildren(view === 'build' ? buildSheet() : this.paneSettings(render, true));
+      pane.replaceChildren(view === 'build' ? buildSheet()
+        : view === 'manual' ? this.paneManual()
+          : this.paneSettings(render, true));
       this.wireScroll(s.inner);
     };
-    for (const [id, label] of [['build', 'Build'], ['settings', 'Settings']]) {
+    for (const [id, label] of [['build', 'Build'], ['manual', 'How to play'], ['settings', 'Settings']]) {
       const b = el('button', 'tab', label);
       b.type = 'button';
       b.dataset.view = id;

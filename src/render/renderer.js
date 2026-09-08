@@ -26,8 +26,30 @@
   R.init = function (canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
+    this.applyQuality();
     this.resize();
     window.addEventListener('resize', () => this.resize());
+  };
+
+  /* The quality switch, which until now was a setting that did nothing.
+   *
+   * `quality` sat in defaultSettings promising to drop soft shadows and bloom,
+   * and not one line of code read it. A control that lies is worse than no
+   * control: the player on the weak machine turns it down, nothing changes,
+   * and they conclude the game is simply badly made.
+   *
+   * What actually costs frames here is not the flat fills - it is the gradient
+   * objects built per entity per frame, and there can be hundreds. So the
+   * `lite` path spends flat colour where `high` spends a gradient, and drops
+   * the second-order flourishes (trails, ground graduations, the crowd ring)
+   * that are lovely and not load-bearing. The game still reads correctly; it
+   * just stops painting the parts that only ever said "this is expensive".
+   *
+   * Cached rather than read per draw call, because the read would otherwise
+   * happen a few hundred times a frame to answer a question that changes when
+   * the player opens a menu. */
+  R.applyQuality = function () {
+    this.lite = WS.Save.settings.quality === 'balanced';
   };
 
   R.resize = function () {
@@ -336,7 +358,7 @@
     ctx.ellipse(p.x, p.y + p.radius * 0.7, p.radius * 1.2, p.radius * 0.48, 0, 0, WS.TAU);
     ctx.stroke();
     // A second, wider ring only while the field is crowded enough to lose them.
-    if (WS.Enemy.pool.count > 60) {
+    if (WS.Enemy.pool.count > 60 && !this.lite) {
       ctx.globalAlpha = beat * 0.4;
       ctx.beginPath();
       ctx.ellipse(p.x, p.y + p.radius * 0.7, p.radius * 1.9, p.radius * 0.76, 0, 0, WS.TAU);
@@ -392,7 +414,7 @@
     ctx.ellipse(p.x, p.y + p.radius * 0.5, r, r * 0.5, 0, 0, WS.TAU);
     ctx.fill();
 
-    if (crowd > 60) {
+    if (crowd > 60 && !this.lite) {
       ctx.globalAlpha = 0.3 + 0.12 * WS.sin(time * 2.4);
       ctx.strokeStyle = '#f5c56b';
       ctx.lineWidth = 1;
@@ -497,12 +519,14 @@
       // 1. Scorch. The ground goes darker under the effect, so it sits IN the
       //    world instead of floating over it.
       ctx.globalCompositeOperation = 'source-over';
+      if (!this.lite) {
       const burn = ctx.createRadialGradient(z.x, z.y, 0, z.x, z.y, R);
       burn.addColorStop(0, `rgba(0,0,0,${0.28 * fade})`);
       burn.addColorStop(0.75, `rgba(0,0,0,${0.16 * fade})`);
       burn.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = burn;
       ctx.beginPath(); ctx.arc(z.x, z.y, R, 0, WS.TAU); ctx.fill();
+      }
 
       // 2. The energy itself, hottest off-centre so it does not read as a lamp.
       ctx.globalCompositeOperation = 'lighter';
@@ -528,7 +552,7 @@
       ctx.globalAlpha = 0.55 * fade;
       ctx.lineWidth = 2;
       const spin = time * 0.5 + z.phase;
-      for (let n = 0; n < 12; n++) {
+      for (let n = 0; this.lite ? false : n < 12; n++) {
         const a = spin + (n / 12) * WS.TAU;
         const ca = WS.cos(a), sa = WS.sin(a);
         ctx.beginPath();
@@ -562,7 +586,7 @@
       const swell = (pulled ? 1 + 0.07 * WS.sin(time * 5 + g.spin) : 1)
         + (g.pop > 0 ? g.pop * 1.6 : 0);
       const s = g.size * (pulled ? 1.15 : 0.75 + near * 0.2) * swell;
-      if (pulled) {
+      if (pulled && !this.lite) {
         const [tx, ty] = WS.normalize(g.x - player.x, g.y - player.y);
         ctx.globalAlpha = 0.4;
         ctx.strokeStyle = WS.rgb(g.colour, 1);
@@ -666,7 +690,7 @@
          fast one draws a hard line - which is the cue for how quickly a shot
          crosses the field, and the one that makes a seeking missile's curve
          legible instead of a dot teleporting along an arc. */
-      if (b.trail !== false) {
+      if (b.trail !== false && !this.lite) {
         const speed = WS.sqrt(b.vx * b.vx + b.vy * b.vy);
         // The streak has to clear the bolt's own glow, which reaches r*2.4, or
         // it just thickens the blob. At 0.055 it did exactly that.
@@ -694,12 +718,19 @@
       ctx.translate(b.x, b.y);
       const ang = b.spinRate ? b.spin : WS.atan2(b.vy, b.vx);
       ctx.rotate(ang);
-      const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 2.4);
-      grd.addColorStop(0, WS.rgb(c, 0.95));
-      grd.addColorStop(0.4, WS.rgb(c, 0.45));
-      grd.addColorStop(1, WS.rgb(c, 0));
-      ctx.fillStyle = grd;
-      ctx.beginPath(); ctx.arc(0, 0, r * 2.4, 0, WS.TAU); ctx.fill();
+      // The glow is one gradient object per bolt per frame, and a busy field
+      // carries hundreds; flat colour at a smaller radius reads close enough.
+      if (this.lite) {
+        ctx.fillStyle = WS.rgb(c, 0.4);
+        ctx.beginPath(); ctx.arc(0, 0, r * 1.5, 0, WS.TAU); ctx.fill();
+      } else {
+        const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 2.4);
+        grd.addColorStop(0, WS.rgb(c, 0.95));
+        grd.addColorStop(0.4, WS.rgb(c, 0.45));
+        grd.addColorStop(1, WS.rgb(c, 0));
+        ctx.fillStyle = grd;
+        ctx.beginPath(); ctx.arc(0, 0, r * 2.4, 0, WS.TAU); ctx.fill();
+      }
       drawBoltShape(ctx, b, r);
       ctx.restore();
     }
@@ -710,11 +741,16 @@
       ctx.save();
       ctx.translate(h.x, h.y);
       ctx.rotate(h.spin);
-      const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, h.radius * 2.2);
-      grd.addColorStop(0, WS.rgb(h.colour, 1));
-      grd.addColorStop(1, WS.rgb(h.colour, 0));
-      ctx.fillStyle = grd;
-      ctx.beginPath(); ctx.arc(0, 0, h.radius * 2.2, 0, WS.TAU); ctx.fill();
+      if (this.lite) {
+        ctx.fillStyle = WS.rgb(h.colour, 0.55);
+        ctx.beginPath(); ctx.arc(0, 0, h.radius * 1.4, 0, WS.TAU); ctx.fill();
+      } else {
+        const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, h.radius * 2.2);
+        grd.addColorStop(0, WS.rgb(h.colour, 1));
+        grd.addColorStop(1, WS.rgb(h.colour, 0));
+        ctx.fillStyle = grd;
+        ctx.beginPath(); ctx.arc(0, 0, h.radius * 2.2, 0, WS.TAU); ctx.fill();
+      }
       ctx.restore();
       ctx.save();
       ctx.strokeStyle = 'rgba(255,255,255,.85)';
@@ -739,7 +775,7 @@
         // The path just travelled, fading behind. Without it an orbiting blade
         // is a diamond that happens to be somewhere, not one that is moving.
         const dir = o.speed >= 0 ? -1 : 1;
-        for (let k = 1; k <= 5; k++) {
+        for (let k = 1; this.lite ? false : k <= 5; k++) {
           const ta = a + dir * k * 0.11;
           ctx.globalAlpha = (1 - k / 5) * 0.35;
           ctx.fillStyle = WS.rgb(o.colour, 1);
@@ -753,11 +789,16 @@
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(a + o.angle * 2);
-        const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, o.size);
-        grd.addColorStop(0, WS.rgb(o.colour, 0.9));
-        grd.addColorStop(1, WS.rgb(o.colour, 0));
-        ctx.fillStyle = grd;
-        ctx.beginPath(); ctx.arc(0, 0, o.size, 0, WS.TAU); ctx.fill();
+        if (this.lite) {
+          ctx.fillStyle = WS.rgb(o.colour, 0.5);
+          ctx.beginPath(); ctx.arc(0, 0, o.size * 0.7, 0, WS.TAU); ctx.fill();
+        } else {
+          const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, o.size);
+          grd.addColorStop(0, WS.rgb(o.colour, 0.9));
+          grd.addColorStop(1, WS.rgb(o.colour, 0));
+          ctx.fillStyle = grd;
+          ctx.beginPath(); ctx.arc(0, 0, o.size, 0, WS.TAU); ctx.fill();
+        }
         ctx.fillStyle = 'rgba(255,255,255,.9)';
         ctx.beginPath();
         ctx.moveTo(0, -o.size * 0.7); ctx.lineTo(o.size * 0.28, 0);
@@ -810,7 +851,7 @@
 
       // The core: bright, and gone inside the first third. This is the hit.
       const core = WS.clamp(1 - t * 3, 0, 1);
-      if (core > 0) {
+      if (core > 0 && !this.lite) {
         const cg = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.radius * 0.7);
         cg.addColorStop(0, WS.rgb(f.colour, 0.85 * core));
         cg.addColorStop(1, WS.rgb(f.colour, 0));
@@ -912,16 +953,70 @@
 
       } else if (h.shape === 'square') {
         if (h.telegraph > 0) {
-          // Safe ground reads green and steady; doomed ground reddens as the
-          // spear falls, so the choice is legible at a glance.
+          /* Safe ground and doomed ground must differ by more than hue.
+           *
+           * This was a green wash against a red one, and nothing else. Red
+           * against green is the single most common form of colour blindness
+           * there is - somewhere around one man in twelve - and the two fills
+           * were both dark and both desaturated, so for those players the
+           * arena's signature mechanic, the one that asks "which square do I
+           * stand on", was a grid of identical rectangles. Not harder. Unde-
+           * cidable.
+           *
+           * So the hue stays, because it is right for everyone who can use
+           * it, and two channels that do not depend on it are laid alongside:
+           *
+           *   TEXTURE - doomed ground fills with hazard hatching; safe ground
+           *             stays clean. Present or absent survives any palette,
+           *             and it is legible in greyscale, in a photograph, and
+           *             out of the corner of an eye.
+           *   MOTION  - that hatching tightens and brightens as the spear
+           *             falls, so the cell also says HOW LONG rather than
+           *             only WHICH, and stillness itself marks safety.
+           *
+           * The safe cells wear the corner brackets the rest of the interface
+           * uses to mean "inside the frame", which is the same word this
+           * game's UI already speaks everywhere else. */
           const k = 1 - h.telegraph / WS.Arena.tuning.spearTele;
-          ctx.fillStyle = h.safe
-            ? 'rgba(61,220,122,.14)'
-            : `rgba(226,72,61,${0.12 + 0.26 * k})`;
-          ctx.fillRect(h.x + 3, h.y + 3, h.w - 6, h.h - 6);
-          ctx.strokeStyle = h.safe ? 'rgba(110,240,160,.75)' : 'rgba(255,140,110,.75)';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(h.x + 3, h.y + 3, h.w - 6, h.h - 6);
+          const x = h.x + 3, y = h.y + 3, w = h.w - 6, hh = h.h - 6;
+
+          ctx.save();
+          if (h.safe) {
+            ctx.fillStyle = 'rgba(61,220,122,.13)';
+            ctx.fillRect(x, y, w, hh);
+            // Corner brackets: quiet, static, unmistakably "stand here".
+            ctx.strokeStyle = 'rgba(120,245,170,.85)';
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            const c = WS.min(w, hh) * 0.26;
+            for (const [cx, cy, sx, sy] of [
+              [x, y, 1, 1], [x + w, y, -1, 1], [x, y + hh, 1, -1], [x + w, y + hh, -1, -1]]) {
+              ctx.beginPath();
+              ctx.moveTo(cx + sx * c, cy);
+              ctx.lineTo(cx, cy);
+              ctx.lineTo(cx, cy + sy * c);
+              ctx.stroke();
+            }
+          } else {
+            ctx.fillStyle = `rgba(226,72,61,${(0.10 + 0.20 * k).toFixed(3)})`;
+            ctx.fillRect(x, y, w, hh);
+            // Hazard hatching, clipped to the cell, tightening as it lands.
+            ctx.beginPath(); ctx.rect(x, y, w, hh); ctx.clip();
+            const gap = 18 - 8 * k;
+            ctx.strokeStyle = `rgba(255,150,120,${(0.30 + 0.5 * k).toFixed(3)})`;
+            ctx.lineWidth = 1 + 1.6 * k;
+            ctx.beginPath();
+            for (let d = -hh; d < w; d += gap) {
+              ctx.moveTo(x + d, y + hh);
+              ctx.lineTo(x + d + hh, y);
+            }
+            ctx.stroke();
+            ctx.restore(); ctx.save();
+            ctx.strokeStyle = `rgba(255,140,110,${(0.5 + 0.45 * k).toFixed(3)})`;
+            ctx.lineWidth = 2 + 1.5 * k;
+            ctx.strokeRect(x, y, w, hh);
+          }
+          ctx.restore();
         }
 
       } else if (h.shape === 'cutter') {
