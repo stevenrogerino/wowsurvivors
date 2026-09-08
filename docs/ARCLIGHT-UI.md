@@ -1,4 +1,4 @@
-# Arclite UI
+# Arclight UI
 
 The design language for **WoWSurvivors 2**. Everything on screen is either
 *obsidian* (the substrate) or *arc light* (the energy running through it).

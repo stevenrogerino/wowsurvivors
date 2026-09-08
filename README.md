@@ -11,8 +11,8 @@ game's content came across — 10 survivors, 21 weapons (16 findable, plus 5
 union super-weapons), 28 creatures, 6 elites, 20 bosses, 5 battlefields plus a
 scripted boss arena, 25 passives, 15 blessings, 9 hidden weapon discoveries,
 13 Trainer upgrades and 24 achievements — rebuilt on canvas, and dressed in a
-new interface called **Arclite**
-(see [`docs/ARCLITE-UI.md`](docs/ARCLITE-UI.md)).
+new interface called **Arclight**
+(see [`docs/ARCLIGHT-UI.md`](docs/ARCLIGHT-UI.md)).
 
 ## Play
 
@@ -87,7 +87,7 @@ src/game/      the simulation: player, enemy, weapon, projectile, xp, pickup,
                familiar, waves, levelup, combos, achievements, arena, game
 src/render/    procedural sprites, procedural icons, the canvas renderer
 src/audio/     WebAudio synth kit and the generative per-zone score
-src/ui/        the Arclite stylesheet and the DOM UI layer
+src/ui/        the Arclight stylesheet and the DOM UI layer
 tools/         the single-file bundler
 ```
 

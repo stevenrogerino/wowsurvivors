@@ -1,7 +1,7 @@
 /* ===========================================================================
-   ARCLITE UI - the design language for WoWSurvivors 2.
+   ARCLIGHT UI - the design language for WoWSurvivors 2.
    Obsidian substrate, arc light for everything that measures or matters.
-   See docs/ARCLITE-UI.md for the rules this file implements.
+   See docs/ARCLIGHT-UI.md for the rules this file implements.
    ======================================================================== */
 
 :root {
@@ -59,7 +59,7 @@ html, body {
 .num { font-variant-numeric: tabular-nums; font-weight: 700; }
 .hidden { display: none !important; }
 
-/* Corner brackets - the Arclite frame. Applied to .panel and .card. */
+/* Corner brackets - the Arclight frame. Applied to .panel and .card. */
 .bracketed { position: relative; }
 .bracketed::before, .bracketed::after {
   content: ""; position: absolute; width: 14px; height: 14px;

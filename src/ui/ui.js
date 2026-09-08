@@ -1,4 +1,4 @@
-/* The Arclite UI layer: menus, overlays and the heads-up display.
+/* The Arclight UI layer: menus, overlays and the heads-up display.
  * The DOM owns everything that is text or chrome; the canvas owns the world.
  * This layer reads game state and never mutates the simulation directly - it
  * calls into WS.Game for anything that changes the run. */
@@ -345,7 +345,7 @@
   /* ---------------------------------------------------------- main menu -- */
   UI.openMenu = function () {
     this.hud.classList.add('hidden');
-    const s = shell('WoWSurvivors 2', 'Arclite');
+    const s = shell('WoWSurvivors 2', 'Arclight');
 
     const title = el('div'); title.id = 'title-wrap';
     const h = el('h1', 'game-title');

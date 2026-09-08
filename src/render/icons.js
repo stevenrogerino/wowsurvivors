@@ -1,6 +1,6 @@
 /* Procedural ability icons. Each glyph is drawn in a normalised 100x100 space
  * on an obsidian plate with an arc-lit rim, so weapons, passives, blessings and
- * achievements all share one visual language (see docs/ARCLITE-UI.md). */
+ * achievements all share one visual language (see docs/ARCLIGHT-UI.md). */
 'use strict';
 (function (WS) {
 

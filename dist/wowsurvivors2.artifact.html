@@ -1,9 +1,9 @@
 <title>WoWSurvivors 2</title>
 <style>
 /* ===========================================================================
-   ARCLITE UI - the design language for WoWSurvivors 2.
+   ARCLIGHT UI - the design language for WoWSurvivors 2.
    Obsidian substrate, arc light for everything that measures or matters.
-   See docs/ARCLITE-UI.md for the rules this file implements.
+   See docs/ARCLIGHT-UI.md for the rules this file implements.
    ======================================================================== */
 
 :root {
@@ -61,7 +61,7 @@ html, body {
 .num { font-variant-numeric: tabular-nums; font-weight: 700; }
 .hidden { display: none !important; }
 
-/* Corner brackets - the Arclite frame. Applied to .panel and .card. */
+/* Corner brackets - the Arclight frame. Applied to .panel and .card. */
 .bracketed { position: relative; }
 .bracketed::before, .bracketed::after {
   content: ""; position: absolute; width: 14px; height: 14px;
@@ -2547,7 +2547,7 @@ window.WS = window.WS || {};
  *
  * House style: a three-quarter-from-above view. Bodies are built from stacked
  * ellipses lit from the upper left, outlined in a darkened shade of their own
- * tint (never black), with one hot rim highlight - the Arclite arc - on the
+ * tint (never black), with one hot rim highlight - the Arclight arc - on the
  * upper-left edge, and glowing eyes as the read-at-a-glance focal point. */
 'use strict';
 (function (WS) {
@@ -2622,7 +2622,7 @@ window.WS = window.WS || {};
     g.restore();
   }
 
-  /** The Arclite rim: a bright crescent along the upper-left of a body mass. */
+  /** The Arclight rim: a bright crescent along the upper-left of a body mass. */
   function rimLight(g, x, y, r, colour, alpha) {
     g.save();
     g.globalAlpha = alpha === undefined ? 0.5 : alpha;
@@ -3376,7 +3376,7 @@ window.WS = window.WS || {};
 /* ===== src/render/icons.js ===== */
 /* Procedural ability icons. Each glyph is drawn in a normalised 100x100 space
  * on an obsidian plate with an arc-lit rim, so weapons, passives, blessings and
- * achievements all share one visual language (see docs/ARCLITE-UI.md). */
+ * achievements all share one visual language (see docs/ARCLIGHT-UI.md). */
 'use strict';
 (function (WS) {
 
@@ -7676,7 +7676,7 @@ window.WS = window.WS || {};
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, this.viewW, this.viewH);
 
-    // Letterbox surround: the Arclite void.
+    // Letterbox surround: the Arclight void.
     ctx.fillStyle = '#07080c';
     ctx.fillRect(0, 0, this.viewW, this.viewH);
 
@@ -8261,7 +8261,7 @@ window.WS = window.WS || {};
     ctx.fillRect(0, 0, this.viewW, this.viewH);
   };
 
-  /** The Arclite banner: a swept arc of light with the announcement over it. */
+  /** The Arclight banner: a swept arc of light with the announcement over it. */
   R.drawBanner = function (ctx) {
     const b = WS.Game.banner;
     if (!b) return;
@@ -8305,7 +8305,7 @@ window.WS = window.WS || {};
 })(window.WS);
 
 /* ===== src/ui/ui.js ===== */
-/* The Arclite UI layer: menus, overlays and the heads-up display.
+/* The Arclight UI layer: menus, overlays and the heads-up display.
  * The DOM owns everything that is text or chrome; the canvas owns the world.
  * This layer reads game state and never mutates the simulation directly - it
  * calls into WS.Game for anything that changes the run. */
@@ -8652,7 +8652,7 @@ window.WS = window.WS || {};
   /* ---------------------------------------------------------- main menu -- */
   UI.openMenu = function () {
     this.hud.classList.add('hidden');
-    const s = shell('WoWSurvivors 2', 'Arclite');
+    const s = shell('WoWSurvivors 2', 'Arclight');
 
     const title = el('div'); title.id = 'title-wrap';
     const h = el('h1', 'game-title');

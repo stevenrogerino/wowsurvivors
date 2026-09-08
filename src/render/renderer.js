@@ -109,7 +109,7 @@
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, this.viewW, this.viewH);
 
-    // Letterbox surround: the Arclite void.
+    // Letterbox surround: the Arclight void.
     ctx.fillStyle = '#07080c';
     ctx.fillRect(0, 0, this.viewW, this.viewH);
 
@@ -694,7 +694,7 @@
     ctx.fillRect(0, 0, this.viewW, this.viewH);
   };
 
-  /** The Arclite banner: a swept arc of light with the announcement over it. */
+  /** The Arclight banner: a swept arc of light with the announcement over it. */
   R.drawBanner = function (ctx) {
     const b = WS.Game.banner;
     if (!b) return;

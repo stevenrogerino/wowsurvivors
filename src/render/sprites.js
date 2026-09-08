@@ -4,7 +4,7 @@
  *
  * House style: a three-quarter-from-above view. Bodies are built from stacked
  * ellipses lit from the upper left, outlined in a darkened shade of their own
- * tint (never black), with one hot rim highlight - the Arclite arc - on the
+ * tint (never black), with one hot rim highlight - the Arclight arc - on the
  * upper-left edge, and glowing eyes as the read-at-a-glance focal point. */
 'use strict';
 (function (WS) {
@@ -79,7 +79,7 @@
     g.restore();
   }
 
-  /** The Arclite rim: a bright crescent along the upper-left of a body mass. */
+  /** The Arclight rim: a bright crescent along the upper-left of a body mass. */
   function rimLight(g, x, y, r, colour, alpha) {
     g.save();
     g.globalAlpha = alpha === undefined ? 0.5 : alpha;
