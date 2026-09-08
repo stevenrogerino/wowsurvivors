@@ -9,6 +9,30 @@
  * difference. This drives the arrow keys through a real grid and checks the
  * focus lands where a player would point.
  *
+ * AND THEN IT WALKS EVERY SCREEN.
+ *
+ * The spatial test above only ever looked at one of them - the roster tab of
+ * the main menu - which meant the level-up cards, the pause screen, the
+ * manual, the death screen and six other tabs were unguarded, and every new
+ * screen added to the game arrived unguarded too. "Can you play the whole
+ * thing on a stick" is the question a handheld storefront actually asks, and
+ * it is not a question one screen can answer.
+ *
+ * So for each screen this builds the real reachability graph: from the control
+ * that starts focused, it drives UI.navigate - the same function the arrow
+ * keys call, not a simulation of it - in all four directions from every node
+ * it reaches, and fails on any control a player could never get to. An
+ * unreachable button is a button that does not exist for anyone without a
+ * mouse.
+ *
+ * It also checks every control is ON SCREEN, which reachability alone does
+ * not. Writing the negative test for this found the hole: a button parked at
+ * -400,-400 is perfectly reachable - it lies in the direction the arrow was
+ * pressed - so the walk arrowed happily onto something no player could see.
+ * Being able to focus a control you cannot look at is worse than not being
+ * able to reach it, because the focus ring goes somewhere and the screen does
+ * not change.
+ *
  *   npm i playwright && npx playwright install chromium
  *   node tools/check-nav.js
  *
@@ -79,9 +103,88 @@ const path = require('path');
     fail.push('moving the pointer did not clear keyboard-navigation mode');
   }
 
+  /* ---- every screen, walked ---------------------------------------------- */
+  const screens = await page.evaluate(() => {
+    const out = [];
+    /* Each entry opens a screen and leaves it on screen. Everything the player
+     * can reach from the menu or mid-run is here; if a screen is added to the
+     * game and not to this list, that is the gap this tool exists to close. */
+    const SCREENS = {};
+    for (const tab of ['roster', 'battlefields', 'trainer', 'codex', 'bestiary',
+      'stats', 'settings']) {
+      SCREENS['menu/' + tab] = () => { WS.UI.tab = tab; WS.UI.openMenu(); };
+    }
+    SCREENS.manual = () => WS.UI.openManual();
+    SCREENS.levelup = () => {
+      WS.Game.startRun('thornhollow', 'mage');
+      WS.Game.leveling = false;
+      WS.Game.pendingLevelUps = 1;
+      WS.Game.openLevelUp();
+    };
+    SCREENS.pause = () => { WS.Game.startRun('thornhollow', 'mage'); WS.UI.openPause(); };
+    SCREENS.over = () => { WS.Game.startRun('thornhollow', 'mage'); WS.Game.endRun(false); };
+
+    for (const [name, open] of Object.entries(SCREENS)) {
+      try { open(); } catch (e) { out.push({ name, error: e.message }); continue; }
+      const items = WS.UI.focusables();
+      if (!items.length) { out.push({ name, count: 0, unreachable: [], empty: true }); continue; }
+      items.forEach((n, i) => { n.dataset.navid = String(i); });
+      const idOf = () => {
+        const a = document.activeElement;
+        return a && a.dataset && a.dataset.navid !== undefined ? +a.dataset.navid : -1;
+      };
+      // Start where the screen itself puts focus, or at the first control -
+      // which is exactly what a player arriving with a pad would have.
+      let startId = idOf();
+      if (startId < 0) { items[0].focus(); startId = 0; }
+
+      const seen = new Set([startId]);
+      const queue = [startId];
+      while (queue.length) {
+        const id = queue.shift();
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          items[id].focus();
+          WS.UI.navigate(dx, dy);
+          const next = idOf();
+          if (next >= 0 && !seen.has(next)) { seen.add(next); queue.push(next); }
+        }
+      }
+      const label = (n) => ((n.textContent || '').trim().split('\n')[0].slice(0, 22)
+        || n.className || 'unnamed');
+      const unreachable = [], offscreen = [];
+      items.forEach((n, i) => {
+        if (!seen.has(i)) unreachable.push(label(n));
+        n.focus();                       // the only moment the question means anything
+        const r = n.getBoundingClientRect();
+        if (r.right < 2 || r.bottom < 2 || r.left > innerWidth - 2 || r.top > innerHeight - 2) {
+          offscreen.push(label(n));
+        }
+      });
+      out.push({ name, count: items.length, unreachable, offscreen });
+    }
+    return out;
+  });
+
+  let walked = 0, controls = 0;
+  for (const s of screens) {
+    if (s.error) { fail.push(`${s.name}: could not be opened - ${s.error}`); continue; }
+    if (s.empty) { fail.push(`${s.name}: has no focusable control at all`); continue; }
+    walked++; controls += s.count;
+    if (s.offscreen && s.offscreen.length) {
+      fail.push(`${s.name}: ${s.offscreen.length} focusable control(s) sit off the `
+        + `screen - ${s.offscreen.slice(0, 4).join(', ')}`);
+    }
+    if (s.unreachable.length) {
+      fail.push(`${s.name}: ${s.unreachable.length} of ${s.count} controls cannot be `
+        + `reached with a pad - ${s.unreachable.slice(0, 4).join(', ')}`
+        + (s.unreachable.length > 4 ? ', ...' : ''));
+    }
+  }
+
   console.log(fail.length ? fail.join('\n')
     : `ok: arrows walk the grid spatially, ring is ${ring.width} ${ring.style} ${ring.colour},`
-      + ' and a pointer clears it');
+      + ` a pointer clears it, and every one of ${controls} controls across `
+      + `${walked} screens can be reached with a pad`);
   await b.close();
   process.exitCode = fail.length ? 1 : 0;
 })();

@@ -35,7 +35,7 @@ start index.html           # Windows
 One file. That is the whole deployment.
 
 ```
-node tools/bundle.js              # -> dist/the-ember-watch.html   (~677 KB)
+node tools/bundle.js              # -> dist/the-ember-watch.html   (~706 KB)
 ```
 
 Rename it `index.html`, upload it, done. Every script, every stylesheet and
@@ -62,6 +62,20 @@ gold and unlocks and nothing is sent anywhere.
 plays ninety seconds of a real run inside it, and fails on any request that
 leaves the host, any 404 and any error — so the claim above is checked rather
 than asserted.
+
+### As a desktop application
+
+`desktop/` wraps that same single file in Electron for Windows, macOS and
+Linux — same bytes, same game, plus a window, fullscreen on F11, and a save
+that actually survives being quit.
+
+```
+cd desktop && npm install && npm start
+```
+
+See [desktop/README.md](desktop/README.md) for packaging, for the `file://`
+storage trap that shell exists to avoid, and for what is still left between
+here and a Steam page.
 
 ### Controls
 
@@ -138,7 +152,9 @@ tools/         the single-file bundler, and the guard rails:
                check-input.js held movement across overlays
                check-fx.js    particle speed and world bounds
                check-icons.js glyphs clipped by their field, roster size
-               check-nav.js   spatial menu navigation and the focus ring
+               check-nav.js   spatial menu navigation, the focus ring, and a
+                              reachability walk that drives the real navigator
+                              from every control on all eleven screens
                check-steer.js mouse and touch steering, and its hand-back
                check-hud.js   HUD inside the screen and off the middle of the
                               field, the arena read with no colour at all, and
@@ -162,6 +178,9 @@ tools/         the single-file bundler, and the guard rails:
                               stopped clock that takes no bookings
                check-original.js every file and bundle against ~90 borrowed
                               terms - the game owns every name it ships
+               check-desktop.js the desktop shell launched twice: an account
+                              banked in one launch must still be there in the
+                              next (needs a display; use xvfb-run headless)
 ```
 
 Every guard carries the bug it was written for in its header, and every one of

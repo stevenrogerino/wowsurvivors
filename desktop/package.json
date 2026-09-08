@@ -1,0 +1,36 @@
+{
+  "name": "the-ember-watch",
+  "productName": "The Ember Watch",
+  "version": "1.0.0",
+  "description": "A thirty-minute survivors-like. Procedural art, procedural sound, no asset files.",
+  "author": "CHANGE ME BEFORE YOU SHIP - this name goes in the installer, the app's properties and the copyright line",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "sync": "node ../tools/bundle.js && mkdir -p game && cp ../dist/the-ember-watch.html game/",
+    "start": "npm run sync && electron .",
+    "check": "node ../tools/check-desktop.js",
+    "dist": "npm run sync && electron-builder",
+    "dist:win": "npm run sync && electron-builder --win",
+    "dist:mac": "npm run sync && electron-builder --mac",
+    "dist:linux": "npm run sync && electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.emberwatch.game",
+    "productName": "The Ember Watch",
+    "files": ["main.js", "game/**/*"],
+    "directories": { "output": "release" },
+    "publish": null,
+    "win": { "target": ["nsis", "zip"] },
+    "mac": { "target": ["dmg", "zip"], "category": "public.app-category.games" },
+    "linux": {
+      "target": ["AppImage", "tar.gz"],
+      "category": "Game",
+      "executableName": "the-ember-watch"
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.3.0",
+    "electron-builder": "^26.15.3"
+  }
+}
