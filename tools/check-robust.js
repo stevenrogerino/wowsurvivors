@@ -21,8 +21,9 @@
  * game on purpose and requiring it to keep going.
  *
  * NEGATIVE TEST - both guards were confirmed to fail against the old code.
- * Reverting the `finally` in main.js gives "the loop died: 0 frames after a
- * single throw"; reverting merge() gives "gold as string -> non-finite state".
+ * Reverting the `finally` in main.js gives "the loop died: 0 frames in 6s
+ * after a single throw"; reverting merge() gives "gold as string ->
+ * non-finite state".
  *
  *   npm i playwright && npx playwright install chromium
  *   node tools/check-robust.js
@@ -59,8 +60,25 @@ const SAVES = {
   await page.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
   await page.waitForFunction(() => window.WS && window.WS.Game);
 
+  /* Wait for a number of frames, not for a number of milliseconds.
+   *
+   * Both loop tests used to sleep a fixed 400ms and demand a frame count from
+   * it, which asks how fast the machine is rather than whether the loop came
+   * back: on a loaded container this container failed roughly one run in four
+   * with "the loop died: 3 frames after a single throw" while the loop was
+   * perfectly alive and merely slow. The question is whether rAF re-arms, so
+   * these now wait until it has, with a ceiling generous enough that only a
+   * loop which is actually dead can reach it. */
+  const WANT = 5, CEILING = 6000;
+  const waitFrames = `(async (want, ceiling, count) => {
+    const t0 = Date.now();
+    while (count() < want && Date.now() - t0 < ceiling) {
+      await new Promise((r) => requestAnimationFrame(r));
+    }
+  })`;
+
   /* ---- 1. one throw must cost one frame, not the session ---------------- */
-  const one = await page.evaluate(async () => {
+  const one = await page.evaluate(async ([wait, want, ceiling]) => {
     let n = 0;
     const real = WS.Renderer.draw;
     WS.Renderer.draw = function () {
@@ -68,28 +86,30 @@ const SAVES = {
       if (n === 3) throw new Error('synthetic: one bad frame');
       return real.apply(this, arguments);
     };
-    await new Promise((r) => setTimeout(r, 400));
+    // eslint-disable-next-line no-eval
+    await eval(wait)(want, ceiling, () => n - 3);
     WS.Renderer.draw = real;
     return { after: n - 3, faults: WS.faultCount() };
-  });
-  if (one.after < 5) {
-    fail.push(`the loop died: ${one.after} frames after a single throw`);
+  }, [waitFrames, WANT, CEILING]);
+  if (one.after < WANT) {
+    fail.push(`the loop died: ${one.after} frames in ${CEILING / 1000}s after a single throw`);
   }
   if (one.faults !== 1) fail.push(`expected 1 counted fault, got ${one.faults}`);
 
   /* ---- 2. a throw EVERY frame must not stop it either ------------------- */
-  const many = await page.evaluate(async () => {
+  const many = await page.evaluate(async ([wait, ceiling]) => {
     const real = WS.Renderer.draw;
     let n = 0;
     WS.Renderer.draw = function () { n++; throw new Error('synthetic: always'); };
-    await new Promise((r) => setTimeout(r, 600));
+    // eslint-disable-next-line no-eval
+    await eval(wait)(15, ceiling, () => n);
     WS.Renderer.draw = real;
     const during = n;
     // ...and once the fault clears, the game must come back on its own.
     const before = WS.faultCount();
     await new Promise((r) => setTimeout(r, 300));
     return { during, recovered: WS.faultCount() === before };
-  });
+  }, [waitFrames, CEILING]);
   if (many.during < 15) fail.push(`the loop gave up while faulting: ${many.during} attempts`);
   if (!many.recovered) fail.push('the loop never recovered after the fault cleared');
 

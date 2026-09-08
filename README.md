@@ -103,7 +103,8 @@ src/audio/     WebAudio synth kit and the generative per-zone score
 src/ui/        the Arclight stylesheet, its embedded faces, and the DOM layer
 tools/         the single-file bundler, and the guard rails:
                playtest.js    headless full run, every map, every survivor
-               check-ui.js    bracket collisions and false scroll scrims
+               check-ui.js    bracket collisions, false scroll scrims, and
+                              the shop's banked total tracking its purchases
                check-input.js held movement across overlays
                check-fx.js    particle speed and world bounds
                check-icons.js glyphs clipped by their field, roster size
@@ -115,6 +116,9 @@ tools/         the single-file bundler, and the guard rails:
                check-robust.js a thrown frame, sixteen malformed saves, a save
                               made before the rename, and a run's gold banked
                               by the autosave and by the tab going away
+               check-audio.js sound placed in the stereo field, muting that
+                              stops the score rather than hiding it, and a
+                              stopped clock that takes no bookings
                check-original.js every file and bundle against ~90 borrowed
                               terms - the game owns every name it ships
 ```

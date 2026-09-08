@@ -11,9 +11,31 @@
     musicGain: null,
     ready: false,
     _music: null,
+    /* The key the game last ASKED for, kept apart from _music, which is what
+     * is actually sounding. Turning music off in the settings used to leave
+     * the score running into a gain of zero: measured, a muted game still
+     * built ten nodes and five notes every two and a half seconds, forever,
+     * plus a drone oscillator that never stopped. The player paid for music
+     * they had switched off. With the request remembered separately, the
+     * switch can stop the score outright and start the right zone's score
+     * again when it goes back on. */
+    wanted: null,
+    /** Where the current voice is placed in the field, if anywhere. */
+    voiceBus: null,
   };
 
   function now() { return Audio.ctx.currentTime; }
+
+  /** True only when the clock is actually moving.
+   *
+   *  Everything below schedules against ctx.currentTime, and a suspended
+   *  context - a hidden tab, a locked phone, an incoming call - freezes that
+   *  clock without refusing the work. Measured: twelve level-up fanfares
+   *  played while suspended built 96 nodes and queued 48 oscillators, every
+   *  one of them stamped with the same instant, so they would have arrived as
+   *  a single blast the moment the player came back. Asking whether the clock
+   *  is running is the difference between a sound and an ambush. */
+  function live() { return Audio.ctx && Audio.ctx.state === 'running'; }
 
   /** Created on the first user gesture - browsers block audio before that. */
   Audio.init = function () {
@@ -54,6 +76,9 @@
     const s = WS.Save.settings;
     this.sfxGain.gain.value = s.sound ? s.effectsVolume * 0.6 : 0;
     this.musicGain.gain.value = s.music ? s.musicVolume * 0.35 : 0;
+    // A switch that only turns the volume down is not a switch.
+    if (!s.music) this.stopMusic();
+    else if (this.wanted && !this._music) this.startScore(this.wanted);
   };
 
   /* ------------------------------------------------------------ primitives */
@@ -80,7 +105,7 @@
       osc.connect(f); last = f;
     }
     last.connect(gain);
-    gain.connect(opts.bus || Audio.sfxGain);
+    gain.connect(opts.bus || Audio.voiceBus || Audio.sfxGain);
     env(gain, t0, opts.attack || 0.005, opts.decay || 0.15, opts.gain === undefined ? 0.3 : opts.gain);
     osc.start(t0);
     osc.stop(t0 + (opts.attack || 0.005) + (opts.decay || 0.15) + 0.05);
@@ -105,10 +130,33 @@
     if (opts.to) f.frequency.exponentialRampToValueAtTime(WS.max(40, opts.to), t0 + (opts.decay || 0.2));
     f.Q.value = opts.q === undefined ? 1.2 : opts.q;
     const gain = ctx.createGain();
-    src.connect(f); f.connect(gain); gain.connect(opts.bus || Audio.sfxGain);
+    src.connect(f); f.connect(gain); gain.connect(opts.bus || Audio.voiceBus || Audio.sfxGain);
     env(gain, t0, opts.attack || 0.004, opts.decay || 0.2, opts.gain === undefined ? 0.25 : opts.gain);
     src.start(t0);
     src.stop(t0 + (opts.attack || 0.004) + (opts.decay || 0.2) + 0.05);
+  }
+
+  /* --------------------------------------------------------------- place -- */
+  /* The whole battlefield is on screen at once - there is no camera to scroll
+   * - so a sound's x IS its x on the player's monitor, and placing it in the
+   * stereo field costs one node and needs no bookkeeping. In a game whose
+   * entire threat model is "they come from every side", hearing which side is
+   * information the player was previously not being given at all.
+   *
+   * SPREAD is the distance at which a sound reaches the edge of the field, and
+   * LIMIT stops anything reaching one ear alone: a hard-panned mono voice is
+   * unpleasant on headphones and reads as a fault rather than a direction. */
+  const SPREAD = 420, LIMIT = 0.75;
+
+  function placeAt(x) {
+    const ctx = Audio.ctx;
+    const p = WS.Game && WS.Game.player;
+    if (!ctx || !ctx.createStereoPanner || typeof x !== 'number' || !p) return null;
+    const pan = WS.clamp((x - p.x) / SPREAD, -1, 1) * LIMIT;
+    const node = ctx.createStereoPanner();
+    node.pan.value = pan;
+    node.connect(Audio.sfxGain);
+    return node;
   }
 
   /* ---------------------------------------------------------------- kits -- */
@@ -196,8 +244,9 @@
     victory: [0.3, 1.8], death: [0.25, 1.8], explode: [0.55, 0.5], warn: [0.5, 0.7],
   };
 
-  Audio.play = function (kit) {
-    if (!this.ctx || !WS.Save.settings.sound) return;
+  /** @param {string} kit  @param {number} [x] world x, to place it in the field. */
+  Audio.play = function (kit, x) {
+    if (!live() || !WS.Save.settings.sound) return;
     const t = this.ctx.currentTime;
     const gap = THROTTLE[kit];
     if (gap) {
@@ -216,7 +265,13 @@
       } catch (e) { /* scheduling raced a context change */ }
     }
     const fn = KITS[kit];
-    if (fn) { try { fn(); } catch (e) { /* audio graph exhausted */ } }
+    if (!fn) return;
+    // The kits take no arguments by design - they are recipes, not routers - so
+    // the destination is handed to them through voiceBus, which every voice in
+    // the kit picks up. Synchronous, so it cannot be seen by anything else.
+    this.voiceBus = placeAt(x);
+    try { fn(); } catch (e) { /* audio graph exhausted */ }
+    finally { this.voiceBus = null; }
   };
 
   /* --------------------------------------------------------------- music -- */
@@ -234,7 +289,15 @@
 
   function semitone(root, n) { return root * Math.pow(2, n / 12); }
 
+  /** What the game asks for. Whether it sounds is the settings' business. */
   Audio.playMusic = function (key) {
+    if (!this.ctx) return;
+    this.wanted = key;
+    if (!WS.Save.settings.music) { this.stopMusic(); return; }
+    this.startScore(key);
+  };
+
+  Audio.startScore = function (key) {
     if (!this.ctx) return;
     if (this._music && this._music.key === key) return;
     this.stopMusic();
@@ -259,8 +322,25 @@
     const state = { key, bed, drone, step: 0, nextTime: ctx.currentTime + 0.1, timer: null, intensity: 0 };
 
     state.timer = setInterval(() => {
-      if (!Audio.ctx || Audio.ctx.state === 'closed') return;
+      // A stopped clock schedules nothing: while the context is suspended the
+      // pump would otherwise pile a second of the score onto a single instant.
+      if (!live()) return;
       const beat = score.tempo / 2;
+      /* Never try to make up lost time.
+       *
+       * This is a look-ahead scheduler on a 250ms interval, and an interval
+       * that does not run - a GC pause, a background tab where the browser
+       * clamps timers to a second or a minute, a laptop lid - leaves nextTime
+       * behind the clock. The loop below would then honour every beat it
+       * missed, each stamped with a moment already gone, and WebAudio starts a
+       * note scheduled in the past immediately. Measured: a three-second stall
+       * fired a note 1.42 seconds late, and a minute in a background tab would
+       * empty seventy-odd notes into one chord. So when the score has fallen
+       * behind, it picks up from HERE. A generative loop has no place it must
+       * be; the only thing the player can hear is the clump. */
+      if (state.nextTime < Audio.ctx.currentTime) {
+        state.nextTime = Audio.ctx.currentTime + 0.05;
+      }
       while (state.nextTime < Audio.ctx.currentTime + 1.0) {
         const t0 = state.nextTime;
         const s = state.step;
@@ -312,8 +392,27 @@
     try {
       m.bed.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.3);
       m.drone.stop(this.ctx.currentTime + 1.2);
+      // Let go of the bed once it has faded, so the graph does not keep a
+      // silent branch per zone the player has visited.
+      setTimeout(() => { try { m.bed.disconnect(); } catch (e) { /* gone */ } }, 1500);
     } catch (e) { /* already stopped */ }
     this._music = null;
+  };
+
+  /* ---------------------------------------------------------- attention -- */
+  /** Called when the page is hidden or shown.
+   *
+   *  Hiding stops the clock outright rather than leaving a drone playing into
+   *  a room the player has walked away from - and, with the guards above, it
+   *  also means nothing is scheduled while they are gone, so coming back is
+   *  silent until something actually happens. */
+  Audio.setAttentive = function (attentive) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    try {
+      if (attentive) { if (ctx.state === 'suspended') ctx.resume(); }
+      else if (ctx.state === 'running') ctx.suspend();
+    } catch (e) { /* the context is closing */ }
   };
 
   WS.Audio = Audio;

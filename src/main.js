@@ -174,7 +174,15 @@
     const bank = () => { try { WS.Save.flush(); } catch (e) { /* nothing left to try */ } };
     window.addEventListener('pagehide', bank);
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') bank();
+      const hidden = document.visibilityState === 'hidden';
+      if (hidden) bank();
+      /* And go quiet. A browser will happily keep a hidden tab's audio playing
+       * - that is the right default for a music player and the wrong one for a
+       * game, where the drone follows the player into whatever they switched
+       * to. Stopping the clock also stops the score's scheduler, so nothing
+       * queues up while they are away and coming back is silent until
+       * something happens. */
+      WS.Audio.setAttentive(!hidden);
     });
 
     WS.Renderer.buildScenery(WS.Maps[WS.Config.startMap]);

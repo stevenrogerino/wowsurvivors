@@ -291,7 +291,7 @@
     if (crit) amount *= player.critDamage;
     this.damage(e, amount, crit, source);
     WS.FX.damage(e.x, e.y - e.radius * 0.6, amount, crit);
-    WS.Audio.play(crit ? 'crit' : 'hit');
+    WS.Audio.play(crit ? 'crit' : 'hit', e.x);
     return amount;
   };
 
@@ -371,7 +371,7 @@
     WS.Pickup.onKill(e);
     WS.Save.recordKill(t, e.id);
     run.kills++;
-    WS.Audio.play('enemyHit');
+    WS.Audio.play('enemyHit', e.x);
 
     if (player.bloodthirst && run.kills % player.bloodthirstInterval === 0) {
       WS.Player.heal(player,
@@ -397,7 +397,7 @@
          than one, so the payoff keeps arriving for most of a second, and a
          gold banner rather than a caption - killing a boss is the moment the
          run has been building toward and it should read like one. */
-      WS.Audio.play('explode');
+      WS.Audio.play('explode', e.x);
       WS.FX.shake(9, 0.5);
       WS.FX.stop(0.12);
       WS.FX.flash(e.x, e.y, e.radius * 4, WS.CONST.COLORS.boss, 0.6);
