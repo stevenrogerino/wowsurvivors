@@ -13,6 +13,14 @@
  * particle ever moves faster than anything that spawns one asks for, and that
  * none of them end up outside the world.
  *
+ * It checks seeking bolts for the mirror-image failure. Homing used to steer
+ * by lerping the velocity toward target-direction x speed, and a lerp between
+ * two vectors of equal length gives a chord - always shorter than the radius -
+ * so every frame a bolt turned it lost a little speed. On the near-180-degree
+ * turn a bolt makes right after piercing something it shed most of its speed
+ * in a few frames and settled into a hover, sitting on the field like a mine.
+ * A bolt now holds its launch speed exactly, so that is the assertion.
+ *
  *   npm i playwright && npx playwright install chromium
  *   node tools/check-fx.js
  *
@@ -37,6 +45,7 @@ const MAX_SPEED = 1200;
     WS.Game.startRun('elwynn', 'mage');
     const W = WS.CONST.WORLD_WIDTH, H = WS.CONST.WORLD_HEIGHT, K = WS.Input.keys;
     let maxSpeed = 0, offworld = 0, nan = 0, seen = 0, fastest = null;
+    let slowestBolt = 1, boltSamples = 0, stalled = null;
     for (let i = 0; i < 60 * 240; i++) {
       if (WS.Game.state === 'levelup' || WS.Game.state === 'blessing') {
         const c = document.querySelector('#overlay:not(.hidden) .card');
@@ -56,6 +65,16 @@ const MAX_SPEED = 1200;
       pl.health = pl.maxHealth;              // survive long enough to observe
       WS.Game.update(1 / 60);
 
+      // Seeking bolts must not lose speed while they turn.
+      const bolts = WS.Projectile.bolts;
+      for (let n = 0; n < bolts.count; n++) {
+        const bo = bolts.active[n];
+        if (!bo.homing || !bo.speed) continue;
+        boltSamples++;
+        const ratio = Math.hypot(bo.vx, bo.vy) / bo.speed;
+        if (ratio < slowestBolt) { slowestBolt = ratio; stalled = bo.art; }
+      }
+
       const parts = WS.FX.particles;
       for (let n = 0; n < parts.count; n++) {
         const p = parts.active[n];
@@ -67,7 +86,8 @@ const MAX_SPEED = 1200;
         if (p.x < -200 || p.x > W + 200 || p.y < -200 || p.y > H + 200) offworld++;
       }
     }
-    return { maxSpeed, offworld, nan, seen, fastest, limit: MAX_SPEED };
+    return { maxSpeed, offworld, nan, seen, fastest, limit: MAX_SPEED,
+      slowestBolt, boltSamples, stalled };
   }, MAX_SPEED);
 
   if (worst.seen === 0) fail.push('no particles observed at all - the harness never got into combat');
@@ -77,9 +97,15 @@ const MAX_SPEED = 1200;
       ` (colour ${worst.fastest}) - a caller is probably passing a velocity where a direction is expected`);
   }
   if (worst.offworld > 0) fail.push(`${worst.offworld} particle samples were outside the world`);
+  if (worst.boltSamples === 0) fail.push('no seeking bolts observed - mage should fire them from the first shot');
+  else if (worst.slowestBolt < 0.98) {
+    fail.push(`a seeking bolt fell to ${(worst.slowestBolt * 100).toFixed(0)}% of its launch speed` +
+      ` (art ${worst.stalled}) - steering is bleeding speed, and a bolt that stalls sits on the field like a mine`);
+  }
 
   console.log(fail.length ? fail.join('\n')
-    : `ok: ${worst.seen} particle samples, fastest ${worst.maxSpeed.toFixed(0)} px/s, none off-world`);
+    : `ok: ${worst.seen} particle samples, fastest ${worst.maxSpeed.toFixed(0)} px/s, none off-world;` +
+      ` ${worst.boltSamples} seeking-bolt samples, slowest ${(worst.slowestBolt * 100).toFixed(0)}% of launch speed`);
   await b.close();
   process.exitCode = fail.length ? 1 : 0;
 })();

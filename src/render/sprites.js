@@ -58,6 +58,23 @@
     g.lineWidth = WS.max(1.6, rx * 0.16);
     g.strokeStyle = p.line;
     g.stroke();
+    /* The lit edge, along THIS body's own ellipse and clipped inside it, so
+       only the inner half of the stroke shows and it reads as light catching
+       the form. It used to be a separate circular arc laid over the body at a
+       fixed radius, which on anything that was not a circle cut across the
+       shape instead of hugging it - a stray half-ring floating on every
+       creature and every survivor. Light belongs in the form, not on top. */
+    g.save();
+    g.beginPath();
+    g.ellipse(0, 0, rx, ry, 0, 0, WS.TAU);
+    g.clip();
+    g.globalAlpha = 0.55;
+    g.strokeStyle = p.hi;
+    g.lineWidth = WS.max(1.6, rx * 0.2);
+    g.beginPath();
+    g.ellipse(0, 0, rx, ry, 0, WS.PI * 0.92, WS.PI * 1.72);
+    g.stroke();
+    g.restore();
     g.restore();
   }
 
@@ -76,18 +93,6 @@
     g.fillStyle = colour;
     g.beginPath(); g.arc(x - spread, y, r, 0, WS.TAU); g.fill();
     g.beginPath(); g.arc(x + spread, y, r, 0, WS.TAU); g.fill();
-    g.restore();
-  }
-
-  /** The Arclight rim: a bright crescent along the upper-left of a body mass. */
-  function rimLight(g, x, y, r, colour, alpha) {
-    g.save();
-    g.globalAlpha = alpha === undefined ? 0.5 : alpha;
-    g.strokeStyle = colour;
-    g.lineWidth = WS.max(1, r * 0.13);
-    g.beginPath();
-    g.arc(x, y, r * 0.92, WS.PI * 0.85, WS.PI * 1.75);
-    g.stroke();
     g.restore();
   }
 
@@ -147,7 +152,6 @@
       poly(g, [[cx - 11 * u, cy - 18 * u], [cx - 16 * u, cy - 30 * u], [cx - 6 * u, cy - 22 * u]], p.lo, p.line, u);
       poly(g, [[cx + 11 * u, cy - 18 * u], [cx + 16 * u, cy - 30 * u], [cx + 6 * u, cy - 22 * u]], p.lo, p.line, u);
       eyes(g, cx, cy - 14 * u, 4.5 * u, 1.7 * u, '#ffd36b');
-      rimLight(g, cx, cy, 22 * u, p.hi);
     },
 
     gnoll(g, s, p) {
@@ -161,7 +165,6 @@
       poly(g, [[cx - 5 * u, cy - 14 * u], [cx + 5 * u, cy - 14 * u], [cx, cy - 6 * u]], p.hi); // snout
       eyes(g, cx, cy - 22 * u, 5 * u, 1.9 * u, '#ffb347');
       blade(g, cx + 26 * u, cy + 2 * u, 30 * u, 5 * u, 0.5, '#c8ccd8', '#6a7080');
-      rimLight(g, cx, cy, 26 * u, p.hi);
     },
 
     bandit(g, s, p) {
@@ -176,7 +179,6 @@
       g.fillRect(cx - 12 * u, cy - 20 * u, 24 * u, 4 * u);
       eyes(g, cx, cy - 22 * u, 4 * u, 1.5 * u, '#fff0d0');
       blade(g, cx + 20 * u, cy + 4 * u, 26 * u, 4 * u, 0.7, '#d7dbe6', '#767c8c');
-      rimLight(g, cx, cy, 22 * u, p.hi);
     },
 
     brute(g, s, p) {
@@ -190,7 +192,6 @@
       shaded(g, cx, cy - 20 * u, 12 * u, 11 * u, p);
       g.fillStyle = p.lo; g.fillRect(cx - 13 * u, cy - 22 * u, 26 * u, 5 * u);
       eyes(g, cx, cy - 21 * u, 4.5 * u, 1.7 * u, '#ff8f6b');
-      rimLight(g, cx, cy, 28 * u, p.hi);
     },
 
     murloc(g, s, p) {
@@ -212,7 +213,6 @@
       g.fillStyle = p.dark;                                        // wide gormless mouth
       g.beginPath(); g.ellipse(cx, cy - 16 * u, 9 * u, 4.5 * u, 0, 0, WS.PI); g.fill();
       eyes(g, cx, cy - 26 * u, 7 * u, 3 * u, '#e8ffd8');
-      rimLight(g, cx, cy, 20 * u, p.hi);
     },
 
     necromancer(g, s, p) {
@@ -278,7 +278,6 @@
       g.fillStyle = '#2a1414';                                     // hanging jaw
       g.beginPath(); g.ellipse(cx - 2 * u, cy - 10 * u, 6 * u, 5 * u, 0, 0, WS.TAU); g.fill();
       eyes(g, cx - 2 * u, cy - 21 * u, 4 * u, 1.8 * u, '#d9ff7a');
-      rimLight(g, cx, cy, 24 * u, p.hi);
     },
 
     geist(g, s, p) {
@@ -309,7 +308,6 @@
       blade(g, cx + 38 * u, cy + 6 * u, 34 * u, 8 * u, 0.75, '#aeb6c4', '#5a6070');
       shaded(g, cx - 4 * u, cy - 24 * u, 13 * u, 11 * u, p, -0.2); // sagging head
       eyes(g, cx - 4 * u, cy - 25 * u, 5 * u, 2 * u, '#bfff6b');
-      rimLight(g, cx, cy, 32 * u, p.hi);
     },
 
     wraith(g, s, p) {
@@ -377,7 +375,6 @@
       poly(g, [[cx - 28 * u, cy - 14 * u], [cx - 30 * u, cy - 26 * u], [cx - 20 * u, cy - 16 * u]], p.lo, p.line, u);
       poly(g, [[cx - 16 * u, cy - 14 * u], [cx - 14 * u, cy - 26 * u], [cx - 8 * u, cy - 15 * u]], p.lo, p.line, u);
       eyes(g, cx - 26 * u, cy - 8 * u, 4 * u, 1.6 * u, '#ffe08a');
-      rimLight(g, cx - 2 * u, cy, 24 * u, p.hi, 0.35);
     },
 
     cat(g, s, p) {
@@ -401,7 +398,6 @@
       poly(g, [[cx - 30 * u, cy - 14 * u], [cx - 31 * u, cy - 24 * u], [cx - 22 * u, cy - 15 * u]], p.lo, p.line, u);
       poly(g, [[cx - 18 * u, cy - 15 * u], [cx - 15 * u, cy - 25 * u], [cx - 10 * u, cy - 14 * u]], p.lo, p.line, u);
       eyes(g, cx - 24 * u, cy - 7 * u, 4.5 * u, 1.8 * u, '#c9f26b');
-      rimLight(g, cx - 2 * u, cy, 24 * u, p.hi, 0.35);
     },
 
     boar(g, s, p) {
@@ -435,7 +431,6 @@
         g.stroke();
       }
       eyes(g, cx - 22 * u, cy + 1 * u, 4.5 * u, 1.6 * u, '#ff9d6b');
-      rimLight(g, cx, cy, 24 * u, p.hi, 0.35);
     },
 
     quilboar(g, s, p) {
@@ -540,7 +535,6 @@
       g.fillStyle = '#fff'; // bared teeth
       for (let i = -2; i <= 2; i++) poly(g, [[cx + i * 3 * u, cy - 12 * u], [cx + i * 3 * u + 1.4 * u, cy - 8 * u], [cx + i * 3 * u + 2.8 * u, cy - 12 * u]], '#fff');
       eyes(g, cx, cy - 26 * u, 5 * u, 2 * u, '#ffe14d');
-      rimLight(g, cx, cy, 26 * u, p.hi);
     },
 
     harpy(g, s, p) {
@@ -736,7 +730,6 @@
         }
         break;
     }
-    rimLight(g, cx, cy + 4 * u, 22 * u, p.hi, 0.4);
   }
 
   /* ------------------------------------------------------------- props ---- */

@@ -479,16 +479,56 @@
     for (let i = 0; i < zones.count; i++) {
       const z = zones.active[i];
       const fade = WS.clamp(z.life / z.maxLife, 0, 1);
-      const grd = ctx.createRadialGradient(z.x, z.y, z.radius * 0.2, z.x, z.y, z.radius);
-      grd.addColorStop(0, WS.rgb(z.colour, 0.30 * fade));
-      grd.addColorStop(1, WS.rgb(z.colour, 0.02));
+      const R = z.radius;
+
+      /* A zone used to be a flat disc under a plain hard ring, which read as a
+         circle drawn on the grass rather than something happening to it. Four
+         cheap passes fix that: ground it, fill it, edge it twice, and turn a
+         ring of graduations - the same language the health gauge uses, which
+         is what makes it read as a spell and not a decal. */
+
+      // 1. Scorch. The ground goes darker under the effect, so it sits IN the
+      //    world instead of floating over it.
+      ctx.globalCompositeOperation = 'source-over';
+      const burn = ctx.createRadialGradient(z.x, z.y, 0, z.x, z.y, R);
+      burn.addColorStop(0, `rgba(0,0,0,${0.28 * fade})`);
+      burn.addColorStop(0.75, `rgba(0,0,0,${0.16 * fade})`);
+      burn.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = burn;
+      ctx.beginPath(); ctx.arc(z.x, z.y, R, 0, WS.TAU); ctx.fill();
+
+      // 2. The energy itself, hottest off-centre so it does not read as a lamp.
+      ctx.globalCompositeOperation = 'lighter';
+      const grd = ctx.createRadialGradient(z.x, z.y, R * 0.15, z.x, z.y, R);
+      grd.addColorStop(0, WS.rgb(z.colour, 0.34 * fade));
+      grd.addColorStop(0.62, WS.rgb(z.colour, 0.17 * fade));
+      grd.addColorStop(1, WS.rgb(z.colour, 0));
       ctx.fillStyle = grd;
-      ctx.beginPath(); ctx.arc(z.x, z.y, z.radius, 0, WS.TAU); ctx.fill();
-      ctx.globalAlpha = 0.55 * fade;
+      ctx.beginPath(); ctx.arc(z.x, z.y, R, 0, WS.TAU); ctx.fill();
+
+      // 3. Two edges: a soft one just inside, a bright hairline on the rim.
+      const breathe = 0.98 + 0.02 * WS.sin(time * 4 + z.phase);
+      ctx.globalAlpha = 0.3 * fade;
       ctx.strokeStyle = WS.rgb(z.colour, 1);
+      ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.arc(z.x, z.y, R * breathe * 0.94, 0, WS.TAU); ctx.stroke();
+      ctx.globalAlpha = 0.85 * fade;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(z.x, z.y, R * breathe, 0, WS.TAU); ctx.stroke();
+
+      // 4. Graduations, turning slowly. Twelve, so the rotation is legible
+      //    without the ring ever looking like it is strobing.
+      ctx.globalAlpha = 0.55 * fade;
       ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(z.x, z.y, z.radius * (0.98 + 0.02 * WS.sin(time * 4 + z.phase)), 0, WS.TAU);
-      ctx.stroke();
+      const spin = time * 0.5 + z.phase;
+      for (let n = 0; n < 12; n++) {
+        const a = spin + (n / 12) * WS.TAU;
+        const ca = WS.cos(a), sa = WS.sin(a);
+        ctx.beginPath();
+        ctx.moveTo(z.x + ca * R * 0.86, z.y + sa * R * 0.86);
+        ctx.lineTo(z.x + ca * R * 0.97, z.y + sa * R * 0.97);
+        ctx.stroke();
+      }
       ctx.globalAlpha = 1;
     }
     ctx.restore();
@@ -611,11 +651,42 @@
     for (let i = 0; i < bolts.count; i++) {
       const b = bolts.active[i];
       const r = b.radius;
+      const c = b.colour;
+
+      /* The streak. Every bolt has carried a `trail` flag since launch and
+         nothing ever read it, so the whole arsenal flew without motion.
+         Length comes from actual speed, so a lobbed bolt barely has one and a
+         fast one draws a hard line - which is the cue for how quickly a shot
+         crosses the field, and the one that makes a seeking missile's curve
+         legible instead of a dot teleporting along an arc. */
+      if (b.trail !== false) {
+        const speed = WS.sqrt(b.vx * b.vx + b.vy * b.vy);
+        // The streak has to clear the bolt's own glow, which reaches r*2.4, or
+        // it just thickens the blob. At 0.055 it did exactly that.
+        const len = WS.min(speed * 0.13, r * 14);
+        if (len > r * 3) {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          ctx.rotate(WS.atan2(b.vy, b.vx));
+          const tg = ctx.createLinearGradient(0, 0, -len, 0);
+          tg.addColorStop(0, WS.rgb(c, 0.75));
+          tg.addColorStop(0.3, WS.rgb(c, 0.32));
+          tg.addColorStop(1, WS.rgb(c, 0));
+          ctx.fillStyle = tg;
+          ctx.beginPath();
+          ctx.moveTo(0, -r * 0.8);
+          ctx.quadraticCurveTo(-len * 0.5, -r * 0.24, -len, 0);
+          ctx.quadraticCurveTo(-len * 0.5, r * 0.24, 0, r * 0.8);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
       ctx.save();
       ctx.translate(b.x, b.y);
       const ang = b.spinRate ? b.spin : WS.atan2(b.vy, b.vx);
       ctx.rotate(ang);
-      const c = b.colour;
       const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 2.4);
       grd.addColorStop(0, WS.rgb(c, 0.95));
       grd.addColorStop(0.4, WS.rgb(c, 0.45));
@@ -657,6 +728,21 @@
         const a = o.angle + (n / o.count) * WS.TAU;
         const x = player.x + WS.cos(a) * o.radius;
         const y = player.y + WS.sin(a) * o.radius;
+
+        // The path just travelled, fading behind. Without it an orbiting blade
+        // is a diamond that happens to be somewhere, not one that is moving.
+        const dir = o.speed >= 0 ? -1 : 1;
+        for (let k = 1; k <= 5; k++) {
+          const ta = a + dir * k * 0.11;
+          ctx.globalAlpha = (1 - k / 5) * 0.35;
+          ctx.fillStyle = WS.rgb(o.colour, 1);
+          ctx.beginPath();
+          ctx.arc(player.x + WS.cos(ta) * o.radius, player.y + WS.sin(ta) * o.radius,
+            o.size * (0.5 - k * 0.07), 0, WS.TAU);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(a + o.angle * 2);
@@ -684,12 +770,18 @@
     for (let i = 0; i < beams.count; i++) {
       const b = beams.active[i];
       const fade = WS.clamp(b.life / b.maxLife, 0, 1);
+      // Three passes - bloom, body, core - so a beam reads as light with a hot
+      // centre rather than a coloured stick laid on the ground.
+      ctx.globalAlpha = fade * 0.5;
+      ctx.strokeStyle = WS.rgb(b.colour, 0.35);
+      ctx.lineWidth = b.width * 2.2;
+      ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2); ctx.stroke();
       ctx.globalAlpha = fade;
-      ctx.strokeStyle = WS.rgb(b.colour, 0.55);
+      ctx.strokeStyle = WS.rgb(b.colour, 0.6);
       ctx.lineWidth = b.width;
       ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2); ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,255,255,.9)';
-      ctx.lineWidth = WS.max(1.5, b.width * 0.25);
+      ctx.strokeStyle = 'rgba(255,255,255,.95)';
+      ctx.lineWidth = WS.max(1.5, b.width * 0.22);
       ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2); ctx.stroke();
     }
     ctx.restore();
@@ -702,15 +794,38 @@
     for (let i = 0; i < flashes.count; i++) {
       const f = flashes.active[i];
       const t = 1 - WS.clamp(f.life / f.maxLife, 0, 1);
-      const r = f.radius * (0.35 + 0.65 * t);
-      ctx.globalAlpha = (1 - t) * 0.75;
+      /* An impact leaves fast and slows, so the radius eases out rather than
+         travelling at a constant rate, and the ring THINS as it grows. A ring
+         of constant weight expanding at constant speed reads as a bubble; a
+         thinning one that decelerates reads as energy spending itself. */
+      const e = 1 - (1 - t) * (1 - t);
+      const r = f.radius * (0.22 + 0.78 * e);
+
+      // The core: bright, and gone inside the first third. This is the hit.
+      const core = WS.clamp(1 - t * 3, 0, 1);
+      if (core > 0) {
+        const cg = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.radius * 0.7);
+        cg.addColorStop(0, WS.rgb(f.colour, 0.85 * core));
+        cg.addColorStop(1, WS.rgb(f.colour, 0));
+        ctx.fillStyle = cg;
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.radius * 0.7, 0, WS.TAU); ctx.fill();
+      }
+
+      ctx.globalAlpha = (1 - t) * (1 - t) * 0.9;
       ctx.strokeStyle = WS.rgb(f.colour, 1);
-      ctx.lineWidth = WS.max(1.5, f.radius * 0.06 * (1 - t) + 1);
+      ctx.lineWidth = WS.max(1, f.radius * 0.1 * (1 - e) + 1);
       ctx.beginPath(); ctx.arc(f.x, f.y, r, 0, WS.TAU); ctx.stroke();
-      ctx.globalAlpha = (1 - t) * 0.22;
-      ctx.fillStyle = WS.rgb(f.colour, 1);
-      ctx.beginPath(); ctx.arc(f.x, f.y, r, 0, WS.TAU); ctx.fill();
+
+      // A white leading edge for the first half, so the moment of contact is
+      // the brightest thing in the effect and not the aftermath.
+      if (t < 0.5) {
+        ctx.globalAlpha = (1 - t * 2) * 0.7;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = WS.max(1, f.radius * 0.045 * (1 - e) + 0.6);
+        ctx.beginPath(); ctx.arc(f.x, f.y, r, 0, WS.TAU); ctx.stroke();
+      }
     }
+    ctx.globalAlpha = 1;
     ctx.restore();
   };
 

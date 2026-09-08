@@ -28,6 +28,10 @@
   };
 
   const OFF = 200;  // how far outside the world a bolt may travel before dying
+  /* How fast a seeking bolt may turn, in radians per second. About 400 deg/s:
+     quick enough to come back around after a pierce, slow enough that the arc
+     reads as a curve rather than a right angle. */
+  const TURN_RATE = 7;
 
   /* ---------------------------------------------------------- friendly --- */
   /** `spec` is the shared scratch object filled by weapon.js; fields are copied
@@ -48,6 +52,9 @@
     b.bounces = spec.bounces || 0;
     b.homingTarget = spec.homingTarget || null;
     b.homing = !!spec.homingTarget;
+    // The speed a seeking bolt holds for its whole life. Kept because steering
+    // must never be allowed to change it - see the turn in P.update.
+    b.speed = WS.sqrt(vx * vx + vy * vy);
     b.source = spec.source;
     b.heal = spec.heal || 0;
     b.procChain = spec.procChain || 0;
@@ -139,16 +146,36 @@
       if (b.life <= 0) { this.bolts.releaseAt(i); continue; }
 
       if (b.homing) {
-        // Re-acquire when the current mark dies, so a homing bolt keeps working
-        // through a crowd instead of flying off into nothing.
-        if (!b.homingTarget || b.homingTarget._dead) {
-          b.homingTarget = WS.Enemy.findNearest(b.x, b.y, WS.Config.homingReacquireRange);
+        /* Re-acquire when the current mark dies or has already been hit, so a
+           seeking bolt keeps working through a crowd. Excluding what it has
+           already pierced matters: hitBy stops it damaging the same enemy
+           twice, so without this it would lock onto a target it cannot hurt
+           and orbit the corpse for the rest of its life. */
+        if (!b.homingTarget || b.homingTarget._dead || b.hitBy.has(b.homingTarget)) {
+          b.homingTarget = WS.Enemy.findNearest(
+            b.x, b.y, WS.Config.homingReacquireRange, b.hitBy);
         }
         if (b.homingTarget) {
+          /* Steer by ROTATING the velocity, at a bounded turn rate, and hold
+             the launch speed exactly.
+             
+             This used to lerp the velocity toward target-direction x speed.
+             Lerping between two vectors of equal length gives a chord, and a
+             chord is always shorter than the radius - so every frame it turned,
+             the bolt lost a little speed. On the near-180-degree turn a bolt
+             makes right after piercing something, it shed most of its speed in
+             a few frames and settled into a hover, sitting on the field like a
+             mine. Rotating cannot do that: direction changes, speed does not. */
           const [tx, ty] = WS.normalize(b.homingTarget.x - b.x, b.homingTarget.y - b.y);
-          const speed = WS.sqrt(b.vx * b.vx + b.vy * b.vy);
-          b.vx = WS.lerp(b.vx, tx * speed, WS.min(1, 6 * dt));
-          b.vy = WS.lerp(b.vy, ty * speed, WS.min(1, 6 * dt));
+          const [cx, cy] = WS.normalize(b.vx, b.vy);
+          // Signed angle from the current heading to the target heading.
+          const cross = cx * ty - cy * tx;
+          const dot = WS.clamp(cx * tx + cy * ty, -1, 1);
+          const want = WS.atan2(cross, dot);
+          const step = WS.clamp(want, -TURN_RATE * dt, TURN_RATE * dt);
+          const cs = WS.cos(step), sn = WS.sin(step);
+          b.vx = (cx * cs - cy * sn) * b.speed;
+          b.vy = (cx * sn + cy * cs) * b.speed;
         }
       }
 
@@ -177,6 +204,9 @@
           } else { this.bolts.releaseAt(i); continue; }
         } else if (b.pierce > 0) {
           b.pierce--;
+          // Let it pick a new mark on the next step instead of continuing to
+          // steer at something it can no longer damage.
+          if (b.homing) b.homingTarget = null;
         } else {
           WS.FX.flash(b.x, b.y, b.radius * 2.4, b.colour, 0.18);
           this.bolts.releaseAt(i); continue;
