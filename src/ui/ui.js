@@ -62,13 +62,15 @@
     const portraitWrap = el('div'); portraitWrap.id = 'hud-portrait';
     const gauge = el('div', 'gauge-wrap');
     const svg = document.createElementNS(ns, 'svg');
-    svg.setAttribute('viewBox', '0 0 96 96');
-    const rHP = 44, rXP = 36;
+    svg.setAttribute('viewBox', '0 0 112 112');
+    const rHP = 52, rXP = 43;
     // A dashed track behind the health arc reads as graduations, so a glance
     // gives a rough fraction without reading the number.
     const tHP = svgArc(rHP, 6, 'track');
     const gHP = svgArc(rHP, 6, 'ticks');
-    gHP.style.strokeDasharray = '1.5 8.6';
+    // 32 graduations that divide the circumference exactly, so the last tick
+    // meets the first instead of leaving a ragged seam at twelve o'clock.
+    gHP.style.strokeDasharray = `1.5 ${(2 * Math.PI * rHP) / 32 - 1.5}`;
     const aHP = svgArc(rHP, 6, 'arc-hp');
     const tXP = svgArc(rXP, 3, 'track');
     const aXP = svgArc(rXP, 3, 'arc-xp');
@@ -162,8 +164,8 @@
     // The portrait shows the survivor's actual silhouette, not a glyph.
     this.els.portrait.innerHTML = '';
     const img = new Image();
-    img.src = WS.Sprites.hero(p.characterId, p.character.color, 64).toDataURL();
-    img.width = img.height = 64;
+    img.src = WS.Sprites.hero(p.characterId, p.character.color, 76).toDataURL();
+    img.width = img.height = 76;
     this.els.portrait.append(img);
     this.els.name.textContent = p.character.name;
     this._passiveSig = null;

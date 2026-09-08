@@ -148,7 +148,7 @@
       p.blessingsTaken = p.blessingsTaken || {};
       p.blessingsTaken[choice.id] = true;
       WS.Audio.play('evolve');
-      WS.Game.announce(b.name, 'The blessing takes hold.', 2.5);
+      WS.Game.announce(b.name, 'The blessing takes hold.', 2.5, { kind: 'glory' });
       return;
     }
 
@@ -160,7 +160,7 @@
       WS.Save.stats.unions++;
       WS.Audio.play('evolve');
       WS.FX.shake(6, 0.5);
-      WS.Game.announce(choice.name + '!', 'Two weapons become one.', 3.0);
+      WS.Game.announce(choice.name + '!', 'Two weapons become one.', 3.0, { kind: 'glory' });
 
     } else if (choice.type === 'new_weapon') {
       WS.Player.addWeapon(p, choice.id);
@@ -177,7 +177,8 @@
         WS.Save.stats.evolutions++;
         WS.Audio.play('evolve');
         WS.FX.shake(5, 0.4);
-        WS.Game.announce(w.data.evolveName + '!', 'Your weapon has evolved', 3.0);
+        WS.Game.announce(w.data.evolveName + '!', 'Your weapon has grown into something else.', 3.0,
+          { kind: 'glory' });
       }
 
     } else if (choice.type === 'stat') {

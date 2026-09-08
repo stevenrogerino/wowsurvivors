@@ -5,17 +5,24 @@
    ======================================================================== */
 
 :root {
-  /* -- substrate. Neutrals carry a slight blue bias so they read as chosen
-        rather than inherited, and so the gold accent sits warm against them. */
+  /* -- substrate ---------------------------------------------------------
+     The ladder runs cold at the bottom and warm at the top, and that is the
+     whole duality in two columns: the void the world falls into is blue and
+     unbothered, the surfaces you actually hold are lit by something with a
+     fire in it. Panels sit on the warm rungs, the battlefield on the cold. */
   --void:        #06070b;
   --obsidian:    #0b0d12;
-  --obsidian-2:  #11141d;
-  --obsidian-3:  #181d29;
-  --obsidian-4:  #212736;
+  --obsidian-2:  #13141c;
+  --obsidian-3:  #1d1c26;
+  --obsidian-4:  #2b2733;
 
-  --rim:         rgba(255, 255, 255, .07);
-  --rim-lit:     rgba(255, 255, 255, .14);
-  --rim-arc:     rgba(245, 197, 107, .32);
+  /* Rims are warm white, not white. Every bevel in the set carries one, so
+     this is the single change that decides whether the UI feels lamplit. */
+  --rim:         rgba(255, 240, 214, .075);
+  --rim-lit:     rgba(255, 240, 214, .16);
+  --rim-arc:     rgba(245, 197, 107, .34);
+  /* An ambient warmth to lay under raised surfaces - the light in the room. */
+  --hearth:      radial-gradient(120% 90% at 50% -10%, rgba(245,197,107,.055), transparent 62%);
 
   /* -- light ----------------------------------------------------------- */
   --arc:         #f5c56b;
@@ -62,10 +69,10 @@
   --lift-2: 0 20px 52px rgba(0,0,0,.62);
   /* The bevel: lit along the top edge, shadowed along the foot. Every raised
      surface carries it, which is what stops the set reading as flat boxes. */
-  --bevel: inset 0 1px 0 rgba(255,255,255,.075), inset 0 -1px 0 rgba(0,0,0,.55);
-  --bevel-deep: inset 0 1px 0 rgba(255,255,255,.10), inset 0 -2px 3px rgba(0,0,0,.5);
+  --bevel: inset 0 1px 0 rgba(255,244,224,.085), inset 0 -1px 0 rgba(0,0,0,.55);
+  --bevel-deep: inset 0 1px 0 rgba(255,244,224,.115), inset 0 -2px 3px rgba(0,0,0,.5);
   /* A sunken surface: the inverse, for wells and tracks. */
-  --sunk: inset 0 1px 2px rgba(0,0,0,.6), inset 0 -1px 0 rgba(255,255,255,.045);
+  --sunk: inset 0 1px 2px rgba(0,0,0,.6), inset 0 -1px 0 rgba(255,244,224,.05);
 }
 
 * { box-sizing: border-box; }
@@ -283,7 +290,8 @@ html, body {
 .card {
   width: 270px; min-height: 316px;
   background:
-    radial-gradient(120% 80% at 50% -10%, rgba(255,255,255,.045), transparent 60%),
+    radial-gradient(120% 80% at 50% -10%, rgba(255,248,236,.05), transparent 60%),
+    var(--hearth),
     linear-gradient(180deg, var(--obsidian-2), var(--obsidian));
   border: 1px solid var(--rim); border-radius: 2px;
   box-shadow: var(--bevel-deep), var(--lift-1);
@@ -297,9 +305,13 @@ html, body {
 }
 .card:nth-child(2) { animation-delay: .05s; }
 .card:nth-child(3) { animation-delay: .1s; }
+/* Cards arrive eager: they overshoot the mark by three pixels and settle.
+   A straight lerp to rest is correct and lifeless; the overshoot is the
+   difference between a dialog appearing and a hand dealing you a card. */
 @keyframes card-in {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: none; }
+  0%   { opacity: 0; transform: translateY(16px) scale(.985); }
+  62%  { opacity: 1; transform: translateY(-3px) scale(1.004); }
+  100% { opacity: 1; transform: none; }
 }
 /* The quality arc across the shoulders of the card. */
 .card::before {
@@ -473,8 +485,10 @@ html, body {
 #hud.hidden { display: none; }
 
 /* -- portrait cluster ------------------------------------------------- */
-#hud-portrait { position: absolute; top: 20px; left: 20px; display: flex; align-items: center; gap: 15px; }
-.gauge-wrap { position: relative; width: 96px; height: 96px; }
+/* The survivor leads. They are the cute half of the game's two halves, so
+   the portrait is the largest single thing in the HUD and it breathes. */
+#hud-portrait { position: absolute; top: 20px; left: 20px; display: flex; align-items: center; gap: 17px; }
+.gauge-wrap { position: relative; width: 112px; height: 112px; }
 .gauge-wrap svg { position: absolute; inset: 0; transform: rotate(-90deg); overflow: visible; }
 .gauge-wrap .track { fill: none; stroke: rgba(255,255,255,.08); stroke-width: 6; }
 .gauge-wrap .ticks { fill: none; stroke: rgba(255,255,255,.16); stroke-width: 6; }
@@ -488,12 +502,28 @@ html, body {
   filter: drop-shadow(0 0 4px rgba(245,197,107,.5));
 }
 .gauge-wrap .portrait {
-  position: absolute; inset: 15px; border-radius: 50%;
+  position: absolute; inset: 17px; border-radius: 50%;
   background: radial-gradient(circle at 40% 30%, var(--obsidian-3), var(--obsidian));
-  border: 1px solid var(--rim);
+  border: 1px solid var(--rim-lit);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.6), 0 4px 14px rgba(0,0,0,.5),
+              inset 0 -6px 12px rgba(0,0,0,.45);
   display: grid; place-items: center; overflow: hidden;
 }
-.gauge-wrap .portrait img { width: 100%; height: 100%; }
+/* The bob. Two and a half seconds, a pixel and a half - below the threshold
+   where you would call it an animation, above the one where the portrait
+   looks like a dead sticker. The hero is alive even while you read a menu. */
+.gauge-wrap .portrait img {
+  width: 100%; height: 100%;
+  animation: hero-bob 2.4s var(--ease) infinite;
+}
+@keyframes hero-bob {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-1.5px) scale(1.015); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gauge-wrap .portrait img { animation: none; }
+  .card { animation-duration: .01s; }
+}
 .gauge-wrap .lvl {
   position: absolute; bottom: -3px; left: 50%; transform: translateX(-50%);
   background: var(--obsidian); border: 1px solid var(--arc); color: var(--arc-hot);

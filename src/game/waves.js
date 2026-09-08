@@ -62,7 +62,7 @@
     if (!boss) return null;
     boss.finalBoss = !!final;
     const t = boss.template;
-    WS.Game.announce(t.name, t.yell, 3.4);
+    WS.Game.announce(t.name, t.yell, 3.4, { kind: 'dread', art: t.art, tint: t.tint });
     WS.Audio.play('boss');
     WS.FX.shake(6, 0.5);
     WS.FX.screen('rgba(180,40,120,.14)', 0.4);

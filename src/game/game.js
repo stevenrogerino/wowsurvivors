@@ -157,8 +157,34 @@
   };
 
   /* ------------------------------------------------------- presentation -- */
-  Game.announce = function (title, subtitle, duration) {
-    this.banner = { title, subtitle, life: duration || 2.5, maxLife: duration || 2.5 };
+  /** True while a full-screen overlay hides the battlefield. The renderer and
+   *  the banner clock both key off this, so they can never disagree. */
+  Game.overlayCovers = function () {
+    return this.state === 'levelup' || this.state === 'blessing'
+      || this.state === 'paused' || this.state === 'over';
+  };
+
+  /**
+   * Put a title card on screen.
+   *
+   * `opts` decides how big the moment reads. The game has two registers and
+   * both matter: a boss walking on should feel like the sky opened, and a
+   * weapon evolving should feel like a gift. Everything else is a caption.
+   *
+   *   kind: 'plain'  a swept rule and text. The default; costs nothing.
+   *         'dread'  boss arrival - portrait medallion, dark band, red sweep.
+   *         'glory'  evolution, union, blessing - gold rays behind the text.
+   *   art:  a creature art key, drawn into the medallion for 'dread'.
+   *   tint: the medallion's palette tint.
+   */
+  Game.announce = function (title, subtitle, duration, opts) {
+    const d = duration || 2.5;
+    this.banner = {
+      title, subtitle, life: d, maxLife: d,
+      kind: (opts && opts.kind) || 'plain',
+      art: opts && opts.art, tint: opts && opts.tint,
+      seed: WS.random() * 100,
+    };
   };
 
   Game.toast = function (title, body) {
@@ -226,7 +252,8 @@
     WS.Save.save();
     WS.Audio.play('victory');
     WS.FX.screen('rgba(245,197,107,.35)', 1.2);
-    this.announce('Victory!', 'The battlefield is yours. Fight on, or claim it.', 4.0);
+    this.announce('Victory!', 'The battlefield is yours. Fight on, or claim it.', 4.0,
+      { kind: 'glory' });
     this.state = 'over';
     this.running = false;
     WS.Achievements.check();
@@ -331,8 +358,12 @@
   /** Fixed-step update with a catch-up cap, so one frame hitch never turns
    *  into a death spiral of simulation ticks. */
   Game.update = function (frameDt) {
-    // Banners and toasts keep running while the game is paused or choosing.
-    if (this.banner) {
+    /* A title card that expires behind a level-up menu was never seen, and a
+     * half-faded one bleeding through the cards reads as a rendering fault -
+     * which is exactly what it looked like. So the banner's clock stops while
+     * a full-screen choice is open and the card resumes when play does. Toasts
+     * keep running: they live in the corner and nothing covers them. */
+    if (this.banner && !this.overlayCovers()) {
       this.banner.life -= frameDt;
       if (this.banner.life <= 0) this.banner = null;
     }

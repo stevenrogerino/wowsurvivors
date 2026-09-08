@@ -151,7 +151,8 @@
     } else if (kind === 'runeblade') {
       WS.Save.stats.runebladesClaimed = (WS.Save.stats.runebladesClaimed || 0) + 1;
       WS.Save.save();
-      WS.Game.announce('The runeblade answers.', 'Something colder takes the hilt.', 3.5);
+      WS.Game.announce('The runeblade answers.', 'Something colder takes the hilt.', 3.5,
+        { kind: 'glory' });
       WS.Game.addGold(WS.floor(120 * run.goldMult), p.x, p.y);
       WS.Player.addWeapon(p, 'death_strike');
       WS.Achievements.check();
@@ -160,7 +161,8 @@
     } else if (kind === 'warglaive') {
       WS.Save.stats.warglaivesClaimed = (WS.Save.stats.warglaivesClaimed || 0) + 1;
       WS.Save.save();
-      WS.Game.announce('The warglaives find you.', 'You were never going to refuse.', 3.5);
+      WS.Game.announce('The warglaives find you.', 'You were never going to refuse.', 3.5,
+        { kind: 'glory' });
       WS.Game.addGold(WS.floor(120 * run.goldMult), p.x, p.y);
       WS.Player.addWeapon(p, 'fel_beam');
       WS.Achievements.check();

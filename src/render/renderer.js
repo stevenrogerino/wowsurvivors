@@ -18,6 +18,11 @@
 
   const W = WS.CONST.WORLD_WIDTH, H = WS.CONST.WORLD_HEIGHT;
 
+  // The in-world type stack, matching the DOM's --ui token. Canvas has no
+  // cascade, so the fallbacks have to be spelled out at every call site;
+  // naming it once keeps world text and panel text from drifting apart.
+  const UI_FONT = "'Archivo', 'Segoe UI', system-ui, sans-serif";
+
   R.init = function (canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
@@ -287,7 +292,7 @@
     if (WS.Save.settings.showHealthBars || e.elite || e.boss) healthBar(ctx, e);
 
     if (e.elite && !e.boss) {
-      ctx.font = "600 10px 'Archivo', system-ui, sans-serif";
+      ctx.font = `600 10px ${UI_FONT}`;
       ctx.textAlign = 'center';
       ctx.fillStyle = '#f5c56b';
       ctx.fillText(t.name, e.x, e.y - e.radius * 2.1);
@@ -727,7 +732,7 @@
       // A short overshoot on arrival, easing back to size.
       const pop = t.pop ? 1 + t.pop * 0.55 * WS.max(0, 1 - age * 6) : 1;
       ctx.globalAlpha = WS.min(1, fade * 2.2);
-      ctx.font = `600 ${WS.round(t.size * pop)}px 'Archivo', 'Segoe UI', system-ui, sans-serif`;
+      ctx.font = `600 ${WS.round(t.size * pop)}px ${UI_FONT}`;
       ctx.lineWidth = 3.5;
       ctx.strokeStyle = 'rgba(4,6,10,.9)';
       ctx.strokeText(t.text, t.x, t.y);
@@ -846,42 +851,235 @@
     ctx.fillRect(0, 0, this.viewW, this.viewH);
   };
 
-  /** The Arclight banner: a swept arc of light with the announcement over it. */
+  /* -------------------------------------------------------- title cards --
+   * The banner is the game's one loud voice, so it has registers. A caption
+   * is a swept rule and a line of text. A boss arrival gets a medallion, a
+   * dark band and a blood sweep. An evolution gets gold rays. The duality
+   * the whole game is after lives here more than anywhere: the same
+   * component says "you found a hat" and "the sky is falling".
+   */
+
+  /* The HUD is DOM, drawn over this canvas, and nothing here can see it. The
+   * timer rail runs from y=20 to roughly y=88 across the top centre, which is
+   * exactly where a centred title card wants to sit - the two collided until
+   * this constant existed. Every banner lays out downward from it. */
+  const HUD_SAFE = 108;
+  /** Medallion geometry, shared by the layout and the draw so they agree. */
+  const MED = 76, MED_HALO = MED * 1.05;
+
+  /** Ease a value in over the first `inFrac` of the banner, out over the last. */
+  function envelope(k, inFrac, outFrac) {
+    return WS.min(WS.clamp((1 - k) / inFrac, 0, 1), WS.clamp(k / outFrac, 0, 1));
+  }
+
+  /** Overshooting ease - lands past the mark, settles back. Reads as eager. */
+  function backOut(t) {
+    const p = t - 1;
+    return 1 + p * p * (2.7 * p + 1.7);
+  }
+
   R.drawBanner = function (ctx) {
     const b = WS.Game.banner;
-    if (!b) return;
+    if (!b || WS.Game.overlayCovers()) return;
     const k = WS.clamp(b.life / b.maxLife, 0, 1);
-    const appear = WS.clamp((1 - k) * 5, 0, 1);       // sweep in over the first fifth
-    const fade = WS.clamp(k * 3, 0, 1);
-    const alpha = WS.min(appear, fade);
-    const y = this.viewH * 0.22;
+    const t = 1 - k;                                  // 0 at open, 1 at close
+    const alpha = envelope(k, 0.18, 0.3);
+    if (alpha <= 0.001) return;
+    const cx = this.viewW / 2;
+    const grow = WS.clamp(t * 5, 0, 1);
+    const settle = backOut(WS.clamp(t * 3.2, 0, 1));
+
+    /* Layout. Everything hangs off HUD_SAFE downward. A dread card leads with
+       a medallion whose halo reaches MED_HALO above its centre, so its centre
+       starts exactly one halo below the safe line and the band is sized from
+       the block rather than guessed at - which is how the medallion ended up
+       straddling the band's top hairline the first time. */
+    const dread = b.kind === 'dread';
+    const medY = HUD_SAFE + MED_HALO;
+    // Glory sits lower than a caption because its ray burst needs headroom
+    // above the title; plain is a line of type and wants none.
+    const y = dread ? medY + 92 : HUD_SAFE + (b.kind === 'glory' ? 120 : 78);
 
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
 
-    const w = WS.min(this.viewW * 0.8, 900) * appear;
-    const grd = ctx.createLinearGradient(this.viewW / 2 - w / 2, 0, this.viewW / 2 + w / 2, 0);
-    grd.addColorStop(0, 'rgba(245,197,107,0)');
-    grd.addColorStop(0.5, 'rgba(245,197,107,.85)');
-    grd.addColorStop(1, 'rgba(245,197,107,0)');
-    ctx.fillStyle = grd;
-    ctx.fillRect(this.viewW / 2 - w / 2, y + 26, w, 1.5);
+    if (dread) this.bannerDread(ctx, b, cx, y, medY, grow, t, alpha);
+    else if (b.kind === 'glory') this.bannerGlory(ctx, b, y - 12, grow, t);
 
-    ctx.font = '600 30px system-ui, "Segoe UI", sans-serif';
-    ctx.letterSpacing = '2px';
-    ctx.lineWidth = 5;
-    ctx.strokeStyle = 'rgba(4,6,10,.8)';
-    ctx.strokeText(b.title, this.viewW / 2, y);
-    ctx.fillStyle = '#ffe6ae';
-    ctx.fillText(b.title, this.viewW / 2, y);
+    /* -- the swept rule, under every register ---------------------------- */
+    const hue = dread ? '255,120,104' : '245,197,107';
+    const w = WS.min(this.viewW * 0.78, 880) * grow;
+    const rule = ctx.createLinearGradient(cx - w / 2, 0, cx + w / 2, 0);
+    rule.addColorStop(0, `rgba(${hue},0)`);
+    rule.addColorStop(0.5, `rgba(${hue},.95)`);
+    rule.addColorStop(1, `rgba(${hue},0)`);
+    ctx.fillStyle = rule;
+    ctx.fillRect(cx - w / 2, y + 24, w, 1.5);
+    // A brighter core, so the rule reads as light rather than a drawn line.
+    ctx.globalAlpha = alpha * 0.55;
+    ctx.fillRect(cx - w * 0.16, y + 23, w * 0.32, 3);
+    ctx.globalAlpha = alpha;
+
+    /* -- the words -------------------------------------------------------
+     * Titles ride a small vertical settle so they arrive rather than blink.
+     */
+    const rise = (1 - settle) * 10;
+    ctx.font = `600 ${b.kind === 'plain' ? 30 : 38}px ${UI_FONT}`;
+    ctx.letterSpacing = dread ? '3px' : '1.5px';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 7;
+    ctx.strokeStyle = 'rgba(4,6,10,.9)';
+    ctx.strokeText(b.title, cx, y - rise);
+    if (b.kind !== 'plain') {
+      // Two passes: a wide coloured bloom, then the letterform over it. One
+      // pass with a shadow gives a halo; two give the sense of a lit sign.
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.75;
+      ctx.shadowColor = dread ? 'rgba(226,72,61,.95)' : 'rgba(245,197,107,.9)';
+      ctx.shadowBlur = 34;
+      ctx.fillStyle = dread ? '#ff9d8e' : '#ffd489';
+      ctx.fillText(b.title, cx, y - rise);
+      ctx.restore();
+    }
+    ctx.fillStyle = dread ? '#fff1ec' : '#fff3d6';
+    ctx.fillText(b.title, cx, y - rise);
 
     if (b.subtitle) {
-      ctx.font = '400 15px system-ui, "Segoe UI", sans-serif';
-      ctx.fillStyle = '#c9cfdd';
-      ctx.strokeText(b.subtitle, this.viewW / 2, y + 52);
-      ctx.fillText(b.subtitle, this.viewW / 2, y + 52);
+      ctx.font = `400 15.5px ${UI_FONT}`;
+      ctx.letterSpacing = '0.4px';
+      ctx.globalAlpha = alpha * WS.clamp(t * 4 - 0.35, 0, 1);
+      ctx.lineWidth = 5;
+      ctx.strokeText(b.subtitle, cx, y + 52);
+      ctx.fillStyle = dread ? '#f2dad5' : '#cfd5e3';
+      ctx.fillText(b.subtitle, cx, y + 52);
     }
+    ctx.letterSpacing = '0px';
+    ctx.restore();
+  };
+
+  /** Boss arrival: a letterbox band, a portrait medallion, a blood sweep. */
+  R.bannerDread = function (ctx, b, cx, y, medY, grow, t, alpha) {
+    /* The band. It opens from its own centre line so the screen feels seized
+       rather than covered, and it is dark enough to actually win against a
+       lit battlefield - a translucent wash reads as a rendering mistake. */
+    // The band spans the whole block: one halo above the medallion down past
+    // the subtitle, so nothing the card draws ever crosses its edge.
+    const top = medY - MED_HALO, bottom = y + 74;
+    const midY = (top + bottom) / 2;
+    const bandH = (bottom - top) * WS.clamp(grow * 1.15, 0, 1);
+    const band = ctx.createLinearGradient(0, midY - bandH / 2, 0, midY + bandH / 2);
+    band.addColorStop(0, 'rgba(5,4,7,0)');
+    band.addColorStop(0.22, 'rgba(5,4,7,.72)');
+    band.addColorStop(0.5, 'rgba(5,4,7,.88)');
+    band.addColorStop(0.78, 'rgba(5,4,7,.72)');
+    band.addColorStop(1, 'rgba(5,4,7,0)');
+    ctx.fillStyle = band;
+    ctx.fillRect(0, midY - bandH / 2, this.viewW, bandH);
+
+    // Hairlines along the band's edges: the Arclight rule language, stretched.
+    ctx.fillStyle = 'rgba(226,72,61,.28)';
+    ctx.fillRect(0, midY - bandH / 2, this.viewW, 1);
+    ctx.fillRect(0, midY + bandH / 2 - 1, this.viewW, 1);
+
+    /* A blood sweep travelling left to right, once, behind the words. */
+    const sweep = WS.clamp(t * 2.2, 0, 1);
+    const sx = -300 + sweep * (this.viewW + 600);
+    const sg = ctx.createLinearGradient(sx - 300, 0, sx + 300, 0);
+    sg.addColorStop(0, 'rgba(226,72,61,0)');
+    sg.addColorStop(0.5, `rgba(226,72,61,${0.22 * (1 - sweep)})`);
+    sg.addColorStop(1, 'rgba(226,72,61,0)');
+    ctx.fillStyle = sg;
+    ctx.fillRect(0, midY - bandH / 2, this.viewW, bandH);
+
+    if (!b.art || !WS.Sprites.has(b.art)) return;
+
+    /* The medallion. The boss's own sprite, ringed and lit, lifted off the
+       band - this is the cute half doing the epic work: the same small
+       creature you are about to fight, hung like a portrait on a wall. */
+    const S = MED;
+    ctx.save();
+    ctx.globalAlpha = alpha * WS.clamp(t * 4, 0, 1);
+    ctx.translate(cx, medY);
+    const pop = backOut(WS.clamp(t * 3.6, 0, 1));
+    ctx.scale(pop, pop);
+
+    const halo = ctx.createRadialGradient(0, 0, 6, 0, 0, MED_HALO);
+    halo.addColorStop(0, 'rgba(226,72,61,.55)');
+    halo.addColorStop(0.55, 'rgba(226,72,61,.18)');
+    halo.addColorStop(1, 'rgba(226,72,61,0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(0, 0, MED_HALO, 0, WS.TAU); ctx.fill();
+
+    // A lit disc, not a black hole: the sprite is dark-on-dark otherwise.
+    const disc = ctx.createRadialGradient(-S * 0.14, -S * 0.2, 2, 0, 0, S * 0.52);
+    disc.addColorStop(0, 'rgba(74,58,58,.98)');
+    disc.addColorStop(1, 'rgba(14,11,14,.98)');
+    ctx.fillStyle = disc;
+    ctx.beginPath(); ctx.arc(0, 0, S * 0.5, 0, WS.TAU); ctx.fill();
+
+    ctx.save();
+    ctx.beginPath(); ctx.arc(0, 0, S * 0.47, 0, WS.TAU); ctx.clip();
+    ctx.drawImage(WS.Sprites.creature(b.art, b.tint || [0.8, 0.3, 0.3], S),
+      -S / 2, -S / 2 + 3, S, S);
+    ctx.restore();
+
+    // Ring: a full thin circle for the shape, a heavy arc over the top third
+    // for the light - the Arclight bracket language read in the round.
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(255,240,214,.22)';
+    ctx.beginPath(); ctx.arc(0, 0, S * 0.5, 0, WS.TAU); ctx.stroke();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(255,120,104,.95)';
+    ctx.beginPath(); ctx.arc(0, 0, S * 0.5, -2.35, -0.79); ctx.stroke();
+    ctx.restore();
+  };
+
+  /** Evolution, union, blessing: gold rays turning slowly behind the words.
+   *
+   *  Two things keep this from reading as clip-art. It is squashed flat, both
+   *  because a burst behind a line of type wants to be wider than tall and
+   *  because a circular one would reach into the HUD - the squash is computed
+   *  from the room above the title, so the burst can never cross HUD_SAFE.
+   *  And the ray lengths are hashed off the banner's seed rather than
+   *  alternating long-short, because perfect twelvefold symmetry is the tell
+   *  that a computer drew it and not a light source.
+   */
+  R.bannerGlory = function (ctx, b, cy, grow, t) {
+    const REACH = 250;
+    const squash = WS.min(0.5, (cy - HUD_SAFE) / REACH);
+    ctx.save();
+    ctx.translate(this.viewW / 2, cy);
+    ctx.scale(1, squash);
+    ctx.rotate(b.seed + t * 0.3);
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * WS.TAU;
+      // A cheap deterministic hash: stable for one banner, uneven across rays.
+      const h = (WS.sin(i * 12.9898 + b.seed) * 43758.5453) % 1;
+      const long = (0.45 + 0.55 * (h < 0 ? h + 1 : h)) * REACH * grow;
+      const wide = 0.028 + 0.035 * ((h < 0 ? h + 1 : h));
+      const g = ctx.createLinearGradient(0, 0, WS.cos(a) * long, WS.sin(a) * long);
+      g.addColorStop(0, 'rgba(245,197,107,.34)');
+      g.addColorStop(0.55, 'rgba(245,197,107,.12)');
+      g.addColorStop(1, 'rgba(245,197,107,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      // A lens, not a triangle: the sides bow in so the tip tapers to nothing
+      // instead of ending in a hard chevron.
+      ctx.quadraticCurveTo(WS.cos(a - wide) * long * 0.5, WS.sin(a - wide) * long * 0.5,
+        WS.cos(a) * long, WS.sin(a) * long);
+      ctx.quadraticCurveTo(WS.cos(a + wide) * long * 0.5, WS.sin(a + wide) * long * 0.5, 0, 0);
+      ctx.fill();
+    }
+    const r = REACH * 0.6 * grow;
+    const core = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+    core.addColorStop(0, 'rgba(255,230,174,.36)');
+    core.addColorStop(1, 'rgba(255,230,174,0)');
+    ctx.fillStyle = core;
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, WS.TAU); ctx.fill();
     ctx.restore();
   };
 

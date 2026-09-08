@@ -53,7 +53,8 @@
 
     this.boss = WS.Enemy.spawn('aethelgard', CX, CY - 120, 1, true);
     if (this.boss) {
-      WS.Game.announce(this.boss.template.name, this.boss.template.yell, 4.0);
+      WS.Game.announce(this.boss.template.name, this.boss.template.yell, 4.0,
+        { kind: 'dread', art: this.boss.template.art, tint: this.boss.template.tint });
       WS.Audio.play('boss');
     }
   };
@@ -295,7 +296,7 @@
     WS.Save.stats.bosses.aethelgard = (WS.Save.stats.bosses.aethelgard || 0) + 1;
     WS.Save.save();
     this.stop();
-    WS.Game.announce('The eclipse breaks.', 'Aethelgard is undone.', 3.0);
+    WS.Game.announce('The eclipse breaks.', 'Aethelgard is undone.', 3.0, { kind: 'glory' });
     WS.Audio.play('victory');
     WS.FX.screen('rgba(255,230,174,.35)', 1.0);
     WS.Achievements.check();

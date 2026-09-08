@@ -401,7 +401,7 @@
     const run = WS.Game.run;
     if (run) run.metamorphoses = (run.metamorphoses || 0) + 1;
     if (p.metamorphoses <= 1) {
-      WS.Game.announce('Metamorphosis!', 'The fel takes hold.', 2.0);
+      WS.Game.announce('Metamorphosis!', 'The fel takes hold.', 2.0, { kind: 'glory' });
       WS.Audio.play('evolve');
     }
     WS.FX.shake(10, 0.5);
@@ -462,7 +462,8 @@
         p.invulnerable = 2.5;
         WS.FX.flash(p.x, p.y, 130, WS.CONST.COLORS.nature, 0.6);
         WS.Enemy.damageArea(p.x, p.y, 170, 200, null, 90, 'reincarnation');
-        WS.Game.announce('Reincarnation!', 'The ancestors are not done with you.', 2.5);
+        WS.Game.announce('Reincarnation!', 'The ancestors are not done with you.', 2.5,
+          { kind: 'glory' });
         WS.Audio.play('level');
         return true;
       }
