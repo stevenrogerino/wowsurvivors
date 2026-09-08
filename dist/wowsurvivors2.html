@@ -94,7 +94,10 @@
   /* -- ink -------------------------------------------------------------- */
   --ink:         #e9edf6;
   --ink-dim:     #8b93a7;
-  --ink-faint:   #565d6e;
+  /* 4.7:1 on --obsidian. It was #565d6e, which is 2.9:1 - card flavour text
+     set in it looked like it was fading out mid-sentence rather than simply
+     being quiet, which reads as truncation. Quiet, not illegible. */
+  --ink-faint:   #757d8e;
 
   /* -- quality ---------------------------------------------------------- */
   --q-common:    #e9edf6;
@@ -277,40 +280,12 @@ html, body {
   background: linear-gradient(180deg, rgba(6,7,11,0), rgba(6,7,11,.92));
   opacity: 0; transition: opacity .2s var(--ease);
 }
-.overlay-body.can-scroll .scroll-scrim { opacity: 1; }
-.overlay-body.at-bottom .scroll-scrim { opacity: 0; }
-.overlay-inner {
-  position: relative;
-  width: min(1180px, 100%); max-height: 100%;
-  display: flex; flex-direction: column; gap: 20px;
-  animation: sweep-in .3s var(--ease-out);
+.overlay-body.has-more .scroll-scrim { opacity: 1; }
+/* The sentinel the scrim keys off. Zero height, pulled back over the scrim so
+   it marks the true end of the content rather than adding to it. */
+.overlay-body .scroll-end {
+  display: block; height: 1px; margin-top: -1px; pointer-events: none;
 }
-@keyframes sweep-in {
-  from { opacity: 0; transform: translateY(12px) scale(.994); }
-  to   { opacity: 1; transform: none; }
-}
-
-.overlay-head { display: flex; align-items: baseline; gap: 18px; flex: none; }
-.overlay-head h1 {
-  margin: 0; font-size: var(--t-head); font-weight: 600;
-  letter-spacing: .05em; text-transform: uppercase; color: var(--arc-hot);
-}
-.overlay-head .sub { color: var(--ink-dim); font-size: var(--t-body); }
-/* Scroll areas signal "more below" with a scrim over the trailing edge, never
-   by masking the content itself - a fade across visible content is precisely
-   what reads as truncation. The scrim is sticky, so it rides the fold, and it
-   clears the moment the reader reaches the end. */
-.overlay-body {
-  overflow-y: auto; overflow-x: hidden; padding-right: 6px; min-height: 0;
-}
-.scroll-scrim {
-  position: sticky; bottom: 0; left: 0; right: 0; height: 44px; margin-top: -44px;
-  pointer-events: none; flex: none;
-  background: linear-gradient(180deg, rgba(6,7,11,0), rgba(6,7,11,.92));
-  opacity: 0; transition: opacity .2s var(--ease);
-}
-.overlay-body.can-scroll .scroll-scrim { opacity: 1; }
-.overlay-body.at-bottom .scroll-scrim { opacity: 0; }
 .overlay-body::-webkit-scrollbar { width: 8px; }
 .overlay-body::-webkit-scrollbar-track { background: transparent; }
 .overlay-body::-webkit-scrollbar-thumb { background: var(--obsidian-3); border-radius: 4px; }
@@ -421,9 +396,15 @@ html, body {
   color: var(--ink-dim); font-weight: 600;
 }
 .card .card-body { font-size: var(--t-body); line-height: 1.5; color: var(--ink-dim); }
+/* The flavour note, hung off the foot of the card by margin-top:auto. Its
+   rule is reserved three lines of room whatever the text runs to, because
+   three cards side by side with the rule at three different heights reads as
+   an accident - the eye tracks that line across the row before it reads a
+   word of any card. 1.45em is the line-height; 10px is the rule's gap. */
 .card .card-detail {
   font-size: var(--t-small); line-height: 1.45; color: var(--ink-faint);
   border-top: 1px solid var(--rim); padding-top: 10px; margin-top: auto;
+  min-height: calc(3 * 1.45em + 10px);
 }
 /* The number that picks the card, so 1/2/3 is discoverable. */
 .card .card-key {
@@ -5961,10 +5942,18 @@ window.WS = window.WS || {};
       for (let n = 0; n < 8; n++) {
         WS.XP.spawnGem(e.x + WS.randRange(-34, 34), e.y + WS.randRange(-34, 34), WS.floor(e.xp / 8));
       }
+      /* The biggest cheer the game has. Three rings out of the corpse rather
+         than one, so the payoff keeps arriving for most of a second, and a
+         gold banner rather than a caption - killing a boss is the moment the
+         run has been building toward and it should read like one. */
       WS.Audio.play('explode');
-      WS.FX.shake(7, 0.4);
+      WS.FX.shake(9, 0.5);
+      WS.FX.stop(0.12);
       WS.FX.flash(e.x, e.y, e.radius * 4, WS.CONST.COLORS.boss, 0.6);
-      WS.Game.announce(t.name + ' has been slain!', null, 2.5);
+      WS.FX.flash(e.x, e.y, e.radius * 7, '#f5c56b', 0.85);
+      WS.FX.burst(e.x, e.y, 26, '#ffe6ae', 260, 0.9, 4);
+      WS.Game.announce(t.name + ' falls.', 'The battlefield is quieter.', 2.8,
+        { kind: 'glory' });
       WS.Achievements.check();
       const wasFinal = e.finalBoss;
       this.pool.release(e);
@@ -9958,30 +9947,36 @@ window.WS = window.WS || {};
     this.wireScroll(inner);
   };
 
-  /** Keeps a scroll area honest: fades the edge it can still travel toward,
-   *  and shows a caret while there is more below. Content that continues must
-   *  look like it continues, or it reads as cut off. */
+  /** Keeps a scroll area honest: content that continues must look like it
+   *  continues, or it reads as cut off.
+   *
+   *  This deliberately does not measure scrollHeight. It did, and it latched:
+   *  on the first layout the body measured 14px taller than its client box,
+   *  the scrim switched on, and nothing ever re-measured - so a level-up whose
+   *  three cards fit exactly got a 44px black band painted across their feet.
+   *  A ResizeObserver does not help, because no observed box changed; only
+   *  scrollHeight did.
+   *
+   *  Instead a zero-height sentinel sits at the end of the content and an
+   *  IntersectionObserver watches whether it is inside the scroll port. That
+   *  is the question being asked - "is there more below?" - answered directly,
+   *  and it re-fires on scroll, resize and content change without polling.
+   */
   UI.wireScroll = function (root) {
     const body = root.querySelector('.overlay-body');
     if (!body) return;
-    let scrim = body.querySelector('.scroll-scrim');
-    if (!scrim) { scrim = el('div', 'scroll-scrim'); body.append(scrim); }
-    const sync = () => {
-      const slack = body.scrollHeight - body.clientHeight;
-      const more = slack > 2;
-      body.classList.toggle('can-scroll', more);
-      body.classList.toggle('at-bottom', !more || body.scrollTop >= slack - 2);
-    };
-    body.addEventListener('scroll', sync, { passive: true });
-    // Content arrives across a frame or two (images, fonts), so re-check.
-    sync();
-    requestAnimationFrame(sync);
-    setTimeout(sync, 120);
-    if (window.ResizeObserver) {
-      const ro = new ResizeObserver(sync);
-      ro.observe(body);
-      if (body.firstElementChild) ro.observe(body.firstElementChild);
-    }
+    // append() moves an existing node, so calling this again after a pane swap
+    // puts the scrim and the sentinel back at the end where they belong.
+    body.append(body.querySelector('.scroll-scrim') || el('div', 'scroll-scrim'));
+    const end = body.querySelector('.scroll-end') || el('i', 'scroll-end');
+    body.append(end);
+
+    if (!window.IntersectionObserver) return;   // no affordance beats a wrong one
+    if (body._scrollWatch) body._scrollWatch.disconnect();
+    body._scrollWatch = new IntersectionObserver(
+      ([e]) => body.classList.toggle('has-more', !e.isIntersecting),
+      { root: body, threshold: 0 });
+    body._scrollWatch.observe(end);
   };
 
   /* ------------------------------------------------------------- cards --- */
@@ -10039,10 +10034,8 @@ window.WS = window.WS || {};
       requestAnimationFrame(() => {
         const body = s.inner.querySelector('.overlay-body');
         if (!body) return;
-        const scrim = body.querySelector('.scroll-scrim');
-        if (scrim) body.append(scrim);
         body.scrollTop = 0;
-        body.dispatchEvent(new Event('scroll'));
+        UI.wireScroll(s.inner);      // re-seats the scrim behind the new pane
       });
     };
     for (const [id, label] of TABS) {
@@ -10481,7 +10474,7 @@ window.WS = window.WS || {};
 
   /* -------------------------------------------------------- run overlays -- */
   UI.openBlessing = function (choices) {
-    const s = shell('Choose a Blessing', 'One boon, permanent for this run.');
+    const s = shell('Choose a Blessing', 'One boon, and it stays with you.');
     const row = el('div', 'card-row');
     choices.forEach((c, i) => row.append(cardFor(c, (choice) => WS.Game.chooseBlessing(choice), i)));
     s.body.append(row);
@@ -10490,8 +10483,11 @@ window.WS = window.WS || {};
 
   UI.openLevelUp = function (choices) {
     const p = WS.Game.player;
+    // Copy carries as much of the tone as the art does. The game wants to be
+    // playable at a stroll and sweatable if you lean in, so the prompts invite
+    // rather than instruct - "take what you need", not "choose a boon".
     const s = shell('Level ' + p.level, WS.Game.pendingLevelUps > 1
-      ? `${WS.Game.pendingLevelUps} level-ups pending` : 'Choose a boon.');
+      ? `${WS.Game.pendingLevelUps} more after this one.` : 'Take what you need.');
     const row = el('div', 'card-row');
     if (this.banishMode) row.classList.add('banish-mode');
 
@@ -10621,7 +10617,7 @@ window.WS = window.WS || {};
   }
 
   UI.openPause = function () {
-    const s = shell('Paused', WS.Game.run.map.name);
+    const s = shell('Paused', `${WS.Game.run.map.name} waits.`);
     s.body.append(buildSheet());
     const resume = el('button', 'btn primary', 'Resume');
     resume.addEventListener('click', () => WS.Game.resume());

@@ -40,7 +40,10 @@
   /* -- ink -------------------------------------------------------------- */
   --ink:         #e9edf6;
   --ink-dim:     #8b93a7;
-  --ink-faint:   #565d6e;
+  /* 4.7:1 on --obsidian. It was #565d6e, which is 2.9:1 - card flavour text
+     set in it looked like it was fading out mid-sentence rather than simply
+     being quiet, which reads as truncation. Quiet, not illegible. */
+  --ink-faint:   #757d8e;
 
   /* -- quality ---------------------------------------------------------- */
   --q-common:    #e9edf6;
@@ -223,40 +226,12 @@ html, body {
   background: linear-gradient(180deg, rgba(6,7,11,0), rgba(6,7,11,.92));
   opacity: 0; transition: opacity .2s var(--ease);
 }
-.overlay-body.can-scroll .scroll-scrim { opacity: 1; }
-.overlay-body.at-bottom .scroll-scrim { opacity: 0; }
-.overlay-inner {
-  position: relative;
-  width: min(1180px, 100%); max-height: 100%;
-  display: flex; flex-direction: column; gap: 20px;
-  animation: sweep-in .3s var(--ease-out);
+.overlay-body.has-more .scroll-scrim { opacity: 1; }
+/* The sentinel the scrim keys off. Zero height, pulled back over the scrim so
+   it marks the true end of the content rather than adding to it. */
+.overlay-body .scroll-end {
+  display: block; height: 1px; margin-top: -1px; pointer-events: none;
 }
-@keyframes sweep-in {
-  from { opacity: 0; transform: translateY(12px) scale(.994); }
-  to   { opacity: 1; transform: none; }
-}
-
-.overlay-head { display: flex; align-items: baseline; gap: 18px; flex: none; }
-.overlay-head h1 {
-  margin: 0; font-size: var(--t-head); font-weight: 600;
-  letter-spacing: .05em; text-transform: uppercase; color: var(--arc-hot);
-}
-.overlay-head .sub { color: var(--ink-dim); font-size: var(--t-body); }
-/* Scroll areas signal "more below" with a scrim over the trailing edge, never
-   by masking the content itself - a fade across visible content is precisely
-   what reads as truncation. The scrim is sticky, so it rides the fold, and it
-   clears the moment the reader reaches the end. */
-.overlay-body {
-  overflow-y: auto; overflow-x: hidden; padding-right: 6px; min-height: 0;
-}
-.scroll-scrim {
-  position: sticky; bottom: 0; left: 0; right: 0; height: 44px; margin-top: -44px;
-  pointer-events: none; flex: none;
-  background: linear-gradient(180deg, rgba(6,7,11,0), rgba(6,7,11,.92));
-  opacity: 0; transition: opacity .2s var(--ease);
-}
-.overlay-body.can-scroll .scroll-scrim { opacity: 1; }
-.overlay-body.at-bottom .scroll-scrim { opacity: 0; }
 .overlay-body::-webkit-scrollbar { width: 8px; }
 .overlay-body::-webkit-scrollbar-track { background: transparent; }
 .overlay-body::-webkit-scrollbar-thumb { background: var(--obsidian-3); border-radius: 4px; }
@@ -367,9 +342,15 @@ html, body {
   color: var(--ink-dim); font-weight: 600;
 }
 .card .card-body { font-size: var(--t-body); line-height: 1.5; color: var(--ink-dim); }
+/* The flavour note, hung off the foot of the card by margin-top:auto. Its
+   rule is reserved three lines of room whatever the text runs to, because
+   three cards side by side with the rule at three different heights reads as
+   an accident - the eye tracks that line across the row before it reads a
+   word of any card. 1.45em is the line-height; 10px is the rule's gap. */
 .card .card-detail {
   font-size: var(--t-small); line-height: 1.45; color: var(--ink-faint);
   border-top: 1px solid var(--rim); padding-top: 10px; margin-top: auto;
+  min-height: calc(3 * 1.45em + 10px);
 }
 /* The number that picks the card, so 1/2/3 is discoverable. */
 .card .card-key {

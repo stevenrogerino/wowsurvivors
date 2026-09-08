@@ -1,10 +1,17 @@
 #!/usr/bin/env node
-/* UI guard rail. Walks every surface in the game and checks the one rule that
- * has already broken silently once: an element must not both carry .bracketed
- * and define its own ::before/::after, because there are only two pseudo
- * elements and the two rule sets overwrite each other without warning. A
- * collapsed quality arc looks like a design choice, not a bug, which is why
- * this is a test and not a code review note.
+/* UI guard rail. Walks every surface in the game and checks two rules, both of
+ * which have already broken silently once. Neither failure looked like a bug -
+ * they looked like design choices - which is why they are tests and not code
+ * review notes.
+ *
+ *   brackets  An element must not both carry .bracketed and define its own
+ *             ::before/::after. There are only two pseudo elements and the two
+ *             rule sets overwrite each other without warning; the card's
+ *             quality arc collapsed to a 14px stub and nothing said so.
+ *   scrim     The "more below" scrim must be off wherever the content fits.
+ *             It once latched onto a transient first-layout measurement and
+ *             painted a 44px black band across the feet of three level-up
+ *             cards that fit perfectly well.
  *
  *   npm i playwright && npx playwright install chromium
  *   node tools/check-ui.js
@@ -18,6 +25,8 @@ const path = require('path');
   page.on('pageerror', (e) => console.log('PAGEERROR', e.message));
   await page.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
   await page.waitForTimeout(700);
+
+  const seen = new Set();
 
   const scan = () => page.evaluate(() => {
     const bad = [];
@@ -37,29 +46,48 @@ const path = require('path');
     return bad;
   });
 
-  const seen = new Set();
+  /* The scrim promises there is more below. If the surface does not scroll,
+     that promise is a dark band over content the player can already see. */
+  const scanScrim = () => page.evaluate(() => {
+    const bad = [];
+    for (const body of document.querySelectorAll('.overlay-body')) {
+      const slack = body.scrollHeight - body.clientHeight;
+      const lit = body.classList.contains('has-more');
+      if (lit && slack <= 2) bad.push(`scrim lit with ${slack}px to scroll`);
+      if (!lit && slack > 2 && body.scrollTop < slack - 2) {
+        bad.push(`scrim dark with ${slack}px still below`);
+      }
+    }
+    return bad;
+  });
+
+  const check = async (where) => {
+    (await scan()).forEach((x) => seen.add(where + ' ' + x));
+    (await scanScrim()).forEach((x) => seen.add(where + ' ' + x));
+  };
+
   await page.evaluate(() => { WS.Save.unlockAll(); WS.UI.openMenu(); });
   await page.waitForTimeout(250);
   for (const t of ['roster', 'battlefields', 'trainer', 'codex', 'bestiary', 'stats', 'settings']) {
     await page.evaluate((x) => { WS.UI.tab = x; WS.UI.openMenu(); }, t);
     await page.waitForTimeout(120);
-    (await scan()).forEach((x) => seen.add('menu/' + t + ' ' + x));
+    await check('menu/' + t);
   }
   await page.evaluate(() => { WS.Game.startRun('elwynn', 'mage'); });
   await page.waitForTimeout(300);
-  (await scan()).forEach((x) => seen.add('blessing ' + x));
+  await check('blessing');
   await page.click('.card'); await page.waitForTimeout(200);
   await page.evaluate(() => { WS.Game.pendingLevelUps = 1; WS.Game.openLevelUp(); });
   await page.waitForTimeout(250);
-  (await scan()).forEach((x) => seen.add('levelup ' + x));
+  await check('levelup');
   await page.evaluate(() => { WS.Game.chooseLevelUp(WS.Game.levelChoices[0]); WS.Game.pause(); });
   await page.waitForTimeout(250);
-  (await scan()).forEach((x) => seen.add('pause ' + x));
+  await check('pause');
   await page.evaluate(() => { WS.Game.endRun('defeated'); });
   await page.waitForTimeout(250);
-  (await scan()).forEach((x) => seen.add('defeat ' + x));
+  await check('defeat');
 
-  console.log(seen.size ? [...seen].join('\n') : 'no bracket collisions');
+  console.log(seen.size ? [...seen].join('\n') : 'ok: no bracket collisions, no false scrims');
   await b.close();
   process.exitCode = seen.size ? 1 : 0;
 })();

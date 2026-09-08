@@ -376,30 +376,36 @@
     this.wireScroll(inner);
   };
 
-  /** Keeps a scroll area honest: fades the edge it can still travel toward,
-   *  and shows a caret while there is more below. Content that continues must
-   *  look like it continues, or it reads as cut off. */
+  /** Keeps a scroll area honest: content that continues must look like it
+   *  continues, or it reads as cut off.
+   *
+   *  This deliberately does not measure scrollHeight. It did, and it latched:
+   *  on the first layout the body measured 14px taller than its client box,
+   *  the scrim switched on, and nothing ever re-measured - so a level-up whose
+   *  three cards fit exactly got a 44px black band painted across their feet.
+   *  A ResizeObserver does not help, because no observed box changed; only
+   *  scrollHeight did.
+   *
+   *  Instead a zero-height sentinel sits at the end of the content and an
+   *  IntersectionObserver watches whether it is inside the scroll port. That
+   *  is the question being asked - "is there more below?" - answered directly,
+   *  and it re-fires on scroll, resize and content change without polling.
+   */
   UI.wireScroll = function (root) {
     const body = root.querySelector('.overlay-body');
     if (!body) return;
-    let scrim = body.querySelector('.scroll-scrim');
-    if (!scrim) { scrim = el('div', 'scroll-scrim'); body.append(scrim); }
-    const sync = () => {
-      const slack = body.scrollHeight - body.clientHeight;
-      const more = slack > 2;
-      body.classList.toggle('can-scroll', more);
-      body.classList.toggle('at-bottom', !more || body.scrollTop >= slack - 2);
-    };
-    body.addEventListener('scroll', sync, { passive: true });
-    // Content arrives across a frame or two (images, fonts), so re-check.
-    sync();
-    requestAnimationFrame(sync);
-    setTimeout(sync, 120);
-    if (window.ResizeObserver) {
-      const ro = new ResizeObserver(sync);
-      ro.observe(body);
-      if (body.firstElementChild) ro.observe(body.firstElementChild);
-    }
+    // append() moves an existing node, so calling this again after a pane swap
+    // puts the scrim and the sentinel back at the end where they belong.
+    body.append(body.querySelector('.scroll-scrim') || el('div', 'scroll-scrim'));
+    const end = body.querySelector('.scroll-end') || el('i', 'scroll-end');
+    body.append(end);
+
+    if (!window.IntersectionObserver) return;   // no affordance beats a wrong one
+    if (body._scrollWatch) body._scrollWatch.disconnect();
+    body._scrollWatch = new IntersectionObserver(
+      ([e]) => body.classList.toggle('has-more', !e.isIntersecting),
+      { root: body, threshold: 0 });
+    body._scrollWatch.observe(end);
   };
 
   /* ------------------------------------------------------------- cards --- */
@@ -457,10 +463,8 @@
       requestAnimationFrame(() => {
         const body = s.inner.querySelector('.overlay-body');
         if (!body) return;
-        const scrim = body.querySelector('.scroll-scrim');
-        if (scrim) body.append(scrim);
         body.scrollTop = 0;
-        body.dispatchEvent(new Event('scroll'));
+        UI.wireScroll(s.inner);      // re-seats the scrim behind the new pane
       });
     };
     for (const [id, label] of TABS) {
@@ -899,7 +903,7 @@
 
   /* -------------------------------------------------------- run overlays -- */
   UI.openBlessing = function (choices) {
-    const s = shell('Choose a Blessing', 'One boon, permanent for this run.');
+    const s = shell('Choose a Blessing', 'One boon, and it stays with you.');
     const row = el('div', 'card-row');
     choices.forEach((c, i) => row.append(cardFor(c, (choice) => WS.Game.chooseBlessing(choice), i)));
     s.body.append(row);
@@ -908,8 +912,11 @@
 
   UI.openLevelUp = function (choices) {
     const p = WS.Game.player;
+    // Copy carries as much of the tone as the art does. The game wants to be
+    // playable at a stroll and sweatable if you lean in, so the prompts invite
+    // rather than instruct - "take what you need", not "choose a boon".
     const s = shell('Level ' + p.level, WS.Game.pendingLevelUps > 1
-      ? `${WS.Game.pendingLevelUps} level-ups pending` : 'Choose a boon.');
+      ? `${WS.Game.pendingLevelUps} more after this one.` : 'Take what you need.');
     const row = el('div', 'card-row');
     if (this.banishMode) row.classList.add('banish-mode');
 
@@ -1039,7 +1046,7 @@
   }
 
   UI.openPause = function () {
-    const s = shell('Paused', WS.Game.run.map.name);
+    const s = shell('Paused', `${WS.Game.run.map.name} waits.`);
     s.body.append(buildSheet());
     const resume = el('button', 'btn primary', 'Resume');
     resume.addEventListener('click', () => WS.Game.resume());

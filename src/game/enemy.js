@@ -393,10 +393,18 @@
       for (let n = 0; n < 8; n++) {
         WS.XP.spawnGem(e.x + WS.randRange(-34, 34), e.y + WS.randRange(-34, 34), WS.floor(e.xp / 8));
       }
+      /* The biggest cheer the game has. Three rings out of the corpse rather
+         than one, so the payoff keeps arriving for most of a second, and a
+         gold banner rather than a caption - killing a boss is the moment the
+         run has been building toward and it should read like one. */
       WS.Audio.play('explode');
-      WS.FX.shake(7, 0.4);
+      WS.FX.shake(9, 0.5);
+      WS.FX.stop(0.12);
       WS.FX.flash(e.x, e.y, e.radius * 4, WS.CONST.COLORS.boss, 0.6);
-      WS.Game.announce(t.name + ' has been slain!', null, 2.5);
+      WS.FX.flash(e.x, e.y, e.radius * 7, '#f5c56b', 0.85);
+      WS.FX.burst(e.x, e.y, 26, '#ffe6ae', 260, 0.9, 4);
+      WS.Game.announce(t.name + ' falls.', 'The battlefield is quieter.', 2.8,
+        { kind: 'glory' });
       WS.Achievements.check();
       const wasFinal = e.finalBoss;
       this.pool.release(e);
