@@ -266,10 +266,17 @@ html, body {
 .overlay-body .scroll-end {
   display: block; height: 1px; margin-top: -1px; pointer-events: none;
 }
-.overlay-body::-webkit-scrollbar { width: 8px; }
+/* Same inset language as the panels: a slim thumb floating in a wide track,
+   never a trough hard against the edge of the content. */
+.overlay-body::-webkit-scrollbar { width: 14px; }
 .overlay-body::-webkit-scrollbar-track { background: transparent; }
-.overlay-body::-webkit-scrollbar-thumb { background: var(--obsidian-3); border-radius: 4px; }
-.overlay-body::-webkit-scrollbar-thumb:hover { background: var(--obsidian-4); }
+.overlay-body::-webkit-scrollbar-thumb {
+  background: var(--obsidian-3); border: 5px solid transparent;
+  background-clip: padding-box; border-radius: 7px;
+}
+.overlay-body::-webkit-scrollbar-thumb:hover {
+  background: var(--obsidian-4); background-clip: padding-box;
+}
 .overlay-foot { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; flex: none; }
 .overlay-foot .spacer { flex: 1; }
 
@@ -1153,15 +1160,36 @@ body.hud-rail #hud-toasts { left: 76px; bottom: 20px; }
 .overlay-body.fitted > div:last-child { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .overlay-body.fitted > div:last-child > .sheet { flex: 1 1 auto; min-height: 0; }
 .overlay-body.fitted .sheet { flex: 1 1 auto; min-height: 0; }
-.overlay-body.fitted .sheet > .panel { overflow-y: auto; min-height: 0; }
-.overlay-body.fitted .sheet > .panel::-webkit-scrollbar { width: 7px; }
-.overlay-body.fitted .sheet > .panel::-webkit-scrollbar-thumb {
-  background: var(--obsidian-4); border-radius: 4px;
+/* The frame holds still; the inside scrolls.
+   The panel used to scroll itself, which put its scrollbar on top of its own
+   border and slid the bottom-right bracket up out of the corner as you read.
+   Now the panel clips and never moves, and .panel-scroll carries the content -
+   so the border, the inlay and both brackets are simply always where they
+   belong, and the sticky patch the inlay needed is gone with the problem. */
+.overlay-body.fitted .sheet > .panel {
+  position: relative; overflow: hidden; min-height: 0;
+  display: flex; flex-direction: column;
 }
-/* The panel inlay is absolutely positioned to the panel, which would scroll
-   away with the content; pin it to the viewport of the panel instead. */
-.overlay-body.fitted .sheet > .panel { position: relative; }
-.overlay-body.fitted .sheet > .panel > .inlay { position: sticky; top: 5px; height: 0; }
+.overlay-body.fitted .sheet > .panel > .panel-scroll {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden;
+  /* Asymmetric on purpose: the bar lives in the right-hand gutter, so the
+     text needs less padding on that side to end up looking evenly inset.
+     `stable` keeps the gutter there whether the bar is showing or not, so a
+     panel does not reflow the moment its content grows past the fold. */
+  padding: 16px 12px 16px 16px; scrollbar-gutter: stable;
+}
+/* The bar rides INSIDE the frame: a wide track with a transparent border and
+   background-clip leaves a slim thumb floating clear of the rim and the inlay
+   hairline, instead of a full-width trough drawn across the edging. */
+.overlay-body.fitted .sheet > .panel > .panel-scroll::-webkit-scrollbar { width: 14px; }
+.overlay-body.fitted .sheet > .panel > .panel-scroll::-webkit-scrollbar-track { background: transparent; }
+.overlay-body.fitted .sheet > .panel > .panel-scroll::-webkit-scrollbar-thumb {
+  background: var(--obsidian-4); border: 5px solid transparent;
+  background-clip: padding-box; border-radius: 7px;
+}
+.overlay-body.fitted .sheet > .panel > .panel-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--rim-hot, var(--obsidian-4)); background-clip: padding-box;
+}
 .sheet h3 {
   margin: 0 0 11px; font-size: var(--t-micro); letter-spacing: .18em; text-transform: uppercase;
   color: var(--arc); font-weight: 700;

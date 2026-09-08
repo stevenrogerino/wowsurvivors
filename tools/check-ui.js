@@ -21,6 +21,15 @@
  *             bought. So this walks the panes with everything unlocked and
  *             ranks spent, and fails on rows of wildly unequal height or any
  *             element wider than the box holding it.
+ *   framing   A bordered frame must never be the thing that scrolls. The run
+ *             summary's panels carried the border, the inlay hairline and both
+ *             corner brackets AND did their own scrolling, which meant the
+ *             scrollbar was painted at the panel's own right edge - straight
+ *             over the border - and the bottom-right bracket, being absolutely
+ *             positioned inside a scroller, slid up out of its corner as you
+ *             read. The edging came apart exactly when a build got interesting
+ *             enough to overflow. The frame and the scroller are now two
+ *             elements, and this fails the build if they are ever merged back.
  *   ledger    Every number the player budgets against must track the save it
  *             is drawn from. The menu footer's "Banked" total was built once
  *             when the menu opened and never touched again, while the Trainer
@@ -300,10 +309,44 @@ const path = require('path');
     }
   }
 
+  /* ---- framing: nothing with an edge may scroll ------------------------- *
+   * Walked on the run summary and the pause build sheet, which are where the
+   * panels live and where the overflow actually happens.
+   *
+   * NEGATIVE TEST: moving the scroll back onto the panel reports
+   * "framing: a .panel bracketed carries the border AND 203px of scroll". */
+  const framing = await page.evaluate(async () => {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    WS.Game.state = 'playing';
+    WS.Game.endRun(false);
+    await sleep(400);
+    const bad = [];
+    let panels = 0, scrollers = 0;
+    for (const n of document.querySelectorAll('.panel, .bracketed, .card')) {
+      const over = n.scrollHeight - n.clientHeight;
+      panels++;
+      const cs = getComputedStyle(n);
+      const bordered = parseFloat(cs.borderTopWidth) > 0
+        || n.classList.contains('bracketed');
+      if (bordered && over > 2) {
+        bad.push(`a .${n.className} carries the border AND ${over}px of scroll`);
+      }
+    }
+    for (const n of document.querySelectorAll('.panel-scroll')) {
+      if (n.scrollHeight - n.clientHeight > 2) scrollers++;
+    }
+    return { bad, panels, scrollers };
+  });
+  for (const b of framing.bad) seen.add('framing: ' + b);
+  if (framing.scrollers === 0) {
+    seen.add('framing: no panel actually overflowed, so the check proved nothing');
+  }
+
   console.log(seen.size ? [...seen].join('\n')
     : 'ok: no bracket collisions, no false scrims, a maxed save lays out clean,'
       + ` arming banish moves nothing, and ${ledger.length} purchases totalling `
-      + `${spent}g each land on the footer's banked total`);
+      + `${spent}g each land on the footer's banked total, and `
+      + `${framing.panels} framed surfaces scroll from the inside`);
   await b.close();
   process.exitCode = seen.size ? 1 : 0;
 })();

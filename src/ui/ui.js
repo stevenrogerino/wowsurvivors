@@ -1365,11 +1365,28 @@
   };
 
   /* ---------------------------------------------------------- build sheet - */
-  /** A panel with its inlay hairline in place. */
+  /** A panel with its inlay hairline in place.
+   *
+   *  Returns the SCROLLING INSIDE, not the frame; the frame is on `.frame`.
+   *
+   *  The panel used to be the scroll container itself, and a scroll container
+   *  cannot also be a frame. Its scrollbar was painted at its own right edge,
+   *  straight over the border and through the bottom-right bracket, so the
+   *  moment a build got long enough to scroll the panel's edging came apart.
+   *  Worse, an absolutely positioned child of a scroller scrolls with the
+   *  content, so the bracket slid up out of the corner as you read - which is
+   *  also why the inlay needed a `position: sticky` patch to stay put.
+   *
+   *  Splitting the two takes the whole class of problem away: the frame holds
+   *  still and owns the border, the inlay and the corners, and a child inside
+   *  it does the scrolling with its bar inset clear of all three. */
   function panel(cls) {
-    const p = el('div', 'panel bracketed' + (cls ? ' ' + cls : ''));
-    p.append(el('div', 'inlay'));
-    return p;
+    const frame = el('div', 'panel bracketed' + (cls ? ' ' + cls : ''));
+    frame.append(el('div', 'inlay'));
+    const inside = el('div', 'panel-scroll');
+    frame.append(inside);
+    inside.frame = frame;
+    return inside;
   }
 
   function buildSheet() {
@@ -1377,7 +1394,6 @@
     const sheet = el('div', 'sheet');
 
     const left = panel();
-    left.style.padding = '16px';
     left.append(el('h3', null, 'Arsenal'));
     for (const w of p.weapons) {
       const row = el('div', 'row');
@@ -1401,7 +1417,6 @@
     }
 
     const right = panel();
-    right.style.padding = '16px';
     right.append(el('h3', null, 'Survivor'));
     const kv = (k, v) => {
       const line = el('div', 'kv');
@@ -1455,7 +1470,7 @@
     }
     right.append(meter);
 
-    sheet.append(left, right);
+    sheet.append(left.frame, right.frame);
     return sheet;
   }
 
