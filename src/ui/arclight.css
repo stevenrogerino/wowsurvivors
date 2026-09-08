@@ -58,8 +58,14 @@
   --ease:      cubic-bezier(.2, .8, .2, 1);
   --ease-out:  cubic-bezier(.16, 1, .3, 1);
 
-  --lift-1: 0 1px 0 rgba(255,255,255,.04) inset, 0 8px 22px rgba(0,0,0,.5);
-  --lift-2: 0 1px 0 rgba(255,255,255,.05) inset, 0 20px 52px rgba(0,0,0,.62);
+  --lift-1: 0 8px 22px rgba(0,0,0,.5);
+  --lift-2: 0 20px 52px rgba(0,0,0,.62);
+  /* The bevel: lit along the top edge, shadowed along the foot. Every raised
+     surface carries it, which is what stops the set reading as flat boxes. */
+  --bevel: inset 0 1px 0 rgba(255,255,255,.075), inset 0 -1px 0 rgba(0,0,0,.55);
+  --bevel-deep: inset 0 1px 0 rgba(255,255,255,.10), inset 0 -2px 3px rgba(0,0,0,.5);
+  /* A sunken surface: the inverse, for wells and tracks. */
+  --sunk: inset 0 1px 2px rgba(0,0,0,.6), inset 0 -1px 0 rgba(255,255,255,.045);
 }
 
 * { box-sizing: border-box; }
@@ -108,10 +114,18 @@ html, body {
 .bracketed::after  { bottom: 0; right: 0; border-width: 0 1px 1px 0; }
 
 .panel {
+  position: relative;
   background: linear-gradient(180deg, var(--obsidian-2), var(--obsidian));
   border: 1px solid var(--rim);
   border-radius: 2px;
-  box-shadow: var(--lift-1);
+  box-shadow: var(--bevel), var(--lift-1);
+}
+/* The inlay: a second hairline set in from the rim, the detail that separates
+   a machined panel from a div with a border. */
+.panel::after {
+  content: ""; position: absolute; inset: 5px; pointer-events: none;
+  border: 1px solid rgba(255,255,255,.035);
+  border-radius: 1px;
 }
 .panel-title {
   font-size: var(--t-micro); letter-spacing: .18em; text-transform: uppercase;
@@ -128,6 +142,7 @@ html, body {
   appearance: none; cursor: pointer; font-family: inherit;
   background: linear-gradient(180deg, var(--obsidian-3), var(--obsidian-2));
   border: 1px solid var(--rim); border-radius: 2px;
+  box-shadow: var(--bevel);
   color: var(--ink);
   padding: 11px 22px;
   font-size: var(--t-small); font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
@@ -143,7 +158,7 @@ html, body {
 }
 .btn:hover { border-color: var(--rim-arc); color: var(--arc-hot); }
 .btn:hover::after { opacity: .9; }
-.btn:active { transform: translateY(1px); }
+.btn:active { transform: translateY(1px); box-shadow: var(--sunk); }
 .btn:disabled { opacity: .3; cursor: not-allowed; border-color: var(--rim); color: var(--ink-faint); }
 .btn:disabled:hover::after { opacity: 0; }
 .btn.primary {
@@ -166,6 +181,7 @@ html, body {
 #overlay.hidden { display: none; }
 
 .overlay-inner {
+  position: relative;
   width: min(1180px, 100%); max-height: 100%;
   display: flex; flex-direction: column; gap: 20px;
   animation: sweep-in .3s var(--ease-out);
@@ -181,7 +197,53 @@ html, body {
   letter-spacing: .05em; text-transform: uppercase; color: var(--arc-hot);
 }
 .overlay-head .sub { color: var(--ink-dim); font-size: var(--t-body); }
-.overlay-body { overflow-y: auto; overflow-x: hidden; padding-right: 6px; min-height: 0; }
+/* Scroll areas signal "more below" with a scrim over the trailing edge, never
+   by masking the content itself - a fade across visible content is precisely
+   what reads as truncation. The scrim is sticky, so it rides the fold, and it
+   clears the moment the reader reaches the end. */
+.overlay-body {
+  overflow-y: auto; overflow-x: hidden; padding-right: 6px; min-height: 0;
+}
+.scroll-scrim {
+  position: sticky; bottom: 0; left: 0; right: 0; height: 44px; margin-top: -44px;
+  pointer-events: none; flex: none;
+  background: linear-gradient(180deg, rgba(6,7,11,0), rgba(6,7,11,.92));
+  opacity: 0; transition: opacity .2s var(--ease);
+}
+.overlay-body.can-scroll .scroll-scrim { opacity: 1; }
+.overlay-body.at-bottom .scroll-scrim { opacity: 0; }
+.overlay-inner {
+  position: relative;
+  width: min(1180px, 100%); max-height: 100%;
+  display: flex; flex-direction: column; gap: 20px;
+  animation: sweep-in .3s var(--ease-out);
+}
+@keyframes sweep-in {
+  from { opacity: 0; transform: translateY(12px) scale(.994); }
+  to   { opacity: 1; transform: none; }
+}
+
+.overlay-head { display: flex; align-items: baseline; gap: 18px; flex: none; }
+.overlay-head h1 {
+  margin: 0; font-size: var(--t-head); font-weight: 600;
+  letter-spacing: .05em; text-transform: uppercase; color: var(--arc-hot);
+}
+.overlay-head .sub { color: var(--ink-dim); font-size: var(--t-body); }
+/* Scroll areas signal "more below" with a scrim over the trailing edge, never
+   by masking the content itself - a fade across visible content is precisely
+   what reads as truncation. The scrim is sticky, so it rides the fold, and it
+   clears the moment the reader reaches the end. */
+.overlay-body {
+  overflow-y: auto; overflow-x: hidden; padding-right: 6px; min-height: 0;
+}
+.scroll-scrim {
+  position: sticky; bottom: 0; left: 0; right: 0; height: 44px; margin-top: -44px;
+  pointer-events: none; flex: none;
+  background: linear-gradient(180deg, rgba(6,7,11,0), rgba(6,7,11,.92));
+  opacity: 0; transition: opacity .2s var(--ease);
+}
+.overlay-body.can-scroll .scroll-scrim { opacity: 1; }
+.overlay-body.at-bottom .scroll-scrim { opacity: 0; }
 .overlay-body::-webkit-scrollbar { width: 8px; }
 .overlay-body::-webkit-scrollbar-track { background: transparent; }
 .overlay-body::-webkit-scrollbar-thumb { background: var(--obsidian-3); border-radius: 4px; }
@@ -218,6 +280,7 @@ html, body {
     radial-gradient(120% 80% at 50% -10%, rgba(255,255,255,.045), transparent 60%),
     linear-gradient(180deg, var(--obsidian-2), var(--obsidian));
   border: 1px solid var(--rim); border-radius: 2px;
+  box-shadow: var(--bevel-deep), var(--lift-1);
   padding: 22px 20px 18px;
   cursor: pointer; text-align: left; font-family: inherit; color: inherit;
   display: flex; flex-direction: column; gap: 11px;
@@ -247,17 +310,35 @@ html, body {
 .card:hover, .card:focus-visible {
   transform: translateY(-5px);
   border-color: var(--q, var(--arc));
-  box-shadow: var(--lift-2), 0 0 42px -14px var(--q, var(--arc));
+  box-shadow: var(--bevel-deep), var(--lift-2), 0 0 42px -14px var(--q, var(--arc));
 }
+/* The inlay, and four corner ticks that pick up the quality colour on hover. */
+.card .card-inlay {
+  position: absolute; inset: 7px; pointer-events: none;
+  border: 1px solid rgba(255,255,255,.04);
+}
+.card .card-inlay i {
+  position: absolute; width: 7px; height: 7px;
+  border: 0 solid var(--q, var(--arc)); opacity: .3;
+  transition: opacity .18s var(--ease);
+}
+.card .card-inlay i:nth-child(1) { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+.card .card-inlay i:nth-child(2) { top: -1px; right: -1px; border-width: 1px 1px 0 0; }
+.card .card-inlay i:nth-child(3) { bottom: -1px; left: -1px; border-width: 0 0 1px 1px; }
+.card .card-inlay i:nth-child(4) { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+.card:hover .card-inlay i, .card:focus-visible .card-inlay i { opacity: .85; }
 .card:hover::after, .card:focus-visible::after { opacity: .14; }
 .card .icon-plate {
   width: 66px; height: 66px; position: relative; flex: none;
   border-radius: 2px;
 }
 .card .icon-plate img { width: 66px; height: 66px; display: block; }
-.card .icon-plate::after {
-  content: ""; position: absolute; inset: -5px; border-radius: 3px;
-  border: 1px solid var(--q, var(--arc)); opacity: .22;
+/* No second frame: the plate carries its own chamfered rim. A pool of the
+   quality colour behind it seats the tile instead. */
+.card .icon-plate::before {
+  content: ""; position: absolute; inset: -14px; border-radius: 50%;
+  background: radial-gradient(circle, var(--q, var(--arc)), transparent 68%);
+  opacity: .13; pointer-events: none;
 }
 .card .card-name {
   font-size: 17px; font-weight: 600; color: var(--q, var(--ink));
@@ -283,12 +364,12 @@ html, body {
 .card.selected { border-color: var(--arc); box-shadow: 0 0 0 1px var(--arc), 0 0 46px -16px var(--arc); }
 
 /* ------------------------------------------------------------ pick grids */
-.pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(228px, 1fr)); gap: 10px; }
+.pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(205px, 1fr)); gap: 10px; }
 .pick {
   display: flex; gap: 12px; align-items: center;
   background: var(--obsidian); border: 1px solid var(--rim); border-radius: 2px;
   padding: 11px 12px; cursor: pointer; text-align: left;
-  font-family: inherit; color: inherit;
+  font-family: inherit; color: inherit; box-shadow: var(--bevel);
   transition: border-color .16s var(--ease), background .16s var(--ease), transform .14s var(--ease-out);
   position: relative;
 }
@@ -337,12 +418,19 @@ html, body {
 /* ------------------------------------------------------------- list rows */
 .rows { display: flex; flex-direction: column; gap: 6px; }
 .row {
+  position: relative;
   display: flex; align-items: center; gap: 14px;
   background: var(--obsidian); border: 1px solid var(--rim); border-radius: 2px;
+  box-shadow: var(--bevel);
   padding: 10px 14px;
   transition: border-color .16s var(--ease), background .16s var(--ease);
 }
+.row::before {
+  content: ""; position: absolute; left: -1px; top: 30%; bottom: 30%; width: 2px;
+  background: var(--arc); opacity: 0; transition: opacity .16s var(--ease), top .16s var(--ease), bottom .16s var(--ease);
+}
 .row:hover { border-color: var(--rim-lit); background: var(--obsidian-2); }
+.row:hover::before { opacity: .55; top: 14%; bottom: 14%; }
 .row img { width: 40px; height: 40px; flex: none; }
 .row .row-main { flex: 1; min-width: 0; }
 .row .row-name { font-size: var(--t-lead); font-weight: 600; }
@@ -361,7 +449,13 @@ html, body {
 
 /* ------------------------------------------------------------- stat grid */
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
-.stat { background: var(--obsidian); border: 1px solid var(--rim); padding: 13px 15px; border-radius: 2px; }
+.stat {
+  position: relative; background: var(--obsidian); border: 1px solid var(--rim);
+  padding: 13px 15px; border-radius: 2px; box-shadow: var(--bevel);
+}
+.stat::after {
+  content: ""; position: absolute; top: 0; left: 0; width: 12px; height: 2px; background: var(--arc); opacity: .5;
+}
 .stat .stat-value {
   font-size: 23px; font-weight: 600; color: var(--arc);
   font-family: var(--fig); font-variant-numeric: tabular-nums;
@@ -418,7 +512,10 @@ html, body {
 
 #hud-meters { display: flex; flex-direction: column; gap: 6px; margin-top: 7px; }
 .meter { width: 158px; }
-.meter .meter-track { height: 4px; background: rgba(255,255,255,.08); border-radius: 2px; overflow: hidden; }
+.meter .meter-track {
+  height: 5px; background: rgba(0,0,0,.45); border-radius: 2px; overflow: hidden;
+  box-shadow: var(--sunk);
+}
 .meter .meter-fill { height: 100%; width: 0%; border-radius: 2px; transition: width .15s linear; }
 .meter.fel .meter-fill { background: linear-gradient(90deg, #5aa832, var(--fel)); }
 .meter.meta .meter-fill { background: linear-gradient(90deg, var(--fel), #eaffd8); }
@@ -436,7 +533,10 @@ html, body {
   font-family: var(--fig); font-size: 32px; font-weight: 300;
   letter-spacing: .1em; font-variant-numeric: tabular-nums;
 }
-#hud-timer .rail { position: relative; height: 3px; background: rgba(255,255,255,.09); margin-top: 9px; }
+#hud-timer .rail {
+  position: relative; height: 4px; margin-top: 9px;
+  background: rgba(0,0,0,.45); box-shadow: var(--sunk);
+}
 #hud-timer .rail .fill {
   position: absolute; left: 0; top: 0; bottom: 0;
   background: linear-gradient(90deg, rgba(245,197,107,.3), var(--arc));
@@ -493,6 +593,12 @@ html, body {
 #hud-weapons { position: absolute; bottom: 20px; left: 20px; display: flex; gap: 11px; align-items: flex-end; }
 .wslot { position: relative; width: 54px; height: 54px; }
 .wslot img { width: 54px; height: 54px; display: block; }
+/* The chamfered icon plate is the frame; the slot adds only a seat. */
+.wslot::before {
+  content: ""; position: absolute; inset: -8px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(245,197,107,.16), transparent 66%);
+  pointer-events: none;
+}
 .wslot svg { position: absolute; inset: -5px; transform: rotate(-90deg); pointer-events: none; overflow: visible; }
 .wslot .cd-track { fill: none; stroke: rgba(255,255,255,.09); stroke-width: 3; }
 .wslot .cd-arc {
@@ -507,9 +613,11 @@ html, body {
 }
 .wslot.evolved .rank { border-color: var(--arc); color: var(--arc); }
 .wslot.evolved::after {
-  content: ""; position: absolute; inset: -7px; border: 1px solid rgba(245,197,107,.4);
-  border-radius: 3px; pointer-events: none;
+  content: ""; position: absolute; inset: -8px; pointer-events: none;
+  border: 1px solid rgba(245,197,107,.45);
+  clip-path: polygon(0 0, 34% 0, 0 34%, 0 0, 100% 100%, 66% 100%, 100% 66%);
 }
+.wslot.evolved::before { background: radial-gradient(circle, rgba(245,197,107,.3), transparent 66%); }
 /* Fires when the weapon does, so the strip reads as a live instrument. */
 .wslot .flash {
   position: absolute; inset: -5px; border-radius: 3px; pointer-events: none;
@@ -526,7 +634,7 @@ html, body {
   display: flex; gap: 6px; flex-wrap: wrap-reverse; justify-content: flex-end; max-width: 38vw;
 }
 .pslot { position: relative; width: 34px; height: 34px; }
-.pslot img { width: 34px; height: 34px; display: block; opacity: .9; }
+.pslot img { width: 34px; height: 34px; display: block; opacity: .92; }
 .pslot .rank {
   position: absolute; bottom: -2px; right: -2px; background: var(--obsidian);
   font-family: var(--fig); font-size: 8px; font-weight: 500; padding: 0 3px;
@@ -545,7 +653,7 @@ html, body {
   backdrop-filter: blur(2px);
   border: 1px solid var(--rim); border-left: 2px solid var(--arc);
   padding: 10px 15px; border-radius: 2px;
-  box-shadow: var(--lift-1);
+  box-shadow: var(--bevel), var(--lift-1);
   animation: toast-in .26s var(--ease-out);
 }
 @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -558,6 +666,45 @@ html, body {
 .banish-mode .card { border-color: rgba(226,72,61,.5); }
 .banish-mode .card::before { background: linear-gradient(90deg, transparent, var(--blood), transparent); }
 .banish-mode .card:hover { border-color: var(--blood); box-shadow: var(--lift-2), 0 0 34px -12px var(--blood); }
+
+/* -- the verdict ------------------------------------------------------- */
+/* The outcome, stated once and large, before the accounting. */
+.verdict {
+  position: relative; margin-bottom: 16px; padding: 24px 26px;
+  border: 1px solid var(--rim); border-radius: 2px;
+  box-shadow: var(--bevel-deep), var(--lift-1);
+  background: linear-gradient(180deg, var(--obsidian-2), var(--obsidian));
+  overflow: hidden;
+}
+.verdict::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--verdict-hue, var(--arc)), transparent);
+}
+.verdict::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 70% at 50% -20%, var(--verdict-hue, var(--arc)), transparent 65%);
+  opacity: .09;
+}
+.verdict.win  { --verdict-hue: var(--arc); }
+.verdict.loss { --verdict-hue: var(--blood); }
+.verdict.neutral { --verdict-hue: var(--ink-dim); }
+.verdict-head { position: relative; }
+.verdict-title {
+  font-size: var(--t-hero); font-weight: 200; letter-spacing: .04em;
+  color: var(--verdict-hue, var(--arc)); line-height: 1.1;
+}
+.verdict-line {
+  margin-top: 8px; font-size: var(--t-lead); color: var(--ink-dim); max-width: 62ch;
+}
+.verdict-figures {
+  position: relative; display: flex; flex-wrap: wrap; gap: 10px 34px; margin-top: 20px;
+  padding-top: 18px; border-top: 1px solid var(--rim);
+}
+.verdict-figures .vf .v {
+  font-family: var(--fig); font-size: 24px; font-weight: 500;
+  font-variant-numeric: tabular-nums; color: var(--ink);
+}
+.verdict-figures .vf .label { margin-top: 3px; }
 
 /* -- the build sheet --------------------------------------------------- */
 .sheet { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -581,7 +728,8 @@ html, body {
 /* -- settings ---------------------------------------------------------- */
 .setting {
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  padding: 11px 14px; background: var(--obsidian); border: 1px solid var(--rim); border-radius: 2px;
+  padding: 11px 14px; background: var(--obsidian); border: 1px solid var(--rim);
+  border-radius: 2px; box-shadow: var(--bevel);
 }
 .setting .s-name { font-size: var(--t-body); }
 .setting .s-desc { font-size: var(--t-small); color: var(--ink-dim); margin-top: 2px; }
@@ -624,7 +772,8 @@ input[type=range]::-moz-range-thumb {
 /* -- the purse --------------------------------------------------------- */
 .bank {
   display: inline-flex; align-items: baseline; gap: 9px;
-  border: 1px solid var(--rim); border-radius: 2px; padding: 8px 14px; background: var(--obsidian);
+  border: 1px solid var(--rim); border-radius: 2px; padding: 8px 14px;
+  background: var(--obsidian); box-shadow: var(--bevel);
 }
 .bank .v {
   color: var(--arc); font-family: var(--fig); font-weight: 500;

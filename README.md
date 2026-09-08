@@ -103,7 +103,9 @@ tools/         the single-file bundler
 - **Art is code.** `src/render/sprites.js` composes creatures from shaded
   primitives per archetype (humanoid, quadruped, undead, wraith, mech…) and
   caches each one, supersampled 2×, per tint and size.
-  `src/render/icons.js` draws every ability glyph on an obsidian plate.
+  `src/render/icons.js` draws all seventy ability glyphs to one system — a
+  shared optical circle, two stroke weights, one density target — on a
+  chamfered machined plate.
 - **Sound is code.** `src/audio/audio.js` synthesises each effect from
   oscillators and filtered noise (throttled per kit, so a maxed build does not
   stack forty voices), and schedules a generative score per zone whose

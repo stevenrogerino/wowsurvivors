@@ -73,6 +73,9 @@
     e.invuln = 0;
     e.spawnId = ++this.spawnCounter;
     e.patternIndex = 0;
+    e.windup = 0;
+    e.chargeDir = null;
+    e.telegraph = null;      // {kind, life, maxLife, ...} drawn by the renderer
     e.attackTimer = template.interval || 3.6;
     e.rangedTimer = template.ranged ? WS.randRange(0.4, template.ranged.cooldown) : null;
     e.finalBoss = false;
@@ -169,7 +172,17 @@
         e.slowTimer -= dt;
         speed *= e.slowFactor;
       }
-      if (e.chargeTimer > 0) {
+      if (e.windup > 0) {
+        // The tell: the boss plants, and the ground in front of it lights up.
+        e.windup -= dt;
+        speed = 0;
+        if (e.windup <= 0) {
+          e.chargeTimer = 1.1;
+          e.chargeDir = [dx, dy];
+          WS.FX.shake(5, 0.25);
+          WS.Audio.play('warn');
+        }
+      } else if (e.chargeTimer > 0) {
         e.chargeTimer -= dt;
         speed *= 3.2;
       }
@@ -214,6 +227,10 @@
 
       if (e.flash > 0) e.flash -= dt;
       if (e.invuln > 0) e.invuln -= dt;
+      if (e.telegraph) {
+        e.telegraph.life -= dt;
+        if (e.telegraph.life <= 0) e.telegraph = null;
+      }
 
       // Thorns last, so reflecting a fatal hit cannot corrupt this update.
       if (struck && player.thornsRank > 0) {
@@ -240,6 +257,7 @@
         this.spawn(pattern.id, e.x + WS.cos(a) * range, e.y + WS.sin(a) * range, scale);
       }
       WS.FX.flash(e.x, e.y, e.radius * 2.4, WS.CONST.COLORS.shadow, 0.4);
+      e.telegraph = { kind: 'ring', life: 0.4, maxLife: 0.4, radius: e.radius * 3 };
     } else if (pattern.type === 'volley') {
       const bolts = pattern.bolts || 7;
       for (let s = 1; s <= bolts; s++) {
@@ -257,9 +275,11 @@
           WS.cos(a) * 220, WS.sin(a) * 220, e.damage * 0.6, school, t.name, e);
       }
     } else if (pattern.type === 'charge') {
-      e.chargeTimer = 1.1;
-      WS.FX.shake(4, 0.3);
-      WS.FX.flash(e.x, e.y, e.radius * 2, WS.CONST.COLORS.enemy, 0.35);
+      // Telegraph first: three quarters of a second planted, with the lane
+      // ahead marked, then the charge itself.
+      e.windup = 0.75;
+      e.telegraph = { kind: 'lane', life: 0.75, maxLife: 0.75, dx, dy, length: 460, width: e.radius * 2.2 };
+      WS.FX.flash(e.x, e.y, e.radius * 1.6, WS.CONST.COLORS.enemy, 0.5);
     }
   };
 

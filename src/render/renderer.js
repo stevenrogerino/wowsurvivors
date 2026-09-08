@@ -141,6 +141,7 @@
 
     /* ---- ground effects (zones, auras, arena hazards) -------------------- */
     this.drawZones(ctx, time);
+    this.drawTelegraphs(ctx, time);
     this.drawPlayerMark(ctx, player, time);
     this.drawAuras(ctx, player, time);
     if (WS.Arena.active) this.drawArena(ctx, time);
@@ -262,6 +263,11 @@
     const sprite = WS.Sprites.creature(t.art, e.chilled ? [0.55, 0.8, 1.0] : t.tint, size);
     ctx.save();
     ctx.translate(e.x, e.y + bob);
+    // Bracing for a charge: the body compresses, then springs.
+    if (e.windup > 0) {
+      const k = 1 - e.windup / 0.75;
+      ctx.scale(1 + k * 0.14, 1 - k * 0.12);
+    }
     if (e.facing < 0) ctx.scale(-1, 1);
     ctx.drawImage(sprite, -size / 2, -size * 0.62, size, size);
     ctx.restore();
@@ -280,13 +286,8 @@
 
     if (WS.Save.settings.showHealthBars || e.elite || e.boss) healthBar(ctx, e);
 
-    if (e.boss) {
-      ctx.font = '600 12px system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#f2c9ff';
-      ctx.fillText(t.name, e.x, e.y - e.radius * 2.1);
-    } else if (e.elite) {
-      ctx.font = '600 10px system-ui, sans-serif';
+    if (e.elite && !e.boss) {
+      ctx.font = "600 10px 'Archivo', system-ui, sans-serif";
       ctx.textAlign = 'center';
       ctx.fillStyle = '#f5c56b';
       ctx.fillText(t.name, e.x, e.y - e.radius * 2.1);
@@ -422,6 +423,49 @@
     ctx.beginPath(); ctx.arc(p.x, p.y, p.pickupRadius, 0, WS.TAU); ctx.stroke();
     ctx.setLineDash([]);
     ctx.restore();
+  };
+
+  /** Boss tells, painted on the ground: a charge lane that fills as the wind-up
+   *  runs out, and a swelling ring before a volley. Nothing should hit you
+   *  without first saying so. */
+  R.drawTelegraphs = function (ctx, time) {
+    for (let i = 0; i < WS.Enemy.pool.count; i++) {
+      const e = WS.Enemy.pool.active[i];
+      const t = e.telegraph;
+      if (!t) continue;
+      const k = 1 - WS.clamp(t.life / t.maxLife, 0, 1);   // 0 -> 1 as it lands
+      ctx.save();
+      if (t.kind === 'lane') {
+        ctx.translate(e.x, e.y);
+        ctx.rotate(WS.atan2(t.dy, t.dx));
+        ctx.fillStyle = `rgba(226,72,61,${(0.07 + 0.16 * k).toFixed(3)})`;
+        ctx.fillRect(0, -t.width / 2, t.length, t.width);
+        // The bar fills toward the survivor as the charge becomes inevitable.
+        ctx.fillStyle = `rgba(255,120,100,${(0.16 + 0.3 * k).toFixed(3)})`;
+        ctx.fillRect(0, -t.width / 2, t.length * k, t.width);
+        ctx.strokeStyle = `rgba(255,140,120,${(0.35 + 0.45 * k).toFixed(3)})`;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(0, -t.width / 2, t.length, t.width);
+        // Chevrons pointing the way out.
+        ctx.globalAlpha = 0.5 + 0.4 * k;
+        for (let c = 1; c <= 3; c++) {
+          const x = t.length * (c / 4);
+          ctx.beginPath();
+          ctx.moveTo(x, -t.width * 0.28);
+          ctx.lineTo(x + 14, 0);
+          ctx.lineTo(x, t.width * 0.28);
+          ctx.stroke();
+        }
+      } else if (t.kind === 'ring') {
+        ctx.globalAlpha = 0.7 * (1 - k);
+        ctx.strokeStyle = 'rgba(226,72,61,.9)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, t.radius * (0.4 + 0.9 * k), 0, WS.TAU);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
   };
 
   R.drawZones = function (ctx, time) {

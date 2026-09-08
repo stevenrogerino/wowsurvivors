@@ -371,6 +371,33 @@
     this.overlay.innerHTML = '';
     this.overlay.append(inner);
     this.overlay.classList.remove('hidden');
+    this.wireScroll(inner);
+  };
+
+  /** Keeps a scroll area honest: fades the edge it can still travel toward,
+   *  and shows a caret while there is more below. Content that continues must
+   *  look like it continues, or it reads as cut off. */
+  UI.wireScroll = function (root) {
+    const body = root.querySelector('.overlay-body');
+    if (!body) return;
+    let scrim = body.querySelector('.scroll-scrim');
+    if (!scrim) { scrim = el('div', 'scroll-scrim'); body.append(scrim); }
+    const sync = () => {
+      const slack = body.scrollHeight - body.clientHeight;
+      const more = slack > 2;
+      body.classList.toggle('can-scroll', more);
+      body.classList.toggle('at-bottom', !more || body.scrollTop >= slack - 2);
+    };
+    body.addEventListener('scroll', sync, { passive: true });
+    // Content arrives across a frame or two (images, fonts), so re-check.
+    sync();
+    requestAnimationFrame(sync);
+    setTimeout(sync, 120);
+    if (window.ResizeObserver) {
+      const ro = new ResizeObserver(sync);
+      ro.observe(body);
+      if (body.firstElementChild) ro.observe(body.firstElementChild);
+    }
   };
 
   /* ------------------------------------------------------------- cards --- */
@@ -380,10 +407,12 @@
     card.type = 'button';
     card.style.setProperty('--q', WS.hex(colour));
 
+    const inlay = el('div', 'card-inlay');
+    for (let i = 0; i < 4; i++) inlay.append(el('i'));
+    card.append(inlay);
+
     const plate = el('div', 'icon-plate');
-    const img = icon(choice.art || 'rune', colour, 66);
-    img.width = img.height = 66;
-    plate.append(img);
+    plate.append(icon(choice.art || 'rune', colour, 66));
     card.append(plate);
 
     card.append(el('div', 'card-name', choice.name));
@@ -423,6 +452,14 @@
     const render = () => {
       for (const btn of tabs.children) btn.classList.toggle('active', btn.dataset.tab === UI.tab);
       panes.replaceChildren(UI.buildPane(UI.tab, render));
+      requestAnimationFrame(() => {
+        const body = s.inner.querySelector('.overlay-body');
+        if (!body) return;
+        const scrim = body.querySelector('.scroll-scrim');
+        if (scrim) body.append(scrim);
+        body.scrollTop = 0;
+        body.dispatchEvent(new Event('scroll'));
+      });
     };
     for (const [id, label] of TABS) {
       const b = el('button', 'tab', label);
@@ -1006,8 +1043,43 @@
     this.show(s.inner);
   };
 
+  /** The verdict: one panel that states the outcome in the run's own numbers,
+   *  before the ledger. */
+  function verdict(kind, title, line, figures) {
+    const wrap = el('div', 'verdict ' + kind);
+    const head = el('div', 'verdict-head');
+    head.append(el('div', 'verdict-title', title));
+    head.append(el('div', 'verdict-line', line));
+    wrap.append(head);
+    const grid = el('div', 'verdict-figures');
+    for (const [k, v] of figures) {
+      const f = el('div', 'vf');
+      f.append(el('div', 'v', v), el('div', 'label', k));
+      grid.append(f);
+    }
+    wrap.append(grid);
+    return wrap;
+  }
+
+  function runFigures(run, player) {
+    return [
+      ['Survived', WS.formatTime(run.time)],
+      ['Level', String(player.level)],
+      ['Slain', WS.formatNumber(run.kills)],
+      ['Bosses', String(run.bossesSlain)],
+      ['Damage', WS.formatNumber(run.damageDone)],
+      ['Gold', WS.formatNumber(run.gold)],
+    ];
+  }
+
   UI.openVictory = function () {
-    const s = shell('Victory', `${WS.Game.run.map.name} survived. Hyper Mode unlocked.`);
+    const run = WS.Game.run;
+    const s = shell(run.map.name,
+      `${WS.Config.difficulties[WS.Save.settings.difficulty].label}`
+      + `${run.hyper ? ' · Hyper' : ''} · ${WS.Characters[run.characterId].name}`);
+    s.body.append(verdict('win', 'The night broke first',
+      `You held ${run.map.name} for thirty minutes. Death is on the field now — it always is.`,
+      runFigures(run, WS.Game.player)));
     s.body.append(buildSheet());
     const claim = el('button', 'btn primary', 'Claim the win');
     claim.addEventListener('click', () => WS.Game.endRun('victory'));
@@ -1036,7 +1108,20 @@
     const sub = reason === 'defeated'
       ? `Slain by ${run.killedBy ? run.killedBy.name : 'the endless horde'} at ${WS.formatTime(run.time)}.`
       : `${WS.formatTime(run.time)} on ${run.map.name}.`;
-    const s = shell(titles[reason] || 'Run over', sub);
+    const s = shell(run.map.name,
+      `${WS.Config.difficulties[WS.Save.settings.difficulty].label}`
+      + `${run.hyper ? ' · Hyper' : ''} · ${WS.Characters[run.characterId].name}`);
+
+    const lines = {
+      defeated: `${run.killedBy ? run.killedBy.name : 'The horde'} got through at ${WS.formatTime(run.time)}. `
+        + `${WS.formatNumber(run.kills)} did not.`,
+      victory: 'Banked, and Hyper Mode is open on this battlefield.',
+      abandoned: 'You walked off the field. The gold is still yours.',
+      arena_victory: 'Aethelgard is undone. The eclipse holds nothing now.',
+    };
+    const kinds = { defeated: 'loss', victory: 'win', abandoned: 'neutral', arena_victory: 'win' };
+    s.body.append(verdict(kinds[reason] || 'neutral', titles[reason] || 'The run ends',
+      lines[reason] || sub, runFigures(run, WS.Game.player)));
     s.body.append(buildSheet());
     const again = el('button', 'btn primary', 'Run again');
     again.addEventListener('click', () => WS.Game.startRun(run.mapId, run.characterId));

@@ -49,7 +49,42 @@ The design language for **WoWSurvivors 2**. Everything on screen is either
 Quality colours for cards follow Warcraft item quality: common `#e8ecf6`,
 uncommon `#3ddc7a`, rare `#59bfff`, epic `#b34ff2`, legendary `#f5c56b`.
 
-## 3. Components
+## 3. Icons
+
+Sixty-odd glyphs read as one set because they all obey the same system, not
+because they were drawn in one sitting:
+
+- a 100x100 field, with every mark inside an **optical circle of radius 36**.
+  Nothing touches the plate edge.
+- **two stroke weights only** - 8 units for the subject, 4.5 for detail - with
+  round caps and joins throughout.
+- **one density target**: a glyph covers roughly a third of its optical circle,
+  so a stroked icon never looks starved beside a filled one.
+- **one treatment per glyph**. A shape is drawn or outlined, never a hairline
+  stapled to a heavy fill.
+- **a distinct silhouette**. Five edged weapons must not all be a thin
+  vertical: the dagger is a leaf blade, the sword adds a pommel, the spear
+  trails motion, the axe is a double head, and Ferocity is a crossed slash.
+
+The plate under them is a **chamfered machined tile** - an octagon, not a
+rounded rectangle - carrying an outer rim, a bevel lit from the top, an accent
+hairline inlaid three units in, and a pool of light for the subject to sit in.
+Below 40px the inlay is dropped, because at pip size it and the rim collapse
+into each other.
+
+## 4. Edges
+
+Flat boxes with one uniform border is what makes an interface look generated.
+Every raised surface here carries a **bevel** - `inset 0 1px 0 rgba(255,255,255,.075)`
+along the top, `inset 0 -1px 0 rgba(0,0,0,.55)` along the foot - and every
+sunken one (meter tracks, the timer rail, a pressed button) carries its
+inverse. Panels and cards add an **inlay**: a second hairline set five to seven
+pixels in from the rim. Cards add four **corner ticks** that take the quality
+colour on hover. Rows grow a lit left edge. Stat tiles get a 12px accent tab at
+the top-left corner. The detail is small on purpose; it is the accumulation
+that reads as machined rather than any single flourish.
+
+## 5. Components
 
 - **Arc gauge** - `svg` circle with `stroke-dasharray`; 6px stroke, round cap,
   a 1px static track at 12% white beneath it. Health gauge runs clockwise from
@@ -65,7 +100,7 @@ uncommon `#3ddc7a`, rare `#59bfff`, epic `#b34ff2`, legendary `#f5c56b`.
 - **Banner** - the boss/event announcement: full-width sweep of arc light with
   the title in 28px letterspaced caps over it.
 
-## 4. Typography
+## 6. Typography
 
 Two faces, embedded as data URIs in `src/ui/fonts.css` so the game still makes
 no network requests and never falls back to whatever the OS happens to ship:
@@ -82,7 +117,7 @@ One scale, used everywhere (`--t-micro` 10px through `--t-hero` 40px).
 - Micro-labels: 10px 600 caps, `.14em` tracking, `--ink-dim`.
 - All numerals: IBM Plex Mono with `font-variant-numeric: tabular-nums`.
 
-## 5. Layout
+## 7. Layout
 
 The playfield is a fixed 1280x720 world letterboxed into the viewport. The HUD
 is drawn *in the letterbox and over the corners*, never in the centre third:
@@ -100,7 +135,7 @@ is drawn *in the letterbox and over the corners*, never in the centre third:
 +--------------------------------------------------------------+
 ```
 
-## 6. Feel
+## 8. Feel
 
 The interface is only half of it; the other half is how the world answers.
 
@@ -125,3 +160,13 @@ The interface is only half of it; the other half is how the world answers.
   the strip flashes with it.
 - **The level-up eases.** Taking a boon returns the world at quarter speed,
   ramping back to full over half a second, instead of snapping back.
+- **Nothing hits without saying so.** A boss charge plants for three quarters
+  of a second first: the body compresses, and the lane ahead fills with a bar
+  and chevrons pointing out of it. Volleys swell a ring before they fire.
+- **Scroll areas never fade their content.** A masked fade across visible text
+  is exactly what reads as truncation; instead a sticky scrim rides the fold
+  and clears the moment the reader reaches the end.
+- **The mix has headroom.** Everything runs through a limiter, and the score
+  ducks under horns, level-ups and detonations rather than fighting them.
+- **The verdict comes before the accounting.** Victory and defeat open with one
+  panel stating the outcome and six figures, then the ledger below it.

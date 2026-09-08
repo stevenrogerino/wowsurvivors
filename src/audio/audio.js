@@ -21,10 +21,26 @@
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     this.ctx = new AC();
+
+    // A limiter across everything: a level-eight Storm of Steel can put forty
+    // voices in flight, and without this the mix simply clips.
+    this.master = this.ctx.createDynamicsCompressor();
+    this.master.threshold.value = -14;
+    this.master.knee.value = 24;
+    this.master.ratio.value = 8;
+    this.master.attack.value = 0.004;
+    this.master.release.value = 0.18;
+    this.master.connect(this.ctx.destination);
+
     this.sfxGain = this.ctx.createGain();
     this.musicGain = this.ctx.createGain();
-    this.sfxGain.connect(this.ctx.destination);
-    this.musicGain.connect(this.ctx.destination);
+    // The score sits behind a duck stage, so a boss horn or a level-up pushes
+    // it down rather than talking over it.
+    this.duck = this.ctx.createGain();
+    this.duck.gain.value = 1;
+    this.sfxGain.connect(this.master);
+    this.musicGain.connect(this.duck);
+    this.duck.connect(this.master);
     this.applySettings();
     this.ready = true;
   };
@@ -168,6 +184,12 @@
     },
   };
 
+  // How far each kit pushes the score down, and for how long.
+  const DUCK = {
+    boss: [0.28, 1.6], evolve: [0.4, 1.1], level: [0.4, 0.9],
+    victory: [0.3, 1.8], death: [0.25, 1.8], explode: [0.55, 0.5], warn: [0.5, 0.7],
+  };
+
   Audio.play = function (kit) {
     if (!this.ctx || !WS.Save.settings.sound) return;
     const t = this.ctx.currentTime;
@@ -175,6 +197,17 @@
     if (gap) {
       if (lastPlayed[kit] && t - lastPlayed[kit] < gap) return;
       lastPlayed[kit] = t;
+    }
+    const d = DUCK[kit];
+    if (d && this.duck) {
+      const [floor, hold] = d;
+      try {
+        this.duck.gain.cancelScheduledValues(t);
+        this.duck.gain.setValueAtTime(this.duck.gain.value, t);
+        this.duck.gain.linearRampToValueAtTime(floor, t + 0.06);
+        this.duck.gain.setValueAtTime(floor, t + hold * 0.5);
+        this.duck.gain.linearRampToValueAtTime(1, t + hold);
+      } catch (e) { /* scheduling raced a context change */ }
     }
     const fn = KITS[kit];
     if (fn) { try { fn(); } catch (e) { /* audio graph exhausted */ } }
