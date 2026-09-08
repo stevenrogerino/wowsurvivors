@@ -342,8 +342,11 @@
     const t = e.template;
     const player = WS.Game.player;
 
+    WS.FX.corpse(e);
     WS.FX.burst(e.x, e.y, e.boss ? 26 : e.elite ? 14 : 7,
       WS.hex(t.tint), e.boss ? 260 : 150, 0.5, e.boss ? 5 : 3);
+    if (e.boss) WS.FX.stop(0.16);
+    else if (e.elite) WS.FX.stop(0.05);
     WS.XP.spawnGem(e.x, e.y, e.xp);
     WS.Pickup.onKill(e);
     WS.Save.recordKill(t, e.id);

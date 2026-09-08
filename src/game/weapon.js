@@ -317,7 +317,14 @@
     const handler = Weapon.behaviors[behaviorOf(w)];
     if (!handler) return;
     const fired = handler(player, w);
-    if (fired && w.data.behavior === 'aimed') WS.Audio.play('cast');
+    if (fired === false) return;
+    // A muzzle flash in the weapon's own colour, so a six-weapon build reads
+    // as six distinct instruments rather than one undifferentiated stream.
+    const b = behaviorOf(w);
+    if (b === 'aimed' || b === 'spray' || b === 'ring' || b === 'bounce') {
+      WS.FX.flash(player.x, player.y, 26, schoolColour(w), 0.16);
+    }
+    if (w.data.behavior === 'aimed') WS.Audio.play('cast');
   };
 
   /* ---------------------------------------------------------- describe -- */

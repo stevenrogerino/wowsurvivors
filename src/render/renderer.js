@@ -109,8 +109,8 @@
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, this.viewW, this.viewH);
 
-    // Letterbox surround: the wine-dark ground the manuscript sits on.
-    ctx.fillStyle = '#06040a';
+    // Letterbox surround: the Arclight void.
+    ctx.fillStyle = '#07080c';
     ctx.fillRect(0, 0, this.viewW, this.viewH);
 
     ctx.save();
@@ -141,8 +141,11 @@
 
     /* ---- ground effects (zones, auras, arena hazards) -------------------- */
     this.drawZones(ctx, time);
+    this.drawPlayerMark(ctx, player, time);
     this.drawAuras(ctx, player, time);
     if (WS.Arena.active) this.drawArena(ctx, time);
+
+    this.drawCorpses(ctx);
 
     /* ---- gems and pickups ------------------------------------------------ */
     this.drawGems(ctx, time);
@@ -181,6 +184,22 @@
       ctx.fillRect(0, 0, this.viewW, this.viewH);
       ctx.globalAlpha = 1;
     }
+    if (game.player) {
+      const hpPct = WS.clamp(game.player.health / game.player.maxHealth, 0, 1);
+      const hurt = WS.FX.hurtPulse;
+      const peril = hpPct < 0.3 ? (0.3 - hpPct) / 0.3 : 0;
+      const rim = WS.max(hurt * 0.55, peril * (0.24 + 0.1 * WS.sin(time * 4)));
+      if (rim > 0.01) {
+        const g2 = ctx.createRadialGradient(
+          this.viewW / 2, this.viewH / 2, WS.min(this.viewW, this.viewH) * 0.3,
+          this.viewW / 2, this.viewH / 2, WS.max(this.viewW, this.viewH) * 0.62);
+        g2.addColorStop(0, 'rgba(226,72,61,0)');
+        g2.addColorStop(1, `rgba(226,72,61,${rim.toFixed(3)})`);
+        ctx.fillStyle = g2;
+        ctx.fillRect(0, 0, this.viewW, this.viewH);
+      }
+    }
+
     if (WS.Arena.active && WS.Arena.darkness > 0) {
       // Total Darkness closes in around the survivor.
       const cx = this.offsetX + player.x * this.scale;
@@ -193,6 +212,32 @@
       ctx.fillRect(0, 0, this.viewW, this.viewH);
     }
     this.drawBanner(ctx, run);
+  };
+
+  /** The bodies: each squashes into the ground and fades over its life. */
+  R.drawCorpses = function (ctx) {
+    const pool = WS.FX.corpses;
+    for (let i = 0; i < pool.count; i++) {
+      const c = pool.active[i];
+      const t = 1 - WS.clamp(c.life / c.maxLife, 0, 1);
+      ctx.save();
+      ctx.globalAlpha = (1 - t) * 0.85;
+      ctx.translate(c.x, c.y + c.size * 0.18 * t);
+      ctx.scale(c.facing < 0 ? -(1 + t * 0.3) : (1 + t * 0.3), 1 - t * 0.55);
+      const sprite = WS.Sprites.creature(c.art, c.tint, c.size);
+      ctx.drawImage(sprite, -c.size / 2, -c.size * 0.62, c.size, c.size);
+      ctx.restore();
+      if (c.boss) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = (1 - t) * 0.5;
+        ctx.fillStyle = WS.rgb(WS.CONST.COLORS.boss, 1);
+        ctx.beginPath();
+        ctx.ellipse(c.x, c.y + c.size * 0.2, c.size * (0.4 + t), c.size * 0.16, 0, 0, WS.TAU);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
   };
 
   /* ------------------------------------------------------------ entities - */
@@ -236,14 +281,14 @@
     if (WS.Save.settings.showHealthBars || e.elite || e.boss) healthBar(ctx, e);
 
     if (e.boss) {
-      ctx.font = "400 12px 'Cinzel', Georgia, serif";
+      ctx.font = '600 12px system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillStyle = '#eeb6ab';
+      ctx.fillStyle = '#f2c9ff';
       ctx.fillText(t.name, e.x, e.y - e.radius * 2.1);
     } else if (e.elite) {
-      ctx.font = "400 10px 'Cinzel', Georgia, serif";
+      ctx.font = '600 10px system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillStyle = '#e6d0a2';
+      ctx.fillStyle = '#f5c56b';
       ctx.fillText(t.name, e.x, e.y - e.radius * 2.1);
     }
   };
@@ -270,12 +315,20 @@
     const bob = p.moving ? WS.sin(p.walkCycle) * 2.5 : WS.sin(p.walkCycle) * 1.2;
     shadow(ctx, p.x, p.y + p.radius * 0.7, p.radius * 0.9);
     ctx.save();
-    ctx.globalAlpha = 0.5;
+    const beat = 0.42 + 0.14 * WS.sin(time * 2.4);
+    ctx.globalAlpha = beat;
     ctx.strokeStyle = '#f5c56b';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.ellipse(p.x, p.y + p.radius * 0.7, p.radius * 1.15, p.radius * 0.46, 0, 0, WS.TAU);
+    ctx.ellipse(p.x, p.y + p.radius * 0.7, p.radius * 1.2, p.radius * 0.48, 0, 0, WS.TAU);
     ctx.stroke();
+    // A second, wider ring only while the field is crowded enough to lose them.
+    if (WS.Enemy.pool.count > 60) {
+      ctx.globalAlpha = beat * 0.4;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y + p.radius * 0.7, p.radius * 1.9, p.radius * 0.76, 0, 0, WS.TAU);
+      ctx.stroke();
+    }
     ctx.restore();
 
     ctx.save();
@@ -311,6 +364,37 @@
   };
 
   /* ------------------------------------------------------------- effects - */
+  /** The survivor's standing mark: a lit disc on the ground that the horde
+   *  draws over but never hides, plus crosshair ticks when it gets busy. */
+  R.drawPlayerMark = function (ctx, p, time) {
+    const crowd = WS.Enemy.pool.count;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const r = p.radius * 2.4;
+    const grd = ctx.createRadialGradient(p.x, p.y + p.radius * 0.5, 0, p.x, p.y + p.radius * 0.5, r);
+    grd.addColorStop(0, 'rgba(245,197,107,.16)');
+    grd.addColorStop(1, 'rgba(245,197,107,0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y + p.radius * 0.5, r, r * 0.5, 0, 0, WS.TAU);
+    ctx.fill();
+
+    if (crowd > 60) {
+      ctx.globalAlpha = 0.3 + 0.12 * WS.sin(time * 2.4);
+      ctx.strokeStyle = '#f5c56b';
+      ctx.lineWidth = 1;
+      const R = p.radius * 3.2;
+      for (let i = 0; i < 4; i++) {
+        const a = i * WS.PI / 2 + WS.PI / 4;
+        ctx.beginPath();
+        ctx.moveTo(p.x + WS.cos(a) * R, p.y + WS.sin(a) * R * 0.5);
+        ctx.lineTo(p.x + WS.cos(a) * (R + 9), p.y + WS.sin(a) * (R + 9) * 0.5);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  };
+
   R.drawAuras = function (ctx, p, time) {
     ctx.save();
     if (p.chillRank > 0) {
@@ -363,11 +447,31 @@
 
   R.drawGems = function (ctx, time) {
     const gems = WS.XP.pool;
+    const player = WS.Game.player;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < gems.count; i++) {
       const g = gems.active[i];
-      const s = g.size * (1 + 0.08 * WS.sin(time * 5 + g.spin));
+      const d = WS.dist(g.x, g.y, player.x, player.y);
+      // A field of hundreds of gems must not shout. They sit quiet until the
+      // magnet takes hold, then brighten and pull a comet tail.
+      const pulled = d < player.pickupRadius || WS.XP.vacuumTimer > 0;
+      // Falls off with distance: near gems read as loot, far ones as texture.
+      const near = WS.clamp(1 - (d - player.pickupRadius) / 260, 0, 1);
+      const s = g.size * (pulled ? 1.15 : 0.7 + near * 0.2)
+        * (1 + 0.06 * WS.sin(time * 5 + g.spin));
+      if (pulled) {
+        const [tx, ty] = WS.normalize(g.x - player.x, g.y - player.y);
+        ctx.globalAlpha = 0.4;
+        ctx.strokeStyle = WS.rgb(g.colour, 1);
+        ctx.lineWidth = s * 0.5;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(g.x, g.y);
+        ctx.lineTo(g.x + tx * s * 2.4, g.y + ty * s * 2.4);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = pulled ? 1 : 0.26 + near * 0.34;
       ctx.save();
       ctx.translate(g.x, g.y);
       ctx.rotate(g.spin);
@@ -375,12 +479,13 @@
       ctx.beginPath();
       ctx.moveTo(0, -s); ctx.lineTo(s * 0.7, 0); ctx.lineTo(0, s); ctx.lineTo(-s * 0.7, 0);
       ctx.closePath(); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,.55)';
+      ctx.fillStyle = 'rgba(255,255,255,.5)';
       ctx.beginPath();
       ctx.moveTo(0, -s); ctx.lineTo(0, s); ctx.lineTo(-s * 0.7, 0);
       ctx.closePath(); ctx.fill();
       ctx.restore();
     }
+    ctx.globalAlpha = 1;
     ctx.restore();
   };
 
@@ -574,10 +679,13 @@
     for (let i = 0; i < texts.count; i++) {
       const t = texts.active[i];
       const fade = WS.clamp(t.life / t.maxLife, 0, 1);
-      ctx.globalAlpha = fade;
-      ctx.font = `400 ${t.size}px 'Cinzel', Georgia, serif`;
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = 'rgba(4,6,10,.85)';
+      const age = 1 - fade;
+      // A short overshoot on arrival, easing back to size.
+      const pop = t.pop ? 1 + t.pop * 0.55 * WS.max(0, 1 - age * 6) : 1;
+      ctx.globalAlpha = WS.min(1, fade * 2.2);
+      ctx.font = `600 ${WS.round(t.size * pop)}px 'Archivo', 'Segoe UI', system-ui, sans-serif`;
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = 'rgba(4,6,10,.9)';
       ctx.strokeText(t.text, t.x, t.y);
       ctx.fillStyle = t.colour;
       ctx.fillText(t.text, t.x, t.y);
@@ -689,25 +797,8 @@
       this.viewW / 2, this.viewH / 2, WS.min(this.viewW, this.viewH) * 0.35,
       this.viewW / 2, this.viewH / 2, WS.max(this.viewW, this.viewH) * 0.75);
     grd.addColorStop(0, 'rgba(0,0,0,0)');
-    grd.addColorStop(1, 'rgba(6,4,10,.72)');
+    grd.addColorStop(1, 'rgba(0,0,0,.55)');
     ctx.fillStyle = grd;
-    ctx.fillRect(0, 0, this.viewW, this.viewH);
-
-    // Candlelight from above, and the blood glow banked at the bottom edge.
-    const warm = ctx.createRadialGradient(
-      this.viewW / 2, this.viewH * 0.5, 0,
-      this.viewW / 2, this.viewH * 0.5, WS.max(this.viewW, this.viewH) * 0.42);
-    warm.addColorStop(0, 'rgba(255,190,120,.09)');
-    warm.addColorStop(1, 'rgba(255,190,120,0)');
-    ctx.fillStyle = warm;
-    ctx.fillRect(0, 0, this.viewW, this.viewH);
-
-    const blood = ctx.createRadialGradient(
-      this.viewW / 2, this.viewH * 1.2, 0,
-      this.viewW / 2, this.viewH * 1.2, this.viewH * 0.9);
-    blood.addColorStop(0, 'rgba(102,20,32,.30)');
-    blood.addColorStop(1, 'rgba(102,20,32,0)');
-    ctx.fillStyle = blood;
     ctx.fillRect(0, 0, this.viewW, this.viewH);
   };
 
@@ -727,23 +818,23 @@
 
     const w = WS.min(this.viewW * 0.8, 900) * appear;
     const grd = ctx.createLinearGradient(this.viewW / 2 - w / 2, 0, this.viewW / 2 + w / 2, 0);
-    grd.addColorStop(0, 'rgba(217,180,103,0)');
-    grd.addColorStop(0.5, 'rgba(217,180,103,.85)');
-    grd.addColorStop(1, 'rgba(217,180,103,0)');
+    grd.addColorStop(0, 'rgba(245,197,107,0)');
+    grd.addColorStop(0.5, 'rgba(245,197,107,.85)');
+    grd.addColorStop(1, 'rgba(245,197,107,0)');
     ctx.fillStyle = grd;
     ctx.fillRect(this.viewW / 2 - w / 2, y + 26, w, 1.5);
 
-    ctx.font = "700 32px 'Cinzel Decorative', 'Cinzel', Georgia, serif";
-    ctx.letterSpacing = '1px';
+    ctx.font = '600 30px system-ui, "Segoe UI", sans-serif';
+    ctx.letterSpacing = '2px';
     ctx.lineWidth = 5;
     ctx.strokeStyle = 'rgba(4,6,10,.8)';
     ctx.strokeText(b.title, this.viewW / 2, y);
-    ctx.fillStyle = '#e6d0a2';
+    ctx.fillStyle = '#ffe6ae';
     ctx.fillText(b.title, this.viewW / 2, y);
 
     if (b.subtitle) {
-      ctx.font = "italic 400 18px 'EB Garamond', Georgia, serif";
-      ctx.fillStyle = 'rgba(232,207,143,.72)';
+      ctx.font = '400 15px system-ui, "Segoe UI", sans-serif';
+      ctx.fillStyle = '#c9cfdd';
       ctx.strokeText(b.subtitle, this.viewW / 2, y + 52);
       ctx.fillText(b.subtitle, this.viewW / 2, y + 52);
     }

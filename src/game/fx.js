@@ -7,44 +7,70 @@
     texts: null,
     flashes: null,
     particles: null,
+    corpses: null,
     shakeMag: 0,
     shakeTime: 0,
     shakeX: 0,
     shakeY: 0,
+    bigHit: 0,        // rolling mean hit, the bar a number must clear when busy
     flashScreen: null,
+    hitStop: 0,       // seconds of frozen simulation left, for weight
+    hurtPulse: 0,     // 0..1, red rim when the survivor is struck
   };
 
   FX.init = function () {
     this.texts = new WS.Pool(() => ({}), null, WS.CONST.MAX_FLOATING_TEXT);
     this.flashes = new WS.Pool(() => ({}), null, 90);
     this.particles = new WS.Pool(() => ({}), null, 400);
+    this.corpses = new WS.Pool(() => ({}), null, 60);
+    this.hitStop = 0;
+    this.hurtPulse = 0;
+    this.bigHit = 0;
   };
 
   FX.clear = function () {
     this.texts.releaseAll();
     this.flashes.releaseAll();
     this.particles.releaseAll();
+    this.corpses.releaseAll();
+    this.hitStop = 0;
+    this.hurtPulse = 0;
     this.shakeMag = 0; this.shakeTime = 0; this.shakeX = 0; this.shakeY = 0;
     this.flashScreen = null;
   };
 
   /* ---------------------------------------------------------------- text -- */
-  function push(x, y, text, colour, size, life, rise) {
+  let fanIndex = 0;
+  function push(x, y, text, colour, size, life, rise, pop) {
     const t = FX.texts.acquire();
-    if (!t) return;
+    if (!t) return null;
     t.x = x; t.y = y; t.text = text; t.colour = colour;
     t.size = size; t.life = life; t.maxLife = life;
-    t.vx = WS.randRange(-14, 14); t.vy = rise;
+    // Successive numbers fan out along an arc instead of stacking on one spot,
+    // which is the difference between a readable hit and a smear of digits.
+    const a = (fanIndex++ % 7) / 7 * WS.TAU;
+    t.vx = WS.cos(a) * 34 + WS.randRange(-6, 6);
+    t.vy = rise + WS.sin(a) * 12;
+    t.pop = pop || 0;
+    return t;
   }
 
   FX.damage = function (x, y, amount, crit) {
     if (!WS.Save.settings.damageNumbers) return;
-    push(x + WS.randRange(-6, 6), y - 8, String(WS.floor(amount)),
-      crit ? '#ffd45c' : '#f2f4f8', crit ? 20 : 14, crit ? 0.85 : 0.6, -46);
+    // Budget: past two-thirds full, small non-crit hits stop printing. A wall
+    // of tiny digits is less information than a few readable ones.
+    if (!crit && FX.texts.count > FX.texts.cap * 0.66) {
+      if (amount < FX.bigHit) return;
+    }
+    FX.bigHit = FX.bigHit * 0.995 + amount * 0.005;
+    push(x, y - 8, String(WS.floor(amount)),
+      crit ? '#ffd45c' : '#f2f4f8', crit ? 21 : 14, crit ? 0.85 : 0.6, -46,
+      crit ? 1 : 0.35);
   };
 
   FX.playerHurt = function (x, y, amount) {
-    push(x, y - 20, '-' + WS.floor(amount), '#ff6b5c', 20, 0.9, -50);
+    push(x, y - 20, '-' + WS.floor(amount), '#ff6b5c', 20, 0.9, -50, 1);
+    this.hurtPulse = 1;
   };
 
   FX.heal = function (x, y, amount) {
@@ -58,6 +84,26 @@
 
   FX.gold = function (x, y, amount) {
     push(x, y - 20, '+' + WS.floor(amount) + 'g', '#f5c56b', 15, 1.0, -38);
+  };
+
+  /** A death: the creature's silhouette squashes into the ground and fades.
+   *  Far more legible than a puff of particles, and it costs one draw. */
+  FX.corpse = function (enemy) {
+    const c = FX.corpses.acquire();
+    if (!c) return;
+    c.x = enemy.x; c.y = enemy.y;
+    c.art = enemy.template.art;
+    c.tint = enemy.template.tint;
+    c.size = enemy.spriteSize;
+    c.facing = enemy.facing;
+    c.life = enemy.boss ? 0.9 : 0.42;
+    c.maxLife = c.life;
+    c.boss = enemy.boss;
+  };
+
+  /** Freezes the simulation for a beat, so a heavy hit lands with weight. */
+  FX.stop = function (seconds) {
+    FX.hitStop = WS.max(FX.hitStop, seconds);
   };
 
   /* --------------------------------------------------------------- flash -- */
@@ -137,6 +183,14 @@
     }
 
     i = 0;
+    while (i < this.corpses.count) {
+      const c = this.corpses.active[i];
+      c.life -= dt;
+      if (c.life <= 0) { this.corpses.releaseAt(i); continue; }
+      i++;
+    }
+
+    i = 0;
     while (i < this.particles.count) {
       const p = this.particles.active[i];
       p.life -= dt;
@@ -160,6 +214,10 @@
     if (this.flashScreen) {
       this.flashScreen.life -= dt;
       if (this.flashScreen.life <= 0) this.flashScreen = null;
+    }
+
+    if (this.hurtPulse > 0) {
+      this.hurtPulse = WS.max(0, this.hurtPulse - dt * 2.4);
     }
   };
 

@@ -110,6 +110,10 @@ tools/         the single-file bundler
   arpeggio density follows how dangerous the run has become.
 - **Persistence** is one versioned `localStorage` record merged onto defaults,
   so an older save keeps its gold.
+- **Feel is engineered, not incidental**: hit-stop on heavy kills, bodies that
+  squash and fade, damage numbers that fan and budget themselves, gems that
+  recede with distance, a rim that answers damage, and a level-up that eases
+  the world back up to speed. See [`docs/ARCLIGHT-UI.md`](docs/ARCLIGHT-UI.md).
 
 ## Extending
 

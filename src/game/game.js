@@ -13,6 +13,7 @@
     run: null,
     arenaBounds: null,
     accumulator: 0,
+    timeScale: 1,          // ramps down into a level-up and back out of it
     banner: null,
     toasts: [],
     levelChoices: null,
@@ -75,6 +76,7 @@
     WS.XP.clear();
     WS.Pickup.clear();
     WS.Familiar.reset();
+    this.timeScale = 1;
     this.toasts.length = 0;
     this.banner = null;
     this.pendingLevelUps = 0;
@@ -168,6 +170,7 @@
   Game.openLevelUp = function () {
     if (this.leveling || this.pendingLevelUps <= 0) return;
     this.leveling = true;
+    this.timeScale = 1;
     this.state = 'levelup';
     this.levelChoices = WS.LevelUp.buildChoices(this.player);
     WS.Audio.play('level');
@@ -183,6 +186,7 @@
       this.openLevelUp();
     } else {
       this.state = 'playing';
+      this.timeScale = 0.25;      // the world comes back up to speed
       WS.UI.closeOverlay();
     }
   };
@@ -343,8 +347,17 @@
     }
 
     WS.Input.poll();
+
+    // Hit-stop: the world holds for a beat so a heavy kill has weight. The
+    // accumulator is not fed while it runs, so no time is owed afterwards.
+    if (WS.FX.hitStop > 0) {
+      WS.FX.hitStop -= frameDt;
+      WS.FX.update(frameDt);
+      return;
+    }
+
     const step = WS.CONST.TICK_RATE;
-    this.accumulator += WS.min(frameDt, 0.25);
+    this.accumulator += WS.min(frameDt, 0.25) * this.timeScale;
     let ticks = 0;
     while (this.accumulator >= step && ticks < WS.CONST.MAX_TICKS_PER_FRAME) {
       this.accumulator -= step;
@@ -353,6 +366,7 @@
       if (this.state !== 'playing') break;
     }
     if (ticks >= WS.CONST.MAX_TICKS_PER_FRAME) this.accumulator = 0;
+    if (this.timeScale < 1) this.timeScale = WS.min(1, this.timeScale + frameDt * 2.2);
   };
 
   WS.Game = Game;
