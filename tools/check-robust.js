@@ -188,6 +188,50 @@ const SAVES = {
   }
   await page.evaluate(() => localStorage.clear());
 
+  /* ---- 5. a run's earnings must not live only in memory ----------------- */
+  const durable = await page.evaluate(async () => {
+    localStorage.clear();
+    WS.Save.load();
+    WS.Save.db.seenManual = true;
+    WS.Save.unlockAll();
+    WS.Game.startRun('thornhollow', 'mage');
+    WS.Game.chooseBlessing({ type: 'blessing', id: 'kings' });
+    // Every achievement pre-earned, so none can fire and flush the save for
+    // us - the point is whether the game banks progress ON ITS OWN.
+    for (const id of WS.AchievementOrder) WS.Save.db.achievements[id] = true;
+    WS.Save.save();
+    const read = () => JSON.parse(localStorage.getItem('emberwatch.save.v1')).gold;
+
+    WS.Game.addGold(2500, 100, 100);
+    const strandedAtFirst = WS.Save.db.gold - read();
+
+    // Hiding the tab is the commonest way a run ends without ending: a phone
+    // call, a tab switch, a browser reaping a background page.
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    // Both sides sampled at the same instant. Reading `db.gold` at the END of
+    // this function instead compared the disk as it was here against a total
+    // that had grown by 750 in the meantime, and failed a working fix.
+    const afterHide = read(), goldAtHide = WS.Save.db.gold;
+
+    // And the periodic autosave has to carry the case where nothing is
+    // hidden and nothing ends - the browser simply dies.
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+    WS.Game.addGold(750, 10, 10);
+    const strandedAgain = WS.Save.db.gold - read();
+    WS.Game.autosaveTimer = 0.001;
+    await new Promise((r) => setTimeout(r, 250));
+    const afterAutosave = read(), goldAtAutosave = WS.Save.db.gold;
+
+    return {
+      hideBanksEverything: afterHide === goldAtHide && strandedAtFirst > 0,
+      autosaveBanksEverything: afterAutosave === goldAtAutosave && strandedAgain > 0,
+    };
+  });
+  if (!durable.hideBanksEverything) fail.push('hiding the tab did not bank the run\'s gold');
+  if (!durable.autosaveBanksEverything) fail.push('the autosave did not bank the run\'s gold');
+  await page.evaluate(() => localStorage.clear());
+
   await browser.close();
   if (fail.length) {
     console.error('FAIL');
@@ -196,5 +240,6 @@ const SAVES = {
   }
   console.log(`ok: the loop survives one throw and a storm of them, all `
     + `${Object.keys(SAVES).length} malformed saves load into a playable account, `
-    + `and a pre-rename save keeps every unlock, best and codex entry`);
+    + `a pre-rename save keeps every unlock, best and codex entry, and a run's `
+    + `gold is banked by both the autosave and the tab going away`);
 })();

@@ -1240,6 +1240,44 @@ input[type=range]::-moz-range-thumb {
    steers, whichever kind of pointer it is. */
 #stick.active { display: block; }
 
+/* -- held the wrong way round ------------------------------------------ */
+/* The playfield is a fixed 1280x720 letterboxed into whatever it is given, so
+   a phone held upright spends 74% of its screen on letterbox - measured on a
+   390x844 viewport, a 390x219 field and 26% of the display doing anything.
+   That is not a small screen problem, it is an orientation one, and the fix
+   is to say so rather than to render a postage stamp and hope.
+
+   Pure CSS, deliberately: the prompt appears and disappears with the device
+   itself, with no state to get out of step. The simulation freezes separately
+   (see Game.update) so nothing can kill you behind it. */
+#rotate {
+  position: fixed; inset: 0; z-index: 40; display: none;
+  place-items: center; padding: 32px;
+  background: radial-gradient(ellipse 70% 60% at 50% 45%, #0b0d12, var(--void));
+}
+@media (orientation: portrait) and (max-width: 900px) {
+  #rotate { display: grid; }
+}
+.rotate-inner { text-align: center; max-width: 34ch; animation: sweep-in .35s var(--ease-out); }
+#rotate svg {
+  width: 92px; height: 92px; margin-bottom: 20px;
+  fill: none; stroke: var(--arc); stroke-width: 4;
+  stroke-linecap: round; stroke-linejoin: round;
+  animation: rotate-hint 2.6s var(--ease) infinite;
+}
+@keyframes rotate-hint {
+  0%, 55%, 100% { transform: rotate(0deg); }
+  75%, 90%      { transform: rotate(-90deg); }
+}
+.rotate-title {
+  font-size: var(--t-title); font-weight: 600; color: var(--arc-hot);
+  letter-spacing: .04em; text-transform: uppercase;
+}
+.rotate-body {
+  margin-top: 10px; font-size: var(--t-body); color: var(--ink-dim); line-height: 1.55;
+}
+@media (prefers-reduced-motion: reduce) { #rotate svg { animation: none; } }
+
 /* -- small screens ----------------------------------------------------- */
 @media (max-width: 860px) {
   .cartouche { grid-template-columns: 1fr; }

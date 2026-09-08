@@ -362,7 +362,39 @@
 
   /** Fixed-step update with a catch-up cap, so one frame hitch never turns
    *  into a death spiral of simulation ticks. */
+  /* How often the account is written out while a run is going. Ten seconds is
+   * far more often than it needs to be and still costs a fraction of one
+   * frame a minute; the ceiling on what a crash can cost is what matters. */
+  const AUTOSAVE = 10;
+  Game.autosaveTimer = AUTOSAVE;
+
+  /* Set from a media query that matches the one showing the rotate prompt.
+   * A player who cannot see the battlefield must not be dying on it, so the
+   * simulation stops while the prompt is up - but only the SIMULATION. The
+   * account still autosaves, because a phone turned upright is one of the
+   * likelier moments for a tab to be swallowed. */
+  Game.suspended = false;
+
+  Game.watchOrientation = function () {
+    if (!window.matchMedia) return;
+    const q = window.matchMedia('(orientation: portrait) and (max-width: 900px)');
+    const apply = () => { Game.suspended = q.matches; };
+    apply();
+    if (q.addEventListener) q.addEventListener('change', apply);
+    else if (q.addListener) q.addListener(apply);
+  };
+
   Game.update = function (frameDt) {
+    // Real time, not simulation time: a paused or level-up-frozen game has
+    // still earned everything it earned, and should not be holding it.
+    if (this.state !== 'menu') {
+      this.autosaveTimer -= frameDt;
+      if (this.autosaveTimer <= 0) {
+        this.autosaveTimer = AUTOSAVE;
+        WS.Save.flush();
+      }
+    }
+
     /* A title card that expires behind a level-up menu was never seen, and a
      * half-faded one bleeding through the cards reads as a rendering fault -
      * which is exactly what it looked like. So the banner's clock stops while
@@ -377,7 +409,7 @@
       if (this.toasts[i].life <= 0) this.toasts.splice(i, 1);
     }
 
-    if (this.state !== 'playing' || !this.running) {
+    if (this.state !== 'playing' || !this.running || this.suspended) {
       if (this.state === 'levelup' || this.state === 'paused') WS.FX.update(frameDt);
       return;
     }

@@ -147,6 +147,7 @@
     WS.Input.init();
     WS.Renderer.init(canvas);
     WS.Game.init();
+    WS.Game.watchOrientation();
     WS.UI.init(stage, overlay, hud);
     initStick(stage, stick);
 
@@ -161,6 +162,20 @@
     };
     window.addEventListener('pointerdown', arm);
     window.addEventListener('keydown', arm);
+
+    /* Bank the account on the way out.
+     *
+     * Both events, because neither alone is enough. `pagehide` is the one that
+     * fires reliably when a mobile browser suspends or discards a tab, where
+     * `beforeunload` is ignored outright; `visibilitychange` catches the far
+     * commoner case of someone switching tabs or apps and never coming back
+     * to this one. Writing twice costs a tenth of a millisecond and removes
+     * every argument about which one you can trust. */
+    const bank = () => { try { WS.Save.flush(); } catch (e) { /* nothing left to try */ } };
+    window.addEventListener('pagehide', bank);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') bank();
+    });
 
     WS.Renderer.buildScenery(WS.Maps[WS.Config.startMap]);
     /* A survivors-like has one rule nobody can guess - that you never attack -

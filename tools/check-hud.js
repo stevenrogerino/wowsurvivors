@@ -194,6 +194,33 @@ const CORE = 0.42;
       + `luminance and ${arena.texture.toFixed(1)} in texture - indistinguishable without colour`);
   }
 
+  /* ---- 4: a phone held upright is told, and not quietly killed ---------- */
+  const upright = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  upright.on('pageerror', (e) => fail.push('portrait: ' + e.message));
+  await upright.goto(url);
+  await upright.waitForFunction(() => window.WS && window.WS.Game);
+  const portrait = await upright.evaluate(async () => {
+    WS.Save.db.seenManual = true;
+    WS.Save.unlockAll();
+    WS.Game.startRun('thornhollow', 'mage');
+    WS.Game.chooseBlessing({ type: 'blessing', id: 'kings' });
+    await new Promise((r) => setTimeout(r, 250));
+    const before = WS.Game.run.time;
+    await new Promise((r) => setTimeout(r, 400));
+    const R = WS.Renderer;
+    return {
+      prompted: getComputedStyle(document.getElementById('rotate')).display !== 'none',
+      // The simulation must be stopped, not merely hidden: dying behind a
+      // full-screen prompt you cannot see through is the worst of both.
+      frozen: WS.Game.run.time === before,
+      // And the field really is that small - this is the reason for all of it.
+      playAreaPct: (1280 * R.scale * 720 * R.scale) / (innerWidth * innerHeight) * 100,
+    };
+  });
+  if (!portrait.prompted) fail.push('a phone held upright gets no prompt to rotate');
+  if (!portrait.frozen) fail.push('the simulation keeps running behind the rotate prompt');
+  await upright.close();
+
   await browser.close();
   if (fail.length) {
     console.error('FAIL');
@@ -202,5 +229,6 @@ const CORE = 0.42;
   }
   console.log(`ok: the HUD stays on screen and off the middle at ${SIZES.length} sizes in both `
     + `layouts, and the arena reads at ${arena.texture.toFixed(0)} texture / `
-    + `${arena.brightness.toFixed(0)} brightness with no colour at all`);
+    + `${arena.brightness.toFixed(0)} brightness with no colour at all; a phone `
+  + `held upright (${portrait.playAreaPct.toFixed(0)}% play area) is told to turn`);
 })();

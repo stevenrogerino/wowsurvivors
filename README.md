@@ -110,9 +110,11 @@ tools/         the single-file bundler, and the guard rails:
                check-nav.js   spatial menu navigation and the focus ring
                check-steer.js mouse and touch steering, and its hand-back
                check-hud.js   HUD inside the screen and off the middle of the
-                              field, and the arena read with no colour at all
-               check-robust.js a thrown frame, sixteen malformed saves, and a
-                              save made before the rename
+                              field, the arena read with no colour at all, and
+                              a phone held upright told to turn
+               check-robust.js a thrown frame, sixteen malformed saves, a save
+                              made before the rename, and a run's gold banked
+                              by the autosave and by the tab going away
                check-original.js every file and bundle against ~90 borrowed
                               terms - the game owns every name it ships
 ```
