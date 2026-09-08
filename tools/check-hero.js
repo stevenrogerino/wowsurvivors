@@ -27,6 +27,16 @@
  *              shaman, a heavier build and a ragged hem for the warlock took
  *              the worst pair to 0.79.
  *
+ *   individual And no two may be the same DRAWING, which is a different
+ *              question from the same outline. Compared with every survivor
+ *              forced to one grey - so what is measured is the character and
+ *              not the tint, since two identical figures in different colours
+ *              are still one character - each pair must differ across DIFF of
+ *              the pixels either of them covers. This is what keeps the
+ *              per-survivor marks (a sash, a stole, a scarf, a pelt, horns on
+ *              the helm, chains, a tome, a charge, a notched blade) from being
+ *              quietly dropped or duplicated later.
+ *
  *   visible    Every survivor must out-value the ground they stand on. The
  *              identity colours run from [1,1,1] to [0,0.44,0.87], so painting
  *              the body in them made the priest a white cut-out and the shaman
@@ -52,7 +62,9 @@
  * gives "warlock reads at 50 against ground that reaches 41"; randomising the
  * axe head gives "two identical draws of the warrior differ in 2912 bytes" -
  * which the first version of that check MISSED, because it tested one survivor
- * and the one it tested carried a greatsword.
+ * and the one it tested carried a greatsword. Giving two survivors the same
+ * configuration gives "mage and priest differ across only 3% of their drawing
+ * with the tint removed - in one colour they are the same character".
  *
  *   npm i playwright && npx playwright install chromium
  *   node tools/check-hero.js
@@ -63,6 +75,7 @@ const path = require('path');
 
 const ANCHOR = [0.855, 0.885];   // where the feet land, as a fraction of the box
 const IOU = 0.84;                // two survivors may not share more shape than this
+const DIFF = 0.35;               // and must differ across this much of their drawing
 const MARGIN = 18;               // luminance a survivor must clear the ground by
 const RANGE = 120;               // luminance a survivor must span, to have form
 const FILL = [0.10, 0.42];       // how much of the box the figure fills at 34px
@@ -152,6 +165,30 @@ const FILL = [0.10, 0.42];       // how much of the box the figure fills at 34px
       }
     }
 
+    /* Individuality, with the tint taken out of it. */
+    const grey = [0.55, 0.55, 0.58];
+    const flat = {};
+    for (const id of ids) {
+      const c = WS.Sprites.hero(id, grey, 76);
+      flat[id] = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    }
+    let same = { pair: '', v: 2 };
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        const A = flat[ids[i]], B = flat[ids[j]];
+        let seen = 0, diff = 0;
+        for (let k = 0; k < A.length; k += 4) {
+          if (A[k + 3] < 60 && B[k + 3] < 60) continue;
+          seen++;
+          const d = Math.abs(A[k] - B[k]) + Math.abs(A[k + 1] - B[k + 1])
+            + Math.abs(A[k + 2] - B[k + 2]) + Math.abs(A[k + 3] - B[k + 3]);
+          if (d > 60) diff++;
+        }
+        const v = diff / Math.max(1, seen);
+        if (v < same.v) same = { pair: ids[i] + ' and ' + ids[j], v };
+      }
+    }
+
     /* Two draws, same arguments, straight past the cache - for EVERY survivor.
      * Checking one of them let a randomised axe head through unnoticed, because
      * the one being checked carried a greatsword. A cast-wide property needs a
@@ -172,7 +209,7 @@ const FILL = [0.10, 0.42];       // how much of the box the figure fills at 34px
 
     return {
       ground,
-      worst,
+      worst, same,
       drift, drifted,
       cast: ids.map((id) => ({
         id,
@@ -213,6 +250,11 @@ const FILL = [0.10, 0.42];       // how much of the box the figure fills at 34px
     fail.push(`${report.worst.pair} share ${report.worst.v.toFixed(2)} of one `
       + 'silhouette - at play size they are the same character');
   }
+  if (report.same.v < DIFF) {
+    fail.push(`${report.same.pair} differ across only `
+      + `${(report.same.v * 100).toFixed(0)}% of their drawing with the tint removed `
+      + '- in one colour they are the same character');
+  }
   if (report.drift > 0) {
     fail.push(`two identical draws of the ${report.drifted} differ in `
       + `${report.drift} bytes - the sprite cache would freeze whichever came first`);
@@ -230,5 +272,7 @@ const FILL = [0.10, 0.42];       // how much of the box the figure fills at 34px
     + `${report.worst.v.toFixed(2)} of a silhouette; the dimmest (${dim.id}, `
     + `${dim.mean.toFixed(0)}) still clears the brightest ground `
     + `(${brightestMap}, ${brightest.toFixed(0)}) by ${(dim.mean - brightest).toFixed(0)}; `
+    + `the most alike pair (${report.same.pair}) still differ across `
+    + `${(report.same.v * 100).toFixed(0)}% of their drawing in one colour; `
     + 'and every survivor draws the same pixels twice');
 })();
