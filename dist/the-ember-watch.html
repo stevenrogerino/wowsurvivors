@@ -4011,6 +4011,31 @@ window.WS = window.WS || {};
         g.beginPath(); g.ellipse(cx + dir * 4.1, HEAD_CY + 2, 1.5, 1.1, 0, 0, WS.TAU); g.fill();
         glow(g, cx + dir * 4.1, HEAD_CY + 2, 6, C.eye, 0.55);
       }
+      if (cfg.crown) {
+        /* An iron crown, grown rather than made: a heavy band and five spikes
+         * off it, the middle one tallest, all of them leaning back. Our own
+         * shape - the game owns every design it ships, the same rule its names
+         * live under - and it does the job a crown does, which is to say that
+         * this one gives the orders. */
+        const bandY = HEAD_CY - HEAD_RY + 2;
+        const crownRamp = ramp([0.26, 0.28, 0.33]);
+        const spikes = [[-11, 9], [-6, 14], [0, 18], [6, 14], [11, 9]];
+        for (const [ox, h] of spikes) {
+          const lean = ox * 0.18;
+          lit(g, crownRamp, cx + ox - 3, bandY, cx + ox + 3, bandY - h);
+          g.beginPath();
+          g.moveTo(cx + ox - 3.4, bandY + 1);
+          g.lineTo(cx + ox + lean * 0.5, WS.max(CEIL + 1, bandY - h));
+          g.lineTo(cx + ox + 3.4, bandY + 1);
+          g.closePath(); g.fill();
+        }
+        panel(g, [[cx - 12.5, bandY - 1], [cx + 12.5, bandY - 1],
+          [cx + 11.5, bandY + 5], [cx - 11.5, bandY + 5]], crownRamp);
+        // One cold stone at the front, the same light as the sockets.
+        g.fillStyle = C.eye;
+        g.beginPath(); g.ellipse(cx, bandY + 2, 2.2, 2.6, 0, 0, WS.TAU); g.fill();
+        glow(g, cx, bandY + 2, 8, C.eye, 0.45);
+      }
       // A set jaw, drawn as one line of teeth. Two marks and it is a corpse.
       g.strokeStyle = 'rgba(12,18,16,.6)'; g.lineWidth = 1;
       g.beginPath(); g.moveTo(cx - 5, HEAD_CY + 9.5); g.lineTo(cx + 5, HEAD_CY + 9.2); g.stroke();
@@ -4373,18 +4398,11 @@ window.WS = window.WS || {};
       g.fillRect(tx + 3.4, WAIST_Y + 0.5, 1.5, 10);
       glow(g, tx + 4, WAIST_Y + 5, 7, C.accent, 0.45);
     }
-    if (cfg.backShield) {
-      /* A shield slung on his back, drawn before everything so it reads as
-       * being behind him. The warrior's outline was two pauldrons and a haft;
-       * a disc breaking the line above one shoulder is the third shape. */
-      const sx2 = cx - b.sh - 2;
-      lit(g, ramp([0.46, 0.42, 0.36]), sx2 - 12, SHOULDER_Y - 14, sx2 + 8, SHOULDER_Y + 8);
-      g.beginPath(); g.ellipse(sx2 - 2, SHOULDER_Y - 3, 12.5, 13.5, -0.2, 0, WS.TAU); g.fill();
-      g.strokeStyle = GOLD.shade; g.lineWidth = 1.4;
-      g.beginPath(); g.ellipse(sx2 - 2, SHOULDER_Y - 3, 8, 8.8, -0.2, 0, WS.TAU); g.stroke();
-      g.fillStyle = STEEL.core;
-      g.beginPath(); g.arc(sx2 - 2, SHOULDER_Y - 3, 3, 0, WS.TAU); g.fill();
-    }
+    /* The warrior had a shield slung on his back for one build and it went
+     * again: it filled the gap under his axe arm, and that gap was the best
+     * thing about his outline - a heavy who is all shoulders and one weapon,
+     * with nothing in the other hand. Not every silhouette wants filling in.
+     */
     if (cfg.legwraps) {
       // Bound shins. Cheap, and it stops the legs reading as two bare posts.
       for (const dir of [-1, 1]) {
@@ -4535,8 +4553,23 @@ window.WS = window.WS || {};
       g.fillStyle = GOLD.core;
       g.fillRect(cx + b.sh - 1, WAIST_Y - 9.5, 5.6, 1.4);
     }
-    // A hand the width of the wrist it belongs to, not a knob on the end of it.
-    blob(g, cx + b.sh + 2.4, WAIST_Y - 0.5, b.arm * 0.44, b.arm * 0.5, SKIN);
+    /* A hand the width of the wrist it belongs to, not a knob on the end of
+     * it - and in the right material. The graveblade's arm and hand were built
+     * from his garment ramp, which is crimson, and hung in front of a crimson
+     * cloak: the hand simply vanished, and with it the fact that he is holding
+     * anything. Gauntlets put dark steel between the two. */
+    if (cfg.gauntlets) {
+      taper(g, cx + b.sh - 1, WAIST_Y - 14, cx + b.sh + 2, WAIST_Y - 2,
+        b.arm * 0.6, b.arm * 0.46, ramp([0.30, 0.32, 0.38]));
+      blob(g, cx + b.sh + 2.4, WAIST_Y - 0.5, b.arm * 0.5, b.arm * 0.56,
+        ramp([0.38, 0.40, 0.46]));
+      g.fillStyle = 'rgba(255,255,255,.22)';
+      g.beginPath();
+      g.ellipse(cx + b.sh + 1.4, WAIST_Y - 1.8, b.arm * 0.22, b.arm * 0.16, -0.4, 0, WS.TAU);
+      g.fill();
+    } else {
+      blob(g, cx + b.sh + 2.4, WAIST_Y - 0.5, b.arm * 0.44, b.arm * 0.5, SKIN);
+    }
   }
 
   /* ------------------------------------------------------------- cloaks --- */
@@ -4886,8 +4919,11 @@ window.WS = window.WS || {};
    *   hunter      the hood he is NOT wearing, bunched behind the neck; fur
    *               over the far shoulder, the only soft edge in the roster; a
    *               quiver strap and a knife at the boot
-   *   warrior     horns off the helm, heavy at the root and curling up, and a
-   *               shield slung on his back to break the shoulder line
+   *   warrior     horns off the helm, heavy at the root and curling up - and
+   *               deliberately nothing in the other hand. A shield was slung
+   *               on his back for one build and it went again: it filled the
+   *               gap under his axe arm, and that gap was the best thing about
+   *               his outline. Not every silhouette wants filling in
    *   warlock     chains at the hip, a clasped tome with his own light leaking
    *               out of the pages, and a second wisp keeping station off his
    *               shoulder - something is following him
@@ -4898,11 +4934,16 @@ window.WS = window.WS || {};
    *               read as unarmed. A blunt weapon is also the right answer:
    *               every other heavy here swings an edge. The charge is on the
    *               tabard AND the shield face, so the two read as one heraldry
-   *   graveblade  a dead man's face - pallid, hollow-cheeked, sockets with no
-   *               eyes in them and a cold light coming out anyway - and a rune
-   *               channel burning the length of his blade. He wore a helm like
-   *               the other two heavies, which hid the one fact about him that
-   *               matters
+   *   graveblade  a crowned dead king. Pallid and hollow-cheeked, an iron
+   *               crown of five leaning spikes with a cold stone at the front,
+   *               sockets with no eyes in them, and a rune channel burning the
+   *               length of his blade. His is the one survivor whose eyes are
+   *               NOT his identity colour: what is behind those sockets is not
+   *               his blood, and a crimson glow read as anger where a cold
+   *               blue one reads as absence. Steel gauntlets, because his arm
+   *               was built from his own crimson garment and hung in front of
+   *               his crimson cloak - the hand vanished, and with it the fact
+   *               that he is holding anything
    *   ruinseeker  bound eyes, sigils lit from under the skin, warglaives,
    *               bound shins
    *
@@ -4935,7 +4976,7 @@ window.WS = window.WS || {};
     hunter: { build: 'normal', head: 'bare', weapon: 'bow', hoodDown: true, pelt: true,
       bracer: true, strap: true, bootknife: true, hair: ramp([0.30, 0.26, 0.18]) },
     warrior: { build: 'heavy', head: 'helm', pauldrons: 2.1, weapon: 'axe',
-      helmHorns: true, sash: true, backShield: true },
+      helmHorns: true, sash: true },
     warlock: { build: 'normal', head: 'hood', robe: true, cloak: 'tattered',
       weapon: 'orb', chains: true, tome: true, wisp: true, hood: DARKCLOTH },
     /* The shaman used to be a robed slim silhouette with a long cloak, which
@@ -4947,7 +4988,8 @@ window.WS = window.WS || {};
     paladin: { build: 'heavy', head: 'helm', pauldrons: 2.4, halo: true, tabard: true,
       weapon: 'hammer', offhand: 'shield', device: true },
     graveblade: { build: 'heavy', head: 'undead', undead: true, pauldrons: 1.7,
-      cloak: 'tattered', weapon: 'greatsword', chains: true },
+      cloak: 'tattered', weapon: 'greatsword', chains: true, crown: true,
+      gauntlets: true, eyeColour: [0.32, 0.72, 1.0] },
     ruinseeker: { build: 'normal', head: 'bare', horns: true, cloak: 'tattered',
       weapon: 'glaives', blindfold: true, sigils: true, bracer: true, legwraps: true,
       hair: DARKCLOTH },
@@ -4956,7 +4998,7 @@ window.WS = window.WS || {};
   /* -------------------------------------------------------------- paint --- */
   /** Everything the tint decides, resolved once so no drawing function has to
    *  think about colour theory in the middle of drawing a sleeve. */
-  function colours(tint, demon) {
+  function colours(tint, demon, eyeOverride) {
     const t = demon ? [0.45, 0.95, 0.25] : tint;
     const accent = WS.mix(t, [1, 1, 1], 0.12);
     /* A saturated hue makes poor cloth - it either glows or goes to mud - so
@@ -5011,13 +5053,21 @@ window.WS = window.WS || {};
       furRamp: ramp([0.38, 0.33, 0.26]),
       // Drowned, not tanned: grey-green with the warmth taken out of it.
       paleRamp: ramp([0.56, 0.60, 0.54]),
-      eyeRgb: demon ? [0.85, 1, 0.42] : WS.mix(t, [1, 1, 1], 0.72),
+      eyeRgb: demon ? [0.85, 1, 0.42]
+        : eyeOverride || WS.mix(t, [1, 1, 1], 0.72),
       // The blade's light is the same light as the eyes, but a blade is a big
       // surface: at the eye's whiteness it came out a wash of pale pink rather
       // than something burning inside steel.
-      channelRgb: demon ? [0.7, 1, 0.35] : WS.mix(t, [1, 1, 1], 0.30),
+      channelRgb: demon ? [0.7, 1, 0.35]
+        : eyeOverride ? WS.mix(eyeOverride, [0, 0, 0], 0.18)
+        : WS.mix(t, [1, 1, 1], 0.30),
       furDark: ramp([0.22, 0.19, 0.15]),
-      eye: demon ? '#d9ff6b' : WS.hex(WS.mix(t, [1, 1, 1], 0.72)),
+      /* Normally the survivor's own colour, because the eyes are where the
+       * identity tint does its most useful work. The dead are the exception:
+       * what is behind those sockets is not his blood, and a crimson glow
+       * there read as anger where a cold one reads as absence. */
+      eye: demon ? '#d9ff6b'
+        : eyeOverride ? WS.hex(eyeOverride) : WS.hex(WS.mix(t, [1, 1, 1], 0.72)),
     };
   }
 
@@ -5047,7 +5097,7 @@ window.WS = window.WS || {};
      *  the shape hold together against a dark and crowded ground. */
     draw(g, size, id, tint, demon) {
       const cfg = CAST[id] || CAST.mage;
-      const C = colours(tint, demon);
+      const C = colours(tint, demon, cfg.eyeColour);
       const u = size / 100;
 
       // Contact shadow on the floor, under the feet, before anything else.
