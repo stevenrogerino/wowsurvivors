@@ -574,9 +574,14 @@ html, body {
   font-size: var(--t-body); color: var(--arc); white-space: nowrap;
   font-family: var(--fig); font-variant-numeric: tabular-nums;
 }
+/* An earned entry is marked along its leading edge, not merely tinted: at a
+   glance down a column of twenty-four you should be able to count the ones
+   you have without reading a word. */
 .row.done { border-color: rgba(61,220,122,.28); }
 .row.done .row-name { color: var(--q-uncommon); }
+.row.done::before { opacity: .8; background: var(--q-uncommon); top: 14%; bottom: 14%; }
 .row.undone { opacity: .55; }
+.codex-head h3.panel-title { padding: 0; margin: 0; }
 
 /* -- the trainer shop row ----------------------------------------------
    Four columns across the width: the mark, what it does, how far you have
@@ -670,6 +675,40 @@ html, body {
 .beast.elite { border-color: rgba(245,197,107,.24); }
 .beast.boss { border-color: rgba(226,72,61,.3); }
 .beast.boss .beast-plate { box-shadow: inset 0 0 0 1px rgba(226,72,61,.28); }
+
+/* ---------------------------------------------------------- best records */
+.record-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px;
+}
+.record {
+  display: flex; gap: 13px; align-items: center; padding: 10px 12px;
+  background:
+    linear-gradient(100deg, color-mix(in srgb, var(--q, var(--arc)) 9%, transparent), transparent 48%),
+    linear-gradient(180deg, var(--obsidian-2), var(--obsidian));
+  border: 1px solid var(--rim); border-radius: 2px; box-shadow: var(--bevel);
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px),
+    calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+.record .record-art {
+  position: relative; flex: none; width: 56px; height: 56px; display: block;
+  clip-path: polygon(7px 0, calc(100% - 7px) 0, 100% 7px, 100% calc(100% - 7px),
+    calc(100% - 7px) 100%, 7px 100%, 0 calc(100% - 7px), 0 7px);
+}
+.record .record-art img { display: block; width: 56px; height: 56px; }
+.record .record-art .frame {
+  position: absolute; inset: 0; clip-path: inherit;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,240,214,.14),
+    inset 0 0 0 3px rgba(6,7,11,.5),
+    inset 0 0 0 4px color-mix(in srgb, var(--q, var(--arc)) 45%, transparent);
+}
+.record .record-name { font-size: var(--t-small); color: var(--ink-dim); }
+.record .record-time {
+  font-family: var(--fig); font-size: 21px; font-weight: 500;
+  font-variant-numeric: tabular-nums; color: var(--arc-hot); margin-top: 1px;
+}
+.record.unset .record-time { color: var(--ink-faint); }
+.record.unset .record-art { filter: saturate(.35) brightness(.7); }
 
 /* ------------------------------------------------------------- stat grid */
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
@@ -1021,6 +1060,29 @@ body.hud-rail #hud-passives {
 /* -- the build sheet --------------------------------------------------- */
 .sheet { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 900px) { .sheet { grid-template-columns: 1fr; } }
+
+/* A results screen keeps its verdict and its buttons in front of you and
+   scrolls the detail, not the page. At 720p the run summary used to put 54%
+   of itself on screen and hide the rest below the fold - including, on a
+   victory, the button that claims the win. The body now fits the space it is
+   given and the two panels carry their own scroll. */
+.overlay-body.fitted {
+  display: flex; flex-direction: column; gap: 14px;
+  overflow: hidden; min-height: 0;
+}
+/* Everything that is not the sheet keeps its full height - the verdict block
+   carries the run's figures, and flex was squeezing them to nothing. */
+.overlay-body.fitted > * { flex: none; }
+.overlay-body.fitted .sheet { flex: 1 1 auto; min-height: 0; }
+.overlay-body.fitted .sheet > .panel { overflow-y: auto; min-height: 0; }
+.overlay-body.fitted .sheet > .panel::-webkit-scrollbar { width: 7px; }
+.overlay-body.fitted .sheet > .panel::-webkit-scrollbar-thumb {
+  background: var(--obsidian-4); border-radius: 4px;
+}
+/* The panel inlay is absolutely positioned to the panel, which would scroll
+   away with the content; pin it to the viewport of the panel instead. */
+.overlay-body.fitted .sheet > .panel { position: relative; }
+.overlay-body.fitted .sheet > .panel > .inlay { position: sticky; top: 5px; height: 0; }
 .sheet h3 {
   margin: 0 0 11px; font-size: var(--t-micro); letter-spacing: .18em; text-transform: uppercase;
   color: var(--arc); font-weight: 700;
@@ -5350,7 +5412,7 @@ window.WS = window.WS || {};
   const lastPlayed = Object.create(null);
   const THROTTLE = {
     hit: 0.045, crit: 0.07, gem: 0.06, cast: 0.05, enemyHit: 0.06,
-    explode: 0.09, freeze: 0.2, coin: 0.08,
+    explode: 0.09, freeze: 0.2, coin: 0.08, hover: 0.045,
   };
 
   const KITS = {
@@ -5410,6 +5472,12 @@ window.WS = window.WS || {};
       notes.forEach((f, i) => tone({ type: 'triangle', freq: f, decay: 0.7, gain: 0.14, delay: i * 0.12 }));
     },
     ui() { tone({ type: 'square', freq: 660, decay: 0.05, gain: 0.05 }); },
+    /* The sound of the cursor finding something. Deliberately almost nothing -
+       a quarter the gain of a click and half its length - because it fires
+       every time the mouse crosses a tile and anything louder becomes a
+       machine gun. It is throttled harder than any combat voice for the same
+       reason: sweeping a cursor across a roster is forty hovers a second. */
+    hover() { tone({ type: 'sine', freq: 1180, decay: 0.028, gain: 0.014 }); },
     select() { tone({ type: 'square', freq: 880, to: 1200, decay: 0.09, gain: 0.06 }); },
     warn() {
       tone({ type: 'square', freq: 330, decay: 0.2, gain: 0.12 });
@@ -10706,6 +10774,29 @@ window.WS = window.WS || {};
     return { inner, head, body, foot };
   }
 
+  /* Hover feedback, delegated once at the overlay rather than bound per node.
+   *
+   * The interface was silent until you committed to something, which is the
+   * difference between a menu that responds and one that merely accepts. It
+   * is delegated because the menu rebuilds its panes constantly and hanging a
+   * listener on every tile would leak them; and it tracks the last element it
+   * spoke for, so crossing WITHIN one tile - name to icon to sub-label - is
+   * one sound, not three. */
+  UI.wireHover = function (root) {
+    let last = null;
+    root.addEventListener('pointerover', (e) => {
+      const target = e.target.closest(
+        '.pick, .card, .tab, .btn, .beast, .row, .segmented .seg, .switch');
+      if (!target || target === last) return;
+      last = target;
+      if (target.disabled || target.classList.contains('locked')) return;
+      WS.Audio.play('hover');
+    });
+    root.addEventListener('pointerout', (e) => {
+      if (!e.relatedTarget || !root.contains(e.relatedTarget)) last = null;
+    });
+  };
+
   UI.show = function (inner) {
     this.overlay.innerHTML = '';
     this.overlay.append(inner);
@@ -11094,8 +11185,12 @@ window.WS = window.WS || {};
     const wrap = el('div');
     wrap.style.marginTop = '16px';
 
-    const achHead = el('h3'); achHead.className = 'panel-title'; achHead.style.padding = '0 0 10px';
-    achHead.textContent = 'Achievements';
+    /* Each section says where you stand. A codex without a count is a list you
+       scroll to find out whether you are nearly done. */
+    const achDone = WS.AchievementOrder.filter((id) => WS.Save.db.achievements[id]).length;
+    const achHead = el('div', 'codex-head');
+    achHead.append(el('h3', 'panel-title', 'Achievements'));
+    achHead.append(el('div', 'codex-count', `${achDone} / ${WS.AchievementOrder.length}`));
     const achRows = el('div', 'rows');
     for (const id of WS.AchievementOrder) {
       const a = WS.Achievements[id];
@@ -11110,8 +11205,11 @@ window.WS = window.WS || {};
       achRows.append(row);
     }
 
-    const comboHead = el('h3'); comboHead.className = 'panel-title'; comboHead.style.padding = '20px 0 10px';
-    comboHead.textContent = 'Discoveries';
+    const comboDone = WS.ComboOrder.filter((id) => WS.Save.db.combos[id]).length;
+    const comboHead = el('div', 'codex-head');
+    comboHead.style.marginTop = '22px';
+    comboHead.append(el('h3', 'panel-title', 'Discoveries'));
+    comboHead.append(el('div', 'codex-count', `${comboDone} / ${WS.ComboOrder.length}`));
     const comboRows = el('div', 'rows');
     for (const id of WS.ComboOrder) {
       const c = WS.Combos[id];
@@ -11215,18 +11313,33 @@ window.WS = window.WS || {};
       node.append(el('div', 'label stat-label', label));
       grid.append(node);
     }
-    const best = el('div', 'rows');
-    best.style.marginTop = '16px';
+    /* Personal bests, one card per battlefield. These were full-width rows
+       carrying three data points each, which is a hundred pixels of chrome
+       per number; as cards they fit on one line and each one is unmistakably
+       its own place, because it wears the same landscape the picker shows. */
+    const head = el('div', 'codex-head');
+    head.style.marginTop = '20px';
+    head.append(el('div', 'card-body', 'Longest you have lasted on each battlefield.'));
+    const best = el('div', 'record-grid');
     for (const id of WS.MapOrder) {
       if (!WS.Save.isMapUnlocked(id)) continue;
-      const row = el('div', 'row');
-      const main = el('div', 'row-main');
-      main.append(el('div', 'row-name', WS.Maps[id].name));
-      main.append(el('div', 'row-sub', 'Best survival time'));
-      row.append(main, el('div', 'row-value', WS.formatTime(s.bestTime[id] || 0)));
-      best.append(row);
+      const m = WS.Maps[id];
+      const time = s.bestTime[id] || 0;
+      const card = el('div', 'record' + (time ? '' : ' unset'));
+      card.style.setProperty('--q', WS.hex(m.groundAlt));
+      const img = new Image();
+      img.src = WS.Sprites.zoneCard(m, 'rune', 92).toDataURL();
+      img.width = img.height = 92;
+      const art = el('span', 'record-art');
+      art.append(img, el('i', 'frame'));
+      card.append(art);
+      const body = el('div');
+      body.append(el('div', 'record-name', m.name));
+      body.append(el('div', 'record-time', time ? WS.formatTime(time) : '—'));
+      card.append(body);
+      best.append(card);
     }
-    wrap.append(grid, best);
+    wrap.append(grid, head, best);
     return wrap;
   };
 
@@ -11509,6 +11622,7 @@ window.WS = window.WS || {};
 
   UI.openPause = function () {
     const s = shell('Paused', `${WS.Game.run.map.name} waits.`);
+    s.body.classList.add('fitted');
     s.body.append(buildSheet());
     const resume = el('button', 'btn primary', 'Resume');
     resume.addEventListener('click', () => WS.Game.resume());
@@ -11558,6 +11672,7 @@ window.WS = window.WS || {};
     s.body.append(verdict('win', 'The night broke first',
       `You held ${run.map.name} for thirty minutes. Death is on the field now — it always is.`,
       runFigures(run, WS.Game.player)));
+    s.body.classList.add('fitted');
     s.body.append(buildSheet());
     const claim = el('button', 'btn primary', 'Claim the win');
     claim.addEventListener('click', () => WS.Game.endRun('victory'));
@@ -11600,6 +11715,7 @@ window.WS = window.WS || {};
     const kinds = { defeated: 'loss', victory: 'win', abandoned: 'neutral', arena_victory: 'win' };
     s.body.append(verdict(kinds[reason] || 'neutral', titles[reason] || 'The run ends',
       lines[reason] || sub, runFigures(run, WS.Game.player)));
+    s.body.classList.add('fitted');
     s.body.append(buildSheet());
     const again = el('button', 'btn primary', 'Run again');
     again.addEventListener('click', () => WS.Game.startRun(run.mapId, run.characterId));
@@ -11617,6 +11733,8 @@ window.WS = window.WS || {};
     this.root = root; this.overlay = overlay; this.hud = hud;
     this.buildHUD();
     this.applyHudLayout();
+    this.wireHover(overlay);
+    this.wireHover(hud);
 
     WS.Input.onKey = (e) => {
       if (e.code === 'Escape') {

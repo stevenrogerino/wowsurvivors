@@ -374,6 +374,29 @@
     return { inner, head, body, foot };
   }
 
+  /* Hover feedback, delegated once at the overlay rather than bound per node.
+   *
+   * The interface was silent until you committed to something, which is the
+   * difference between a menu that responds and one that merely accepts. It
+   * is delegated because the menu rebuilds its panes constantly and hanging a
+   * listener on every tile would leak them; and it tracks the last element it
+   * spoke for, so crossing WITHIN one tile - name to icon to sub-label - is
+   * one sound, not three. */
+  UI.wireHover = function (root) {
+    let last = null;
+    root.addEventListener('pointerover', (e) => {
+      const target = e.target.closest(
+        '.pick, .card, .tab, .btn, .beast, .row, .segmented .seg, .switch');
+      if (!target || target === last) return;
+      last = target;
+      if (target.disabled || target.classList.contains('locked')) return;
+      WS.Audio.play('hover');
+    });
+    root.addEventListener('pointerout', (e) => {
+      if (!e.relatedTarget || !root.contains(e.relatedTarget)) last = null;
+    });
+  };
+
   UI.show = function (inner) {
     this.overlay.innerHTML = '';
     this.overlay.append(inner);
@@ -762,8 +785,12 @@
     const wrap = el('div');
     wrap.style.marginTop = '16px';
 
-    const achHead = el('h3'); achHead.className = 'panel-title'; achHead.style.padding = '0 0 10px';
-    achHead.textContent = 'Achievements';
+    /* Each section says where you stand. A codex without a count is a list you
+       scroll to find out whether you are nearly done. */
+    const achDone = WS.AchievementOrder.filter((id) => WS.Save.db.achievements[id]).length;
+    const achHead = el('div', 'codex-head');
+    achHead.append(el('h3', 'panel-title', 'Achievements'));
+    achHead.append(el('div', 'codex-count', `${achDone} / ${WS.AchievementOrder.length}`));
     const achRows = el('div', 'rows');
     for (const id of WS.AchievementOrder) {
       const a = WS.Achievements[id];
@@ -778,8 +805,11 @@
       achRows.append(row);
     }
 
-    const comboHead = el('h3'); comboHead.className = 'panel-title'; comboHead.style.padding = '20px 0 10px';
-    comboHead.textContent = 'Discoveries';
+    const comboDone = WS.ComboOrder.filter((id) => WS.Save.db.combos[id]).length;
+    const comboHead = el('div', 'codex-head');
+    comboHead.style.marginTop = '22px';
+    comboHead.append(el('h3', 'panel-title', 'Discoveries'));
+    comboHead.append(el('div', 'codex-count', `${comboDone} / ${WS.ComboOrder.length}`));
     const comboRows = el('div', 'rows');
     for (const id of WS.ComboOrder) {
       const c = WS.Combos[id];
@@ -883,18 +913,33 @@
       node.append(el('div', 'label stat-label', label));
       grid.append(node);
     }
-    const best = el('div', 'rows');
-    best.style.marginTop = '16px';
+    /* Personal bests, one card per battlefield. These were full-width rows
+       carrying three data points each, which is a hundred pixels of chrome
+       per number; as cards they fit on one line and each one is unmistakably
+       its own place, because it wears the same landscape the picker shows. */
+    const head = el('div', 'codex-head');
+    head.style.marginTop = '20px';
+    head.append(el('div', 'card-body', 'Longest you have lasted on each battlefield.'));
+    const best = el('div', 'record-grid');
     for (const id of WS.MapOrder) {
       if (!WS.Save.isMapUnlocked(id)) continue;
-      const row = el('div', 'row');
-      const main = el('div', 'row-main');
-      main.append(el('div', 'row-name', WS.Maps[id].name));
-      main.append(el('div', 'row-sub', 'Best survival time'));
-      row.append(main, el('div', 'row-value', WS.formatTime(s.bestTime[id] || 0)));
-      best.append(row);
+      const m = WS.Maps[id];
+      const time = s.bestTime[id] || 0;
+      const card = el('div', 'record' + (time ? '' : ' unset'));
+      card.style.setProperty('--q', WS.hex(m.groundAlt));
+      const img = new Image();
+      img.src = WS.Sprites.zoneCard(m, 'rune', 92).toDataURL();
+      img.width = img.height = 92;
+      const art = el('span', 'record-art');
+      art.append(img, el('i', 'frame'));
+      card.append(art);
+      const body = el('div');
+      body.append(el('div', 'record-name', m.name));
+      body.append(el('div', 'record-time', time ? WS.formatTime(time) : '—'));
+      card.append(body);
+      best.append(card);
     }
-    wrap.append(grid, best);
+    wrap.append(grid, head, best);
     return wrap;
   };
 
@@ -1177,6 +1222,7 @@
 
   UI.openPause = function () {
     const s = shell('Paused', `${WS.Game.run.map.name} waits.`);
+    s.body.classList.add('fitted');
     s.body.append(buildSheet());
     const resume = el('button', 'btn primary', 'Resume');
     resume.addEventListener('click', () => WS.Game.resume());
@@ -1226,6 +1272,7 @@
     s.body.append(verdict('win', 'The night broke first',
       `You held ${run.map.name} for thirty minutes. Death is on the field now — it always is.`,
       runFigures(run, WS.Game.player)));
+    s.body.classList.add('fitted');
     s.body.append(buildSheet());
     const claim = el('button', 'btn primary', 'Claim the win');
     claim.addEventListener('click', () => WS.Game.endRun('victory'));
@@ -1268,6 +1315,7 @@
     const kinds = { defeated: 'loss', victory: 'win', abandoned: 'neutral', arena_victory: 'win' };
     s.body.append(verdict(kinds[reason] || 'neutral', titles[reason] || 'The run ends',
       lines[reason] || sub, runFigures(run, WS.Game.player)));
+    s.body.classList.add('fitted');
     s.body.append(buildSheet());
     const again = el('button', 'btn primary', 'Run again');
     again.addEventListener('click', () => WS.Game.startRun(run.mapId, run.characterId));
@@ -1285,6 +1333,8 @@
     this.root = root; this.overlay = overlay; this.hud = hud;
     this.buildHUD();
     this.applyHudLayout();
+    this.wireHover(overlay);
+    this.wireHover(hud);
 
     WS.Input.onKey = (e) => {
       if (e.code === 'Escape') {

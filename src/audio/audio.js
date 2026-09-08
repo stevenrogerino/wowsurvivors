@@ -117,7 +117,7 @@
   const lastPlayed = Object.create(null);
   const THROTTLE = {
     hit: 0.045, crit: 0.07, gem: 0.06, cast: 0.05, enemyHit: 0.06,
-    explode: 0.09, freeze: 0.2, coin: 0.08,
+    explode: 0.09, freeze: 0.2, coin: 0.08, hover: 0.045,
   };
 
   const KITS = {
@@ -177,6 +177,12 @@
       notes.forEach((f, i) => tone({ type: 'triangle', freq: f, decay: 0.7, gain: 0.14, delay: i * 0.12 }));
     },
     ui() { tone({ type: 'square', freq: 660, decay: 0.05, gain: 0.05 }); },
+    /* The sound of the cursor finding something. Deliberately almost nothing -
+       a quarter the gain of a click and half its length - because it fires
+       every time the mouse crosses a tile and anything louder becomes a
+       machine gun. It is throttled harder than any combat voice for the same
+       reason: sweeping a cursor across a roster is forty hovers a second. */
+    hover() { tone({ type: 'sine', freq: 1180, decay: 0.028, gain: 0.014 }); },
     select() { tone({ type: 'square', freq: 880, to: 1200, decay: 0.09, gain: 0.06 }); },
     warn() {
       tone({ type: 'square', freq: 330, decay: 0.2, gain: 0.12 });
