@@ -252,29 +252,29 @@
       }
     },
     wing(g, c) {
-      // Five primaries fanning from one pivot, with dark gaps between them.
-      const px = 24, py = 78;
-      for (let i = 0; i < 5; i++) {
-        const a = -1.42 + i * 0.24;
-        const len = 62 - i * 6;
-        const wide = 8 - i * 0.6;
-        g.save();
-        g.translate(px, py);
-        g.rotate(a + WS.PI / 2);
+      /* Five primaries off one shoulder, in alternating tones. Absolute
+         coordinates rather than a rotated fan - the fan version swept down and
+         left from its pivot, which is easy to get backwards and did, throwing
+         the longest primary clean out of the field. Separate filled feathers
+         rather than one mass with hairlines scored on it, because at icon size
+         the glow washes a hairline out and the wing goes back to being a shell.
+      */
+      const sx = 22, sy = 28;
+      const tips = [[88, 44], [80, 58], [68, 70], [54, 75], [40, 70]];
+      tips.forEach(([tx, ty], i) => {
         g.fillStyle = i % 2 ? c : dim(c);
         g.beginPath();
-        g.moveTo(0, 0);
-        g.quadraticCurveTo(wide, len * 0.55, 1, len);
-        g.quadraticCurveTo(-wide, len * 0.5, 0, 0);
+        g.moveTo(sx, sy);
+        g.quadraticCurveTo((sx + tx) / 2 + 7, (sy + ty) / 2 - 9, tx, ty);
+        g.quadraticCurveTo((sx + tx) / 2 - 5, (sy + ty) / 2 + 7, sx, sy);
+        g.closePath();
         g.fill();
-        g.restore();
-      }
-      line(g, c, HAIR);
+      });
+      // The shoulder joint, which is what stops five wedges reading as a fan.
+      g.fillStyle = c;
       g.beginPath();
-      g.moveTo(px, py);
-      g.quadraticCurveTo(px + 26, py - 44, px + 62, py - 58);
-      g.stroke();
-      disc(g, px, py, 6, c);
+      g.ellipse(sx + 2, sy + 2, 9, 7, -0.5, 0, WS.TAU);
+      g.fill();
     },
 
     boot(g, c) {
@@ -333,23 +333,24 @@
     },
     claw(g, c) {
       // Three hooked talons off a knuckle - curved, so they cannot be mistaken
-      // for the straight strokes of Thorns.
-      for (let i = 0; i < 3; i++) {
-        const a = -1.9 + i * 0.55;
-        g.save();
-        g.translate(50, 82);
-        g.rotate(a);
-        g.fillStyle = i === 1 ? c : dim(c);
+      // for the straight strokes of Thorns. Absolute coordinates, symmetric
+      // about the vertical, all of it well inside the field.
+      const T = [[38, 18, 30, 24, 0], [50, 47, 16, 42, 1], [62, 82, 30, 76, 0]];
+      for (const [bx, tx, ty, bow, hot] of T) {
+        g.fillStyle = hot ? c : dim(c);
         g.beginPath();
-        g.moveTo(0, 0);
-        g.quadraticCurveTo(16, -26, 8, -60);
-        g.quadraticCurveTo(2, -30, -8, -4);
+        g.moveTo(bx - 6, 78);
+        g.quadraticCurveTo(bow - 4, 50, tx, ty);
+        g.quadraticCurveTo(bow + 8, 54, bx + 6, 78);
+        g.closePath();
         g.fill();
-        g.restore();
       }
       g.fillStyle = c;
-      g.beginPath(); g.ellipse(50, 82, 17, 9, 0, 0, WS.TAU); g.fill();
+      g.beginPath();
+      g.ellipse(50, 79, 22, 9, 0, 0, WS.TAU);
+      g.fill();
     },
+
     expand(g, c) {
       circle(g, 50, 50, 14, c, STROKE - 1);
       circle(g, 50, 50, 26, dim(c), HAIR + 1);
@@ -845,17 +846,24 @@
       g.restore();
     }
 
-    // The signature: a short lit bracket over the top-left chamfer. It marks
-    // the plate without competing with the subject sitting inside it.
-    g.save();
-    g.strokeStyle = accent;
-    g.globalAlpha = 0.85;
-    g.lineWidth = WS.max(1.2, s * 0.022);
-    g.lineCap = 'round';
-    g.beginPath();
-    g.arc(s / 2, s / 2, s * 0.47, WS.PI * 0.88, WS.PI * 1.16);
-    g.stroke();
-    g.restore();
+    /* No ring, no arc.
+     *
+     * This carried a short bright arc over the top-left chamfer, which read as
+     * a stray mark: it traced a circle the octagonal plate does not have, and
+     * a partial arc is already the HUD's word for a quantity - the health and
+     * experience gauges and the weapon cooldowns are each a faint full ring
+     * with a bright arc riding it, where the arc means how much. A fragment on
+     * a static icon was decoration impersonating information.
+     *
+     * Closing it into a full ring fixed the stray-mark half and broke
+     * something else: on any glyph that is itself circular it stacked into
+     * concentric rings and the icon stopped reading at a glance.
+     *
+     * So the plate carries no circle at all. It has a chamfered rim, a bevel,
+     * an accent inlay and a pool of light, which is enough to seat a subject -
+     * and the ring stays where it earns its keep, on the gauges that are
+     * actually measuring something. A motif spent everywhere is not a motif.
+     */
   }
 
   /* ----------------------------------------------------------------- API -- */

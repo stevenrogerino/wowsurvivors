@@ -507,8 +507,14 @@
       const pulled = d < player.pickupRadius || WS.XP.vacuumTimer > 0;
       // Falls off with distance: near gems read as loot, far ones as texture.
       const near = WS.clamp(1 - (d - player.pickupRadius) / 260, 0, 1);
-      const s = g.size * (pulled ? 1.15 : 0.7 + near * 0.2)
-        * (1 + 0.06 * WS.sin(time * 5 + g.spin));
+      /* Only gems in play breathe. The pulse used to run on every gem on the
+         field, and a hundred marks pulsing on independent phases is not life,
+         it is static - so it is spent where it means something: on the ones
+         being pulled in, and for a moment on one that has just absorbed
+         another. */
+      const swell = (pulled ? 1 + 0.07 * WS.sin(time * 5 + g.spin) : 1)
+        + (g.pop > 0 ? g.pop * 1.6 : 0);
+      const s = g.size * (pulled ? 1.15 : 0.75 + near * 0.2) * swell;
       if (pulled) {
         const [tx, ty] = WS.normalize(g.x - player.x, g.y - player.y);
         ctx.globalAlpha = 0.4;

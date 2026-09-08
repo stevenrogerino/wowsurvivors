@@ -96,9 +96,11 @@ src/render/    procedural sprites, procedural icons, the canvas renderer
 src/audio/     WebAudio synth kit and the generative per-zone score
 src/ui/        the Arclight stylesheet, its embedded faces, and the DOM layer
 tools/         the single-file bundler, and the guard rails:
-               playtest.js   headless full run, every map, every survivor
-               check-ui.js   bracket collisions and false scroll scrims
+               playtest.js    headless full run, every map, every survivor
+               check-ui.js    bracket collisions and false scroll scrims
                check-input.js held movement across overlays
+               check-fx.js    particle speed and world bounds
+               check-icons.js glyphs clipped by their field, roster size
 ```
 
 - **Simulation** runs at a fixed 60 Hz with a per-frame catch-up cap, so a

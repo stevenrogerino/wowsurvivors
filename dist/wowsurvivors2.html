@@ -4160,29 +4160,29 @@ window.WS = window.WS || {};
       }
     },
     wing(g, c) {
-      // Five primaries fanning from one pivot, with dark gaps between them.
-      const px = 24, py = 78;
-      for (let i = 0; i < 5; i++) {
-        const a = -1.42 + i * 0.24;
-        const len = 62 - i * 6;
-        const wide = 8 - i * 0.6;
-        g.save();
-        g.translate(px, py);
-        g.rotate(a + WS.PI / 2);
+      /* Five primaries off one shoulder, in alternating tones. Absolute
+         coordinates rather than a rotated fan - the fan version swept down and
+         left from its pivot, which is easy to get backwards and did, throwing
+         the longest primary clean out of the field. Separate filled feathers
+         rather than one mass with hairlines scored on it, because at icon size
+         the glow washes a hairline out and the wing goes back to being a shell.
+      */
+      const sx = 22, sy = 28;
+      const tips = [[88, 44], [80, 58], [68, 70], [54, 75], [40, 70]];
+      tips.forEach(([tx, ty], i) => {
         g.fillStyle = i % 2 ? c : dim(c);
         g.beginPath();
-        g.moveTo(0, 0);
-        g.quadraticCurveTo(wide, len * 0.55, 1, len);
-        g.quadraticCurveTo(-wide, len * 0.5, 0, 0);
+        g.moveTo(sx, sy);
+        g.quadraticCurveTo((sx + tx) / 2 + 7, (sy + ty) / 2 - 9, tx, ty);
+        g.quadraticCurveTo((sx + tx) / 2 - 5, (sy + ty) / 2 + 7, sx, sy);
+        g.closePath();
         g.fill();
-        g.restore();
-      }
-      line(g, c, HAIR);
+      });
+      // The shoulder joint, which is what stops five wedges reading as a fan.
+      g.fillStyle = c;
       g.beginPath();
-      g.moveTo(px, py);
-      g.quadraticCurveTo(px + 26, py - 44, px + 62, py - 58);
-      g.stroke();
-      disc(g, px, py, 6, c);
+      g.ellipse(sx + 2, sy + 2, 9, 7, -0.5, 0, WS.TAU);
+      g.fill();
     },
 
     boot(g, c) {
@@ -4241,23 +4241,24 @@ window.WS = window.WS || {};
     },
     claw(g, c) {
       // Three hooked talons off a knuckle - curved, so they cannot be mistaken
-      // for the straight strokes of Thorns.
-      for (let i = 0; i < 3; i++) {
-        const a = -1.9 + i * 0.55;
-        g.save();
-        g.translate(50, 82);
-        g.rotate(a);
-        g.fillStyle = i === 1 ? c : dim(c);
+      // for the straight strokes of Thorns. Absolute coordinates, symmetric
+      // about the vertical, all of it well inside the field.
+      const T = [[38, 18, 30, 24, 0], [50, 47, 16, 42, 1], [62, 82, 30, 76, 0]];
+      for (const [bx, tx, ty, bow, hot] of T) {
+        g.fillStyle = hot ? c : dim(c);
         g.beginPath();
-        g.moveTo(0, 0);
-        g.quadraticCurveTo(16, -26, 8, -60);
-        g.quadraticCurveTo(2, -30, -8, -4);
+        g.moveTo(bx - 6, 78);
+        g.quadraticCurveTo(bow - 4, 50, tx, ty);
+        g.quadraticCurveTo(bow + 8, 54, bx + 6, 78);
+        g.closePath();
         g.fill();
-        g.restore();
       }
       g.fillStyle = c;
-      g.beginPath(); g.ellipse(50, 82, 17, 9, 0, 0, WS.TAU); g.fill();
+      g.beginPath();
+      g.ellipse(50, 79, 22, 9, 0, 0, WS.TAU);
+      g.fill();
     },
+
     expand(g, c) {
       circle(g, 50, 50, 14, c, STROKE - 1);
       circle(g, 50, 50, 26, dim(c), HAIR + 1);
@@ -4753,17 +4754,24 @@ window.WS = window.WS || {};
       g.restore();
     }
 
-    // The signature: a short lit bracket over the top-left chamfer. It marks
-    // the plate without competing with the subject sitting inside it.
-    g.save();
-    g.strokeStyle = accent;
-    g.globalAlpha = 0.85;
-    g.lineWidth = WS.max(1.2, s * 0.022);
-    g.lineCap = 'round';
-    g.beginPath();
-    g.arc(s / 2, s / 2, s * 0.47, WS.PI * 0.88, WS.PI * 1.16);
-    g.stroke();
-    g.restore();
+    /* No ring, no arc.
+     *
+     * This carried a short bright arc over the top-left chamfer, which read as
+     * a stray mark: it traced a circle the octagonal plate does not have, and
+     * a partial arc is already the HUD's word for a quantity - the health and
+     * experience gauges and the weapon cooldowns are each a faint full ring
+     * with a bright arc riding it, where the arc means how much. A fragment on
+     * a static icon was decoration impersonating information.
+     *
+     * Closing it into a full ring fixed the stray-mark half and broke
+     * something else: on any glyph that is itself circular it stacked into
+     * concentric rings and the icon stopped reading at a glance.
+     *
+     * So the plate carries no circle at all. It has a chamfered rim, a bevel,
+     * an accent inlay and a pool of light, which is enough to seat a subject -
+     * and the ring stays where it earns its keep, on the gauges that are
+     * actually measuring something. A motif spent everywhere is not a motif.
+     */
   }
 
   /* ----------------------------------------------------------------- API -- */
@@ -5282,8 +5290,18 @@ window.WS = window.WS || {};
     }
   };
 
-  /** A directional spray, e.g. blood from a hit or sparks off a ricochet. */
+  /** A directional spray, e.g. blood from a hit or sparks off a ricochet.
+   *
+   *  (dx, dy) is a DIRECTION and is normalised here, because it was not and a
+   *  caller handed it a projectile's raw velocity instead. Impact sparks then
+   *  launched at direction x speed - about 54,000 px/s - which crosses the
+   *  whole 1280px world inside a frame. On screen that was a scatter of tiny
+   *  circles blinking at random places for one frame every time a shot
+   *  connected. Normalising here rather than at the call site means no future
+   *  caller can reintroduce it. */
   FX.spray = function (x, y, dx, dy, count, colour, speed, life) {
+    const [nx, ny] = WS.normalize(dx, dy);
+    if (nx === 0 && ny === 0) return;
     for (let i = 0; i < count; i++) {
       const p = FX.particles.acquire();
       if (!p) return;
@@ -5291,7 +5309,7 @@ window.WS = window.WS || {};
       const c = WS.cos(spread), s = WS.sin(spread);
       const v = speed * WS.randRange(0.4, 1);
       p.x = x; p.y = y;
-      p.vx = (dx * c - dy * s) * v; p.vy = (dx * s + dy * c) * v;
+      p.vx = (nx * c - ny * s) * v; p.vy = (nx * s + ny * c) * v;
       p.colour = colour; p.size = 2.5;
       p.life = life * WS.randRange(0.6, 1); p.maxLife = p.life;
       p.drag = 3.4;
@@ -6936,20 +6954,54 @@ window.WS = window.WS || {};
     else { gem.size = 6; gem.colour = C.gemLow; gem.tier = 0; }
   }
 
+  /* Gems merge on contact rather than piling up.
+   *
+   * A four-minute run used to leave 200-odd gems lying on the field, and two
+   * hundred 6px marks scattered over the ground do not read as loot - they
+   * read as static. Merging on spawn keeps the field in the tens: fewer, and
+   * each one worth more, which is also a better thing to walk toward. No
+   * experience is lost either way, since the merge target keeps the value.
+   *
+   * MERGE is deliberately smaller than the pickup radius, so gems only fuse
+   * when they were going to overlap anyway. */
+  const MERGE = 26, MERGE2 = MERGE * MERGE;
+
   XP.spawnGem = function (x, y, value) {
     if (value <= 0) return;
+    const gx = x + WS.randRange(-6, 6), gy = y + WS.randRange(-6, 6);
+
+    // Fold into a neighbour if there is one. The scan is linear, but it ends
+    // on the first hit and the field is densest exactly when hits are likely.
+    for (let i = 0; i < this.pool.count; i++) {
+      const g = this.pool.active[i];
+      const dx = g.x - gx, dy = g.y - gy;
+      if (dx * dx + dy * dy < MERGE2) {
+        g.value += value;
+        style(g);
+        g.pop = 0.18;                       // a small swell, so a merge reads
+        return;
+      }
+    }
+
+    // The field is full and nothing was close enough: fold into a random gem
+    // rather than dropping the experience on the floor.
     if (this.pool.count >= WS.CONST.MAX_GEMS) {
       const gem = this.pool.active[WS.randInt(0, this.pool.count - 1)];
       gem.value += value;
       style(gem);
+      gem.pop = 0.18;
       return;
     }
     const gem = this.pool.acquire();
     if (!gem) return;
-    gem.x = x + WS.randRange(-6, 6);
-    gem.y = y + WS.randRange(-6, 6);
+    gem.x = gx;
+    gem.y = gy;
     gem.value = value;
     gem.radius = 8;
+    gem.pop = 0.18;
+    // A fixed orientation, set once. Gems used to rotate at 2 rad/s, which on
+    // a 6px diamond is not rotation - it is the shape changing width every
+    // frame, and across a field of them it reads as flicker.
     gem.spin = WS.random() * WS.TAU;
     style(gem);
   };
@@ -6967,7 +7019,7 @@ window.WS = window.WS || {};
     while (i < this.pool.count) {
       const gem = this.pool.active[i];
       const [dx, dy, distance] = WS.normalize(player.x - gem.x, player.y - gem.y);
-      gem.spin += dt * 2;
+      if (gem.pop > 0) gem.pop -= dt;
       if (vacuum) {
         gem.x += dx * 900 * dt;
         gem.y += dy * 900 * dt;
@@ -9095,8 +9147,14 @@ window.WS = window.WS || {};
       const pulled = d < player.pickupRadius || WS.XP.vacuumTimer > 0;
       // Falls off with distance: near gems read as loot, far ones as texture.
       const near = WS.clamp(1 - (d - player.pickupRadius) / 260, 0, 1);
-      const s = g.size * (pulled ? 1.15 : 0.7 + near * 0.2)
-        * (1 + 0.06 * WS.sin(time * 5 + g.spin));
+      /* Only gems in play breathe. The pulse used to run on every gem on the
+         field, and a hundred marks pulsing on independent phases is not life,
+         it is static - so it is spent where it means something: on the ones
+         being pulled in, and for a moment on one that has just absorbed
+         another. */
+      const swell = (pulled ? 1 + 0.07 * WS.sin(time * 5 + g.spin) : 1)
+        + (g.pop > 0 ? g.pop * 1.6 : 0);
+      const s = g.size * (pulled ? 1.15 : 0.75 + near * 0.2) * swell;
       if (pulled) {
         const [tx, ty] = WS.normalize(g.x - player.x, g.y - player.y);
         ctx.globalAlpha = 0.4;

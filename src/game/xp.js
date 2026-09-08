@@ -22,20 +22,54 @@
     else { gem.size = 6; gem.colour = C.gemLow; gem.tier = 0; }
   }
 
+  /* Gems merge on contact rather than piling up.
+   *
+   * A four-minute run used to leave 200-odd gems lying on the field, and two
+   * hundred 6px marks scattered over the ground do not read as loot - they
+   * read as static. Merging on spawn keeps the field in the tens: fewer, and
+   * each one worth more, which is also a better thing to walk toward. No
+   * experience is lost either way, since the merge target keeps the value.
+   *
+   * MERGE is deliberately smaller than the pickup radius, so gems only fuse
+   * when they were going to overlap anyway. */
+  const MERGE = 26, MERGE2 = MERGE * MERGE;
+
   XP.spawnGem = function (x, y, value) {
     if (value <= 0) return;
+    const gx = x + WS.randRange(-6, 6), gy = y + WS.randRange(-6, 6);
+
+    // Fold into a neighbour if there is one. The scan is linear, but it ends
+    // on the first hit and the field is densest exactly when hits are likely.
+    for (let i = 0; i < this.pool.count; i++) {
+      const g = this.pool.active[i];
+      const dx = g.x - gx, dy = g.y - gy;
+      if (dx * dx + dy * dy < MERGE2) {
+        g.value += value;
+        style(g);
+        g.pop = 0.18;                       // a small swell, so a merge reads
+        return;
+      }
+    }
+
+    // The field is full and nothing was close enough: fold into a random gem
+    // rather than dropping the experience on the floor.
     if (this.pool.count >= WS.CONST.MAX_GEMS) {
       const gem = this.pool.active[WS.randInt(0, this.pool.count - 1)];
       gem.value += value;
       style(gem);
+      gem.pop = 0.18;
       return;
     }
     const gem = this.pool.acquire();
     if (!gem) return;
-    gem.x = x + WS.randRange(-6, 6);
-    gem.y = y + WS.randRange(-6, 6);
+    gem.x = gx;
+    gem.y = gy;
     gem.value = value;
     gem.radius = 8;
+    gem.pop = 0.18;
+    // A fixed orientation, set once. Gems used to rotate at 2 rad/s, which on
+    // a 6px diamond is not rotation - it is the shape changing width every
+    // frame, and across a field of them it reads as flicker.
     gem.spin = WS.random() * WS.TAU;
     style(gem);
   };
@@ -53,7 +87,7 @@
     while (i < this.pool.count) {
       const gem = this.pool.active[i];
       const [dx, dy, distance] = WS.normalize(player.x - gem.x, player.y - gem.y);
-      gem.spin += dt * 2;
+      if (gem.pop > 0) gem.pop -= dt;
       if (vacuum) {
         gem.x += dx * 900 * dt;
         gem.y += dy * 900 * dt;

@@ -135,8 +135,18 @@
     }
   };
 
-  /** A directional spray, e.g. blood from a hit or sparks off a ricochet. */
+  /** A directional spray, e.g. blood from a hit or sparks off a ricochet.
+   *
+   *  (dx, dy) is a DIRECTION and is normalised here, because it was not and a
+   *  caller handed it a projectile's raw velocity instead. Impact sparks then
+   *  launched at direction x speed - about 54,000 px/s - which crosses the
+   *  whole 1280px world inside a frame. On screen that was a scatter of tiny
+   *  circles blinking at random places for one frame every time a shot
+   *  connected. Normalising here rather than at the call site means no future
+   *  caller can reintroduce it. */
   FX.spray = function (x, y, dx, dy, count, colour, speed, life) {
+    const [nx, ny] = WS.normalize(dx, dy);
+    if (nx === 0 && ny === 0) return;
     for (let i = 0; i < count; i++) {
       const p = FX.particles.acquire();
       if (!p) return;
@@ -144,7 +154,7 @@
       const c = WS.cos(spread), s = WS.sin(spread);
       const v = speed * WS.randRange(0.4, 1);
       p.x = x; p.y = y;
-      p.vx = (dx * c - dy * s) * v; p.vy = (dx * s + dy * c) * v;
+      p.vx = (nx * c - ny * s) * v; p.vy = (nx * s + ny * c) * v;
       p.colour = colour; p.size = 2.5;
       p.life = life * WS.randRange(0.6, 1); p.maxLife = p.life;
       p.drag = 3.4;
