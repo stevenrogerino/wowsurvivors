@@ -1433,6 +1433,12 @@ window.WS = window.WS || {};
     window.addEventListener('gamepaddisconnected', () => { this.gamepadIndex = null; });
   };
 
+  /** Hard reset of every held key.
+   *
+   *  Only for input whose end we cannot observe: window blur, and lifting the
+   *  virtual stick. Never call it while the window has focus and keys are
+   *  down - keydown auto-repeat only re-fires for the most recently pressed
+   *  key, so a wipe mid-hold silently drops every other direction. */
   Input.releaseAll = function () {
     this.keys.up = this.keys.down = this.keys.left = this.keys.right = false;
     this.pressed.clear();
@@ -8184,7 +8190,6 @@ window.WS = window.WS || {};
   Game.pause = function () {
     if (this.state !== 'playing') return;
     this.state = 'paused';
-    WS.Input.releaseAll();
     WS.UI.openPause();
   };
 
@@ -8263,7 +8268,13 @@ window.WS = window.WS || {};
     this.state = 'levelup';
     this.levelChoices = WS.LevelUp.buildChoices(this.player);
     WS.Audio.play('level');
-    WS.Input.releaseAll();
+    /* Do NOT release held keys here. The browser only auto-repeats keydown for
+     * the most recently pressed key, so wiping the direction state mid-hold
+     * loses every other one: a player running north-east on W+D came out of a
+     * level-up running east. Nothing needs releasing anyway - the window keeps
+     * focus, so the keyups still arrive, and the simulation is frozen while
+     * the overlay is up. Input.releaseAll is for input we genuinely cannot
+     * observe the end of: window blur, and lifting the touch stick. */
     WS.UI.openLevelUp(this.levelChoices);
   };
 

@@ -121,7 +121,6 @@
   Game.pause = function () {
     if (this.state !== 'playing') return;
     this.state = 'paused';
-    WS.Input.releaseAll();
     WS.UI.openPause();
   };
 
@@ -200,7 +199,13 @@
     this.state = 'levelup';
     this.levelChoices = WS.LevelUp.buildChoices(this.player);
     WS.Audio.play('level');
-    WS.Input.releaseAll();
+    /* Do NOT release held keys here. The browser only auto-repeats keydown for
+     * the most recently pressed key, so wiping the direction state mid-hold
+     * loses every other one: a player running north-east on W+D came out of a
+     * level-up running east. Nothing needs releasing anyway - the window keeps
+     * focus, so the keyups still arrive, and the simulation is frozen while
+     * the overlay is up. Input.releaseAll is for input we genuinely cannot
+     * observe the end of: window blur, and lifting the touch stick. */
     WS.UI.openLevelUp(this.levelChoices);
   };
 

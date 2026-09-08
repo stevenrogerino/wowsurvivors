@@ -44,6 +44,12 @@
     window.addEventListener('gamepaddisconnected', () => { this.gamepadIndex = null; });
   };
 
+  /** Hard reset of every held key.
+   *
+   *  Only for input whose end we cannot observe: window blur, and lifting the
+   *  virtual stick. Never call it while the window has focus and keys are
+   *  down - keydown auto-repeat only re-fires for the most recently pressed
+   *  key, so a wipe mid-hold silently drops every other direction. */
   Input.releaseAll = function () {
     this.keys.up = this.keys.down = this.keys.left = this.keys.right = false;
     this.pressed.clear();
