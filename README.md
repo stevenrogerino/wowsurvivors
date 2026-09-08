@@ -2,8 +2,8 @@
 
 A complete Warcraft-flavoured arcade survival game that runs in a browser.
 Open `index.html` and play — no build step, no server, no dependencies, and no
-network requests: every sprite, icon and sound is generated at runtime, and the
-four typefaces are embedded in the stylesheet.
+network requests: every sprite, icon and sound is generated at runtime, and
+both typefaces are embedded in the stylesheet.
 
 It is a standalone port and expansion of the **WoW Survivors** addon (a
 Vampire-Survivors-like built inside the World of Warcraft UI). All of that
@@ -11,9 +11,15 @@ game's content came across — 10 survivors, 21 weapons (16 findable, plus 5
 union super-weapons), 28 creatures, 6 elites, 20 bosses, 5 battlefields plus a
 scripted boss arena, 25 passives, 15 blessings, 9 hidden weapon discoveries,
 13 Trainer upgrades and 24 achievements — rebuilt on canvas, and dressed in
-**Arclight**: an illuminated-manuscript interface of gilt frames, parchment
-pages and gabled tarot cards, implemented from the Arclight design canvas
+**Arclight**: an obsidian interface lit by arc light, where anything that
+measures or matters glows and everything else recedes
 (see [`docs/ARCLIGHT-UI.md`](docs/ARCLIGHT-UI.md)).
+
+The game aims at a hard duality: cute but epic. Something you can play at a
+stroll, and sweat over if you lean in.
+
+See [`NOTICE.md`](NOTICE.md) for what is original here, what is licensed, and
+what is Blizzard's.
 
 ## Play
 
@@ -89,7 +95,10 @@ src/game/      the simulation: player, enemy, weapon, projectile, xp, pickup,
 src/render/    procedural sprites, procedural icons, the canvas renderer
 src/audio/     WebAudio synth kit and the generative per-zone score
 src/ui/        the Arclight stylesheet, its embedded faces, and the DOM layer
-tools/         the single-file bundler
+tools/         the single-file bundler, and the guard rails:
+               playtest.js   headless full run, every map, every survivor
+               check-ui.js   bracket collisions and false scroll scrims
+               check-input.js held movement across overlays
 ```
 
 - **Simulation** runs at a fixed 60 Hz with a per-frame catch-up cap, so a
