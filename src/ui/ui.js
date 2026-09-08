@@ -449,7 +449,9 @@
 
     const title = el('div'); title.id = 'title-wrap';
     const h = el('h1', 'game-title');
-    h.innerHTML = 'WoW<b>Survivors</b> 2';
+    // Three parts, because the logotype treats them differently: a cool
+    // qualifier, the name struck in gilt, and the numeral as a set piece.
+    h.append(el('span', 'wm', 'WoW'), el('span', 'nm', 'Survivors'), el('span', 'num', '2'));
     const sub = el('div', 'game-sub', 'A Warcraft arcade survival game');
     title.append(h, sub, el('div', 'title-arc'));
     s.head.replaceChildren(title);
@@ -547,9 +549,10 @@
     node.innerHTML = '';
     const art = el('div', 'art');
     const img = new Image();
-    img.src = WS.Sprites.hero(id, c.color, 116).toDataURL();
-    img.width = img.height = 116;
-    art.append(img);
+    img.src = WS.Sprites.portrait(id, c.color, 184).toDataURL();
+    img.width = img.height = 184;
+    art.append(img, el('i', 'frame'));
+    art.style.setProperty('--q', WS.hex(c.color));
 
     const body = el('div');
     body.append(el('h3', null, c.name));
@@ -579,9 +582,11 @@
     node.innerHTML = '';
     const art = el('div', 'art');
     const key = { forest: 'leaf', plains: 'wheat', haunted: 'deadtree', savannah: 'sun', glacier: 'crystal', arena: 'sovereign' }[m.art] || 'rune';
-    const img = icon(key, m.groundAlt, 116);
-    img.width = img.height = 116;
-    art.append(img);
+    const img = new Image();
+    img.src = WS.Sprites.zoneCard(m, key, 184).toDataURL();
+    img.width = img.height = 184;
+    art.append(img, el('i', 'frame'));
+    art.style.setProperty('--q', WS.hex(m.groundAlt));
 
     const body = el('div');
     body.append(el('h3', null, m.name));
@@ -630,16 +635,21 @@
       const node = el('button', 'pick' + (unlocked ? '' : ' locked')
         + (WS.Game.selection.character === id ? ' selected' : ''));
       node.type = 'button';
+      node.style.setProperty('--q', WS.hex(unlocked ? c.color : [0.3, 0.32, 0.4]));
+      // A seated plate rather than a sprite laid on the tile, so the roster
+      // is built out of the same parts as the ability icons.
+      const seat = el('span', 'pick-seat');
       const img = new Image();
       img.src = WS.Sprites.hero(id, unlocked ? c.color : [0.18, 0.19, 0.24], 44).toDataURL();
       img.width = img.height = 44;
       if (!unlocked) img.style.filter = 'brightness(.55) contrast(.7)';
+      seat.append(img);
       const main = el('div');
       main.append(el('div', 'pick-name', unlocked ? c.name : '???'));
       main.append(el('div', 'pick-sub', unlocked
         ? `${c.className} · ${WS.Weapons[c.weapon].name}`
         : c.unlockHint || 'Locked'));
-      node.append(img, main);
+      node.append(seat, main);
       if (unlocked) {
         node.addEventListener('click', () => {
           WS.Game.selection.character = id;
@@ -668,10 +678,13 @@
       const node = el('button', 'pick' + (unlocked ? '' : ' locked')
         + (WS.Game.selection.map === id ? ' selected' : ''));
       node.type = 'button';
+      node.style.setProperty('--q', WS.hex(unlocked ? m.groundAlt : [0.3, 0.32, 0.4]));
       const art = { forest: 'leaf', plains: 'wheat', haunted: 'deadtree', savannah: 'sun', glacier: 'crystal', arena: 'sovereign' }[m.art] || 'rune';
+      const seat = el('span', 'pick-seat');
       const img = icon(art, unlocked ? m.groundAlt : [0.22, 0.23, 0.28], 44);
       img.width = img.height = 44;
-      node.append(img);
+      seat.append(img);
+      node.append(seat);
       const main = el('div');
       main.append(el('div', 'pick-name', m.name));
       main.append(el('div', 'pick-sub', unlocked ? m.subtitle : (m.unlockHint || 'Locked')));

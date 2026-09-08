@@ -307,17 +307,43 @@ html, body {
 .overlay-foot .spacer { flex: 1; }
 
 /* ----------------------------------------------------------------- title */
+/* -- the logotype ------------------------------------------------------
+   This was one thin, widely tracked word, which is the typographic default
+   of every dark dashboard ever built. A game's name should have weight and a
+   material. So: a cool light qualifier, the name struck in gilt with a real
+   metal ramp - highlight along the top third, shadow through the middle,
+   warm bounce underneath - and the numeral set apart in the mono face on its
+   own plate, the way a sequel is set on a box. */
 #title-wrap { text-align: center; }
 #title-wrap .game-title {
-  font-size: clamp(30px, 5.2vw, 54px); font-weight: 200; letter-spacing: .26em;
-  text-transform: uppercase; margin: 0; color: var(--ink);
-  text-shadow: 0 0 60px rgba(245, 197, 107, .12);
+  margin: 0; display: flex; align-items: baseline; justify-content: flex-start;
+  gap: .16em; text-transform: uppercase;
+  font-size: clamp(28px, 4.6vw, 50px); line-height: 1;
 }
-#title-wrap .game-title b { font-weight: 700; color: var(--arc); }
+#title-wrap .game-title .wm {
+  font-weight: 300; letter-spacing: .17em; color: #cdd4e4;
+  text-shadow: 0 1px 0 rgba(0,0,0,.7);
+}
+#title-wrap .game-title .nm {
+  font-weight: 700; letter-spacing: .05em;
+  background-image: linear-gradient(180deg,
+    #fff3d4 0%, #ffe0a2 26%, #f5c56b 46%, #a97c2c 62%, #e6b45e 84%, #ffe6ae 100%);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 0 rgba(0,0,0,.55)) drop-shadow(0 0 34px rgba(245,197,107,.3));
+}
+#title-wrap .game-title .num {
+  font-family: var(--fig); font-weight: 500; font-size: .62em; letter-spacing: 0;
+  color: var(--arc-hot); align-self: center; margin-left: .1em;
+  padding: .14em .42em; border: 1px solid var(--rim-arc); border-radius: 2px;
+  background: linear-gradient(180deg, rgba(245,197,107,.16), rgba(245,197,107,.04));
+  box-shadow: var(--bevel), 0 0 22px -8px var(--arc);
+}
 #title-wrap .game-sub {
-  font-size: var(--t-micro); letter-spacing: .38em; text-transform: uppercase;
-  color: var(--ink-faint); margin-top: 10px;
+  font-size: var(--t-micro); letter-spacing: .34em; text-transform: uppercase;
+  color: var(--ink-faint); margin-top: 12px; text-align: left;
 }
+#title-wrap .title-arc { margin-left: 0; margin-right: auto; }
 /* The title's arc: a swept rule that draws itself on entry. */
 #title-wrap .title-arc {
   margin: 16px auto 0; width: min(520px, 70%); height: 1px;
@@ -431,40 +457,90 @@ html, body {
 
 /* ------------------------------------------------------------ pick grids */
 .pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(205px, 1fr)); gap: 10px; }
+/* A pick tile is a plate with a name beside it, not a rectangle with a sprite
+   dropped on. It carries the same chamfer as every icon in the game, its
+   subject's colour along the leading edge, and a wash of that colour behind
+   the seat - so a grid of ten reads as ten characters rather than ten rows. */
 .pick {
   display: flex; gap: 12px; align-items: center;
-  background: var(--obsidian); border: 1px solid var(--rim); border-radius: 2px;
-  padding: 11px 12px; cursor: pointer; text-align: left;
+  background:
+    linear-gradient(100deg, color-mix(in srgb, var(--q, var(--arc)) 9%, transparent), transparent 46%),
+    linear-gradient(180deg, var(--obsidian-2), var(--obsidian));
+  border: 1px solid var(--rim); border-radius: 2px;
+  padding: 11px 13px; cursor: pointer; text-align: left;
   font-family: inherit; color: inherit; box-shadow: var(--bevel);
-  transition: border-color .16s var(--ease), background .16s var(--ease), transform .14s var(--ease-out);
-  position: relative;
+  transition: border-color .16s var(--ease), transform .14s var(--ease-out),
+              box-shadow .16s var(--ease);
+  position: relative; overflow: hidden;
+  clip-path: polygon(11px 0, 100% 0, 100% calc(100% - 11px),
+    calc(100% - 11px) 100%, 0 100%, 0 11px);
 }
-.pick:hover { border-color: var(--rim-arc); transform: translateY(-2px); background: var(--obsidian-2); }
-.pick.selected { border-color: var(--arc); background: rgba(245,197,107,.06); }
-.pick.selected::before {
-  content: ""; position: absolute; left: -1px; top: 20%; bottom: 20%; width: 2px; background: var(--arc);
+/* The leading edge, in the subject's colour. */
+.pick::after {
+  content: ""; position: absolute; left: 0; top: 11px; bottom: 0; width: 2px;
+  background: var(--q, var(--arc)); opacity: .5;
+  transition: opacity .16s var(--ease);
 }
-.pick.locked { opacity: .4; cursor: not-allowed; }
-.pick.locked:hover { transform: none; border-color: var(--rim); background: var(--obsidian); }
-.pick img { width: 44px; height: 44px; flex: none; }
+.pick:hover {
+  border-color: color-mix(in srgb, var(--q, var(--arc)) 55%, transparent);
+  transform: translateY(-2px);
+  box-shadow: var(--bevel), var(--lift-1), 0 0 30px -16px var(--q, var(--arc));
+}
+.pick:hover::after { opacity: .9; }
+.pick.selected {
+  border-color: var(--q, var(--arc));
+  box-shadow: var(--bevel), 0 0 0 1px color-mix(in srgb, var(--q, var(--arc)) 40%, transparent),
+              0 0 34px -14px var(--q, var(--arc));
+}
+.pick.selected::after { opacity: 1; width: 3px; }
+.pick.locked { opacity: .45; cursor: not-allowed; }
+.pick.locked:hover { transform: none; border-color: var(--rim); box-shadow: var(--bevel); }
+/* The seat: a chamfered well the portrait sits in, lit from its own colour. */
+.pick .pick-seat {
+  position: relative; flex: none; width: 48px; height: 48px;
+  display: grid; place-items: center;
+  clip-path: polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px),
+    calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px), 0 8px);
+  background:
+    radial-gradient(circle at 50% 34%, color-mix(in srgb, var(--q, var(--arc)) 22%, transparent), transparent 68%),
+    linear-gradient(180deg, var(--obsidian-3), var(--void));
+  box-shadow: inset 0 0 0 1px rgba(255,240,214,.08);
+}
+.pick .pick-seat img { width: 44px; height: 44px; display: block; }
 .pick .pick-name { font-size: var(--t-lead); font-weight: 600; letter-spacing: .005em; }
 .pick .pick-sub { font-size: var(--t-small); color: var(--ink-dim); margin-top: 2px; line-height: 1.4; }
 
 /* ---------------------------------------------------- the detail cartouche */
 /* The selected survivor or battlefield, shown whole rather than as a tooltip. */
 .cartouche {
-  display: grid; grid-template-columns: 132px 1fr; gap: 20px;
+  display: grid; grid-template-columns: 184px 1fr; gap: 24px;
   background: linear-gradient(180deg, var(--obsidian-2), var(--obsidian));
   border: 1px solid var(--rim); border-radius: 2px;
   padding: 20px; margin-bottom: 14px;
 }
+/* The portrait is a picture, not a token in a well: the canvas carries the
+   room, the floor and the light, and this only frames it. Chamfered, because
+   that is the shape every plate in the set is cut to. */
 .cartouche .art {
-  width: 132px; height: 132px; position: relative;
-  background: radial-gradient(circle at 50% 38%, var(--obsidian-3), var(--obsidian));
-  border: 1px solid var(--rim); border-radius: 2px;
-  display: grid; place-items: center;
+  width: 184px; height: 184px; position: relative;
+  clip-path: polygon(15px 0, calc(100% - 15px) 0, 100% 15px, 100% calc(100% - 15px),
+    calc(100% - 15px) 100%, 15px 100%, 0 calc(100% - 15px), 0 15px);
+  box-shadow: var(--lift-1);
 }
-.cartouche .art img { width: 116px; height: 116px; }
+.cartouche .art img { display: block; width: 184px; height: 184px; }
+/* Two hairlines inside the chamfer: the rim, and the survivor's own colour
+   inlaid a few pixels in, the same construction as an ability plate. */
+.cartouche .art .frame {
+  position: absolute; inset: 0; pointer-events: none;
+  clip-path: inherit;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,240,214,.2),
+    inset 0 0 0 5px rgba(6,7,11,.6),
+    inset 0 0 0 6px color-mix(in srgb, var(--q, var(--arc)) 52%, transparent),
+    inset 0 0 0 7px rgba(0,0,0,.5),
+    inset 0 0 26px -6px rgba(0,0,0,.7),
+    inset 0 24px 34px -24px rgba(255,244,224,.2);
+}
 .cartouche h3 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: .01em; }
 .cartouche .role { margin-top: 3px; }
 .cartouche .flavour { font-size: var(--t-body); color: var(--ink-dim); margin: 9px 0 0; line-height: 1.5; max-width: 62ch; }
@@ -3960,6 +4036,167 @@ window.WS = window.WS || {};
       const res = size * SS;
       c = make(res, res);
       drawHero(c.getContext('2d'), res, tint, HEROES[id] || HEROES.mage, demon);
+      c.displaySize = size;
+      cache.set(key, c);
+      return c;
+    },
+
+    /** A character portrait: the survivor standing in their own light.
+     *
+     *  The roster used to show a 116px sprite floating in a grey box, which is
+     *  the difference between a game's character select and a settings row.
+     *  Same materials as everything else - there is no artwork to load - but
+     *  composed as a picture: a lit ground they stand ON, a shadow that seats
+     *  them, a wash of their own class colour behind, and a vignette to close
+     *  the frame. */
+    portrait(id, tint, size) {
+      size = WS.round(size);
+      const key = `pt:${id}:${WS.hex(tint)}:${size}`;
+      let c = cache.get(key);
+      if (c) return c;
+      const res = size * SS;
+      c = make(res, res);
+      const g = c.getContext('2d');
+      const u = res / 100;
+      const p = palette(tint);
+      const horizon = res * 0.67;
+
+      // The room: dark at the edges, warmer where the subject stands.
+      const room = g.createRadialGradient(res * 0.5, res * 0.46, 0, res * 0.5, res * 0.5, res * 0.72);
+      room.addColorStop(0, '#171a24');
+      room.addColorStop(0.55, '#0f121a');
+      room.addColorStop(1, '#07080c');
+      g.fillStyle = room;
+      g.fillRect(0, 0, res, res);
+
+      // Their colour, thrown up the back wall.
+      const wash = g.createRadialGradient(res * 0.5, res * 0.58, 0, res * 0.5, res * 0.58, res * 0.5);
+      wash.addColorStop(0, WS.rgb(tint, 0.24));
+      wash.addColorStop(1, WS.rgb(tint, 0));
+      g.fillStyle = wash;
+      g.fillRect(0, 0, res, res);
+
+      // The floor they are standing on, and its horizon line.
+      const floor = g.createLinearGradient(0, horizon - 6 * u, 0, res);
+      floor.addColorStop(0, 'rgba(0,0,0,.42)');
+      floor.addColorStop(1, 'rgba(0,0,0,.08)');
+      g.fillStyle = floor;
+      g.fillRect(0, horizon - 6 * u, res, res - horizon + 6 * u);
+      g.fillStyle = WS.rgb(tint, 0.16);
+      g.fillRect(0, horizon - 1 * u, res, 1 * u);
+
+      // A pool of light on the floor, then the shadow inside it.
+      const pool = g.createRadialGradient(res * 0.5, horizon + 4 * u, 0, res * 0.5, horizon + 4 * u, res * 0.4);
+      pool.addColorStop(0, WS.rgb(tint, 0.2));
+      pool.addColorStop(1, WS.rgb(tint, 0));
+      g.fillStyle = pool;
+      g.beginPath();
+      g.ellipse(res * 0.5, horizon + 4 * u, res * 0.4, res * 0.12, 0, 0, WS.TAU);
+      g.fill();
+      g.fillStyle = 'rgba(0,0,0,.5)';
+      g.beginPath();
+      g.ellipse(res * 0.5, horizon + 5 * u, res * 0.17, res * 0.045, 0, 0, WS.TAU);
+      g.fill();
+
+      // The survivor, large enough to be a portrait rather than a token.
+      const hs = WS.round(size * 0.66);
+      const hero = WS.Sprites.hero(id, tint, hs);
+      // The hero sprite plants its feet at 0.72 of its own canvas, so line that
+      // up with the horizon rather than the sprite's box.
+      g.drawImage(hero, (res - hs * SS) / 2, horizon - hs * SS * 0.72, hs * SS, hs * SS);
+
+      // Close the frame.
+      const vig = g.createRadialGradient(res * 0.5, res * 0.5, res * 0.3, res * 0.5, res * 0.5, res * 0.72);
+      vig.addColorStop(0, 'rgba(0,0,0,0)');
+      vig.addColorStop(1, 'rgba(0,0,0,.5)');
+      g.fillStyle = vig;
+      g.fillRect(0, 0, res, res);
+
+      c.displaySize = size;
+      cache.set(key, c);
+      return c;
+    },
+
+    /** A zone card: the battlefield at dusk, from its own palette.
+     *
+     *  The survivor gets a portrait, so a battlefield gets a landscape - a
+     *  116px glyph adrift in a 184px frame was the one place the two halves of
+     *  the picker did not match. No sigil struck over it: the zone's name is
+     *  already set in 24px beside the card, and a symbol laid over a scene
+     *  only competes with it. The tiles keep their glyph plates; this is the
+     *  place itself.
+     */
+    zoneCard(map, sigil, size) {
+      size = WS.round(size);
+      const key = `zc:${map.name}:${size}`;
+      let c = cache.get(key);
+      if (c) return c;
+      const res = size * SS;
+      c = make(res, res);
+      const g = c.getContext('2d');
+      const horizon = res * 0.58;
+      // Scattered once and cached by key, so the card is stable for the run.
+      const rnd = WS.random;
+
+      // Dusk, in the zone's own light: dark overhead, its accent at the skyline.
+      const sky = g.createLinearGradient(0, 0, 0, horizon);
+      sky.addColorStop(0, WS.hex(WS.shade(map.ground, 0.30)));
+      sky.addColorStop(0.62, WS.hex(WS.shade(map.groundAlt, 0.62)));
+      sky.addColorStop(1, WS.hex(WS.mix(map.groundAlt, [1, 1, 1], 0.30)));
+      g.fillStyle = sky;
+      g.fillRect(0, 0, res, horizon);
+
+      // A low sun sitting on the skyline - the one warm thing in the picture.
+      const sun = g.createRadialGradient(res * 0.66, horizon, 0, res * 0.66, horizon, res * 0.34);
+      sun.addColorStop(0, WS.rgb(WS.mix(map.groundAlt, [1, 1, 1], 0.7), 0.6));
+      sun.addColorStop(1, WS.rgb(map.groundAlt, 0));
+      g.fillStyle = sun;
+      g.fillRect(0, 0, res, horizon);
+
+      // Ground, mottled the way the battlefield itself is.
+      g.fillStyle = WS.hex(WS.shade(map.ground, 0.9));
+      g.fillRect(0, horizon, res, res - horizon);
+      for (let i = 0; i < 120; i++) {
+        const x = rnd() * res, y = horizon + rnd() * (res - horizon);
+        const r = res * (0.02 + rnd() * 0.09);
+        g.globalAlpha = 0.05 + rnd() * 0.12;
+        g.fillStyle = WS.hex(rnd() < 0.5 ? map.groundAlt : WS.shade(map.ground, 0.5));
+        g.beginPath(); g.ellipse(x, y, r, r * 0.45, 0, 0, WS.TAU); g.fill();
+      }
+      g.globalAlpha = 1;
+
+      /* A treeline standing ON the horizon, in silhouette. prop() takes a
+         DISPLAY size and rasterises at SS internally, so the size handed in
+         and the size drawn at are not the same number - getting that backwards
+         is why an earlier version had a row of specks. */
+      if (map.props && map.props.length) {
+        for (let i = 0; i < 11; i++) {
+          const kind = map.props[WS.floor(rnd() * map.props.length)];
+          const pd = WS.round(size * (0.16 + rnd() * 0.14));
+          const sprite = WS.Sprites.prop(kind, pd);
+          const px = (i / 10) * (res + pd * SS) - pd * SS * 0.5;
+          g.save();
+          g.globalAlpha = 0.7;
+          // Darkened to a silhouette so the skyline reads as depth, not clutter.
+          g.filter = 'brightness(.42) saturate(.7)';
+          g.drawImage(sprite, px, horizon - pd * SS * 0.78, pd * SS, pd * SS);
+          g.restore();
+        }
+      }
+
+      // Ground haze along the skyline, then the frame closes.
+      const haze = g.createLinearGradient(0, horizon - res * 0.06, 0, horizon + res * 0.1);
+      haze.addColorStop(0, WS.rgb(map.groundAlt, 0.22));
+      haze.addColorStop(1, WS.rgb(map.groundAlt, 0));
+      g.fillStyle = haze;
+      g.fillRect(0, horizon - res * 0.06, res, res * 0.16);
+
+      const vig = g.createRadialGradient(res * 0.5, res * 0.5, res * 0.3, res * 0.5, res * 0.5, res * 0.76);
+      vig.addColorStop(0, 'rgba(0,0,0,0)');
+      vig.addColorStop(1, 'rgba(0,0,0,.62)');
+      g.fillStyle = vig;
+      g.fillRect(0, 0, res, res);
+
       c.displaySize = size;
       cache.set(key, c);
       return c;
@@ -10466,7 +10703,9 @@ window.WS = window.WS || {};
 
     const title = el('div'); title.id = 'title-wrap';
     const h = el('h1', 'game-title');
-    h.innerHTML = 'WoW<b>Survivors</b> 2';
+    // Three parts, because the logotype treats them differently: a cool
+    // qualifier, the name struck in gilt, and the numeral as a set piece.
+    h.append(el('span', 'wm', 'WoW'), el('span', 'nm', 'Survivors'), el('span', 'num', '2'));
     const sub = el('div', 'game-sub', 'A Warcraft arcade survival game');
     title.append(h, sub, el('div', 'title-arc'));
     s.head.replaceChildren(title);
@@ -10564,9 +10803,10 @@ window.WS = window.WS || {};
     node.innerHTML = '';
     const art = el('div', 'art');
     const img = new Image();
-    img.src = WS.Sprites.hero(id, c.color, 116).toDataURL();
-    img.width = img.height = 116;
-    art.append(img);
+    img.src = WS.Sprites.portrait(id, c.color, 184).toDataURL();
+    img.width = img.height = 184;
+    art.append(img, el('i', 'frame'));
+    art.style.setProperty('--q', WS.hex(c.color));
 
     const body = el('div');
     body.append(el('h3', null, c.name));
@@ -10596,9 +10836,11 @@ window.WS = window.WS || {};
     node.innerHTML = '';
     const art = el('div', 'art');
     const key = { forest: 'leaf', plains: 'wheat', haunted: 'deadtree', savannah: 'sun', glacier: 'crystal', arena: 'sovereign' }[m.art] || 'rune';
-    const img = icon(key, m.groundAlt, 116);
-    img.width = img.height = 116;
-    art.append(img);
+    const img = new Image();
+    img.src = WS.Sprites.zoneCard(m, key, 184).toDataURL();
+    img.width = img.height = 184;
+    art.append(img, el('i', 'frame'));
+    art.style.setProperty('--q', WS.hex(m.groundAlt));
 
     const body = el('div');
     body.append(el('h3', null, m.name));
@@ -10647,16 +10889,21 @@ window.WS = window.WS || {};
       const node = el('button', 'pick' + (unlocked ? '' : ' locked')
         + (WS.Game.selection.character === id ? ' selected' : ''));
       node.type = 'button';
+      node.style.setProperty('--q', WS.hex(unlocked ? c.color : [0.3, 0.32, 0.4]));
+      // A seated plate rather than a sprite laid on the tile, so the roster
+      // is built out of the same parts as the ability icons.
+      const seat = el('span', 'pick-seat');
       const img = new Image();
       img.src = WS.Sprites.hero(id, unlocked ? c.color : [0.18, 0.19, 0.24], 44).toDataURL();
       img.width = img.height = 44;
       if (!unlocked) img.style.filter = 'brightness(.55) contrast(.7)';
+      seat.append(img);
       const main = el('div');
       main.append(el('div', 'pick-name', unlocked ? c.name : '???'));
       main.append(el('div', 'pick-sub', unlocked
         ? `${c.className} · ${WS.Weapons[c.weapon].name}`
         : c.unlockHint || 'Locked'));
-      node.append(img, main);
+      node.append(seat, main);
       if (unlocked) {
         node.addEventListener('click', () => {
           WS.Game.selection.character = id;
@@ -10685,10 +10932,13 @@ window.WS = window.WS || {};
       const node = el('button', 'pick' + (unlocked ? '' : ' locked')
         + (WS.Game.selection.map === id ? ' selected' : ''));
       node.type = 'button';
+      node.style.setProperty('--q', WS.hex(unlocked ? m.groundAlt : [0.3, 0.32, 0.4]));
       const art = { forest: 'leaf', plains: 'wheat', haunted: 'deadtree', savannah: 'sun', glacier: 'crystal', arena: 'sovereign' }[m.art] || 'rune';
+      const seat = el('span', 'pick-seat');
       const img = icon(art, unlocked ? m.groundAlt : [0.22, 0.23, 0.28], 44);
       img.width = img.height = 44;
-      node.append(img);
+      seat.append(img);
+      node.append(seat);
       const main = el('div');
       main.append(el('div', 'pick-name', m.name));
       main.append(el('div', 'pick-sub', unlocked ? m.subtitle : (m.unlockHint || 'Locked')));

@@ -899,6 +899,167 @@
       return c;
     },
 
+    /** A character portrait: the survivor standing in their own light.
+     *
+     *  The roster used to show a 116px sprite floating in a grey box, which is
+     *  the difference between a game's character select and a settings row.
+     *  Same materials as everything else - there is no artwork to load - but
+     *  composed as a picture: a lit ground they stand ON, a shadow that seats
+     *  them, a wash of their own class colour behind, and a vignette to close
+     *  the frame. */
+    portrait(id, tint, size) {
+      size = WS.round(size);
+      const key = `pt:${id}:${WS.hex(tint)}:${size}`;
+      let c = cache.get(key);
+      if (c) return c;
+      const res = size * SS;
+      c = make(res, res);
+      const g = c.getContext('2d');
+      const u = res / 100;
+      const p = palette(tint);
+      const horizon = res * 0.67;
+
+      // The room: dark at the edges, warmer where the subject stands.
+      const room = g.createRadialGradient(res * 0.5, res * 0.46, 0, res * 0.5, res * 0.5, res * 0.72);
+      room.addColorStop(0, '#171a24');
+      room.addColorStop(0.55, '#0f121a');
+      room.addColorStop(1, '#07080c');
+      g.fillStyle = room;
+      g.fillRect(0, 0, res, res);
+
+      // Their colour, thrown up the back wall.
+      const wash = g.createRadialGradient(res * 0.5, res * 0.58, 0, res * 0.5, res * 0.58, res * 0.5);
+      wash.addColorStop(0, WS.rgb(tint, 0.24));
+      wash.addColorStop(1, WS.rgb(tint, 0));
+      g.fillStyle = wash;
+      g.fillRect(0, 0, res, res);
+
+      // The floor they are standing on, and its horizon line.
+      const floor = g.createLinearGradient(0, horizon - 6 * u, 0, res);
+      floor.addColorStop(0, 'rgba(0,0,0,.42)');
+      floor.addColorStop(1, 'rgba(0,0,0,.08)');
+      g.fillStyle = floor;
+      g.fillRect(0, horizon - 6 * u, res, res - horizon + 6 * u);
+      g.fillStyle = WS.rgb(tint, 0.16);
+      g.fillRect(0, horizon - 1 * u, res, 1 * u);
+
+      // A pool of light on the floor, then the shadow inside it.
+      const pool = g.createRadialGradient(res * 0.5, horizon + 4 * u, 0, res * 0.5, horizon + 4 * u, res * 0.4);
+      pool.addColorStop(0, WS.rgb(tint, 0.2));
+      pool.addColorStop(1, WS.rgb(tint, 0));
+      g.fillStyle = pool;
+      g.beginPath();
+      g.ellipse(res * 0.5, horizon + 4 * u, res * 0.4, res * 0.12, 0, 0, WS.TAU);
+      g.fill();
+      g.fillStyle = 'rgba(0,0,0,.5)';
+      g.beginPath();
+      g.ellipse(res * 0.5, horizon + 5 * u, res * 0.17, res * 0.045, 0, 0, WS.TAU);
+      g.fill();
+
+      // The survivor, large enough to be a portrait rather than a token.
+      const hs = WS.round(size * 0.66);
+      const hero = WS.Sprites.hero(id, tint, hs);
+      // The hero sprite plants its feet at 0.72 of its own canvas, so line that
+      // up with the horizon rather than the sprite's box.
+      g.drawImage(hero, (res - hs * SS) / 2, horizon - hs * SS * 0.72, hs * SS, hs * SS);
+
+      // Close the frame.
+      const vig = g.createRadialGradient(res * 0.5, res * 0.5, res * 0.3, res * 0.5, res * 0.5, res * 0.72);
+      vig.addColorStop(0, 'rgba(0,0,0,0)');
+      vig.addColorStop(1, 'rgba(0,0,0,.5)');
+      g.fillStyle = vig;
+      g.fillRect(0, 0, res, res);
+
+      c.displaySize = size;
+      cache.set(key, c);
+      return c;
+    },
+
+    /** A zone card: the battlefield at dusk, from its own palette.
+     *
+     *  The survivor gets a portrait, so a battlefield gets a landscape - a
+     *  116px glyph adrift in a 184px frame was the one place the two halves of
+     *  the picker did not match. No sigil struck over it: the zone's name is
+     *  already set in 24px beside the card, and a symbol laid over a scene
+     *  only competes with it. The tiles keep their glyph plates; this is the
+     *  place itself.
+     */
+    zoneCard(map, sigil, size) {
+      size = WS.round(size);
+      const key = `zc:${map.name}:${size}`;
+      let c = cache.get(key);
+      if (c) return c;
+      const res = size * SS;
+      c = make(res, res);
+      const g = c.getContext('2d');
+      const horizon = res * 0.58;
+      // Scattered once and cached by key, so the card is stable for the run.
+      const rnd = WS.random;
+
+      // Dusk, in the zone's own light: dark overhead, its accent at the skyline.
+      const sky = g.createLinearGradient(0, 0, 0, horizon);
+      sky.addColorStop(0, WS.hex(WS.shade(map.ground, 0.30)));
+      sky.addColorStop(0.62, WS.hex(WS.shade(map.groundAlt, 0.62)));
+      sky.addColorStop(1, WS.hex(WS.mix(map.groundAlt, [1, 1, 1], 0.30)));
+      g.fillStyle = sky;
+      g.fillRect(0, 0, res, horizon);
+
+      // A low sun sitting on the skyline - the one warm thing in the picture.
+      const sun = g.createRadialGradient(res * 0.66, horizon, 0, res * 0.66, horizon, res * 0.34);
+      sun.addColorStop(0, WS.rgb(WS.mix(map.groundAlt, [1, 1, 1], 0.7), 0.6));
+      sun.addColorStop(1, WS.rgb(map.groundAlt, 0));
+      g.fillStyle = sun;
+      g.fillRect(0, 0, res, horizon);
+
+      // Ground, mottled the way the battlefield itself is.
+      g.fillStyle = WS.hex(WS.shade(map.ground, 0.9));
+      g.fillRect(0, horizon, res, res - horizon);
+      for (let i = 0; i < 120; i++) {
+        const x = rnd() * res, y = horizon + rnd() * (res - horizon);
+        const r = res * (0.02 + rnd() * 0.09);
+        g.globalAlpha = 0.05 + rnd() * 0.12;
+        g.fillStyle = WS.hex(rnd() < 0.5 ? map.groundAlt : WS.shade(map.ground, 0.5));
+        g.beginPath(); g.ellipse(x, y, r, r * 0.45, 0, 0, WS.TAU); g.fill();
+      }
+      g.globalAlpha = 1;
+
+      /* A treeline standing ON the horizon, in silhouette. prop() takes a
+         DISPLAY size and rasterises at SS internally, so the size handed in
+         and the size drawn at are not the same number - getting that backwards
+         is why an earlier version had a row of specks. */
+      if (map.props && map.props.length) {
+        for (let i = 0; i < 11; i++) {
+          const kind = map.props[WS.floor(rnd() * map.props.length)];
+          const pd = WS.round(size * (0.16 + rnd() * 0.14));
+          const sprite = WS.Sprites.prop(kind, pd);
+          const px = (i / 10) * (res + pd * SS) - pd * SS * 0.5;
+          g.save();
+          g.globalAlpha = 0.7;
+          // Darkened to a silhouette so the skyline reads as depth, not clutter.
+          g.filter = 'brightness(.42) saturate(.7)';
+          g.drawImage(sprite, px, horizon - pd * SS * 0.78, pd * SS, pd * SS);
+          g.restore();
+        }
+      }
+
+      // Ground haze along the skyline, then the frame closes.
+      const haze = g.createLinearGradient(0, horizon - res * 0.06, 0, horizon + res * 0.1);
+      haze.addColorStop(0, WS.rgb(map.groundAlt, 0.22));
+      haze.addColorStop(1, WS.rgb(map.groundAlt, 0));
+      g.fillStyle = haze;
+      g.fillRect(0, horizon - res * 0.06, res, res * 0.16);
+
+      const vig = g.createRadialGradient(res * 0.5, res * 0.5, res * 0.3, res * 0.5, res * 0.5, res * 0.76);
+      vig.addColorStop(0, 'rgba(0,0,0,0)');
+      vig.addColorStop(1, 'rgba(0,0,0,.62)');
+      g.fillStyle = vig;
+      g.fillRect(0, 0, res, res);
+
+      c.displaySize = size;
+      cache.set(key, c);
+      return c;
+    },
+
     prop(kind, size) {
       size = WS.round(size);
       const key = `p:${kind}:${size}`;
