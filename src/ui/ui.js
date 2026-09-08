@@ -157,6 +157,13 @@
     bFill.style.strokeDasharray = this.els.bossLen;
   };
 
+  /** Puts the chosen HUD layout on the root, so the whole thing is one class
+   *  swap rather than two elements being repositioned by script. */
+  UI.applyHudLayout = function () {
+    const rail = WS.Save.settings.hudLayout === 'rail';
+    document.body.classList.toggle('hud-rail', rail);
+  };
+
   UI.enterGame = function () {
     this.closeOverlay();
     this.hud.classList.remove('hidden');
@@ -200,9 +207,7 @@
     // Empty scabbards keep the strip a fixed six, so a filling build reads.
     for (let i = WS.Game.player.weapons.length; i < WS.MAX_WEAPONS; i++) {
       const slot = el('div', 'wslot empty');
-      const plate = el('div');
-      plate.style.cssText = 'width:54px;height:54px;border:1px dashed rgba(255,255,255,.12);border-radius:2px';
-      slot.append(plate);
+      slot.append(el('div', 'scabbard'));
       wrap.append(slot);
     }
   };
@@ -373,6 +378,9 @@
     this.overlay.innerHTML = '';
     this.overlay.append(inner);
     this.overlay.classList.remove('hidden');
+    // Out of a run there is a live scene behind the panels, so the scrim
+    // lightens to let it through.
+    this.overlay.classList.toggle('scene', !WS.Game.player);
     this.wireScroll(inner);
   };
 
@@ -857,6 +865,30 @@
       wrap.append(row);
     };
 
+    /** A segmented choice. Same row furniture as a toggle, so the settings
+     *  list stays one list rather than a pile of different controls. */
+    const choose = (key, name, desc, options, onPick) => {
+      const row = el('div', 'setting');
+      const main = el('div');
+      main.append(el('div', 's-name', name));
+      if (desc) main.append(el('div', 's-desc', desc));
+      const seg = el('div', 'segmented');
+      for (const [value, label] of options) {
+        const b = el('button', 'seg' + (st[key] === value ? ' on' : ''), label);
+        b.type = 'button';
+        b.addEventListener('click', () => {
+          st[key] = value;
+          for (const other of seg.children) other.classList.toggle('on', other === b);
+          WS.Save.save();
+          WS.Audio.play('ui');
+          if (onPick) onPick(value);
+        });
+        seg.append(b);
+      }
+      row.append(main, seg);
+      wrap.append(row);
+    };
+
     const slider = (key, name) => {
       const row = el('div', 'setting');
       row.append(el('div', 's-name', name));
@@ -881,6 +913,8 @@
     toggle('healNumbers', 'Floating healing numbers');
     toggle('showHealthBars', 'Health bars on trash mobs', 'Elites and bosses always keep theirs.');
     toggle('levelUpTooltips', 'Detailed level-up cards');
+    choose('hudLayout', 'Arsenal and passives', 'Where your weapons and traits live.',
+      [['strip', 'Along the foot'], ['rail', 'Up the edges']], () => UI.applyHudLayout());
 
     const danger = el('div', 'setting');
     const dmain = el('div');
@@ -910,6 +944,29 @@
     this.show(s.inner);
   };
 
+  /* Banish is a MODE, not new content.
+   *
+   * Clicking it used to call openLevelUp again, which rebuilt the whole shell
+   * and handed it to show(): the overlay animation replayed, all three cards
+   * dealt themselves in again, the scroll port re-measured (a scrollbar
+   * flashing in and out), and the footer resized as the hint appeared. The
+   * player asked one question - "which of these do I want gone?" - and the
+   * screen answered by reloading itself.
+   *
+   * So the overlay is built once and the mode is a class. The hint is always
+   * in the DOM at its final width and only its opacity changes, because a
+   * label that appears re-centres the button bar and nothing may move.
+   */
+  UI.setBanishMode = function (on) {
+    this.banishMode = on;
+    const ui = this._levelUI;
+    if (!ui) return;
+    ui.row.classList.toggle('banish-mode', on);
+    ui.hint.classList.toggle('on', on);
+    ui.banish.classList.toggle('armed', on);
+    ui.banish.setAttribute('aria-pressed', on ? 'true' : 'false');
+  };
+
   UI.openLevelUp = function (choices) {
     const p = WS.Game.player;
     // Copy carries as much of the tone as the art does. The game wants to be
@@ -918,18 +975,6 @@
     const s = shell('Level ' + p.level, WS.Game.pendingLevelUps > 1
       ? `${WS.Game.pendingLevelUps} more after this one.` : 'Take what you need.');
     const row = el('div', 'card-row');
-    if (this.banishMode) row.classList.add('banish-mode');
-
-    choices.forEach((c, i) => {
-      row.append(cardFor(c, (choice) => {
-        if (this.banishMode) {
-          this.banishMode = false;
-          if (!WS.Game.banishLevelUp(choice)) this.openLevelUp(WS.Game.levelChoices);
-          return;
-        }
-        WS.Game.chooseLevelUp(choice);
-      }, i));
-    });
 
     const bar = el('div', 'choice-bar');
     const reroll = el('button', 'btn small', `Reroll (${p.rerolls})`);
@@ -937,17 +982,47 @@
     reroll.addEventListener('click', () => { this.banishMode = false; WS.Game.rerollLevelUp(); });
     const banish = el('button', 'btn small', `Banish (${p.banishes})`);
     banish.disabled = p.banishes <= 0;
+    banish.type = 'button';
     banish.addEventListener('click', () => {
-      this.banishMode = !this.banishMode;
-      this.openLevelUp(WS.Game.levelChoices);
+      WS.Audio.play('ui');
+      this.setBanishMode(!this.banishMode);
     });
-    bar.append(reroll, banish);
-    if (this.banishMode) {
-      bar.append(el('span', 'label', 'Pick a card to banish it from this run'));
-    }
+    // Always present, so arming banish cannot shift the bar under the cursor.
+    const hint = el('span', 'choice-hint', 'Pick a card to banish it from this run');
+    bar.append(reroll, banish, hint);
+
     s.body.append(row);
     s.foot.append(el('div', 'spacer'), bar, el('div', 'spacer'));
+    this._levelUI = { row, bar, banish, reroll, hint };
+    this.fillLevelChoices(choices);
     this.show(s.inner);
+    this.setBanishMode(false);
+  };
+
+  /** Swap the three cards without touching the shell around them, so a reroll
+   *  or a banish deals new cards into the same frame instead of reloading the
+   *  screen underneath them. */
+  UI.fillLevelChoices = function (choices) {
+    const ui = this._levelUI;
+    if (!ui) return;
+    ui.row.replaceChildren();
+    choices.forEach((c, i) => {
+      ui.row.append(cardFor(c, (choice) => {
+        if (this.banishMode) {
+          this.setBanishMode(false);
+          // banishLevelUp returns false when there are still cards to choose
+          // from, i.e. the offer was refreshed rather than resolved.
+          if (!WS.Game.banishLevelUp(choice)) this.fillLevelChoices(WS.Game.levelChoices);
+          return;
+        }
+        WS.Game.chooseLevelUp(choice);
+      }, i));
+    });
+    const p = WS.Game.player;
+    ui.reroll.textContent = `Reroll (${p.rerolls})`;
+    ui.reroll.disabled = p.rerolls <= 0;
+    ui.banish.textContent = `Banish (${p.banishes})`;
+    ui.banish.disabled = p.banishes <= 0;
   };
 
   /* ---------------------------------------------------------- build sheet - */
@@ -1154,6 +1229,7 @@
   UI.init = function (root, overlay, hud) {
     this.root = root; this.overlay = overlay; this.hud = hud;
     this.buildHUD();
+    this.applyHudLayout();
 
     WS.Input.onKey = (e) => {
       if (e.code === 'Escape') {
@@ -1168,8 +1244,7 @@
         if (idx !== undefined && cards[idx]) { cards[idx].click(); return; }
         if (e.code === 'KeyR' && WS.Game.state === 'levelup') WS.Game.rerollLevelUp();
         if (e.code === 'KeyB' && WS.Game.state === 'levelup') {
-          this.banishMode = !this.banishMode;
-          this.openLevelUp(WS.Game.levelChoices);
+          this.setBanishMode(!this.banishMode);
         }
       }
     };

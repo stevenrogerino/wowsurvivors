@@ -132,7 +132,14 @@
       ctx.fillRect(0, 0, W, H);
     }
 
-    if (!game.player) { ctx.restore(); this.drawVignette(ctx); return; }
+    if (!game.player) {
+      this.drawMenuScene(ctx, time);
+      ctx.restore();
+      // A lighter vignette out of a run: the menu scrim is already doing most
+      // of this work, and doubling them buries the scene it is framing.
+      this.drawVignette(ctx, 0.34);
+      return;
+    }
     const player = game.player;
     const run = game.run;
 
@@ -962,12 +969,61 @@
   };
 
   /* ------------------------------------------------------------- chrome -- */
-  R.drawVignette = function (ctx) {
+  /* The menu used to sit on an empty black rectangle, which is the single
+   * thing that made it read as a settings page rather than the front of a
+   * game. There is no artwork to hang there and there never will be - this
+   * game ships no image files - so the scene is made of the same materials
+   * as everything else: the map's own ground, its own scenery, and a few of
+   * its own creatures wandering across at a distance.
+   *
+   * It is deliberately slow and out of focus. The point is depth behind the
+   * panels, not something to look at instead of them.
+   */
+  const MENU_WANDERERS = [
+    { art: 'kobold', tint: [1.00, 0.90, 0.55], size: 40, y: 0.24, speed: 13, phase: 0.0 },
+    { art: 'gnoll', tint: [0.95, 0.55, 0.20], size: 52, y: 0.52, speed: -9, phase: 0.35 },
+    { art: 'murloc', tint: [0.30, 0.95, 0.85], size: 38, y: 0.72, speed: 17, phase: 0.7 },
+    { art: 'wolf', tint: [0.62, 0.66, 0.74], size: 44, y: 0.86, speed: -12, phase: 0.15 },
+    { art: 'boar', tint: [0.70, 0.45, 0.28], size: 42, y: 0.38, speed: 8, phase: 0.55 },
+  ];
+
+  R.drawMenuScene = function (ctx, time) {
+    // Scenery drifts on a long loop. Two speeds, so the field has depth.
+    for (const p of this.props) {
+      const near = p.size > 70;
+      const drift = ((time * (near ? 5.5 : 2.6) + p.x) % (W + 240)) - 120;
+      ctx.globalAlpha = p.alpha * (near ? 0.5 : 0.34);
+      const sprite = WS.Sprites.prop(p.kind, p.size);
+      ctx.drawImage(sprite, drift - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    }
+
+    // A few residents crossing, dim enough to read as distance.
+    for (const m of MENU_WANDERERS) {
+      if (!WS.Sprites.has(m.art)) continue;
+      const span = W + 200;
+      const t = (time * WS.abs(m.speed) / span + m.phase) % 1;
+      const x = m.speed > 0 ? -100 + t * span : W + 100 - t * span;
+      const y = H * m.y + WS.sin(time * 0.8 + m.phase * 9) * 5;
+      const sprite = WS.Sprites.creature(m.art, m.tint, m.size);
+      ctx.save();
+      ctx.globalAlpha = 0.4;
+      shadow(ctx, x, y + m.size * 0.34, m.size * 0.3, 0.22);
+      ctx.translate(x, y);
+      if (m.speed < 0) ctx.scale(-1, 1);
+      // A walk bob, so they are alive rather than sliding.
+      ctx.translate(0, WS.abs(WS.sin(time * 5 + m.phase * 6)) * -2);
+      ctx.drawImage(sprite, -m.size / 2, -m.size * 0.62, m.size, m.size);
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+  };
+
+  R.drawVignette = function (ctx, depth) {
     const grd = ctx.createRadialGradient(
       this.viewW / 2, this.viewH / 2, WS.min(this.viewW, this.viewH) * 0.35,
       this.viewW / 2, this.viewH / 2, WS.max(this.viewW, this.viewH) * 0.75);
     grd.addColorStop(0, 'rgba(0,0,0,0)');
-    grd.addColorStop(1, 'rgba(0,0,0,.55)');
+    grd.addColorStop(1, `rgba(0,0,0,${depth === undefined ? 0.55 : depth})`);
     ctx.fillStyle = grd;
     ctx.fillRect(0, 0, this.viewW, this.viewH);
   };

@@ -12,6 +12,12 @@
  *             It once latched onto a transient first-layout measurement and
  *             painted a 44px black band across the feet of three level-up
  *             cards that fit perfectly well.
+ *   banish    Arming banish must move nothing. It used to rebuild the whole
+ *             overlay: the shell animation replayed, all three cards dealt
+ *             themselves in again, the scroll port re-measured (a scrollbar
+ *             flashing in and out), and the footer resized as the hint
+ *             appeared. The player asked which card to remove and the screen
+ *             answered by reloading itself.
  *
  *   npm i playwright && npx playwright install chromium
  *   node tools/check-ui.js
@@ -87,7 +93,64 @@ const path = require('path');
   await page.waitForTimeout(250);
   await check('defeat');
 
-  console.log(seen.size ? [...seen].join('\n') : 'ok: no bracket collisions, no false scrims');
+  /* Arming banish is a mode change, not new content: nothing may move. */
+  await page.evaluate(() => {
+    WS.Game.player.banishes = 2; WS.Game.player.rerolls = 2;
+    WS.Game.leveling = false; WS.Game.pendingLevelUps = 1; WS.Game.openLevelUp();
+  });
+  await page.waitForTimeout(900);              // let the deal animation settle
+  const geometry = () => page.evaluate(() => {
+    const box = (n) => { const r = n.getBoundingClientRect();
+      return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)]; };
+    const body = document.querySelector('#overlay .overlay-body');
+    return {
+      cards: [...document.querySelectorAll('#overlay .card')].map(box),
+      inner: box(document.querySelector('.overlay-inner')),
+      bar: box(document.querySelector('.choice-bar')),
+      names: [...document.querySelectorAll('#overlay .card-name')].map((n) => n.textContent),
+      scrollable: body.scrollHeight > body.clientHeight,
+    };
+  });
+  /* Stamp the live nodes, then arm banish and see whether the same nodes are
+     still there. Node identity is the precise question - "was anything
+     rebuilt?" - and unlike geometry it cannot be satisfied by a rebuild that
+     happens to settle back to the same pixels, which is exactly how an earlier
+     version of this check passed while the bug was still in. */
+  const before = await geometry();
+  if (!before.cards.length) seen.add('banish: no level-up cards to test against');
+  else {
+    await page.evaluate(() => {
+      document.querySelectorAll('#overlay .card').forEach((c, i) => { c.dataset.stamp = 'c' + i; });
+      document.querySelector('.overlay-inner').dataset.stamp = 'shell';
+      document.querySelector('.choice-bar').dataset.stamp = 'bar';
+    });
+    await page.click('.choice-bar .btn:nth-child(2)');
+    await page.waitForTimeout(600);
+    const survived = await page.evaluate(() => ({
+      cards: [...document.querySelectorAll('#overlay .card')].map((c) => c.dataset.stamp || 'NEW'),
+      shell: (document.querySelector('.overlay-inner') || {}).dataset?.stamp || 'NEW',
+      bar: (document.querySelector('.choice-bar') || {}).dataset?.stamp || 'NEW',
+      armed: !!document.querySelector('.card-row.banish-mode'),
+    }));
+    if (survived.shell === 'NEW') seen.add('banish: arming it rebuilt the overlay shell');
+    if (survived.bar === 'NEW') seen.add('banish: arming it rebuilt the button bar');
+    if (survived.cards.includes('NEW')) {
+      seen.add(`banish: arming it re-dealt the cards (${survived.cards.join(',')})`);
+    }
+    if (!survived.armed) seen.add('banish: arming it did not put the row into banish mode');
+
+    const after = await geometry();
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    for (const k of ['cards', 'inner', 'bar', 'names']) {
+      if (!same(before[k], after[k])) {
+        seen.add(`banish: arming it changed ${k} - ${JSON.stringify(before[k])} -> ${JSON.stringify(after[k])}`);
+      }
+    }
+    if (after.scrollable) seen.add('banish: arming it made the body scrollable');
+  }
+
+  console.log(seen.size ? [...seen].join('\n')
+    : 'ok: no bracket collisions, no false scrims, arming banish moves nothing');
   await b.close();
   process.exitCode = seen.size ? 1 : 0;
 })();

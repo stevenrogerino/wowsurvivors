@@ -248,6 +248,19 @@ html, body {
     radial-gradient(ellipse 70% 60% at 50% 45%, rgba(10,12,18,.62), rgba(6,7,11,.94));
   backdrop-filter: blur(4px) saturate(.85);
 }
+/* The menu sits over a live scene rather than a paused battlefield, so its
+   scrim is lighter and its blur deeper: enough depth behind the panels to
+   read as a place, not enough to compete with them for attention. */
+#overlay.scene {
+  background:
+    radial-gradient(ellipse 82% 76% at 50% 42%, rgba(8,10,15,.40), rgba(6,7,11,.76));
+  backdrop-filter: blur(6px) saturate(.95);
+}
+/* Panels need their own ground once the backdrop is a place rather than a
+   void: without this the roster tiles float on grass. */
+#overlay.scene .panel,
+#overlay.scene .row-item,
+#overlay.scene .pick { background-color: rgba(8,10,15,.82); }
 #overlay.hidden { display: none; }
 
 .overlay-inner {
@@ -661,7 +674,27 @@ html, body {
 #hud-stats .hps .v { color: var(--verdant); }
 
 /* -- weapon strip ------------------------------------------------------ */
-#hud-weapons { position: absolute; bottom: 20px; left: 20px; display: flex; gap: 11px; align-items: flex-end; }
+/* -- arsenal and passives ----------------------------------------------
+   Two layouts, chosen in Settings.
+
+   The default lies along the foot of the screen, tucked close to the edge -
+   vertical space is the scarce kind, because the survivor is usually near
+   the middle of the field and the horde comes from every side.
+
+   The rail stands them up the two edges instead. On anything wider than 16:9
+   the world is letterboxed, so that puts both columns in the dark bars and
+   takes them off the battlefield entirely; at 16:9 they hug the extreme
+   edges, which is still further out of the way than lying across the bottom.
+   Both build upward and outward, so picking something new never shunts what
+   is already there. */
+#hud-weapons {
+  position: absolute; bottom: 10px; left: 20px;
+  display: flex; gap: 11px; align-items: flex-end;
+}
+body.hud-rail #hud-weapons {
+  bottom: 14px; left: 9px;
+  flex-direction: column-reverse; gap: 10px; align-items: center;
+}
 .wslot { position: relative; width: 54px; height: 54px; }
 .wslot img { width: 54px; height: 54px; display: block; }
 /* The chamfered icon plate is the frame; the slot adds only a seat. */
@@ -697,12 +730,29 @@ html, body {
 }
 .wslot.fired .flash { animation: slot-fire .26s var(--ease-out); }
 @keyframes slot-fire { from { opacity: .8; transform: scale(.9); } to { opacity: 0; transform: scale(1.15); } }
-.wslot.empty { opacity: .22; }
+/* An empty scabbard is a seat waiting for a plate, so it wears the plate's own
+   chamfered octagon rather than a dashed rectangle borrowed from nothing else
+   in the set. */
+.wslot.empty { opacity: 1; }
+.wslot.empty::before { display: none; }
+.wslot .scabbard {
+  width: 54px; height: 54px;
+  clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%);
+  background: linear-gradient(180deg, rgba(255,244,224,.075), rgba(255,244,224,.02));
+}
 
 /* -- passive pips ------------------------------------------------------ */
 #hud-passives {
-  position: absolute; bottom: 20px; right: 20px;
+  position: absolute; bottom: 10px; right: 20px;
   display: flex; gap: 6px; flex-wrap: wrap-reverse; justify-content: flex-end; max-width: 38vw;
+}
+body.hud-rail #hud-passives {
+  bottom: 14px; right: 9px; max-width: none;
+  flex-direction: column-reverse; flex-wrap: wrap-reverse; gap: 7px;
+  align-items: center; align-content: flex-end;
+  /* Twenty-five passives will not fit one column, so it wraps into a second
+     rail inward of the first rather than running off the top of the screen. */
+  max-height: calc(100vh - 190px);
 }
 .pslot { position: relative; width: 34px; height: 34px; }
 .pslot img { width: 34px; height: 34px; display: block; opacity: .92; }
@@ -732,7 +782,40 @@ html, body {
 .toast .t-body { font-size: var(--t-small); color: var(--ink-dim); margin-top: 3px; line-height: 1.4; }
 
 /* -- the level-up bar -------------------------------------------------- */
+/* A segmented choice: one sunken track, the picked cell lifted out of it. */
+.segmented {
+  display: flex; flex: none; padding: 2px; gap: 2px; border-radius: 3px;
+  background: rgba(0,0,0,.4); box-shadow: var(--sunk);
+  border: 1px solid var(--rim);
+}
+.segmented .seg {
+  font: inherit; font-size: var(--t-small); letter-spacing: .04em;
+  color: var(--ink-dim); background: transparent; border: 0; border-radius: 2px;
+  padding: 5px 11px; cursor: pointer; white-space: nowrap;
+  transition: color .14s var(--ease), background .14s var(--ease);
+}
+.segmented .seg:hover { color: var(--ink); }
+.segmented .seg.on {
+  color: var(--arc-hot);
+  background: linear-gradient(180deg, var(--obsidian-4), var(--obsidian-3));
+  box-shadow: var(--bevel);
+}
+
 .choice-bar { display: flex; gap: 10px; align-items: center; justify-content: center; }
+/* The banish hint is always in the bar at its full width, and only fades. If
+   it appeared on demand it would widen the bar and re-centre the two buttons
+   under the cursor that just clicked one of them. Nothing may move. */
+.choice-hint {
+  font-size: var(--t-small); color: var(--blood); letter-spacing: .04em;
+  opacity: 0; transition: opacity .16s var(--ease); pointer-events: none;
+}
+.choice-hint.on { opacity: .9; }
+/* An armed toggle reads as held down, not as a button that was clicked. */
+.btn.armed {
+  border-color: var(--blood); color: #ffd9d2;
+  background: linear-gradient(180deg, rgba(226,72,61,.22), rgba(226,72,61,.08));
+  box-shadow: var(--sunk), 0 0 22px -8px var(--blood);
+}
 .choice-bar .count { color: var(--arc); font-weight: 700; }
 .banish-mode .card { border-color: rgba(226,72,61,.5); }
 .banish-mode .card::before { background: linear-gradient(90deg, transparent, var(--blood), transparent); }
@@ -1247,6 +1330,10 @@ window.WS = window.WS || {};
       healNumbers: true,
       showHealthBars: true,
       levelUpTooltips: true,
+      // 'strip' lays the arsenal and passives along the foot of the screen;
+      // 'rail' stands them up the two edges, which on anything wider than
+      // 16:9 puts them in the letterbox and off the battlefield entirely.
+      hudLayout: 'strip',
       difficulty: 'veteran',
       quality: 'high',      // high | balanced - drops soft shadows + bloom
     },
@@ -8478,7 +8565,7 @@ window.WS = window.WS || {};
     this.player.rerolls--;
     this.levelChoices = WS.LevelUp.buildChoices(this.player);
     WS.Audio.play('ui');
-    WS.UI.openLevelUp(this.levelChoices);
+    WS.UI.fillLevelChoices(this.levelChoices);
     return true;
   };
 
@@ -8488,7 +8575,7 @@ window.WS = window.WS || {};
     this.player.banishes--;
     this.levelChoices = WS.LevelUp.buildChoices(this.player);
     WS.Audio.play('ui');
-    WS.UI.openLevelUp(this.levelChoices);
+    WS.UI.fillLevelChoices(this.levelChoices);
     return true;
   };
 
@@ -8795,7 +8882,14 @@ window.WS = window.WS || {};
       ctx.fillRect(0, 0, W, H);
     }
 
-    if (!game.player) { ctx.restore(); this.drawVignette(ctx); return; }
+    if (!game.player) {
+      this.drawMenuScene(ctx, time);
+      ctx.restore();
+      // A lighter vignette out of a run: the menu scrim is already doing most
+      // of this work, and doubling them buries the scene it is framing.
+      this.drawVignette(ctx, 0.34);
+      return;
+    }
     const player = game.player;
     const run = game.run;
 
@@ -9625,12 +9719,61 @@ window.WS = window.WS || {};
   };
 
   /* ------------------------------------------------------------- chrome -- */
-  R.drawVignette = function (ctx) {
+  /* The menu used to sit on an empty black rectangle, which is the single
+   * thing that made it read as a settings page rather than the front of a
+   * game. There is no artwork to hang there and there never will be - this
+   * game ships no image files - so the scene is made of the same materials
+   * as everything else: the map's own ground, its own scenery, and a few of
+   * its own creatures wandering across at a distance.
+   *
+   * It is deliberately slow and out of focus. The point is depth behind the
+   * panels, not something to look at instead of them.
+   */
+  const MENU_WANDERERS = [
+    { art: 'kobold', tint: [1.00, 0.90, 0.55], size: 40, y: 0.24, speed: 13, phase: 0.0 },
+    { art: 'gnoll', tint: [0.95, 0.55, 0.20], size: 52, y: 0.52, speed: -9, phase: 0.35 },
+    { art: 'murloc', tint: [0.30, 0.95, 0.85], size: 38, y: 0.72, speed: 17, phase: 0.7 },
+    { art: 'wolf', tint: [0.62, 0.66, 0.74], size: 44, y: 0.86, speed: -12, phase: 0.15 },
+    { art: 'boar', tint: [0.70, 0.45, 0.28], size: 42, y: 0.38, speed: 8, phase: 0.55 },
+  ];
+
+  R.drawMenuScene = function (ctx, time) {
+    // Scenery drifts on a long loop. Two speeds, so the field has depth.
+    for (const p of this.props) {
+      const near = p.size > 70;
+      const drift = ((time * (near ? 5.5 : 2.6) + p.x) % (W + 240)) - 120;
+      ctx.globalAlpha = p.alpha * (near ? 0.5 : 0.34);
+      const sprite = WS.Sprites.prop(p.kind, p.size);
+      ctx.drawImage(sprite, drift - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    }
+
+    // A few residents crossing, dim enough to read as distance.
+    for (const m of MENU_WANDERERS) {
+      if (!WS.Sprites.has(m.art)) continue;
+      const span = W + 200;
+      const t = (time * WS.abs(m.speed) / span + m.phase) % 1;
+      const x = m.speed > 0 ? -100 + t * span : W + 100 - t * span;
+      const y = H * m.y + WS.sin(time * 0.8 + m.phase * 9) * 5;
+      const sprite = WS.Sprites.creature(m.art, m.tint, m.size);
+      ctx.save();
+      ctx.globalAlpha = 0.4;
+      shadow(ctx, x, y + m.size * 0.34, m.size * 0.3, 0.22);
+      ctx.translate(x, y);
+      if (m.speed < 0) ctx.scale(-1, 1);
+      // A walk bob, so they are alive rather than sliding.
+      ctx.translate(0, WS.abs(WS.sin(time * 5 + m.phase * 6)) * -2);
+      ctx.drawImage(sprite, -m.size / 2, -m.size * 0.62, m.size, m.size);
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+  };
+
+  R.drawVignette = function (ctx, depth) {
     const grd = ctx.createRadialGradient(
       this.viewW / 2, this.viewH / 2, WS.min(this.viewW, this.viewH) * 0.35,
       this.viewW / 2, this.viewH / 2, WS.max(this.viewW, this.viewH) * 0.75);
     grd.addColorStop(0, 'rgba(0,0,0,0)');
-    grd.addColorStop(1, 'rgba(0,0,0,.55)');
+    grd.addColorStop(1, `rgba(0,0,0,${depth === undefined ? 0.55 : depth})`);
     ctx.fillStyle = grd;
     ctx.fillRect(0, 0, this.viewW, this.viewH);
   };
@@ -10031,6 +10174,13 @@ window.WS = window.WS || {};
     bFill.style.strokeDasharray = this.els.bossLen;
   };
 
+  /** Puts the chosen HUD layout on the root, so the whole thing is one class
+   *  swap rather than two elements being repositioned by script. */
+  UI.applyHudLayout = function () {
+    const rail = WS.Save.settings.hudLayout === 'rail';
+    document.body.classList.toggle('hud-rail', rail);
+  };
+
   UI.enterGame = function () {
     this.closeOverlay();
     this.hud.classList.remove('hidden');
@@ -10074,9 +10224,7 @@ window.WS = window.WS || {};
     // Empty scabbards keep the strip a fixed six, so a filling build reads.
     for (let i = WS.Game.player.weapons.length; i < WS.MAX_WEAPONS; i++) {
       const slot = el('div', 'wslot empty');
-      const plate = el('div');
-      plate.style.cssText = 'width:54px;height:54px;border:1px dashed rgba(255,255,255,.12);border-radius:2px';
-      slot.append(plate);
+      slot.append(el('div', 'scabbard'));
       wrap.append(slot);
     }
   };
@@ -10247,6 +10395,9 @@ window.WS = window.WS || {};
     this.overlay.innerHTML = '';
     this.overlay.append(inner);
     this.overlay.classList.remove('hidden');
+    // Out of a run there is a live scene behind the panels, so the scrim
+    // lightens to let it through.
+    this.overlay.classList.toggle('scene', !WS.Game.player);
     this.wireScroll(inner);
   };
 
@@ -10731,6 +10882,30 @@ window.WS = window.WS || {};
       wrap.append(row);
     };
 
+    /** A segmented choice. Same row furniture as a toggle, so the settings
+     *  list stays one list rather than a pile of different controls. */
+    const choose = (key, name, desc, options, onPick) => {
+      const row = el('div', 'setting');
+      const main = el('div');
+      main.append(el('div', 's-name', name));
+      if (desc) main.append(el('div', 's-desc', desc));
+      const seg = el('div', 'segmented');
+      for (const [value, label] of options) {
+        const b = el('button', 'seg' + (st[key] === value ? ' on' : ''), label);
+        b.type = 'button';
+        b.addEventListener('click', () => {
+          st[key] = value;
+          for (const other of seg.children) other.classList.toggle('on', other === b);
+          WS.Save.save();
+          WS.Audio.play('ui');
+          if (onPick) onPick(value);
+        });
+        seg.append(b);
+      }
+      row.append(main, seg);
+      wrap.append(row);
+    };
+
     const slider = (key, name) => {
       const row = el('div', 'setting');
       row.append(el('div', 's-name', name));
@@ -10755,6 +10930,8 @@ window.WS = window.WS || {};
     toggle('healNumbers', 'Floating healing numbers');
     toggle('showHealthBars', 'Health bars on trash mobs', 'Elites and bosses always keep theirs.');
     toggle('levelUpTooltips', 'Detailed level-up cards');
+    choose('hudLayout', 'Arsenal and passives', 'Where your weapons and traits live.',
+      [['strip', 'Along the foot'], ['rail', 'Up the edges']], () => UI.applyHudLayout());
 
     const danger = el('div', 'setting');
     const dmain = el('div');
@@ -10784,6 +10961,29 @@ window.WS = window.WS || {};
     this.show(s.inner);
   };
 
+  /* Banish is a MODE, not new content.
+   *
+   * Clicking it used to call openLevelUp again, which rebuilt the whole shell
+   * and handed it to show(): the overlay animation replayed, all three cards
+   * dealt themselves in again, the scroll port re-measured (a scrollbar
+   * flashing in and out), and the footer resized as the hint appeared. The
+   * player asked one question - "which of these do I want gone?" - and the
+   * screen answered by reloading itself.
+   *
+   * So the overlay is built once and the mode is a class. The hint is always
+   * in the DOM at its final width and only its opacity changes, because a
+   * label that appears re-centres the button bar and nothing may move.
+   */
+  UI.setBanishMode = function (on) {
+    this.banishMode = on;
+    const ui = this._levelUI;
+    if (!ui) return;
+    ui.row.classList.toggle('banish-mode', on);
+    ui.hint.classList.toggle('on', on);
+    ui.banish.classList.toggle('armed', on);
+    ui.banish.setAttribute('aria-pressed', on ? 'true' : 'false');
+  };
+
   UI.openLevelUp = function (choices) {
     const p = WS.Game.player;
     // Copy carries as much of the tone as the art does. The game wants to be
@@ -10792,18 +10992,6 @@ window.WS = window.WS || {};
     const s = shell('Level ' + p.level, WS.Game.pendingLevelUps > 1
       ? `${WS.Game.pendingLevelUps} more after this one.` : 'Take what you need.');
     const row = el('div', 'card-row');
-    if (this.banishMode) row.classList.add('banish-mode');
-
-    choices.forEach((c, i) => {
-      row.append(cardFor(c, (choice) => {
-        if (this.banishMode) {
-          this.banishMode = false;
-          if (!WS.Game.banishLevelUp(choice)) this.openLevelUp(WS.Game.levelChoices);
-          return;
-        }
-        WS.Game.chooseLevelUp(choice);
-      }, i));
-    });
 
     const bar = el('div', 'choice-bar');
     const reroll = el('button', 'btn small', `Reroll (${p.rerolls})`);
@@ -10811,17 +10999,47 @@ window.WS = window.WS || {};
     reroll.addEventListener('click', () => { this.banishMode = false; WS.Game.rerollLevelUp(); });
     const banish = el('button', 'btn small', `Banish (${p.banishes})`);
     banish.disabled = p.banishes <= 0;
+    banish.type = 'button';
     banish.addEventListener('click', () => {
-      this.banishMode = !this.banishMode;
-      this.openLevelUp(WS.Game.levelChoices);
+      WS.Audio.play('ui');
+      this.setBanishMode(!this.banishMode);
     });
-    bar.append(reroll, banish);
-    if (this.banishMode) {
-      bar.append(el('span', 'label', 'Pick a card to banish it from this run'));
-    }
+    // Always present, so arming banish cannot shift the bar under the cursor.
+    const hint = el('span', 'choice-hint', 'Pick a card to banish it from this run');
+    bar.append(reroll, banish, hint);
+
     s.body.append(row);
     s.foot.append(el('div', 'spacer'), bar, el('div', 'spacer'));
+    this._levelUI = { row, bar, banish, reroll, hint };
+    this.fillLevelChoices(choices);
     this.show(s.inner);
+    this.setBanishMode(false);
+  };
+
+  /** Swap the three cards without touching the shell around them, so a reroll
+   *  or a banish deals new cards into the same frame instead of reloading the
+   *  screen underneath them. */
+  UI.fillLevelChoices = function (choices) {
+    const ui = this._levelUI;
+    if (!ui) return;
+    ui.row.replaceChildren();
+    choices.forEach((c, i) => {
+      ui.row.append(cardFor(c, (choice) => {
+        if (this.banishMode) {
+          this.setBanishMode(false);
+          // banishLevelUp returns false when there are still cards to choose
+          // from, i.e. the offer was refreshed rather than resolved.
+          if (!WS.Game.banishLevelUp(choice)) this.fillLevelChoices(WS.Game.levelChoices);
+          return;
+        }
+        WS.Game.chooseLevelUp(choice);
+      }, i));
+    });
+    const p = WS.Game.player;
+    ui.reroll.textContent = `Reroll (${p.rerolls})`;
+    ui.reroll.disabled = p.rerolls <= 0;
+    ui.banish.textContent = `Banish (${p.banishes})`;
+    ui.banish.disabled = p.banishes <= 0;
   };
 
   /* ---------------------------------------------------------- build sheet - */
@@ -11028,6 +11246,7 @@ window.WS = window.WS || {};
   UI.init = function (root, overlay, hud) {
     this.root = root; this.overlay = overlay; this.hud = hud;
     this.buildHUD();
+    this.applyHudLayout();
 
     WS.Input.onKey = (e) => {
       if (e.code === 'Escape') {
@@ -11042,8 +11261,7 @@ window.WS = window.WS || {};
         if (idx !== undefined && cards[idx]) { cards[idx].click(); return; }
         if (e.code === 'KeyR' && WS.Game.state === 'levelup') WS.Game.rerollLevelUp();
         if (e.code === 'KeyB' && WS.Game.state === 'levelup') {
-          this.banishMode = !this.banishMode;
-          this.openLevelUp(WS.Game.levelChoices);
+          this.setBanishMode(!this.banishMode);
         }
       }
     };

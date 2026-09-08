@@ -227,7 +227,7 @@
     this.player.rerolls--;
     this.levelChoices = WS.LevelUp.buildChoices(this.player);
     WS.Audio.play('ui');
-    WS.UI.openLevelUp(this.levelChoices);
+    WS.UI.fillLevelChoices(this.levelChoices);
     return true;
   };
 
@@ -237,7 +237,7 @@
     this.player.banishes--;
     this.levelChoices = WS.LevelUp.buildChoices(this.player);
     WS.Audio.play('ui');
-    WS.UI.openLevelUp(this.levelChoices);
+    WS.UI.fillLevelChoices(this.levelChoices);
     return true;
   };
 
