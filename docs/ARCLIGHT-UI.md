@@ -1,91 +1,108 @@
 # Arclight UI
 
-The design language for **WoWSurvivors 2**. Everything on screen is either
-*obsidian* (the substrate) or *arc light* (the energy running through it).
+*The Endless Night — gilt, gable, candlelight.*
+
+The interface for **WoWSurvivors 2**, implemented from the Arclight design
+canvas. It is an illuminated manuscript that happens to be a game: a wine-dark
+ground lit as if by candle, gilt metal frames, parchment pages, and tarot
+cards with cut shoulders.
 
 ## 1. Principles
 
-1. **The arc is the primary form.** Anything that measures something is a
-   swept arc, not a bar: health and experience ring the survivor's portrait,
-   weapon cooldowns sweep around their icons, boss health is a wide shallow
-   arc across the top of the field. Straight bars appear only where an arc
-   would be illegible (the run timer rail).
-2. **Obsidian substrate.** Panels are near-black volcanic glass, not grey
-   chrome: `#0b0d12` -> `#141926`, with a single 1px hairline rim at 8%
-   white and an inner top-edge highlight. No drop shadows on panels; depth
-   comes from the rim and a soft outer bloom.
-3. **Light is spent, not sprayed.** A screen has exactly one focal glow.
-   Level-up cards glow; the HUD behind them dims to 35%. Accent colour marks
-   state (ready, selected, danger) and never decorates.
-4. **Corner brackets, not borders.** Framed content is bracketed at the
-   corners with 14px arc-lit rules. It reads as a targeting reticle - a HUD
-   element, not a webpage.
-5. **Micro-labels.** All-caps 10px 0.14em-tracked labels in `--ink-dim` name
-   every region. Values are large, tabular, and never abbreviated below
-   thousands.
-6. **Motion is a sweep.** Panels reveal by sweeping their arc from 0 to full
-   over 240ms `cubic-bezier(.2,.8,.2,1)`. Nothing slides in from off-screen,
-   nothing bounces.
+1. **The card is the primary form.** Every choice the player makes is dealt to
+   them as a card — a gilt edge around a parchment face, clipped to a gabled
+   silhouette (cut top corners meeting at a peak), rotated a degree or two off
+   square, and dropped onto the table with a heavy shadow. The Arcana at the
+   start of a run, the boons at every level: same object, different register.
+2. **Menus are a book, not a screen.** The roster, the Trainer, the Codex and
+   the ledgers are two parchment pages inside one gilt frame, with rivets at
+   the corners and a gutter shadow where the pages meet the spine.
+3. **Bars, not gauges.** Experience is a single rail across the very top of the
+   field with a gold lozenge riding its head. Health is a bar under the
+   survivor's name. Boss health is a wide crimson bar under the clock, flanked
+   by two orbs and ticked into tenths.
+4. **Numbers are set in the manuscript's hand.** Tallies, the clock and stat
+   values are Cinzel with tabular figures; live readouts that change every
+   frame (health, level) are IBM Plex Mono. Ranks and levels are Roman.
+5. **Light is candlelight.** One warm bloom at the centre of the field, blood
+   banked along the bottom edge, and a fine paper grain over everything. No
+   element glows for decoration; the gilding does the work.
+6. **The level-up is a held breath, not a takeover.** It opens as a lit band
+   across the middle third of the field with hairline gold rules top and
+   bottom. The horde stays visible above and below it.
 
 ## 2. Palette
 
 | Token | Value | Use |
 | --- | --- | --- |
-| `--void` | `#07080c` | behind everything |
-| `--obsidian` | `#0b0d12` | panel base |
-| `--obsidian-2` | `#141926` | raised panel / row hover |
-| `--rim` | `rgba(255,255,255,.08)` | hairline rims |
-| `--arc` | `#f5c56b` | primary arc light (gold) |
-| `--arc-hot` | `#ffe6ae` | arc highlight / focus |
-| `--arcane` | `#8f7bff` | arcane school + rare quality |
-| `--frost` | `#59bfff` | frost school + info |
-| `--fel` | `#8cf24a` | nature/fel + success |
-| `--blood` | `#e2483d` | damage, danger, health |
-| `--holy` | `#ffdf7a` | holy school |
-| `--shadow-s` | `#b34ff2` | shadow school |
-| `--ink` | `#e8ecf6` | primary text |
-| `--ink-dim` | `#8b93a7` | labels, secondary text |
+| `--night` / `--night-deep` | `#0a0710` / `#06040a` | the ground |
+| `--vellum-dark` | `#1a1220` | card and slot interiors |
+| `--parchment` | `#e2d2ae` | pages and card faces |
+| `--ink` | `#231525` | text on parchment |
+| `--rule` | `rgba(122,90,36,.5)` | rules and dotted leaders |
+| `--gilt` | `#d9b467` | the working gold |
+| `--gilt-hi` / `--gilt-dark` | `#efdcb0` / `#6b4f1d` | the two ends of every gilt gradient |
+| `--leaf` | `#e6d0a2` | gold ink on dark |
+| `--blood` | `#8f1526` | kickers, marks, the seal, danger |
+| `--health` | `#b8442f` → `#7a1220` | the health bar |
+| `--arcane` | `#9a86c4` → `#3a2c60` | the experience rail |
+| `--ember` | `#c9835c` | damage per second |
+| `--verdant` | `#6fb494` | healing per second |
+| `--candle` | `#e2c07a` | gold found |
 
-Quality colours for cards follow Warcraft item quality: common `#e8ecf6`,
-uncommon `#3ddc7a`, rare `#59bfff`, epic `#b34ff2`, legendary `#f5c56b`.
+Gilt is never a flat colour. Edges are a gradient across the metal —
+`linear-gradient(160deg, #7a5a24, #e2c07a 45%, #7a5a24)` for small tiles, a
+six-stop version for card edges — so every frame reads as a lit surface.
 
-## 3. Components
+## 3. Type
 
-- **Arc gauge** - `svg` circle with `stroke-dasharray`; 6px stroke, round cap,
-  a 1px static track at 12% white beneath it. Health gauge runs clockwise from
-  the top; experience runs counter-clockwise so the two read as distinct.
-- **Panel** - obsidian, 2px radius (nearly square), corner brackets, a 10px
-  all-caps title sitting *on* the top rule.
-- **Card** (level-up, character, map) - 260x300 panel with a 64px procedural
-  icon plate, quality-tinted top arc, name, rank note, body copy. Hover lifts
-  4px and lights the arc; selected state fills the arc solid.
-- **Rail** - the run timer: a 3px full-width rule with tick marks at each boss
-  minute and a travelling arc-lit head.
-- **Toast** - bottom-centre, obsidian, one line, arc rule on the left edge.
-- **Banner** - the boss/event announcement: full-width sweep of arc light with
-  the title in 28px letterspaced caps over it.
+Four faces, embedded as data URIs (`src/ui/fonts.css`) so the game still makes
+no network requests:
 
-## 4. Typography
+- **Cinzel Decorative** 700 — display only: *The Arcana*, *The horde holds its
+  breath*. Never below 30px.
+- **Cinzel** 400/500/600 — the working face. Headings, names, all-caps kickers
+  (`letter-spacing` .12em–.36em), buttons, and every tabular number.
+- **EB Garamond** 400 roman and italic — prose. Card bodies, flavour lines,
+  descriptions, the difficulty line.
+- **IBM Plex Mono** 400 — live figures that tick: health, level, clock ticks
+  on the schedule rail.
 
-System stack only (the game ships zero network requests):
-`"Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif`.
+## 4. Components
 
-- Display / banners: 28-40px, 600, `letter-spacing:.06em`, uppercase.
-- Card titles: 17px 600.
-- Body: 13px/1.45 `--ink-dim`.
-- Numbers in the HUD: 20px 700 `font-variant-numeric: tabular-nums`.
+- **Gable** — `clip-path: polygon(50% 0, 100% N%, 100% 100%, 0 100%, 0 N%)`.
+  N is 13% for Arcana cards, 15% for boon cards, 22% for tiles and portraits,
+  26% for buttons. The gilt edge and the face inside are clipped identically,
+  the edge showing through as 2–6px of padding.
+- **Spread** — a gilt frame (`--gilt-frame`, 5px padding, 5px gap) holding one
+  or two `.page` elements, with four corner rivets and a gutter gradient.
+- **Page** — parchment plus a 3.5px dot grain plus a corner bloom. A head with
+  a crimson sigil, kicker, title and italic sub; a scrolling body; a foot bar.
+- **Seal** — a rotated ring in the page's top corner carrying the run number.
+- **Dotted leader** — label, a dotted rule that stretches, value. Used for
+  every stat block; it is what makes the pages read as a ledger.
+- **Passage** — a called-out block with a 3px crimson left border and a
+  crimson kicker, for the survivor's perk.
+- **Schedule rail** — a hairline with a black lozenge at each boss minute and a
+  larger crimson lozenge at 30:00 for Death.
+- **Band** — the level-up: `inset: 136px 0 92px`, a scrim with a warm centre,
+  hairline rules top and bottom, cards centred in it.
+- **Chips** — reroll and banish. Inset gilt hairline on dark; on parchment they
+  invert to ink on a warm wash.
 
 ## 5. Layout
 
-The playfield is a fixed 1280x720 world letterboxed into the viewport. The HUD
-is drawn *in the letterbox and over the corners*, never in the centre third:
+The playfield is a fixed 1280×720 world letterboxed into the viewport. The HUD
+lives at the very top and the very bottom, never in the middle third:
 
 ```
 +--------------------------------------------------------------+
-| [portrait+arcs] [lvl]      -- boss arc --      [timer] [gold] |
+| ============ experience rail, gold lozenge at the head ====== |
+| [gable] Name  LVL XXIV        17:42        SLAIN  DPS  HPS  G |
+| [ptrt ] [==== health ====]  (o)[= boss =](o)   1654 2853 0 383|
 |                                                               |
 |                          PLAYFIELD                            |
 |                                                               |
-| [weapon arcs .....]                         [passive pips ..] |
+| [gable arms x6]   Veteran · Duskwood · Death arrives in 22:59  [runes] |
 +--------------------------------------------------------------+
 ```

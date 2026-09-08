@@ -23,8 +23,11 @@ const out = named || path.join(root, 'dist',
 
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
-const css = html.replace(/[\s\S]*?<link rel="stylesheet" href="([^"]+)">[\s\S]*/, '$1');
-const styles = fs.readFileSync(path.join(root, css), 'utf8');
+// Every stylesheet, in the order index.html links them (fonts first).
+const sheets = [...html.matchAll(/<link rel="stylesheet" href="([^"]+)">/g)].map((m) => m[1]);
+const styles = sheets
+  .map((href) => `/* ===== ${href} ===== */\n` + fs.readFileSync(path.join(root, href), 'utf8'))
+  .join('\n');
 
 // Preserve the load order declared in index.html - it is the dependency order.
 const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map((m) => m[1]);
@@ -49,6 +52,7 @@ if (artifact) {
 } else {
   result = html
     .replace(/<link rel="stylesheet" href="[^"]+">/, `<style>\n${styles}\n</style>`)
+    .replace(/<link rel="stylesheet" href="[^"]+">\s*/g, '')
     .replace(/<!--[\s\S]*?-->\s*/g, '')
     .replace(/<script src="[^"]+"><\/script>\s*/g, '');
   // Drop the now-empty script block and append one combined script.
@@ -57,4 +61,4 @@ if (artifact) {
 
 fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, result);
-console.log(`bundled ${scripts.length} scripts + 1 stylesheet -> ${path.relative(root, out)} (${(result.length / 1024).toFixed(0)} KB)`);
+console.log(`bundled ${scripts.length} scripts + ${sheets.length} stylesheets -> ${path.relative(root, out)} (${(result.length / 1024).toFixed(0)} KB)`);

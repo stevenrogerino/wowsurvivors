@@ -1,17 +1,18 @@
 # WoWSurvivors 2
 
 A complete Warcraft-flavoured arcade survival game that runs in a browser.
-Open `index.html` and play — no build step, no server, no dependencies, and
-not a single image or audio file: every sprite, icon and sound is generated at
-runtime.
+Open `index.html` and play — no build step, no server, no dependencies, and no
+network requests: every sprite, icon and sound is generated at runtime, and the
+four typefaces are embedded in the stylesheet.
 
 It is a standalone port and expansion of the **WoW Survivors** addon (a
 Vampire-Survivors-like built inside the World of Warcraft UI). All of that
 game's content came across — 10 survivors, 21 weapons (16 findable, plus 5
 union super-weapons), 28 creatures, 6 elites, 20 bosses, 5 battlefields plus a
 scripted boss arena, 25 passives, 15 blessings, 9 hidden weapon discoveries,
-13 Trainer upgrades and 24 achievements — rebuilt on canvas, and dressed in a
-new interface called **Arclight**
+13 Trainer upgrades and 24 achievements — rebuilt on canvas, and dressed in
+**Arclight**: an illuminated-manuscript interface of gilt frames, parchment
+pages and gabled tarot cards, implemented from the Arclight design canvas
 (see [`docs/ARCLIGHT-UI.md`](docs/ARCLIGHT-UI.md)).
 
 ## Play
@@ -87,7 +88,7 @@ src/game/      the simulation: player, enemy, weapon, projectile, xp, pickup,
                familiar, waves, levelup, combos, achievements, arena, game
 src/render/    procedural sprites, procedural icons, the canvas renderer
 src/audio/     WebAudio synth kit and the generative per-zone score
-src/ui/        the Arclight stylesheet and the DOM UI layer
+src/ui/        the Arclight stylesheet, its embedded faces, and the DOM layer
 tools/         the single-file bundler
 ```
 

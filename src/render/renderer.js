@@ -109,8 +109,8 @@
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, this.viewW, this.viewH);
 
-    // Letterbox surround: the Arclight void.
-    ctx.fillStyle = '#07080c';
+    // Letterbox surround: the wine-dark ground the manuscript sits on.
+    ctx.fillStyle = '#06040a';
     ctx.fillRect(0, 0, this.viewW, this.viewH);
 
     ctx.save();
@@ -236,14 +236,14 @@
     if (WS.Save.settings.showHealthBars || e.elite || e.boss) healthBar(ctx, e);
 
     if (e.boss) {
-      ctx.font = '600 12px system-ui, sans-serif';
+      ctx.font = "400 12px 'Cinzel', Georgia, serif";
       ctx.textAlign = 'center';
-      ctx.fillStyle = '#f2c9ff';
+      ctx.fillStyle = '#eeb6ab';
       ctx.fillText(t.name, e.x, e.y - e.radius * 2.1);
     } else if (e.elite) {
-      ctx.font = '600 10px system-ui, sans-serif';
+      ctx.font = "400 10px 'Cinzel', Georgia, serif";
       ctx.textAlign = 'center';
-      ctx.fillStyle = '#f5c56b';
+      ctx.fillStyle = '#e6d0a2';
       ctx.fillText(t.name, e.x, e.y - e.radius * 2.1);
     }
   };
@@ -575,7 +575,7 @@
       const t = texts.active[i];
       const fade = WS.clamp(t.life / t.maxLife, 0, 1);
       ctx.globalAlpha = fade;
-      ctx.font = `700 ${t.size}px system-ui, "Segoe UI", sans-serif`;
+      ctx.font = `400 ${t.size}px 'Cinzel', Georgia, serif`;
       ctx.lineWidth = 3;
       ctx.strokeStyle = 'rgba(4,6,10,.85)';
       ctx.strokeText(t.text, t.x, t.y);
@@ -689,8 +689,25 @@
       this.viewW / 2, this.viewH / 2, WS.min(this.viewW, this.viewH) * 0.35,
       this.viewW / 2, this.viewH / 2, WS.max(this.viewW, this.viewH) * 0.75);
     grd.addColorStop(0, 'rgba(0,0,0,0)');
-    grd.addColorStop(1, 'rgba(0,0,0,.55)');
+    grd.addColorStop(1, 'rgba(6,4,10,.72)');
     ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, this.viewW, this.viewH);
+
+    // Candlelight from above, and the blood glow banked at the bottom edge.
+    const warm = ctx.createRadialGradient(
+      this.viewW / 2, this.viewH * 0.5, 0,
+      this.viewW / 2, this.viewH * 0.5, WS.max(this.viewW, this.viewH) * 0.42);
+    warm.addColorStop(0, 'rgba(255,190,120,.09)');
+    warm.addColorStop(1, 'rgba(255,190,120,0)');
+    ctx.fillStyle = warm;
+    ctx.fillRect(0, 0, this.viewW, this.viewH);
+
+    const blood = ctx.createRadialGradient(
+      this.viewW / 2, this.viewH * 1.2, 0,
+      this.viewW / 2, this.viewH * 1.2, this.viewH * 0.9);
+    blood.addColorStop(0, 'rgba(102,20,32,.30)');
+    blood.addColorStop(1, 'rgba(102,20,32,0)');
+    ctx.fillStyle = blood;
     ctx.fillRect(0, 0, this.viewW, this.viewH);
   };
 
@@ -710,23 +727,23 @@
 
     const w = WS.min(this.viewW * 0.8, 900) * appear;
     const grd = ctx.createLinearGradient(this.viewW / 2 - w / 2, 0, this.viewW / 2 + w / 2, 0);
-    grd.addColorStop(0, 'rgba(245,197,107,0)');
-    grd.addColorStop(0.5, 'rgba(245,197,107,.85)');
-    grd.addColorStop(1, 'rgba(245,197,107,0)');
+    grd.addColorStop(0, 'rgba(217,180,103,0)');
+    grd.addColorStop(0.5, 'rgba(217,180,103,.85)');
+    grd.addColorStop(1, 'rgba(217,180,103,0)');
     ctx.fillStyle = grd;
     ctx.fillRect(this.viewW / 2 - w / 2, y + 26, w, 1.5);
 
-    ctx.font = '600 30px system-ui, "Segoe UI", sans-serif';
-    ctx.letterSpacing = '2px';
+    ctx.font = "700 32px 'Cinzel Decorative', 'Cinzel', Georgia, serif";
+    ctx.letterSpacing = '1px';
     ctx.lineWidth = 5;
     ctx.strokeStyle = 'rgba(4,6,10,.8)';
     ctx.strokeText(b.title, this.viewW / 2, y);
-    ctx.fillStyle = '#ffe6ae';
+    ctx.fillStyle = '#e6d0a2';
     ctx.fillText(b.title, this.viewW / 2, y);
 
     if (b.subtitle) {
-      ctx.font = '400 15px system-ui, "Segoe UI", sans-serif';
-      ctx.fillStyle = '#c9cfdd';
+      ctx.font = "italic 400 18px 'EB Garamond', Georgia, serif";
+      ctx.fillStyle = 'rgba(232,207,143,.72)';
       ctx.strokeText(b.subtitle, this.viewW / 2, y + 52);
       ctx.fillText(b.subtitle, this.viewW / 2, y + 52);
     }

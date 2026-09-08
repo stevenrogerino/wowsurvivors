@@ -50,6 +50,9 @@
       healingDone: 0,
       damageByWeapon: {},
       healingBySource: {},
+      dps: 0, hps: 0,
+      _dpsWindow: [], _hpsWindow: [],
+      _lastDamage: 0, _lastHealing: 0, _meterTick: 0,
       noHitStreak: 0,
       bestNoHitStreak: 0,
       metamorphoses: 0,
@@ -264,6 +267,25 @@
     const run = this.run;
     const player = this.player;
     run.time += dt;
+
+    // Rolling ten-second DPS/HPS, sampled four times a second - the HUD reads
+    // these directly, so they must be cheap and never allocate per tick.
+    run._meterTick -= dt;
+    if (run._meterTick <= 0) {
+      run._meterTick = 0.25;
+      const dmg = run.damageDone - run._lastDamage;
+      const heal = run.healingDone - run._lastHealing;
+      run._lastDamage = run.damageDone;
+      run._lastHealing = run.healingDone;
+      run._dpsWindow.push(dmg);
+      run._hpsWindow.push(heal);
+      if (run._dpsWindow.length > 40) { run._dpsWindow.shift(); run._hpsWindow.shift(); }
+      let ds = 0, hs = 0;
+      for (let i = 0; i < run._dpsWindow.length; i++) { ds += run._dpsWindow[i]; hs += run._hpsWindow[i]; }
+      const span = run._dpsWindow.length * 0.25;
+      run.dps = span > 0 ? ds / span : 0;
+      run.hps = span > 0 ? hs / span : 0;
+    }
 
     run.noHitStreak += dt;
     run.bestNoHitStreak = WS.max(run.bestNoHitStreak, run.noHitStreak);
