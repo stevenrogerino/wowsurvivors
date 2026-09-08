@@ -3070,6 +3070,37 @@ window.WS = window.WS || {};
     g.restore();
   }
 
+  /** Legs, drawn BEFORE the body so they read as attached rather than stuck on.
+   *
+   *  `bottom` is the body's own lowest edge; `drop` is how far past it the foot
+   *  goes, and that is the whole point. Every quadruped here used to run its
+   *  legs from inside the body to about 3u past it - at a 36px sprite that is
+   *  one pixel of visible leg, which is why the wolf, the cat and the boar all
+   *  read as lumps on the field. A limb has to clear the mass it hangs from by
+   *  more than its own width, or at gameplay size it does not exist.
+   *
+   *  The foot pads matter as much as the length: bare strokes read as sticks,
+   *  a pad reads as an animal standing on something. */
+  function legs(g, p, cx, bottom, u, xs, drop, w) {
+    g.save();
+    g.lineCap = 'round';
+    g.strokeStyle = p.lo;
+    g.lineWidth = w * u;
+    for (const dx of xs) {
+      g.beginPath();
+      g.moveTo(cx + dx * u, bottom - 6 * u);
+      g.lineTo(cx + dx * u, bottom + drop * u);
+      g.stroke();
+    }
+    g.fillStyle = p.dark;
+    for (const dx of xs) {
+      g.beginPath();
+      g.ellipse(cx + dx * u, bottom + drop * u, w * 0.8 * u, w * 0.55 * u, 0, 0, WS.TAU);
+      g.fill();
+    }
+    g.restore();
+  }
+
   function blade(g, x, y, len, wide, rot, edge, spine) {
     g.save();
     g.translate(x, y); g.rotate(rot);
@@ -3114,6 +3145,7 @@ window.WS = window.WS || {};
 
     bandit(g, s, p) {
       const cx = s / 2, cy = s * 0.58, u = s / 100;
+      legs(g, p, cx, cy + 24 * u, u, [-8, 8], 9, 5);
       shaded(g, cx, cy + 4 * u, 18 * u, 24 * u, p);
       ellipse(g, cx, cy + 12 * u, 19 * u, 12 * u, p.dark);        // coat skirt
       shaded(g, cx, cy - 20 * u, 11 * u, 11 * u, { hi: '#d6c2a8', mid: '#b89b7c', lo: '#7a6350', line: '#4a3b2f', glow: '#fff' });
@@ -3127,7 +3159,8 @@ window.WS = window.WS || {};
     },
 
     brute(g, s, p) {
-      const cx = s / 2, cy = s * 0.58, u = s / 100;
+      const cx = s / 2, cy = s * 0.54, u = s / 100;
+      legs(g, p, cx, cy + 30 * u, u, [-11, 11], 10, 7);
       shaded(g, cx, cy + 6 * u, 26 * u, 26 * u, p);
       shaded(g, cx - 26 * u, cy + 2 * u, 10 * u, 14 * u, p, -0.3);
       shaded(g, cx + 26 * u, cy + 2 * u, 10 * u, 14 * u, p, 0.3);
@@ -3140,20 +3173,41 @@ window.WS = window.WS || {};
     },
 
     murloc(g, s, p) {
-      const cx = s / 2, cy = s * 0.60, u = s / 100;
+      const cx = s / 2, cy = s * 0.54, u = s / 100;
+      // Splayed webbed feet, and the head lifted clear of the shoulders. The
+      // head used to overlap the body by half its own height, which merged the
+      // two masses into one green pebble.
+      legs(g, p, cx, cy + 22 * u, u, [-8, 8], 11, 5);
+      /* Head fins fan sideways off the skull, which is where a murloc's are.
+         They used to be long thin triangles rising off the shoulders, and at
+         36px that read as two blades of grass growing behind it. */
+      for (const dir of [-1, 1]) {
+        poly(g, [[cx + dir * 11 * u, cy - 24 * u], [cx + dir * 31 * u, cy - 32 * u],
+        [cx + dir * 30 * u, cy - 18 * u], [cx + dir * 12 * u, cy - 17 * u]], p.lo, p.line, u);
+        shaded(g, cx + dir * 19 * u, cy + 2 * u, 5 * u, 9 * u, p, dir * 0.3);   // arms
+      }
       shaded(g, cx, cy + 2 * u, 17 * u, 20 * u, p);
-      poly(g, [[cx - 20 * u, cy - 12 * u], [cx - 34 * u, cy - 26 * u], [cx - 16 * u, cy + 2 * u]], p.lo, p.line, u); // fins
-      poly(g, [[cx + 20 * u, cy - 12 * u], [cx + 34 * u, cy - 26 * u], [cx + 16 * u, cy + 2 * u]], p.lo, p.line, u);
-      shaded(g, cx, cy - 18 * u, 15 * u, 13 * u, p);
+      shaded(g, cx, cy - 22 * u, 15 * u, 13 * u, p);
       g.fillStyle = p.dark;                                        // wide gormless mouth
-      g.beginPath(); g.ellipse(cx, cy - 12 * u, 9 * u, 4 * u, 0, 0, WS.PI); g.fill();
-      eyes(g, cx, cy - 22 * u, 7 * u, 3 * u, '#e8ffd8');
+      g.beginPath(); g.ellipse(cx, cy - 16 * u, 9 * u, 4.5 * u, 0, 0, WS.PI); g.fill();
+      eyes(g, cx, cy - 26 * u, 7 * u, 3 * u, '#e8ffd8');
       rimLight(g, cx, cy, 20 * u, p.hi);
     },
 
     necromancer(g, s, p) {
       const cx = s / 2, cy = s * 0.58, u = s / 100;
+      // Sleeves first, so the robe reads as a figure with arms rather than a
+      // traffic cone with a face painted on it.
+      for (const dir of [-1, 1]) {
+        poly(g, [[cx + dir * 10 * u, cy - 16 * u], [cx + dir * 27 * u, cy - 5 * u],
+        [cx + dir * 23 * u, cy + 9 * u], [cx + dir * 10 * u, cy - 2 * u]], p.mid, p.line, u);
+        // A pale cuff at the wrist. The sleeve in the robe's own shadow tone
+        // vanished into it; the cuff is what makes the arm a separate mass.
+        ellipse(g, cx + dir * 24 * u, cy + 2 * u, 5 * u, 4 * u, p.hi);
+      }
       poly(g, [[cx - 22 * u, cy + 26 * u], [cx - 12 * u, cy - 22 * u], [cx + 12 * u, cy - 22 * u], [cx + 22 * u, cy + 26 * u]], p.mid, p.line, u);
+      // A hem, so the robe has a foot instead of dissolving into the ground.
+      ellipse(g, cx, cy + 26 * u, 22 * u, 5 * u, p.dark);
       poly(g, [[cx - 12 * u, cy - 18 * u], [cx, cy - 40 * u], [cx + 12 * u, cy - 18 * u]], p.lo, p.line, u); // hood
       g.fillStyle = '#0a0a12';
       g.beginPath(); g.ellipse(cx, cy - 22 * u, 8 * u, 9 * u, 0, 0, WS.TAU); g.fill();
@@ -3293,7 +3347,8 @@ window.WS = window.WS || {};
 
     /* --- beasts ----------------------------------------------------------- */
     wolf(g, s, p) {
-      const cx = s / 2, cy = s * 0.60, u = s / 100;
+      const cx = s / 2, cy = s * 0.56, u = s / 100;
+      legs(g, p, cx, cy + 17 * u, u, [-16, -6, 8, 18], 13, 4.2);
       shaded(g, cx - 2 * u, cy + 2 * u, 26 * u, 15 * u, p);        // long body
       poly(g, [[cx + 22 * u, cy - 2 * u], [cx + 40 * u, cy - 14 * u], [cx + 26 * u, cy + 6 * u]], p.lo, p.line, u); // tail
       shaded(g, cx - 22 * u, cy - 6 * u, 13 * u, 11 * u, p);       // head
@@ -3301,15 +3356,12 @@ window.WS = window.WS || {};
       poly(g, [[cx - 28 * u, cy - 14 * u], [cx - 30 * u, cy - 26 * u], [cx - 20 * u, cy - 16 * u]], p.lo, p.line, u);
       poly(g, [[cx - 16 * u, cy - 14 * u], [cx - 14 * u, cy - 26 * u], [cx - 8 * u, cy - 15 * u]], p.lo, p.line, u);
       eyes(g, cx - 26 * u, cy - 8 * u, 4 * u, 1.6 * u, '#ffe08a');
-      g.strokeStyle = p.dark; g.lineWidth = 3 * u; g.lineCap = 'round';
-      for (const dx of [-10, 4, 14]) {
-        g.beginPath(); g.moveTo(cx + dx * u, cy + 10 * u); g.lineTo(cx + dx * u, cy + 20 * u); g.stroke();
-      }
       rimLight(g, cx - 2 * u, cy, 24 * u, p.hi, 0.35);
     },
 
     cat(g, s, p) {
-      const cx = s / 2, cy = s * 0.60, u = s / 100;
+      const cx = s / 2, cy = s * 0.56, u = s / 100;
+      legs(g, p, cx, cy + 16 * u, u, [-15, -5, 7, 17], 12, 3.8);
       shaded(g, cx - 2 * u, cy + 2 * u, 25 * u, 14 * u, p);        // low, long body
       g.strokeStyle = p.dark; g.lineWidth = 2.6 * u; g.lineCap = 'round';
       for (let i = -1; i <= 2; i++) {                              // stripes
@@ -3328,25 +3380,40 @@ window.WS = window.WS || {};
       poly(g, [[cx - 30 * u, cy - 14 * u], [cx - 31 * u, cy - 24 * u], [cx - 22 * u, cy - 15 * u]], p.lo, p.line, u);
       poly(g, [[cx - 18 * u, cy - 15 * u], [cx - 15 * u, cy - 25 * u], [cx - 10 * u, cy - 14 * u]], p.lo, p.line, u);
       eyes(g, cx - 24 * u, cy - 7 * u, 4.5 * u, 1.8 * u, '#c9f26b');
-      g.strokeStyle = p.dark; g.lineWidth = 3 * u;
-      for (const dx of [-14, 0, 12]) {
-        g.beginPath(); g.moveTo(cx + dx * u, cy + 9 * u); g.lineTo(cx + dx * u, cy + 19 * u); g.stroke();
-      }
       rimLight(g, cx - 2 * u, cy, 24 * u, p.hi, 0.35);
     },
 
     boar(g, s, p) {
-      const cx = s / 2, cy = s * 0.60, u = s / 100;
-      shaded(g, cx, cy + 2 * u, 24 * u, 18 * u, p);
-      g.strokeStyle = p.dark; g.lineWidth = 2.5 * u;               // bristles
-      for (let i = -3; i <= 3; i++) {
-        g.beginPath(); g.moveTo(cx + i * 6 * u, cy - 14 * u); g.lineTo(cx + i * 6 * u, cy - 24 * u); g.stroke();
+      const cx = s / 2, cy = s * 0.55, u = s / 100;
+      // Stubby trotters: short, but they still have to clear the barrel.
+      legs(g, p, cx + 2 * u, cy + 18 * u, u, [-13, -4, 7, 16], 11, 5);
+      /* A boar is a high hump with the head slung low and forward. Sitting the
+         head at the body's own centre height, as this did, just made two
+         spheres of the same size in a row. */
+      shaded(g, cx + 3 * u, cy - 1 * u, 23 * u, 18 * u, p);         // humped body
+      g.strokeStyle = p.dark; g.lineWidth = 2.6 * u; g.lineCap = 'round';
+      for (let i = -3; i <= 3; i++) {                               // bristles, over the hump
+        const a = WS.PI * (0.62 + i * 0.055);
+        const bx = cx + 3 * u + WS.cos(a) * 22 * u, by = cy - 1 * u - WS.sin(a) * 17 * u;
+        g.beginPath();
+        g.moveTo(bx, by);
+        g.lineTo(bx + WS.cos(a) * 8 * u, by - WS.sin(a) * 9 * u);
+        g.stroke();
       }
-      shaded(g, cx - 22 * u, cy + 2 * u, 12 * u, 11 * u, p);
-      poly(g, [[cx - 32 * u, cy + 4 * u], [cx - 42 * u, cy + 6 * u], [cx - 32 * u, cy + 10 * u]], p.hi, p.line, u);
-      g.strokeStyle = '#efe3cc'; g.lineWidth = 3 * u; g.lineCap = 'round';
-      g.beginPath(); g.moveTo(cx - 32 * u, cy + 6 * u); g.quadraticCurveTo(cx - 40 * u, cy - 2 * u, cx - 34 * u, cy - 8 * u); g.stroke();
-      eyes(g, cx - 24 * u, cy - 2 * u, 4 * u, 1.4 * u, '#ff9d6b');
+      shaded(g, cx - 21 * u, cy + 6 * u, 13 * u, 12 * u, p);        // low head
+      poly(g, [[cx - 30 * u, cy + 7 * u], [cx - 41 * u, cy + 11 * u], [cx - 29 * u, cy + 15 * u]],
+        p.hi, p.line, u);                                          // snout
+      /* Tusks. They have to grow out of the snout and curl only a little: an
+         earlier pass swept them up past the ears, where they read as two loose
+         white crescents floating beside the animal rather than as teeth. */
+      g.strokeStyle = '#f4ecdc'; g.lineWidth = 3.6 * u; g.lineCap = 'round';
+      for (const dy of [13, 8]) {
+        g.beginPath();
+        g.moveTo(cx - 33 * u, cy + dy * u);
+        g.quadraticCurveTo(cx - 43 * u, cy + (dy - 2) * u, cx - 41 * u, cy + (dy - 9) * u);
+        g.stroke();
+      }
+      eyes(g, cx - 22 * u, cy + 1 * u, 4.5 * u, 1.6 * u, '#ff9d6b');
       rimLight(g, cx, cy, 24 * u, p.hi, 0.35);
     },
 
@@ -3401,10 +3468,18 @@ window.WS = window.WS || {};
         poly(g, [[cx + dir * 8 * u, cy - 4 * u], [cx + dir * 38 * u, cy - 10 * u],
         [cx + dir * 20 * u, cy + 10 * u]], p.dark, p.line, u * 0.8);
       }
+      legs(g, p, cx, cy + 16 * u, u, [-6, 6], 9, 3.4);
       shaded(g, cx, cy + 2 * u, 14 * u, 16 * u, p);
-      shaded(g, cx, cy - 16 * u, 8 * u, 8 * u, p);
-      poly(g, [[cx - 6 * u, cy - 16 * u], [cx - 20 * u, cy - 12 * u], [cx - 6 * u, cy - 10 * u]], '#e8b455', '#8a6420', u);
-      eyes(g, cx + 1 * u, cy - 18 * u, 3 * u, 1.4 * u, '#ffd166');
+      // A neck. Without one the head sat inside the body and the bird read as
+      // a torso with wings - no beak, no direction, no animal.
+      g.strokeStyle = p.lo; g.lineWidth = 6 * u; g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(cx + 2 * u, cy - 8 * u);
+      g.quadraticCurveTo(cx - 4 * u, cy - 20 * u, cx - 1 * u, cy - 26 * u);
+      g.stroke();
+      shaded(g, cx - 1 * u, cy - 28 * u, 8 * u, 8 * u, p);
+      poly(g, [[cx - 7 * u, cy - 28 * u], [cx - 22 * u, cy - 24 * u], [cx - 7 * u, cy - 21 * u]], '#e8b455', '#8a6420', u);
+      eyes(g, cx, cy - 30 * u, 3 * u, 1.5 * u, '#ffd166');
     },
 
     spider(g, s, p) {
@@ -3484,19 +3559,40 @@ window.WS = window.WS || {};
     },
 
     golem(g, s, p) {
-      const cx = s / 2, cy = s * 0.58, u = s / 100;
-      g.fillStyle = p.mid; g.strokeStyle = p.line; g.lineWidth = 2 * u;
-      g.fillRect(cx - 22 * u, cy - 14 * u, 44 * u, 38 * u);
-      g.strokeRect(cx - 22 * u, cy - 14 * u, 44 * u, 38 * u);
-      g.fillStyle = p.lo;
-      g.fillRect(cx - 30 * u, cy - 8 * u, 10 * u, 26 * u);
-      g.fillRect(cx + 20 * u, cy - 8 * u, 10 * u, 26 * u);
-      g.fillStyle = p.hi;
-      g.fillRect(cx - 14 * u, cy - 30 * u, 28 * u, 18 * u);        // head block
-      g.strokeRect(cx - 14 * u, cy - 30 * u, 28 * u, 18 * u);
-      g.save(); g.shadowColor = '#ff9d3c'; g.shadowBlur = 12 * u;  // furnace eye
+      /* The one creature that was flat fillRects - no shading, no bevel, no
+         legs - which is why it read as furniture rather than a thing that
+         walks at you. It stays angular, because that is the point of a golem,
+         but it now takes the same light as everything else: lit along the top
+         and left, shadowed at the foot, and standing on something. */
+      const cx = s / 2, cy = s * 0.54, u = s / 100;
+      const plate = (x, y, w, h, lit) => {
+        const grd = g.createLinearGradient(x, y, x + w * 0.4, y + h);
+        grd.addColorStop(0, lit ? p.hi : p.mid);
+        grd.addColorStop(0.55, p.mid);
+        grd.addColorStop(1, p.lo);
+        g.fillStyle = grd;
+        g.fillRect(x, y, w, h);
+        g.strokeStyle = p.line; g.lineWidth = 2 * u;
+        g.strokeRect(x, y, w, h);
+        // The Arclight bevel, in stone: a lit top edge and a dark foot.
+        g.fillStyle = 'rgba(255,244,224,.16)'; g.fillRect(x, y, w, 2 * u);
+        g.fillStyle = 'rgba(0,0,0,.32)'; g.fillRect(x, y + h - 2 * u, w, 2 * u);
+      };
+
+      // Squat legs, angular to match, with a foot slab each.
+      plate(cx - 17 * u, cy + 20 * u, 12 * u, 14 * u);
+      plate(cx + 5 * u, cy + 20 * u, 12 * u, 14 * u);
+      plate(cx - 20 * u, cy + 32 * u, 18 * u, 6 * u);
+      plate(cx + 2 * u, cy + 32 * u, 18 * u, 6 * u);
+
+      plate(cx - 30 * u, cy - 8 * u, 10 * u, 26 * u);              // arms
+      plate(cx + 20 * u, cy - 8 * u, 10 * u, 26 * u);
+      plate(cx - 22 * u, cy - 14 * u, 44 * u, 36 * u, true);       // torso
+      plate(cx - 14 * u, cy - 32 * u, 28 * u, 18 * u, true);       // head block
+
+      g.save(); g.shadowColor = '#ff9d3c'; g.shadowBlur = 12 * u;  // furnace
       g.fillStyle = '#ffb45c';
-      g.fillRect(cx - 8 * u, cy - 24 * u, 16 * u, 5 * u);
+      g.fillRect(cx - 8 * u, cy - 26 * u, 16 * u, 5 * u);
       g.fillRect(cx - 6 * u, cy + 2 * u, 12 * u, 12 * u);
       g.restore();
       blade(g, cx + 34 * u, cy + 6 * u, 30 * u, 9 * u, 0.9, '#b9c0cc', '#5c6270'); // scythe arm
