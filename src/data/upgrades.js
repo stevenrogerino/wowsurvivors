@@ -85,7 +85,7 @@
     velocity: {
       name: 'Velocity', art: 'spear', quality: 'common',
       description: '+15% projectile speed', max: 3, v: 0.15,
-      detail: 'Bolts, knives, arrows, and shields fly faster. No effect on chains, auras, whirlwinds, or storms.',
+      detail: 'Bolts, knives, arrows, and shields fly faster. No effect on chains, auras, gyres, or storms.',
       apply: (p, up) => { p.projectileSpeed += up.v; },
     },
     dark_bargain: {
@@ -95,9 +95,9 @@
       detail: 'A curse you choose. More enemies means more gems, more gold, more danger. Stacks.',
       apply: (p, up) => { p.curse += 1; p.xpMultiplier += up.v; p.goldMultiplier += up.v; },
     },
-    divine_bulwark: {
-      name: 'Divine Bulwark', art: 'aegis', quality: 'rare',
-      description: 'A holy shield blocks one hit entirely. Recharges over time.', max: 3,
+    warding_light: {
+      name: 'Warding Light', art: 'aegis', quality: 'rare',
+      description: 'A warding light blocks one hit entirely. Recharges over time.', max: 3,
       detail: 'Blocks one hit every 30 / 22 / 15 seconds by rank.',
       apply: (p) => {
         const c = WS.Config;
@@ -118,17 +118,17 @@
       detail: 'Each rank calls another spirit wolf. They chase down the nearest enemies and maul them - bites deal area damage that scales with your damage and level.',
       apply: () => { WS.Familiar.add('wolf'); },
     },
-    raise_dead: {
-      name: 'Raise Dead', art: 'risen', quality: 'rare',
+    grave_call: {
+      name: 'Grave Call', art: 'risen', quality: 'rare',
       description: 'Raise a ghoul to shamble after the horde.', max: 3,
       detail: 'Each rank raises another ghoul. Slower than a spirit wolf and slower to swing, but it hits far harder and its claws sweep a wider arc.',
       apply: () => { WS.Familiar.add('ghoul'); },
     },
-    unholy_command: {
-      name: 'Unholy Command', art: 'command', quality: 'epic',
+    dread_command: {
+      name: 'Dread Command', art: 'command', quality: 'epic',
       description: '+30% summon damage and +10% summon attack speed', max: 5,
       detail: 'Drives everything you have summoned - spirit wolves and ghouls alike - to strike harder and more often. Worthless without something to command.',
-      offer: (p) => (p.upgradeLevels.spirit_companion || 0) > 0 || (p.upgradeLevels.raise_dead || 0) > 0,
+      offer: (p) => (p.upgradeLevels.spirit_companion || 0) > 0 || (p.upgradeLevels.grave_call || 0) > 0,
       v: 0.30, haste: 0.10,
       apply: (p, up) => { p.summonDamage += up.v; p.summonHaste += up.haste; },
     },
@@ -140,26 +140,26 @@
       detail: 'Any enemy that hits you - a melee swing OR a ranged bolt - takes 10 + 40% of that damage back per rank (even if you dodge or block). Ranged bolts reflect to the caster that fired them.',
       apply: (p) => { p.thornsRank += 1; },
     },
-    desecration: {
-      name: 'Desecration', art: 'desecrate', quality: 'epic',
+    curdled: {
+      name: 'Curdled Light', art: 'desecrate', quality: 'epic',
       description: '+15% of your healing lashes out as shadow damage', max: 5, v: 0.15,
       detail: 'Healing you cannot use rots instead of going to waste: overheal erupts around you, and a growing share of the healing that does land strikes with it. Feeds on regeneration, lifesteal, and healing weapons.',
-      offer: (p) => p.desecration > 0 || p.healthRegen > 0 || p.lifesteal > 0,
+      offer: (p) => p.curdled > 0 || p.healthRegen > 0 || p.lifesteal > 0,
       apply: (p, up) => {
-        p.desecration += 1;
-        p.desecrationOverheal = WS.max(p.desecrationOverheal, WS.Config.desecrationOverheal);
-        p.desecrationShare += up.v;
+        p.curdled += 1;
+        p.curdleOverheal = WS.max(p.curdleOverheal, WS.Config.curdleOverheal);
+        p.curdleShare += up.v;
       },
     },
-    soul_rending: {
-      name: 'Soul Rending', art: 'soulrend', quality: 'epic',
-      description: '+25% fel from overkill, and +1s of Metamorphosis', max: 5, v: 0.25,
-      detail: 'Every scrap of overkill feeds the fel faster, and the transformation holds a second longer per rank.',
+    ruin_hunger: {
+      name: 'Ruin Hunger', art: 'soulrend', quality: 'epic',
+      description: '+25% fel from overkill, and +1s of Ruinform', max: 5, v: 0.25,
+      detail: 'Every scrap of overkill feeds the ruin faster, and the transformation holds a second longer per rank.',
       offer: (p) => p.felAttuned > 0,
       apply: (p) => { p.soulRending += 1; },
     },
-    retribution: {
-      name: 'Retribution Aura', art: 'retaura', quality: 'rare',
+    searing: {
+      name: 'Searing Aura', art: 'retaura', quality: 'rare',
       description: 'A holy aura sears nearby enemies.', max: 4,
       detail: 'Burns enemies around you twice per second (damage and radius grow with rank, damage%, and effect area). Lets tanks deal damage while standing firm.',
       apply: (p) => { p.retRank += 1; },
@@ -175,9 +175,9 @@
   WS.UpgradeOrder = [
     'might', 'haste', 'fleetfoot', 'magnet', 'vitality', 'armor', 'precision',
     'ferocity', 'area', 'quantity', 'luck', 'wisdom', 'recovery', 'velocity',
-    'dark_bargain', 'divine_bulwark', 'chilling_presence', 'spirit_companion',
-    'thorns', 'retribution', 'dodge', 'desecration', 'soul_rending',
-    'raise_dead', 'unholy_command',
+    'dark_bargain', 'warding_light', 'chilling_presence', 'spirit_companion',
+    'thorns', 'searing', 'dodge', 'curdled', 'ruin_hunger',
+    'grave_call', 'dread_command',
   ];
 
 })(window.WS);

@@ -1,6 +1,6 @@
 /* Drives each battlefield's data timeline: ambient spawn phases, scripted swarm
  * events, timed boss arrivals, supply caches, the egg merchant, and the three
- * one-shot story objects (coffin / runeblade / warglaives). Difficulty scaling
+ * one-shot story objects (coffin / graveblade / twin glaives). Difficulty scaling
  * is a function of elapsed time times the map's difficulty knob. */
 'use strict';
 (function (WS) {
@@ -22,8 +22,8 @@
     this.merchantTimer = 150;
     this.coffinDone = false;
     this.coffinTimer = 120;
-    this.runebladeDone = false;
-    this.warglaiveDone = false;
+    this.gravebladeDone = false;
+    this.glaiveDone = false;
   };
 
   /** Health/damage/xp inflation for ambient spawns. */
@@ -159,14 +159,14 @@
       }
     }
 
-    /* ---- the runeblade: answers desecration, not a timer ------------------ */
-    if (!this.runebladeDone && !WS.Save.db.unlocks.characters.death_knight
-      && player.desecrationDealt >= WS.Config.runebladeThreshold) {
+    /* ---- the graveblade: answers curdled, not a timer ------------------ */
+    if (!this.gravebladeDone && !WS.Save.db.unlocks.characters.graveblade
+      && player.curdleDealt >= WS.Config.gravebladeThreshold) {
       const a = WS.random() * WS.TAU;
       const cx = WS.clamp(player.x + WS.cos(a) * 300, 90, WS.CONST.WORLD_WIDTH - 90);
       const cy = WS.clamp(player.y + WS.sin(a) * 300, 90, WS.CONST.WORLD_HEIGHT - 90);
-      if (WS.Pickup.spawn('runeblade', cx, cy)) {
-        this.runebladeDone = true;
+      if (WS.Pickup.spawn('graveblade', cx, cy)) {
+        this.gravebladeDone = true;
         WS.Game.announce('Enough Light has rotted.', 'A blade breaks the ground where it fell.', 4.0);
         WS.Audio.play('boss');
         for (let i = 0; i < 6; i++) {
@@ -176,15 +176,15 @@
       }
     }
 
-    /* ---- the warglaives: answer Metamorphosis ---------------------------- */
-    if (!this.warglaiveDone && !WS.Save.db.unlocks.characters.demon_hunter
-      && player.metamorphoses >= WS.Config.warglaiveMetas) {
+    /* ---- the twin glaives: answer Ruinform ---------------------------- */
+    if (!this.glaiveDone && !WS.Save.db.unlocks.characters.ruinseeker
+      && player.metamorphoses >= WS.Config.glaiveMetas) {
       const a = WS.random() * WS.TAU;
       const cx = WS.clamp(player.x + WS.cos(a) * 300, 90, WS.CONST.WORLD_WIDTH - 90);
       const cy = WS.clamp(player.y + WS.sin(a) * 300, 90, WS.CONST.WORLD_HEIGHT - 90);
-      if (WS.Pickup.spawn('warglaive', cx, cy)) {
-        this.warglaiveDone = true;
-        WS.Game.announce('The fel has taken enough of you.', 'Two glaives are waiting.', 4.0);
+      if (WS.Pickup.spawn('twinglaive', cx, cy)) {
+        this.glaiveDone = true;
+        WS.Game.announce('The ruin has taken enough of you.', 'Two glaives are waiting.', 4.0);
         WS.Audio.play('boss');
       }
     }

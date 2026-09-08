@@ -1,6 +1,6 @@
 # Arclight UI
 
-The design language for **WoWSurvivors 2**. Everything on screen is either
+The design language for **Emberwatch**. Everything on screen is either
 *obsidian* (the substrate) or *arc light* (the energy running through it).
 
 ## 1. Principles
@@ -46,7 +46,7 @@ The design language for **WoWSurvivors 2**. Everything on screen is either
 | `--ink` | `#e8ecf6` | primary text |
 | `--ink-dim` | `#8b93a7` | labels, secondary text |
 
-Quality colours for cards follow Warcraft item quality: common `#e8ecf6`,
+Quality colours for cards follow the usual five-step loot ladder: common `#e8ecf6`,
 uncommon `#3ddc7a`, rare `#59bfff`, epic `#b34ff2`, legendary `#f5c56b`.
 
 ## 3. Icons

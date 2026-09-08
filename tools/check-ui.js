@@ -88,7 +88,7 @@ const path = require('path');
     await page.waitForTimeout(120);
     await check('menu/' + t);
   }
-  await page.evaluate(() => { WS.Game.startRun('elwynn', 'mage'); });
+  await page.evaluate(() => { WS.Game.startRun('thornhollow', 'mage'); });
   await page.waitForTimeout(300);
   await check('blessing');
   await page.click('.card'); await page.waitForTimeout(200);
@@ -155,7 +155,7 @@ const path = require('path');
   }
 
   /* Arming banish is a mode change, not new content: nothing may move. */
-  await page.evaluate(() => { WS.Game.startRun('elwynn', 'mage'); });
+  await page.evaluate(() => { WS.Game.startRun('thornhollow', 'mage'); });
   await page.waitForTimeout(250);
   await page.evaluate(() => {
     const c = document.querySelector('#overlay:not(.hidden) .card'); if (c) c.click();

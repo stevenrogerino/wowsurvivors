@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<title>WoWSurvivors 2</title>
-<meta name="description" content="A Warcraft-flavoured arcade survival game. Move, survive, and let your weapons do the rest.">
+<title>Emberwatch</title>
+<meta name="description" content="An arcade survival game. Hold the light for thirty minutes; your weapons do the rest.">
 <meta name="color-scheme" content="dark">
 <style>
 /* ===== src/ui/fonts.css ===== */
@@ -53,7 +53,7 @@
 
 /* ===== src/ui/arclight.css ===== */
 /* ===========================================================================
-   ARCLIGHT UI - the design language for WoWSurvivors 2.
+   ARCLIGHT UI - the design language for Emberwatch.
    Obsidian substrate, arc light for everything that measures or matters.
    See docs/ARCLIGHT-UI.md for the rules this file implements.
    ======================================================================== */
@@ -333,8 +333,8 @@ html, body {
    of every dark dashboard ever built. A game's name should have weight and a
    material. So: a cool light qualifier, the name struck in gilt with a real
    metal ramp - highlight along the top third, shadow through the middle,
-   warm bounce underneath - and the numeral set apart in the mono face on its
-   own plate, the way a sequel is set on a box. */
+   warm bounce underneath. Two words, one of them lit: the ember inside the
+   watch, which is the whole title said in type. */
 #title-wrap { text-align: center; }
 #title-wrap .game-title {
   margin: 0; display: flex; align-items: baseline; justify-content: flex-start;
@@ -352,13 +352,6 @@ html, body {
   -webkit-background-clip: text; background-clip: text;
   color: transparent; -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 2px 0 rgba(0,0,0,.55)) drop-shadow(0 0 34px rgba(245,197,107,.3));
-}
-#title-wrap .game-title .num {
-  font-family: var(--fig); font-weight: 500; font-size: .62em; letter-spacing: 0;
-  color: var(--arc-hot); align-self: center; margin-left: .1em;
-  padding: .14em .42em; border: 1px solid var(--rim-arc); border-radius: 2px;
-  background: linear-gradient(180deg, rgba(245,197,107,.16), rgba(245,197,107,.04));
-  box-shadow: var(--bevel), 0 0 22px -8px var(--arc);
 }
 #title-wrap .game-sub {
   font-size: var(--t-micro); letter-spacing: .34em; text-transform: uppercase;
@@ -1332,7 +1325,7 @@ input[type=range]::-moz-range-thumb {
 
   <script>
 /* ===== src/core/util.js ===== */
-/* WoWSurvivors 2 - core utilities.
+/* Emberwatch - core utilities.
  * Loaded first; every other file hangs off the global WS namespace, mirroring
  * the addon's `WS` table so ported logic reads the same. Classic scripts (no
  * ES modules) so the game runs straight off the filesystem. */
@@ -1562,7 +1555,7 @@ window.WS = window.WS || {};
 
   WS.Config = {
     startCharacter: 'mage',
-    startMap: 'elwynn',
+    startMap: 'thornhollow',
 
     baseRerolls: 1,
     baseBanishes: 1,
@@ -1625,16 +1618,16 @@ window.WS = window.WS || {};
     // Armor is a diminishing reduction: 1 - armor/(armor + K).
     armorConstant: 30,
 
-    // Desecration: healing that curdles into shadow damage.
-    desecrationOverheal: 1.00,
-    desecrationShare: 0.25,
-    desecrationPerRank: 0.15,
-    desecrationCoefficient: 1.00,
-    desecrationRadius: 110,
-    desecrationInterval: 0.50,
-    runebladeThreshold: 4000,
+    // Curdled Light: healing that curdles into shadow damage.
+    curdleOverheal: 1.00,
+    curdleShare: 0.25,
+    curdlePerRank: 0.15,
+    curdleCoefficient: 1.00,
+    curdleRadius: 110,
+    curdleInterval: 0.50,
+    gravebladeThreshold: 4000,
 
-    // Fel / Metamorphosis: overkill harvested into a burst transformation.
+    // Fel / Ruinform: overkill harvested into a burst transformation.
     felPerOverkill: 1.00,
     felPerRank: 0.25,
     felToMeta: 3500,
@@ -1643,7 +1636,7 @@ window.WS = window.WS || {};
     metaDamageMult: 2.20,
     metaCooldownMult: 0.60,
     metaDurationPerRank: 1.0,
-    warglaiveMetas: 3,
+    glaiveMetas: 3,
 
     limitBreakDamage: 0.08,
 
@@ -1710,8 +1703,97 @@ window.WS = window.WS || {};
 'use strict';
 (function (WS) {
 
-  const KEY = 'wowsurvivors2.save.v1';
-  const SCHEMA = 1;
+  const KEY = 'emberwatch.save.v1';
+  const LEGACY_KEY = 'wowsurvivors2.save.v1';
+  const SCHEMA = 2;
+
+  /* The rename, carried across a save.
+   *
+   * Schema 1 stored zones, creatures, bosses, discoveries and achievements
+   * under the names the game used before it was Emberwatch, and those names
+   * are the KEYS of the codex - so a straight rename would have silently
+   * emptied every bestiary count, every personal best and every unlock a
+   * player had earned. Nobody should pay for our vocabulary changing.
+   *
+   * So schema 2 rewrites the keys it recognises and leaves anything it does
+   * not alone: an unknown id is dropped by sanitize() later rather than
+   * guessed at. The legacy localStorage entry is read once and then left
+   * where it is, untouched, because a migration that deletes the only copy of
+   * the thing it is migrating has no way back if it is wrong. */
+  /* == legacy-name map: begin ==
+   * Everything between these markers names the pre-Emberwatch vocabulary,
+   * because rewriting a key requires saying what it used to be. This is a
+   * compatibility shim, not content: none of it is ever shown to a player,
+   * and it exists solely so nobody loses a codex they filled in. The
+   * provenance guard skips exactly this region and counts what it skipped,
+   * so the exemption is bounded and visible rather than a blanket pardon. */
+  const RENAMED = {
+    maps: {
+      elwynn: 'thornhollow', westfall: 'dustreach', duskwood: 'mourneholt',
+      barrens: 'ochre', icecrown: 'palewastes',
+    },
+    characters: { death_knight: 'graveblade', demon_hunter: 'ruinseeker' },
+    bestiary: {
+      kobold: 'lampling', murloc: 'gilkin', murloc_oracle: 'gilkin_tidecaller',
+      gnoll: 'mongrel', defias: 'kerchief', defias_pillager: 'kerchief_pillager',
+      harvest_golem: 'harvest_reaper', knuckleduster: 'bruiser', worgen: 'moonwretch',
+      plainstrider: 'longstrider', quilboar: 'bristlekin', harpy: 'shrikewing',
+      centaur: 'karrash', scourge_ghoul: 'pale_ghoul',
+      riverpaw_bonesnapper: 'snarlpack_bonesnapper', defias_enforcer: 'kerchief_enforcer',
+      kolkar_battlelord: 'karrash_battlelord',
+    },
+    families: {
+      kobold: 'lampling', murloc: 'gilkin', gnoll: 'mongrel', defias: 'kerchief',
+      worgen: 'moonwretch', quilboar: 'bristlekin', harpy: 'shrikewing',
+      centaur: 'karrash',
+    },
+    bosses: { duskwraith: 'palewraith' },
+    combos: {
+      windseeker: 'tempest_pact', divine_storm: 'radiant_gyre',
+      windrunner: 'truestrike', seal_command: 'verdict', defile: 'curdle',
+    },
+    achievements: { scourge_of_the_masses: 'bane_of_the_masses', mrglglgl: 'blorp' },
+  };
+  /* == legacy-name map: end == */
+
+  /** Rewrites the keys of one map in place, keeping the larger value when two
+   *  old ids collapse onto one new one. */
+  function renameKeys(map, table) {
+    if (!isPlain(map)) return map;
+    for (const [from, to] of Object.entries(table)) {
+      if (!(from in map)) continue;
+      const incoming = map[from];
+      delete map[from];
+      if (to in map && typeof incoming === 'number' && typeof map[to] === 'number') {
+        map[to] = WS.max(map[to], incoming);
+      } else if (!(to in map)) {
+        map[to] = incoming;
+      }
+    }
+    return map;
+  }
+
+  function migrate(db) {
+    if (db.schema >= SCHEMA) return db;
+    const s = db.statistics || {};
+    renameKeys(db.unlocks && db.unlocks.maps, RENAMED.maps);
+    renameKeys(db.unlocks && db.unlocks.hyper, RENAMED.maps);
+    renameKeys(s.bestTime, RENAMED.maps);
+    renameKeys(db.unlocks && db.unlocks.characters, RENAMED.characters);
+    renameKeys(s.bestiary, RENAMED.bestiary);
+    renameKeys(s.families, RENAMED.families);
+    renameKeys(s.bosses, RENAMED.bosses);
+    renameKeys(db.combos, RENAMED.combos);
+    renameKeys(db.achievements, RENAMED.achievements);
+    // Two statistics were renamed alongside the items they count.
+    if (s.runebladesClaimed !== undefined && s.gravebladesClaimed === undefined) {
+      s.gravebladesClaimed = s.runebladesClaimed;
+    }
+    if (s.warglaivesClaimed !== undefined && s.glaivesClaimed === undefined) {
+      s.glaivesClaimed = s.warglaivesClaimed;
+    }
+    return db;
+  }
 
   function defaults() {
     return {
@@ -1724,7 +1806,7 @@ window.WS = window.WS || {};
       meta: {},
       unlocks: {
         characters: { mage: true, priest: true },
-        maps: { elwynn: true },
+        maps: { thornhollow: true },
         hyper: {},
       },
       achievements: {},
@@ -1746,8 +1828,8 @@ window.WS = window.WS || {};
         evolutions: 0,
         unions: 0,
         coffinsOpened: 0,
-        runebladesClaimed: 0,
-        warglaivesClaimed: 0,
+        gravebladesClaimed: 0,
+        glaivesClaimed: 0,
         bestTime: {},      // per map
         bosses: {},        // bossId -> kills
         families: {},      // family -> kills
@@ -1849,7 +1931,7 @@ window.WS = window.WS || {};
     // would otherwise leave the player with nothing they are allowed to play.
     db.unlocks.characters.mage = true;
     db.unlocks.characters.priest = true;
-    db.unlocks.maps.elwynn = true;
+    db.unlocks.maps.thornhollow = true;
     return db;
   }
 
@@ -1858,14 +1940,21 @@ window.WS = window.WS || {};
 
     load() {
       let raw = null;
-      try { raw = localStorage.getItem(KEY); } catch (e) { /* private mode */ }
+      try {
+        raw = localStorage.getItem(KEY);
+        // No Emberwatch save? Look for one from before the rename, and adopt
+        // it rather than greeting a returning player with an empty account.
+        if (raw === null) raw = localStorage.getItem(LEGACY_KEY);
+      } catch (e) { /* private mode */ }
       let data = null;
       if (raw) { try { data = JSON.parse(raw); } catch (e) { data = null; } }
       // A save that parses to a non-object - `null`, `7`, `"[]"` - is not a
       // save. merge() would otherwise write the defaults onto a primitive and
       // hand back something that is not a database.
       if (!isPlain(data)) data = {};
-      this.db = sanitize(merge(data, defaults()));
+      // Migrate BEFORE the defaults are merged in: renameKeys must see the old
+      // keys on their own, not sitting beside freshly-defaulted new ones.
+      this.db = sanitize(merge(migrate(data), defaults()));
       this.db.schema = SCHEMA;
       return this.db;
     },
@@ -2046,8 +2135,8 @@ window.WS = window.WS || {};
 
   WS.Characters = {
     mage: {
-      name: 'Baron Zul', title: 'Apprentice of Northshire', className: 'Mage',
-      art: 'mage', color: [0.41, 0.80, 0.94], weapon: 'arcane_missiles',
+      name: 'Baron Zul', title: 'Apprentice of the Low Cloister', className: 'Mage',
+      art: 'mage', color: [0.41, 0.80, 0.94], weapon: 'seeking_motes',
       description: 'A gifted novice whose missiles hunt his foes on their own.',
       perk: 'Weapon cooldowns reduced by {perkCooldownMult~%}%.',
       maxHealth: 110, moveSpeed: 225, armor: 0, pickupRadius: 60, healthRegen: 0,
@@ -2056,7 +2145,7 @@ window.WS = window.WS || {};
     },
     priest: {
       name: 'Chid', title: 'The Fool', className: 'Priest',
-      art: 'priest', color: [1.00, 1.00, 1.00], weapon: 'holy_nova',
+      art: 'priest', color: [1.00, 1.00, 1.00], weapon: 'dawnpulse',
       description: 'A stalwart healer wreathed in rings of searing Light.',
       perk: 'Regenerates {perkRegen} health per second.',
       maxHealth: 135, moveSpeed: 205, armor: 1, pickupRadius: 64, healthRegen: 0,
@@ -2064,8 +2153,8 @@ window.WS = window.WS || {};
       apply: (p, c) => { p.healthRegen += c.perkRegen; },
     },
     rogue: {
-      name: 'Dr. Rav McBreathless', title: 'Defias Defector', className: 'Rogue',
-      art: 'rogue', color: [1.00, 0.96, 0.41], weapon: 'fan_of_knives',
+      name: 'Dr. Rav McBreathless', title: 'Kerchief Defector', className: 'Rogue',
+      art: 'rogue', color: [1.00, 0.96, 0.41], weapon: 'knifestorm',
       description: 'A quick-fingered cutpurse who fills the field with steel.',
       perk: '+{perkSpeedMult*%}% movement speed and +{perkCrit%}% critical strike chance.',
       maxHealth: 100, moveSpeed: 250, armor: 0, pickupRadius: 56, healthRegen: 0,
@@ -2074,8 +2163,8 @@ window.WS = window.WS || {};
       unlockHint: 'Survive for 8 minutes in a single run.',
     },
     hunter: {
-      name: 'Maeca Barefoot', title: 'Ranger of the Westbrook Garrison', className: 'Hunter',
-      art: 'hunter', color: [0.67, 0.83, 0.45], weapon: 'multishot',
+      name: 'Maeca Barefoot', title: 'Ranger of the Ashford Garrison', className: 'Hunter',
+      art: 'hunter', color: [0.67, 0.83, 0.45], weapon: 'volley',
       description: 'A keen-eyed ranger who never wastes an arrow.',
       perk: '+{perkPickup} pickup radius and +{perkSpeedMult*%}% movement speed.',
       maxHealth: 115, moveSpeed: 230, armor: 0, pickupRadius: 60, healthRegen: 0,
@@ -2085,7 +2174,7 @@ window.WS = window.WS || {};
     },
     warrior: {
       name: 'AAAAAAAAA', title: 'The Fallen Hero', className: 'Warrior',
-      art: 'warrior', color: [0.78, 0.61, 0.43], weapon: 'whirlwind',
+      art: 'warrior', color: [0.78, 0.61, 0.43], weapon: 'axe_gyre',
       description: 'An old soldier who solves most problems with spinning axes.',
       perk: '+{perkArmor} armor and +{perkHealth} maximum health.',
       maxHealth: 160, moveSpeed: 210, armor: 3, pickupRadius: 54, healthRegen: 0,
@@ -2094,8 +2183,8 @@ window.WS = window.WS || {};
       unlockHint: 'Slay 2 bosses in a single run.',
     },
     warlock: {
-      name: "Nim B'ladin", title: 'Exile of the Twilight Grove', className: 'Warlock',
-      art: 'warlock', color: [0.58, 0.51, 0.79], weapon: 'shadow_bolt',
+      name: "Nim B'ladin", title: 'Exile of the Gloaming Grove', className: 'Warlock',
+      art: 'warlock', color: [0.58, 0.51, 0.79], weapon: 'umbral_bolt',
       description: 'A banished scholar whose bolts drink the life of many at once.',
       perk: '+{perkDamage%}% weapon damage.',
       maxHealth: 115, moveSpeed: 215, armor: 0, pickupRadius: 58, healthRegen: 0,
@@ -2104,8 +2193,8 @@ window.WS = window.WS || {};
       unlockHint: 'Slay 750 enemies across all runs.',
     },
     shaman: {
-      name: 'Vonnra Hydrocheck', title: 'Far Seer of the Crossroads', className: 'Shaman',
-      art: 'shaman', color: [0.00, 0.44, 0.87], weapon: 'chain_lightning',
+      name: 'Vonnra Hydrocheck', title: 'Far Seer of the Waystation', className: 'Shaman',
+      art: 'shaman', color: [0.00, 0.44, 0.87], weapon: 'arcweb',
       description: 'A far seer who calls the storm down on whole warbands.',
       perk: '+{perkLuck%}% luck and +{perkArea%}% effect area.',
       maxHealth: 125, moveSpeed: 215, armor: 1, pickupRadius: 58, healthRegen: 0,
@@ -2114,44 +2203,44 @@ window.WS = window.WS || {};
       unlockHint: 'Bank 500 gold across all runs.',
     },
     paladin: {
-      name: 'Professor Keegan', title: 'Knight of the Silver Hand (Probationary)', className: 'Paladin',
-      art: 'paladin', color: [0.96, 0.55, 0.73], weapon: 'avengers_shield',
+      name: 'Professor Keegan', title: 'Knight of the Argent Vigil (Probationary)', className: 'Paladin',
+      art: 'paladin', color: [0.96, 0.55, 0.73], weapon: 'judgement_disc',
       description: 'Buried by mistake. Dug himself out. Filed a complaint. Kept the shield.',
       perk: '+{perkArmor} armor and +{perkHealing%}% healing received.',
       maxHealth: 145, moveSpeed: 210, armor: 2, pickupRadius: 56, healthRegen: 0,
       perkArmor: 1, perkHealing: 0.20,
       apply: (p, c) => { p.armor += c.perkArmor; p.healingMult += c.perkHealing; },
-      unlockHint: 'Somewhere in Elwynn Forest, an adequate knight lies buried...',
+      unlockHint: 'Somewhere in Thornhollow, an adequate knight lies buried...',
     },
-    death_knight: {
-      name: 'DZ', title: 'Who Could Not Stay Buried', className: 'Death Knight',
-      art: 'death_knight', color: [0.77, 0.12, 0.23], weapon: 'death_strike',
+    graveblade: {
+      name: 'DZ', title: 'Who Could Not Stay Buried', className: 'Graveblade',
+      art: 'graveblade', color: [0.77, 0.12, 0.23], weapon: 'reaving_arc',
       description: 'He healed until the Light curdled, and something colder answered. It has not let go since.',
-      perk: 'Desecration is innate - overheal erupts as shadow, and {perkShare%}% of healing that lands lashes out with it.',
+      perk: 'Curdled Light is innate - overheal erupts as shadow, and {perkShare%}% of healing that lands lashes out with it.',
       maxHealth: 155, moveSpeed: 200, armor: 2, pickupRadius: 58, healthRegen: 2.0,
       perkShare: 0.20,
       apply: (p, c) => {
-        p.desecration += 1;
-        p.desecrationOverheal = WS.max(p.desecrationOverheal, WS.Config.desecrationOverheal);
-        p.desecrationShare += c.perkShare;
+        p.curdled += 1;
+        p.curdleOverheal = WS.max(p.curdleOverheal, WS.Config.curdleOverheal);
+        p.curdleShare += c.perkShare;
       },
       unlockHint: 'Let healing curdle. When enough Light has rotted in one run, a blade will answer.',
     },
-    demon_hunter: {
-      name: 'Nerosus', title: 'The Spineless One', className: 'Demon Hunter',
-      art: 'demon_hunter', color: [0.64, 0.19, 0.79], weapon: 'fel_beam',
-      description: 'Burned out both eyes to see the fel clearly. Says it was worth it. Has not blinked since.',
-      perk: 'Fel-attuned from the first swing - overkill damage always feeds Metamorphosis.',
+    ruinseeker: {
+      name: 'Nerosus', title: 'The Spineless One', className: 'Ruinseeker',
+      art: 'ruinseeker', color: [0.64, 0.19, 0.79], weapon: 'verdant_lance',
+      description: 'Burned out both eyes to see the ruin clearly. Says it was worth it. Has not blinked since.',
+      perk: 'Fel-attuned from the first swing - overkill damage always feeds Ruinform.',
       maxHealth: 120, moveSpeed: 235, armor: 0, pickupRadius: 60, healthRegen: 0,
       perkDodge: 0.05,
       apply: (p, c) => { p.felAttuned += 1; p.dodgeChance += c.perkDodge; },
-      unlockHint: 'Waste enough killing. Metamorphose again and again, and the glaives will find you.',
+      unlockHint: 'Waste enough killing. Take the ruinform again and again, and the glaives will find you.',
     },
   };
 
   WS.CharacterOrder = [
     'mage', 'priest', 'rogue', 'hunter', 'warrior', 'warlock', 'shaman',
-    'paladin', 'death_knight', 'demon_hunter',
+    'paladin', 'graveblade', 'ruinseeker',
   ];
 
 })(window.WS);
@@ -2165,128 +2254,128 @@ window.WS = window.WS || {};
 (function (WS) {
 
   WS.Weapons = {
-    arcane_missiles: {
-      name: 'Arcane Missiles', school: 'arcane', behavior: 'aimed', art: 'missile',
+    seeking_motes: {
+      name: 'Seeking Motes', school: 'arcane', behavior: 'aimed', art: 'missile',
       cooldown: 0.85, damage: 6, speed: 370, projectiles: 3, pierce: 2, range: 560,
       homing: true, life: 2.2, radius: 6, burst: true,
-      description: 'A rapid volley of small seeking missiles that curve through the crowd.',
-      evolveName: 'Arcane Barrage', evolvePairing: 'quantity',
-      evolveDescription: 'The missiles multiply beyond counting.',
+      description: 'A rapid volley of small seeking motes that curve through the crowd.',
+      evolveName: 'Mote Cascade', evolvePairing: 'quantity',
+      evolveDescription: 'The motes multiply beyond counting.',
     },
-    fireball: {
-      name: 'Fireball', school: 'fire', behavior: 'aimed', art: 'ember',
+    cinderfall: {
+      name: 'Cinderfall', school: 'fire', behavior: 'aimed', art: 'ember',
       cooldown: 1.60, damage: 34, speed: 380, projectiles: 1, pierce: 0, range: 600,
       splash: 70, life: 2.4, radius: 10,
       description: 'A slow, heavy cinder that bursts on impact.',
-      evolveName: 'Pyroblast', evolvePairing: 'area',
+      evolveName: 'Fallen Star', evolvePairing: 'area',
       evolveDescription: 'The cinder becomes a falling star.',
     },
-    frostbolt: {
-      name: 'Frostbolt', school: 'frost', behavior: 'aimed', art: 'shard',
+    rimeshard: {
+      name: 'Rimeshard', school: 'frost', behavior: 'aimed', art: 'shard',
       cooldown: 1.10, damage: 20, speed: 400, projectiles: 1, pierce: 1, range: 580,
       slowFactor: 0.55, slowDuration: 2.0, life: 2.2, radius: 9,
       description: 'Bitter cold that slows whatever it strikes.',
-      evolveName: 'Icebound Fury', evolvePairing: 'haste',
+      evolveName: 'Deepwinter', evolvePairing: 'haste',
       evolveDescription: 'Winter itself takes the field.',
     },
-    chain_lightning: {
-      name: 'Chain Lightning', school: 'nature', behavior: 'chain',
+    arcweb: {
+      name: 'Arcweb', school: 'nature', behavior: 'chain',
       color: [0.55, 0.80, 1.00], art: 'spark',
       cooldown: 1.50, damage: 30, chains: 4, range: 250,
       description: 'Lightning that leaps from foe to foe.',
-      evolveName: "Stormcaller's Wrath", evolvePairing: 'precision',
+      evolveName: 'Skybreak', evolvePairing: 'precision',
       evolveDescription: 'The sky answers every call.',
     },
-    holy_nova: {
-      name: 'Holy Nova', school: 'holy', behavior: 'nova', art: 'ring',
+    dawnpulse: {
+      name: 'Dawnpulse', school: 'holy', behavior: 'nova', art: 'ring',
       cooldown: 2.40, damage: 30, radius: 150, expandTime: 0.35, knockback: 26,
       description: 'A ring of Light erupts outward from the survivor.',
       evolveName: 'Circle of Dawn', evolvePairing: 'vitality',
       evolveDescription: 'Each dawn mends the faithful.', evolvedHeal: 3,
     },
-    fel_beam: {
-      name: 'Fel Beam', school: 'nature', behavior: 'beam', art: 'beam',
+    verdant_lance: {
+      name: 'Verdant Lance', school: 'nature', behavior: 'beam', art: 'beam',
       cooldown: 1.30, damage: 22, range: 620, beamWidth: 26,
       metaWidthMult: 1.8, color: [0.55, 1.00, 0.20],
-      description: 'A lance of fel that burns everything standing in its path.',
-      evolveName: 'Eye Beam', evolvePairing: 'dodge',
+      description: 'A lance of green fire that burns everything standing in its path.',
+      evolveName: 'Verdant Gaze', evolvePairing: 'dodge',
       evolveDescription: 'The gaze widens until the world is a line of green fire.',
     },
-    death_coil: {
-      name: 'Death Coil', school: 'shadow', behavior: 'aimed', art: 'coil',
+    grave_tether: {
+      name: 'Grave Tether', school: 'shadow', behavior: 'aimed', art: 'coil',
       cooldown: 1.45, damage: 28, speed: 420, projectiles: 1, pierce: 1,
       range: 600, life: 2.4, radius: 10, heal: 4, color: [0.55, 0.20, 0.75],
       description: 'A coil of dark magic that wounds the living and knits your own flesh back together.',
-      evolveName: 'Coil of Anguish', evolvePairing: 'wisdom',
-      evolveDescription: 'The coil takes more, and gives more back.', evolvedHeal: 5,
+      evolveName: 'Tether of Anguish', evolvePairing: 'wisdom',
+      evolveDescription: 'The tether takes more, and gives more back.', evolvedHeal: 5,
     },
-    death_and_decay: {
-      name: 'Death and Decay', school: 'shadow', behavior: 'zone', art: 'zone',
+    blightfield: {
+      name: 'Blightfield', school: 'shadow', behavior: 'zone', art: 'zone',
       cooldown: 3.90, damage: 13, radius: 130, duration: 4.5, tickRate: 0.45,
       color: [0.45, 0.85, 0.35],
       description: 'Corrupts the ground underfoot; anything standing in it rots.',
       evolveName: 'Blighted Earth', evolvePairing: 'chilling_presence',
       evolveDescription: 'The blight spreads wider the longer it feeds.', evolvedHeal: 1,
     },
-    death_strike: {
-      name: 'Death Strike', school: 'shadow', behavior: 'nova', art: 'ring',
+    reaving_arc: {
+      name: 'Reaving Arc', school: 'shadow', behavior: 'nova', art: 'ring',
       cooldown: 2.20, damage: 34, radius: 130, expandTime: 0.28, knockback: 20,
       heal: 6, color: [0.85, 0.15, 0.20],
-      description: 'A sweeping runeblade that carves health out of the wound it makes.',
-      evolveName: 'Marrowrend', evolvePairing: 'recovery',
+      description: 'A sweeping graveblade that carves health out of the wound it makes.',
+      evolveName: 'Rend and Mend', evolvePairing: 'recovery',
       evolveDescription: 'The blade drinks deeper than any wound can hold.', evolvedHeal: 6,
     },
-    consecration: {
-      name: 'Consecration', school: 'holy', behavior: 'zone', art: 'zone',
+    hallowed_ring: {
+      name: 'Hallowed Ring', school: 'holy', behavior: 'zone', art: 'zone',
       cooldown: 3.60, damage: 11, radius: 120, duration: 4.0, tickRate: 0.5,
       description: "Hallows the ground beneath the survivor's feet.",
       evolveName: 'Hallowed Ground', evolvePairing: 'armor',
       evolveDescription: 'Sacred ground that shelters as it burns.', evolvedHeal: 1,
     },
-    shadow_bolt: {
-      name: 'Shadow Bolt', school: 'shadow', behavior: 'aimed', art: 'bolt',
+    umbral_bolt: {
+      name: 'Umbral Bolt', school: 'shadow', behavior: 'aimed', art: 'bolt',
       cooldown: 1.00, damage: 26, speed: 400, projectiles: 1, pierce: 2, range: 580,
       life: 2.4, radius: 9,
       description: 'Bolts of shadow that tear straight through ranks.',
-      evolveName: 'Chaos Bolt', evolvePairing: 'might',
-      evolveDescription: 'Fel chaos that nothing can stop.',
+      evolveName: 'Ruin Bolt', evolvePairing: 'might',
+      evolveDescription: 'Ruin that nothing can stop.',
     },
-    fan_of_knives: {
-      name: 'Fan of Knives', school: 'physical', behavior: 'ring', art: 'dagger',
+    knifestorm: {
+      name: 'Knifestorm', school: 'physical', behavior: 'ring', art: 'dagger',
       cooldown: 1.30, damage: 18, speed: 380, projectiles: 6, pierce: 1,
       life: 0.9, radius: 8,
       description: 'A whirling ring of thrown steel.',
-      evolveName: 'Blade Flurry', evolvePairing: 'fleetfoot',
+      evolveName: 'Steel Flurry', evolvePairing: 'fleetfoot',
       evolveDescription: 'The steel never stops moving.',
     },
-    whirlwind: {
-      name: 'Whirlwind', school: 'physical', behavior: 'orbit', art: 'axe',
+    axe_gyre: {
+      name: 'Axe Gyre', school: 'physical', behavior: 'orbit', art: 'axe',
       color: [0.85, 0.88, 0.96], evolvedColor: [1.00, 0.55, 0.25],
       cooldown: 5.50, damage: 22, projectiles: 2, orbitRadius: 85, orbitSpeed: 4.2,
       duration: 3.2, radius: 20,
       description: 'Axes circle the survivor, shredding all who close in.',
-      evolveName: 'Bladestorm', evolvePairing: 'ferocity',
+      evolveName: 'Gyrestorm', evolvePairing: 'ferocity',
       evolveDescription: 'Become the storm of blades.',
     },
-    multishot: {
-      name: 'Multi-Shot', school: 'physical', behavior: 'spray', art: 'arrow',
+    volley: {
+      name: 'Volley', school: 'physical', behavior: 'spray', art: 'arrow',
       cooldown: 1.40, damage: 17, speed: 460, projectiles: 3, pierce: 1, range: 620,
       spread: 0.16, life: 1.7, radius: 8,
       description: 'A widening spread of hunting arrows.',
-      evolveName: 'Volley', evolvePairing: 'velocity',
+      evolveName: 'Arrowfall', evolvePairing: 'velocity',
       evolveDescription: 'The sky darkens with arrows.',
     },
-    moonfire: {
-      name: 'Moonfire', school: 'arcane', behavior: 'aimed', art: 'moon',
+    moonbrand: {
+      name: 'Moonbrand', school: 'arcane', behavior: 'aimed', art: 'moon',
       cooldown: 1.20, damage: 24, speed: 320, projectiles: 1, pierce: 0, range: 560,
       homing: true, life: 2.6, radius: 9,
       description: 'Moonlit flame that tracks its prey.',
-      evolveName: 'Starfall', evolvePairing: 'magnet',
-      evolveDescription: 'Stars fall wherever enemies gather.',
+      evolveName: 'Moonfall', evolvePairing: 'magnet',
+      evolveDescription: 'Moons fall wherever enemies gather.',
       evolvedBehavior: 'storm', strikes: 5, stormRadius: 230, splash: 60,
     },
-    avengers_shield: {
-      name: "Avenger's Shield", school: 'holy', behavior: 'bounce', art: 'shield',
+    judgement_disc: {
+      name: 'Judgement Disc', school: 'holy', behavior: 'bounce', art: 'shield',
       cooldown: 2.60, damage: 30, speed: 430, projectiles: 1, bounces: 3, range: 600,
       life: 3.0, radius: 11,
       description: 'A hurled shield that ricochets between enemies.',
@@ -2295,16 +2384,16 @@ window.WS = window.WS || {};
     },
 
     /* ---- Union super-weapons: never offered as ordinary new weapons ------ */
-    union_astral: {
-      name: 'Astral Communion', school: 'arcane', behavior: 'storm', isUnion: true, art: 'moon',
+    union_firmament: {
+      name: 'Firmament', school: 'arcane', behavior: 'storm', isUnion: true, art: 'moon',
       cooldown: 1.05, damage: 20, strikes: 7, stormRadius: 270, splash: 72, radius: 12,
       description: 'Sun and moon rain from the heavens without end.',
     },
-    union_fel: {
-      name: 'Fel Annihilation', school: 'shadow', behavior: 'aimed', isUnion: true, art: 'chaos',
+    union_ruin: {
+      name: 'Ruin Unbound', school: 'shadow', behavior: 'aimed', isUnion: true, art: 'chaos',
       cooldown: 0.9, damage: 28, speed: 470, projectiles: 2, pierce: 4, range: 620,
       splash: 82, homing: true, life: 2.6, radius: 12, color: [0.60, 0.30, 1.00],
-      description: 'Fel chaos that devours everything in its path.',
+      description: 'Ruin that devours everything in its path.',
     },
     union_steel: {
       name: 'Storm of Steel', school: 'physical', behavior: 'ring', isUnion: true, art: 'dagger',
@@ -2316,35 +2405,35 @@ window.WS = window.WS || {};
       cooldown: 1.8, damage: 26, radius: 205, expandTime: 0.4, knockback: 34,
       description: 'The Light claims this ground as its own.',
     },
-    union_thunderfury: {
-      name: 'Thunderfury', school: 'nature', behavior: 'orbit', isUnion: true, art: 'sword',
+    union_stormcall: {
+      name: 'Stormcall', school: 'nature', behavior: 'orbit', isUnion: true, art: 'sword',
       cooldown: 4.60, damage: 26, projectiles: 6, orbitRadius: 95, orbitSpeed: 5.0,
       duration: 4.0, radius: 22, procChain: 0.35, color: [0.45, 0.85, 1.00],
-      description: 'Blessed blade of the Windseeker: a cyclone of steel that answers every cut with lightning.',
+      description: 'Blessed blade of the Tempest: a cyclone of steel that answers every cut with lightning.',
     },
   };
 
   // Shared level-up pool. Every class's starting weapon is findable by anyone.
   WS.WeaponOrder = [
-    'arcane_missiles', 'fireball', 'frostbolt', 'chain_lightning', 'holy_nova',
-    'consecration', 'shadow_bolt', 'fan_of_knives', 'whirlwind', 'multishot',
-    'moonfire', 'avengers_shield', 'death_strike', 'fel_beam',
-    'death_coil', 'death_and_decay',
+    'seeking_motes', 'cinderfall', 'rimeshard', 'arcweb', 'dawnpulse',
+    'hallowed_ring', 'umbral_bolt', 'knifestorm', 'axe_gyre', 'volley',
+    'moonbrand', 'judgement_disc', 'reaving_arc', 'verdant_lance',
+    'grave_tether', 'blightfield',
   ];
 
   // Both sources must be fully evolved to merge; the union frees a slot.
   WS.Unions = [
-    { result: 'union_astral', from: ['arcane_missiles', 'moonfire'] },
-    { result: 'union_fel', from: ['fireball', 'shadow_bolt'] },
-    { result: 'union_steel', from: ['fan_of_knives', 'multishot'] },
-    { result: 'union_sanctuary', from: ['holy_nova', 'consecration'] },
-    { result: 'union_thunderfury', from: ['whirlwind', 'chain_lightning'] },
+    { result: 'union_firmament', from: ['seeking_motes', 'moonbrand'] },
+    { result: 'union_ruin', from: ['cinderfall', 'umbral_bolt'] },
+    { result: 'union_steel', from: ['knifestorm', 'volley'] },
+    { result: 'union_sanctuary', from: ['dawnpulse', 'hallowed_ring'] },
+    { result: 'union_stormcall', from: ['axe_gyre', 'arcweb'] },
   ];
 
 })(window.WS);
 
 /* ===== src/data/enemies.js ===== */
-/* Rank-and-file enemies. Base stats are minute-zero Elwynn; the wave manager
+/* Rank-and-file enemies. Base stats are minute-zero Thornhollow; the wave manager
  * scales health/damage/xp with time and map difficulty.
  *   family - statistics + achievements     ranged - stops and lobs bolts
  *   art    - procedural sprite archetype   tint   - body palette key colour */
@@ -2352,43 +2441,43 @@ window.WS = window.WS || {};
 (function (WS) {
 
   WS.Enemies = {
-    /* --------------------------------------------------------- Elwynn ---- */
-    kobold: {
-      name: 'Kobold Tunneler', family: 'kobold', art: 'kobold', tint: [0.95, 0.85, 0.55],
+    /* ------------------------------------------------------ Thornhollow ---- */
+    lampling: {
+      name: 'Lampling Tunneler', family: 'lampling', art: 'lampling', tint: [0.95, 0.85, 0.55],
       health: 18, speed: 64, damage: 8, xp: 3, radius: 13,
     },
     boar: {
-      name: 'Stonetusk Boar', family: 'beast', art: 'boar', tint: [0.68, 0.46, 0.28],
+      name: 'Thicket Tusker', family: 'beast', art: 'boar', tint: [0.68, 0.46, 0.28],
       health: 26, speed: 76, damage: 9, xp: 3, radius: 15,
     },
     wolf: {
       name: 'Longtooth Wolf', family: 'beast', art: 'wolf', tint: [0.62, 0.62, 0.68],
       health: 22, speed: 92, damage: 8, xp: 4, radius: 14,
     },
-    murloc: {
-      name: 'Murloc Forager', family: 'murloc', art: 'murloc', tint: [0.45, 0.90, 0.60],
+    gilkin: {
+      name: 'Gilkin Forager', family: 'gilkin', art: 'gilkin', tint: [0.45, 0.90, 0.60],
       health: 20, speed: 88, damage: 7, xp: 4, radius: 14,
     },
-    murloc_oracle: {
-      name: 'Murloc Tidecaller', family: 'murloc', art: 'murloc', tint: [0.40, 0.65, 1.00],
+    gilkin_tidecaller: {
+      name: 'Gilkin Tidecaller', family: 'gilkin', art: 'gilkin', tint: [0.40, 0.65, 1.00],
       health: 26, speed: 70, damage: 9, xp: 6, radius: 14, caster: true,
       ranged: { range: 260, cooldown: 3.2, speed: 220, school: 'frost' },
     },
-    gnoll: {
-      name: 'Riverpaw Mongrel', family: 'gnoll', art: 'gnoll', tint: [0.85, 0.70, 0.45],
+    mongrel: {
+      name: 'Snarlpack Mongrel', family: 'mongrel', art: 'mongrel', tint: [0.85, 0.70, 0.45],
       health: 48, speed: 60, damage: 13, xp: 6, radius: 18,
     },
-    defias: {
-      name: 'Defias Footpad', family: 'defias', art: 'bandit', tint: [1.00, 0.45, 0.40],
+    kerchief: {
+      name: 'Kerchief Footpad', family: 'kerchief', art: 'bandit', tint: [1.00, 0.45, 0.40],
       health: 55, speed: 95, damage: 13, xp: 8, radius: 16,
     },
-    /* ------------------------------------------------------- Westfall ---- */
-    defias_pillager: {
-      name: 'Defias Pillager', family: 'defias', art: 'bandit', tint: [1.00, 0.70, 0.40],
+    /* ------------------------------------------------------ Dustreach ---- */
+    kerchief_pillager: {
+      name: 'Kerchief Pillager', family: 'kerchief', art: 'bandit', tint: [1.00, 0.70, 0.40],
       health: 40, speed: 68, damage: 11, xp: 8, radius: 15, caster: true,
       ranged: { range: 280, cooldown: 2.8, speed: 240, school: 'fire' },
     },
-    harvest_golem: {
+    harvest_reaper: {
       name: 'Harvest Reaper', family: 'mechanical', art: 'golem', tint: [0.80, 0.70, 0.40],
       health: 95, speed: 46, damage: 17, xp: 10, radius: 20,
     },
@@ -2400,11 +2489,11 @@ window.WS = window.WS || {};
       name: 'Coyote Packrunner', family: 'beast', art: 'wolf', tint: [0.82, 0.68, 0.42],
       health: 30, speed: 96, damage: 10, xp: 5, radius: 14,
     },
-    knuckleduster: {
-      name: 'Defias Knuckleduster', family: 'defias', art: 'brute', tint: [0.90, 0.45, 0.35],
+    bruiser: {
+      name: 'Kerchief Bruiser', family: 'kerchief', art: 'brute', tint: [0.90, 0.45, 0.35],
       health: 80, speed: 78, damage: 16, xp: 10, radius: 17,
     },
-    /* ------------------------------------------------------- Duskwood ---- */
+    /* ------------------------------------------------------ Mourneholt ---- */
     ghoul: {
       name: 'Rotting Shambler', family: 'undead', art: 'ghoul', tint: [0.60, 0.80, 0.50],
       health: 60, speed: 55, damage: 14, xp: 8, radius: 17,
@@ -2418,43 +2507,43 @@ window.WS = window.WS || {};
       health: 40, speed: 60, damage: 11, xp: 9, radius: 15, caster: true,
       ranged: { range: 270, cooldown: 3.0, speed: 220, school: 'frost', slowFactor: 0.6, slowDuration: 1.2 },
     },
-    worgen: {
-      name: 'Blackfang Worgen', family: 'worgen', art: 'worgen', tint: [0.55, 0.52, 0.62],
+    moonwretch: {
+      name: 'Blackfang Moonwretch', family: 'moonwretch', art: 'moonwretch', tint: [0.55, 0.52, 0.62],
       health: 75, speed: 105, damage: 16, xp: 10, radius: 17,
     },
     spider: {
       name: 'Venomweb Creeper', family: 'beast', art: 'spider', tint: [0.42, 0.32, 0.55],
       health: 38, speed: 90, damage: 11, xp: 6, radius: 14,
     },
-    /* -------------------------------------------------------- Barrens ---- */
-    plainstrider: {
-      name: 'Greater Plainstrider', family: 'beast', art: 'strider', tint: [0.75, 0.55, 0.80],
+    /* --------------------------------------------------- Ochre Plains ---- */
+    longstrider: {
+      name: 'Greater Longstrider', family: 'beast', art: 'strider', tint: [0.75, 0.55, 0.80],
       health: 55, speed: 80, damage: 13, xp: 8, radius: 17,
     },
     raptor: {
-      name: 'Sunscale Raptor', family: 'beast', art: 'raptor', tint: [0.90, 0.60, 0.25],
+      name: 'Sunhide Raptor', family: 'beast', art: 'raptor', tint: [0.90, 0.60, 0.25],
       health: 60, speed: 108, damage: 15, xp: 9, radius: 16,
     },
-    quilboar: {
-      name: 'Razormane Battleguard', family: 'quilboar', art: 'quilboar', tint: [0.85, 0.55, 0.40],
+    bristlekin: {
+      name: 'Thornhide Battleguard', family: 'bristlekin', art: 'bristlekin', tint: [0.85, 0.55, 0.40],
       health: 90, speed: 65, damage: 17, xp: 11, radius: 18,
     },
-    harpy: {
-      name: 'Witchwing Windcaller', family: 'harpy', art: 'harpy', tint: [0.65, 0.85, 1.00],
+    shrikewing: {
+      name: 'Shrikewing Windcaller', family: 'shrikewing', art: 'shrikewing', tint: [0.65, 0.85, 1.00],
       health: 48, speed: 75, damage: 12, xp: 10, radius: 15, caster: true,
       ranged: { range: 290, cooldown: 2.6, speed: 250, school: 'nature' },
     },
-    centaur: {
-      name: 'Kolkar Outrunner', family: 'centaur', art: 'centaur', tint: [0.80, 0.60, 0.42],
+    karrash: {
+      name: 'Karrash Outrunner', family: 'karrash', art: 'karrash', tint: [0.80, 0.60, 0.42],
       health: 85, speed: 95, damage: 16, xp: 11, radius: 18,
     },
     lion: {
       name: 'Savannah Prowler', family: 'beast', art: 'cat', tint: [0.88, 0.72, 0.40],
       health: 65, speed: 100, damage: 15, xp: 9, radius: 16,
     },
-    /* ------------------------------------------------------- Icecrown ---- */
-    scourge_ghoul: {
-      name: 'Scourge Ghoul', family: 'undead', art: 'ghoul', tint: [0.55, 0.88, 0.95],
+    /* ----------------------------------------------------- Pale Wastes ---- */
+    pale_ghoul: {
+      name: 'Palewaste Ghoul', family: 'undead', art: 'ghoul', tint: [0.55, 0.88, 0.95],
       health: 85, speed: 72, damage: 17, xp: 10, radius: 17,
     },
     crypt_fiend: {
@@ -2478,20 +2567,20 @@ window.WS = window.WS || {};
 
   /* Elite champions: bigger, gold-glowing, name-plated, always drop a chest. */
   WS.Elites = {
-    riverpaw_bonesnapper: {
-      name: 'Riverpaw Bonesnapper', family: 'gnoll', elite: true, art: 'gnoll',
+    snarlpack_bonesnapper: {
+      name: 'Snarlpack Bonesnapper', family: 'mongrel', elite: true, art: 'mongrel',
       tint: [1.00, 0.72, 0.15], health: 340, speed: 62, damage: 22, xp: 34, radius: 28,
     },
-    defias_enforcer: {
-      name: 'Defias Enforcer', family: 'defias', elite: true, art: 'brute',
+    kerchief_enforcer: {
+      name: 'Kerchief Enforcer', family: 'kerchief', elite: true, art: 'brute',
       tint: [1.00, 0.45, 0.30], health: 480, speed: 72, damage: 26, xp: 44, radius: 28,
     },
     bone_sentinel: {
       name: 'Bone Sentinel', family: 'undead', elite: true, art: 'skeleton',
       tint: [0.90, 0.95, 1.00], health: 620, speed: 58, damage: 30, xp: 56, radius: 30,
     },
-    kolkar_battlelord: {
-      name: 'Kolkar Battlelord', family: 'centaur', elite: true, art: 'centaur',
+    karrash_battlelord: {
+      name: 'Karrash Battlelord', family: 'karrash', elite: true, art: 'karrash',
       tint: [1.00, 0.62, 0.20], health: 780, speed: 78, damage: 34, xp: 68, radius: 30,
     },
     deathbound_vanguard: {
@@ -2516,41 +2605,41 @@ window.WS = window.WS || {};
 (function (WS) {
 
   WS.Bosses = {
-    /* --------------------------------------------------------- Elwynn ---- */
+    /* ------------------------------------------------------ Thornhollow ---- */
     grimtunnel: {
-      name: 'Foreman Grimtunnel', family: 'kobold', art: 'kobold', tint: [1.00, 0.90, 0.55],
+      name: 'Foreman Grimtunnel', family: 'lampling', art: 'lampling', tint: [1.00, 0.90, 0.55],
       health: 1900, speed: 55, damage: 30, xp: 160, radius: 40, gold: 35, interval: 4.0,
-      patterns: [{ type: 'summon', id: 'kobold', count: 7 }, { type: 'charge' }],
-      yell: 'You no take candle!',
+      patterns: [{ type: 'summon', id: 'lampling', count: 7 }, { type: 'charge' }],
+      yell: 'Mine! My light! MINE!',
     },
     murkgill: {
-      name: 'Murk-Gill the Ancient', family: 'murloc', art: 'murloc', tint: [0.30, 0.95, 0.85],
+      name: 'Murk-Gill the Ancient', family: 'gilkin', art: 'gilkin', tint: [0.30, 0.95, 0.85],
       health: 2900, speed: 58, damage: 34, xp: 220, radius: 44, gold: 40,
       interval: 3.6, school: 'frost',
-      patterns: [{ type: 'volley', bolts: 5 }, { type: 'summon', id: 'murloc', count: 8 }],
-      yell: 'Mrglglrlglgl! RwlRwlRwl!',
+      patterns: [{ type: 'volley', bolts: 5 }, { type: 'summon', id: 'gilkin', count: 8 }],
+      yell: 'Blorp! Blorp-blorp-BLORRRP!',
     },
     gnarlfang: {
-      name: 'Gnarlfang the Ravager', family: 'gnoll', art: 'gnoll', tint: [0.95, 0.55, 0.20],
+      name: 'Gnarlfang the Ravager', family: 'mongrel', art: 'mongrel', tint: [0.95, 0.55, 0.20],
       health: 4200, speed: 60, damage: 40, xp: 300, radius: 48, gold: 50, interval: 3.4,
-      patterns: [{ type: 'summon', id: 'gnoll', count: 6 }, { type: 'charge' }],
-      yell: 'This forest belongs to the Riverpaw!',
+      patterns: [{ type: 'summon', id: 'mongrel', count: 6 }, { type: 'charge' }],
+      yell: 'This forest belongs to the Snarlpack!',
     },
     redcowl: {
-      name: 'Captain Redcowl', family: 'defias', art: 'bandit', tint: [0.95, 0.25, 0.20],
+      name: 'Captain Redcowl', family: 'kerchief', art: 'bandit', tint: [0.95, 0.25, 0.20],
       health: 5600, speed: 70, damage: 44, xp: 360, radius: 46, gold: 55,
       interval: 3.2, school: 'physical',
       patterns: [{ type: 'volley', bolts: 7 }, { type: 'charge' }],
-      yell: 'The Brotherhood sends its regards!',
+      yell: 'The Kerchiefs send their regards!',
     },
     fenroth: {
-      name: 'Fenroth, Terror of the Vale', family: 'beast', art: 'worgen', tint: [0.85, 0.20, 0.20],
+      name: 'Fenroth, Terror of the Vale', family: 'beast', art: 'moonwretch', tint: [0.85, 0.20, 0.20],
       health: 9000, speed: 66, damage: 52, xp: 700, radius: 54, gold: 100,
       interval: 3.0, school: 'shadow',
       patterns: [{ type: 'summon', id: 'wolf', count: 8 }, { type: 'charge' }, { type: 'ring', bolts: 10 }],
       yell: 'The vale runs red tonight!',
     },
-    /* ------------------------------------------------------- Westfall ---- */
+    /* ------------------------------------------------------ Dustreach ---- */
     harvestking: {
       name: 'The Harvest King', family: 'mechanical', art: 'golem', tint: [1.00, 0.80, 0.30],
       health: 4800, speed: 48, damage: 42, xp: 320, radius: 50, gold: 50,
@@ -2559,17 +2648,17 @@ window.WS = window.WS || {};
       yell: 'CROPS. REQUIRE. BLOOD.',
     },
     masked_admiral: {
-      name: 'The Masked Admiral', family: 'defias', art: 'bandit', tint: [0.90, 0.20, 0.25],
+      name: 'The Masked Admiral', family: 'kerchief', art: 'bandit', tint: [0.90, 0.20, 0.25],
       health: 11000, speed: 72, damage: 55, xp: 800, radius: 52, gold: 110,
       interval: 2.9, school: 'physical',
-      patterns: [{ type: 'volley', bolts: 9 }, { type: 'summon', id: 'defias', count: 8 }, { type: 'charge' }],
+      patterns: [{ type: 'volley', bolts: 9 }, { type: 'summon', id: 'kerchief', count: 8 }, { type: 'charge' }],
       yell: "You'll never take me alive, lapdog!",
     },
-    /* ------------------------------------------------------- Duskwood ---- */
+    /* ------------------------------------------------------ Mourneholt ---- */
     barkfang: {
-      name: 'Old Barkfang', family: 'worgen', art: 'worgen', tint: [0.70, 0.62, 0.80],
+      name: 'Old Barkfang', family: 'moonwretch', art: 'moonwretch', tint: [0.70, 0.62, 0.80],
       health: 5200, speed: 74, damage: 42, xp: 330, radius: 46, gold: 50, interval: 3.4,
-      patterns: [{ type: 'charge' }, { type: 'summon', id: 'worgen', count: 5 }],
+      patterns: [{ type: 'charge' }, { type: 'summon', id: 'moonwretch', count: 5 }],
       yell: 'The hunt is joined!',
     },
     silkfang: {
@@ -2586,32 +2675,32 @@ window.WS = window.WS || {};
       patterns: [{ type: 'summon', id: 'skeleton', count: 7 }, { type: 'volley', bolts: 7 }],
       yell: 'Death is a door. I walked back through it.',
     },
-    duskwraith: {
+    palewraith: {
       name: 'The Pale Wraith', family: 'undead', art: 'wraith', tint: [0.80, 0.85, 1.00],
       health: 13500, speed: 62, damage: 58, xp: 900, radius: 52, gold: 120,
       interval: 2.8, school: 'shadow',
       patterns: [{ type: 'volley', bolts: 9 }, { type: 'summon', id: 'ghoul', count: 8 }, { type: 'ring', bolts: 12 }],
       yell: 'The candles gutter. The dark remains.',
     },
-    /* -------------------------------------------------------- Barrens ---- */
+    /* --------------------------------------------------- Ochre Plains ---- */
     thornmane: {
-      name: 'Warlord Bristlegore', family: 'quilboar', art: 'quilboar', tint: [0.95, 0.45, 0.25],
+      name: 'Warlord Bristlegore', family: 'bristlekin', art: 'bristlekin', tint: [0.95, 0.45, 0.25],
       health: 6800, speed: 62, damage: 48, xp: 400, radius: 48, gold: 55, interval: 3.4,
-      patterns: [{ type: 'summon', id: 'quilboar', count: 6 }, { type: 'charge' }],
-      yell: 'Razormane! Take back the land!',
+      patterns: [{ type: 'summon', id: 'bristlekin', count: 6 }, { type: 'charge' }],
+      yell: 'Thornhide! Take back the land!',
     },
     shriekfeather: {
-      name: 'Windmatron Shriekfeather', family: 'harpy', art: 'harpy', tint: [0.60, 0.85, 1.00],
+      name: 'Windmatron Shriekfeather', family: 'shrikewing', art: 'shrikewing', tint: [0.60, 0.85, 1.00],
       health: 7600, speed: 68, damage: 50, xp: 440, radius: 46, gold: 60,
       interval: 3.2, school: 'nature',
-      patterns: [{ type: 'volley', bolts: 8 }, { type: 'summon', id: 'harpy', count: 6 }],
+      patterns: [{ type: 'volley', bolts: 8 }, { type: 'summon', id: 'shrikewing', count: 6 }],
       yell: 'The wind will strip your bones!',
     },
     kazrok: {
-      name: 'Warlord Kazrok of the Kolkar', family: 'centaur', art: 'centaur', tint: [1.00, 0.55, 0.15],
+      name: 'Warlord Kazrok of the Karrash', family: 'karrash', art: 'karrash', tint: [1.00, 0.55, 0.15],
       health: 9200, speed: 76, damage: 54, xp: 500, radius: 52, gold: 70, interval: 3.0,
-      patterns: [{ type: 'charge' }, { type: 'volley', bolts: 7 }, { type: 'summon', id: 'centaur', count: 5 }],
-      yell: 'Kolkar own these plains! Die, two-legs!',
+      patterns: [{ type: 'charge' }, { type: 'volley', bolts: 7 }, { type: 'summon', id: 'karrash', count: 5 }],
+      yell: 'The Karrash own these plains! Die, two-legs!',
     },
     stormhide: {
       name: 'Stormhide the Colossus', family: 'beast', art: 'strider', tint: [0.40, 0.70, 1.00],
@@ -2620,13 +2709,13 @@ window.WS = window.WS || {};
       patterns: [{ type: 'ring', bolts: 12 }, { type: 'charge' }, { type: 'volley', bolts: 9 }],
       yell: '*thunder rolls across the savannah*',
     },
-    /* ------------------------------------------------------- Icecrown ---- */
+    /* ----------------------------------------------------- Pale Wastes ---- */
     boneweaver: {
-      name: "Kel'goth the Boneweaver", family: 'undead', art: 'necromancer', tint: [0.80, 0.55, 1.00],
+      name: 'Ossuar the Boneweaver', family: 'undead', art: 'necromancer', tint: [0.80, 0.55, 1.00],
       health: 8800, speed: 58, damage: 52, xp: 480, radius: 50, gold: 65,
       interval: 3.2, school: 'shadow',
-      patterns: [{ type: 'summon', id: 'scourge_ghoul', count: 8 }, { type: 'volley', bolts: 8 }],
-      yell: 'Your bones will serve the Scourge!',
+      patterns: [{ type: 'summon', id: 'pale_ghoul', count: 8 }, { type: 'volley', bolts: 8 }],
+      yell: 'Your bones will serve the Pale!',
     },
     gorestitch: {
       name: 'Gorestitch the Amalgam', family: 'undead', art: 'abomination', tint: [0.75, 0.95, 0.55],
@@ -2636,7 +2725,7 @@ window.WS = window.WS || {};
       yell: 'Fresh meat for the pile!',
     },
     marrowfrost: {
-      name: 'Lich-Lord Marrowfrost', family: 'undead', art: 'lich', tint: [0.55, 0.85, 1.00],
+      name: 'Marrowfrost, the Pale Lord', family: 'undead', art: 'lich', tint: [0.55, 0.85, 1.00],
       health: 22000, speed: 56, damage: 70, xp: 1400, radius: 60, gold: 200,
       interval: 2.7, school: 'frost',
       patterns: [
@@ -2679,10 +2768,10 @@ window.WS = window.WS || {};
 (function (WS) {
 
   WS.Maps = {
-    elwynn: {
-      name: 'Elwynn Forest',
-      subtitle: 'The quiet woods beyond Goldshire',
-      description: 'Gentle hills, hungry kobolds, and a gnoll problem the Stormwind guard keeps ignoring.',
+    thornhollow: {
+      name: 'Thornhollow',
+      subtitle: 'The quiet woods beyond the last inn',
+      description: 'Gentle hills, hungry lamplings, and a mongrel problem the town watch keeps ignoring.',
       art: 'forest',
       ground: [0.09, 0.16, 0.09], groundAlt: [0.12, 0.21, 0.11],
       fog: [0.05, 0.10, 0.07],
@@ -2690,19 +2779,19 @@ window.WS = window.WS || {};
       difficulty: 1.0, goldMult: 1.0,
       props: ['tree', 'stump', 'rock', 'flower'],
       phases: [
-        { at: 0, interval: 1.10, count: 2, roster: [{ id: 'kobold', weight: 45 }, { id: 'boar', weight: 30 }, { id: 'wolf', weight: 25 }] },
-        { at: 75, interval: 0.95, count: 2, roster: [{ id: 'kobold', weight: 25 }, { id: 'murloc', weight: 35 }, { id: 'wolf', weight: 20 }, { id: 'boar', weight: 20 }] },
-        { at: 180, interval: 0.85, count: 3, roster: [{ id: 'murloc', weight: 30 }, { id: 'gnoll', weight: 30 }, { id: 'kobold', weight: 20 }, { id: 'murloc_oracle', weight: 20 }], elite: 'riverpaw_bonesnapper', eliteChance: 0.05 },
-        { at: 330, interval: 0.72, count: 3, roster: [{ id: 'gnoll', weight: 35 }, { id: 'defias', weight: 25 }, { id: 'murloc_oracle', weight: 20 }, { id: 'wolf', weight: 20 }], elite: 'riverpaw_bonesnapper', eliteChance: 0.06 },
-        { at: 540, interval: 0.62, count: 4, roster: [{ id: 'defias', weight: 35 }, { id: 'gnoll', weight: 30 }, { id: 'murloc_oracle', weight: 20 }, { id: 'murloc', weight: 15 }], elite: 'defias_enforcer', eliteChance: 0.06 },
-        { at: 780, interval: 0.52, count: 5, roster: [{ id: 'defias', weight: 40 }, { id: 'gnoll', weight: 25 }, { id: 'wolf', weight: 15 }, { id: 'murloc_oracle', weight: 20 }], elite: 'defias_enforcer', eliteChance: 0.08 },
-        { at: 1020, interval: 0.45, count: 6, roster: [{ id: 'defias', weight: 40 }, { id: 'gnoll', weight: 30 }, { id: 'murloc_oracle', weight: 30 }], elite: 'defias_enforcer', eliteChance: 0.10 },
+        { at: 0, interval: 1.10, count: 2, roster: [{ id: 'lampling', weight: 45 }, { id: 'boar', weight: 30 }, { id: 'wolf', weight: 25 }] },
+        { at: 75, interval: 0.95, count: 2, roster: [{ id: 'lampling', weight: 25 }, { id: 'gilkin', weight: 35 }, { id: 'wolf', weight: 20 }, { id: 'boar', weight: 20 }] },
+        { at: 180, interval: 0.85, count: 3, roster: [{ id: 'gilkin', weight: 30 }, { id: 'mongrel', weight: 30 }, { id: 'lampling', weight: 20 }, { id: 'gilkin_tidecaller', weight: 20 }], elite: 'snarlpack_bonesnapper', eliteChance: 0.05 },
+        { at: 330, interval: 0.72, count: 3, roster: [{ id: 'mongrel', weight: 35 }, { id: 'kerchief', weight: 25 }, { id: 'gilkin_tidecaller', weight: 20 }, { id: 'wolf', weight: 20 }], elite: 'snarlpack_bonesnapper', eliteChance: 0.06 },
+        { at: 540, interval: 0.62, count: 4, roster: [{ id: 'kerchief', weight: 35 }, { id: 'mongrel', weight: 30 }, { id: 'gilkin_tidecaller', weight: 20 }, { id: 'gilkin', weight: 15 }], elite: 'kerchief_enforcer', eliteChance: 0.06 },
+        { at: 780, interval: 0.52, count: 5, roster: [{ id: 'kerchief', weight: 40 }, { id: 'mongrel', weight: 25 }, { id: 'wolf', weight: 15 }, { id: 'gilkin_tidecaller', weight: 20 }], elite: 'kerchief_enforcer', eliteChance: 0.08 },
+        { at: 1020, interval: 0.45, count: 6, roster: [{ id: 'kerchief', weight: 40 }, { id: 'mongrel', weight: 30 }, { id: 'gilkin_tidecaller', weight: 30 }], elite: 'kerchief_enforcer', eliteChance: 0.10 },
       ],
       events: [
-        { at: 240, text: 'The Riverpaw pack closes in!', id: 'gnoll', count: 18 },
-        { at: 560, text: 'A tide of murlocs floods the banks!', id: 'murloc', count: 26 },
+        { at: 240, text: 'The Snarlpack closes in!', id: 'mongrel', count: 18 },
+        { at: 560, text: 'A tide of gilkin floods the banks!', id: 'gilkin', count: 26 },
         { at: 860, text: 'Wolves howl in the failing light!', id: 'wolf', count: 24 },
-        { at: 1060, text: 'The Defias spring their ambush!', id: 'defias', count: 22 },
+        { at: 1060, text: 'The Kerchiefs spring their ambush!', id: 'kerchief', count: 22 },
       ],
       bosses: [
         { at: 300, id: 'grimtunnel' }, { at: 630, id: 'murkgill' },
@@ -2711,30 +2800,30 @@ window.WS = window.WS || {};
       ],
     },
 
-    westfall: {
-      name: 'Westfall',
+    dustreach: {
+      name: 'The Dustreach',
       subtitle: 'A wind-scoured, lawless frontier',
-      description: 'The harvest golems never stopped working. The Defias never stopped taking.',
+      description: 'The harvest reapers never stopped working. The Kerchiefs never stopped taking.',
       art: 'plains',
       ground: [0.22, 0.17, 0.07], groundAlt: [0.27, 0.21, 0.09],
       fog: [0.16, 0.12, 0.05],
       music: 'plains',
       difficulty: 1.25, goldMult: 1.25,
-      unlockHint: 'Survive for 10 minutes in Elwynn Forest.',
+      unlockHint: 'Survive for 10 minutes in Thornhollow.',
       props: ['wheat', 'gear', 'rock', 'fence'],
       phases: [
-        { at: 0, interval: 1.00, count: 2, roster: [{ id: 'coyote', weight: 40 }, { id: 'fleshripper', weight: 30 }, { id: 'defias', weight: 30 }] },
-        { at: 90, interval: 0.85, count: 3, roster: [{ id: 'coyote', weight: 25 }, { id: 'defias', weight: 30 }, { id: 'defias_pillager', weight: 25 }, { id: 'fleshripper', weight: 20 }] },
-        { at: 210, interval: 0.75, count: 3, roster: [{ id: 'harvest_golem', weight: 25 }, { id: 'defias_pillager', weight: 25 }, { id: 'knuckleduster', weight: 25 }, { id: 'coyote', weight: 25 }], elite: 'defias_enforcer', eliteChance: 0.05 },
-        { at: 390, interval: 0.65, count: 4, roster: [{ id: 'knuckleduster', weight: 30 }, { id: 'harvest_golem', weight: 25 }, { id: 'defias_pillager', weight: 25 }, { id: 'fleshripper', weight: 20 }], elite: 'defias_enforcer', eliteChance: 0.07 },
-        { at: 600, interval: 0.55, count: 5, roster: [{ id: 'knuckleduster', weight: 35 }, { id: 'defias_pillager', weight: 30 }, { id: 'harvest_golem', weight: 35 }], elite: 'defias_enforcer', eliteChance: 0.08 },
-        { at: 840, interval: 0.48, count: 6, roster: [{ id: 'knuckleduster', weight: 40 }, { id: 'defias_pillager', weight: 30 }, { id: 'harvest_golem', weight: 30 }], elite: 'defias_enforcer', eliteChance: 0.10 },
-        { at: 1050, interval: 0.42, count: 7, roster: [{ id: 'knuckleduster', weight: 40 }, { id: 'defias_pillager', weight: 35 }, { id: 'harvest_golem', weight: 25 }], elite: 'defias_enforcer', eliteChance: 0.12 },
+        { at: 0, interval: 1.00, count: 2, roster: [{ id: 'coyote', weight: 40 }, { id: 'fleshripper', weight: 30 }, { id: 'kerchief', weight: 30 }] },
+        { at: 90, interval: 0.85, count: 3, roster: [{ id: 'coyote', weight: 25 }, { id: 'kerchief', weight: 30 }, { id: 'kerchief_pillager', weight: 25 }, { id: 'fleshripper', weight: 20 }] },
+        { at: 210, interval: 0.75, count: 3, roster: [{ id: 'harvest_reaper', weight: 25 }, { id: 'kerchief_pillager', weight: 25 }, { id: 'bruiser', weight: 25 }, { id: 'coyote', weight: 25 }], elite: 'kerchief_enforcer', eliteChance: 0.05 },
+        { at: 390, interval: 0.65, count: 4, roster: [{ id: 'bruiser', weight: 30 }, { id: 'harvest_reaper', weight: 25 }, { id: 'kerchief_pillager', weight: 25 }, { id: 'fleshripper', weight: 20 }], elite: 'kerchief_enforcer', eliteChance: 0.07 },
+        { at: 600, interval: 0.55, count: 5, roster: [{ id: 'bruiser', weight: 35 }, { id: 'kerchief_pillager', weight: 30 }, { id: 'harvest_reaper', weight: 35 }], elite: 'kerchief_enforcer', eliteChance: 0.08 },
+        { at: 840, interval: 0.48, count: 6, roster: [{ id: 'bruiser', weight: 40 }, { id: 'kerchief_pillager', weight: 30 }, { id: 'harvest_reaper', weight: 30 }], elite: 'kerchief_enforcer', eliteChance: 0.10 },
+        { at: 1050, interval: 0.42, count: 7, roster: [{ id: 'bruiser', weight: 40 }, { id: 'kerchief_pillager', weight: 35 }, { id: 'harvest_reaper', weight: 25 }], elite: 'kerchief_enforcer', eliteChance: 0.12 },
       ],
       events: [
         { at: 260, text: 'Vultures wheel and descend!', id: 'fleshripper', count: 20 },
-        { at: 580, text: 'The fields walk! Harvest golems advance!', id: 'harvest_golem', count: 14 },
-        { at: 880, text: 'A Defias war party surrounds you!', id: 'knuckleduster', count: 20 },
+        { at: 580, text: 'The fields walk! Harvest reapers advance!', id: 'harvest_reaper', count: 14 },
+        { at: 880, text: 'A Kerchiefs war party surrounds you!', id: 'bruiser', count: 20 },
       ],
       bosses: [
         { at: 300, id: 'murkgill' }, { at: 630, id: 'harvestking' },
@@ -2743,62 +2832,62 @@ window.WS = window.WS || {};
       ],
     },
 
-    duskwood: {
-      name: 'Duskwood',
+    mourneholt: {
+      name: 'Mourneholt',
       subtitle: 'Where the sun is only a rumor',
-      description: 'The dead of Raven Hill do not rest, and something worse pads between the blackened trees.',
+      description: 'The dead of Gallowmere do not rest, and something worse pads between the blackened trees.',
       art: 'haunted',
       ground: [0.06, 0.07, 0.11], groundAlt: [0.09, 0.10, 0.15],
       fog: [0.04, 0.05, 0.09],
       music: 'cursed',
       difficulty: 1.5, goldMult: 1.5,
-      unlockHint: 'Survive for 10 minutes in Westfall.',
+      unlockHint: 'Survive for 10 minutes in the Dustreach.',
       props: ['deadtree', 'grave', 'bone', 'mushroom'],
       phases: [
         { at: 0, interval: 0.95, count: 2, roster: [{ id: 'skeleton', weight: 40 }, { id: 'spider', weight: 35 }, { id: 'ghoul', weight: 25 }] },
         { at: 90, interval: 0.82, count: 3, roster: [{ id: 'skeleton', weight: 30 }, { id: 'ghoul', weight: 30 }, { id: 'spider', weight: 20 }, { id: 'skeletal_mage', weight: 20 }] },
-        { at: 240, interval: 0.70, count: 3, roster: [{ id: 'ghoul', weight: 30 }, { id: 'worgen', weight: 25 }, { id: 'skeletal_mage', weight: 25 }, { id: 'skeleton', weight: 20 }], elite: 'bone_sentinel', eliteChance: 0.05 },
-        { at: 420, interval: 0.60, count: 4, roster: [{ id: 'worgen', weight: 30 }, { id: 'ghoul', weight: 30 }, { id: 'skeletal_mage', weight: 25 }, { id: 'spider', weight: 15 }], elite: 'bone_sentinel', eliteChance: 0.07 },
-        { at: 630, interval: 0.52, count: 5, roster: [{ id: 'worgen', weight: 35 }, { id: 'ghoul', weight: 30 }, { id: 'skeletal_mage', weight: 35 }], elite: 'bone_sentinel', eliteChance: 0.08 },
-        { at: 870, interval: 0.45, count: 6, roster: [{ id: 'worgen', weight: 40 }, { id: 'ghoul', weight: 30 }, { id: 'skeletal_mage', weight: 30 }], elite: 'bone_sentinel', eliteChance: 0.10 },
-        { at: 1080, interval: 0.40, count: 7, roster: [{ id: 'worgen', weight: 40 }, { id: 'skeletal_mage', weight: 35 }, { id: 'ghoul', weight: 25 }], elite: 'bone_sentinel', eliteChance: 0.12 },
+        { at: 240, interval: 0.70, count: 3, roster: [{ id: 'ghoul', weight: 30 }, { id: 'moonwretch', weight: 25 }, { id: 'skeletal_mage', weight: 25 }, { id: 'skeleton', weight: 20 }], elite: 'bone_sentinel', eliteChance: 0.05 },
+        { at: 420, interval: 0.60, count: 4, roster: [{ id: 'moonwretch', weight: 30 }, { id: 'ghoul', weight: 30 }, { id: 'skeletal_mage', weight: 25 }, { id: 'spider', weight: 15 }], elite: 'bone_sentinel', eliteChance: 0.07 },
+        { at: 630, interval: 0.52, count: 5, roster: [{ id: 'moonwretch', weight: 35 }, { id: 'ghoul', weight: 30 }, { id: 'skeletal_mage', weight: 35 }], elite: 'bone_sentinel', eliteChance: 0.08 },
+        { at: 870, interval: 0.45, count: 6, roster: [{ id: 'moonwretch', weight: 40 }, { id: 'ghoul', weight: 30 }, { id: 'skeletal_mage', weight: 30 }], elite: 'bone_sentinel', eliteChance: 0.10 },
+        { at: 1080, interval: 0.40, count: 7, roster: [{ id: 'moonwretch', weight: 40 }, { id: 'skeletal_mage', weight: 35 }, { id: 'ghoul', weight: 25 }], elite: 'bone_sentinel', eliteChance: 0.12 },
       ],
       events: [
-        { at: 300, text: 'The graves of Raven Hill empty!', id: 'skeleton', count: 22 },
-        { at: 620, text: 'Eyes gleam between the trees. The pack hunts!', id: 'worgen', count: 16 },
+        { at: 300, text: 'The graves of Gallowmere empty!', id: 'skeleton', count: 22 },
+        { at: 620, text: 'Eyes gleam between the trees. The pack hunts!', id: 'moonwretch', count: 16 },
         { at: 920, text: 'The canopy rains spiders!', id: 'spider', count: 26 },
       ],
       bosses: [
         { at: 300, id: 'barkfang' }, { at: 630, id: 'silkfang' },
         { at: 960, id: 'mordecai' }, { at: 1320, id: 'harvestking' },
-        { at: 1620, id: 'duskwraith' },
+        { at: 1620, id: 'palewraith' },
       ],
     },
 
-    barrens: {
-      name: 'The Barrens',
+    ochre: {
+      name: 'The Ochre Plains',
       subtitle: 'Red earth, white sun, no mercy',
-      description: 'Everything on this savannah is hungry, armed, or both. The Crossroads sends its regards.',
+      description: 'Everything on this savannah is hungry, armed, or both. The waystation sends its regards.',
       art: 'savannah',
       ground: [0.24, 0.13, 0.06], groundAlt: [0.30, 0.17, 0.08],
       fog: [0.18, 0.09, 0.04],
       music: 'savannah',
       difficulty: 1.8, goldMult: 1.8,
-      unlockHint: 'Survive for 10 minutes in Duskwood.',
+      unlockHint: 'Survive for 10 minutes in Mourneholt.',
       props: ['cactus', 'skull', 'rock', 'grass'],
       phases: [
-        { at: 0, interval: 0.90, count: 3, roster: [{ id: 'plainstrider', weight: 35 }, { id: 'lion', weight: 30 }, { id: 'raptor', weight: 35 }] },
-        { at: 90, interval: 0.78, count: 3, roster: [{ id: 'raptor', weight: 30 }, { id: 'quilboar', weight: 30 }, { id: 'lion', weight: 20 }, { id: 'harpy', weight: 20 }] },
-        { at: 240, interval: 0.66, count: 4, roster: [{ id: 'quilboar', weight: 30 }, { id: 'centaur', weight: 25 }, { id: 'harpy', weight: 25 }, { id: 'raptor', weight: 20 }], elite: 'kolkar_battlelord', eliteChance: 0.05 },
-        { at: 420, interval: 0.58, count: 5, roster: [{ id: 'centaur', weight: 30 }, { id: 'quilboar', weight: 30 }, { id: 'harpy', weight: 25 }, { id: 'lion', weight: 15 }], elite: 'kolkar_battlelord', eliteChance: 0.07 },
-        { at: 630, interval: 0.50, count: 5, roster: [{ id: 'centaur', weight: 35 }, { id: 'quilboar', weight: 30 }, { id: 'harpy', weight: 35 }], elite: 'kolkar_battlelord', eliteChance: 0.08 },
-        { at: 870, interval: 0.44, count: 6, roster: [{ id: 'centaur', weight: 40 }, { id: 'harpy', weight: 30 }, { id: 'quilboar', weight: 30 }], elite: 'kolkar_battlelord', eliteChance: 0.10 },
-        { at: 1080, interval: 0.38, count: 7, roster: [{ id: 'centaur', weight: 40 }, { id: 'harpy', weight: 35 }, { id: 'raptor', weight: 25 }], elite: 'kolkar_battlelord', eliteChance: 0.12 },
+        { at: 0, interval: 0.90, count: 3, roster: [{ id: 'longstrider', weight: 35 }, { id: 'lion', weight: 30 }, { id: 'raptor', weight: 35 }] },
+        { at: 90, interval: 0.78, count: 3, roster: [{ id: 'raptor', weight: 30 }, { id: 'bristlekin', weight: 30 }, { id: 'lion', weight: 20 }, { id: 'shrikewing', weight: 20 }] },
+        { at: 240, interval: 0.66, count: 4, roster: [{ id: 'bristlekin', weight: 30 }, { id: 'karrash', weight: 25 }, { id: 'shrikewing', weight: 25 }, { id: 'raptor', weight: 20 }], elite: 'karrash_battlelord', eliteChance: 0.05 },
+        { at: 420, interval: 0.58, count: 5, roster: [{ id: 'karrash', weight: 30 }, { id: 'bristlekin', weight: 30 }, { id: 'shrikewing', weight: 25 }, { id: 'lion', weight: 15 }], elite: 'karrash_battlelord', eliteChance: 0.07 },
+        { at: 630, interval: 0.50, count: 5, roster: [{ id: 'karrash', weight: 35 }, { id: 'bristlekin', weight: 30 }, { id: 'shrikewing', weight: 35 }], elite: 'karrash_battlelord', eliteChance: 0.08 },
+        { at: 870, interval: 0.44, count: 6, roster: [{ id: 'karrash', weight: 40 }, { id: 'shrikewing', weight: 30 }, { id: 'bristlekin', weight: 30 }], elite: 'karrash_battlelord', eliteChance: 0.10 },
+        { at: 1080, interval: 0.38, count: 7, roster: [{ id: 'karrash', weight: 40 }, { id: 'shrikewing', weight: 35 }, { id: 'raptor', weight: 25 }], elite: 'karrash_battlelord', eliteChance: 0.12 },
       ],
       events: [
         { at: 300, text: 'A raptor pack bursts from the tall grass!', id: 'raptor', count: 20 },
-        { at: 620, text: 'The Witchwing descend shrieking!', id: 'harpy', count: 18 },
-        { at: 920, text: 'Kolkar outriders circle for the kill!', id: 'centaur', count: 18 },
+        { at: 620, text: 'The Shrikewing descend shrieking!', id: 'shrikewing', count: 18 },
+        { at: 920, text: 'Karrash outriders circle for the kill!', id: 'karrash', count: 18 },
       ],
       bosses: [
         { at: 300, id: 'thornmane' }, { at: 630, id: 'shriekfeather' },
@@ -2807,28 +2896,28 @@ window.WS = window.WS || {};
       ],
     },
 
-    icecrown: {
-      name: 'Icecrown',
-      subtitle: 'In the shadow of the Frozen Throne',
-      description: 'The Scourge does not sleep, does not tire, and does not care how many you have already slain.',
+    palewastes: {
+      name: 'The Pale Wastes',
+      subtitle: 'Under a sky that never thaws',
+      description: 'The Pale does not sleep, does not tire, and does not care how many you have already slain.',
       art: 'glacier',
       ground: [0.10, 0.14, 0.20], groundAlt: [0.14, 0.19, 0.27],
       fog: [0.07, 0.11, 0.17],
       music: 'glacier',
       difficulty: 2.2, goldMult: 2.2,
-      unlockHint: 'Survive for 10 minutes in the Barrens.',
+      unlockHint: 'Survive for 10 minutes in the Ochre Plains.',
       props: ['spire', 'bone', 'crystal', 'ice'],
       phases: [
-        { at: 0, interval: 0.85, count: 3, roster: [{ id: 'scourge_ghoul', weight: 45 }, { id: 'geist', weight: 30 }, { id: 'skeleton', weight: 25 }] },
-        { at: 90, interval: 0.72, count: 4, roster: [{ id: 'scourge_ghoul', weight: 30 }, { id: 'geist', weight: 25 }, { id: 'crypt_fiend', weight: 25 }, { id: 'necromancer', weight: 20 }] },
-        { at: 240, interval: 0.62, count: 4, roster: [{ id: 'crypt_fiend', weight: 30 }, { id: 'necromancer', weight: 25 }, { id: 'scourge_ghoul', weight: 25 }, { id: 'abomination', weight: 20 }], elite: 'deathbound_vanguard', eliteChance: 0.06 },
+        { at: 0, interval: 0.85, count: 3, roster: [{ id: 'pale_ghoul', weight: 45 }, { id: 'geist', weight: 30 }, { id: 'skeleton', weight: 25 }] },
+        { at: 90, interval: 0.72, count: 4, roster: [{ id: 'pale_ghoul', weight: 30 }, { id: 'geist', weight: 25 }, { id: 'crypt_fiend', weight: 25 }, { id: 'necromancer', weight: 20 }] },
+        { at: 240, interval: 0.62, count: 4, roster: [{ id: 'crypt_fiend', weight: 30 }, { id: 'necromancer', weight: 25 }, { id: 'pale_ghoul', weight: 25 }, { id: 'abomination', weight: 20 }], elite: 'deathbound_vanguard', eliteChance: 0.06 },
         { at: 420, interval: 0.54, count: 5, roster: [{ id: 'crypt_fiend', weight: 30 }, { id: 'abomination', weight: 25 }, { id: 'necromancer', weight: 25 }, { id: 'geist', weight: 20 }], elite: 'deathbound_vanguard', eliteChance: 0.08 },
         { at: 630, interval: 0.46, count: 6, roster: [{ id: 'crypt_fiend', weight: 30 }, { id: 'necromancer', weight: 30 }, { id: 'abomination', weight: 25 }, { id: 'geist', weight: 15 }], elite: 'deathbound_vanguard', eliteChance: 0.09 },
         { at: 870, interval: 0.40, count: 7, roster: [{ id: 'crypt_fiend', weight: 35 }, { id: 'necromancer', weight: 35 }, { id: 'abomination', weight: 30 }], elite: 'deathbound_vanguard', eliteChance: 0.11 },
         { at: 1080, interval: 0.35, count: 8, roster: [{ id: 'crypt_fiend', weight: 35 }, { id: 'necromancer', weight: 35 }, { id: 'abomination', weight: 30 }], elite: 'deathbound_vanguard', eliteChance: 0.13 },
       ],
       events: [
-        { at: 300, text: 'The frozen earth splits - ghouls claw free!', id: 'scourge_ghoul', count: 24 },
+        { at: 300, text: 'The frozen earth splits - ghouls claw free!', id: 'pale_ghoul', count: 24 },
         { at: 620, text: 'Geists swarm from the spires!', id: 'geist', count: 22 },
         { at: 920, text: 'The cult chants as one. Necromancers converge!', id: 'necromancer', count: 16 },
       ],
@@ -2853,13 +2942,13 @@ window.WS = window.WS || {};
       arena: true,
       unlockHint: 'Defeat any final boss to open the arena gate.',
       props: [],
-      phases: [{ at: 0, interval: 99, count: 0, roster: [{ id: 'kobold', weight: 1 }] }],
+      phases: [{ at: 0, interval: 99, count: 0, roster: [{ id: 'lampling', weight: 1 }] }],
       events: [],
       bosses: [],
     },
   };
 
-  WS.MapOrder = ['elwynn', 'westfall', 'duskwood', 'barrens', 'icecrown', 'boss_arena'];
+  WS.MapOrder = ['thornhollow', 'dustreach', 'mourneholt', 'ochre', 'palewastes', 'boss_arena'];
 
 })(window.WS);
 
@@ -2951,7 +3040,7 @@ window.WS = window.WS || {};
     velocity: {
       name: 'Velocity', art: 'spear', quality: 'common',
       description: '+15% projectile speed', max: 3, v: 0.15,
-      detail: 'Bolts, knives, arrows, and shields fly faster. No effect on chains, auras, whirlwinds, or storms.',
+      detail: 'Bolts, knives, arrows, and shields fly faster. No effect on chains, auras, gyres, or storms.',
       apply: (p, up) => { p.projectileSpeed += up.v; },
     },
     dark_bargain: {
@@ -2961,9 +3050,9 @@ window.WS = window.WS || {};
       detail: 'A curse you choose. More enemies means more gems, more gold, more danger. Stacks.',
       apply: (p, up) => { p.curse += 1; p.xpMultiplier += up.v; p.goldMultiplier += up.v; },
     },
-    divine_bulwark: {
-      name: 'Divine Bulwark', art: 'aegis', quality: 'rare',
-      description: 'A holy shield blocks one hit entirely. Recharges over time.', max: 3,
+    warding_light: {
+      name: 'Warding Light', art: 'aegis', quality: 'rare',
+      description: 'A warding light blocks one hit entirely. Recharges over time.', max: 3,
       detail: 'Blocks one hit every 30 / 22 / 15 seconds by rank.',
       apply: (p) => {
         const c = WS.Config;
@@ -2984,17 +3073,17 @@ window.WS = window.WS || {};
       detail: 'Each rank calls another spirit wolf. They chase down the nearest enemies and maul them - bites deal area damage that scales with your damage and level.',
       apply: () => { WS.Familiar.add('wolf'); },
     },
-    raise_dead: {
-      name: 'Raise Dead', art: 'risen', quality: 'rare',
+    grave_call: {
+      name: 'Grave Call', art: 'risen', quality: 'rare',
       description: 'Raise a ghoul to shamble after the horde.', max: 3,
       detail: 'Each rank raises another ghoul. Slower than a spirit wolf and slower to swing, but it hits far harder and its claws sweep a wider arc.',
       apply: () => { WS.Familiar.add('ghoul'); },
     },
-    unholy_command: {
-      name: 'Unholy Command', art: 'command', quality: 'epic',
+    dread_command: {
+      name: 'Dread Command', art: 'command', quality: 'epic',
       description: '+30% summon damage and +10% summon attack speed', max: 5,
       detail: 'Drives everything you have summoned - spirit wolves and ghouls alike - to strike harder and more often. Worthless without something to command.',
-      offer: (p) => (p.upgradeLevels.spirit_companion || 0) > 0 || (p.upgradeLevels.raise_dead || 0) > 0,
+      offer: (p) => (p.upgradeLevels.spirit_companion || 0) > 0 || (p.upgradeLevels.grave_call || 0) > 0,
       v: 0.30, haste: 0.10,
       apply: (p, up) => { p.summonDamage += up.v; p.summonHaste += up.haste; },
     },
@@ -3006,26 +3095,26 @@ window.WS = window.WS || {};
       detail: 'Any enemy that hits you - a melee swing OR a ranged bolt - takes 10 + 40% of that damage back per rank (even if you dodge or block). Ranged bolts reflect to the caster that fired them.',
       apply: (p) => { p.thornsRank += 1; },
     },
-    desecration: {
-      name: 'Desecration', art: 'desecrate', quality: 'epic',
+    curdled: {
+      name: 'Curdled Light', art: 'desecrate', quality: 'epic',
       description: '+15% of your healing lashes out as shadow damage', max: 5, v: 0.15,
       detail: 'Healing you cannot use rots instead of going to waste: overheal erupts around you, and a growing share of the healing that does land strikes with it. Feeds on regeneration, lifesteal, and healing weapons.',
-      offer: (p) => p.desecration > 0 || p.healthRegen > 0 || p.lifesteal > 0,
+      offer: (p) => p.curdled > 0 || p.healthRegen > 0 || p.lifesteal > 0,
       apply: (p, up) => {
-        p.desecration += 1;
-        p.desecrationOverheal = WS.max(p.desecrationOverheal, WS.Config.desecrationOverheal);
-        p.desecrationShare += up.v;
+        p.curdled += 1;
+        p.curdleOverheal = WS.max(p.curdleOverheal, WS.Config.curdleOverheal);
+        p.curdleShare += up.v;
       },
     },
-    soul_rending: {
-      name: 'Soul Rending', art: 'soulrend', quality: 'epic',
-      description: '+25% fel from overkill, and +1s of Metamorphosis', max: 5, v: 0.25,
-      detail: 'Every scrap of overkill feeds the fel faster, and the transformation holds a second longer per rank.',
+    ruin_hunger: {
+      name: 'Ruin Hunger', art: 'soulrend', quality: 'epic',
+      description: '+25% fel from overkill, and +1s of Ruinform', max: 5, v: 0.25,
+      detail: 'Every scrap of overkill feeds the ruin faster, and the transformation holds a second longer per rank.',
       offer: (p) => p.felAttuned > 0,
       apply: (p) => { p.soulRending += 1; },
     },
-    retribution: {
-      name: 'Retribution Aura', art: 'retaura', quality: 'rare',
+    searing: {
+      name: 'Searing Aura', art: 'retaura', quality: 'rare',
       description: 'A holy aura sears nearby enemies.', max: 4,
       detail: 'Burns enemies around you twice per second (damage and radius grow with rank, damage%, and effect area). Lets tanks deal damage while standing firm.',
       apply: (p) => { p.retRank += 1; },
@@ -3041,9 +3130,9 @@ window.WS = window.WS || {};
   WS.UpgradeOrder = [
     'might', 'haste', 'fleetfoot', 'magnet', 'vitality', 'armor', 'precision',
     'ferocity', 'area', 'quantity', 'luck', 'wisdom', 'recovery', 'velocity',
-    'dark_bargain', 'divine_bulwark', 'chilling_presence', 'spirit_companion',
-    'thorns', 'retribution', 'dodge', 'desecration', 'soul_rending',
-    'raise_dead', 'unholy_command',
+    'dark_bargain', 'warding_light', 'chilling_presence', 'spirit_companion',
+    'thorns', 'searing', 'dodge', 'curdled', 'ruin_hunger',
+    'grave_call', 'dread_command',
   ];
 
 })(window.WS);
@@ -3111,7 +3200,7 @@ window.WS = window.WS || {};
       apply: (p, rank, m) => { p.startLevelUps += m.v * rank; },
     },
     meta_revive: {
-      name: 'Ankh of Reincarnation', art: 'ankh',
+      name: 'Ashen Ankh', art: 'ankh',
       description: 'Once per run, cheat death and return at half health', max: 1, cost: 2500, v: 1,
       apply: (p, rank, m) => { p.revives += m.v * rank; },
     },
@@ -3144,49 +3233,49 @@ window.WS = window.WS || {};
 
   WS.Blessings = {
     kings: {
-      name: 'Blessing of Kings', art: 'crown', quality: 'rare',
+      name: 'Warden\'s Charge', art: 'crown', quality: 'rare',
       description: '+{dmg%}% damage and +{hp} maximum health.',
       dmg: 0.08, hp: 40,
       apply: (p, b) => { p.damageMultiplier += b.dmg; p.maxHealth += b.hp; p.health += b.hp; },
     },
     wisdom: {
-      name: 'Blessing of Wisdom', art: 'book', quality: 'rare',
+      name: 'Scholar\'s Charge', art: 'book', quality: 'rare',
       description: '+{xp%}% experience from every gem.',
       xp: 0.15,
       apply: (p, b) => { p.xpMultiplier += b.xp; },
     },
-    elune: {
-      name: 'Grace of Elune', art: 'moon', quality: 'rare',
+    moonlit: {
+      name: 'Grace of the Moon', art: 'moon', quality: 'rare',
       description: '+{area%}% effect area on everything you cast.',
       area: 0.15,
       apply: (p, b) => { p.areaMultiplier += b.area; },
     },
     fortune: {
-      name: 'Gift of the Bronze Dragonflight', art: 'hourglass', quality: 'rare',
+      name: 'Gift of the Hourglass', art: 'hourglass', quality: 'rare',
       description: '+{gold%}% gold found and +{luck%}% luck.',
       gold: 0.20, luck: 0.15,
       apply: (p, b) => { p.goldMultiplier += b.gold; p.luck += b.luck; },
     },
     wild: {
-      name: 'Mark of the Wild', art: 'leaf', quality: 'rare',
+      name: 'Mark of the Thicket', art: 'leaf', quality: 'rare',
       description: '+{armor} armor, +{regen} health per second, +{speedMult*%}% movement speed.',
       armor: 1, regen: 0.5, speedMult: 1.08,
       apply: (p, b) => { p.armor += b.armor; p.healthRegen += b.regen; p.moveSpeed *= b.speedMult; },
     },
     air: {
-      name: 'Wrath of Air', art: 'wing', quality: 'rare',
+      name: 'Wrath of the Gale', art: 'wing', quality: 'rare',
       description: '-{cooldownMult~%}% weapon cooldowns.',
       cooldownMult: 0.90,
       apply: (p, b) => { p.cooldownMultiplier *= b.cooldownMult; },
     },
     fel: {
-      name: 'Fel Pact', art: 'drain', quality: 'rare',
+      name: 'Leech Pact', art: 'drain', quality: 'rare',
       description: 'Your projectiles drain life: heal for {lifesteal%}% of the damage they deal.',
       lifesteal: 0.02,
       apply: (p, b) => { p.lifesteal += b.lifesteal; },
     },
     ancestors: {
-      name: 'Ancestral Guidance', art: 'heart', quality: 'rare',
+      name: 'Ancestral Grace', art: 'heart', quality: 'rare',
       description: '+{healing%}% healing received.',
       healing: 0.30,
       apply: (p, b) => { p.healingMult += b.healing; },
@@ -3231,14 +3320,14 @@ window.WS = window.WS || {};
       description: 'Healing curdles. Every point of overheal erupts as shadow, and {share%}% of the healing that does land lashes out too.',
       overheal: 1.0, share: 0.25,
       apply: (p, b) => {
-        p.desecration += 1;
-        p.desecrationOverheal = WS.max(p.desecrationOverheal, b.overheal);
-        p.desecrationShare += b.share;
+        p.curdled += 1;
+        p.curdleOverheal = WS.max(p.curdleOverheal, b.overheal);
+        p.curdleShare += b.share;
       },
     },
-    illidari_pact: {
-      name: 'Illidari Pact', art: 'soulrend', quality: 'legendary',
-      description: 'Overkill is no longer wasted: damage past the killing blow feeds the fel, and it feeds {felGain%}% faster. Fill the meter and you become the monster.',
+    ruinous_pact: {
+      name: 'Ruinous Pact', art: 'soulrend', quality: 'legendary',
+      description: 'Overkill is no longer wasted: damage past the killing blow feeds the ruin, and it feeds {felGain%}% faster. Fill the meter and you become the monster.',
       felGain: 0.30,
       apply: (p, b) => { p.felAttuned += 1; p.felBonus += b.felGain; },
     },
@@ -3258,9 +3347,9 @@ window.WS = window.WS || {};
   };
 
   WS.BlessingOrder = [
-    'kings', 'wisdom', 'elune', 'fortune', 'wild', 'air', 'fel', 'ancestors',
+    'kings', 'wisdom', 'moonlit', 'fortune', 'wild', 'air', 'fel', 'ancestors',
     'glass_cannon', 'bloodthirst', 'momentum', 'arcane_overflow', 'blood_rite',
-    'illidari_pact', 'unyielding',
+    'ruinous_pact', 'unyielding',
   ];
 
 })(window.WS);
@@ -3276,8 +3365,8 @@ window.WS = window.WS || {};
 
   WS.Combos = {
     frostfire: {
-      name: 'Frostfire Bolt', weapons: ['frostbolt', 'fireball'],
-      description: 'Fireballs chill whatever survives them, and both bolts hit 10% harder.',
+      name: 'Frostfire Bolt', weapons: ['rimeshard', 'cinderfall'],
+      description: 'Cinderfalls chill whatever survives them, and both bolts hit 10% harder.',
       hint: 'When frost meets flame, something ancient stirs...',
       dmgMult: 1.10, slowFactor: 0.60, slowDuration: 1.5,
       apply: (w1, w2, c) => {
@@ -3287,40 +3376,40 @@ window.WS = window.WS || {};
       },
     },
     shadowflame: {
-      name: 'Shadowflame', weapons: ['shadow_bolt', 'fireball'],
-      description: 'Shadow Bolts detonate on impact, scorching everything nearby.',
+      name: 'Shadowflame', weapons: ['umbral_bolt', 'cinderfall'],
+      description: 'Umbral Bolts detonate on impact, scorching everything nearby.',
       hint: 'Shadow and flame were ever entwined.',
       splash: 55,
       apply: (w1, w2, c) => { w1.mods.splash = c.splash; },
     },
     deadly_brew: {
-      name: 'Deadly Brew', weapons: ['fan_of_knives', 'frostbolt'],
+      name: 'Deadly Brew', weapons: ['knifestorm', 'rimeshard'],
       description: 'Every thrown knife is coated in a numbing venom that slows its victim.',
       hint: "A rogue with access to the alchemist's icebox is a dangerous thing.",
       slowFactor: 0.65, slowDuration: 1.2,
       apply: (w1, w2, c) => { w1.mods.slowFactor = c.slowFactor; w1.mods.slowDuration = c.slowDuration; },
     },
-    windseeker: {
-      name: "Windseeker's Legacy", weapons: ['whirlwind', 'chain_lightning'],
-      description: 'Whirlwind blades sometimes call the storm, loosing chain lightning on those they strike.',
-      hint: 'Blessed blades may yet seek the wind...',
+    tempest_pact: {
+      name: 'Tempest Pact', weapons: ['axe_gyre', 'arcweb'],
+      description: 'Axe Gyre blades sometimes call the storm, loosing arcweb on those they strike.',
+      hint: 'Blessed blades may yet call the storm...',
       procChain: 0.15,
       apply: (w1, w2, c) => { w1.mods.procChain = c.procChain; },
     },
-    divine_storm: {
-      name: 'Divine Storm', weapons: ['whirlwind', 'holy_nova'],
-      description: 'Every whirlwind begins with a pulse of holy Light.',
+    radiant_gyre: {
+      name: 'Radiant Gyre', weapons: ['axe_gyre', 'dawnpulse'],
+      description: 'Every axe_gyre begins with a pulse of holy Light.',
       hint: 'Steel spun in faith becomes something more.',
       apply: (w1) => { w1.mods.novaOnCast = true; },
     },
-    windrunner: {
-      name: "Windrunner's Guile", weapons: ['multishot', 'arcane_missiles'],
+    truestrike: {
+      name: 'Truestrike', weapons: ['volley', 'seeking_motes'],
       description: 'Enchanted arrows curve in flight to seek their prey.',
       hint: 'The finest rangers fletch their arrows with a whisper of magic.',
       apply: (w1) => { w1.mods.homing = true; },
     },
     celestial: {
-      name: 'Celestial Alignment', weapons: ['moonfire', 'holy_nova'],
+      name: 'Celestial Alignment', weapons: ['moonbrand', 'dawnpulse'],
       description: 'Sun and moon align: an extra moonbeam, and wider rings of Light.',
       hint: 'What happens when the moon rises on the light of dawn?',
       extraProjectiles: 1, areaMult: 1.12,
@@ -3329,8 +3418,8 @@ window.WS = window.WS || {};
         w2.mods.areaMult = (w2.mods.areaMult || 1) * c.areaMult;
       },
     },
-    seal_command: {
-      name: 'Seal of Command', weapons: ['avengers_shield', 'consecration'],
+    verdict: {
+      name: 'Verdict', weapons: ['judgement_disc', 'hallowed_ring'],
       description: 'The shield judges from hallowed ground: +1 ricochet and 10% more damage.',
       hint: 'A shield thrown from sacred ground carries a verdict.',
       extraBounces: 1, dmgMult: 1.10,
@@ -3339,8 +3428,8 @@ window.WS = window.WS || {};
         w1.mods.damageMult = (w1.mods.damageMult || 1) * c.dmgMult;
       },
     },
-    defile: {
-      name: 'Defile', weapons: ['holy_nova', 'consecration'],
+    curdle: {
+      name: 'Curdle', weapons: ['dawnpulse', 'hallowed_ring'],
       description: 'Both hallowed rites mend you for {healBonus} more - even unevolved. What your wounds cannot drink, rots.',
       hint: 'Two holy rites in one vessel. The Light has to go somewhere...',
       healBonus: 2,
@@ -3352,8 +3441,8 @@ window.WS = window.WS || {};
   };
 
   WS.ComboOrder = [
-    'frostfire', 'shadowflame', 'deadly_brew', 'windseeker',
-    'divine_storm', 'windrunner', 'celestial', 'seal_command', 'defile',
+    'frostfire', 'shadowflame', 'deadly_brew', 'tempest_pact',
+    'radiant_gyre', 'truestrike', 'celestial', 'verdict', 'curdle',
   ];
 
 })(window.WS);
@@ -3371,13 +3460,13 @@ window.WS = window.WS || {};
       test: (db) => db.statistics.totalKills >= 1,
     },
     take_his_candle: {
-      name: 'You Take Candle', art: 'candle',
+      name: 'Mine! My Light!', art: 'candle',
       description: 'Defeat Foreman Grimtunnel.',
       reward: { type: 'gold', amount: 50 },
       test: (db) => !!db.statistics.bosses.grimtunnel,
     },
-    gnollbane: {
-      name: 'Bane of the Riverpaw', art: 'claw',
+    snarlbane: {
+      name: 'Bane of the Snarlpack', art: 'claw',
       description: 'Defeat Gnarlfang the Ravager.',
       reward: { type: 'gold', amount: 100 },
       test: (db) => !!db.statistics.bosses.gnarlfang,
@@ -3398,27 +3487,27 @@ window.WS = window.WS || {};
     /* ------------------------------------------------- map progression --- */
     beyond_the_forest: {
       name: 'Beyond the Forest', art: 'leaf',
-      description: 'Survive for 10 minutes in Elwynn Forest.',
-      reward: { type: 'map', id: 'westfall' },
-      test: (db) => (db.statistics.bestTime.elwynn || 0) >= 600,
+      description: 'Survive for 10 minutes in Thornhollow.',
+      reward: { type: 'map', id: 'dustreach' },
+      test: (db) => (db.statistics.bestTime.thornhollow || 0) >= 600,
     },
     into_the_dark: {
       name: 'Into the Dark', art: 'deadtree',
-      description: 'Survive for 10 minutes in Westfall.',
-      reward: { type: 'map', id: 'duskwood' },
-      test: (db) => (db.statistics.bestTime.westfall || 0) >= 600,
+      description: 'Survive for 10 minutes in the Dustreach.',
+      reward: { type: 'map', id: 'mourneholt' },
+      test: (db) => (db.statistics.bestTime.dustreach || 0) >= 600,
     },
     across_the_sea: {
       name: 'Across the Great Sea', art: 'sun',
-      description: 'Survive for 10 minutes in Duskwood.',
-      reward: { type: 'map', id: 'barrens' },
-      test: (db) => (db.statistics.bestTime.duskwood || 0) >= 600,
+      description: 'Survive for 10 minutes in Mourneholt.',
+      reward: { type: 'map', id: 'ochre' },
+      test: (db) => (db.statistics.bestTime.mourneholt || 0) >= 600,
     },
     the_frozen_north: {
       name: 'The Frozen North', art: 'crystal',
-      description: 'Survive for 10 minutes in The Barrens.',
-      reward: { type: 'map', id: 'icecrown' },
-      test: (db) => (db.statistics.bestTime.barrens || 0) >= 600,
+      description: 'Survive for 10 minutes in the Ochre Plains.',
+      reward: { type: 'map', id: 'palewastes' },
+      test: (db) => (db.statistics.bestTime.ochre || 0) >= 600,
     },
 
     /* ------------------------------------------------ survivor unlocks --- */
@@ -3440,8 +3529,8 @@ window.WS = window.WS || {};
       reward: { type: 'character', id: 'hunter' },
       test: (db) => db.statistics.bestLevel >= 20,
     },
-    scourge_of_the_masses: {
-      name: 'Scourge of the Masses', art: 'blade',
+    bane_of_the_masses: {
+      name: 'Bane of the Masses', art: 'blade',
       description: 'Slay 750 enemies across all runs.',
       reward: { type: 'character', id: 'warlock' },
       test: (db) => db.statistics.totalKills >= 750,
@@ -3472,11 +3561,11 @@ window.WS = window.WS || {};
       reward: { type: 'gold', amount: 150 },
       test: (db) => db.statistics.maxWeapons >= 6,
     },
-    mrglglgl: {
-      name: 'Mrglglglgl!', art: 'murloc',
-      description: 'Slay 500 murlocs across all runs.',
+    blorp: {
+      name: 'Blorp!', art: 'gilkin',
+      description: 'Slay 500 gilkin across all runs.',
       reward: { type: 'gold', amount: 200 },
-      test: (db) => (db.statistics.families.murloc || 0) >= 500,
+      test: (db) => (db.statistics.families.gilkin || 0) >= 500,
     },
     master_craftsman: {
       name: 'Master Craftsman', art: 'anvil',
@@ -3492,15 +3581,15 @@ window.WS = window.WS || {};
     },
     the_light_curdles: {
       name: 'The Light Curdles', art: 'desecrate',
-      description: 'Claim a runeblade drawn out by your own desecration.',
+      description: 'Claim a graveblade drawn out by your own curdled Light.',
       reward: { type: 'gold', amount: 400 },
-      test: (db) => (db.statistics.runebladesClaimed || 0) > 0,
+      test: (db) => (db.statistics.gravebladesClaimed || 0) > 0,
     },
     you_are_prepared: {
-      name: 'You Are Prepared', art: 'soulrend',
-      description: 'Claim the warglaives after giving yourself to the fel.',
+      name: 'You Were Warned', art: 'soulrend',
+      description: 'Claim the twin glaives after giving yourself to the fel.',
       reward: { type: 'gold', amount: 400 },
-      test: (db) => (db.statistics.warglaivesClaimed || 0) > 0,
+      test: (db) => (db.statistics.glaivesClaimed || 0) > 0,
     },
     survivor_of_the_long_dark: {
       name: 'Survivor of the Long Dark', art: 'sun',
@@ -3517,11 +3606,11 @@ window.WS = window.WS || {};
   };
 
   WS.AchievementOrder = [
-    'first_blood', 'take_his_candle', 'gnollbane', 'unmasked', 'the_long_dark_ends',
+    'first_blood', 'take_his_candle', 'snarlbane', 'unmasked', 'the_long_dark_ends',
     'beyond_the_forest', 'into_the_dark', 'across_the_sea', 'the_frozen_north',
-    'nightfall_survivor', 'giant_slayer', 'seasoned_veteran', 'scourge_of_the_masses',
+    'nightfall_survivor', 'giant_slayer', 'seasoned_veteran', 'bane_of_the_masses',
     'fortune_seeker', 'forbidden_knowledge', 'lights_favor', 'walking_armory',
-    'mrglglgl', 'master_craftsman', 'grave_robber', 'the_light_curdles',
+    'blorp', 'master_craftsman', 'grave_robber', 'the_light_curdles',
     'you_are_prepared', 'survivor_of_the_long_dark', 'eclipse_broken',
   ];
 
@@ -3670,7 +3759,7 @@ window.WS = window.WS || {};
   const CREATURES = {
 
     /* --- humanoid frames -------------------------------------------------- */
-    kobold(g, s, p) {
+    lampling(g, s, p) {
       const cx = s / 2, cy = s * 0.60, u = s / 100;
       shaded(g, cx, cy, 20 * u, 22 * u, p);                       // hunched body
       poly(g, [[cx - 4 * u, cy - 20 * u], [cx, cy - 46 * u], [cx + 4 * u, cy - 20 * u]], p.glow, p.line, u); // candle
@@ -3684,7 +3773,7 @@ window.WS = window.WS || {};
       eyes(g, cx, cy - 14 * u, 4.5 * u, 1.7 * u, '#ffd36b');
     },
 
-    gnoll(g, s, p) {
+    mongrel(g, s, p) {
       const cx = s / 2, cy = s * 0.58, u = s / 100;
       shaded(g, cx, cy + 4 * u, 24 * u, 25 * u, p);
       shaded(g, cx - 22 * u, cy - 2 * u, 7 * u, 12 * u, p, -0.4); // arms
@@ -3724,13 +3813,13 @@ window.WS = window.WS || {};
       eyes(g, cx, cy - 21 * u, 4.5 * u, 1.7 * u, '#ff8f6b');
     },
 
-    murloc(g, s, p) {
+    gilkin(g, s, p) {
       const cx = s / 2, cy = s * 0.54, u = s / 100;
       // Splayed webbed feet, and the head lifted clear of the shoulders. The
       // head used to overlap the body by half its own height, which merged the
       // two masses into one green pebble.
       legs(g, p, cx, cy + 22 * u, u, [-8, 8], 11, 5);
-      /* Head fins fan sideways off the skull, which is where a murloc's are.
+      /* Head fins fan sideways off the skull, which is where a gilkin's are.
          They used to be long thin triangles rising off the shoulders, and at
          36px that read as two blades of grass growing behind it. */
       for (const dir of [-1, 1]) {
@@ -3963,7 +4052,7 @@ window.WS = window.WS || {};
       eyes(g, cx - 22 * u, cy + 1 * u, 4.5 * u, 1.6 * u, '#ff9d6b');
     },
 
-    quilboar(g, s, p) {
+    bristlekin(g, s, p) {
       const cx = s / 2, cy = s * 0.58, u = s / 100;
       shaded(g, cx, cy + 4 * u, 22 * u, 24 * u, p);
       g.strokeStyle = p.hi; g.lineWidth = 3.4 * u; g.lineCap = 'round';
@@ -4050,7 +4139,7 @@ window.WS = window.WS || {};
       g.restore();
     },
 
-    worgen(g, s, p) {
+    moonwretch(g, s, p) {
       const cx = s / 2, cy = s * 0.56, u = s / 100;
       shaded(g, cx, cy + 6 * u, 22 * u, 26 * u, p);
       shaded(g, cx - 24 * u, cy + 4 * u, 9 * u, 16 * u, p, -0.5);
@@ -4067,7 +4156,7 @@ window.WS = window.WS || {};
       eyes(g, cx, cy - 26 * u, 5 * u, 2 * u, '#ffe14d');
     },
 
-    harpy(g, s, p) {
+    shrikewing(g, s, p) {
       const cx = s / 2, cy = s * 0.58, u = s / 100;
       for (const dir of [-1, 1]) {                                 // feathered wings
         for (let i = 0; i < 4; i++) {
@@ -4087,7 +4176,7 @@ window.WS = window.WS || {};
       g.beginPath(); g.moveTo(cx + 5 * u, cy + 20 * u); g.lineTo(cx + 9 * u, cy + 30 * u); g.stroke();
     },
 
-    centaur(g, s, p) {
+    karrash(g, s, p) {
       const cx = s / 2, cy = s * 0.60, u = s / 100;
       shaded(g, cx + 4 * u, cy + 8 * u, 26 * u, 15 * u, p);        // horse barrel
       g.strokeStyle = p.dark; g.lineWidth = 4 * u; g.lineCap = 'round';
@@ -4156,8 +4245,8 @@ window.WS = window.WS || {};
     warlock: { accessory: 'orb', cloak: true, hood: true },
     shaman: { accessory: 'totem', cloak: true },
     paladin: { accessory: 'shield', bulk: 1.1, halo: true },
-    death_knight: { accessory: 'runeblade', bulk: 1.1, cloak: true },
-    demon_hunter: { accessory: 'glaives', horns: true },
+    graveblade: { accessory: 'graveblade', bulk: 1.1, cloak: true },
+    ruinseeker: { accessory: 'glaives', horns: true },
   };
 
   function drawHero(g, s, tint, cfg, demon) {
@@ -4241,7 +4330,7 @@ window.WS = window.WS || {};
         g.beginPath(); g.arc(cx - 22 * u, cy - 1 * u, 4 * u, 0, WS.TAU); g.fill();
         g.restore();
         break;
-      case 'runeblade':
+      case 'graveblade':
         blade(g, cx + 24 * u, cy + 26 * u, 52 * u, 6 * u, 0.32, '#cfd8e6', '#5f6878');
         g.save(); g.globalAlpha = 0.85; g.strokeStyle = '#5be0ff'; g.lineWidth = 1.6 * u;
         g.shadowColor = '#5be0ff'; g.shadowBlur = 10 * u;
@@ -4409,7 +4498,7 @@ window.WS = window.WS || {};
       const res = size * SS;
       c = make(res, res);
       const g = c.getContext('2d');
-      const draw = CREATURES[art] || CREATURES.kobold;
+      const draw = CREATURES[art] || CREATURES.lampling;
       draw(g, res, palette(tint));
       c.displaySize = size;
       cache.set(key, c);
@@ -5258,7 +5347,7 @@ window.WS = window.WS || {};
       shape(g, [[50, 14], [74, 44], [50, 86], [26, 44]], c || '#7fd4ff', lit + '99');
       shape(g, [[50, 14], [50, 86], [26, 44]], lit + '44');
     },
-    murloc(g, c) {
+    gilkin(g, c) {
       const col = c || '#5fd68a';
       g.fillStyle = col;
       g.beginPath(); g.ellipse(50, 54, 25, 29, 0, 0, WS.TAU); g.fill();
@@ -5351,14 +5440,14 @@ window.WS = window.WS || {};
       g.beginPath(); g.moveTo(50, 30); g.lineTo(50, 66); g.stroke();
       g.beginPath(); g.moveTo(35, 44); g.lineTo(65, 44); g.stroke();
     },
-    runeblade(g, c) {
+    graveblade(g, c) {
       leafBlade(g, 50, 40, 32, 11, 0, '#cfd8e6', '#5f6878');
       shape(g, [[44, 70], [56, 70], [54, 88], [46, 88]], '#3a2020');
       shape(g, [[31, 64], [69, 64], [67, 72], [33, 72]], '#b0b7c4');
       line(g, c || '#e2483d', 3);
       g.beginPath(); g.moveTo(50, 22); g.lineTo(50, 58); g.stroke();
     },
-    warglaive(g, c) {
+    twinglaive(g, c) {
       const col = c || '#8cf24a';
       arcAt(g, 50, 50, 30, -1.0, 1.5, col, STROKE);
       arcAt(g, 50, 50, 17, 1.5, -1.0, col, STROKE - 2);
@@ -5981,7 +6070,7 @@ window.WS = window.WS || {};
     f.life = life || 0.30; f.maxLife = f.life;
   };
 
-  /** A screen-wide colour wash (metamorphosis, death, victory). */
+  /** A screen-wide colour wash (ruinform, death, victory). */
   FX.screen = function (colour, life) {
     this.flashScreen = { colour, life, maxLife: life };
   };
@@ -6534,7 +6623,7 @@ window.WS = window.WS || {};
     return found;
   };
 
-  /** Nearest enemy within range. `excluded` is a Set (chain lightning hops). */
+  /** Nearest enemy within range. `excluded` is a Set (arcweb hops). */
   Enemy.findNearest = function (x, y, range, excluded) {
     let best = null, bestDist = range * range;
     for (let i = 0; i < this.pool.count; i++) {
@@ -6709,7 +6798,7 @@ window.WS = window.WS || {};
     if (!e || e._dead) return;
     if (e.invuln > 0) return;
     const player = WS.Game.player;
-    // Overkill is normally discarded; the Demon Hunter's fel meter drinks it.
+    // Overkill is normally discarded; the Ruinseeker's ruin meter drinks it.
     if (player && player.felAttuned > 0 && amount > e.health) {
       WS.Player.gainFel(player, amount - WS.max(0, e.health));
     }
@@ -6901,7 +6990,7 @@ window.WS = window.WS || {};
 
   Weapon.colour = schoolColour;
 
-  /** The behavior actually used: an evolution may change it (Moonfire). */
+  /** The behavior actually used: an evolution may change it (Moonbrand). */
   function behaviorOf(w) {
     return (w.evolved && w.data.evolvedBehavior) || w.data.behavior;
   }
@@ -7037,7 +7126,7 @@ window.WS = window.WS || {};
     return true;
   };
 
-  /** Shared lightning hop, also used by the Windseeker proc. */
+  /** Shared lightning hop, also used by the Tempest proc. */
   Weapon.chainFrom = function (x, y, damage, chains, range, source, colour) {
     colour = colour || WS.CONST.COLORS.nature;
     const visited = new Set();
@@ -7063,7 +7152,7 @@ window.WS = window.WS || {};
     if (w.level >= cfg.projRankB) count++;
 
     if (w.mods.novaOnCast) {
-      // Divine Storm discovery: the whirl opens with a pulse of Light.
+      // Radiant Gyre discovery: the whirl opens with a pulse of Light.
       const r = 130 * player.areaMultiplier;
       WS.Enemy.damageArea(player.x, player.y, r, damageOf(player, w) * 0.8, null, 20, w.id);
       WS.FX.flash(player.x, player.y, r, WS.CONST.COLORS.holy, 0.3);
@@ -7192,8 +7281,8 @@ window.WS = window.WS || {};
 
 /* ===== src/game/player.js ===== */
 /* The survivor: stats, movement, weapon cadence, experience, damage intake,
- * and the two mirrored resource systems - Desecration (wasted healing becomes
- * shadow damage) and Fel (wasted overkill becomes Metamorphosis). */
+ * and the two mirrored resource systems - Curdled Light (wasted healing becomes
+ * shadow damage) and Fel (wasted overkill becomes Ruinform). */
 'use strict';
 (function (WS) {
 
@@ -7258,8 +7347,8 @@ window.WS = window.WS || {};
       blessingNames: [],
       unionsForged: {},
 
-      desecration: 0, desecrationOverheal: 0, desecrationShare: 0,
-      desecrationPool: 0, desecrationTimer: 0, desecrationDealt: 0,
+      curdled: 0, curdleOverheal: 0, curdleShare: 0,
+      curdlePool: 0, curdleTimer: 0, curdleDealt: 0,
       felAttuned: 0, fel: 0, felBonus: 0, soulRending: 0, metaTimer: 0,
       metamorphoses: 0,
       summonDamage: 0, summonHaste: 0,
@@ -7332,11 +7421,11 @@ window.WS = window.WS || {};
    *  boss's mechanics rather than a 30-minute build-up. */
   Player.grantArenaLoadout = function (p) {
     const kit = [
-      { id: 'arcane_missiles', evolved: true },
-      { id: 'holy_nova', evolved: true },
-      { id: 'chain_lightning', evolved: true },
-      { id: 'fan_of_knives', evolved: true },
-      { id: 'consecration', evolved: false },
+      { id: 'seeking_motes', evolved: true },
+      { id: 'dawnpulse', evolved: true },
+      { id: 'arcweb', evolved: true },
+      { id: 'knifestorm', evolved: true },
+      { id: 'hallowed_ring', evolved: false },
     ];
     for (const slot of kit) {
       Player.addWeapon(p, slot.id);
@@ -7390,7 +7479,7 @@ window.WS = window.WS || {};
 
     if (p.spinTimer > 0) p.spinTimer -= dt;
 
-    // Divine Bulwark recharges over time and flares when it comes back up.
+    // Warding Light recharges over time and flares when it comes back up.
     if (p.blockRank > 0 && !p.blockReady) {
       p.blockTimer -= dt;
       if (p.blockTimer <= 0) {
@@ -7399,9 +7488,9 @@ window.WS = window.WS || {};
       }
     }
 
-    // Passive regeneration. With Desecration running it keeps ticking at full
+    // Passive regeneration. With Curdled Light running it keeps ticking at full
     // health, because that overflow is exactly the fuel.
-    if (p.healthRegen > 0 && (p.health < p.maxHealth || p.desecration > 0)) {
+    if (p.healthRegen > 0 && (p.health < p.maxHealth || p.curdled > 0)) {
       p.regenCarry += p.healthRegen * p.healingMult * dt;
       if (p.regenCarry >= 1) {
         const whole = WS.floor(p.regenCarry);
@@ -7410,7 +7499,7 @@ window.WS = window.WS || {};
       }
     }
 
-    // Metamorphosis.
+    // Ruinform.
     if (p.metaTimer > 0) {
       p.metaTimer -= dt;
       if (p.metaTimer <= 0) {
@@ -7420,25 +7509,25 @@ window.WS = window.WS || {};
           Player.metamorphose(p);
         } else {
           WS.FX.flash(p.x, p.y, 110, [0.45, 0.85, 0.30], 0.4);
-          WS.FX.notice(p.x, p.y, 'The fel recedes', '#9fe66b');
+          WS.FX.notice(p.x, p.y, 'The ruin recedes', '#9fe66b');
         }
       }
     }
 
-    // Desecration: release the pooled conversion as one shadow pulse.
-    if (p.desecrationPool > 0) {
-      p.desecrationTimer -= dt;
-      if (p.desecrationTimer <= 0) {
-        p.desecrationTimer = WS.Config.desecrationInterval;
-        const coeff = WS.Config.desecrationCoefficient;
-        const dmg = WS.floor(p.desecrationPool * coeff);
+    // Curdled Light: release the pooled conversion as one shadow pulse.
+    if (p.curdlePool > 0) {
+      p.curdleTimer -= dt;
+      if (p.curdleTimer <= 0) {
+        p.curdleTimer = WS.Config.curdleInterval;
+        const coeff = WS.Config.curdleCoefficient;
+        const dmg = WS.floor(p.curdlePool * coeff);
         if (dmg >= 1) {
           // Spend only what was dealt and keep the remainder, or a modest
           // healing build would be floored to nothing every single tick.
-          p.desecrationPool -= dmg / coeff;
-          p.desecrationDealt += dmg;
-          const radius = WS.Config.desecrationRadius * p.areaMultiplier;
-          WS.Enemy.damageArea(p.x, p.y, radius, dmg, null, null, 'desecration');
+          p.curdlePool -= dmg / coeff;
+          p.curdleDealt += dmg;
+          const radius = WS.Config.curdleRadius * p.areaMultiplier;
+          WS.Enemy.damageArea(p.x, p.y, radius, dmg, null, null, 'curdled');
           const punch = WS.min(1, dmg / 60);
           WS.FX.flash(p.x, p.y, radius * (0.86 + 0.24 * punch), [0.42, 0.12, 0.55], 0.32);
           WS.FX.flash(p.x, p.y, radius * (0.60 + 0.18 * punch), [0.30, 0.80 + 0.2 * punch, 0.22], 0.28);
@@ -7459,7 +7548,7 @@ window.WS = window.WS || {};
 
     if (p.invulnerable > 0) p.invulnerable -= dt;
 
-    // Retribution Aura: sears everything nearby twice a second.
+    // Searing Aura: sears everything nearby twice a second.
     if (p.retRank > 0) {
       const cfg = WS.Config;
       const range = (cfg.retributionRange + cfg.retributionRangePerRank * p.retRank) * p.areaMultiplier;
@@ -7468,7 +7557,7 @@ window.WS = window.WS || {};
         p.retTimer = cfg.retributionTick;
         const dmg = (cfg.retributionBase + cfg.retributionPerRank * p.retRank)
           * p.damageMultiplier * WS.CONST.PLAYER_DAMAGE_SCALE;
-        WS.Enemy.damageArea(p.x, p.y, range, dmg, null, null, 'retribution');
+        WS.Enemy.damageArea(p.x, p.y, range, dmg, null, null, 'searing');
       }
     }
 
@@ -7525,17 +7614,17 @@ window.WS = window.WS || {};
   };
 
   Player.desecrate = function (p, amount) {
-    if (amount <= 0 || p.desecration <= 0) return;
-    p.desecrationPool += amount;
+    if (amount <= 0 || p.curdled <= 0) return;
+    p.curdlePool += amount;
   };
 
   /** Splits a heal into the part that lands and the part that would be wasted,
-   *  feeding both into desecration at their own rates. */
+   *  feeding both into curdled at their own rates. */
   Player.applyHeal = function (p, scaled, source) {
     const room = WS.max(0, p.maxHealth - p.health);
     const gained = WS.min(scaled, room);
-    if (p.desecration > 0) {
-      Player.desecrate(p, (scaled - gained) * p.desecrationOverheal + gained * p.desecrationShare);
+    if (p.curdled > 0) {
+      Player.desecrate(p, (scaled - gained) * p.curdleOverheal + gained * p.curdleShare);
     }
     if (gained <= 0) return 0;
     p.health += gained;
@@ -7546,7 +7635,7 @@ window.WS = window.WS || {};
   };
 
   Player.heal = function (p, amount, source) {
-    // No early-out at full health: overheal is a resource Desecration eats,
+    // No early-out at full health: overheal is a resource Curdled Light eats,
     // so the heal still has to be measured.
     const scaled = WS.floor(amount * p.healingMult);
     if (scaled <= 0) return 0;
@@ -7555,7 +7644,7 @@ window.WS = window.WS || {};
 
   Player.lifesteal = function (p, amount) {
     if (amount <= 0) return;
-    if (p.health >= p.maxHealth && p.desecration <= 0) return;
+    if (p.health >= p.maxHealth && p.curdled <= 0) return;
     p.lifestealCarry += amount;
     const whole = WS.floor(p.lifestealCarry);
     if (whole >= 1) {
@@ -7594,7 +7683,7 @@ window.WS = window.WS || {};
     const run = WS.Game.run;
     if (run) run.metamorphoses = (run.metamorphoses || 0) + 1;
     if (p.metamorphoses <= 1) {
-      WS.Game.announce('Metamorphosis!', 'The fel takes hold.', 2.0, { kind: 'glory' });
+      WS.Game.announce('Ruinform!', 'The ruin takes hold.', 2.0, { kind: 'glory' });
       WS.Audio.play('evolve');
     }
     WS.FX.shake(10, 0.5);
@@ -7654,8 +7743,8 @@ window.WS = window.WS || {};
         p.health = WS.floor(p.maxHealth * 0.5);
         p.invulnerable = 2.5;
         WS.FX.flash(p.x, p.y, 130, WS.CONST.COLORS.nature, 0.6);
-        WS.Enemy.damageArea(p.x, p.y, 170, 200, null, 90, 'reincarnation');
-        WS.Game.announce('Reincarnation!', 'The ancestors are not done with you.', 2.5,
+        WS.Enemy.damageArea(p.x, p.y, 170, 200, null, 90, 'second_wind');
+        WS.Game.announce('Second Wind!', 'The ancestors are not done with you.', 2.5,
           { kind: 'glory' });
         WS.Audio.play('level');
         return true;
@@ -7802,8 +7891,8 @@ window.WS = window.WS || {};
     cache: { art: 'cache', tint: [1.0, 0.90, 0.60], size: 24 },
     hourglass: { art: 'hourglass', tint: [0.6, 0.85, 1.0], size: 20 },
     coffin: { art: 'coffin', tint: [0.85, 0.85, 0.95], size: 30, noMagnet: true },
-    runeblade: { art: 'runeblade', tint: [0.85, 0.20, 0.25], size: 30, noMagnet: true },
-    warglaive: { art: 'warglaive', tint: [0.55, 1.0, 0.25], size: 30, noMagnet: true },
+    graveblade: { art: 'graveblade', tint: [0.85, 0.20, 0.25], size: 30, noMagnet: true },
+    twinglaive: { art: 'twinglaive', tint: [0.55, 1.0, 0.25], size: 30, noMagnet: true },
     merchant: { art: 'merchant', tint: [0.95, 0.85, 0.45], size: 30, noMagnet: true },
   };
 
@@ -7936,23 +8025,23 @@ window.WS = window.WS || {};
       WS.Achievements.check();
       WS.Audio.play('evolve');
 
-    } else if (kind === 'runeblade') {
-      WS.Save.stats.runebladesClaimed = (WS.Save.stats.runebladesClaimed || 0) + 1;
+    } else if (kind === 'graveblade') {
+      WS.Save.stats.gravebladesClaimed = (WS.Save.stats.gravebladesClaimed || 0) + 1;
       WS.Save.save();
-      WS.Game.announce('The runeblade answers.', 'Something colder takes the hilt.', 3.5,
+      WS.Game.announce('The graveblade answers.', 'Something colder takes the hilt.', 3.5,
         { kind: 'glory' });
       WS.Game.addGold(WS.floor(120 * run.goldMult), p.x, p.y);
-      WS.Player.addWeapon(p, 'death_strike');
+      WS.Player.addWeapon(p, 'reaving_arc');
       WS.Achievements.check();
       WS.Audio.play('evolve');
 
-    } else if (kind === 'warglaive') {
-      WS.Save.stats.warglaivesClaimed = (WS.Save.stats.warglaivesClaimed || 0) + 1;
+    } else if (kind === 'twinglaive') {
+      WS.Save.stats.glaivesClaimed = (WS.Save.stats.glaivesClaimed || 0) + 1;
       WS.Save.save();
-      WS.Game.announce('The warglaives find you.', 'You were never going to refuse.', 3.5,
+      WS.Game.announce('The twin glaives find you.', 'You were never going to refuse.', 3.5,
         { kind: 'glory' });
       WS.Game.addGold(WS.floor(120 * run.goldMult), p.x, p.y);
-      WS.Player.addWeapon(p, 'fel_beam');
+      WS.Player.addWeapon(p, 'verdant_lance');
       WS.Achievements.check();
       WS.Audio.play('evolve');
 
@@ -8011,7 +8100,7 @@ window.WS = window.WS || {};
 /* Familiars: summons that HUNT. Each picks the nearest enemy, bounds it down,
  * bites, then peels off and retargets. Spirit wolves are fast and light;
  * ghouls are slower to close and slower to swing, but hit far harder with a
- * wider sweep. Granted in-run by Spirit Companion / Raise Dead. */
+ * wider sweep. Granted in-run by Spirit Companion / Grave Call. */
 'use strict';
 (function (WS) {
 
@@ -8207,7 +8296,7 @@ window.WS = window.WS || {};
 /* ===== src/game/waves.js ===== */
 /* Drives each battlefield's data timeline: ambient spawn phases, scripted swarm
  * events, timed boss arrivals, supply caches, the egg merchant, and the three
- * one-shot story objects (coffin / runeblade / warglaives). Difficulty scaling
+ * one-shot story objects (coffin / graveblade / twin glaives). Difficulty scaling
  * is a function of elapsed time times the map's difficulty knob. */
 'use strict';
 (function (WS) {
@@ -8229,8 +8318,8 @@ window.WS = window.WS || {};
     this.merchantTimer = 150;
     this.coffinDone = false;
     this.coffinTimer = 120;
-    this.runebladeDone = false;
-    this.warglaiveDone = false;
+    this.gravebladeDone = false;
+    this.glaiveDone = false;
   };
 
   /** Health/damage/xp inflation for ambient spawns. */
@@ -8366,14 +8455,14 @@ window.WS = window.WS || {};
       }
     }
 
-    /* ---- the runeblade: answers desecration, not a timer ------------------ */
-    if (!this.runebladeDone && !WS.Save.db.unlocks.characters.death_knight
-      && player.desecrationDealt >= WS.Config.runebladeThreshold) {
+    /* ---- the graveblade: answers curdled, not a timer ------------------ */
+    if (!this.gravebladeDone && !WS.Save.db.unlocks.characters.graveblade
+      && player.curdleDealt >= WS.Config.gravebladeThreshold) {
       const a = WS.random() * WS.TAU;
       const cx = WS.clamp(player.x + WS.cos(a) * 300, 90, WS.CONST.WORLD_WIDTH - 90);
       const cy = WS.clamp(player.y + WS.sin(a) * 300, 90, WS.CONST.WORLD_HEIGHT - 90);
-      if (WS.Pickup.spawn('runeblade', cx, cy)) {
-        this.runebladeDone = true;
+      if (WS.Pickup.spawn('graveblade', cx, cy)) {
+        this.gravebladeDone = true;
         WS.Game.announce('Enough Light has rotted.', 'A blade breaks the ground where it fell.', 4.0);
         WS.Audio.play('boss');
         for (let i = 0; i < 6; i++) {
@@ -8383,15 +8472,15 @@ window.WS = window.WS || {};
       }
     }
 
-    /* ---- the warglaives: answer Metamorphosis ---------------------------- */
-    if (!this.warglaiveDone && !WS.Save.db.unlocks.characters.demon_hunter
-      && player.metamorphoses >= WS.Config.warglaiveMetas) {
+    /* ---- the twin glaives: answer Ruinform ---------------------------- */
+    if (!this.glaiveDone && !WS.Save.db.unlocks.characters.ruinseeker
+      && player.metamorphoses >= WS.Config.glaiveMetas) {
       const a = WS.random() * WS.TAU;
       const cx = WS.clamp(player.x + WS.cos(a) * 300, 90, WS.CONST.WORLD_WIDTH - 90);
       const cy = WS.clamp(player.y + WS.sin(a) * 300, 90, WS.CONST.WORLD_HEIGHT - 90);
-      if (WS.Pickup.spawn('warglaive', cx, cy)) {
-        this.warglaiveDone = true;
-        WS.Game.announce('The fel has taken enough of you.', 'Two glaives are waiting.', 4.0);
+      if (WS.Pickup.spawn('twinglaive', cx, cy)) {
+        this.glaiveDone = true;
+        WS.Game.announce('The ruin has taken enough of you.', 'Two glaives are waiting.', 4.0);
         WS.Audio.play('boss');
       }
     }
@@ -8442,7 +8531,7 @@ window.WS = window.WS || {};
 
 /* ===== src/game/levelup.js ===== */
 /* Level-up boon generation and application: weapon ranks, new weapons,
- * evolutions, unions, passives, the Limit Break, and the deep-run bread
+ * evolutions, unions, passives, the Breaking Point, and the deep-run bread
  * fallback. `type` doubles as the card's quality key in the UI. */
 'use strict';
 (function (WS) {
@@ -8540,21 +8629,21 @@ window.WS = window.WS || {};
     }
 
     // Fill all three slots from the real pool FIRST: a live build never loses
-    // a choice to Limit Break while genuine upgrades remain.
+    // a choice to Breaking Point while genuine upgrades remain.
     const choices = [];
     for (let i = 0; i < 3; i++) {
       const pick = WS.takeWeighted(candidates);
       if (pick) choices.push(pick);
     }
 
-    // Only once the pool cannot fill three slots does Limit Break appear.
+    // Only once the pool cannot fill three slots does Breaking Point appear.
     if (choices.length < 3) {
       const pct = WS.round(WS.Config.limitBreakDamage * 100);
       choices.push({
-        type: 'limit_break', id: 'limit_break', art: 'fist', quality: 'legendary',
-        name: 'Limit Break',
+        type: 'breaking_point', id: 'breaking_point', art: 'fist', quality: 'legendary',
+        name: 'Breaking Point',
         description: `Break past your limits: +${pct}% weapon damage, forever.`,
-        note: `Limit Breaks: ${p.limitBreaks}`,
+        note: `Breaking Points: ${p.limitBreaks}`,
       });
     }
 
@@ -8635,11 +8724,11 @@ window.WS = window.WS || {};
       if (choice.gold > 0) WS.Game.addGold(WS.floor(choice.gold * WS.Game.run.goldMult), p.x, p.y);
       WS.Audio.play('potion');
 
-    } else if (choice.type === 'limit_break') {
+    } else if (choice.type === 'breaking_point') {
       p.damageMultiplier += WS.Config.limitBreakDamage;
       p.limitBreaks++;
       WS.Audio.play('evolve');
-      WS.FX.notice(p.x, p.y, 'LIMIT BREAK!', '#ff8a3c');
+      WS.FX.notice(p.x, p.y, 'BREAKING POINT!', '#ff8a3c');
     }
     WS.Achievements.check();
   };
@@ -8647,7 +8736,7 @@ window.WS = window.WS || {};
   /** Removes a boon (and its future offers) from this run's pool. */
   LevelUp.banish = function (p, choice) {
     if (choice.type === 'bread' || choice.type === 'blessing'
-      || choice.type === 'limit_break' || choice.type === 'union') return false;
+      || choice.type === 'breaking_point' || choice.type === 'union') return false;
     p.banished[choice.id] = true;
     return true;
   };
@@ -10456,9 +10545,9 @@ window.WS = window.WS || {};
    * panels, not something to look at instead of them.
    */
   const MENU_WANDERERS = [
-    { art: 'kobold', tint: [1.00, 0.90, 0.55], size: 40, y: 0.24, speed: 13, phase: 0.0 },
-    { art: 'gnoll', tint: [0.95, 0.55, 0.20], size: 52, y: 0.52, speed: -9, phase: 0.35 },
-    { art: 'murloc', tint: [0.30, 0.95, 0.85], size: 38, y: 0.72, speed: 17, phase: 0.7 },
+    { art: 'lampling', tint: [1.00, 0.90, 0.55], size: 40, y: 0.24, speed: 13, phase: 0.0 },
+    { art: 'mongrel', tint: [0.95, 0.55, 0.20], size: 52, y: 0.52, speed: -9, phase: 0.35 },
+    { art: 'gilkin', tint: [0.30, 0.95, 0.85], size: 38, y: 0.72, speed: 17, phase: 0.7 },
     { art: 'wolf', tint: [0.62, 0.66, 0.74], size: 44, y: 0.86, speed: -12, phase: 0.15 },
     { art: 'boar', tint: [0.70, 0.45, 0.28], size: 42, y: 0.38, speed: 8, phase: 0.55 },
   ];
@@ -11059,9 +11148,9 @@ window.WS = window.WS || {};
     const want = [];
     if (p.metaTimer > 0) {
       const total = WS.Config.metaDuration + WS.Config.metaDurationPerRank * p.soulRending;
-      want.push({ key: 'meta', cls: 'meta', label: 'Metamorphosis', pct: p.metaTimer / total });
+      want.push({ key: 'meta', cls: 'meta', label: 'Ruinform', pct: p.metaTimer / total });
     } else if (p.felAttuned > 0) {
-      want.push({ key: 'fel', cls: 'fel', label: 'Fel', pct: p.fel / WS.Config.felToMeta });
+      want.push({ key: 'fel', cls: 'fel', label: 'Ruin', pct: p.fel / WS.Config.felToMeta });
     }
     if (wrap.childElementCount !== want.length
       || (want.length && wrap.firstChild.dataset.key !== want[0].key)) {
@@ -11317,14 +11406,15 @@ window.WS = window.WS || {};
   /* ---------------------------------------------------------- main menu -- */
   UI.openMenu = function () {
     this.hud.classList.add('hidden');
-    const s = shell('WoWSurvivors 2', 'Arclight');
+    const s = shell('Emberwatch', 'Arclight');
 
     const title = el('div'); title.id = 'title-wrap';
     const h = el('h1', 'game-title');
-    // Three parts, because the logotype treats them differently: a cool
-    // qualifier, the name struck in gilt, and the numeral as a set piece.
-    h.append(el('span', 'wm', 'WoW'), el('span', 'nm', 'Survivors'), el('span', 'num', '2'));
-    const sub = el('div', 'game-sub', 'A Warcraft arcade survival game');
+    // Two parts, because the logotype treats them differently: a cool grey
+    // first half and a second struck in gilt - the ember inside the watch,
+    // which is the whole title in one piece of type.
+    h.append(el('span', 'wm', 'Ember'), el('span', 'nm', 'watch'));
+    const sub = el('div', 'game-sub', 'Thirty minutes until dawn');
     title.append(h, sub, el('div', 'title-arc'));
     s.head.replaceChildren(title);
 
@@ -12152,7 +12242,7 @@ window.WS = window.WS || {};
     if (p.healthRegen > 0) kv('Regeneration', p.healthRegen.toFixed(1) + '/s');
     if (p.dodgeChance > 0) kv('Evasion', WS.round(p.dodgeChance * 100) + '%');
     if (p.lifesteal > 0) kv('Lifesteal', (p.lifesteal * 100).toFixed(1) + '%');
-    if (p.desecration > 0) kv('Desecration dealt', WS.formatNumber(p.desecrationDealt));
+    if (p.curdled > 0) kv('Curdled Light dealt', WS.formatNumber(p.curdleDealt));
     if (p.felAttuned > 0) kv('Metamorphoses', p.metamorphoses);
     if (p.blessingNames.length) kv('Blessings', p.blessingNames.join(', '));
 
@@ -12396,13 +12486,13 @@ window.WS = window.WS || {};
     faults.sinceReport++;
     const msg = (err && err.message) || String(err);
     if (faults.count === 1) {
-      console.error('[WoWSurvivors] recovered from an error in the frame loop:', err);
+      console.error('[Emberwatch] recovered from an error in the frame loop:', err);
       faults.lastMessage = msg;
     } else if (faults.sinceReport >= 60) {
       // A fault every frame is a broken build, not a blip. Say so once a
       // second at most, so the console stays readable enough to debug from.
       faults.sinceReport = 0;
-      console.error(`[WoWSurvivors] ${faults.count} frame errors so far, latest:`, err);
+      console.error(`[Emberwatch] ${faults.count} frame errors so far, latest:`, err);
     }
     // Persistent faults mean the frame is not doing its job any more. Tell the
     // player rather than letting them stare at a stuttering screen - and do it

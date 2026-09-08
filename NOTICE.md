@@ -1,9 +1,16 @@
 # Provenance
 
-What in this project is ours, what is licensed, and what is borrowed. Short
-version: **every byte the game produces is ours; some of the words are not.**
+What in Emberwatch is ours, what is licensed, and what is neither. Short
+version: **all of it is ours except two typefaces, which are used within their
+licence.**
 
 ## Ours — all of it original
+
+**Names.** The setting, the roster, the bestiary, the spell list, the
+blessings, the zones and every line of flavour text are Emberwatch's own.
+`tools/check-original.js` enforces this: it scans the whole tree and the built
+bundles against a list of ~90 borrowed terms and fails the build if any of them
+appear. Run it before you ship anything.
 
 **Code.** Every line under `src/`, `tools/` and `index.html`.
 
@@ -37,47 +44,56 @@ expressly permits bundling fonts with, and embedding them in, a program —
 including a commercial one. Three conditions matter in practice:
 
 1. The copyright and licence notice must travel with the font. **That is what
-   this file is doing, and it is the one thing that was missing.** Before any
-   public release, drop the two upstream `OFL.txt` files into
-   `licenses/` verbatim rather than relying on this summary.
+   this file is doing.** Before any public release, drop the two upstream
+   `OFL.txt` files into `licenses/` verbatim rather than relying on this
+   summary.
 2. The fonts may not be sold on their own. Shipping them inside the game is
    fine; selling the fonts is not.
 3. A modified font may not keep the family's Reserved Font Name. These
    subsets are unmodified glyph subsets, not redesigns, but if you ever
    re-hint or alter outlines, rename the family.
 
-## Borrowed — Blizzard's, not ours
+## What used to be here, and is not any more
 
-This is the honest part. The game is a Warcraft fan work, and the *setting*
-is Blizzard Entertainment's intellectual property:
+Emberwatch began as a Warcraft fan work. It was called WoWSurvivors 2 — the
+first three letters being Blizzard Entertainment's own abbreviation for World
+of Warcraft — and its zones, creatures, factions, spells, buffs, named items
+and boss quotes were Blizzard's intellectual property. That made it a fan
+project: shareable under Blizzard's Fan Content Policy, and not sellable.
 
-- **Zones** — Elwynn Forest, Westfall, Duskwood, The Barrens, Icecrown.
-- **Spell and ability names** — Arcane Missiles, Fireball, Pyroblast,
-  Frostbolt, Chain Lightning, Holy Nova, Death and Decay, Death Coil,
-  Consecration, Avenger's Shield, Metamorphosis, Reincarnation, and the rest
-  of `src/data/weapons.js`.
-- **Blessings and buffs** — Blessing of Kings, Blessing of Wisdom, Mark of
-  the Wild, Grace of Elune, Gift of the Bronze Dragonflight, Wrath of Air.
-- **Creatures and factions** — murlocs, kobolds, gnolls, the Riverpaw, the
-  Defias Brotherhood, the Scourge.
-- **Named items** — Thunderfury, the warglaives, the runeblade.
-- **Boss quotes** — "You no take candle!" and the other yells in
-  `src/data/bosses.js` are Blizzard's lines, quoted.
+All of it has been replaced:
 
-The survivor roster (Baron Zul, Maeca Barefoot, Dr. Rav McBreathless,
-Vonnra Hydrocheck, Professor Keegan, Nerosus, Chid, DZ, AAAAAAAAA) is *not*
-Blizzard's — those are the project's own characters.
+| Was | Is |
+| --- | --- |
+| WoWSurvivors 2 | **Emberwatch** |
+| Elwynn Forest, Westfall, Duskwood, The Barrens, Icecrown | Thornhollow, the Dustreach, Mourneholt, the Ochre Plains, the Pale Wastes |
+| murlocs, worgen, quilboar, kobolds, gnolls | gilkin, moonwretches, bristlekin, lamplings, mongrels |
+| the Defias Brotherhood, the Riverpaw, Kolkar, Razormane, Witchwing, the Scourge | the Crimson Kerchief, the Snarlpack, the Karrash, Thornhide, Shrikewing, the Pale |
+| Arcane Missiles, Fireball, Frostbolt, Chain Lightning, Holy Nova, … | Seeking Motes, Cinderfall, Rimeshard, Arcweb, Dawnpulse, … |
+| Blessing of Kings, Grace of Elune, Wrath of Air, … | Warden's Charge, Grace of the Moon, Wrath of the Gale, … |
+| Thunderfury, the warglaives, the runeblade | Stormcall, the twin glaives, the graveblade |
+| Death Knight, Demon Hunter | Graveblade, Ruinseeker |
+| Metamorphosis, Desecration, Reincarnation, Limit Break | the ruinform, Curdled Light, Second Wind, Breaking Point |
 
-### What that means
+The survivors themselves (Baron Zul, Maeca Barefoot, Dr. Rav McBreathless,
+Vonnra Hydrocheck, Professor Keegan, Nerosus, Chid, DZ, AAAAAAAAA, Nim
+B'ladin) were always the project's own characters, and are unchanged.
 
-For a personal project, or a free fan game shared with friends, this is the
-normal footing that fan works stand on, and Blizzard publishes a Fan Content
-Policy that permits non-commercial fan creations under conditions. Read it
-before publishing anywhere public.
+Saves made before the rename are migrated on load — see `migrate()` in
+`src/core/save.js`, which rewrites the old keys so no bestiary count, personal
+best or unlock is lost. That migration table is the one place in the shipped
+source that still names the old vocabulary, and it is exempt from the guard for
+exactly that reason.
 
-**You cannot sell this, or ship it to a storefront, while the Warcraft names
-are in it.** If that ever becomes the goal, the fix is cheap by design:
-the borrowed vocabulary lives almost entirely in `src/data/*.js` as plain
-string fields, separate from every system that reads them. Renaming the
-zones, spells, blessings and yells is a data edit, not a rewrite — no code,
-art or audio would have to change, because none of it was ever Blizzard's.
+## `addon/` — the ancestor, and the one thing that cannot ship
+
+`addon/` holds the original Lua addon this game was ported from. It runs inside
+the World of Warcraft retail client and draws on the client's own textures,
+fonts and sounds, so it is Warcraft through and through and there is no
+renaming it into something shippable.
+
+It is kept because it is the author's own work and the origin of everything
+here. It is **not** part of Emberwatch, is never built into any bundle, and
+**must be excluded from any commercial distribution** — move it to its own
+repository, or strip it from the release. `tools/check-original.js` prints a
+reminder on every single run until it is gone.

@@ -1,5 +1,5 @@
 /* ===========================================================================
-   ARCLIGHT UI - the design language for WoWSurvivors 2.
+   ARCLIGHT UI - the design language for Emberwatch.
    Obsidian substrate, arc light for everything that measures or matters.
    See docs/ARCLIGHT-UI.md for the rules this file implements.
    ======================================================================== */
@@ -279,8 +279,8 @@ html, body {
    of every dark dashboard ever built. A game's name should have weight and a
    material. So: a cool light qualifier, the name struck in gilt with a real
    metal ramp - highlight along the top third, shadow through the middle,
-   warm bounce underneath - and the numeral set apart in the mono face on its
-   own plate, the way a sequel is set on a box. */
+   warm bounce underneath. Two words, one of them lit: the ember inside the
+   watch, which is the whole title said in type. */
 #title-wrap { text-align: center; }
 #title-wrap .game-title {
   margin: 0; display: flex; align-items: baseline; justify-content: flex-start;
@@ -298,13 +298,6 @@ html, body {
   -webkit-background-clip: text; background-clip: text;
   color: transparent; -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 2px 0 rgba(0,0,0,.55)) drop-shadow(0 0 34px rgba(245,197,107,.3));
-}
-#title-wrap .game-title .num {
-  font-family: var(--fig); font-weight: 500; font-size: .62em; letter-spacing: 0;
-  color: var(--arc-hot); align-self: center; margin-left: .1em;
-  padding: .14em .42em; border: 1px solid var(--rim-arc); border-radius: 2px;
-  background: linear-gradient(180deg, rgba(245,197,107,.16), rgba(245,197,107,.04));
-  box-shadow: var(--bevel), 0 0 22px -8px var(--arc);
 }
 #title-wrap .game-sub {
   font-size: var(--t-micro); letter-spacing: .34em; text-transform: uppercase;

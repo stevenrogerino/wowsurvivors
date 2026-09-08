@@ -5,49 +5,49 @@
 
   WS.Blessings = {
     kings: {
-      name: 'Blessing of Kings', art: 'crown', quality: 'rare',
+      name: 'Warden\'s Charge', art: 'crown', quality: 'rare',
       description: '+{dmg%}% damage and +{hp} maximum health.',
       dmg: 0.08, hp: 40,
       apply: (p, b) => { p.damageMultiplier += b.dmg; p.maxHealth += b.hp; p.health += b.hp; },
     },
     wisdom: {
-      name: 'Blessing of Wisdom', art: 'book', quality: 'rare',
+      name: 'Scholar\'s Charge', art: 'book', quality: 'rare',
       description: '+{xp%}% experience from every gem.',
       xp: 0.15,
       apply: (p, b) => { p.xpMultiplier += b.xp; },
     },
-    elune: {
-      name: 'Grace of Elune', art: 'moon', quality: 'rare',
+    moonlit: {
+      name: 'Grace of the Moon', art: 'moon', quality: 'rare',
       description: '+{area%}% effect area on everything you cast.',
       area: 0.15,
       apply: (p, b) => { p.areaMultiplier += b.area; },
     },
     fortune: {
-      name: 'Gift of the Bronze Dragonflight', art: 'hourglass', quality: 'rare',
+      name: 'Gift of the Hourglass', art: 'hourglass', quality: 'rare',
       description: '+{gold%}% gold found and +{luck%}% luck.',
       gold: 0.20, luck: 0.15,
       apply: (p, b) => { p.goldMultiplier += b.gold; p.luck += b.luck; },
     },
     wild: {
-      name: 'Mark of the Wild', art: 'leaf', quality: 'rare',
+      name: 'Mark of the Thicket', art: 'leaf', quality: 'rare',
       description: '+{armor} armor, +{regen} health per second, +{speedMult*%}% movement speed.',
       armor: 1, regen: 0.5, speedMult: 1.08,
       apply: (p, b) => { p.armor += b.armor; p.healthRegen += b.regen; p.moveSpeed *= b.speedMult; },
     },
     air: {
-      name: 'Wrath of Air', art: 'wing', quality: 'rare',
+      name: 'Wrath of the Gale', art: 'wing', quality: 'rare',
       description: '-{cooldownMult~%}% weapon cooldowns.',
       cooldownMult: 0.90,
       apply: (p, b) => { p.cooldownMultiplier *= b.cooldownMult; },
     },
     fel: {
-      name: 'Fel Pact', art: 'drain', quality: 'rare',
+      name: 'Leech Pact', art: 'drain', quality: 'rare',
       description: 'Your projectiles drain life: heal for {lifesteal%}% of the damage they deal.',
       lifesteal: 0.02,
       apply: (p, b) => { p.lifesteal += b.lifesteal; },
     },
     ancestors: {
-      name: 'Ancestral Guidance', art: 'heart', quality: 'rare',
+      name: 'Ancestral Grace', art: 'heart', quality: 'rare',
       description: '+{healing%}% healing received.',
       healing: 0.30,
       apply: (p, b) => { p.healingMult += b.healing; },
@@ -92,14 +92,14 @@
       description: 'Healing curdles. Every point of overheal erupts as shadow, and {share%}% of the healing that does land lashes out too.',
       overheal: 1.0, share: 0.25,
       apply: (p, b) => {
-        p.desecration += 1;
-        p.desecrationOverheal = WS.max(p.desecrationOverheal, b.overheal);
-        p.desecrationShare += b.share;
+        p.curdled += 1;
+        p.curdleOverheal = WS.max(p.curdleOverheal, b.overheal);
+        p.curdleShare += b.share;
       },
     },
-    illidari_pact: {
-      name: 'Illidari Pact', art: 'soulrend', quality: 'legendary',
-      description: 'Overkill is no longer wasted: damage past the killing blow feeds the fel, and it feeds {felGain%}% faster. Fill the meter and you become the monster.',
+    ruinous_pact: {
+      name: 'Ruinous Pact', art: 'soulrend', quality: 'legendary',
+      description: 'Overkill is no longer wasted: damage past the killing blow feeds the ruin, and it feeds {felGain%}% faster. Fill the meter and you become the monster.',
       felGain: 0.30,
       apply: (p, b) => { p.felAttuned += 1; p.felBonus += b.felGain; },
     },
@@ -119,9 +119,9 @@
   };
 
   WS.BlessingOrder = [
-    'kings', 'wisdom', 'elune', 'fortune', 'wild', 'air', 'fel', 'ancestors',
+    'kings', 'wisdom', 'moonlit', 'fortune', 'wild', 'air', 'fel', 'ancestors',
     'glass_cannon', 'bloodthirst', 'momentum', 'arcane_overflow', 'blood_rite',
-    'illidari_pact', 'unyielding',
+    'ruinous_pact', 'unyielding',
   ];
 
 })(window.WS);

@@ -316,9 +316,9 @@
     const want = [];
     if (p.metaTimer > 0) {
       const total = WS.Config.metaDuration + WS.Config.metaDurationPerRank * p.soulRending;
-      want.push({ key: 'meta', cls: 'meta', label: 'Metamorphosis', pct: p.metaTimer / total });
+      want.push({ key: 'meta', cls: 'meta', label: 'Ruinform', pct: p.metaTimer / total });
     } else if (p.felAttuned > 0) {
-      want.push({ key: 'fel', cls: 'fel', label: 'Fel', pct: p.fel / WS.Config.felToMeta });
+      want.push({ key: 'fel', cls: 'fel', label: 'Ruin', pct: p.fel / WS.Config.felToMeta });
     }
     if (wrap.childElementCount !== want.length
       || (want.length && wrap.firstChild.dataset.key !== want[0].key)) {
@@ -574,14 +574,15 @@
   /* ---------------------------------------------------------- main menu -- */
   UI.openMenu = function () {
     this.hud.classList.add('hidden');
-    const s = shell('WoWSurvivors 2', 'Arclight');
+    const s = shell('Emberwatch', 'Arclight');
 
     const title = el('div'); title.id = 'title-wrap';
     const h = el('h1', 'game-title');
-    // Three parts, because the logotype treats them differently: a cool
-    // qualifier, the name struck in gilt, and the numeral as a set piece.
-    h.append(el('span', 'wm', 'WoW'), el('span', 'nm', 'Survivors'), el('span', 'num', '2'));
-    const sub = el('div', 'game-sub', 'A Warcraft arcade survival game');
+    // Two parts, because the logotype treats them differently: a cool grey
+    // first half and a second struck in gilt - the ember inside the watch,
+    // which is the whole title in one piece of type.
+    h.append(el('span', 'wm', 'Ember'), el('span', 'nm', 'watch'));
+    const sub = el('div', 'game-sub', 'Thirty minutes until dawn');
     title.append(h, sub, el('div', 'title-arc'));
     s.head.replaceChildren(title);
 
@@ -1409,7 +1410,7 @@
     if (p.healthRegen > 0) kv('Regeneration', p.healthRegen.toFixed(1) + '/s');
     if (p.dodgeChance > 0) kv('Evasion', WS.round(p.dodgeChance * 100) + '%');
     if (p.lifesteal > 0) kv('Lifesteal', (p.lifesteal * 100).toFixed(1) + '%');
-    if (p.desecration > 0) kv('Desecration dealt', WS.formatNumber(p.desecrationDealt));
+    if (p.curdled > 0) kv('Curdled Light dealt', WS.formatNumber(p.curdleDealt));
     if (p.felAttuned > 0) kv('Metamorphoses', p.metamorphoses);
     if (p.blessingNames.length) kv('Blessings', p.blessingNames.join(', '));
 

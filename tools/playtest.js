@@ -42,7 +42,7 @@ const SHOTS = process.env.OUT || null;
       while (WS.Game.run && WS.Game.run.time < seconds && ticks < seconds * 61) {
         ticks++;
         if (WS.Game.state === 'levelup' || WS.Game.state === 'blessing') {
-          const rank = { union: 0, evolve: 1, weapon_rank: 2, stat: 3, new_weapon: 2, limit_break: 5, bread: 6, blessing: 0 };
+          const rank = { union: 0, evolve: 1, weapon_rank: 2, stat: 3, new_weapon: 2, breaking_point: 5, bread: 6, blessing: 0 };
           const choices = WS.Game.levelChoices || [];
           let best = 0;
           for (let i = 1; i < choices.length; i++) {
@@ -89,20 +89,20 @@ const SHOTS = process.env.OUT || null;
 
   // 1. A full 30-minute run to Victory on the starting map.
   console.log('=== full run to victory ===');
-  console.log(JSON.stringify(await page.evaluate(() => window.__run('elwynn', 'mage', 1815, true))));
+  console.log(JSON.stringify(await page.evaluate(() => window.__run('thornhollow', 'mage', 1815, true))));
   await page.waitForTimeout(150);
   if (SHOTS) await page.screenshot({ path: SHOTS + '/victory.png' });
 
   // 2. Every map, 11 minutes each - hits two bosses and a swarm event.
   console.log('=== maps ===');
-  for (const m of ['westfall', 'duskwood', 'barrens', 'icecrown']) {
+  for (const m of ['dustreach', 'mourneholt', 'ochre', 'palewastes']) {
     console.log(JSON.stringify(await page.evaluate((m) => window.__run(m, 'shaman', 660, true), m)));
   }
 
   // 3. Every survivor, 4 minutes each - exercises every starting weapon.
   console.log('=== roster ===');
-  for (const c of ['mage', 'priest', 'rogue', 'hunter', 'warrior', 'warlock', 'shaman', 'paladin', 'death_knight', 'demon_hunter']) {
-    const r = await page.evaluate((c) => window.__run('elwynn', c, 240, true), c);
+  for (const c of ['mage', 'priest', 'rogue', 'hunter', 'warrior', 'warlock', 'shaman', 'paladin', 'graveblade', 'ruinseeker']) {
+    const r = await page.evaluate((c) => window.__run('thornhollow', c, 240, true), c);
     console.log(`${c.padEnd(14)} lv${r.level} kills=${r.kills} dmg=${r.dmg} | ${r.weapons}`);
   }
 

@@ -1,5 +1,5 @@
 /* Level-up boon generation and application: weapon ranks, new weapons,
- * evolutions, unions, passives, the Limit Break, and the deep-run bread
+ * evolutions, unions, passives, the Breaking Point, and the deep-run bread
  * fallback. `type` doubles as the card's quality key in the UI. */
 'use strict';
 (function (WS) {
@@ -97,21 +97,21 @@
     }
 
     // Fill all three slots from the real pool FIRST: a live build never loses
-    // a choice to Limit Break while genuine upgrades remain.
+    // a choice to Breaking Point while genuine upgrades remain.
     const choices = [];
     for (let i = 0; i < 3; i++) {
       const pick = WS.takeWeighted(candidates);
       if (pick) choices.push(pick);
     }
 
-    // Only once the pool cannot fill three slots does Limit Break appear.
+    // Only once the pool cannot fill three slots does Breaking Point appear.
     if (choices.length < 3) {
       const pct = WS.round(WS.Config.limitBreakDamage * 100);
       choices.push({
-        type: 'limit_break', id: 'limit_break', art: 'fist', quality: 'legendary',
-        name: 'Limit Break',
+        type: 'breaking_point', id: 'breaking_point', art: 'fist', quality: 'legendary',
+        name: 'Breaking Point',
         description: `Break past your limits: +${pct}% weapon damage, forever.`,
-        note: `Limit Breaks: ${p.limitBreaks}`,
+        note: `Breaking Points: ${p.limitBreaks}`,
       });
     }
 
@@ -192,11 +192,11 @@
       if (choice.gold > 0) WS.Game.addGold(WS.floor(choice.gold * WS.Game.run.goldMult), p.x, p.y);
       WS.Audio.play('potion');
 
-    } else if (choice.type === 'limit_break') {
+    } else if (choice.type === 'breaking_point') {
       p.damageMultiplier += WS.Config.limitBreakDamage;
       p.limitBreaks++;
       WS.Audio.play('evolve');
-      WS.FX.notice(p.x, p.y, 'LIMIT BREAK!', '#ff8a3c');
+      WS.FX.notice(p.x, p.y, 'BREAKING POINT!', '#ff8a3c');
     }
     WS.Achievements.check();
   };
@@ -204,7 +204,7 @@
   /** Removes a boon (and its future offers) from this run's pool. */
   LevelUp.banish = function (p, choice) {
     if (choice.type === 'bread' || choice.type === 'blessing'
-      || choice.type === 'limit_break' || choice.type === 'union') return false;
+      || choice.type === 'breaking_point' || choice.type === 'union') return false;
     p.banished[choice.id] = true;
     return true;
   };

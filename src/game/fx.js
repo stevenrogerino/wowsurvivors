@@ -115,7 +115,7 @@
     f.life = life || 0.30; f.maxLife = f.life;
   };
 
-  /** A screen-wide colour wash (metamorphosis, death, victory). */
+  /** A screen-wide colour wash (ruinform, death, victory). */
   FX.screen = function (colour, life) {
     this.flashScreen = { colour, life, maxLife: life };
   };

@@ -1,6 +1,6 @@
 /* The survivor: stats, movement, weapon cadence, experience, damage intake,
- * and the two mirrored resource systems - Desecration (wasted healing becomes
- * shadow damage) and Fel (wasted overkill becomes Metamorphosis). */
+ * and the two mirrored resource systems - Curdled Light (wasted healing becomes
+ * shadow damage) and Fel (wasted overkill becomes Ruinform). */
 'use strict';
 (function (WS) {
 
@@ -65,8 +65,8 @@
       blessingNames: [],
       unionsForged: {},
 
-      desecration: 0, desecrationOverheal: 0, desecrationShare: 0,
-      desecrationPool: 0, desecrationTimer: 0, desecrationDealt: 0,
+      curdled: 0, curdleOverheal: 0, curdleShare: 0,
+      curdlePool: 0, curdleTimer: 0, curdleDealt: 0,
       felAttuned: 0, fel: 0, felBonus: 0, soulRending: 0, metaTimer: 0,
       metamorphoses: 0,
       summonDamage: 0, summonHaste: 0,
@@ -139,11 +139,11 @@
    *  boss's mechanics rather than a 30-minute build-up. */
   Player.grantArenaLoadout = function (p) {
     const kit = [
-      { id: 'arcane_missiles', evolved: true },
-      { id: 'holy_nova', evolved: true },
-      { id: 'chain_lightning', evolved: true },
-      { id: 'fan_of_knives', evolved: true },
-      { id: 'consecration', evolved: false },
+      { id: 'seeking_motes', evolved: true },
+      { id: 'dawnpulse', evolved: true },
+      { id: 'arcweb', evolved: true },
+      { id: 'knifestorm', evolved: true },
+      { id: 'hallowed_ring', evolved: false },
     ];
     for (const slot of kit) {
       Player.addWeapon(p, slot.id);
@@ -197,7 +197,7 @@
 
     if (p.spinTimer > 0) p.spinTimer -= dt;
 
-    // Divine Bulwark recharges over time and flares when it comes back up.
+    // Warding Light recharges over time and flares when it comes back up.
     if (p.blockRank > 0 && !p.blockReady) {
       p.blockTimer -= dt;
       if (p.blockTimer <= 0) {
@@ -206,9 +206,9 @@
       }
     }
 
-    // Passive regeneration. With Desecration running it keeps ticking at full
+    // Passive regeneration. With Curdled Light running it keeps ticking at full
     // health, because that overflow is exactly the fuel.
-    if (p.healthRegen > 0 && (p.health < p.maxHealth || p.desecration > 0)) {
+    if (p.healthRegen > 0 && (p.health < p.maxHealth || p.curdled > 0)) {
       p.regenCarry += p.healthRegen * p.healingMult * dt;
       if (p.regenCarry >= 1) {
         const whole = WS.floor(p.regenCarry);
@@ -217,7 +217,7 @@
       }
     }
 
-    // Metamorphosis.
+    // Ruinform.
     if (p.metaTimer > 0) {
       p.metaTimer -= dt;
       if (p.metaTimer <= 0) {
@@ -227,25 +227,25 @@
           Player.metamorphose(p);
         } else {
           WS.FX.flash(p.x, p.y, 110, [0.45, 0.85, 0.30], 0.4);
-          WS.FX.notice(p.x, p.y, 'The fel recedes', '#9fe66b');
+          WS.FX.notice(p.x, p.y, 'The ruin recedes', '#9fe66b');
         }
       }
     }
 
-    // Desecration: release the pooled conversion as one shadow pulse.
-    if (p.desecrationPool > 0) {
-      p.desecrationTimer -= dt;
-      if (p.desecrationTimer <= 0) {
-        p.desecrationTimer = WS.Config.desecrationInterval;
-        const coeff = WS.Config.desecrationCoefficient;
-        const dmg = WS.floor(p.desecrationPool * coeff);
+    // Curdled Light: release the pooled conversion as one shadow pulse.
+    if (p.curdlePool > 0) {
+      p.curdleTimer -= dt;
+      if (p.curdleTimer <= 0) {
+        p.curdleTimer = WS.Config.curdleInterval;
+        const coeff = WS.Config.curdleCoefficient;
+        const dmg = WS.floor(p.curdlePool * coeff);
         if (dmg >= 1) {
           // Spend only what was dealt and keep the remainder, or a modest
           // healing build would be floored to nothing every single tick.
-          p.desecrationPool -= dmg / coeff;
-          p.desecrationDealt += dmg;
-          const radius = WS.Config.desecrationRadius * p.areaMultiplier;
-          WS.Enemy.damageArea(p.x, p.y, radius, dmg, null, null, 'desecration');
+          p.curdlePool -= dmg / coeff;
+          p.curdleDealt += dmg;
+          const radius = WS.Config.curdleRadius * p.areaMultiplier;
+          WS.Enemy.damageArea(p.x, p.y, radius, dmg, null, null, 'curdled');
           const punch = WS.min(1, dmg / 60);
           WS.FX.flash(p.x, p.y, radius * (0.86 + 0.24 * punch), [0.42, 0.12, 0.55], 0.32);
           WS.FX.flash(p.x, p.y, radius * (0.60 + 0.18 * punch), [0.30, 0.80 + 0.2 * punch, 0.22], 0.28);
@@ -266,7 +266,7 @@
 
     if (p.invulnerable > 0) p.invulnerable -= dt;
 
-    // Retribution Aura: sears everything nearby twice a second.
+    // Searing Aura: sears everything nearby twice a second.
     if (p.retRank > 0) {
       const cfg = WS.Config;
       const range = (cfg.retributionRange + cfg.retributionRangePerRank * p.retRank) * p.areaMultiplier;
@@ -275,7 +275,7 @@
         p.retTimer = cfg.retributionTick;
         const dmg = (cfg.retributionBase + cfg.retributionPerRank * p.retRank)
           * p.damageMultiplier * WS.CONST.PLAYER_DAMAGE_SCALE;
-        WS.Enemy.damageArea(p.x, p.y, range, dmg, null, null, 'retribution');
+        WS.Enemy.damageArea(p.x, p.y, range, dmg, null, null, 'searing');
       }
     }
 
@@ -332,17 +332,17 @@
   };
 
   Player.desecrate = function (p, amount) {
-    if (amount <= 0 || p.desecration <= 0) return;
-    p.desecrationPool += amount;
+    if (amount <= 0 || p.curdled <= 0) return;
+    p.curdlePool += amount;
   };
 
   /** Splits a heal into the part that lands and the part that would be wasted,
-   *  feeding both into desecration at their own rates. */
+   *  feeding both into curdled at their own rates. */
   Player.applyHeal = function (p, scaled, source) {
     const room = WS.max(0, p.maxHealth - p.health);
     const gained = WS.min(scaled, room);
-    if (p.desecration > 0) {
-      Player.desecrate(p, (scaled - gained) * p.desecrationOverheal + gained * p.desecrationShare);
+    if (p.curdled > 0) {
+      Player.desecrate(p, (scaled - gained) * p.curdleOverheal + gained * p.curdleShare);
     }
     if (gained <= 0) return 0;
     p.health += gained;
@@ -353,7 +353,7 @@
   };
 
   Player.heal = function (p, amount, source) {
-    // No early-out at full health: overheal is a resource Desecration eats,
+    // No early-out at full health: overheal is a resource Curdled Light eats,
     // so the heal still has to be measured.
     const scaled = WS.floor(amount * p.healingMult);
     if (scaled <= 0) return 0;
@@ -362,7 +362,7 @@
 
   Player.lifesteal = function (p, amount) {
     if (amount <= 0) return;
-    if (p.health >= p.maxHealth && p.desecration <= 0) return;
+    if (p.health >= p.maxHealth && p.curdled <= 0) return;
     p.lifestealCarry += amount;
     const whole = WS.floor(p.lifestealCarry);
     if (whole >= 1) {
@@ -401,7 +401,7 @@
     const run = WS.Game.run;
     if (run) run.metamorphoses = (run.metamorphoses || 0) + 1;
     if (p.metamorphoses <= 1) {
-      WS.Game.announce('Metamorphosis!', 'The fel takes hold.', 2.0, { kind: 'glory' });
+      WS.Game.announce('Ruinform!', 'The ruin takes hold.', 2.0, { kind: 'glory' });
       WS.Audio.play('evolve');
     }
     WS.FX.shake(10, 0.5);
@@ -461,8 +461,8 @@
         p.health = WS.floor(p.maxHealth * 0.5);
         p.invulnerable = 2.5;
         WS.FX.flash(p.x, p.y, 130, WS.CONST.COLORS.nature, 0.6);
-        WS.Enemy.damageArea(p.x, p.y, 170, 200, null, 90, 'reincarnation');
-        WS.Game.announce('Reincarnation!', 'The ancestors are not done with you.', 2.5,
+        WS.Enemy.damageArea(p.x, p.y, 170, 200, null, 90, 'second_wind');
+        WS.Game.announce('Second Wind!', 'The ancestors are not done with you.', 2.5,
           { kind: 'glory' });
         WS.Audio.play('level');
         return true;

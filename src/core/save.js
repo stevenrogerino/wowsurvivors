@@ -5,8 +5,97 @@
 'use strict';
 (function (WS) {
 
-  const KEY = 'wowsurvivors2.save.v1';
-  const SCHEMA = 1;
+  const KEY = 'emberwatch.save.v1';
+  const LEGACY_KEY = 'wowsurvivors2.save.v1';
+  const SCHEMA = 2;
+
+  /* The rename, carried across a save.
+   *
+   * Schema 1 stored zones, creatures, bosses, discoveries and achievements
+   * under the names the game used before it was Emberwatch, and those names
+   * are the KEYS of the codex - so a straight rename would have silently
+   * emptied every bestiary count, every personal best and every unlock a
+   * player had earned. Nobody should pay for our vocabulary changing.
+   *
+   * So schema 2 rewrites the keys it recognises and leaves anything it does
+   * not alone: an unknown id is dropped by sanitize() later rather than
+   * guessed at. The legacy localStorage entry is read once and then left
+   * where it is, untouched, because a migration that deletes the only copy of
+   * the thing it is migrating has no way back if it is wrong. */
+  /* == legacy-name map: begin ==
+   * Everything between these markers names the pre-Emberwatch vocabulary,
+   * because rewriting a key requires saying what it used to be. This is a
+   * compatibility shim, not content: none of it is ever shown to a player,
+   * and it exists solely so nobody loses a codex they filled in. The
+   * provenance guard skips exactly this region and counts what it skipped,
+   * so the exemption is bounded and visible rather than a blanket pardon. */
+  const RENAMED = {
+    maps: {
+      elwynn: 'thornhollow', westfall: 'dustreach', duskwood: 'mourneholt',
+      barrens: 'ochre', icecrown: 'palewastes',
+    },
+    characters: { death_knight: 'graveblade', demon_hunter: 'ruinseeker' },
+    bestiary: {
+      kobold: 'lampling', murloc: 'gilkin', murloc_oracle: 'gilkin_tidecaller',
+      gnoll: 'mongrel', defias: 'kerchief', defias_pillager: 'kerchief_pillager',
+      harvest_golem: 'harvest_reaper', knuckleduster: 'bruiser', worgen: 'moonwretch',
+      plainstrider: 'longstrider', quilboar: 'bristlekin', harpy: 'shrikewing',
+      centaur: 'karrash', scourge_ghoul: 'pale_ghoul',
+      riverpaw_bonesnapper: 'snarlpack_bonesnapper', defias_enforcer: 'kerchief_enforcer',
+      kolkar_battlelord: 'karrash_battlelord',
+    },
+    families: {
+      kobold: 'lampling', murloc: 'gilkin', gnoll: 'mongrel', defias: 'kerchief',
+      worgen: 'moonwretch', quilboar: 'bristlekin', harpy: 'shrikewing',
+      centaur: 'karrash',
+    },
+    bosses: { duskwraith: 'palewraith' },
+    combos: {
+      windseeker: 'tempest_pact', divine_storm: 'radiant_gyre',
+      windrunner: 'truestrike', seal_command: 'verdict', defile: 'curdle',
+    },
+    achievements: { scourge_of_the_masses: 'bane_of_the_masses', mrglglgl: 'blorp' },
+  };
+  /* == legacy-name map: end == */
+
+  /** Rewrites the keys of one map in place, keeping the larger value when two
+   *  old ids collapse onto one new one. */
+  function renameKeys(map, table) {
+    if (!isPlain(map)) return map;
+    for (const [from, to] of Object.entries(table)) {
+      if (!(from in map)) continue;
+      const incoming = map[from];
+      delete map[from];
+      if (to in map && typeof incoming === 'number' && typeof map[to] === 'number') {
+        map[to] = WS.max(map[to], incoming);
+      } else if (!(to in map)) {
+        map[to] = incoming;
+      }
+    }
+    return map;
+  }
+
+  function migrate(db) {
+    if (db.schema >= SCHEMA) return db;
+    const s = db.statistics || {};
+    renameKeys(db.unlocks && db.unlocks.maps, RENAMED.maps);
+    renameKeys(db.unlocks && db.unlocks.hyper, RENAMED.maps);
+    renameKeys(s.bestTime, RENAMED.maps);
+    renameKeys(db.unlocks && db.unlocks.characters, RENAMED.characters);
+    renameKeys(s.bestiary, RENAMED.bestiary);
+    renameKeys(s.families, RENAMED.families);
+    renameKeys(s.bosses, RENAMED.bosses);
+    renameKeys(db.combos, RENAMED.combos);
+    renameKeys(db.achievements, RENAMED.achievements);
+    // Two statistics were renamed alongside the items they count.
+    if (s.runebladesClaimed !== undefined && s.gravebladesClaimed === undefined) {
+      s.gravebladesClaimed = s.runebladesClaimed;
+    }
+    if (s.warglaivesClaimed !== undefined && s.glaivesClaimed === undefined) {
+      s.glaivesClaimed = s.warglaivesClaimed;
+    }
+    return db;
+  }
 
   function defaults() {
     return {
@@ -19,7 +108,7 @@
       meta: {},
       unlocks: {
         characters: { mage: true, priest: true },
-        maps: { elwynn: true },
+        maps: { thornhollow: true },
         hyper: {},
       },
       achievements: {},
@@ -41,8 +130,8 @@
         evolutions: 0,
         unions: 0,
         coffinsOpened: 0,
-        runebladesClaimed: 0,
-        warglaivesClaimed: 0,
+        gravebladesClaimed: 0,
+        glaivesClaimed: 0,
         bestTime: {},      // per map
         bosses: {},        // bossId -> kills
         families: {},      // family -> kills
@@ -144,7 +233,7 @@
     // would otherwise leave the player with nothing they are allowed to play.
     db.unlocks.characters.mage = true;
     db.unlocks.characters.priest = true;
-    db.unlocks.maps.elwynn = true;
+    db.unlocks.maps.thornhollow = true;
     return db;
   }
 
@@ -153,14 +242,21 @@
 
     load() {
       let raw = null;
-      try { raw = localStorage.getItem(KEY); } catch (e) { /* private mode */ }
+      try {
+        raw = localStorage.getItem(KEY);
+        // No Emberwatch save? Look for one from before the rename, and adopt
+        // it rather than greeting a returning player with an empty account.
+        if (raw === null) raw = localStorage.getItem(LEGACY_KEY);
+      } catch (e) { /* private mode */ }
       let data = null;
       if (raw) { try { data = JSON.parse(raw); } catch (e) { data = null; } }
       // A save that parses to a non-object - `null`, `7`, `"[]"` - is not a
       // save. merge() would otherwise write the defaults onto a primitive and
       // hand back something that is not a database.
       if (!isPlain(data)) data = {};
-      this.db = sanitize(merge(data, defaults()));
+      // Migrate BEFORE the defaults are merged in: renameKeys must see the old
+      // keys on their own, not sitting beside freshly-defaulted new ones.
+      this.db = sanitize(merge(migrate(data), defaults()));
       this.db.schema = SCHEMA;
       return this.db;
     },

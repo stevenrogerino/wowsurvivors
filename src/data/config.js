@@ -4,7 +4,7 @@
 
   WS.Config = {
     startCharacter: 'mage',
-    startMap: 'elwynn',
+    startMap: 'thornhollow',
 
     baseRerolls: 1,
     baseBanishes: 1,
@@ -67,16 +67,16 @@
     // Armor is a diminishing reduction: 1 - armor/(armor + K).
     armorConstant: 30,
 
-    // Desecration: healing that curdles into shadow damage.
-    desecrationOverheal: 1.00,
-    desecrationShare: 0.25,
-    desecrationPerRank: 0.15,
-    desecrationCoefficient: 1.00,
-    desecrationRadius: 110,
-    desecrationInterval: 0.50,
-    runebladeThreshold: 4000,
+    // Curdled Light: healing that curdles into shadow damage.
+    curdleOverheal: 1.00,
+    curdleShare: 0.25,
+    curdlePerRank: 0.15,
+    curdleCoefficient: 1.00,
+    curdleRadius: 110,
+    curdleInterval: 0.50,
+    gravebladeThreshold: 4000,
 
-    // Fel / Metamorphosis: overkill harvested into a burst transformation.
+    // Fel / Ruinform: overkill harvested into a burst transformation.
     felPerOverkill: 1.00,
     felPerRank: 0.25,
     felToMeta: 3500,
@@ -85,7 +85,7 @@
     metaDamageMult: 2.20,
     metaCooldownMult: 0.60,
     metaDurationPerRank: 1.0,
-    warglaiveMetas: 3,
+    glaiveMetas: 3,
 
     limitBreakDamage: 0.08,
 

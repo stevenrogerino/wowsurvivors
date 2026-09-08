@@ -8,8 +8,8 @@
 
   WS.Combos = {
     frostfire: {
-      name: 'Frostfire Bolt', weapons: ['frostbolt', 'fireball'],
-      description: 'Fireballs chill whatever survives them, and both bolts hit 10% harder.',
+      name: 'Frostfire Bolt', weapons: ['rimeshard', 'cinderfall'],
+      description: 'Cinderfalls chill whatever survives them, and both bolts hit 10% harder.',
       hint: 'When frost meets flame, something ancient stirs...',
       dmgMult: 1.10, slowFactor: 0.60, slowDuration: 1.5,
       apply: (w1, w2, c) => {
@@ -19,40 +19,40 @@
       },
     },
     shadowflame: {
-      name: 'Shadowflame', weapons: ['shadow_bolt', 'fireball'],
-      description: 'Shadow Bolts detonate on impact, scorching everything nearby.',
+      name: 'Shadowflame', weapons: ['umbral_bolt', 'cinderfall'],
+      description: 'Umbral Bolts detonate on impact, scorching everything nearby.',
       hint: 'Shadow and flame were ever entwined.',
       splash: 55,
       apply: (w1, w2, c) => { w1.mods.splash = c.splash; },
     },
     deadly_brew: {
-      name: 'Deadly Brew', weapons: ['fan_of_knives', 'frostbolt'],
+      name: 'Deadly Brew', weapons: ['knifestorm', 'rimeshard'],
       description: 'Every thrown knife is coated in a numbing venom that slows its victim.',
       hint: "A rogue with access to the alchemist's icebox is a dangerous thing.",
       slowFactor: 0.65, slowDuration: 1.2,
       apply: (w1, w2, c) => { w1.mods.slowFactor = c.slowFactor; w1.mods.slowDuration = c.slowDuration; },
     },
-    windseeker: {
-      name: "Windseeker's Legacy", weapons: ['whirlwind', 'chain_lightning'],
-      description: 'Whirlwind blades sometimes call the storm, loosing chain lightning on those they strike.',
-      hint: 'Blessed blades may yet seek the wind...',
+    tempest_pact: {
+      name: 'Tempest Pact', weapons: ['axe_gyre', 'arcweb'],
+      description: 'Axe Gyre blades sometimes call the storm, loosing arcweb on those they strike.',
+      hint: 'Blessed blades may yet call the storm...',
       procChain: 0.15,
       apply: (w1, w2, c) => { w1.mods.procChain = c.procChain; },
     },
-    divine_storm: {
-      name: 'Divine Storm', weapons: ['whirlwind', 'holy_nova'],
-      description: 'Every whirlwind begins with a pulse of holy Light.',
+    radiant_gyre: {
+      name: 'Radiant Gyre', weapons: ['axe_gyre', 'dawnpulse'],
+      description: 'Every axe_gyre begins with a pulse of holy Light.',
       hint: 'Steel spun in faith becomes something more.',
       apply: (w1) => { w1.mods.novaOnCast = true; },
     },
-    windrunner: {
-      name: "Windrunner's Guile", weapons: ['multishot', 'arcane_missiles'],
+    truestrike: {
+      name: 'Truestrike', weapons: ['volley', 'seeking_motes'],
       description: 'Enchanted arrows curve in flight to seek their prey.',
       hint: 'The finest rangers fletch their arrows with a whisper of magic.',
       apply: (w1) => { w1.mods.homing = true; },
     },
     celestial: {
-      name: 'Celestial Alignment', weapons: ['moonfire', 'holy_nova'],
+      name: 'Celestial Alignment', weapons: ['moonbrand', 'dawnpulse'],
       description: 'Sun and moon align: an extra moonbeam, and wider rings of Light.',
       hint: 'What happens when the moon rises on the light of dawn?',
       extraProjectiles: 1, areaMult: 1.12,
@@ -61,8 +61,8 @@
         w2.mods.areaMult = (w2.mods.areaMult || 1) * c.areaMult;
       },
     },
-    seal_command: {
-      name: 'Seal of Command', weapons: ['avengers_shield', 'consecration'],
+    verdict: {
+      name: 'Verdict', weapons: ['judgement_disc', 'hallowed_ring'],
       description: 'The shield judges from hallowed ground: +1 ricochet and 10% more damage.',
       hint: 'A shield thrown from sacred ground carries a verdict.',
       extraBounces: 1, dmgMult: 1.10,
@@ -71,8 +71,8 @@
         w1.mods.damageMult = (w1.mods.damageMult || 1) * c.dmgMult;
       },
     },
-    defile: {
-      name: 'Defile', weapons: ['holy_nova', 'consecration'],
+    curdle: {
+      name: 'Curdle', weapons: ['dawnpulse', 'hallowed_ring'],
       description: 'Both hallowed rites mend you for {healBonus} more - even unevolved. What your wounds cannot drink, rots.',
       hint: 'Two holy rites in one vessel. The Light has to go somewhere...',
       healBonus: 2,
@@ -84,8 +84,8 @@
   };
 
   WS.ComboOrder = [
-    'frostfire', 'shadowflame', 'deadly_brew', 'windseeker',
-    'divine_storm', 'windrunner', 'celestial', 'seal_command', 'defile',
+    'frostfire', 'shadowflame', 'deadly_brew', 'tempest_pact',
+    'radiant_gyre', 'truestrike', 'celestial', 'verdict', 'curdle',
   ];
 
 })(window.WS);

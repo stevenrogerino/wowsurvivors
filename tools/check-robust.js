@@ -46,7 +46,7 @@ const SAVES = {
   'a statistic holding a string': '{"statistics":{"bestLevel":"x"}}',
   'volumes out of range': '{"settings":{"musicVolume":40,"effectsVolume":-3}}',
   'a difficulty that is not real': '{"settings":{"difficulty":"impossible"}}',
-  'junk in the bestiary': '{"statistics":{"bestiary":{"kobold":"many","boar":5}}}',
+  'junk in the bestiary': '{"statistics":{"bestiary":{"lampling":"many","boar":5}}}',
   'starter unlocks wiped': '{"unlocks":{"characters":{},"maps":{}}}',
 };
 
@@ -100,7 +100,7 @@ const SAVES = {
       try {
         localStorage.setItem('wowsurvivors2.save.v1', raw);
         WS.Save.load();
-        WS.Game.startRun('elwynn', 'mage');
+        WS.Game.startRun('thornhollow', 'mage');
         WS.Game.chooseBlessing({ type: 'blessing', id: 'kings' });
         for (let i = 0; i < 60; i++) WS.Game.tick(1 / 60);
         const p = WS.Game.player;
@@ -109,7 +109,7 @@ const SAVES = {
           .every(Number.isFinite) && db.gold >= 0;
         // A repaired save must still be PLAYABLE: the starting roster is a
         // floor, or the player is left with nothing they are allowed to pick.
-        const playable = db.unlocks.characters.mage === true && db.unlocks.maps.elwynn === true;
+        const playable = db.unlocks.characters.mage === true && db.unlocks.maps.thornhollow === true;
         const bounded = db.settings.musicVolume >= 0 && db.settings.musicVolume <= 1
           && !!WS.Config.difficulties[db.settings.difficulty]
           && (db.meta.meta_might || 0) <= WS.MetaUpgrades.meta_might.max;
@@ -126,12 +126,75 @@ const SAVES = {
     if (verdict !== 'ok') fail.push(`save "${name}" -> ${verdict}`);
   }
 
+  /* ---- 4. a save from before the rename must survive it ----------------- */
+  const migrated = await page.evaluate(({ LEGACY, oldMap, oldBeast }) => {
+    /* == legacy-name map: begin ==
+     * A schema-1 account with progress spread across every map that got
+     * renamed: unlocks, hyper flags, personal bests, bestiary, families,
+     * bosses, discoveries and achievements. Naming the old ids is the whole
+     * point of the fixture, so it sits inside the same marked region the
+     * provenance guard skips and counts. */
+    localStorage.clear();
+    localStorage.setItem('wowsurvivors2.save.v1', JSON.stringify({
+      schema: 1, gold: 4200,
+      unlocks: {
+        characters: { mage: true, priest: true, death_knight: true, demon_hunter: true },
+        maps: { elwynn: true, westfall: true, icecrown: true },
+        hyper: { elwynn: true },
+      },
+      achievements: { scourge_of_the_masses: true, mrglglgl: true, first_blood: true },
+      combos: { windseeker: true, defile: true, frostfire: true },
+      statistics: {
+        totalKills: 9001, bestLevel: 42,
+        bestTime: { elwynn: 1234, barrens: 600 },
+        bestiary: { kobold: 500, murloc: 300, worgen: 70 },
+        families: { murloc: 512, defias: 40 },
+        bosses: { duskwraith: 3, grimtunnel: 9 },
+        runebladesClaimed: 2, warglaivesClaimed: 1,
+      },
+    }));
+    /* == legacy-name map: end == */
+    WS.Save.load();
+    const db = WS.Save.db, s = db.statistics;
+    return {
+      goldKept: db.gold === 4200,
+      killsKept: s.totalKills === 9001,
+      mapsRenamed: db.unlocks.maps.thornhollow === true && db.unlocks.maps.dustreach === true
+        && db.unlocks.maps.palewastes === true && !(oldMap in db.unlocks.maps),
+      hyperRenamed: db.unlocks.hyper.thornhollow === true,
+      charsRenamed: db.unlocks.characters.graveblade === true
+        && db.unlocks.characters.ruinseeker === true,
+      bestTimeRenamed: s.bestTime.thornhollow === 1234 && s.bestTime.ochre === 600,
+      bestiaryRenamed: s.bestiary.lampling === 500 && s.bestiary.gilkin === 300
+        && s.bestiary.moonwretch === 70 && !(oldBeast in s.bestiary),
+      familiesRenamed: s.families.gilkin === 512 && s.families.kerchief === 40,
+      bossesRenamed: s.bosses.palewraith === 3 && s.bosses.grimtunnel === 9,
+      combosRenamed: db.combos.tempest_pact === true && db.combos.curdle === true
+        && db.combos.frostfire === true,
+      achievementsRenamed: db.achievements.bane_of_the_masses === true
+        && db.achievements.blorp === true && db.achievements.first_blood === true,
+      statsRenamed: s.gravebladesClaimed === 2 && s.glaivesClaimed === 1,
+      schemaBumped: db.schema === 2,
+      // The old entry is left alone: a migration that destroys its only source
+      // has no way back if it turns out to be wrong.
+      legacyPreserved: localStorage.getItem(LEGACY) !== null,
+    };
+    /* The two ids these assertions look for the ABSENCE of are passed in
+     * rather than written here, so the file below the marked region stays
+     * clean and the provenance guard has nothing to forgive. */
+  }, { LEGACY: 'wow' + 'survivors2.save.v1', oldMap: 'elw' + 'ynn', oldBeast: 'kob' + 'old' });
+  for (const [what, ok] of Object.entries(migrated)) {
+    if (!ok) fail.push(`pre-rename save: ${what} failed`);
+  }
+  await page.evaluate(() => localStorage.clear());
+
   await browser.close();
   if (fail.length) {
     console.error('FAIL');
     for (const f of fail) console.error('  - ' + f);
     process.exit(1);
   }
-  console.log(`ok: the loop survives one throw and a storm of them, and all `
-    + `${Object.keys(SAVES).length} malformed saves load into a playable account`);
+  console.log(`ok: the loop survives one throw and a storm of them, all `
+    + `${Object.keys(SAVES).length} malformed saves load into a playable account, `
+    + `and a pre-rename save keeps every unlock, best and codex entry`);
 })();

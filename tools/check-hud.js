@@ -72,7 +72,7 @@ const CORE = 0.42;
         WS.Save.settings.hudLayout = hudLayout;
         WS.UI.applyHudLayout();
         WS.Save.unlockAll();
-        WS.Game.startRun('elwynn', 'mage');
+        WS.Game.startRun('thornhollow', 'mage');
         WS.Game.chooseBlessing({ type: 'blessing', id: 'kings' });
         // A boss, a full passive rack and a stack of toasts: the busiest the
         // HUD ever is, which is when it runs out of room.

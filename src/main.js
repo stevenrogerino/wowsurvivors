@@ -32,13 +32,13 @@
     faults.sinceReport++;
     const msg = (err && err.message) || String(err);
     if (faults.count === 1) {
-      console.error('[WoWSurvivors] recovered from an error in the frame loop:', err);
+      console.error('[Emberwatch] recovered from an error in the frame loop:', err);
       faults.lastMessage = msg;
     } else if (faults.sinceReport >= 60) {
       // A fault every frame is a broken build, not a blip. Say so once a
       // second at most, so the console stays readable enough to debug from.
       faults.sinceReport = 0;
-      console.error(`[WoWSurvivors] ${faults.count} frame errors so far, latest:`, err);
+      console.error(`[Emberwatch] ${faults.count} frame errors so far, latest:`, err);
     }
     // Persistent faults mean the frame is not doing its job any more. Tell the
     // player rather than letting them stare at a stuttering screen - and do it

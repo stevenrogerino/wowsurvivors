@@ -140,7 +140,7 @@
   const CREATURES = {
 
     /* --- humanoid frames -------------------------------------------------- */
-    kobold(g, s, p) {
+    lampling(g, s, p) {
       const cx = s / 2, cy = s * 0.60, u = s / 100;
       shaded(g, cx, cy, 20 * u, 22 * u, p);                       // hunched body
       poly(g, [[cx - 4 * u, cy - 20 * u], [cx, cy - 46 * u], [cx + 4 * u, cy - 20 * u]], p.glow, p.line, u); // candle
@@ -154,7 +154,7 @@
       eyes(g, cx, cy - 14 * u, 4.5 * u, 1.7 * u, '#ffd36b');
     },
 
-    gnoll(g, s, p) {
+    mongrel(g, s, p) {
       const cx = s / 2, cy = s * 0.58, u = s / 100;
       shaded(g, cx, cy + 4 * u, 24 * u, 25 * u, p);
       shaded(g, cx - 22 * u, cy - 2 * u, 7 * u, 12 * u, p, -0.4); // arms
@@ -194,13 +194,13 @@
       eyes(g, cx, cy - 21 * u, 4.5 * u, 1.7 * u, '#ff8f6b');
     },
 
-    murloc(g, s, p) {
+    gilkin(g, s, p) {
       const cx = s / 2, cy = s * 0.54, u = s / 100;
       // Splayed webbed feet, and the head lifted clear of the shoulders. The
       // head used to overlap the body by half its own height, which merged the
       // two masses into one green pebble.
       legs(g, p, cx, cy + 22 * u, u, [-8, 8], 11, 5);
-      /* Head fins fan sideways off the skull, which is where a murloc's are.
+      /* Head fins fan sideways off the skull, which is where a gilkin's are.
          They used to be long thin triangles rising off the shoulders, and at
          36px that read as two blades of grass growing behind it. */
       for (const dir of [-1, 1]) {
@@ -433,7 +433,7 @@
       eyes(g, cx - 22 * u, cy + 1 * u, 4.5 * u, 1.6 * u, '#ff9d6b');
     },
 
-    quilboar(g, s, p) {
+    bristlekin(g, s, p) {
       const cx = s / 2, cy = s * 0.58, u = s / 100;
       shaded(g, cx, cy + 4 * u, 22 * u, 24 * u, p);
       g.strokeStyle = p.hi; g.lineWidth = 3.4 * u; g.lineCap = 'round';
@@ -520,7 +520,7 @@
       g.restore();
     },
 
-    worgen(g, s, p) {
+    moonwretch(g, s, p) {
       const cx = s / 2, cy = s * 0.56, u = s / 100;
       shaded(g, cx, cy + 6 * u, 22 * u, 26 * u, p);
       shaded(g, cx - 24 * u, cy + 4 * u, 9 * u, 16 * u, p, -0.5);
@@ -537,7 +537,7 @@
       eyes(g, cx, cy - 26 * u, 5 * u, 2 * u, '#ffe14d');
     },
 
-    harpy(g, s, p) {
+    shrikewing(g, s, p) {
       const cx = s / 2, cy = s * 0.58, u = s / 100;
       for (const dir of [-1, 1]) {                                 // feathered wings
         for (let i = 0; i < 4; i++) {
@@ -557,7 +557,7 @@
       g.beginPath(); g.moveTo(cx + 5 * u, cy + 20 * u); g.lineTo(cx + 9 * u, cy + 30 * u); g.stroke();
     },
 
-    centaur(g, s, p) {
+    karrash(g, s, p) {
       const cx = s / 2, cy = s * 0.60, u = s / 100;
       shaded(g, cx + 4 * u, cy + 8 * u, 26 * u, 15 * u, p);        // horse barrel
       g.strokeStyle = p.dark; g.lineWidth = 4 * u; g.lineCap = 'round';
@@ -626,8 +626,8 @@
     warlock: { accessory: 'orb', cloak: true, hood: true },
     shaman: { accessory: 'totem', cloak: true },
     paladin: { accessory: 'shield', bulk: 1.1, halo: true },
-    death_knight: { accessory: 'runeblade', bulk: 1.1, cloak: true },
-    demon_hunter: { accessory: 'glaives', horns: true },
+    graveblade: { accessory: 'graveblade', bulk: 1.1, cloak: true },
+    ruinseeker: { accessory: 'glaives', horns: true },
   };
 
   function drawHero(g, s, tint, cfg, demon) {
@@ -711,7 +711,7 @@
         g.beginPath(); g.arc(cx - 22 * u, cy - 1 * u, 4 * u, 0, WS.TAU); g.fill();
         g.restore();
         break;
-      case 'runeblade':
+      case 'graveblade':
         blade(g, cx + 24 * u, cy + 26 * u, 52 * u, 6 * u, 0.32, '#cfd8e6', '#5f6878');
         g.save(); g.globalAlpha = 0.85; g.strokeStyle = '#5be0ff'; g.lineWidth = 1.6 * u;
         g.shadowColor = '#5be0ff'; g.shadowBlur = 10 * u;
@@ -879,7 +879,7 @@
       const res = size * SS;
       c = make(res, res);
       const g = c.getContext('2d');
-      const draw = CREATURES[art] || CREATURES.kobold;
+      const draw = CREATURES[art] || CREATURES.lampling;
       draw(g, res, palette(tint));
       c.displaySize = size;
       cache.set(key, c);

@@ -1,7 +1,7 @@
 /* Familiars: summons that HUNT. Each picks the nearest enemy, bounds it down,
  * bites, then peels off and retargets. Spirit wolves are fast and light;
  * ghouls are slower to close and slower to swing, but hit far harder with a
- * wider sweep. Granted in-run by Spirit Companion / Raise Dead. */
+ * wider sweep. Granted in-run by Spirit Companion / Grave Call. */
 'use strict';
 (function (WS) {
 

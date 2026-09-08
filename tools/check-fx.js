@@ -42,7 +42,7 @@ const MAX_SPEED = 1200;
   await page.waitForTimeout(700);
 
   const worst = await page.evaluate((MAX_SPEED) => {
-    WS.Game.startRun('elwynn', 'mage');
+    WS.Game.startRun('thornhollow', 'mage');
     const W = WS.CONST.WORLD_WIDTH, H = WS.CONST.WORLD_HEIGHT, K = WS.Input.keys;
     let maxSpeed = 0, offworld = 0, nan = 0, seen = 0, fastest = null;
     let slowestBolt = 1, boltSamples = 0, stalled = null;

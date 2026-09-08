@@ -69,7 +69,7 @@
 
   Weapon.colour = schoolColour;
 
-  /** The behavior actually used: an evolution may change it (Moonfire). */
+  /** The behavior actually used: an evolution may change it (Moonbrand). */
   function behaviorOf(w) {
     return (w.evolved && w.data.evolvedBehavior) || w.data.behavior;
   }
@@ -205,7 +205,7 @@
     return true;
   };
 
-  /** Shared lightning hop, also used by the Windseeker proc. */
+  /** Shared lightning hop, also used by the Tempest proc. */
   Weapon.chainFrom = function (x, y, damage, chains, range, source, colour) {
     colour = colour || WS.CONST.COLORS.nature;
     const visited = new Set();
@@ -231,7 +231,7 @@
     if (w.level >= cfg.projRankB) count++;
 
     if (w.mods.novaOnCast) {
-      // Divine Storm discovery: the whirl opens with a pulse of Light.
+      // Radiant Gyre discovery: the whirl opens with a pulse of Light.
       const r = 130 * player.areaMultiplier;
       WS.Enemy.damageArea(player.x, player.y, r, damageOf(player, w) * 0.8, null, 20, w.id);
       WS.FX.flash(player.x, player.y, r, WS.CONST.COLORS.holy, 0.3);

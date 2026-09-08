@@ -1,25 +1,26 @@
-# WoWSurvivors 2
+# Emberwatch
 
-A complete Warcraft-flavoured arcade survival game that runs in a browser.
-Open `index.html` and play — no build step, no server, no dependencies, and no
-network requests: every sprite, icon and sound is generated at runtime, and
-both typefaces are embedded in the stylesheet.
+*Thirty minutes until dawn.*
 
-It is a standalone port and expansion of the **WoW Survivors** addon (a
-Vampire-Survivors-like built inside the World of Warcraft UI). All of that
-game's content came across — 10 survivors, 21 weapons (16 findable, plus 5
-union super-weapons), 28 creatures, 6 elites, 20 bosses, 5 battlefields plus a
-scripted boss arena, 25 passives, 15 blessings, 9 hidden weapon discoveries,
-13 Trainer upgrades and 24 achievements — rebuilt on canvas, and dressed in
-**Arclight**: an obsidian interface lit by arc light, where anything that
-measures or matters glows and everything else recedes
+A complete arcade survival game that runs in a browser. Open `index.html` and
+play — no build step, no server, no dependencies, and no network requests:
+every sprite, icon and sound is generated at runtime, and both typefaces are
+embedded in the stylesheet.
+
+You hold a light through one night. 10 survivors, 21 weapons (16 findable,
+plus 5 union super-weapons), 28 creatures, 6 elites, 20 bosses, 5 battlefields
+plus a scripted boss arena, 25 passives, 15 blessings, 9 hidden weapon
+discoveries, 13 Trainer upgrades and 24 achievements — all drawn on canvas and
+dressed in **Arclight**: an obsidian interface lit by arc light, where anything
+that measures or matters glows and everything else recedes
 (see [`docs/ARCLIGHT-UI.md`](docs/ARCLIGHT-UI.md)).
 
 The game aims at a hard duality: cute but epic. Something you can play at a
 stroll, and sweat over if you lean in.
 
-See [`NOTICE.md`](NOTICE.md) for what is original here, what is licensed, and
-what is Blizzard's.
+Every name, every sprite and every sound in Emberwatch is its own. See
+[`NOTICE.md`](NOTICE.md) for the provenance, and `tools/check-original.js`,
+which enforces it.
 
 ## Play
 
@@ -32,7 +33,7 @@ start index.html           # Windows
 Or build one self-contained file to host or hand around:
 
 ```
-node tools/bundle.js       # -> dist/wowsurvivors2.html
+node tools/bundle.js       # -> dist/emberwatch.html
 ```
 
 ### Controls
@@ -54,12 +55,12 @@ it under **How to play**, in the menu and behind Esc.
 
 - Pick a survivor and a battlefield, then draft one **Blessing** — a
   run-defining boon, from a flat stat to a rule change like Glass Cannon,
-  Momentum or the Illidari Pact.
+  Momentum or the Ruinous Pact.
 - Gather experience gems, take a boon each level, and pair a weapon with its
   catalyst passive to **evolve** it at rank 8. Two fully evolved weapons can
   then merge into a **union** super-weapon, freeing a slot.
 - Certain weapon pairs quietly unlock **Discoveries** — Frostfire Bolt,
-  Windseeker's Legacy, Defile — recorded permanently in the Codex.
+  Tempest Pact, Curdle — recorded permanently in the Codex.
 - Bosses arrive at 5:00, 10:30, 16:00, 22:00 and 27:00. Surviving to **30:00**
   is Victory and unlocks that map's Hyper Mode; at that moment **Death itself**
   walks out, and returns every minute after. Claim the win, fight on, or go
@@ -71,9 +72,10 @@ it under **How to play**, in the menu and behind Esc.
   including the 100-rank Curious Egg.
 - Achievements unlock the other eight survivors and four further battlefields.
   Three survivors are not unlocked by a counter at all: the **Paladin** is
-  buried on the field in a coffin you have to walk to, the **Death Knight**
-  answers a runeblade drawn out by your own Desecration, and the **Demon
-  Hunter** arrives with warglaives once you have Metamorphosed enough times.
+  buried on the field in a coffin you have to walk to, the **Graveblade**
+  answers a graveblade drawn out by your own Curdled Light, and the
+  **Ruinseeker** arrives with twin glaives once you have taken the ruinform
+  enough times.
 
 ### The Eclipse Arena
 
@@ -109,7 +111,10 @@ tools/         the single-file bundler, and the guard rails:
                check-steer.js mouse and touch steering, and its hand-back
                check-hud.js   HUD inside the screen and off the middle of the
                               field, and the arena read with no colour at all
-               check-robust.js a thrown frame, and sixteen malformed saves
+               check-robust.js a thrown frame, sixteen malformed saves, and a
+                              save made before the rename
+               check-original.js every file and bundle against ~90 borrowed
+                              terms - the game owns every name it ships
 ```
 
 Every guard carries the bug it was written for in its header, and every one of
@@ -157,7 +162,12 @@ build it was supposed to reject.
 
 ## Credits
 
-Ported from the `WoWSurvivors` World of Warcraft addon. World of Warcraft and
-Warcraft are trademarks of Blizzard Entertainment; this is an unaffiliated fan
-project and ships none of Blizzard's assets — the art and audio here are all
-generated by the code in this repository.
+Emberwatch is original work. Its setting, roster, bestiary, spell list and
+score are its own, and every pixel and every sound is generated by the code in
+this repository — there is not one image or audio file in the tree. The two
+typefaces are used under the SIL Open Font License; see [`NOTICE.md`](NOTICE.md).
+
+The game began life as a port of a personal Lua addon, which still sits in
+`addon/` as the ancestor of the port. That directory is **not** part of
+Emberwatch, is not built into anything, and must be excluded from any
+distribution — `tools/check-original.js` says so on every run.

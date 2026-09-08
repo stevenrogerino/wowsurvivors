@@ -14,8 +14,8 @@
     cache: { art: 'cache', tint: [1.0, 0.90, 0.60], size: 24 },
     hourglass: { art: 'hourglass', tint: [0.6, 0.85, 1.0], size: 20 },
     coffin: { art: 'coffin', tint: [0.85, 0.85, 0.95], size: 30, noMagnet: true },
-    runeblade: { art: 'runeblade', tint: [0.85, 0.20, 0.25], size: 30, noMagnet: true },
-    warglaive: { art: 'warglaive', tint: [0.55, 1.0, 0.25], size: 30, noMagnet: true },
+    graveblade: { art: 'graveblade', tint: [0.85, 0.20, 0.25], size: 30, noMagnet: true },
+    twinglaive: { art: 'twinglaive', tint: [0.55, 1.0, 0.25], size: 30, noMagnet: true },
     merchant: { art: 'merchant', tint: [0.95, 0.85, 0.45], size: 30, noMagnet: true },
   };
 
@@ -148,23 +148,23 @@
       WS.Achievements.check();
       WS.Audio.play('evolve');
 
-    } else if (kind === 'runeblade') {
-      WS.Save.stats.runebladesClaimed = (WS.Save.stats.runebladesClaimed || 0) + 1;
+    } else if (kind === 'graveblade') {
+      WS.Save.stats.gravebladesClaimed = (WS.Save.stats.gravebladesClaimed || 0) + 1;
       WS.Save.save();
-      WS.Game.announce('The runeblade answers.', 'Something colder takes the hilt.', 3.5,
+      WS.Game.announce('The graveblade answers.', 'Something colder takes the hilt.', 3.5,
         { kind: 'glory' });
       WS.Game.addGold(WS.floor(120 * run.goldMult), p.x, p.y);
-      WS.Player.addWeapon(p, 'death_strike');
+      WS.Player.addWeapon(p, 'reaving_arc');
       WS.Achievements.check();
       WS.Audio.play('evolve');
 
-    } else if (kind === 'warglaive') {
-      WS.Save.stats.warglaivesClaimed = (WS.Save.stats.warglaivesClaimed || 0) + 1;
+    } else if (kind === 'twinglaive') {
+      WS.Save.stats.glaivesClaimed = (WS.Save.stats.glaivesClaimed || 0) + 1;
       WS.Save.save();
-      WS.Game.announce('The warglaives find you.', 'You were never going to refuse.', 3.5,
+      WS.Game.announce('The twin glaives find you.', 'You were never going to refuse.', 3.5,
         { kind: 'glory' });
       WS.Game.addGold(WS.floor(120 * run.goldMult), p.x, p.y);
-      WS.Player.addWeapon(p, 'fel_beam');
+      WS.Player.addWeapon(p, 'verdant_lance');
       WS.Achievements.check();
       WS.Audio.play('evolve');
 

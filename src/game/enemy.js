@@ -124,7 +124,7 @@
     return found;
   };
 
-  /** Nearest enemy within range. `excluded` is a Set (chain lightning hops). */
+  /** Nearest enemy within range. `excluded` is a Set (arcweb hops). */
   Enemy.findNearest = function (x, y, range, excluded) {
     let best = null, bestDist = range * range;
     for (let i = 0; i < this.pool.count; i++) {
@@ -299,7 +299,7 @@
     if (!e || e._dead) return;
     if (e.invuln > 0) return;
     const player = WS.Game.player;
-    // Overkill is normally discarded; the Demon Hunter's fel meter drinks it.
+    // Overkill is normally discarded; the Ruinseeker's ruin meter drinks it.
     if (player && player.felAttuned > 0 && amount > e.health) {
       WS.Player.gainFel(player, amount - WS.max(0, e.health));
     }

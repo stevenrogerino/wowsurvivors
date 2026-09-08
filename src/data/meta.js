@@ -60,7 +60,7 @@
       apply: (p, rank, m) => { p.startLevelUps += m.v * rank; },
     },
     meta_revive: {
-      name: 'Ankh of Reincarnation', art: 'ankh',
+      name: 'Ashen Ankh', art: 'ankh',
       description: 'Once per run, cheat death and return at half health', max: 1, cost: 2500, v: 1,
       apply: (p, rank, m) => { p.revives += m.v * rank; },
     },

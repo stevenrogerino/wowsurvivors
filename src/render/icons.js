@@ -645,7 +645,7 @@
       shape(g, [[50, 14], [74, 44], [50, 86], [26, 44]], c || '#7fd4ff', lit + '99');
       shape(g, [[50, 14], [50, 86], [26, 44]], lit + '44');
     },
-    murloc(g, c) {
+    gilkin(g, c) {
       const col = c || '#5fd68a';
       g.fillStyle = col;
       g.beginPath(); g.ellipse(50, 54, 25, 29, 0, 0, WS.TAU); g.fill();
@@ -738,14 +738,14 @@
       g.beginPath(); g.moveTo(50, 30); g.lineTo(50, 66); g.stroke();
       g.beginPath(); g.moveTo(35, 44); g.lineTo(65, 44); g.stroke();
     },
-    runeblade(g, c) {
+    graveblade(g, c) {
       leafBlade(g, 50, 40, 32, 11, 0, '#cfd8e6', '#5f6878');
       shape(g, [[44, 70], [56, 70], [54, 88], [46, 88]], '#3a2020');
       shape(g, [[31, 64], [69, 64], [67, 72], [33, 72]], '#b0b7c4');
       line(g, c || '#e2483d', 3);
       g.beginPath(); g.moveTo(50, 22); g.lineTo(50, 58); g.stroke();
     },
-    warglaive(g, c) {
+    twinglaive(g, c) {
       const col = c || '#8cf24a';
       arcAt(g, 50, 50, 30, -1.0, 1.5, col, STROKE);
       arcAt(g, 50, 50, 17, 1.5, -1.0, col, STROKE - 2);

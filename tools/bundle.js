@@ -19,7 +19,7 @@ const args = process.argv.slice(2);
 const artifact = args.includes('--artifact');
 const named = args.find((a) => !a.startsWith('--'));
 const out = named || path.join(root, 'dist',
-  artifact ? 'wowsurvivors2.artifact.html' : 'wowsurvivors2.html');
+  artifact ? 'emberwatch.artifact.html' : 'emberwatch.html');
 
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
@@ -48,7 +48,7 @@ if (artifact) {
     .replace(/<!--[\s\S]*?-->\s*/g, '')
     .replace(/<script src="[^"]+"><\/script>\s*/g, '')
     .trim();
-  result = `<title>WoWSurvivors 2</title>\n<style>\n${styles}\n</style>\n${body}\n<script>\n${bodies}\n</script>\n`;
+  result = `<title>Emberwatch</title>\n<style>\n${styles}\n</style>\n${body}\n<script>\n${bodies}\n</script>\n`;
 } else {
   result = html
     .replace(/<link rel="stylesheet" href="[^"]+">/, `<style>\n${styles}\n</style>`)
