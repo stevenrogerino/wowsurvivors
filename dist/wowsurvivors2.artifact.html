@@ -127,6 +127,27 @@
 
 * { box-sizing: border-box; }
 
+/* The focus ring. One rule for every control in the game, in the arc light,
+   because a pad or a keyboard has to be able to see where it is.
+
+   Two triggers, deliberately. :focus-visible covers tabbing, which the
+   browser judges correctly. body.nav-active covers arrow keys and the pad,
+   which drive focus programmatically - a case :focus-visible does not
+   reliably match, and relying on it alone left a player arrowing round the
+   menu with the default 1px outline or none. A pointer moving clears the
+   class, so a mouse never leaves a ring behind it. */
+:focus { outline: none; }
+:focus-visible,
+body.nav-active :focus {
+  outline: 2px solid var(--arc);
+  outline-offset: 2px;
+  border-radius: 2px;
+  box-shadow: 0 0 20px -6px var(--arc);
+}
+.card:focus-visible, .pick:focus-visible, .beast:focus-visible,
+body.nav-active .card:focus, body.nav-active .pick:focus,
+body.nav-active .beast:focus { outline-offset: 3px; }
+
 html, body {
   margin: 0; padding: 0; height: 100%;
   background: var(--void);
@@ -10797,6 +10818,112 @@ window.WS = window.WS || {};
     });
   };
 
+  /* ------------------------------------------------------ menu navigation --
+   * The game takes a gamepad on the battlefield and then hands you back to a
+   * mouse the moment a menu opens, which is the point at which a controller
+   * player puts it down. Everything in the overlay is a real button, so the
+   * missing half is only a way to move between them.
+   *
+   * Spatial, not tab order: with a grid of ten survivors, "down" has to mean
+   * the tile below, not the next node in the document. The score prefers
+   * candidates close along the pressed axis and penalises drift across it,
+   * which is what makes a two-row grid behave like a grid.
+   */
+  const NAV_SELECTOR = 'button, input, [tabindex]:not([tabindex="-1"])';
+
+  UI.focusables = function () {
+    return [...this.overlay.querySelectorAll(NAV_SELECTOR)]
+      .filter((n) => !n.disabled && n.offsetParent !== null);
+  };
+
+  UI.navigate = function (dx, dy) {
+    const items = this.focusables();
+    if (!items.length) return false;
+    const cur = items.indexOf(document.activeElement) >= 0 ? document.activeElement : null;
+    if (!cur) { items[0].focus(); return true; }
+
+    const a = cur.getBoundingClientRect();
+    const ax = a.left + a.width / 2, ay = a.top + a.height / 2;
+    let best = null, bestScore = Infinity;
+    for (const n of items) {
+      if (n === cur) continue;
+      const r = n.getBoundingClientRect();
+      const ox = r.left + r.width / 2 - ax, oy = r.top + r.height / 2 - ay;
+      const along = ox * dx + oy * dy;
+      if (along <= 4) continue;                 // not in the pressed direction
+      const across = WS.abs(ox * dy - oy * dx);
+      const score = along + across * 2.4;       // drift costs more than distance
+      if (score < bestScore) { bestScore = score; best = n; }
+    }
+    if (!best) return false;
+    /* Mark the session as keyboard/pad driven before focusing.
+     *
+     * :focus-visible is a browser heuristic about how focus was ACQUIRED, and
+     * a programmatic .focus() - which is all a spatial navigator can do - does
+     * not reliably satisfy it. Relying on it meant arrowing around the menu
+     * left the player with the default 1px browser outline or nothing at all.
+     * The class says plainly what the heuristic was guessing at. */
+    document.body.classList.add('nav-active');
+    best.focus();
+    WS.Audio.play('hover');
+    return true;
+  };
+
+  /** The moment a pointer moves, focus rings stop being the way you are
+   *  steering, so they stop being drawn. */
+  UI.wireNavMode = function () {
+    const off = () => document.body.classList.remove('nav-active');
+    window.addEventListener('pointerdown', off, { passive: true });
+    window.addEventListener('pointermove', off, { passive: true });
+  };
+
+  /** Gamepad, polled from the frame loop while an overlay is up. Edge
+   *  detected with a repeat delay, so holding a direction walks a list at a
+   *  readable pace instead of teleporting to the end of it. */
+  const PAD = { axis: 0, held: 0, repeat: 0, a: false, b: false };
+  UI.pollMenuPad = function (dt) {
+    if (this.overlay.classList.contains('hidden')) { PAD.axis = 0; return; }
+    if (!navigator.getGamepads) return;
+    const pad = navigator.getGamepads()[WS.Input.gamepadIndex];
+    if (!pad) return;
+
+    const dead = 0.5;
+    let dx = 0, dy = 0;
+    const ax = pad.axes[0] || 0, ay = pad.axes[1] || 0;
+    if (ax < -dead) dx = -1; else if (ax > dead) dx = 1;
+    if (ay < -dead) dy = -1; else if (ay > dead) dy = 1;
+    if (pad.buttons.length > 15) {
+      if (pad.buttons[12].pressed) dy = -1;
+      if (pad.buttons[13].pressed) dy = 1;
+      if (pad.buttons[14].pressed) dx = -1;
+      if (pad.buttons[15].pressed) dx = 1;
+    }
+
+    const dir = dx * 3 + dy;                    // a cheap direction identity
+    if (dir === 0) { PAD.axis = 0; PAD.held = 0; }
+    else if (dir !== PAD.axis) {
+      PAD.axis = dir; PAD.held = 0; PAD.repeat = 0.34;
+      this.navigate(dx, dy);
+    } else {
+      PAD.held += dt;
+      if (PAD.held >= PAD.repeat) { PAD.held = 0; PAD.repeat = 0.12; this.navigate(dx, dy); }
+    }
+
+    const a = !!(pad.buttons[0] && pad.buttons[0].pressed);
+    if (a && !PAD.a) {
+      const f = document.activeElement;
+      if (f && this.overlay.contains(f) && !f.disabled) f.click();
+      else { const items = this.focusables(); if (items[0]) items[0].focus(); }
+    }
+    PAD.a = a;
+
+    const back = !!(pad.buttons[1] && pad.buttons[1].pressed);
+    if (back && !PAD.b) {
+      if (WS.Game.state === 'paused') WS.Game.resume();
+    }
+    PAD.b = back;
+  };
+
   UI.show = function (inner) {
     this.overlay.innerHTML = '';
     this.overlay.append(inner);
@@ -11735,8 +11862,15 @@ window.WS = window.WS || {};
     this.applyHudLayout();
     this.wireHover(overlay);
     this.wireHover(hud);
+    this.wireNavMode();
 
     WS.Input.onKey = (e) => {
+      // Arrows move the focus while a menu is open; the survivor is not
+      // walking anywhere with an overlay in front of them.
+      if (!this.overlay.classList.contains('hidden')) {
+        const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.code];
+        if (d) { this.navigate(d[0], d[1]); return; }
+      }
       if (e.code === 'Escape') {
         if (WS.Game.state === 'playing') WS.Game.pause();
         else if (WS.Game.state === 'paused') WS.Game.resume();
@@ -11772,6 +11906,7 @@ window.WS = window.WS || {};
     last = now;
     WS.Game.update(dt);
     WS.Renderer.draw(now / 1000);
+    WS.UI.pollMenuPad(dt);
     if (WS.Game.player) WS.UI.updateHUD();
     requestAnimationFrame(frame);
   }

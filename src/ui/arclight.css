@@ -80,6 +80,27 @@
 
 * { box-sizing: border-box; }
 
+/* The focus ring. One rule for every control in the game, in the arc light,
+   because a pad or a keyboard has to be able to see where it is.
+
+   Two triggers, deliberately. :focus-visible covers tabbing, which the
+   browser judges correctly. body.nav-active covers arrow keys and the pad,
+   which drive focus programmatically - a case :focus-visible does not
+   reliably match, and relying on it alone left a player arrowing round the
+   menu with the default 1px outline or none. A pointer moving clears the
+   class, so a mouse never leaves a ring behind it. */
+:focus { outline: none; }
+:focus-visible,
+body.nav-active :focus {
+  outline: 2px solid var(--arc);
+  outline-offset: 2px;
+  border-radius: 2px;
+  box-shadow: 0 0 20px -6px var(--arc);
+}
+.card:focus-visible, .pick:focus-visible, .beast:focus-visible,
+body.nav-active .card:focus, body.nav-active .pick:focus,
+body.nav-active .beast:focus { outline-offset: 3px; }
+
 html, body {
   margin: 0; padding: 0; height: 100%;
   background: var(--void);

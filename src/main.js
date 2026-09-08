@@ -10,6 +10,7 @@
     last = now;
     WS.Game.update(dt);
     WS.Renderer.draw(now / 1000);
+    WS.UI.pollMenuPad(dt);
     if (WS.Game.player) WS.UI.updateHUD();
     requestAnimationFrame(frame);
   }

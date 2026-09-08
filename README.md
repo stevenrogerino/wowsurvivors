@@ -39,7 +39,8 @@ node tools/bundle.js       # -> dist/wowsurvivors2.html
 
 | | |
 | --- | --- |
-| **WASD** / **arrows** / gamepad / touch | move — that is the only control |
+| **WASD** / gamepad / touch | move — that is the only control |
+| **arrows** / gamepad | move the focus around a menu; **Enter** or **A** picks |
 | **1 2 3** | pick a level-up card |
 | **R** / **B** | reroll / banish a level-up offer |
 | **Esc** | pause (full build sheet and damage meter) |
@@ -101,6 +102,7 @@ tools/         the single-file bundler, and the guard rails:
                check-input.js held movement across overlays
                check-fx.js    particle speed and world bounds
                check-icons.js glyphs clipped by their field, roster size
+               check-nav.js   spatial menu navigation and the focus ring
 ```
 
 - **Simulation** runs at a fixed 60 Hz with a per-frame catch-up cap, so a
