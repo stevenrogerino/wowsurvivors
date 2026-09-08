@@ -40,6 +40,7 @@ node tools/bundle.js       # -> dist/wowsurvivors2.html
 | | |
 | --- | --- |
 | **WASD** / gamepad / touch | move — that is the only control |
+| **hold the left mouse button** and drag | steer one-handed, the same as the touch stick (optional, in Settings) |
 | **arrows** / gamepad | move the focus around a menu; **Enter** or **A** picks |
 | **1 2 3** | pick a level-up card |
 | **R** / **B** | reroll / banish a level-up offer |
@@ -103,6 +104,7 @@ tools/         the single-file bundler, and the guard rails:
                check-fx.js    particle speed and world bounds
                check-icons.js glyphs clipped by their field, roster size
                check-nav.js   spatial menu navigation and the focus ring
+               check-steer.js mouse and touch steering, and its hand-back
 ```
 
 - **Simulation** runs at a fixed 60 Hz with a per-frame catch-up cap, so a

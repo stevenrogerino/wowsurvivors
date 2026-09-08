@@ -12,6 +12,15 @@
  *             It once latched onto a transient first-layout measurement and
  *             painted a 44px black band across the feet of three level-up
  *             cards that fit perfectly well.
+ *   progress  Every pane must survive a FULLY PROGRESSED save, not just the
+ *             fresh one a test naturally starts from. That gap shipped a bug:
+ *             the Trainer draws one cell per rank, Curious Egg goes to a
+ *             hundred, and a hundred cells squeezed the name column to a
+ *             two-letter word and stretched its row to a quarter of the page.
+ *             Nothing in a fresh save shows it, because nothing there is
+ *             bought. So this walks the panes with everything unlocked and
+ *             ranks spent, and fails on rows of wildly unequal height or any
+ *             element wider than the box holding it.
  *   banish    Arming banish must move nothing. It used to rebuild the whole
  *             overlay: the shell animation replayed, all three cards dealt
  *             themselves in again, the scroll port re-measured (a scrollbar
@@ -93,7 +102,65 @@ const path = require('path');
   await page.waitForTimeout(250);
   await check('defeat');
 
+  /* A fully progressed save: unlocked, ranked, discovered. */
+  const scanProgress = (where) => page.evaluate((where) => {
+    const bad = [];
+    // Rows in one list should agree on height; a blowout is one row that does not.
+    for (const list of document.querySelectorAll('#overlay .rows, #overlay .pick-grid')) {
+      const kids = [...list.children].filter((k) => k.offsetParent !== null);
+      if (kids.length < 2) continue;
+      /* An OUTLIER, not variation. Settings rows legitimately come in two
+         heights depending on whether a setting carries a description, and a
+         pick tile grows when its name wraps - neither is a bug. What a
+         blowout looks like is one row several times the median, which is
+         what a hundred rank cells did to Curious Egg. */
+      const hs = kids.map((k) => k.getBoundingClientRect().height).sort((a, b) => a - b);
+      const median = hs[Math.floor(hs.length / 2)];
+      const hi = hs[hs.length - 1];
+      if (median > 0 && hi > median * 1.8) {
+        const worst = kids.find((k) => k.getBoundingClientRect().height === hi);
+        bad.push(`${where}: a row in .${list.className} is ${Math.round(hi)}px against a`
+          + ` ${Math.round(median)}px median - "`
+          + `${(worst.textContent || '').trim().split('\n')[0].slice(0, 30)}" has blown the layout out`);
+      }
+    }
+    // Nothing may be wider than what holds it.
+    for (const n of document.querySelectorAll('#overlay *')) {
+      if (n.scrollWidth > n.clientWidth + 2 && getComputedStyle(n).overflowX === 'visible') {
+        const r = n.getBoundingClientRect();
+        if (r.width > 0) bad.push(`${where}: .${n.className} overflows horizontally` +
+          ` (${n.scrollWidth} in ${n.clientWidth})`);
+      }
+    }
+    return bad;
+  }, where);
+
+  await page.evaluate(() => {
+    WS.Save.unlockAll();
+    WS.Save.db.gold = 999999;
+    for (const id of WS.MetaUpgradeOrder) {
+      for (let i = 0; i < 200 && WS.Save.metaCost(id) !== null; i++) WS.Save.buyMeta(id);
+    }
+    WS.AchievementOrder.forEach((id) => { WS.Save.db.achievements[id] = true; });
+    WS.ComboOrder.forEach((id) => { WS.Save.db.combos[id] = true; });
+    Object.keys(WS.Enemies).forEach((id) => { WS.Save.stats.bestiary[id] = 1234; });
+    Object.keys(WS.Bosses).forEach((id) => { WS.Save.stats.bosses[id] = 12; });
+    WS.MapOrder.forEach((id) => { WS.Save.stats.bestTime[id] = 1800; });
+  });
+  for (const t of ['roster', 'battlefields', 'trainer', 'codex', 'bestiary', 'stats', 'settings']) {
+    await page.evaluate((x) => { WS.UI.tab = x; WS.UI.openMenu(); }, t);
+    await page.waitForTimeout(160);
+    (await scanProgress('maxed/' + t)).forEach((x) => seen.add(x));
+    (await scan()).forEach((x) => seen.add('maxed/' + t + ' ' + x));
+  }
+
   /* Arming banish is a mode change, not new content: nothing may move. */
+  await page.evaluate(() => { WS.Game.startRun('elwynn', 'mage'); });
+  await page.waitForTimeout(250);
+  await page.evaluate(() => {
+    const c = document.querySelector('#overlay:not(.hidden) .card'); if (c) c.click();
+  });
+  await page.waitForTimeout(150);
   await page.evaluate(() => {
     WS.Game.player.banishes = 2; WS.Game.player.rerolls = 2;
     WS.Game.leveling = false; WS.Game.pendingLevelUps = 1; WS.Game.openLevelUp();
@@ -150,7 +217,8 @@ const path = require('path');
   }
 
   console.log(seen.size ? [...seen].join('\n')
-    : 'ok: no bracket collisions, no false scrims, arming banish moves nothing');
+    : 'ok: no bracket collisions, no false scrims, a maxed save lays out clean,'
+      + ' arming banish moves nothing');
   await b.close();
   process.exitCode = seen.size ? 1 : 0;
 })();

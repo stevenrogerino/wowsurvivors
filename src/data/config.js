@@ -131,6 +131,9 @@
       // 'rail' stands them up the two edges, which on anything wider than
       // 16:9 puts them in the letterbox and off the battlefield entirely.
       hudLayout: 'strip',
+      // Hold the left mouse button and drag to steer, the same gesture as the
+      // touch stick. Off for anyone who would rather their clicks stayed inert.
+      mouseSteer: true,
       difficulty: 'veteran',
       quality: 'high',      // high | balanced - drops soft shadows + bloom
     },

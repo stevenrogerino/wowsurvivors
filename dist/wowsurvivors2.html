@@ -637,6 +637,22 @@ html, body {
 }
 .rank-pips i.next { box-shadow: inset 0 0 0 1px var(--rim-arc); }
 
+/* The same track for a rank that runs to a hundred. Fixed width, so a long
+   upgrade cannot widen its column and squash the name beside it. */
+.trainer-row .rank-bar {
+  width: 168px; height: 8px; border-radius: 1px; overflow: hidden;
+  background: rgba(0,0,0,.5); box-shadow: var(--sunk);
+}
+.trainer-row .rank-bar i {
+  display: block; height: 100%; min-width: 2px;
+  background: linear-gradient(90deg, var(--arc-deep), var(--arc-hot));
+  box-shadow: 0 0 8px -2px var(--arc);
+}
+/* Names never wrap to a single letter: the description column may shrink,
+   but only to something still readable, and the track keeps its width. */
+.trainer-row .row-main { min-width: 0; }
+.trainer-row .row-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 /* The price carries the figure, not a caption. */
 .btn.buy {
   display: flex; align-items: baseline; justify-content: center; gap: 1px;
@@ -1101,6 +1117,10 @@ body.hud-rail #hud-passives {
 /* Everything that is not the sheet keeps its full height - the verdict block
    carries the run's figures, and flex was squeezing them to nothing. */
 .overlay-body.fitted > * { flex: none; }
+/* The pause screen puts its tabs inside the body, above the sheet, so the
+   pane below them is the part that fills and scrolls. */
+.overlay-body.fitted > div:last-child { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.overlay-body.fitted > div:last-child > .sheet { flex: 1 1 auto; min-height: 0; }
 .overlay-body.fitted .sheet { flex: 1 1 auto; min-height: 0; }
 .overlay-body.fitted .sheet > .panel { overflow-y: auto; min-height: 0; }
 .overlay-body.fitted .sheet > .panel::-webkit-scrollbar { width: 7px; }
@@ -1192,7 +1212,9 @@ input[type=range]::-moz-range-thumb {
   position: absolute; width: 52px; height: 52px; border-radius: 50%;
   background: rgba(245,197,107,.28); border: 1px solid var(--arc); left: 40px; top: 40px;
 }
-body.touch #stick.active { display: block; }
+/* The stick is not a touch-device feature any more - it is how a pointer
+   steers, whichever kind of pointer it is. */
+#stick.active { display: block; }
 
 /* -- small screens ----------------------------------------------------- */
 @media (max-width: 860px) {
@@ -1582,6 +1604,9 @@ window.WS = window.WS || {};
       // 'rail' stands them up the two edges, which on anything wider than
       // 16:9 puts them in the letterbox and off the battlefield entirely.
       hudLayout: 'strip',
+      // Hold the left mouse button and drag to steer, the same gesture as the
+      // touch stick. Off for anyone who would rather their clicks stayed inert.
+      mouseSteer: true,
       difficulty: 'veteran',
       quality: 'high',      // high | balanced - drops soft shadows + bloom
     },
@@ -1739,8 +1764,17 @@ window.WS = window.WS || {};
 'use strict';
 (function (WS) {
 
+  /* Two layers, deliberately.
+   *
+   * `held` is what the player is physically holding on the keyboard. `keys` is
+   * what the simulation reads, resolved every tick from the stick, the pad and
+   * `held` in that order. They used to be one object, which meant a stick had
+   * to overwrite the keyboard to steer and then had nothing to hand back to on
+   * release - the old touch code papered over that by calling releaseAll(),
+   * which on a desktop wipes the WASD the player is still holding down. */
   const Input = {
     keys: { up: false, down: false, left: false, right: false },
+    held: { up: false, down: false, left: false, right: false },
     pressed: new Set(),
     onKey: null,        // set by the UI for menu navigation / hotkeys
     touchVector: null,
@@ -1757,7 +1791,7 @@ window.WS = window.WS || {};
   Input.init = function () {
     window.addEventListener('keydown', (e) => {
       const dir = MAP[e.code];
-      if (dir) { this.keys[dir] = true; e.preventDefault(); }
+      if (dir) { this.held[dir] = true; this.keys[dir] = true; e.preventDefault(); }
       if (!this.pressed.has(e.code)) {
         this.pressed.add(e.code);
         if (this.onKey) this.onKey(e);
@@ -1768,7 +1802,7 @@ window.WS = window.WS || {};
 
     window.addEventListener('keyup', (e) => {
       const dir = MAP[e.code];
-      if (dir) this.keys[dir] = false;
+      if (dir) { this.held[dir] = false; this.keys[dir] = false; }
       this.pressed.delete(e.code);
     });
 
@@ -1787,6 +1821,7 @@ window.WS = window.WS || {};
    *  key, so a wipe mid-hold silently drops every other direction. */
   Input.releaseAll = function () {
     this.keys.up = this.keys.down = this.keys.left = this.keys.right = false;
+    this.held.up = this.held.down = this.held.left = this.held.right = false;
     this.pressed.clear();
   };
 
@@ -1801,6 +1836,11 @@ window.WS = window.WS || {};
       this.keys.up = t.y < -0.3; this.keys.down = t.y > 0.3;
       return;
     }
+    /* No stick: the keyboard is in charge again. Resolving from `held` every
+       tick is what lets a stick be released without stranding its last
+       direction, and without touching keys the player is still holding. */
+    this.keys.up = this.held.up; this.keys.down = this.held.down;
+    this.keys.left = this.held.left; this.keys.right = this.held.right;
     if (this.gamepadIndex === null || !navigator.getGamepads) return;
     const pad = navigator.getGamepads()[this.gamepadIndex];
     if (!pad) return;
@@ -11287,16 +11327,33 @@ window.WS = window.WS || {};
       main.append(el('div', 'row-sub', m.description));
       row.append(main);
 
+      /* Two ways to show a rank, chosen by how many there are.
+       *
+       * Up to a dozen, one cell per rank: countable, and the next one can be
+       * outlined so the purchase has a visible destination. Beyond that a
+       * bar, because Curious Egg goes to a hundred and a hundred cells does
+       * not degrade gracefully - it squeezed the name column to a two-letter
+       * word and stretched the row to a quarter of the page. The old code
+       * only drew pips at max <= 10 and I dropped that guard when I rebuilt
+       * this row; the bar is the version that has no ceiling to forget. */
       const track = el('div', 'rank-track');
-      const pips = el('div', 'rank-pips');
-      for (let i = 0; i < m.max; i++) {
-        const pip = el('i');
-        if (i < rank) pip.classList.add('on');
-        // The pip about to be bought, so the purchase has a destination.
-        if (i === rank && cost !== null) pip.classList.add('next');
-        pips.append(pip);
+      if (m.max <= 12) {
+        const pips = el('div', 'rank-pips');
+        for (let i = 0; i < m.max; i++) {
+          const pip = el('i');
+          if (i < rank) pip.classList.add('on');
+          if (i === rank && cost !== null) pip.classList.add('next');
+          pips.append(pip);
+        }
+        track.append(pips);
+      } else {
+        const bar = el('div', 'rank-bar');
+        const fill = el('i');
+        fill.style.width = `${(rank / m.max) * 100}%`;
+        bar.append(fill);
+        track.append(bar);
       }
-      track.append(pips, el('span', 'rank-count', `${rank}/${m.max}`));
+      track.append(el('span', 'rank-count', `${rank}/${m.max}`));
       row.append(track);
 
       if (cost === null) {
@@ -11481,7 +11538,9 @@ window.WS = window.WS || {};
     return wrap;
   };
 
-  UI.paneSettings = function (rerender) {
+  /** `inRun` hides the destructive Progress row: wiping your save from a pause
+   *  screen is a footgun, and unlocking everything mid-run is meaningless. */
+  UI.paneSettings = function (rerender, inRun) {
     const wrap = el('div', 'rows');
     wrap.style.marginTop = '16px';
     const st = WS.Save.settings;
@@ -11553,6 +11612,11 @@ window.WS = window.WS || {};
     toggle('levelUpTooltips', 'Detailed level-up cards');
     choose('hudLayout', 'Arsenal and passives', 'Where your weapons and traits live.',
       [['strip', 'Along the foot'], ['rail', 'Up the edges']], () => UI.applyHudLayout());
+    toggle('mouseSteer', 'Steer with the mouse',
+      'Hold the left button anywhere on the field and drag, the same as touch. '
+      + 'Play one-handed, or keep both on the keys.');
+
+    if (inRun) return wrap;
 
     const danger = el('div', 'setting');
     const dmain = el('div');
@@ -11760,8 +11824,33 @@ window.WS = window.WS || {};
 
   UI.openPause = function () {
     const s = shell('Paused', `${WS.Game.run.map.name} waits.`);
-    s.body.classList.add('fitted');
-    s.body.append(buildSheet());
+
+    /* Two views behind the pause. The build sheet is what you paused to look
+     * at, so it leads; settings are here because the alternative was
+     * abandoning a run to turn the music down. Nothing else from the main
+     * menu belongs mid-run - you cannot change survivor or battlefield
+     * without ending what you are in. */
+    const tabs = el('div', 'tabs');
+    const pane = el('div');
+    let view = 'build';
+    const render = () => {
+      for (const b of tabs.children) b.classList.toggle('active', b.dataset.view === view);
+      // The sheet fills the space and scrolls inside its panels; the settings
+      // list is an ordinary scrolling column.
+      s.body.classList.toggle('fitted', view === 'build');
+      pane.replaceChildren(view === 'build' ? buildSheet() : this.paneSettings(render, true));
+      this.wireScroll(s.inner);
+    };
+    for (const [id, label] of [['build', 'Build'], ['settings', 'Settings']]) {
+      const b = el('button', 'tab', label);
+      b.type = 'button';
+      b.dataset.view = id;
+      b.addEventListener('click', () => { view = id; WS.Audio.play('ui'); render(); });
+      tabs.append(b);
+    }
+    s.body.append(tabs, pane);
+    render();
+
     const resume = el('button', 'btn primary', 'Resume');
     resume.addEventListener('click', () => WS.Game.resume());
     const quit = el('button', 'btn', 'Abandon run');
@@ -11922,47 +12011,70 @@ window.WS = window.WS || {};
     requestAnimationFrame(frame);
   }
 
-  /* ------------------------------------------------------------ touch --- */
-  /** A floating virtual stick: touch anywhere in the lower field to steer. */
-  function initTouch(stage, stick) {
-    if (!('ontouchstart' in window)) return;
-    document.body.classList.add('touch');
-    let id = null, ox = 0, oy = 0;
-    const nub = stick.querySelector('.nub');
+  /* ---------------------------------------------------------- steering --- */
+  /** A floating stick: press anywhere on the field and drag to steer.
+   *
+   *  One path for touch, mouse and pen, because they are the same gesture and
+   *  Pointer Events already unify them. Sharing it is what gives the game
+   *  one-handed play on a desktop - hold the mouse and steer - rather than a
+   *  second implementation that drifts from the first.
+   *
+   *  Two details keep it from fighting the keyboard. It only takes over once
+   *  the drag passes ENGAGE, so a stray click cannot latch a zero vector and
+   *  stop a player who is holding WASD; and on release it hands control back
+   *  rather than calling releaseAll(), which would wipe keys that are still
+   *  physically down. Input resolves from `held` every tick for exactly that.
+   */
+  const ENGAGE = 14;          // px of drag before the stick takes the wheel
 
-    stage.addEventListener('touchstart', (e) => {
+  function initStick(stage, stick) {
+    if ('ontouchstart' in window) document.body.classList.add('touch');
+    const nub = stick.querySelector('.nub');
+    let id = null, ox = 0, oy = 0, engaged = false;
+
+    const place = (dx, dy) => {
+      const len = Math.hypot(dx, dy) || 1;
+      const clamped = Math.min(len, 52);
+      nub.style.left = (40 + dx / len * clamped) + 'px';
+      nub.style.top = (40 + dy / len * clamped) + 'px';
+      WS.Input.setTouchVector({ x: dx / Math.max(len, 40), y: dy / Math.max(len, 40) });
+    };
+
+    stage.addEventListener('pointerdown', (e) => {
       if (id !== null) return;
-      const t = e.changedTouches[0];
-      id = t.identifier; ox = t.clientX; oy = t.clientY;
+      if (e.pointerType === 'mouse') {
+        if (e.button !== 0) return;
+        if (!WS.Save.settings.mouseSteer) return;
+      }
+      if (WS.Game.state !== 'playing') return;
+      id = e.pointerId; ox = e.clientX; oy = e.clientY; engaged = false;
       stick.style.left = (ox - 66) + 'px';
       stick.style.top = (oy - 66) + 'px';
       stick.classList.add('active');
-    }, { passive: true });
+      try { stage.setPointerCapture(id); } catch (err) { /* not capturable */ }
+    });
 
-    stage.addEventListener('touchmove', (e) => {
-      for (const t of e.changedTouches) {
-        if (t.identifier !== id) continue;
-        const dx = t.clientX - ox, dy = t.clientY - oy;
-        const len = Math.hypot(dx, dy) || 1;
-        const clamped = Math.min(len, 52);
-        nub.style.left = (40 + dx / len * clamped) + 'px';
-        nub.style.top = (40 + dy / len * clamped) + 'px';
-        WS.Input.setTouchVector({ x: dx / Math.max(len, 40), y: dy / Math.max(len, 40) });
+    stage.addEventListener('pointermove', (e) => {
+      if (e.pointerId !== id) return;
+      const dx = e.clientX - ox, dy = e.clientY - oy;
+      if (!engaged) {
+        if (Math.hypot(dx, dy) < ENGAGE) return;
+        engaged = true;
       }
-    }, { passive: true });
+      place(dx, dy);
+    });
 
     const end = (e) => {
-      for (const t of e.changedTouches) {
-        if (t.identifier !== id) continue;
-        id = null;
-        stick.classList.remove('active');
-        nub.style.left = '40px'; nub.style.top = '40px';
-        WS.Input.setTouchVector(null);
-        WS.Input.releaseAll();
-      }
+      if (e.pointerId !== id) return;
+      try { stage.releasePointerCapture(id); } catch (err) { /* already gone */ }
+      id = null; engaged = false;
+      stick.classList.remove('active');
+      nub.style.left = '40px'; nub.style.top = '40px';
+      // Hand back to the keyboard. NOT releaseAll: those keys may still be down.
+      WS.Input.setTouchVector(null);
     };
-    stage.addEventListener('touchend', end, { passive: true });
-    stage.addEventListener('touchcancel', end, { passive: true });
+    stage.addEventListener('pointerup', end);
+    stage.addEventListener('pointercancel', end);
   }
 
   function boot() {
@@ -11977,7 +12089,7 @@ window.WS = window.WS || {};
     WS.Renderer.init(canvas);
     WS.Game.init();
     WS.UI.init(stage, overlay, hud);
-    initTouch(stage, stick);
+    initStick(stage, stick);
 
     // Audio needs a user gesture; arm it on the first interaction of any kind.
     const arm = () => {

@@ -15,47 +15,70 @@
     requestAnimationFrame(frame);
   }
 
-  /* ------------------------------------------------------------ touch --- */
-  /** A floating virtual stick: touch anywhere in the lower field to steer. */
-  function initTouch(stage, stick) {
-    if (!('ontouchstart' in window)) return;
-    document.body.classList.add('touch');
-    let id = null, ox = 0, oy = 0;
-    const nub = stick.querySelector('.nub');
+  /* ---------------------------------------------------------- steering --- */
+  /** A floating stick: press anywhere on the field and drag to steer.
+   *
+   *  One path for touch, mouse and pen, because they are the same gesture and
+   *  Pointer Events already unify them. Sharing it is what gives the game
+   *  one-handed play on a desktop - hold the mouse and steer - rather than a
+   *  second implementation that drifts from the first.
+   *
+   *  Two details keep it from fighting the keyboard. It only takes over once
+   *  the drag passes ENGAGE, so a stray click cannot latch a zero vector and
+   *  stop a player who is holding WASD; and on release it hands control back
+   *  rather than calling releaseAll(), which would wipe keys that are still
+   *  physically down. Input resolves from `held` every tick for exactly that.
+   */
+  const ENGAGE = 14;          // px of drag before the stick takes the wheel
 
-    stage.addEventListener('touchstart', (e) => {
+  function initStick(stage, stick) {
+    if ('ontouchstart' in window) document.body.classList.add('touch');
+    const nub = stick.querySelector('.nub');
+    let id = null, ox = 0, oy = 0, engaged = false;
+
+    const place = (dx, dy) => {
+      const len = Math.hypot(dx, dy) || 1;
+      const clamped = Math.min(len, 52);
+      nub.style.left = (40 + dx / len * clamped) + 'px';
+      nub.style.top = (40 + dy / len * clamped) + 'px';
+      WS.Input.setTouchVector({ x: dx / Math.max(len, 40), y: dy / Math.max(len, 40) });
+    };
+
+    stage.addEventListener('pointerdown', (e) => {
       if (id !== null) return;
-      const t = e.changedTouches[0];
-      id = t.identifier; ox = t.clientX; oy = t.clientY;
+      if (e.pointerType === 'mouse') {
+        if (e.button !== 0) return;
+        if (!WS.Save.settings.mouseSteer) return;
+      }
+      if (WS.Game.state !== 'playing') return;
+      id = e.pointerId; ox = e.clientX; oy = e.clientY; engaged = false;
       stick.style.left = (ox - 66) + 'px';
       stick.style.top = (oy - 66) + 'px';
       stick.classList.add('active');
-    }, { passive: true });
+      try { stage.setPointerCapture(id); } catch (err) { /* not capturable */ }
+    });
 
-    stage.addEventListener('touchmove', (e) => {
-      for (const t of e.changedTouches) {
-        if (t.identifier !== id) continue;
-        const dx = t.clientX - ox, dy = t.clientY - oy;
-        const len = Math.hypot(dx, dy) || 1;
-        const clamped = Math.min(len, 52);
-        nub.style.left = (40 + dx / len * clamped) + 'px';
-        nub.style.top = (40 + dy / len * clamped) + 'px';
-        WS.Input.setTouchVector({ x: dx / Math.max(len, 40), y: dy / Math.max(len, 40) });
+    stage.addEventListener('pointermove', (e) => {
+      if (e.pointerId !== id) return;
+      const dx = e.clientX - ox, dy = e.clientY - oy;
+      if (!engaged) {
+        if (Math.hypot(dx, dy) < ENGAGE) return;
+        engaged = true;
       }
-    }, { passive: true });
+      place(dx, dy);
+    });
 
     const end = (e) => {
-      for (const t of e.changedTouches) {
-        if (t.identifier !== id) continue;
-        id = null;
-        stick.classList.remove('active');
-        nub.style.left = '40px'; nub.style.top = '40px';
-        WS.Input.setTouchVector(null);
-        WS.Input.releaseAll();
-      }
+      if (e.pointerId !== id) return;
+      try { stage.releasePointerCapture(id); } catch (err) { /* already gone */ }
+      id = null; engaged = false;
+      stick.classList.remove('active');
+      nub.style.left = '40px'; nub.style.top = '40px';
+      // Hand back to the keyboard. NOT releaseAll: those keys may still be down.
+      WS.Input.setTouchVector(null);
     };
-    stage.addEventListener('touchend', end, { passive: true });
-    stage.addEventListener('touchcancel', end, { passive: true });
+    stage.addEventListener('pointerup', end);
+    stage.addEventListener('pointercancel', end);
   }
 
   function boot() {
@@ -70,7 +93,7 @@
     WS.Renderer.init(canvas);
     WS.Game.init();
     WS.UI.init(stage, overlay, hud);
-    initTouch(stage, stick);
+    initStick(stage, stick);
 
     // Audio needs a user gesture; arm it on the first interaction of any kind.
     const arm = () => {

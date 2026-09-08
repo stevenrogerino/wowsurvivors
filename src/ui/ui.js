@@ -855,16 +855,33 @@
       main.append(el('div', 'row-sub', m.description));
       row.append(main);
 
+      /* Two ways to show a rank, chosen by how many there are.
+       *
+       * Up to a dozen, one cell per rank: countable, and the next one can be
+       * outlined so the purchase has a visible destination. Beyond that a
+       * bar, because Curious Egg goes to a hundred and a hundred cells does
+       * not degrade gracefully - it squeezed the name column to a two-letter
+       * word and stretched the row to a quarter of the page. The old code
+       * only drew pips at max <= 10 and I dropped that guard when I rebuilt
+       * this row; the bar is the version that has no ceiling to forget. */
       const track = el('div', 'rank-track');
-      const pips = el('div', 'rank-pips');
-      for (let i = 0; i < m.max; i++) {
-        const pip = el('i');
-        if (i < rank) pip.classList.add('on');
-        // The pip about to be bought, so the purchase has a destination.
-        if (i === rank && cost !== null) pip.classList.add('next');
-        pips.append(pip);
+      if (m.max <= 12) {
+        const pips = el('div', 'rank-pips');
+        for (let i = 0; i < m.max; i++) {
+          const pip = el('i');
+          if (i < rank) pip.classList.add('on');
+          if (i === rank && cost !== null) pip.classList.add('next');
+          pips.append(pip);
+        }
+        track.append(pips);
+      } else {
+        const bar = el('div', 'rank-bar');
+        const fill = el('i');
+        fill.style.width = `${(rank / m.max) * 100}%`;
+        bar.append(fill);
+        track.append(bar);
       }
-      track.append(pips, el('span', 'rank-count', `${rank}/${m.max}`));
+      track.append(el('span', 'rank-count', `${rank}/${m.max}`));
       row.append(track);
 
       if (cost === null) {
@@ -1049,7 +1066,9 @@
     return wrap;
   };
 
-  UI.paneSettings = function (rerender) {
+  /** `inRun` hides the destructive Progress row: wiping your save from a pause
+   *  screen is a footgun, and unlocking everything mid-run is meaningless. */
+  UI.paneSettings = function (rerender, inRun) {
     const wrap = el('div', 'rows');
     wrap.style.marginTop = '16px';
     const st = WS.Save.settings;
@@ -1121,6 +1140,11 @@
     toggle('levelUpTooltips', 'Detailed level-up cards');
     choose('hudLayout', 'Arsenal and passives', 'Where your weapons and traits live.',
       [['strip', 'Along the foot'], ['rail', 'Up the edges']], () => UI.applyHudLayout());
+    toggle('mouseSteer', 'Steer with the mouse',
+      'Hold the left button anywhere on the field and drag, the same as touch. '
+      + 'Play one-handed, or keep both on the keys.');
+
+    if (inRun) return wrap;
 
     const danger = el('div', 'setting');
     const dmain = el('div');
@@ -1328,8 +1352,33 @@
 
   UI.openPause = function () {
     const s = shell('Paused', `${WS.Game.run.map.name} waits.`);
-    s.body.classList.add('fitted');
-    s.body.append(buildSheet());
+
+    /* Two views behind the pause. The build sheet is what you paused to look
+     * at, so it leads; settings are here because the alternative was
+     * abandoning a run to turn the music down. Nothing else from the main
+     * menu belongs mid-run - you cannot change survivor or battlefield
+     * without ending what you are in. */
+    const tabs = el('div', 'tabs');
+    const pane = el('div');
+    let view = 'build';
+    const render = () => {
+      for (const b of tabs.children) b.classList.toggle('active', b.dataset.view === view);
+      // The sheet fills the space and scrolls inside its panels; the settings
+      // list is an ordinary scrolling column.
+      s.body.classList.toggle('fitted', view === 'build');
+      pane.replaceChildren(view === 'build' ? buildSheet() : this.paneSettings(render, true));
+      this.wireScroll(s.inner);
+    };
+    for (const [id, label] of [['build', 'Build'], ['settings', 'Settings']]) {
+      const b = el('button', 'tab', label);
+      b.type = 'button';
+      b.dataset.view = id;
+      b.addEventListener('click', () => { view = id; WS.Audio.play('ui'); render(); });
+      tabs.append(b);
+    }
+    s.body.append(tabs, pane);
+    render();
+
     const resume = el('button', 'btn primary', 'Resume');
     resume.addEventListener('click', () => WS.Game.resume());
     const quit = el('button', 'btn', 'Abandon run');

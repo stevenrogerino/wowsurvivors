@@ -4,8 +4,17 @@
 'use strict';
 (function (WS) {
 
+  /* Two layers, deliberately.
+   *
+   * `held` is what the player is physically holding on the keyboard. `keys` is
+   * what the simulation reads, resolved every tick from the stick, the pad and
+   * `held` in that order. They used to be one object, which meant a stick had
+   * to overwrite the keyboard to steer and then had nothing to hand back to on
+   * release - the old touch code papered over that by calling releaseAll(),
+   * which on a desktop wipes the WASD the player is still holding down. */
   const Input = {
     keys: { up: false, down: false, left: false, right: false },
+    held: { up: false, down: false, left: false, right: false },
     pressed: new Set(),
     onKey: null,        // set by the UI for menu navigation / hotkeys
     touchVector: null,
@@ -22,7 +31,7 @@
   Input.init = function () {
     window.addEventListener('keydown', (e) => {
       const dir = MAP[e.code];
-      if (dir) { this.keys[dir] = true; e.preventDefault(); }
+      if (dir) { this.held[dir] = true; this.keys[dir] = true; e.preventDefault(); }
       if (!this.pressed.has(e.code)) {
         this.pressed.add(e.code);
         if (this.onKey) this.onKey(e);
@@ -33,7 +42,7 @@
 
     window.addEventListener('keyup', (e) => {
       const dir = MAP[e.code];
-      if (dir) this.keys[dir] = false;
+      if (dir) { this.held[dir] = false; this.keys[dir] = false; }
       this.pressed.delete(e.code);
     });
 
@@ -52,6 +61,7 @@
    *  key, so a wipe mid-hold silently drops every other direction. */
   Input.releaseAll = function () {
     this.keys.up = this.keys.down = this.keys.left = this.keys.right = false;
+    this.held.up = this.held.down = this.held.left = this.held.right = false;
     this.pressed.clear();
   };
 
@@ -66,6 +76,11 @@
       this.keys.up = t.y < -0.3; this.keys.down = t.y > 0.3;
       return;
     }
+    /* No stick: the keyboard is in charge again. Resolving from `held` every
+       tick is what lets a stick be released without stranding its last
+       direction, and without touching keys the player is still holding. */
+    this.keys.up = this.held.up; this.keys.down = this.held.down;
+    this.keys.left = this.held.left; this.keys.right = this.held.right;
     if (this.gamepadIndex === null || !navigator.getGamepads) return;
     const pad = navigator.getGamepads()[this.gamepadIndex];
     if (!pad) return;

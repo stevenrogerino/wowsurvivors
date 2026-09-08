@@ -583,6 +583,22 @@ html, body {
 }
 .rank-pips i.next { box-shadow: inset 0 0 0 1px var(--rim-arc); }
 
+/* The same track for a rank that runs to a hundred. Fixed width, so a long
+   upgrade cannot widen its column and squash the name beside it. */
+.trainer-row .rank-bar {
+  width: 168px; height: 8px; border-radius: 1px; overflow: hidden;
+  background: rgba(0,0,0,.5); box-shadow: var(--sunk);
+}
+.trainer-row .rank-bar i {
+  display: block; height: 100%; min-width: 2px;
+  background: linear-gradient(90deg, var(--arc-deep), var(--arc-hot));
+  box-shadow: 0 0 8px -2px var(--arc);
+}
+/* Names never wrap to a single letter: the description column may shrink,
+   but only to something still readable, and the track keeps its width. */
+.trainer-row .row-main { min-width: 0; }
+.trainer-row .row-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 /* The price carries the figure, not a caption. */
 .btn.buy {
   display: flex; align-items: baseline; justify-content: center; gap: 1px;
@@ -1047,6 +1063,10 @@ body.hud-rail #hud-passives {
 /* Everything that is not the sheet keeps its full height - the verdict block
    carries the run's figures, and flex was squeezing them to nothing. */
 .overlay-body.fitted > * { flex: none; }
+/* The pause screen puts its tabs inside the body, above the sheet, so the
+   pane below them is the part that fills and scrolls. */
+.overlay-body.fitted > div:last-child { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.overlay-body.fitted > div:last-child > .sheet { flex: 1 1 auto; min-height: 0; }
 .overlay-body.fitted .sheet { flex: 1 1 auto; min-height: 0; }
 .overlay-body.fitted .sheet > .panel { overflow-y: auto; min-height: 0; }
 .overlay-body.fitted .sheet > .panel::-webkit-scrollbar { width: 7px; }
@@ -1138,7 +1158,9 @@ input[type=range]::-moz-range-thumb {
   position: absolute; width: 52px; height: 52px; border-radius: 50%;
   background: rgba(245,197,107,.28); border: 1px solid var(--arc); left: 40px; top: 40px;
 }
-body.touch #stick.active { display: block; }
+/* The stick is not a touch-device feature any more - it is how a pointer
+   steers, whichever kind of pointer it is. */
+#stick.active { display: block; }
 
 /* -- small screens ----------------------------------------------------- */
 @media (max-width: 860px) {
