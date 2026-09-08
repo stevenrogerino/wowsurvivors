@@ -715,26 +715,38 @@
       const m = WS.MetaUpgrades[id];
       const rank = WS.Save.metaRank(id);
       const cost = WS.Save.metaCost(id);
-      const row = el('div', 'row');
+      /* Four columns across the full width: the mark, what it does, how far
+         you have taken it, and what the next rank costs. It used to be three
+         things crowded into the left quarter with a dim price marooned on the
+         far right and the middle sixty per cent empty. */
+      const row = el('div', 'row trainer-row' + (rank >= m.max ? ' maxed' : ''));
       row.append(icon(m.art, WS.CONST.COLORS.arc, 40));
       const main = el('div', 'row-main');
       main.append(el('div', 'row-name', m.name));
-      main.append(el('div', 'row-sub', `${m.description} · Rank ${rank}/${m.max}`));
-      if (m.max <= 10) {
-        const pips = el('div', 'rank-pips');
-        for (let i = 0; i < m.max; i++) {
-          const pip = el('i');
-          if (i < rank) pip.classList.add('on');
-          pips.append(pip);
-        }
-        main.append(pips);
-      }
+      main.append(el('div', 'row-sub', m.description));
       row.append(main);
+
+      const track = el('div', 'rank-track');
+      const pips = el('div', 'rank-pips');
+      for (let i = 0; i < m.max; i++) {
+        const pip = el('i');
+        if (i < rank) pip.classList.add('on');
+        // The pip about to be bought, so the purchase has a destination.
+        if (i === rank && cost !== null) pip.classList.add('next');
+        pips.append(pip);
+      }
+      track.append(pips, el('span', 'rank-count', `${rank}/${m.max}`));
+      row.append(track);
+
       if (cost === null) {
-        row.append(el('div', 'row-value', 'MAXED'));
+        row.append(el('div', 'row-value maxed-tag', 'MAXED'));
       } else {
-        const buy = el('button', 'btn small', `${WS.formatNumber(cost)}g`);
+        const buy = el('button', 'btn buy', '');
+        buy.append(el('b', null, WS.formatNumber(cost)), el('span', 'g', 'g'));
         buy.disabled = WS.Save.db.gold < cost;
+        buy.title = buy.disabled
+          ? `You have ${WS.formatNumber(WS.Save.db.gold)}g of the ${WS.formatNumber(cost)}g this costs.`
+          : `Buy rank ${rank + 1} of ${m.max}.`;
         buy.addEventListener('click', () => {
           if (WS.Save.buyMeta(id)) { WS.Audio.play('coin'); rerender(); }
         });
@@ -787,32 +799,62 @@
     return wrap;
   };
 
+  /* A compendium, not a list.
+   *
+   * Fifty-four full-width rows reading "??? - not yet slain" is a page of
+   * nothing: at a hundred pixels each you see six of them and 96% of the
+   * screen is empty. A grid of plates shows the whole roster at once, which
+   * is the only thing this page is actually for - how much is left to find -
+   * and an unslain creature reads as a silhouette behind a question mark
+   * rather than as a row you have not filled in yet.
+   */
   UI.paneBestiary = function () {
     const wrap = el('div');
     wrap.style.marginTop = '16px';
-    const rows = el('div', 'rows');
+
     const all = [];
     for (const id of Object.keys(WS.Enemies)) all.push([id, WS.Enemies[id], 'Creature']);
     for (const id of Object.keys(WS.Elites)) all.push([id, WS.Elites[id], 'Elite']);
     for (const id of Object.keys(WS.Bosses)) all.push([id, WS.Bosses[id], 'Boss']);
+
+    const found = all.filter(([id]) =>
+      (WS.Save.stats.bestiary[id] || WS.Save.stats.bosses[id] || 0) > 0).length;
+    const head = el('div', 'codex-head');
+    head.append(el('div', 'card-body', 'Everything that has come for you, and everything that has not yet.'));
+    head.append(el('div', 'codex-count', `${found} / ${all.length}`));
+    wrap.append(head);
+
+    const grid = el('div', 'beast-grid');
     for (const [id, t, kind] of all) {
       const kills = WS.Save.stats.bestiary[id] || WS.Save.stats.bosses[id] || 0;
       const known = kills > 0;
-      const row = el('div', 'row ' + (known ? '' : 'undone'));
-      const img = new Image();
-      img.src = WS.Sprites.creature(t.art, known ? t.tint : [0.3, 0.32, 0.38], 40).toDataURL();
-      img.width = img.height = 40;
-      row.append(img);
-      const main = el('div', 'row-main');
-      main.append(el('div', 'row-name', known ? t.name : '???'));
-      main.append(el('div', 'row-sub', known
-        ? `${kind} · ${t.family} · ${t.health} health · ${t.damage} damage`
-        : `${kind} - not yet slain`));
-      row.append(main);
-      row.append(el('div', 'row-value', known ? `${WS.formatNumber(kills)} slain` : ''));
-      rows.append(row);
+      const cell = el('div', 'beast' + (known ? '' : ' unknown') + ' ' + kind.toLowerCase());
+      cell.style.setProperty('--q', WS.hex(known ? t.tint : [0.3, 0.32, 0.4]));
+
+      const plate = el('div', 'beast-plate');
+      if (known) {
+        const img = new Image();
+        img.src = WS.Sprites.creature(t.art, t.tint, 52).toDataURL();
+        img.width = img.height = 52;
+        plate.append(img);
+      } else {
+        // The silhouette is still the real creature, just unlit: the shape is
+        // a hint, which is what a compendium entry you have not earned is for.
+        const img = new Image();
+        img.src = WS.Sprites.creature(t.art, [0.16, 0.17, 0.21], 52).toDataURL();
+        img.width = img.height = 52;
+        plate.append(img, el('span', 'q', '?'));
+      }
+      cell.append(plate);
+      cell.append(el('div', 'beast-name', known ? t.name : '???'));
+      cell.append(el('div', 'beast-sub', known ? `${WS.formatNumber(kills)} slain` : kind));
+      if (known) {
+        cell.title = `${t.name}\n${kind} · ${t.family} · ${t.health} health · ${t.damage} damage`
+          + `\n${WS.formatNumber(kills)} slain`;
+      }
+      grid.append(cell);
     }
-    wrap.append(rows);
+    wrap.append(grid);
     return wrap;
   };
 

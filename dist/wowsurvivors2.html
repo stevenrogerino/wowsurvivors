@@ -585,9 +585,98 @@ html, body {
 .row.done .row-name { color: var(--q-uncommon); }
 .row.undone { opacity: .55; }
 
-.rank-pips { display: flex; gap: 3px; margin-top: 6px; }
-.rank-pips i { width: 14px; height: 3px; background: var(--obsidian-4); border-radius: 1px; display: block; }
-.rank-pips i.on { background: var(--arc); }
+/* -- the trainer shop row ----------------------------------------------
+   Four columns across the width: the mark, what it does, how far you have
+   taken it, and what the next rank costs. */
+.trainer-row { display: grid; grid-template-columns: 40px 1fr auto 132px; gap: 16px; }
+.trainer-row .row-main { align-self: center; }
+.trainer-row .rank-track { display: flex; align-items: center; gap: 12px; }
+.trainer-row .rank-count {
+  font-family: var(--fig); font-size: var(--t-small); font-variant-numeric: tabular-nums;
+  color: var(--ink-dim); min-width: 34px; text-align: right;
+}
+.trainer-row.maxed .rank-count { color: var(--arc); }
+
+/* A rank track you can read across a room: sunken cells, filled ones lit,
+   and the one you are about to buy outlined so the purchase has a
+   destination. Three-pixel dashes under the description did none of that. */
+.rank-pips { display: flex; gap: 4px; }
+.rank-pips i {
+  width: 16px; height: 8px; display: block; border-radius: 1px;
+  background: rgba(0,0,0,.5); box-shadow: var(--sunk);
+}
+.rank-pips i.on {
+  background: linear-gradient(180deg, var(--arc-hot), var(--arc-deep));
+  box-shadow: 0 0 8px -2px var(--arc), var(--bevel);
+}
+.rank-pips i.next { box-shadow: inset 0 0 0 1px var(--rim-arc); }
+
+/* The price carries the figure, not a caption. */
+.btn.buy {
+  display: flex; align-items: baseline; justify-content: center; gap: 1px;
+  font-family: var(--fig); font-size: var(--t-body); padding: 8px 10px;
+}
+.btn.buy b { font-weight: 500; font-variant-numeric: tabular-nums; color: var(--arc-hot); }
+.btn.buy .g { color: var(--ink-faint); font-size: var(--t-small); }
+.btn.buy:disabled b { color: var(--ink-faint); }
+.maxed-tag {
+  align-self: center; text-align: center; font-family: var(--fig);
+  font-size: var(--t-small); letter-spacing: .12em; color: var(--arc);
+  border: 1px solid var(--rim-arc); border-radius: 2px; padding: 7px 0;
+  background: rgba(245,197,107,.06);
+}
+
+/* ------------------------------------------------------------- bestiary */
+.codex-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 20px; margin-bottom: 14px;
+}
+.codex-count {
+  font-family: var(--fig); font-size: var(--t-lead); font-variant-numeric: tabular-nums;
+  color: var(--arc); letter-spacing: .06em; flex: none;
+}
+.beast-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px;
+}
+.beast {
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  padding: 12px 8px 11px; text-align: center;
+  background:
+    radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--q, var(--arc)) 10%, transparent), transparent 62%),
+    linear-gradient(180deg, var(--obsidian-2), var(--obsidian));
+  border: 1px solid var(--rim); border-radius: 2px; box-shadow: var(--bevel);
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px),
+    calc(100% - 10px) 100%, 0 100%, 0 10px);
+  transition: border-color .16s var(--ease), transform .14s var(--ease-out);
+}
+.beast:hover { border-color: color-mix(in srgb, var(--q, var(--arc)) 55%, transparent); transform: translateY(-2px); }
+/* The seat, cut to the same octagon every plate in the game wears. */
+.beast .beast-plate {
+  position: relative; width: 60px; height: 60px; display: grid; place-items: center;
+  clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px),
+    calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px), 0 10px);
+  background:
+    radial-gradient(circle at 50% 34%, color-mix(in srgb, var(--q, var(--arc)) 20%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--obsidian-3), var(--void));
+  box-shadow: inset 0 0 0 1px rgba(255,240,214,.07);
+}
+.beast .beast-plate img { display: block; }
+.beast .beast-plate .q {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-family: var(--fig); font-size: 26px; font-weight: 500;
+  color: var(--ink-faint); text-shadow: 0 2px 6px rgba(0,0,0,.9);
+}
+.beast .beast-name {
+  font-size: var(--t-small); font-weight: 600; line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.beast .beast-sub { font-size: var(--t-micro); color: var(--ink-dim); letter-spacing: .04em; }
+.beast.unknown { opacity: .62; }
+.beast.unknown .beast-name { color: var(--ink-faint); letter-spacing: .1em; }
+/* Elites and bosses are worth marking out of the crowd. */
+.beast.elite { border-color: rgba(245,197,107,.24); }
+.beast.boss { border-color: rgba(226,72,61,.3); }
+.beast.boss .beast-plate { box-shadow: inset 0 0 0 1px rgba(226,72,61,.28); }
 
 /* ------------------------------------------------------------- stat grid */
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
@@ -10969,26 +11058,38 @@ window.WS = window.WS || {};
       const m = WS.MetaUpgrades[id];
       const rank = WS.Save.metaRank(id);
       const cost = WS.Save.metaCost(id);
-      const row = el('div', 'row');
+      /* Four columns across the full width: the mark, what it does, how far
+         you have taken it, and what the next rank costs. It used to be three
+         things crowded into the left quarter with a dim price marooned on the
+         far right and the middle sixty per cent empty. */
+      const row = el('div', 'row trainer-row' + (rank >= m.max ? ' maxed' : ''));
       row.append(icon(m.art, WS.CONST.COLORS.arc, 40));
       const main = el('div', 'row-main');
       main.append(el('div', 'row-name', m.name));
-      main.append(el('div', 'row-sub', `${m.description} · Rank ${rank}/${m.max}`));
-      if (m.max <= 10) {
-        const pips = el('div', 'rank-pips');
-        for (let i = 0; i < m.max; i++) {
-          const pip = el('i');
-          if (i < rank) pip.classList.add('on');
-          pips.append(pip);
-        }
-        main.append(pips);
-      }
+      main.append(el('div', 'row-sub', m.description));
       row.append(main);
+
+      const track = el('div', 'rank-track');
+      const pips = el('div', 'rank-pips');
+      for (let i = 0; i < m.max; i++) {
+        const pip = el('i');
+        if (i < rank) pip.classList.add('on');
+        // The pip about to be bought, so the purchase has a destination.
+        if (i === rank && cost !== null) pip.classList.add('next');
+        pips.append(pip);
+      }
+      track.append(pips, el('span', 'rank-count', `${rank}/${m.max}`));
+      row.append(track);
+
       if (cost === null) {
-        row.append(el('div', 'row-value', 'MAXED'));
+        row.append(el('div', 'row-value maxed-tag', 'MAXED'));
       } else {
-        const buy = el('button', 'btn small', `${WS.formatNumber(cost)}g`);
+        const buy = el('button', 'btn buy', '');
+        buy.append(el('b', null, WS.formatNumber(cost)), el('span', 'g', 'g'));
         buy.disabled = WS.Save.db.gold < cost;
+        buy.title = buy.disabled
+          ? `You have ${WS.formatNumber(WS.Save.db.gold)}g of the ${WS.formatNumber(cost)}g this costs.`
+          : `Buy rank ${rank + 1} of ${m.max}.`;
         buy.addEventListener('click', () => {
           if (WS.Save.buyMeta(id)) { WS.Audio.play('coin'); rerender(); }
         });
@@ -11041,32 +11142,62 @@ window.WS = window.WS || {};
     return wrap;
   };
 
+  /* A compendium, not a list.
+   *
+   * Fifty-four full-width rows reading "??? - not yet slain" is a page of
+   * nothing: at a hundred pixels each you see six of them and 96% of the
+   * screen is empty. A grid of plates shows the whole roster at once, which
+   * is the only thing this page is actually for - how much is left to find -
+   * and an unslain creature reads as a silhouette behind a question mark
+   * rather than as a row you have not filled in yet.
+   */
   UI.paneBestiary = function () {
     const wrap = el('div');
     wrap.style.marginTop = '16px';
-    const rows = el('div', 'rows');
+
     const all = [];
     for (const id of Object.keys(WS.Enemies)) all.push([id, WS.Enemies[id], 'Creature']);
     for (const id of Object.keys(WS.Elites)) all.push([id, WS.Elites[id], 'Elite']);
     for (const id of Object.keys(WS.Bosses)) all.push([id, WS.Bosses[id], 'Boss']);
+
+    const found = all.filter(([id]) =>
+      (WS.Save.stats.bestiary[id] || WS.Save.stats.bosses[id] || 0) > 0).length;
+    const head = el('div', 'codex-head');
+    head.append(el('div', 'card-body', 'Everything that has come for you, and everything that has not yet.'));
+    head.append(el('div', 'codex-count', `${found} / ${all.length}`));
+    wrap.append(head);
+
+    const grid = el('div', 'beast-grid');
     for (const [id, t, kind] of all) {
       const kills = WS.Save.stats.bestiary[id] || WS.Save.stats.bosses[id] || 0;
       const known = kills > 0;
-      const row = el('div', 'row ' + (known ? '' : 'undone'));
-      const img = new Image();
-      img.src = WS.Sprites.creature(t.art, known ? t.tint : [0.3, 0.32, 0.38], 40).toDataURL();
-      img.width = img.height = 40;
-      row.append(img);
-      const main = el('div', 'row-main');
-      main.append(el('div', 'row-name', known ? t.name : '???'));
-      main.append(el('div', 'row-sub', known
-        ? `${kind} · ${t.family} · ${t.health} health · ${t.damage} damage`
-        : `${kind} - not yet slain`));
-      row.append(main);
-      row.append(el('div', 'row-value', known ? `${WS.formatNumber(kills)} slain` : ''));
-      rows.append(row);
+      const cell = el('div', 'beast' + (known ? '' : ' unknown') + ' ' + kind.toLowerCase());
+      cell.style.setProperty('--q', WS.hex(known ? t.tint : [0.3, 0.32, 0.4]));
+
+      const plate = el('div', 'beast-plate');
+      if (known) {
+        const img = new Image();
+        img.src = WS.Sprites.creature(t.art, t.tint, 52).toDataURL();
+        img.width = img.height = 52;
+        plate.append(img);
+      } else {
+        // The silhouette is still the real creature, just unlit: the shape is
+        // a hint, which is what a compendium entry you have not earned is for.
+        const img = new Image();
+        img.src = WS.Sprites.creature(t.art, [0.16, 0.17, 0.21], 52).toDataURL();
+        img.width = img.height = 52;
+        plate.append(img, el('span', 'q', '?'));
+      }
+      cell.append(plate);
+      cell.append(el('div', 'beast-name', known ? t.name : '???'));
+      cell.append(el('div', 'beast-sub', known ? `${WS.formatNumber(kills)} slain` : kind));
+      if (known) {
+        cell.title = `${t.name}\n${kind} · ${t.family} · ${t.health} health · ${t.damage} damage`
+          + `\n${WS.formatNumber(kills)} slain`;
+      }
+      grid.append(cell);
     }
-    wrap.append(rows);
+    wrap.append(grid);
     return wrap;
   };
 
