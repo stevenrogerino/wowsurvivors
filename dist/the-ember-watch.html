@@ -3972,7 +3972,54 @@ window.WS = window.WS || {};
     // Neck: tapered and in shadow. A head sitting flat on a chest is a snowman.
     taper(g, cx, NECK_Y - 5, cx, SHOULDER_Y, 3.4, 4.6, SKIN, true);
 
-    if (hooded) {
+    if (cfg.undead) {
+      /* Not a helm - a face. The graveblade wore steel like the warrior and
+       * the paladin, which made three survivors whose heads were the same
+       * problem solved the same way, and hid the one fact about him that
+       * matters. Pallid skin, sockets with no eyes in them and a cold light
+       * coming out anyway, a jaw that shows, and the hair gone thin. */
+      lit(g, C.paleRamp, cx - HEAD_RX, HEAD_CY - HEAD_RY, cx + HEAD_RX * 0.7, HEAD_CY + HEAD_RY);
+      skull(g, cx); g.fill();
+      g.save();
+      skull(g, cx); g.clip();
+      // Hollow cheeks: two soft shadows pulling the face in under the bone.
+      for (const dir of [-1, 1]) {
+        const hollow = g.createRadialGradient(cx + dir * 7.5, HEAD_CY + 6, 0.5,
+          cx + dir * 7.5, HEAD_CY + 6, 7);
+        hollow.addColorStop(0, 'rgba(18,24,22,.55)');
+        hollow.addColorStop(1, 'rgba(18,24,22,0)');
+        g.fillStyle = hollow;
+        g.fillRect(cx + dir * 2, HEAD_CY, dir * 12, 14);
+      }
+      // The brow, heavy and dark, with nothing beneath it but light.
+      const brow = g.createLinearGradient(0, HEAD_CY - 3, 0, HEAD_CY + 6);
+      brow.addColorStop(0, 'rgba(10,16,15,.72)');
+      brow.addColorStop(1, 'rgba(10,16,15,0)');
+      g.fillStyle = brow;
+      g.fillRect(cx - HEAD_RX - 2, HEAD_CY - 3, HEAD_RX * 2 + 4, 9);
+      // Thin hair, receded, in ash.
+      panel(g, [[cx - HEAD_RX - 2, HEAD_CY - 4], [cx - HEAD_RX - 2, HEAD_CY - HEAD_RY - 4],
+        [cx + HEAD_RX + 2, HEAD_CY - HEAD_RY - 4], [cx + HEAD_RX + 2, HEAD_CY - 5],
+        [cx + 5, HEAD_CY - 9], [cx - 1, HEAD_CY - 7], [cx - 7, HEAD_CY - 9.5]],
+        ramp([0.42, 0.44, 0.44]));
+      g.restore();
+      // Sockets: black, and the eye is only the light in them.
+      for (const dir of [-1, 1]) {
+        g.fillStyle = 'rgba(4,7,7,.95)';
+        g.beginPath(); g.ellipse(cx + dir * 4.1, HEAD_CY + 2, 3.1, 2.6, 0, 0, WS.TAU); g.fill();
+        g.fillStyle = C.eye;
+        g.beginPath(); g.ellipse(cx + dir * 4.1, HEAD_CY + 2, 1.5, 1.1, 0, 0, WS.TAU); g.fill();
+        glow(g, cx + dir * 4.1, HEAD_CY + 2, 6, C.eye, 0.55);
+      }
+      // A set jaw, drawn as one line of teeth. Two marks and it is a corpse.
+      g.strokeStyle = 'rgba(12,18,16,.6)'; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(cx - 5, HEAD_CY + 9.5); g.lineTo(cx + 5, HEAD_CY + 9.2); g.stroke();
+      for (let i = -2; i <= 2; i++) {
+        g.beginPath();
+        g.moveTo(cx + i * 2.4, HEAD_CY + 8.4); g.lineTo(cx + i * 2.4, HEAD_CY + 10.4);
+        g.stroke();
+      }
+    } else if (hooded) {
       /* A cowl, not a cone.
        *
        * The first hood was a tall point over a black hole, which at any size
@@ -4275,6 +4322,20 @@ window.WS = window.WS || {};
     g.fillStyle = GOLD.key;
     g.fillRect(cx - 2.6, WAIST_Y - 3.6, 5.2, 3.2);
 
+    if (cfg.strap) {
+      // A strap across the chest, the other way from a sash - it is holding
+      // the quiver on, and it says so by running to the shoulder it hangs off.
+      panel(g, [[cx + b.sh - 2, SHOULDER_Y - 1], [cx + b.sh - 7, SHOULDER_Y - 2],
+        [cx - b.waist - 1, WAIST_Y - 3], [cx - b.waist + 4, WAIST_Y - 2]], LEATHER);
+    }
+    if (cfg.bootknife) {
+      // A knife strapped to the outside of the near boot.
+      const kx = cx + b.hip + 1;
+      panel(g, [[kx - 1.6, FOOT_Y - 17], [kx + 1.6, FOOT_Y - 17.4],
+        [kx + 1.9, FOOT_Y - 8], [kx - 1.9, FOOT_Y - 7.6]], LEATHER);
+      g.fillStyle = STEEL.key;
+      g.fillRect(kx - 1.1, FOOT_Y - 20, 2.2, 3.2);
+    }
     if (cfg.sheaths) {
       // Two sheaths on the belt, angled back. Says the blades in the hands are
       // not the only ones, which is the whole idea of a knife fighter.
@@ -4311,6 +4372,29 @@ window.WS = window.WS || {};
       g.fillStyle = C.accentLight;
       g.fillRect(tx + 3.4, WAIST_Y + 0.5, 1.5, 10);
       glow(g, tx + 4, WAIST_Y + 5, 7, C.accent, 0.45);
+    }
+    if (cfg.backShield) {
+      /* A shield slung on his back, drawn before everything so it reads as
+       * being behind him. The warrior's outline was two pauldrons and a haft;
+       * a disc breaking the line above one shoulder is the third shape. */
+      const sx2 = cx - b.sh - 2;
+      lit(g, ramp([0.46, 0.42, 0.36]), sx2 - 12, SHOULDER_Y - 14, sx2 + 8, SHOULDER_Y + 8);
+      g.beginPath(); g.ellipse(sx2 - 2, SHOULDER_Y - 3, 12.5, 13.5, -0.2, 0, WS.TAU); g.fill();
+      g.strokeStyle = GOLD.shade; g.lineWidth = 1.4;
+      g.beginPath(); g.ellipse(sx2 - 2, SHOULDER_Y - 3, 8, 8.8, -0.2, 0, WS.TAU); g.stroke();
+      g.fillStyle = STEEL.core;
+      g.beginPath(); g.arc(sx2 - 2, SHOULDER_Y - 3, 3, 0, WS.TAU); g.fill();
+    }
+    if (cfg.legwraps) {
+      // Bound shins. Cheap, and it stops the legs reading as two bare posts.
+      for (const dir of [-1, 1]) {
+        const hx = cx + dir * (b.hip - b.leg * 0.5) + dir * 1;
+        for (let i = 0; i < 3; i++) {
+          panel(g, [[hx - 3.4, HIP_Y + 9 + i * 4], [hx + 3.4, HIP_Y + 8.4 + i * 4],
+            [hx + 3.4, HIP_Y + 11 + i * 4], [hx - 3.4, HIP_Y + 11.6 + i * 4]],
+            i % 2 ? LEATHER : C.trimRamp);
+        }
+      }
     }
     if (cfg.hoodDown) {
       /* The hood a ranger is NOT wearing: a roll of cloth bunched behind the
@@ -4383,6 +4467,16 @@ window.WS = window.WS || {};
         g.beginPath(); g.arc(cx + i * 4.5, SHOULDER_Y + 1.5, 1.5, 0, WS.TAU); g.fill();
       }
     }
+    if (cfg.wisp) {
+      // A second small light, keeping station off the shoulder. Something is
+      // following him, and it is not the orb in his hand.
+      const wx = cx - b.sh - 6, wy = SHOULDER_Y - 7;
+      glow(g, wx, wy, 11, C.accent, 0.75);
+      g.fillStyle = C.accentLight;
+      g.beginPath(); g.ellipse(wx, wy, 2.4, 3, -0.3, 0, WS.TAU); g.fill();
+      g.fillStyle = 'rgba(255,255,255,.75)';
+      g.beginPath(); g.arc(wx - 0.6, wy - 0.9, 0.9, 0, WS.TAU); g.fill();
+    }
     if (cfg.sigils) {
       // Marks that are lit from underneath the skin, not painted on it.
       g.save();
@@ -4405,6 +4499,31 @@ window.WS = window.WS || {};
     panel(g, [[cx - 8, SHOULDER_Y - 3], [cx + 8, SHOULDER_Y - 3],
       [cx + 6, SHOULDER_Y + 2], [cx - 6, SHOULDER_Y + 2]], C.collarRamp);
 
+    if (cfg.sleeves) {
+      /* Bell cuffs on both arms. The mage was the plainest figure in the
+       * roster - a robe and a stick - and a caster's sleeve is the one piece
+       * of clothing that widens as it goes DOWN, which nothing else here
+       * does. */
+      for (const dir of [-1, 1]) {
+        const wx = cx + dir * (b.sh + 1);
+        panel(g, [[wx - dir * 3, WAIST_Y - 15], [wx + dir * 3.5, WAIST_Y - 15.5],
+          [wx + dir * 7, WAIST_Y - 1], [wx - dir * 5, WAIST_Y]],
+          dir > 0 ? C.bodyRamp : C.legRamp);
+        panel(g, [[wx - dir * 5, WAIST_Y], [wx + dir * 7, WAIST_Y - 1],
+          [wx + dir * 6.5, WAIST_Y + 2.5], [wx - dir * 4.5, WAIST_Y + 3.5]], C.trimRamp);
+      }
+    }
+    if (cfg.armwraps) {
+      // Bare arms, bound from wrist to elbow. Everyone else has sleeves.
+      for (const dir of [-1, 1]) {
+        const wx = cx + dir * (b.sh + 1);
+        for (let i = 0; i < 4; i++) {
+          panel(g, [[wx - 3, WAIST_Y - 13 + i * 3.2], [wx + 3, WAIST_Y - 13.6 + i * 3.2],
+            [wx + 3, WAIST_Y - 11.4 + i * 3.2], [wx - 3, WAIST_Y - 10.8 + i * 3.2]],
+            i % 2 ? C.trimRamp : LEATHER);
+        }
+      }
+    }
     // Near arm, over the torso, with a hand.
     taper(g, cx + b.sh - 1, SHOULDER_Y + 1, cx + b.sh + 2, WAIST_Y - 2,
       b.arm * 0.68, b.arm * 0.4, C.bodyRamp);
@@ -4428,7 +4547,14 @@ window.WS = window.WS || {};
     const flare = k === 'short' ? 5 : 11;
     const pts = [[cx - b.sh - 1, SHOULDER_Y - 4], [cx + b.sh + 1, SHOULDER_Y - 4],
       [cx + b.sh + flare, foot]];
-    if (k === 'tattered') {
+    if (k === 'cut') {
+      /* Cut away on one side. A hem that is level all round reads as a
+       * garment; one that is short over the leading leg reads as a garment
+       * somebody has to move in. */
+      pts.push([cx + b.sh + flare - 1, WAIST_Y + 16]);
+      pts.push([cx + 2, WAIST_Y + 9]);
+      pts.push([cx - b.sh - flare, foot]);
+    } else if (k === 'tattered') {
       // A ragged hem, cut with the same seed every time so the character does
       // not change clothes between the roster and the run.
       const teeth = 7;
@@ -4485,6 +4611,26 @@ window.WS = window.WS || {};
       g.fillStyle = C.accentLight;
       g.fillRect(gx + 5, hy + 17, 4, 4);
       glow(g, gx + 7, hy + 19, 14, C.accent, 0.8);
+      /* And the light lands on HER. A lamp that glows beside a figure without
+       * touching it is a lamp painted on the same layer, not a lamp in the
+       * scene - one warm wash up the near side of the robe and the two objects
+       * are suddenly in the same place. */
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      /* Thrown back TOWARD her, not out into the dark. A radial centred on the
+       * lamp lit as much empty air to one side as it lit the robe, which reads
+       * as a smudge on the canvas rather than as light falling on cloth; this
+       * one is an ellipse pushed up and inward, so the bright part of it lands
+       * on the hem and the near leg where a lamp at hip height would actually
+       * put it. */
+      const lx = gx - 4, ly = hy + 12;
+      const spill = g.createRadialGradient(lx, ly, 2, lx, ly, 22);
+      spill.addColorStop(0, 'rgba(255,206,128,.26)');
+      spill.addColorStop(0.55, 'rgba(255,206,128,.11)');
+      spill.addColorStop(1, 'rgba(255,206,128,0)');
+      g.fillStyle = spill;
+      g.beginPath(); g.ellipse(lx, ly, 22, 17, 0, 0, WS.TAU); g.fill();
+      g.restore();
     },
     daggers(g, C, b) {
       /* Point-down, angled across the body. Held point-up beside each shoulder
@@ -4570,11 +4716,32 @@ window.WS = window.WS || {};
       g.translate(gx, WAIST_Y - 1); g.rotate(0.30);
       panel(g, [[-3.4, 4], [3.4, 4], [2.6, -46], [0, -53], [-2.6, -46]], STEEL);
       g.fillStyle = 'rgba(255,255,255,.42)'; g.fillRect(-0.9, -44, 1.8, 46);
-      /* A blade with a history: a bite taken out of the edge, and the grip
-       * wrapped and re-wrapped. Every other weapon in the cast is new. */
-      g.fillStyle = 'rgba(9,11,17,.9)';
+      /* A rune channel down the fuller, lit from inside.
+       *
+       * The history was a bite out of the edge and it did not land - a
+       * two-unit notch on a fifty-unit blade is invisible at portrait size and
+       * gone entirely at 34px, which is most of the sizes this is ever seen
+       * at. Detail that only exists at 300px is not detail, it is a secret.
+       * A channel of the survivor's own light runs the length of the blade
+       * instead: it reads at every size, it says the same thing about what
+       * this weapon is, and it ties the sword to the eyes in his head. */
+      const ch = g.createLinearGradient(0, -46, 0, 4);
+      ch.addColorStop(0, WS.rgb(WS.mix(C.channelRgb, [1, 1, 1], 0.45), 1));
+      ch.addColorStop(0.5, WS.rgb(C.channelRgb, 1));
+      ch.addColorStop(1, WS.rgb(WS.shade(C.channelRgb, 0.45), 1));
+      g.fillStyle = ch;
       g.beginPath();
-      g.moveTo(2.6, -26); g.lineTo(0.2, -23.5); g.lineTo(2.6, -21); g.closePath(); g.fill();
+      g.moveTo(0, -44); g.lineTo(1.15, -40); g.lineTo(1.15, 1);
+      g.lineTo(-1.15, 1); g.lineTo(-1.15, -40);
+      g.closePath(); g.fill();
+      glow(g, 0, -20, 10, C.eye, 0.30);
+      // Three notches along the edge, big enough to survive the shrink.
+      g.fillStyle = 'rgba(9,11,17,.92)';
+      for (const [ny, nd] of [[-30, 1.5], [-19, 1.1], [-9, 1.3]]) {
+        g.beginPath();
+        g.moveTo(2.6, ny + nd); g.lineTo(2.6 - nd * 1.7, ny); g.lineTo(2.6, ny - nd);
+        g.closePath(); g.fill();
+      }
       panel(g, [[-8, 4], [8, 4], [8, 8], [-8, 8]], GOLD);      // crossguard
       g.fillStyle = LEATHER.core; g.fillRect(-2.4, 8, 4.8, 9);
       g.strokeStyle = 'rgba(20,14,9,.75)'; g.lineWidth = 0.7;
@@ -4617,6 +4784,33 @@ window.WS = window.WS || {};
         [gx + 3.5, top + 15], [gx - 3.5, top + 15]], LEATHER);
       panel(g, [[gx + 3, top + 15], [gx + 5, top + 15],
         [gx + 8, top + 27], [gx + 4.5, top + 25]], C.featherRamp);
+    },
+    hammer(g, C, b) {
+      /* A warhammer, held head-up in the near hand.
+       *
+       * The paladin was carrying a shield and NOTHING ELSE - which is not a
+       * paladin, it is a man hiding - and the shield alone sat on the far
+       * side, so from the front he read as unarmed. A blunt weapon is also the
+       * right answer for him: every other heavy in the cast swings an edge,
+       * and a slab of steel on a haft is a different silhouette from a
+       * crescent or a blade at any size. */
+      const gx = 50 + b.sh + 3, head = 26;
+      limb(g, gx + 3, FOOT_Y - 6, gx - 1, head + 5, 3.2, WOOD);
+      // The head: a square face with a chamfer, and a spike behind it.
+      panel(g, [[gx - 9, head - 1], [gx + 8, head - 4], [gx + 9, head + 8],
+        [gx - 8, head + 11]], STEEL);
+      panel(g, [[gx + 8, head - 3], [gx + 15, head + 1], [gx + 15, head + 5],
+        [gx + 8.5, head + 8]], ramp([0.44, 0.47, 0.55]));
+      // Two bands of gold across the face - the same metal as his charge.
+      g.fillStyle = GOLD.core;
+      g.fillRect(gx - 8.5, head + 1, 16.5, 1.6);
+      g.fillRect(gx - 8.5, head + 5.5, 16.5, 1.6);
+      g.fillStyle = 'rgba(255,255,255,.45)';
+      g.beginPath();
+      g.moveTo(gx - 8.6, head - 0.6); g.lineTo(gx + 7.6, head - 3.4);
+      g.lineTo(gx + 7.8, head - 1.6); g.lineTo(gx - 8.4, head + 1.2);
+      g.closePath(); g.fill();
+      glow(g, gx, head + 4, 13, C.accent, 0.30);
     },
     shield(g, C, b) {
       const sx = 50 - b.sh - 4;
@@ -4679,23 +4873,38 @@ window.WS = window.WS || {};
    *   find the mark that says who this is at 34px, make it a SHAPE rather
    *   than a colour, and give it a MATERIAL nothing else on the figure has.
    *
-   *   mage        a sash across the chest, the one diagonal in a body built
-   *               from verticals, and three runes holding station around the
-   *               head of the staff - nothing else in the cast floats
+   *   mage        a sash across the chest - the one diagonal in a body built
+   *               from verticals - bell cuffs, the only clothing here that
+   *               widens as it goes down, and three runes holding station
+   *               around the staff head. Nothing else in the cast floats
    *   priest      a stole: two bands from the collar with the robe showing
-   *               between them, hem devices at the ends
-   *   rogue       a scarf pulled to the chin, belt sheaths, a bracer
+   *               between them, and her lantern's light actually landing on
+   *               the hem, so the lamp is in the scene and not painted beside
+   *               it
+   *   rogue       a scarf pulled to the chin, belt sheaths, a bracer, and a
+   *               hem cut short over the leading leg
    *   hunter      the hood he is NOT wearing, bunched behind the neck; fur
-   *               over the far shoulder, the only soft edge in the roster
-   *   warrior     horns off the helm, heavy at the root and curling up
-   *   warlock     chains at the hip and a clasped tome with his own light
-   *               leaking out of the pages
-   *   shaman      a feather mantle, warpaint, a totem with a face carved in
-   *   paladin     a charge, on the tabard AND on the shield face, so the two
-   *               read as one heraldry rather than two decorations
-   *   graveblade  a blade with a history: a bite out of the edge, a grip
-   *               wrapped and re-wrapped. Every other weapon here is new
-   *   ruinseeker  bound eyes, sigils lit from under the skin, warglaives
+   *               over the far shoulder, the only soft edge in the roster; a
+   *               quiver strap and a knife at the boot
+   *   warrior     horns off the helm, heavy at the root and curling up, and a
+   *               shield slung on his back to break the shoulder line
+   *   warlock     chains at the hip, a clasped tome with his own light leaking
+   *               out of the pages, and a second wisp keeping station off his
+   *               shoulder - something is following him
+   *   shaman      a feather mantle, warpaint, arms bound wrist to elbow while
+   *               everyone else has sleeves, a totem with a face carved in
+   *   paladin     a warhammer AND a shield. He carried the shield alone, which
+   *               is not a paladin but a man hiding - and from the front he
+   *               read as unarmed. A blunt weapon is also the right answer:
+   *               every other heavy here swings an edge. The charge is on the
+   *               tabard AND the shield face, so the two read as one heraldry
+   *   graveblade  a dead man's face - pallid, hollow-cheeked, sockets with no
+   *               eyes in them and a cold light coming out anyway - and a rune
+   *               channel burning the length of his blade. He wore a helm like
+   *               the other two heavies, which hid the one fact about him that
+   *               matters
+   *   ruinseeker  bound eyes, sigils lit from under the skin, warglaives,
+   *               bound shins
    *
    * And a second colour on every garment - a warm trim close enough to belong
    * to the survivor and far enough to be a decision somebody made about their
@@ -4715,32 +4924,33 @@ window.WS = window.WS || {};
      * each and no two lines repeat; that is the test, and it is the same test
      * the silhouette rule applies to the outline. */
     mage: { build: 'slim', head: 'bare', robe: true, cloak: 'long', weapon: 'staff',
-      sash: true, hair: DARKCLOTH },
+      sash: true, sleeves: true, hair: DARKCLOTH },
     /* No tabard: the stole sits exactly where one goes and the two together
      * made the whole front of her one pale slab. Two bands with the robe
      * showing between them is the reading; three overlapping ones is a bib. */
     priest: { build: 'slim', head: 'bare', robe: true, cloak: 'short', halo: true,
       weapon: 'censer', stole: true, hair: ramp([0.55, 0.46, 0.33]) },
-    rogue: { build: 'slim', head: 'hood', cloak: 'short', weapon: 'daggers',
+    rogue: { build: 'slim', head: 'hood', cloak: 'cut', weapon: 'daggers',
       scarf: true, sheaths: true, bracer: true },
-    hunter: { build: 'normal', head: 'bare', weapon: 'bow',
-      hoodDown: true, pelt: true, bracer: true, hair: ramp([0.30, 0.26, 0.18]) },
+    hunter: { build: 'normal', head: 'bare', weapon: 'bow', hoodDown: true, pelt: true,
+      bracer: true, strap: true, bootknife: true, hair: ramp([0.30, 0.26, 0.18]) },
     warrior: { build: 'heavy', head: 'helm', pauldrons: 2.1, weapon: 'axe',
-      helmHorns: true, sash: true },
+      helmHorns: true, sash: true, backShield: true },
     warlock: { build: 'normal', head: 'hood', robe: true, cloak: 'tattered',
-      weapon: 'orb', chains: true, tome: true, hood: DARKCLOTH },
+      weapon: 'orb', chains: true, tome: true, wisp: true, hood: DARKCLOTH },
     /* The shaman used to be a robed slim silhouette with a long cloak, which
      * put him inside 83% of the mage's outline and 81% of the warlock's -
      * three survivors sharing one shape. Legs and a ragged hem take him out of
      * that cluster without touching anything else about him. */
     shaman: { build: 'normal', head: 'bare', cloak: 'tattered', weapon: 'totem',
-      mantle: true, warpaint: true, hair: ramp([0.22, 0.24, 0.30]) },
+      mantle: true, warpaint: true, armwraps: true, hair: ramp([0.22, 0.24, 0.30]) },
     paladin: { build: 'heavy', head: 'helm', pauldrons: 2.4, halo: true, tabard: true,
-      weapon: 'shield', device: true },
-    graveblade: { build: 'heavy', head: 'helm', pauldrons: 1.7, cloak: 'tattered',
-      weapon: 'greatsword', chains: true },
+      weapon: 'hammer', offhand: 'shield', device: true },
+    graveblade: { build: 'heavy', head: 'undead', undead: true, pauldrons: 1.7,
+      cloak: 'tattered', weapon: 'greatsword', chains: true },
     ruinseeker: { build: 'normal', head: 'bare', horns: true, cloak: 'tattered',
-      weapon: 'glaives', blindfold: true, sigils: true, bracer: true, hair: DARKCLOTH },
+      weapon: 'glaives', blindfold: true, sigils: true, bracer: true, legwraps: true,
+      hair: DARKCLOTH },
   };
 
   /* -------------------------------------------------------------- paint --- */
@@ -4799,6 +5009,13 @@ window.WS = window.WS || {};
        * somebody made about their clothes. */
       trimRamp: ramp(WS.mix(garment, [0.58, 0.48, 0.30], 0.55)),
       furRamp: ramp([0.38, 0.33, 0.26]),
+      // Drowned, not tanned: grey-green with the warmth taken out of it.
+      paleRamp: ramp([0.56, 0.60, 0.54]),
+      eyeRgb: demon ? [0.85, 1, 0.42] : WS.mix(t, [1, 1, 1], 0.72),
+      // The blade's light is the same light as the eyes, but a blade is a big
+      // surface: at the eye's whiteness it came out a wash of pale pink rather
+      // than something burning inside steel.
+      channelRgb: demon ? [0.7, 1, 0.35] : WS.mix(t, [1, 1, 1], 0.30),
       furDark: ramp([0.22, 0.19, 0.15]),
       eye: demon ? '#d9ff6b' : WS.hex(WS.mix(t, [1, 1, 1], 0.72)),
     };
@@ -4810,6 +5027,9 @@ window.WS = window.WS || {};
     drawCloak(g, cfg, C, b);
     drawBody(g, cfg, C, b);
     drawHead(g, cfg, C);
+    // Offhand first, so the main weapon lands in front of it.
+    const off = WEAPONS[cfg.offhand];
+    if (off) off(g, C, b);
     const w = WEAPONS[cfg.weapon];
     if (w) w(g, C, b);
   }
