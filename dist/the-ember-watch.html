@@ -8944,9 +8944,12 @@ window.WS = window.WS || {};
 
   function style(gem) {
     const C = WS.CONST.COLORS;
-    if (gem.value >= 25) { gem.size = 9; gem.colour = C.gemHigh; gem.tier = 2; }
-    else if (gem.value >= 8) { gem.size = 7.5; gem.colour = C.gemMid; gem.tier = 1; }
-    else { gem.size = 6; gem.colour = C.gemLow; gem.tier = 0; }
+    // Purely how big it looks. What it takes to collect one is gem.radius,
+    // which is a flat 8 for every tier and is deliberately not tied to this -
+    // a gem must not become easier to pick up by being worth more.
+    if (gem.value >= 25) { gem.size = 9.45; gem.colour = C.gemHigh; gem.tier = 2; }
+    else if (gem.value >= 8) { gem.size = 7.88; gem.colour = C.gemMid; gem.tier = 1; }
+    else { gem.size = 6.3; gem.colour = C.gemLow; gem.tier = 0; }
   }
 
   /* Gems merge on contact rather than piling up.

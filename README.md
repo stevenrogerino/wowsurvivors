@@ -30,11 +30,38 @@ xdg-open index.html        # Linux
 start index.html           # Windows
 ```
 
-Or build one self-contained file to host or hand around:
+## Publishing it
+
+One file. That is the whole deployment.
 
 ```
-node tools/bundle.js       # -> dist/the-ember-watch.html
+node tools/bundle.js              # -> dist/the-ember-watch.html   (~677 KB)
 ```
+
+Rename it `index.html`, upload it, done. Every script, every stylesheet and
+all five typefaces are inlined; there are no images and no audio files,
+because the art and the sound are generated at runtime. Served from a host it
+makes exactly **one** network request — the page itself — so it works on any
+static host, from a subfolder, offline after the first load, and off a USB
+stick. No build step for the visitor, no server, no CORS, nothing to
+configure.
+
+- **GitHub Pages** — put it in `docs/` (or a `gh-pages` branch) as
+  `index.html` and enable Pages in the repo settings.
+- **Netlify / Vercel / Cloudflare Pages** — drag the file onto the dashboard,
+  or point them at a folder containing only it. No build command.
+- **itch.io** — zip the file (as `index.html`) and upload it as an
+  HTML project; tick *This file will be played in the browser*. Set the
+  viewport to 1280x720 and enable fullscreen.
+- **Any web host at all** — drop it in the web root over FTP.
+
+Saves live in the visitor's own `localStorage`, so each player keeps their own
+gold and unlocks and nothing is sent anywhere.
+
+`tools/check-shippable.js` serves that exact file alone in an empty directory,
+plays ninety seconds of a real run inside it, and fails on any request that
+leaves the host, any 404 and any error — so the claim above is checked rather
+than asserted.
 
 ### Controls
 
@@ -118,6 +145,9 @@ tools/         the single-file bundler, and the guard rails:
                check-robust.js a thrown frame, sixteen malformed saves, a save
                               made before the rename, and a run's gold banked
                               by the autosave and by the tab going away
+               check-shippable.js the shipped single file served alone in an
+                              empty directory, played, and failed on any
+                              request that leaves the host
                check-loot.js  gems and pickups measured in COLOUR against the
                               floor of every map on both quality settings -
                               a green gem on green grass fails no brightness
