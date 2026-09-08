@@ -403,7 +403,7 @@
   /* ------------------------------------------------------------- cards --- */
   function cardFor(choice, onPick, index) {
     const colour = choiceColour(choice);
-    const card = el('button', 'card bracketed');
+    const card = el('button', 'card');
     card.type = 'button';
     card.style.setProperty('--q', WS.hex(colour));
 
@@ -942,11 +942,18 @@
   };
 
   /* ---------------------------------------------------------- build sheet - */
+  /** A panel with its inlay hairline in place. */
+  function panel(cls) {
+    const p = el('div', 'panel bracketed' + (cls ? ' ' + cls : ''));
+    p.append(el('div', 'inlay'));
+    return p;
+  }
+
   function buildSheet() {
     const p = WS.Game.player, run = WS.Game.run;
     const sheet = el('div', 'sheet');
 
-    const left = el('div', 'panel bracketed');
+    const left = panel();
     left.style.padding = '16px';
     left.append(el('h3', null, 'Arsenal'));
     for (const w of p.weapons) {
@@ -970,7 +977,7 @@
       left.append(row);
     }
 
-    const right = el('div', 'panel bracketed');
+    const right = panel();
     right.style.padding = '16px';
     right.append(el('h3', null, 'Survivor'));
     const kv = (k, v) => {

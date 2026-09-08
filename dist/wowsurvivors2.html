@@ -158,7 +158,12 @@ html, body {
 }
 .figure { font-family: var(--fig); font-variant-numeric: tabular-nums; }
 
-/* Corner brackets - the Arclight frame. */
+/* Corner brackets - the Arclight frame.
+ * RULE: an element uses .bracketed OR its own ::before/::after decoration,
+ * never both. There are only two pseudo-elements, and when a component also
+ * wants them the two rule sets silently fight - which is how the card's
+ * quality arc ended up collapsed into a 14px stub. Components with their own
+ * corner language (.card, .panel) carry it themselves. */
 .bracketed { position: relative; }
 .bracketed::before, .bracketed::after {
   content: ""; position: absolute; width: 14px; height: 14px;
@@ -175,9 +180,10 @@ html, body {
   box-shadow: var(--bevel), var(--lift-1);
 }
 /* The inlay: a second hairline set in from the rim, the detail that separates
-   a machined panel from a div with a border. */
-.panel::after {
-  content: ""; position: absolute; inset: 5px; pointer-events: none;
+   a machined panel from a div with a border. A child, not a pseudo-element,
+   so .bracketed can still claim ::before/::after on the same panel. */
+.panel > .inlay {
+  position: absolute; inset: 5px; pointer-events: none;
   border: 1px solid rgba(255,255,255,.035);
   border-radius: 1px;
 }
@@ -9715,7 +9721,7 @@ window.WS = window.WS || {};
   /* ------------------------------------------------------------- cards --- */
   function cardFor(choice, onPick, index) {
     const colour = choiceColour(choice);
-    const card = el('button', 'card bracketed');
+    const card = el('button', 'card');
     card.type = 'button';
     card.style.setProperty('--q', WS.hex(colour));
 
@@ -10254,11 +10260,18 @@ window.WS = window.WS || {};
   };
 
   /* ---------------------------------------------------------- build sheet - */
+  /** A panel with its inlay hairline in place. */
+  function panel(cls) {
+    const p = el('div', 'panel bracketed' + (cls ? ' ' + cls : ''));
+    p.append(el('div', 'inlay'));
+    return p;
+  }
+
   function buildSheet() {
     const p = WS.Game.player, run = WS.Game.run;
     const sheet = el('div', 'sheet');
 
-    const left = el('div', 'panel bracketed');
+    const left = panel();
     left.style.padding = '16px';
     left.append(el('h3', null, 'Arsenal'));
     for (const w of p.weapons) {
@@ -10282,7 +10295,7 @@ window.WS = window.WS || {};
       left.append(row);
     }
 
-    const right = el('div', 'panel bracketed');
+    const right = panel();
     right.style.padding = '16px';
     right.append(el('h3', null, 'Survivor'));
     const kv = (k, v) => {

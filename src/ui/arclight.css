@@ -104,7 +104,12 @@ html, body {
 }
 .figure { font-family: var(--fig); font-variant-numeric: tabular-nums; }
 
-/* Corner brackets - the Arclight frame. */
+/* Corner brackets - the Arclight frame.
+ * RULE: an element uses .bracketed OR its own ::before/::after decoration,
+ * never both. There are only two pseudo-elements, and when a component also
+ * wants them the two rule sets silently fight - which is how the card's
+ * quality arc ended up collapsed into a 14px stub. Components with their own
+ * corner language (.card, .panel) carry it themselves. */
 .bracketed { position: relative; }
 .bracketed::before, .bracketed::after {
   content: ""; position: absolute; width: 14px; height: 14px;
@@ -121,9 +126,10 @@ html, body {
   box-shadow: var(--bevel), var(--lift-1);
 }
 /* The inlay: a second hairline set in from the rim, the detail that separates
-   a machined panel from a div with a border. */
-.panel::after {
-  content: ""; position: absolute; inset: 5px; pointer-events: none;
+   a machined panel from a div with a border. A child, not a pseudo-element,
+   so .bracketed can still claim ::before/::after on the same panel. */
+.panel > .inlay {
+  position: absolute; inset: 5px; pointer-events: none;
   border: 1px solid rgba(255,255,255,.035);
   border-radius: 1px;
 }
