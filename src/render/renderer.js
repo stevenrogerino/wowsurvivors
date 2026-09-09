@@ -299,7 +299,7 @@
     ctx.translate(e.x, e.y + bob);
     // Bracing for a charge: the body compresses, then springs.
     if (e.windup > 0) {
-      const k = 1 - e.windup / 0.75;
+      const k = 1 - e.windup / WS.Config.chargeWindup;
       ctx.scale(1 + k * 0.14, 1 - k * 0.12);
     }
     if (e.facing < 0) ctx.scale(-1, 1);
@@ -492,18 +492,24 @@
       const k = 1 - WS.clamp(t.life / t.maxLife, 0, 1);   // 0 -> 1 as it lands
       ctx.save();
       if (t.kind === 'lane') {
+        /* Two readings of the same lane. While it is being aimed it fills
+         * toward its end, and it swings as the boss tracks you - that is the
+         * window to move. Once it fires it stops moving and stops filling: it
+         * goes solid and burns down, because at that point it is no longer a
+         * warning, it is where the boss is going. */
+        const aim = !t.firing;
+        const fade = t.firing ? 1 - k : 1;
         ctx.translate(e.x, e.y);
         ctx.rotate(WS.atan2(t.dy, t.dx));
-        ctx.fillStyle = `rgba(226,72,61,${(0.07 + 0.16 * k).toFixed(3)})`;
+        ctx.fillStyle = `rgba(226,72,61,${(aim ? 0.07 + 0.16 * k : 0.20 * fade).toFixed(3)})`;
         ctx.fillRect(0, -t.width / 2, t.length, t.width);
-        // The bar fills toward the survivor as the charge becomes inevitable.
-        ctx.fillStyle = `rgba(255,120,100,${(0.16 + 0.3 * k).toFixed(3)})`;
-        ctx.fillRect(0, -t.width / 2, t.length * k, t.width);
-        ctx.strokeStyle = `rgba(255,140,120,${(0.35 + 0.45 * k).toFixed(3)})`;
-        ctx.lineWidth = 1.5;
+        ctx.fillStyle = `rgba(255,120,100,${(aim ? 0.16 + 0.3 * k : 0.42 * fade).toFixed(3)})`;
+        ctx.fillRect(0, -t.width / 2, t.length * (aim ? k : 1), t.width);
+        ctx.strokeStyle = `rgba(255,140,120,${(aim ? 0.35 + 0.45 * k : 0.85 * fade).toFixed(3)})`;
+        ctx.lineWidth = aim ? 1.5 : 2.5;
         ctx.strokeRect(0, -t.width / 2, t.length, t.width);
         // Chevrons pointing the way out.
-        ctx.globalAlpha = 0.5 + 0.4 * k;
+        ctx.globalAlpha = (aim ? 0.5 + 0.4 * k : 0.9 * fade);
         for (let c = 1; c <= 3; c++) {
           const x = t.length * (c / 4);
           ctx.beginPath();

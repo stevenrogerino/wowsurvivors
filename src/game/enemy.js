@@ -172,28 +172,57 @@
         e.slowTimer -= dt;
         speed *= e.slowFactor;
       }
-      if (e.windup > 0) {
-        // The tell: the boss plants, and the ground in front of it lights up.
+      /* THE LANE IS A PROMISE. While the boss is planted the lane swings to
+       * follow the survivor, so the tell is live and you can watch it come
+       * round onto you; the instant it commits, the lane locks and the boss
+       * travels exactly down it. It used to do neither: the lane was aimed
+       * once at windup and the charge was aimed again three quarters of a
+       * second later, at wherever you had walked to since - and then didn't
+       * use that direction either, because it homed. */
+      if (e.windup > 0 && !frozen) {
         e.windup -= dt;
         speed = 0;
+        if (e.telegraph && e.telegraph.live) {
+          e.telegraph.dx = dx; e.telegraph.dy = dy;
+          e.telegraph.life = e.windup;
+        }
         if (e.windup <= 0) {
-          e.chargeTimer = 1.1;
+          e.chargeTimer = cfg.chargeTime;
           e.chargeDir = [dx, dy];
+          if (e.telegraph) {
+            e.telegraph.live = false;      // aimed; from here it is a fact
+            e.telegraph.firing = true;
+            /* Outlive the charge by a beat. Matching the two exactly meant
+               the lane expired a tick or two before the boss stopped, so the
+               last of the charge happened on unmarked ground. */
+            e.telegraph.life = cfg.chargeTime + cfg.chargeLaneTail;
+            e.telegraph.maxLife = cfg.chargeTime + cfg.chargeLaneTail;
+          }
           WS.FX.shake(5, 0.25);
           WS.Audio.play('warn');
         }
-      } else if (e.chargeTimer > 0) {
+      } else if (e.chargeTimer > 0 && !frozen) {
         e.chargeTimer -= dt;
-        speed *= 3.2;
       }
 
       let advance = !e.stationary;
       if (t.ranged && distance <= t.ranged.range) advance = false;
-      if (advance && distance > 1) {
-        e.x += dx * speed * dt;
-        e.y += dy * speed * dt;
+      if (e.chargeTimer > 0 && e.chargeDir && !frozen) {
+        /* Down the lane, at the speed that covers the lane. Not toward the
+         * survivor - a charge you cannot sidestep is not a charge, it is a
+         * fast walk with a light show in front of it. */
+        const v = cfg.chargeRange / cfg.chargeTime;
+        e.x = WS.clamp(e.x + e.chargeDir[0] * v * dt, e.radius, WS.CONST.WORLD_WIDTH - e.radius);
+        e.y = WS.clamp(e.y + e.chargeDir[1] * v * dt, e.radius, WS.CONST.WORLD_HEIGHT - e.radius);
+        e.facing = e.chargeDir[0] < 0 ? -1 : 1;
+        advance = false;
+      } else {
+        if (advance && distance > 1) {
+          e.x += dx * speed * dt;
+          e.y += dy * speed * dt;
+        }
+        e.facing = dx < 0 ? -1 : 1;
       }
-      e.facing = dx < 0 ? -1 : 1;
       e.bob += dt * (advance ? 9 : 3);
 
       // Contact. The swing always triggers Thorns, even if the survivor dodges,
@@ -227,7 +256,11 @@
 
       if (e.flash > 0) e.flash -= dt;
       if (e.invuln > 0) e.invuln -= dt;
-      if (e.telegraph) {
+      /* A lane still being aimed is owned by the windup above, which sets its
+         life every frame; letting the clock here have a second go at it
+         expired the lane one tick BEFORE the charge committed, so the charge
+         found no telegraph to lock and the promise was never made at all. */
+      if (e.telegraph && !e.telegraph.live) {
         e.telegraph.life -= dt;
         if (e.telegraph.life <= 0) e.telegraph = null;
       }
@@ -275,10 +308,17 @@
           WS.cos(a) * 220, WS.sin(a) * 220, e.damage * 0.6, school, t.name, e);
       }
     } else if (pattern.type === 'charge') {
-      // Telegraph first: three quarters of a second planted, with the lane
-      // ahead marked, then the charge itself.
-      e.windup = 0.75;
-      e.telegraph = { kind: 'lane', life: 0.75, maxLife: 0.75, dx, dy, length: 460, width: e.radius * 2.2 };
+      /* Plant, mark the ground, then run down it. `live` says the lane is
+       * still being aimed; the update loop turns that off the moment the
+       * charge commits, and the same lane stays on screen while it happens so
+       * the player can see the promise kept. */
+      const cfg = WS.Config;
+      e.windup = cfg.chargeWindup;
+      e.telegraph = {
+        kind: 'lane', live: true, firing: false,
+        life: cfg.chargeWindup, maxLife: cfg.chargeWindup,
+        dx, dy, length: cfg.chargeRange, width: e.radius * 2.2,
+      };
       WS.FX.flash(e.x, e.y, e.radius * 1.6, WS.CONST.COLORS.enemy, 0.5);
     }
   };

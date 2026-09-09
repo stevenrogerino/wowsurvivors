@@ -25,6 +25,16 @@
     contactCooldownBoss: 0.5,
     contactCooldownNormal: 0.8,
 
+    /* The boss charge. These three are one promise, not three numbers: the
+     * lane the telegraph draws is chargeRange long, the charge runs for
+     * chargeTime, and the speed it travels at is whatever covers that lane in
+     * that time. Change the range and the charge still lands exactly where the
+     * ground said it would. */
+    chargeWindup: 0.75,
+    chargeTime: 1.1,
+    chargeRange: 460,
+    chargeLaneTail: 0.15,   // the lane outlives the charge by this, so it lands visibly
+
     baseCritChance: 0.05,
     baseCritDamage: 1.5,
 
