@@ -57,6 +57,12 @@ const path = require('path');
   page.on('pageerror', (e) => console.log('PAGEERROR', e.message));
   await page.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
   await page.waitForTimeout(700);
+  /* A fresh profile gets the prologue, and its layer covers the whole screen -
+     which is the point of it. A harness has to walk past it before it can
+     drive anything, and this one clicks real buttons. */
+  await page.evaluate(() => {
+    if (WS.Prologue && WS.Prologue.active) WS.Prologue.finish();
+  });
 
   const seen = new Set();
 

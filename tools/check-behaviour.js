@@ -68,6 +68,10 @@ const fail = [];
   await page.waitForFunction(() => window.WS && window.WS.Game);
 
   const out = await page.evaluate(() => {
+    /* A fresh profile gets the prologue, and its layer covers the whole
+       screen - which is the point of it. A harness has to walk past it
+       before it can drive anything. */
+    if (WS.Prologue && WS.Prologue.active) WS.Prologue.finish();
     WS.Save.db.seenManual = true;
     WS.Save.unlockAll();
     const step = WS.CONST.TICK_RATE;

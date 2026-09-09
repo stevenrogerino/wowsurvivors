@@ -212,6 +212,10 @@ const SAVES = {
   const durable = await page.evaluate(async () => {
     localStorage.clear();
     WS.Save.load();
+    /* A fresh profile gets the prologue, and its layer covers the whole
+       screen - which is the point of it. A harness has to walk past it
+       before it can drive anything. */
+    if (WS.Prologue && WS.Prologue.active) WS.Prologue.finish();
     WS.Save.db.seenManual = true;
     WS.Save.unlockAll();
     WS.Game.startRun('thornhollow', 'mage');

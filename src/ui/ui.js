@@ -670,7 +670,17 @@
     const help = el('button', 'btn', 'How to play');
     help.addEventListener('click', () => { WS.Audio.play('ui'); UI.openManual(); });
 
-    s.foot.append(bank, el('div', 'spacer'), help, diff, hyper, begin);
+    /* The prologue is shown once unprompted and then lives here, next to the
+       manual - the two things a player might want again and can never find
+       once a menu has swallowed them. */
+    const story = el('button', 'btn', 'Prologue');
+    story.addEventListener('click', () => {
+      WS.Audio.play('ui');
+      UI.closeOverlay();
+      WS.Prologue.begin(() => UI.openMenu());
+    });
+
+    s.foot.append(bank, el('div', 'spacer'), story, help, diff, hyper, begin);
     this.show(s.inner);
   };
 

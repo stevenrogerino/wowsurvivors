@@ -145,6 +145,16 @@
     ctx.scale(this.scale, this.scale);
     ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
 
+    /* The prologue owns the frame while it runs. It rides this loop rather
+       than starting its own, so it inherits the fault net in main.js - a throw
+       in a cinematic a new player is watching before their first run costs one
+       frame instead of the session. */
+    if (WS.Prologue && WS.Prologue.active) {
+      WS.Prologue.render(ctx, time);
+      ctx.restore();
+      return;
+    }
+
     /* ---- ground ---------------------------------------------------------- */
     if (this.ground) {
       ctx.fillStyle = this.ground;

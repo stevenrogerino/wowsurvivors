@@ -31,6 +31,9 @@ const FIELD = 50;   // half-extent of the 100-unit field: beyond this is clipped
   await page.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
   await page.waitForTimeout(700);
 
+  await page.evaluate(() => {
+    if (WS.Prologue && WS.Prologue.active) WS.Prologue.finish();
+  });
   const report = await page.evaluate((FIELD) => {
     const S = 400;
     // glyph() insets by 6%, then maps the 100-unit field into what is left.

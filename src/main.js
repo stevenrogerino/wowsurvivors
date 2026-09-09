@@ -191,14 +191,26 @@
      * controls. So the manual greets a brand new save once, before the menu,
      * and is never shown again unprompted; it stays reachable from the menu
      * footer and the pause screen for anyone who wants it back. */
-    if (WS.Save.db.seenManual) {
-      WS.UI.openMenu();
-    } else {
+    /* Order matters: the prologue says WHY, the manual says HOW, and a player
+     * who is told how to hold a light before being told what one is has been
+     * handed a control scheme rather than a game. Both are once-only and both
+     * stay reachable from the menu footer afterwards. */
+    const toMenu = () => WS.UI.openMenu();
+    const primer = () => {
+      if (WS.Save.db.seenManual) return toMenu();
       WS.UI.openManual(() => {
         WS.Save.db.seenManual = true;
         WS.Save.save();
-        WS.UI.openMenu();
+        toMenu();
       });
+    };
+    if (!WS.Save.db.seenPrologue) {
+      WS.Save.db.seenPrologue = true;
+      WS.Save.save();
+      // Armed before the first frame, so the very first thing drawn is night.
+      WS.Prologue.begin(primer);
+    } else {
+      primer();
     }
     requestAnimationFrame(frame);
   }

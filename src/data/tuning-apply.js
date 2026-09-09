@@ -33,7 +33,7 @@
    * system rather than only at the top level. */
   const ROOTS = ['Config', 'CONST', 'Characters', 'Weapons', 'Unions', 'Enemies',
     'Elites', 'Bosses', 'Maps', 'Upgrades', 'MetaUpgrades', 'Blessings',
-    'Combos', 'Achievements', 'Arena.tuning'];
+    'Combos', 'Achievements', 'Lore', 'Arena.tuning'];
   /* A Set, not an object literal. `{ __proto__: 1 }` does not create a key
    * called __proto__ - it sets the object's prototype - so the literal form of
    * this list silently failed to contain the one name it exists to catch, and

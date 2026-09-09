@@ -31,7 +31,10 @@ const SIGN = (n) => (n > 0.5 ? 1 : n < -0.5 ? -1 : 0);
   page.on('pageerror', (e) => fail.push('PAGEERROR ' + e.message));
   await page.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
   await page.waitForTimeout(700);
-  await page.evaluate(() => { WS.Game.startRun('thornhollow', 'mage'); });
+  await page.evaluate(() => {
+    if (WS.Prologue && WS.Prologue.active) WS.Prologue.finish();
+    WS.Game.startRun('thornhollow', 'mage');
+  });
   await page.waitForTimeout(200);
   await page.evaluate(() => {
     const c = document.querySelector('#overlay:not(.hidden) .card'); if (c) c.click();

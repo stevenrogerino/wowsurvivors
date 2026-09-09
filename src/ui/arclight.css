@@ -289,7 +289,7 @@ html, body {
    bounce underneath - and WATCH in cold grey beside it. One warm word held
    inside something grey and steady, which is the whole title said in type. */
 #title-wrap { text-align: center; }
-#title-wrap .game-title {
+#title-wrap .game-title, #prologue .game-title {
   margin: 0; display: flex; align-items: baseline; justify-content: flex-start;
   gap: .16em; text-transform: uppercase;
   font-size: clamp(28px, 4.6vw, 50px); line-height: 1;
@@ -297,15 +297,15 @@ html, body {
 /* The article: small, cold and set back, so it reads as grammar rather than
    as a third word competing with the two that matter. Optical, not metric -
    it sits on the same baseline but a third of the size. */
-#title-wrap .game-title .art {
+#title-wrap .game-title .art, #prologue .game-title .art {
   font-size: .4em; font-weight: 400; letter-spacing: .3em;
   color: var(--ink-faint); align-self: baseline; margin-right: .05em;
 }
-#title-wrap .game-title .wm {
+#title-wrap .game-title .wm, #prologue .game-title .wm {
   font-weight: 300; letter-spacing: .17em; color: #cdd4e4;
   text-shadow: 0 1px 0 rgba(0,0,0,.7);
 }
-#title-wrap .game-title .nm {
+#title-wrap .game-title .nm, #prologue .game-title .nm {
   font-weight: 700; letter-spacing: .05em;
   background-image: linear-gradient(180deg,
     #fff3d4 0%, #ffe0a2 26%, #f5c56b 46%, #a97c2c 62%, #e6b45e 84%, #ffe6ae 100%);
@@ -1330,3 +1330,55 @@ input[type=range]::-moz-range-thumb {
   #hud-stats .stat-line .v { font-size: var(--t-lead); }
   .overlay-head h1 { font-size: 21px; }
 }
+
+/* ============================================================ prologue ====
+   The words over the cinematic. Canvas paints the night; this typesets what
+   is said about it, so the writing gets the same faces and the same kerning
+   as every other line of text in the game rather than canvas' own.
+
+   Pointer events are ON for the layer, because tapping anywhere skips - the
+   one exception being the skip button itself, which handles its own click. */
+#prologue {
+  position: absolute; inset: 0; z-index: 40;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  padding: 0 6vw 7vh; text-align: center;
+  pointer-events: auto; cursor: pointer;
+  background: radial-gradient(ellipse at 50% 42%, transparent 40%, rgba(3,4,7,.55) 100%);
+}
+#prologue .lines {
+  max-width: min(84vw, 880px); transition: opacity .28s ease;
+  text-shadow: 0 2px 22px rgba(0,0,0,.95), 0 0 3px rgba(0,0,0,.85);
+}
+/* Archivo, because Archivo is what this game has. Only two faces are embedded
+   and a cinematic is not a reason to reach for a third the player would have
+   to download - the weight, the size and the air do the work a serif would. */
+#prologue .lines p {
+  margin: 0 0 .42em;
+  font-family: var(--ui);
+  font-size: clamp(18px, 2.05vw, 30px); font-weight: 300; line-height: 1.42;
+  letter-spacing: .008em; color: #eef1f7;
+}
+#prologue .lines p + p { color: #aab3c4; font-size: clamp(16px, 1.8vw, 26px); }
+
+#prologue .title {
+  position: absolute; left: 0; right: 0; top: 34%; transform: translateY(-50%);
+  opacity: 0; transition: opacity .5s ease; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center;
+}
+#prologue .game-title { justify-content: center; font-size: clamp(30px, 5.4vw, 74px); }
+#prologue .title em {
+  display: block; margin-top: 1.1em; font-style: normal;
+  font-family: var(--ui);
+  font-size: clamp(10px, 1.05vw, 14px); letter-spacing: .36em;
+  text-transform: uppercase; color: var(--ink-faint, #6b7488);
+}
+
+#prologue .skip {
+  position: absolute; right: 3vw; bottom: 3.4vh;
+  background: none; border: 0; cursor: pointer;
+  font-family: var(--ui, 'Archivo', system-ui, sans-serif);
+  font-size: 11px; letter-spacing: .26em; text-transform: uppercase;
+  color: #6b7488; padding: 8px 10px; border-radius: 5px;
+}
+#prologue .skip:hover { color: var(--gold, #f5c56b); }
+#prologue .skip:focus-visible { outline: 2px solid var(--gold, #f5c56b); outline-offset: 2px; }

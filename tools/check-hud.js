@@ -68,6 +68,10 @@ const CORE = 0.42;
       await page.waitForFunction(() => window.WS && window.WS.Game);
 
       const report = await page.evaluate(async ([hudLayout, core]) => {
+        /* A fresh profile gets the prologue, and its layer covers the whole
+           screen - which is the point of it. A harness has to walk past it
+           before it can drive anything. */
+        if (WS.Prologue && WS.Prologue.active) WS.Prologue.finish();
         WS.Save.db.seenManual = true;
         WS.Save.settings.hudLayout = hudLayout;
         WS.UI.applyHudLayout();
@@ -133,6 +137,9 @@ const CORE = 0.42;
   page.on('pageerror', (e) => fail.push('arena: ' + e.message));
   await page.goto(url);
   await page.waitForFunction(() => window.WS && window.WS.Game);
+  await page.evaluate(() => {
+    if (WS.Prologue && WS.Prologue.active) WS.Prologue.finish();
+  });
   const arena = await page.evaluate(() => {
     WS.Save.db.seenManual = true;
     WS.Save.unlockAll();
@@ -199,6 +206,9 @@ const CORE = 0.42;
   upright.on('pageerror', (e) => fail.push('portrait: ' + e.message));
   await upright.goto(url);
   await upright.waitForFunction(() => window.WS && window.WS.Game);
+  await upright.evaluate(() => {
+    if (WS.Prologue && WS.Prologue.active) WS.Prologue.finish();
+  });
   const portrait = await upright.evaluate(async () => {
     WS.Save.db.seenManual = true;
     WS.Save.unlockAll();

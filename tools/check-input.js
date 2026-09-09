@@ -23,7 +23,10 @@ const SIGN = (n) => (n > 0.01 ? 1 : n < -0.01 ? -1 : 0);
   await page.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
   await page.waitForTimeout(700);
 
-  await page.evaluate(() => { WS.Game.startRun('thornhollow', 'mage'); });
+  await page.evaluate(() => {
+    if (WS.Prologue && WS.Prologue.active) WS.Prologue.finish();
+    WS.Game.startRun('thornhollow', 'mage');
+  });
   await page.waitForTimeout(150);
   // Clear the opening blessing so the run is actually playing.
   await page.evaluate(() => {

@@ -21,8 +21,9 @@ game's own data at runtime**, not written out by hand. It reads `WS.Config`,
 `WS.Weapons`, `WS.Enemies`, `WS.Bosses`, `WS.Maps`, `WS.Characters`,
 `WS.Upgrades`, `WS.MetaUpgrades`, `WS.Blessings`, `WS.Combos`, `WS.Unions`,
 `WS.Elites`, `WS.Achievements`, `WS.CONST` (the global damage/speed scalars and
-pool ceilings) and `WS.Arena.tuning` (the entire Eclipse Arena fight), walks
-whatever it finds, and builds a control per field from the shape of the value:
+pool ceilings), `WS.Arena.tuning` (the entire Eclipse Arena fight) and `WS.Lore`
+(every line of the prologue), walks whatever it finds, and builds a control per
+field from the shape of the value:
 
 | what it finds | what you get |
 | --- | --- |

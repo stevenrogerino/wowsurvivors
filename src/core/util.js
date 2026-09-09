@@ -28,6 +28,11 @@ window.WS = window.WS || {};
   // Deterministic-ish xorshift so a seeded run can be reproduced for debugging.
   let seed = (Date.now() ^ 0x9e3779b9) >>> 0;
   WS.setSeed = (s) => { seed = (s >>> 0) || 1; };
+  /* Borrowing the stream and putting it back. Anything that seeds the RNG to
+     make itself repeatable - the prologue's starfield, a measurement harness -
+     has to hand the stream back where it found it, or every run after it is
+     deterministic in a way nobody asked for. */
+  WS.getSeed = () => seed;
   WS.random = function () {
     seed ^= seed << 13; seed >>>= 0;
     seed ^= seed >> 17;

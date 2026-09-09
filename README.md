@@ -108,6 +108,21 @@ Your weapons fire on their own. Everything else is where you stand — which is
 the one rule nobody guesses, so the game says it before the first run and keeps
 it under **How to play**, in the menu and behind Esc.
 
+## The night
+
+Ember is power, and it is not yours. It sleeps in the stones the dead leave
+behind; you break one, take the light out of it, and for as long as you carry
+it you burn. That is the whole game said out loud — which is why the prologue
+exists, and why it plays before the manual does: it tells you where you are
+while it tells you how to play.
+
+A new save gets it once, unprompted; it stays under **Prologue** in the menu
+footer next to **How to play**. Fifty seconds, skippable with any key, a tap or
+a pad button. Like everything else here it is drawn rather than filmed — the
+same procedural vocabulary as the game, no video, no assets — and every line of
+it is data in `src/data/lore.js`, so the tuning bench can rewrite the whole
+script without touching code.
+
 ## The run
 
 - Pick a survivor and a battlefield, then draft one **Blessing** — a
@@ -214,6 +229,10 @@ tools/         the single-file bundler, and the guard rails:
                               chaser cannot, an orbiter must travel far while
                               closing little, and no ground may hurt on the
                               frame it appears
+               check-prologue.js the opening: every beat draws its own
+                              picture, every scripted line reaches the screen
+                              inside its own band, a key, a tap and a pad each
+                              skip it, and it hands the random stream back
 ```
 
 Every guard carries the bug it was written for in its header, and every one of

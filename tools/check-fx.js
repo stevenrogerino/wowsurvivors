@@ -41,6 +41,9 @@ const MAX_SPEED = 1200;
   await page.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
   await page.waitForTimeout(700);
 
+  await page.evaluate(() => {
+    if (WS.Prologue && WS.Prologue.active) WS.Prologue.finish();
+  });
   const worst = await page.evaluate((MAX_SPEED) => {
     WS.Game.startRun('thornhollow', 'mage');
     const W = WS.CONST.WORLD_WIDTH, H = WS.CONST.WORLD_HEIGHT, K = WS.Input.keys;

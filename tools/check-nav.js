@@ -47,7 +47,11 @@ const path = require('path');
   page.on('pageerror', (e) => fail.push('PAGEERROR ' + e.message));
   await page.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
   await page.waitForTimeout(700);
-  await page.evaluate(() => { WS.Save.unlockAll(); WS.UI.tab = 'roster'; WS.UI.openMenu(); });
+  await page.evaluate(() => {
+    // A fresh profile gets the prologue, and its layer covers the screen.
+    if (WS.Prologue && WS.Prologue.active) WS.Prologue.finish();
+    WS.Save.unlockAll(); WS.UI.tab = 'roster'; WS.UI.openMenu();
+  });
   await page.waitForTimeout(300);
 
   const where = () => page.evaluate(() => {

@@ -26,6 +26,10 @@ const SHOTS = process.env.OUT || null;
   await page.waitForTimeout(400);
 
   await page.evaluate(() => {
+    /* A fresh profile gets the prologue, and its layer covers the whole
+       screen - which is the point of it. A harness has to walk past it
+       before it can drive anything. */
+    if (WS.Prologue && WS.Prologue.active) WS.Prologue.finish();
     WS.Save.unlockAll();
     window.__run = function (map, char, seconds, tough) {
       WS.Game.startRun(map, char);

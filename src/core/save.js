@@ -112,6 +112,9 @@
       // Set the first time the manual is closed, so the primer greets a new
       // player once and never interrupts a returning one.
       seenManual: false,
+      // Same rule for the prologue, which runs before it: once, unprompted,
+      // and thereafter only when somebody asks for it from the menu.
+      seenPrologue: false,
       meta: {},
       unlocks: {
         characters: { mage: true, priest: true },
