@@ -5,6 +5,23 @@
  * a character sprite goes wrong are all invisible in code review and obvious
  * in a measurement. Every rule below is one that was actually broken.
  *
+ *   posed      A flinch and a death, held to every rule the walk is. A pose
+ *              moves the WHOLE figure - going down turns about the feet and
+ *              ends lying across the tile - which is a new and very easy way
+ *              to run out of canvas, and the first version did exactly that:
+ *              the last four frames of the death were a stump. Every frame of
+ *              every pose on every survivor is read here.
+ *
+ *   dies       And the moment itself: it must start, the world must be FROZEN
+ *              while it plays, the pose must advance, and it must end on the
+ *              death screen. Negative tests, all confirmed - going straight to
+ *              the results panel gives "running out of health went straight to
+ *              over"; letting the horde keep moving gives "the horde kept
+ *              moving during the death (8.0px)"; and putting the cloak's
+ *              translate back gives "mage's down pose is cut off by the frame
+ *              at frame 7", which is the bug that a crouch is a negative lift
+ *              and a hem does not sink through a floor.
+ *
  *   framed     Nothing may touch the edge of the sprite's own canvas. A sprite
  *              is one square image and anything past its edge is cut with a
  *              straight line, which on a halo or a glow reads instantly as a
@@ -141,8 +158,8 @@ const MOTION = 0.04;             // fraction of the figure that must move per fr
     }
     WS.Game.quitToMenu ? WS.Game.quitToMenu() : 0;
 
-    const read = (id, size) => {
-      const c = WS.Sprites.hero(id, WS.Characters[id].color, size);
+    const read = (id, size, pose) => {
+      const c = WS.Sprites.hero(id, WS.Characters[id].color, size, false, undefined, pose);
       const w = c.width, h = c.height;
       const d = c.getContext('2d').getImageData(0, 0, w, h).data;
       const solid = new Uint8Array(w * h);
@@ -172,11 +189,32 @@ const MOTION = 0.04;             // fraction of the figure that must move per fr
         if (d[y * w * 4 + 3] > 40) edge++;
         if (d[(y * w + w - 1) * 4 + 3] > 40) edge++;
       }
-      return { solid, w, h, mean: sum / Math.max(1, n), range: hi - lo, n, bottom, edge };
+    return { solid, w, h, mean: sum / Math.max(1, n), range: hi - lo, n, bottom, edge };
     };
 
     const big = {}, small = {};
     for (const id of ids) { big[id] = read(id, 140); small[id] = read(id, 34); }
+
+    /* THE POSES, held to the same frame rule as the walk.
+     *
+     * A pose moves the whole figure - a survivor going down turns about their
+     * feet and ends up lying across the tile - which is a new and very easy
+     * way to run out of canvas. The first version of the death did exactly
+     * that: the last four frames were a stump with the head cut off at x=0,
+     * and it looked like a rendering fault rather than a fall. Every frame of
+     * every pose is read here, on every survivor, for the same reason the
+     * standing sprite is. */
+    const posed = [];
+    for (const kind of Object.keys(WS.Hero.poseFrames)) {
+      const n = WS.Hero.poseFrames[kind];
+      for (const id of ids) {
+        for (let f = 0; f < n; f++) {
+          const r = read(id, 128, { kind, frame: f });
+          posed.push({ id, kind, frame: f, edge: r.edge, n: r.n });
+        }
+      }
+    }
+
 
     let worst = { pair: '', v: -1 };
     for (let i = 0; i < ids.length; i++) {
@@ -270,7 +308,7 @@ const MOTION = 0.04;             // fraction of the figure that must move per fr
     }
 
     return {
-      ground,
+      ground, posed,
       worst, same, gait,
       drift, drifted,
       cast: ids.map((id) => ({
@@ -336,7 +374,77 @@ const MOTION = 0.04;             // fraction of the figure that must move per fr
       + `${report.drift} bytes - the sprite cache would freeze whichever came first`);
   }
 
+  /* ---- and the moment it is actually used ------------------------------
+   *
+   * Running out of health used to be instantaneous: the survivor stopped
+   * being drawn and a results panel slid over the field they died on. Half an
+   * hour of accumulated build ended like a dropped connection. So death is a
+   * state that lasts a second and a half, and this checks the whole of it -
+   * that it starts, that the simulation is FROZEN while it plays (the last
+   * frame should be the picture of what actually got you), that the pose
+   * advances rather than sitting on frame zero, that the light the survivor
+   * was carrying goes out, and that it ends on the death screen rather than
+   * anywhere else. */
+  const death = await page.evaluate(async () => {
+    if (WS.Prologue && WS.Prologue.active) WS.Prologue.finish();
+    WS.Save.db.seenManual = true;
+    WS.Game.startRun('thornhollow', 'mage');
+    const card = document.querySelector('#overlay:not(.hidden) .card');
+    if (card) card.click();
+    const p = WS.Game.player;
+    // Something on the field, so we can tell whether the world froze.
+    WS.Enemy.pool.releaseAll();
+    const e = WS.Enemy.spawn('mongrel', 300, 300, 1);
+    const seen = [];
+    p.health = 1;
+    WS.Player.takeDamage(p, 9999, 'the check');
+    const started = WS.Game.state;
+    const where = { x: e.x, y: e.y };
+    const frames = [];
+    for (let i = 0; i < 8; i++) {
+      WS.Game.update(0.1);
+      frames.push({ k: +WS.Game.deathProgress().toFixed(3), state: WS.Game.state });
+      seen.push(WS.Renderer && 1);
+    }
+    const moved = Math.hypot(e.x - where.x, e.y - where.y);
+    // and run it out
+    for (let i = 0; i < 30 && WS.Game.state === 'dying'; i++) WS.Game.update(0.1);
+    return { started, frames, moved, ended: WS.Game.state,
+      overlay: !document.getElementById('overlay').classList.contains('hidden'),
+      beat: WS.Config.deathBeat };
+  });
+  if (death.started !== 'dying') {
+    fail.push(`running out of health went straight to "${death.started}" - there is no `
+      + 'moment of dying at all');
+  }
+  if (!(death.frames.length && death.frames[death.frames.length - 1].k > 0.4)) {
+    fail.push('the death does not advance - the pose would sit on its first frame');
+  }
+  if (death.moved > 0.01) {
+    fail.push(`the horde kept moving during the death (${death.moved.toFixed(1)}px) - the `
+      + 'last frame of a run should be the picture of what got you');
+  }
+  if (death.ended !== 'over') {
+    fail.push(`the death ended in state "${death.ended}", not on the death screen`);
+  }
+  if (!death.overlay) fail.push('the death screen never arrived');
+
   await browser.close();
+  /* Poses obey the frame rule too, and must actually be drawings - a pose
+     that silently rendered nothing would otherwise pass a rule about edges. */
+  const poseKinds = new Set();
+  for (const q of report.posed) {
+    poseKinds.add(q.kind);
+    if (q.edge > 0) {
+      fail.push(`${q.id}'s ${q.kind} pose is cut off by the frame at frame ${q.frame} `
+        + `(${q.edge}px against the edge)`);
+    }
+    if (q.n < 200) {
+      fail.push(`${q.id}'s ${q.kind} pose draws almost nothing at frame ${q.frame} `
+        + `(${q.n} pixels)`);
+    }
+  }
+
   if (fail.length) {
     console.error('FAIL');
     for (const f of fail) console.error('  - ' + f);
@@ -353,5 +461,8 @@ const MOTION = 0.04;             // fraction of the figure that must move per fr
     + `every survivor draws the same pixels twice; and the walk keeps its feet `
     + `down (${Math.max(...report.gait.map((g) => g.foot)).toFixed(1)}px of travel) `
     + `while moving at least `
-    + `${(Math.min(...report.gait.map((g) => g.motion)) * 100).toFixed(0)}% a frame`);
+    + `${(Math.min(...report.gait.map((g) => g.motion)) * 100).toFixed(0)}% a frame; `
+    + `${report.posed.length} frames of ${poseKinds.size} poses (a flinch and going down) `
+    + `stay inside their own tile on every survivor, and running out of health holds the `
+    + `world still for ${death.beat}s while they go over`);
 })();

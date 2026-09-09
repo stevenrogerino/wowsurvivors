@@ -83,6 +83,81 @@
   /** How many baked frames one cycle is cut into. */
   const FRAMES = 8;
 
+  /* ------------------------------------------------------------- poses ---
+   *
+   * Two things the cast could not do: get hit, and die. A survivor who takes
+   * a claw to the ribs flickered - alpha on and off for a fifth of a second -
+   * and one who ran out of health simply stopped being drawn while a results
+   * panel slid over the top. Nothing in the run's worst moment was in the
+   * figure at all.
+   *
+   * Both are written as MORE OF THE SAME two numbers the walk already speaks:
+   * `swing` and `lift` are read by every limb, every hem and every weapon in
+   * the rig, so a negative lift is a crouch for free, on all ten survivors,
+   * because they were all built to read it. What a pose adds on top is three
+   * rig-unit terms the whole figure is moved by - `tilt`, `slide`, `drop` -
+   * which is why a death that lands correctly for the mage lands correctly
+   * for the paladin without a second drawing existing anywhere.
+   *
+   * Each takes k from 0 to 1 and is played exactly once.
+   */
+  const smooth = (t) => t * t * (3 - 2 * t);
+  const POSES = {
+    /* A flinch, and the recovery is the same motion in reverse - one arc, so
+     * it cannot end anywhere but back where it started. */
+    hurt(k) {
+      const s = WS.sin(WS.clamp(k, 0, 1) * WS.PI);
+      /* A crouch is a NEGATIVE lift, and the whole rig reads lift - including
+         a cloak, whose hem is pinned below the waist and therefore swings out
+         through the bottom of the tile long before anything else does. The
+         shrink is what buys it back. */
+      return { swing: -0.75 * s, lift: -5 * s, tilt: -0.22 * s,
+        slide: 3 * s, drop: 0, shrink: 1 - 0.07 * s, fallen: 0 };
+    },
+    /* Down. To a knee first, because a figure that simply topples reads as a
+     * dropped object rather than as someone who ran out - the knee is the
+     * moment they try, and it is the whole difference. */
+    down(k) {
+      const t = WS.clamp(k, 0, 1);
+      const knee = smooth(WS.min(1, t / 0.42));
+      const fall = smooth(WS.clamp((t - 0.36) / 0.64, 0, 1));
+      /* The slide is POSITIVE and large, and it is not a stylistic choice.
+         The figure turns about its feet, so a body rotated most of the way to
+         the floor puts its head sixty-odd units to one side - straight out of
+         the tile it is baked into, which clipped the last four frames of the
+         death to a stump. Moving the pivot back across as it goes over is what
+         keeps a lying figure inside its own frame. */
+      /* Three of these exist only to keep a lying figure inside a hundred-unit
+         tile, and none of them is a stylistic choice.
+         A survivor is about seventy-six units tall, they turn about their
+         FEET, and at eighty degrees over that puts the head sixty-odd units to
+         one side - straight out of the frame, which clipped the last four
+         frames of the death to a stump. `slide` walks the pivot across as it
+         goes; `shrink` buys back the margin a staff or a greatsword needs,
+         which is the part that cannot be worked out on paper because it
+         differs per survivor. */
+      return {
+        swing: 0.62 * knee,
+        lift: -5.5 * knee - 3 * fall,
+        tilt: -0.16 * knee - 1.30 * fall,
+        slide: -1.5 * knee + 32 * fall,
+        /* NEGATIVE on the fall, which is the opposite of the obvious. The
+           figure turns about its feet, so once it is most of the way over its
+           boots are the lowest thing in the tile and their own thickness hangs
+           below the pivot - measured, forty units of the bottom row. Lifting
+           the pivot as it goes puts the body down ON the shadow instead of
+           through the floor. */
+        drop: -3.5 * knee - 9 * fall,
+        // The KNEE needs the margin as much as the fall does: the deepest
+        // crouch is where a cloak hem is furthest below the waist.
+        shrink: 1 - 0.09 * knee - 0.17 * fall,
+        fallen: fall,
+      };
+    },
+  };
+  /** How many baked frames each pose is cut into. */
+  const POSE_FRAMES = { hurt: 4, down: 12 };
+
   const BUILDS = {
     slim: { sh: 12.5, chest: 12, waist: 9, hip: 10, arm: 4.0, leg: 4.6 },
     normal: { sh: 14.5, chest: 13.5, waist: 10.5, hip: 11, arm: 4.6, leg: 5.2 },
@@ -1411,7 +1486,16 @@
      * and a robe's hem is pinned to the ground while its waist rises. The leg
      * changing length between the two IS the walk. */
     const lift = w.lift * 1.9;
-    g.save(); g.translate(0, -lift);
+    /* CLOTH GATHERS, IT DOES NOT SINK.
+     *
+     * The cloak rides the body by translating with the lift, which is right
+     * for a walk, where lift is only ever positive. A crouch is a NEGATIVE
+     * lift - that is how the poses get a survivor onto one knee for free on
+     * all ten of them - and the same translate then drove a long cloak's hem
+     * ten units through the floor and out of the bottom of its own tile. A
+     * hem on the ground piles up; it does not carry on down. */
+    const cloakLift = WS.max(lift, -2.2);
+    g.save(); g.translate(0, -cloakLift);
     drawCloak(g, cfg, C, b, w);
     g.restore();
     drawBody(g, cfg, C, b, w, lift);
@@ -1437,27 +1521,46 @@
      *  gold, down-right in floor blue - and then the real figure lands on top.
      *  One pass, correct for every class automatically, and it is what makes
      *  the shape hold together against a dark and crowded ground. */
-    /** @param {number} [phase] 0..1 through one stride; omit for standing. */
-    draw(g, size, id, tint, demon, phase) {
+    poseFrames: POSE_FRAMES,
+
+    /** @param {number} [phase] 0..1 through one stride; omit for standing.
+     *  @param {{kind:string,k:number}} [pose] overrides the stride entirely. */
+    draw(g, size, id, tint, demon, phase, pose) {
       const cfg = CAST[id] || CAST.mage;
-      const w = phase === undefined ? STILL : stride(phase);
+      const posed = pose && POSES[pose.kind];
+      const w = posed ? POSES[pose.kind](pose.k)
+        : (phase === undefined ? STILL : stride(phase));
       const C = colours(tint, demon, cfg.eyeColour);
       const u = size / 100;
 
-      // Contact shadow on the floor, under the feet, before anything else.
+      /* Contact shadow on the floor, under the feet, before anything else -
+         and it does NOT go with them. A figure going over leaves its shadow
+         on the ground and spreads it; a shadow that rotated with the body
+         would be a sticker on its heel. */
+      const fallen = w.fallen || 0;
       g.save();
       g.scale(u, u);
-      const sh = g.createRadialGradient(50, GROUND, 0, 50, GROUND, 22);
-      sh.addColorStop(0, 'rgba(0,0,0,.5)');
+      const shR = 22 * (1 + fallen * 0.7);
+      const sh = g.createRadialGradient(50, GROUND, 0, 50, GROUND, shR);
+      sh.addColorStop(0, `rgba(0,0,0,${(0.5 - fallen * 0.16).toFixed(3)})`);
       sh.addColorStop(1, 'rgba(0,0,0,0)');
       g.fillStyle = sh;
-      g.beginPath(); g.ellipse(50, GROUND, 22, 6, 0, 0, WS.TAU); g.fill();
+      g.beginPath(); g.ellipse(50, GROUND, shR, 6 + fallen * 2, 0, 0, WS.TAU); g.fill();
       g.restore();
 
       const body = document.createElement('canvas');
       body.width = size; body.height = size;
       const bg = body.getContext('2d');
       bg.scale(u, u);
+      /* The pose's whole-figure move, pivoted at the feet - which is what a
+         person turns about when they are knocked back or go down, and the one
+         point in the rig that is already on the floor. */
+      if (w.tilt || w.slide || w.drop || w.shrink !== undefined) {
+        bg.translate(50 + (w.slide || 0), GROUND + (w.drop || 0));
+        bg.rotate(w.tilt || 0);
+        if (w.shrink !== undefined) bg.scale(w.shrink, w.shrink);
+        bg.translate(-50, -GROUND);
+      }
       figure(bg, cfg, C, w);
 
       const sil = document.createElement('canvas');

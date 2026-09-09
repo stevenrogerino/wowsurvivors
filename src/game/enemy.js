@@ -25,6 +25,21 @@
 
   Enemy.count = function () { return this.pool.count; };
 
+  /** The boss the fight is about: whichever has the most health left.
+   *
+   *  The HUD scanned for this itself and so did nothing else, which is how the
+   *  score ended up not knowing a boss was on the field. One scan, one answer,
+   *  and anything that wants to react to a boss reads the same one the arc is
+   *  tracking. */
+  Enemy.leadBoss = function () {
+    let best = null;
+    for (let i = 0; i < this.pool.count; i++) {
+      const e = this.pool.active[i];
+      if (e.boss && (!best || e.health > best.health)) best = e;
+    }
+    return best;
+  };
+
   /** Frees a slot by dropping the trash mob furthest from the survivor. */
   function evictFodder() {
     const player = WS.Game.player;

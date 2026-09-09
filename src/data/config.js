@@ -47,6 +47,12 @@
     baseCritChance: 0.05,
     baseCritDamage: 1.5,
 
+    /* The flinch, and the fall. The flinch is deliberately shorter than the
+     * invulnerability that follows it: a pose still playing while the player
+     * is already safe again reads as lag. */
+    hurtBeat: 0.30,
+    deathBeat: 1.55,
+
     hitInvulnerable: 0.45,
     dodgeInvulnerable: 0.2,
 

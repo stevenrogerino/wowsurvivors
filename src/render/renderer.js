@@ -364,15 +364,33 @@
      * while a hundred things move around it reads as paused - but once they
      * are moving the vertical is the stride's job, and adding a second sine on
      * top of it fought the one baked into the frames. */
-    const bob = p.moving ? 0 : WS.sin(p.walkCycle) * 1.2;
+    /* Two poses that are not the walk: a flinch, and going down. Both are
+       played once and both override the stride entirely, because a survivor
+       on one knee is not mid-step. */
+    const dying = WS.Game.state === 'dying';
+    const cfg = WS.Config;
+    let pose = null;
+    if (dying) {
+      const n = WS.Hero.poseFrames.down;
+      pose = { kind: 'down',
+        frame: WS.min(n - 1, WS.floor(WS.Game.deathProgress() * n)) };
+    } else if (p.hurtTimer > 0) {
+      const n = WS.Hero.poseFrames.hurt;
+      const k = 1 - p.hurtTimer / WS.max(0.01, cfg.hurtBeat);
+      pose = { kind: 'hurt', frame: WS.clamp(WS.floor(k * n), 0, n - 1) };
+    }
+    const bob = (p.moving || pose) ? 0 : WS.sin(p.walkCycle) * 1.2;
     // The cycle advances at 11/s while moving, so one stride is a shade under
     // three steps a second. Frames are picked from that, not from wall time,
     // so the walk slows and speeds with whatever the survivor's speed is.
-    const frame = p.moving
+    const frame = (p.moving && !pose)
       ? WS.floor(((p.walkCycle / WS.TAU) % 1 + 1) % 1 * WS.Hero.frames) : undefined;
     shadow(ctx, p.x, p.y + p.radius * 0.7, p.radius * 0.9);
     ctx.save();
-    const beat = 0.42 + 0.14 * WS.sin(time * 2.4);
+    /* The ring is the light they are carrying, so it goes out with them -
+       which is the whole of the lore in one fade. */
+    const ember = dying ? WS.max(0, 1 - WS.Game.deathProgress() * 1.35) : 1;
+    const beat = (0.42 + 0.14 * WS.sin(time * 2.4)) * ember;
     ctx.globalAlpha = beat;
     ctx.strokeStyle = '#f5c56b';
     ctx.lineWidth = 1.5;
@@ -389,7 +407,12 @@
     ctx.restore();
 
     ctx.save();
-    if (p.invulnerable > 0) ctx.globalAlpha = (WS.floor(p.invulnerable * 12) % 2 === 0) ? 0.45 : 0.95;
+    /* The invulnerability flicker is suppressed while a pose is playing: it
+       was the ONLY sign of being hit, and now that there is a flinch to watch,
+       strobing the figure through it just hides the thing worth seeing. */
+    if (p.invulnerable > 0 && !pose) {
+      ctx.globalAlpha = (WS.floor(p.invulnerable * 12) % 2 === 0) ? 0.45 : 0.95;
+    }
     ctx.translate(p.x, p.y + bob);
     if (p.spinTimer > 0) ctx.rotate(time * 14);
     else if (p.facing < 0) ctx.scale(-1, 1);
@@ -398,13 +421,13 @@
      * direction of travel - about three degrees, which is enough to read as
      * intent and not enough to look like falling over. It eases rather than
      * snaps, so a change of direction is a turn and not a flick. */
-    if (p.moving) {
+    if (p.moving && !pose) {
       p.lean = (p.lean || 0) + ((p.facing < 0 ? -0.055 : 0.055) - (p.lean || 0)) * 0.18;
     } else {
       p.lean = (p.lean || 0) * 0.86;
     }
     if (p.lean) ctx.rotate(p.facing < 0 ? -p.lean : p.lean);
-    const sprite = WS.Sprites.hero(p.characterId, p.character.color, size, demon, frame);
+    const sprite = WS.Sprites.hero(p.characterId, p.character.color, size, demon, frame, pose);
     ctx.drawImage(sprite, -size / 2, -size * 0.66, size, size);
     ctx.restore();
     ctx.globalAlpha = 1;

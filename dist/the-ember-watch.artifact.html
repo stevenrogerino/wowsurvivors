@@ -1430,6 +1430,18 @@ input[type=range]::-moz-range-thumb {
 #prologue .skip:hover { color: var(--gold, #f5c56b); }
 #prologue .skip:focus-visible { outline: 2px solid var(--gold, #f5c56b); outline-offset: 2px; }
 
+/* The import box lives under its own setting row rather than inside it: a
+   textarea in a flex row of buttons squeezes to nothing at any narrow width. */
+.import-box {
+  width: 100%; margin: -4px 0 12px; padding: 10px 12px;
+  background: var(--obsidian); color: var(--ink);
+  border: 1px solid var(--rim); border-radius: 6px; box-shadow: var(--sunk);
+  font-family: var(--fig); font-size: var(--t-small); line-height: 1.55;
+  resize: vertical; outline: none;
+}
+.import-box:focus { border-color: var(--rim-arc); }
+.import-box::placeholder { color: var(--ink-faint); }
+
 </style>
 <div id="stage">
     <canvas id="game-canvas"></canvas>
@@ -1729,6 +1741,12 @@ window.WS = window.WS || {};
 
     baseCritChance: 0.05,
     baseCritDamage: 1.5,
+
+    /* The flinch, and the fall. The flinch is deliberately shorter than the
+     * invulnerability that follows it: a pose still playing while the player
+     * is already safe again reads as lag. */
+    hurtBeat: 0.30,
+    deathBeat: 1.55,
 
     hitInvulnerable: 0.45,
     dodgeInvulnerable: 0.2,
@@ -2037,10 +2055,16 @@ window.WS = window.WS || {};
    * there is. Each is swept for values of the wrong kind, and the bad entries
    * are dropped rather than the whole map, so one junk row cannot cost a
    * player their bestiary. */
-  function scrubMap(map, kind) {
+  function scrubMap(map, kind, known) {
     if (!isPlain(map)) return {};
+    /* `known` is the table of ids this map is allowed to name. It is optional
+     * because save.js is loaded before the data files and a table that is not
+     * there yet must NOT be read as "nothing is valid" - that would quietly
+     * wipe every unlock a player has. Missing table, no whitelisting. */
+    const check = isPlain(known) && Object.keys(known).length ? known : null;
     for (const k of Object.keys(map)) {
       const v = map[k];
+      if (check && !Object.prototype.hasOwnProperty.call(check, k)) { delete map[k]; continue; }
       if (kind === 'count') {
         if (!Number.isFinite(v) || v < 0) delete map[k];
         else map[k] = WS.floor(v);
@@ -2061,11 +2085,24 @@ window.WS = window.WS || {};
     s.bosses = scrubMap(s.bosses, 'count');
     s.families = scrubMap(s.families, 'count');
     s.bestTime = scrubMap(s.bestTime, 'count');
-    db.achievements = scrubMap(db.achievements, 'flag');
-    db.combos = scrubMap(db.combos, 'flag');
-    db.unlocks.characters = scrubMap(db.unlocks.characters, 'flag');
-    db.unlocks.maps = scrubMap(db.unlocks.maps, 'flag');
-    db.unlocks.hyper = scrubMap(db.unlocks.hyper, 'flag');
+    /* These five name things the game has to be able to find. An entry for an
+     * id that does not exist is at best a wrong number on the account screen
+     * and at worst a survivor nobody can select sitting in the unlock count -
+     * and now that a save can arrive from a file somebody typed into, it can
+     * name absolutely anything. The header of this file has claimed since it
+     * was written that "an unknown id is dropped by sanitize() later"; it did
+     * not, until the account round-trip check went looking.
+     *
+     * Renames are handled by migrate() before this runs, so an old backup has
+     * already had death_knight turned into graveblade by the time it gets
+     * here. The statistics maps are deliberately NOT whitelisted: a stale
+     * bestiary row costs nothing, and losing a kill count to a table that
+     * moved would be a worse bug than the one this fixes. */
+    db.achievements = scrubMap(db.achievements, 'flag', WS.Achievements);
+    db.combos = scrubMap(db.combos, 'flag', WS.Combos);
+    db.unlocks.characters = scrubMap(db.unlocks.characters, 'flag', WS.Characters);
+    db.unlocks.maps = scrubMap(db.unlocks.maps, 'flag', WS.Maps);
+    db.unlocks.hyper = scrubMap(db.unlocks.hyper, 'flag', WS.Maps);
 
     // Trainer ranks are the one place a bad number buys real power, so they
     // are clamped to what each upgrade actually offers rather than trusted.
@@ -2143,6 +2180,121 @@ window.WS = window.WS || {};
      *  so there is no case for being clever about it. Write often, write on
      *  the way out, and never make a player wonder whether their run counted. */
     flush() { this.save(); },
+
+    /* ------------------------------------------------------- portability -- */
+    /* An account lives in one browser's localStorage on one machine, and that
+     * is one cleared cache, one reinstall or one new laptop away from thirty
+     * hours of unlocks being gone with nothing anybody can do about it. There
+     * has to be a way to get it OUT.
+     *
+     * Two shapes of the same thing. The FILE is plain JSON, because a backup
+     * you cannot read is a backup you cannot trust or repair, and a player
+     * six months from now with a broken save should be able to open it in a
+     * text editor. The CODE is that JSON base64'd onto one line, because the
+     * way people actually move a save is pasting it into a message to
+     * themselves, and JSON does not survive a chat client's line wrapping.
+     *
+     * Both carry a checksum. Truncation is the failure mode that matters -
+     * a code copied from a scrolled text box, a file cut short - and without
+     * one, a half-account imports as an account and the player loses the rest
+     * without ever being told.
+     */
+    EXPORT_VERSION: 1,
+
+    /** A cheap, stable digest. FNV-1a: not a security measure, and not
+     *  pretending to be - its whole job is to notice a paste that lost its
+     *  tail. */
+    digest(text) {
+      let h = 0x811c9dc5;
+      for (let i = 0; i < text.length; i++) {
+        h ^= text.charCodeAt(i) & 0xff;
+        h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+        h ^= (text.charCodeAt(i) >> 8) & 0xff;
+        h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+      }
+      return ('0000000' + h.toString(16)).slice(-8);
+    },
+
+    /** What is in an account, in words, so nobody overwrites one blind. */
+    describe(db) {
+      const u = (db && db.unlocks) || {};
+      const st = (db && db.statistics) || {};
+      const count = (m) => (isPlain(m) ? Object.keys(m).filter((k) => m[k]).length : 0);
+      return {
+        gold: (db && db.gold) || 0,
+        characters: count(u.characters),
+        maps: count(u.maps),
+        runs: st.totalRuns || 0,
+        victories: st.totalVictories || 0,
+        achievements: count(db && db.achievements),
+      };
+    },
+
+    /** The account as a portable payload. */
+    export() {
+      const body = JSON.stringify(this.db);
+      const wrapped = JSON.stringify({
+        format: 'emberwatch.save',
+        version: this.EXPORT_VERSION,
+        exported: new Date().toISOString(),
+        sum: this.digest(body),
+        save: this.db,
+      }, null, 2);
+      let code = '';
+      try {
+        // btoa is bytes, not characters; a renamed weapon with an accent in it
+        // would throw without this step.
+        code = 'EMBERWATCH1:' + btoa(unescape(encodeURIComponent(wrapped)));
+      } catch (e) { code = ''; }
+      return { json: wrapped, code, summary: this.describe(this.db) };
+    },
+
+    /** Reads a code or a file's JSON and hands back what it would import,
+     *  WITHOUT importing it. Nothing is written until the caller says so. */
+    parseImport(text) {
+      let raw = String(text || '').trim();
+      if (!raw) return { ok: false, error: 'There is nothing to import.' };
+      if (/^EMBERWATCH\d*:/i.test(raw)) {
+        try {
+          raw = decodeURIComponent(escape(atob(raw.replace(/^EMBERWATCH\d*:/i, '').replace(/\s+/g, ''))));
+        } catch (e) {
+          return { ok: false, error: 'That code is damaged - it looks like part of it '
+            + 'is missing. Copy the whole thing and try again.' };
+        }
+      }
+      let outer;
+      try { outer = JSON.parse(raw); } catch (e) {
+        return { ok: false, error: 'That is not an Ember Watch save.' };
+      }
+      if (!isPlain(outer)) return { ok: false, error: 'That is not an Ember Watch save.' };
+      // A bare account (someone pasted the inner save, or hand-edited a file
+      // down to it) is still an account. Take it, just without the checksum.
+      const inner = isPlain(outer.save) ? outer.save : outer;
+      let warn = null;
+      if (outer.sum) {
+        if (this.digest(JSON.stringify(inner)) !== outer.sum) {
+          return { ok: false, error: 'That save did not survive the trip - its checksum '
+            + 'does not match. Export it again and copy the whole thing.' };
+        }
+      } else if (!isPlain(outer.save)) {
+        warn = 'No checksum on this one, so it cannot be verified - it will still be '
+          + 'repaired and loaded.';
+      }
+      /* Through the SAME path a stored save takes, so an imported account gets
+         every migration and every repair that check-robust's sixteen malformed
+         saves proved out. An import is exactly as untrusted as localStorage. */
+      const db = sanitize(merge(migrate(clone(inner)), defaults()));
+      db.schema = SCHEMA;
+      return { ok: true, db, warn, summary: this.describe(db),
+        replacing: this.describe(this.db) };
+    },
+
+    /** Commits a parsed import. */
+    adopt(db) {
+      this.db = db;
+      this.save();
+      return this.db;
+    },
 
     reset() {
       this.db = defaults();
@@ -4144,6 +4296,81 @@ window.WS = window.WS || {};
   /** How many baked frames one cycle is cut into. */
   const FRAMES = 8;
 
+  /* ------------------------------------------------------------- poses ---
+   *
+   * Two things the cast could not do: get hit, and die. A survivor who takes
+   * a claw to the ribs flickered - alpha on and off for a fifth of a second -
+   * and one who ran out of health simply stopped being drawn while a results
+   * panel slid over the top. Nothing in the run's worst moment was in the
+   * figure at all.
+   *
+   * Both are written as MORE OF THE SAME two numbers the walk already speaks:
+   * `swing` and `lift` are read by every limb, every hem and every weapon in
+   * the rig, so a negative lift is a crouch for free, on all ten survivors,
+   * because they were all built to read it. What a pose adds on top is three
+   * rig-unit terms the whole figure is moved by - `tilt`, `slide`, `drop` -
+   * which is why a death that lands correctly for the mage lands correctly
+   * for the paladin without a second drawing existing anywhere.
+   *
+   * Each takes k from 0 to 1 and is played exactly once.
+   */
+  const smooth = (t) => t * t * (3 - 2 * t);
+  const POSES = {
+    /* A flinch, and the recovery is the same motion in reverse - one arc, so
+     * it cannot end anywhere but back where it started. */
+    hurt(k) {
+      const s = WS.sin(WS.clamp(k, 0, 1) * WS.PI);
+      /* A crouch is a NEGATIVE lift, and the whole rig reads lift - including
+         a cloak, whose hem is pinned below the waist and therefore swings out
+         through the bottom of the tile long before anything else does. The
+         shrink is what buys it back. */
+      return { swing: -0.75 * s, lift: -5 * s, tilt: -0.22 * s,
+        slide: 3 * s, drop: 0, shrink: 1 - 0.07 * s, fallen: 0 };
+    },
+    /* Down. To a knee first, because a figure that simply topples reads as a
+     * dropped object rather than as someone who ran out - the knee is the
+     * moment they try, and it is the whole difference. */
+    down(k) {
+      const t = WS.clamp(k, 0, 1);
+      const knee = smooth(WS.min(1, t / 0.42));
+      const fall = smooth(WS.clamp((t - 0.36) / 0.64, 0, 1));
+      /* The slide is POSITIVE and large, and it is not a stylistic choice.
+         The figure turns about its feet, so a body rotated most of the way to
+         the floor puts its head sixty-odd units to one side - straight out of
+         the tile it is baked into, which clipped the last four frames of the
+         death to a stump. Moving the pivot back across as it goes over is what
+         keeps a lying figure inside its own frame. */
+      /* Three of these exist only to keep a lying figure inside a hundred-unit
+         tile, and none of them is a stylistic choice.
+         A survivor is about seventy-six units tall, they turn about their
+         FEET, and at eighty degrees over that puts the head sixty-odd units to
+         one side - straight out of the frame, which clipped the last four
+         frames of the death to a stump. `slide` walks the pivot across as it
+         goes; `shrink` buys back the margin a staff or a greatsword needs,
+         which is the part that cannot be worked out on paper because it
+         differs per survivor. */
+      return {
+        swing: 0.62 * knee,
+        lift: -5.5 * knee - 3 * fall,
+        tilt: -0.16 * knee - 1.30 * fall,
+        slide: -1.5 * knee + 32 * fall,
+        /* NEGATIVE on the fall, which is the opposite of the obvious. The
+           figure turns about its feet, so once it is most of the way over its
+           boots are the lowest thing in the tile and their own thickness hangs
+           below the pivot - measured, forty units of the bottom row. Lifting
+           the pivot as it goes puts the body down ON the shadow instead of
+           through the floor. */
+        drop: -3.5 * knee - 9 * fall,
+        // The KNEE needs the margin as much as the fall does: the deepest
+        // crouch is where a cloak hem is furthest below the waist.
+        shrink: 1 - 0.09 * knee - 0.17 * fall,
+        fallen: fall,
+      };
+    },
+  };
+  /** How many baked frames each pose is cut into. */
+  const POSE_FRAMES = { hurt: 4, down: 12 };
+
   const BUILDS = {
     slim: { sh: 12.5, chest: 12, waist: 9, hip: 10, arm: 4.0, leg: 4.6 },
     normal: { sh: 14.5, chest: 13.5, waist: 10.5, hip: 11, arm: 4.6, leg: 5.2 },
@@ -5472,7 +5699,16 @@ window.WS = window.WS || {};
      * and a robe's hem is pinned to the ground while its waist rises. The leg
      * changing length between the two IS the walk. */
     const lift = w.lift * 1.9;
-    g.save(); g.translate(0, -lift);
+    /* CLOTH GATHERS, IT DOES NOT SINK.
+     *
+     * The cloak rides the body by translating with the lift, which is right
+     * for a walk, where lift is only ever positive. A crouch is a NEGATIVE
+     * lift - that is how the poses get a survivor onto one knee for free on
+     * all ten of them - and the same translate then drove a long cloak's hem
+     * ten units through the floor and out of the bottom of its own tile. A
+     * hem on the ground piles up; it does not carry on down. */
+    const cloakLift = WS.max(lift, -2.2);
+    g.save(); g.translate(0, -cloakLift);
     drawCloak(g, cfg, C, b, w);
     g.restore();
     drawBody(g, cfg, C, b, w, lift);
@@ -5498,27 +5734,46 @@ window.WS = window.WS || {};
      *  gold, down-right in floor blue - and then the real figure lands on top.
      *  One pass, correct for every class automatically, and it is what makes
      *  the shape hold together against a dark and crowded ground. */
-    /** @param {number} [phase] 0..1 through one stride; omit for standing. */
-    draw(g, size, id, tint, demon, phase) {
+    poseFrames: POSE_FRAMES,
+
+    /** @param {number} [phase] 0..1 through one stride; omit for standing.
+     *  @param {{kind:string,k:number}} [pose] overrides the stride entirely. */
+    draw(g, size, id, tint, demon, phase, pose) {
       const cfg = CAST[id] || CAST.mage;
-      const w = phase === undefined ? STILL : stride(phase);
+      const posed = pose && POSES[pose.kind];
+      const w = posed ? POSES[pose.kind](pose.k)
+        : (phase === undefined ? STILL : stride(phase));
       const C = colours(tint, demon, cfg.eyeColour);
       const u = size / 100;
 
-      // Contact shadow on the floor, under the feet, before anything else.
+      /* Contact shadow on the floor, under the feet, before anything else -
+         and it does NOT go with them. A figure going over leaves its shadow
+         on the ground and spreads it; a shadow that rotated with the body
+         would be a sticker on its heel. */
+      const fallen = w.fallen || 0;
       g.save();
       g.scale(u, u);
-      const sh = g.createRadialGradient(50, GROUND, 0, 50, GROUND, 22);
-      sh.addColorStop(0, 'rgba(0,0,0,.5)');
+      const shR = 22 * (1 + fallen * 0.7);
+      const sh = g.createRadialGradient(50, GROUND, 0, 50, GROUND, shR);
+      sh.addColorStop(0, `rgba(0,0,0,${(0.5 - fallen * 0.16).toFixed(3)})`);
       sh.addColorStop(1, 'rgba(0,0,0,0)');
       g.fillStyle = sh;
-      g.beginPath(); g.ellipse(50, GROUND, 22, 6, 0, 0, WS.TAU); g.fill();
+      g.beginPath(); g.ellipse(50, GROUND, shR, 6 + fallen * 2, 0, 0, WS.TAU); g.fill();
       g.restore();
 
       const body = document.createElement('canvas');
       body.width = size; body.height = size;
       const bg = body.getContext('2d');
       bg.scale(u, u);
+      /* The pose's whole-figure move, pivoted at the feet - which is what a
+         person turns about when they are knocked back or go down, and the one
+         point in the rig that is already on the floor. */
+      if (w.tilt || w.slide || w.drop || w.shrink !== undefined) {
+        bg.translate(50 + (w.slide || 0), GROUND + (w.drop || 0));
+        bg.rotate(w.tilt || 0);
+        if (w.shrink !== undefined) bg.scale(w.shrink, w.shrink);
+        bg.translate(-50, -GROUND);
+      }
       figure(bg, cfg, C, w);
 
       const sil = document.createElement('canvas');
@@ -6446,9 +6701,10 @@ window.WS = window.WS || {};
     },
 
     /** @param {number} [frame] stride frame, or undefined for standing. */
-    hero(id, tint, size, demon, frame) {
+    hero(id, tint, size, demon, frame, pose) {
       size = WS.round(size);
-      const key = `h:${id}:${WS.hex(tint)}:${size}:${demon ? 1 : 0}:${frame === undefined ? 'x' : frame}`;
+      const key = `h:${id}:${WS.hex(tint)}:${size}:${demon ? 1 : 0}:`
+        + (pose ? `${pose.kind}${pose.frame}` : (frame === undefined ? 'x' : frame));
       let c = cache.get(key);
       if (c) return c;
       const res = size * SS;
@@ -6460,6 +6716,18 @@ window.WS = window.WS || {};
        * hip, a hem lagging the body - and only the size the game is played at
        * ever asks for more than the standing frame, so the cache grows by a
        * few dozen small canvases and nothing else changes. */
+      if (pose) {
+        /* A pose is baked like a stride frame and for the same reason: what
+           moves is inside the drawing. The counts are small - four frames of
+           a flinch, twelve of going down - so the cache grows by sixteen
+           canvases for a survivor who has been hit, and by nothing at all for
+           one who has not. */
+        const n = WS.max(1, WS.Hero.poseFrames[pose.kind] || 1);
+        WS.Hero.draw(c.getContext('2d'), res, id, tint, demon, undefined,
+          { kind: pose.kind, k: n === 1 ? 0 : pose.frame / (n - 1) });
+        cache.set(key, c);
+        return c;
+      }
       WS.Hero.draw(c.getContext('2d'), res, id, tint, demon,
         frame === undefined ? undefined : frame / WS.Hero.frames);
       c.displaySize = size;
@@ -7900,12 +8168,26 @@ window.WS = window.WS || {};
     drone.connect(droneFilter); droneFilter.connect(droneGain); droneGain.connect(bed);
     drone.start();
 
-    const state = { key, bed, drone, step: 0, nextTime: ctx.currentTime + 0.1, timer: null, intensity: 0 };
+    const state = { key, bed, drone, step: 0, nextTime: ctx.currentTime + 0.1, timer: null,
+      intensity: 0, want: 0 };
 
     state.timer = setInterval(() => {
       // A stopped clock schedules nothing: while the context is suspended the
       // pump would otherwise pile a second of the score onto a single instant.
       if (!live()) return;
+      /* Ease toward the danger the game reports rather than snapping to it.
+       *
+       * The driver is sampled every frame off a crowd count that swings by
+       * dozens between one wave and the next, and a score that tracked it
+       * exactly would flutter. Danger also arrives faster than it leaves - a
+       * boss walks on in a moment and the room takes a while to settle after
+       * it dies - so the climb is twice the fall. */
+      {
+        const dt = 0.25;
+        const gap = state.want - state.intensity;
+        const rate = gap > 0 ? 0.9 : 0.45;
+        state.intensity = WS.clamp(state.intensity + WS.clamp(gap, -rate * dt, rate * dt), 0, 1);
+      }
       const beat = score.tempo / 2;
       /* Never try to make up lost time.
        *
@@ -7939,6 +8221,25 @@ window.WS = window.WS || {};
           osc.connect(g); g.connect(bed);
           osc.start(t0); osc.stop(t0 + beat * 1.7);
         }
+        /* A pulse under the bed once things are actually bad. Intensity used
+           to change three things - whether the arpeggio played on odd steps,
+           its gain by a twentieth, and one interval in the chord - which is
+           not enough to hear across a room. This is the one that is felt
+           rather than heard, and it only exists above the halfway mark, so
+           its arrival is itself the signal. */
+        if (state.intensity > 0.5 && s % 2 === 0) {
+          const osc = ctx.createOscillator();
+          const g = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(semitone(score.root / 2, 0), t0);
+          osc.frequency.exponentialRampToValueAtTime(semitone(score.root / 2, -5), t0 + beat);
+          const peak = 0.05 + 0.10 * (state.intensity - 0.5) * 2;
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.exponentialRampToValueAtTime(peak, t0 + 0.03);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + beat * 0.9);
+          osc.connect(g); g.connect(bed);
+          osc.start(t0); osc.stop(t0 + beat);
+        }
         // Chord bed every four steps.
         if (s % 4 === 0) {
           for (const iv of [0, 7, state.intensity > 0.6 ? 10 : 12]) {
@@ -7961,10 +8262,17 @@ window.WS = window.WS || {};
     this._music = state;
   };
 
-  /** 0..1 - drives arpeggio density and chord colour as danger climbs. */
+  /** 0..1 - how bad it is out there, from Game.danger.
+   *
+   *  Sets a TARGET; the pump eases toward it. Writing straight to intensity
+   *  meant the score tracked a crowd count that swings by dozens between
+   *  waves, which reads as flutter rather than as tension. */
   Audio.setIntensity = function (v) {
-    if (this._music) this._music.intensity = WS.clamp(v, 0, 1);
+    if (this._music) this._music.want = WS.clamp(v, 0, 1);
   };
+
+  /** What the score is actually playing at, after easing. For measurement. */
+  Audio.intensity = function () { return this._music ? this._music.intensity : 0; };
 
   Audio.stopMusic = function () {
     const m = this._music;
@@ -8571,6 +8879,21 @@ window.WS = window.WS || {};
   };
 
   Enemy.count = function () { return this.pool.count; };
+
+  /** The boss the fight is about: whichever has the most health left.
+   *
+   *  The HUD scanned for this itself and so did nothing else, which is how the
+   *  score ended up not knowing a boss was on the field. One scan, one answer,
+   *  and anything that wants to react to a boss reads the same one the arc is
+   *  tracking. */
+  Enemy.leadBoss = function () {
+    let best = null;
+    for (let i = 0; i < this.pool.count; i++) {
+      const e = this.pool.active[i];
+      if (e.boss && (!best || e.health > best.health)) best = e;
+    }
+    return best;
+  };
 
   /** Frees a slot by dropping the trash mob furthest from the survivor. */
   function evictFodder() {
@@ -9693,6 +10016,8 @@ window.WS = window.WS || {};
       xp: 0,
       xpToNext: Player.xpForLevel(1),
 
+      hurtTimer: 0,
+
       rerolls: WS.Config.baseRerolls,
       banishes: WS.Config.baseBanishes,
       startLevelUps: 0,
@@ -9816,6 +10141,8 @@ window.WS = window.WS || {};
     let dx = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
     let dy = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
     const moving = dx !== 0 || dy !== 0;
+
+    if (p.hurtTimer > 0) p.hurtTimer -= dt;
 
     let speed = p.moveSpeed;
     if (p.slowTimer > 0) { p.slowTimer -= dt; speed *= p.slowFactor; }
@@ -10093,6 +10420,7 @@ window.WS = window.WS || {};
     p.health -= taken;
     p.invulnerable = WS.Config.hitInvulnerable;
     run.noHitStreak = 0;
+    p.hurtTimer = WS.Config.hurtBeat;
     WS.FX.playerHurt(p.x, p.y, taken);
     WS.FX.shake(5, 0.22);
     WS.Audio.play('playerHurt');
@@ -10110,7 +10438,7 @@ window.WS = window.WS || {};
         return true;
       }
       run.killedBy = { name: srcName || 'the endless horde' };
-      WS.Game.endRun('defeated');
+      WS.Game.beginDeath();
     }
     return true;
   };
@@ -11775,6 +12103,41 @@ window.WS = window.WS || {};
     this.announce('True Endless', 'Nothing is coming to save you.', 3.0);
   };
 
+  /* The last second and a half.
+   *
+   * Running out of health used to be instantaneous: the survivor stopped being
+   * drawn and a results panel slid over the top of the field they died on. A
+   * run is half an hour of accumulated build and it ended like a dropped
+   * connection - no moment, nothing to watch, no beat to feel it in.
+   *
+   * So death is a STATE now. The simulation stops dead - which is right, and
+   * not a shortcut: everything that was about to kill you is frozen mid-stride
+   * where it was, so the last frame is the picture of what actually got you -
+   * while the survivor goes to a knee and over, their light goes out, and only
+   * then does the panel arrive.
+   */
+  Game.beginDeath = function () {
+    if (this.state === 'dying') return;
+    this.state = 'dying';
+    this.deathTimer = WS.Config.deathBeat;
+    this.running = false;
+    WS.FX.shake(9, 0.5);
+    /* The ember leaving. Everything the survivor was carrying goes back out
+       into the dark, which is the one image the whole game is about. */
+    if (this.player) WS.FX.burst(this.player.x, this.player.y, 18, '#f5c56b', 90, 1.4, 3.5);
+    WS.Audio.play('death');
+    WS.Audio.setIntensity(0);
+    // Bank it now. Whatever happens in the next second and a half, the run
+    // has already earned what it earned.
+    WS.Save.flush();
+  };
+
+  /** 0..1 through the death, for whatever wants to fade with it. */
+  Game.deathProgress = function () {
+    if (this.state !== 'dying') return 0;
+    return WS.clamp(1 - this.deathTimer / WS.max(0.01, WS.Config.deathBeat), 0, 1);
+  };
+
   Game.endRun = function (reason) {
     if (!this.running && this.state === 'over') return;
     this.running = false;
@@ -11859,9 +12222,47 @@ window.WS = window.WS || {};
       return;
     }
 
-    // The score tightens as the field fills and the clock runs down.
-    WS.Audio.setIntensity(WS.min(1,
-      WS.Enemy.count() / 90 * 0.6 + WS.min(1, run.time / 1500) * 0.4));
+    WS.Audio.setIntensity(this.danger());
+  };
+
+  /* How bad is it, right now, 0 to 1.
+   *
+   * This drove the score, and it was one expression: crowd size and elapsed
+   * time, added together. Which meant the music did not know a boss had walked
+   * onto the field, did not know the survivor was two hits from dead, and rose
+   * steadily whether or not anything was happening - the one thing a score
+   * must never do is be the same at the worst moment of a run as at the
+   * calmest, and at minute twenty-five with a full field it was pinned at 1
+   * either way.
+   *
+   * So it is the MAXIMUM of named dangers rather than a sum. Danger does not
+   * average: a survivor at nine health with an empty field is not in a calm
+   * moment, and adding a small crowd term to it would say otherwise. Each term
+   * below is one sentence about the run, and the loudest one wins.
+   */
+  Game.danger = function () {
+    const run = this.run, p = this.player;
+    if (!run || !p) return 0;
+    const cfg = WS.Config;
+
+    // The field, filling.
+    let d = WS.min(1, WS.Enemy.count() / 130) * 0.7;
+    // The night, wearing on. A floor, not a ceiling - late is tense even empty.
+    d = WS.max(d, WS.min(1, run.time / cfg.deathTime) * 0.5);
+    // A boss, and how far into it you are: it tightens as the boss weakens,
+    // because the end of a boss is the part that decides the run.
+    const boss = WS.Enemy.leadBoss();
+    if (boss) {
+      const left = WS.clamp(boss.health / WS.max(1, boss.maxHealth), 0, 1);
+      d = WS.max(d, 0.7 + 0.25 * (1 - left));
+      // Death itself is not a boss fight, it is the end of one.
+      if (boss.template.family === 'death') d = 1;
+    }
+    // And the survivor, in trouble. Loudest of all, because it is the only one
+    // that is about the player rather than the field.
+    const hp = p.health / WS.max(1, p.maxHealth);
+    if (hp < 0.35) d = WS.max(d, 0.72 + 0.28 * (1 - hp / 0.35));
+    return WS.clamp(d, 0, 1);
   };
 
   /** Fixed-step update with a catch-up cap, so one frame hitch never turns
@@ -11911,6 +12312,15 @@ window.WS = window.WS || {};
     for (let i = this.toasts.length - 1; i >= 0; i--) {
       this.toasts[i].life -= frameDt;
       if (this.toasts[i].life <= 0) this.toasts.splice(i, 1);
+    }
+
+    /* Dying runs on real time with the simulation stopped: the particles from
+       the blow that killed you keep settling, and nothing else moves. */
+    if (this.state === 'dying') {
+      WS.FX.update(frameDt);
+      this.deathTimer -= frameDt;
+      if (this.deathTimer <= 0) this.endRun('defeated');
+      return;
     }
 
     if (this.state !== 'playing' || !this.running || this.suspended) {
@@ -12772,15 +13182,33 @@ window.WS = window.WS || {};
      * while a hundred things move around it reads as paused - but once they
      * are moving the vertical is the stride's job, and adding a second sine on
      * top of it fought the one baked into the frames. */
-    const bob = p.moving ? 0 : WS.sin(p.walkCycle) * 1.2;
+    /* Two poses that are not the walk: a flinch, and going down. Both are
+       played once and both override the stride entirely, because a survivor
+       on one knee is not mid-step. */
+    const dying = WS.Game.state === 'dying';
+    const cfg = WS.Config;
+    let pose = null;
+    if (dying) {
+      const n = WS.Hero.poseFrames.down;
+      pose = { kind: 'down',
+        frame: WS.min(n - 1, WS.floor(WS.Game.deathProgress() * n)) };
+    } else if (p.hurtTimer > 0) {
+      const n = WS.Hero.poseFrames.hurt;
+      const k = 1 - p.hurtTimer / WS.max(0.01, cfg.hurtBeat);
+      pose = { kind: 'hurt', frame: WS.clamp(WS.floor(k * n), 0, n - 1) };
+    }
+    const bob = (p.moving || pose) ? 0 : WS.sin(p.walkCycle) * 1.2;
     // The cycle advances at 11/s while moving, so one stride is a shade under
     // three steps a second. Frames are picked from that, not from wall time,
     // so the walk slows and speeds with whatever the survivor's speed is.
-    const frame = p.moving
+    const frame = (p.moving && !pose)
       ? WS.floor(((p.walkCycle / WS.TAU) % 1 + 1) % 1 * WS.Hero.frames) : undefined;
     shadow(ctx, p.x, p.y + p.radius * 0.7, p.radius * 0.9);
     ctx.save();
-    const beat = 0.42 + 0.14 * WS.sin(time * 2.4);
+    /* The ring is the light they are carrying, so it goes out with them -
+       which is the whole of the lore in one fade. */
+    const ember = dying ? WS.max(0, 1 - WS.Game.deathProgress() * 1.35) : 1;
+    const beat = (0.42 + 0.14 * WS.sin(time * 2.4)) * ember;
     ctx.globalAlpha = beat;
     ctx.strokeStyle = '#f5c56b';
     ctx.lineWidth = 1.5;
@@ -12797,7 +13225,12 @@ window.WS = window.WS || {};
     ctx.restore();
 
     ctx.save();
-    if (p.invulnerable > 0) ctx.globalAlpha = (WS.floor(p.invulnerable * 12) % 2 === 0) ? 0.45 : 0.95;
+    /* The invulnerability flicker is suppressed while a pose is playing: it
+       was the ONLY sign of being hit, and now that there is a flinch to watch,
+       strobing the figure through it just hides the thing worth seeing. */
+    if (p.invulnerable > 0 && !pose) {
+      ctx.globalAlpha = (WS.floor(p.invulnerable * 12) % 2 === 0) ? 0.45 : 0.95;
+    }
     ctx.translate(p.x, p.y + bob);
     if (p.spinTimer > 0) ctx.rotate(time * 14);
     else if (p.facing < 0) ctx.scale(-1, 1);
@@ -12806,13 +13239,13 @@ window.WS = window.WS || {};
      * direction of travel - about three degrees, which is enough to read as
      * intent and not enough to look like falling over. It eases rather than
      * snaps, so a change of direction is a turn and not a flick. */
-    if (p.moving) {
+    if (p.moving && !pose) {
       p.lean = (p.lean || 0) + ((p.facing < 0 ? -0.055 : 0.055) - (p.lean || 0)) * 0.18;
     } else {
       p.lean = (p.lean || 0) * 0.86;
     }
     if (p.lean) ctx.rotate(p.facing < 0 ? -p.lean : p.lean);
-    const sprite = WS.Sprites.hero(p.characterId, p.character.color, size, demon, frame);
+    const sprite = WS.Sprites.hero(p.characterId, p.character.color, size, demon, frame, pose);
     ctx.drawImage(sprite, -size / 2, -size * 0.66, size, size);
     ctx.restore();
     ctx.globalAlpha = 1;
@@ -14267,12 +14700,9 @@ window.WS = window.WS || {};
     e.dpsV.textContent = WS.formatNumber(run.dps);
     e.hpsV.textContent = WS.formatNumber(run.hps);
 
-    // Whichever boss has the most health left is the one the arc tracks.
-    let boss = null;
-    for (let i = 0; i < WS.Enemy.pool.count; i++) {
-      const en = WS.Enemy.pool.active[i];
-      if (en.boss && (!boss || en.health > boss.health)) boss = en;
-    }
+    // Whichever boss has the most health left is the one the arc tracks - and
+    // the same one the score reacts to, because both ask Enemy for it.
+    const boss = WS.Enemy.leadBoss();
     if (boss) {
       e.boss.classList.remove('hidden');
       if (e.bossName.textContent !== boss.template.name) e.bossName.textContent = boss.template.name;
@@ -15179,6 +15609,129 @@ window.WS = window.WS || {};
       + 'Play one-handed, or keep both on the keys.');
 
     if (inRun) return wrap;
+
+    /* ---- the account, and getting it off this machine -------------------- */
+    /* A save that only exists in one browser's localStorage is one cleared
+     * cache away from gone, and there is no way to move it to a second
+     * machine. Both halves are here, and the import deliberately makes you
+     * look at what you are about to replace before it does it. */
+    const acct = el('div', 'setting');
+    const amain = el('div');
+    amain.append(el('div', 's-name', 'Back up this account'));
+    const desc = el('div', 's-desc');
+    const sum = WS.Save.describe(WS.Save.db);
+    desc.textContent = `${sum.gold.toLocaleString()} gold, ${sum.characters} survivors, `
+      + `${sum.maps} battlefields, ${sum.runs} runs. Your progress lives in this browser `
+      + 'only - copy it somewhere safe, or move it to another machine.';
+    amain.append(desc);
+    const note = el('div', 's-desc');
+    note.style.marginTop = '6px';
+    amain.append(note);
+    const say = (msg, bad) => {
+      note.textContent = msg || '';
+      note.style.color = msg ? (bad ? 'var(--blood)' : 'var(--arc)') : '';
+    };
+
+    const abtns = el('div');
+    abtns.style.display = 'flex'; abtns.style.gap = '8px'; abtns.style.flexWrap = 'wrap';
+
+    const copyBtn = el('button', 'btn small', 'Copy code');
+    copyBtn.addEventListener('click', async () => {
+      WS.Audio.play('ui');
+      const out = WS.Save.export();
+      if (!out.code) return say('This browser would not encode the save.', true);
+      try {
+        await navigator.clipboard.writeText(out.code);
+        say('Copied. Paste it somewhere you will still have next year.');
+      } catch (e) {
+        // Clipboard is gated in plenty of contexts; the file always works.
+        say('The clipboard is blocked here - use Save to file instead.', true);
+      }
+    });
+
+    const fileBtn = el('button', 'btn small', 'Save to file');
+    fileBtn.addEventListener('click', () => {
+      WS.Audio.play('ui');
+      const out = WS.Save.export();
+      try {
+        const blob = new Blob([out.json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const day = new Date().toISOString().slice(0, 10);
+        a.href = url; a.download = `ember-watch-${day}.json`;
+        document.body.append(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+        say('Saved. It is plain JSON - you can read it, and so can a future you.');
+      } catch (e) { say('This browser would not hand over a file.', true); }
+    });
+
+    /* Import is two steps on purpose. Step one says what is in the incoming
+       account and what it would replace; step two is the only thing that
+       writes. Nobody overwrites thirty hours by mis-clicking once. */
+    let pending = null;
+    const loadBtn = el('button', 'btn small', 'Load from code or file');
+    const box = el('textarea');
+    box.className = 'import-box hidden';
+    box.rows = 3;
+    box.placeholder = 'Paste a code beginning EMBERWATCH1: - or choose a file';
+    const pickBtn = el('button', 'btn small hidden', 'Choose file...');
+    const goBtn = el('button', 'btn small primary hidden', 'Replace my progress');
+    const cancelBtn = el('button', 'btn small hidden', 'Cancel');
+    const picker = el('input');
+    picker.type = 'file'; picker.accept = '.json,application/json,text/plain';
+    picker.className = 'hidden';
+
+    const reset = () => {
+      pending = null;
+      box.value = '';
+      box.classList.add('hidden');
+      pickBtn.classList.add('hidden');
+      goBtn.classList.add('hidden');
+      cancelBtn.classList.add('hidden');
+      loadBtn.classList.remove('hidden');
+      say('');
+    };
+    const offer = (text) => {
+      const r = WS.Save.parseImport(text);
+      if (!r.ok) { pending = null; goBtn.classList.add('hidden'); return say(r.error, true); }
+      pending = r.db;
+      goBtn.classList.remove('hidden');
+      const i = r.summary, o = r.replacing;
+      say(`That account has ${i.gold.toLocaleString()} gold, ${i.characters} survivors and `
+        + `${i.runs} runs. It would replace the one on this machine `
+        + `(${o.gold.toLocaleString()} gold, ${o.characters} survivors, ${o.runs} runs). `
+        + (r.warn ? r.warn + ' ' : '') + 'This cannot be undone.');
+    };
+
+    loadBtn.addEventListener('click', () => {
+      WS.Audio.play('ui');
+      loadBtn.classList.add('hidden');
+      box.classList.remove('hidden');
+      pickBtn.classList.remove('hidden');
+      cancelBtn.classList.remove('hidden');
+      box.focus();
+    });
+    box.addEventListener('input', () => { if (box.value.trim()) offer(box.value); else say(''); });
+    pickBtn.addEventListener('click', () => picker.click());
+    picker.addEventListener('change', () => {
+      const f = picker.files && picker.files[0];
+      if (!f) return;
+      const fr = new FileReader();
+      fr.onload = () => offer(String(fr.result));
+      fr.onerror = () => say('That file could not be read.', true);
+      fr.readAsText(f);
+    });
+    cancelBtn.addEventListener('click', () => { WS.Audio.play('ui'); reset(); });
+    goBtn.addEventListener('click', () => {
+      if (!pending) return;
+      WS.Save.adopt(pending);
+      WS.Audio.play('level');
+      rerender();
+    });
+
+    abtns.append(copyBtn, fileBtn, loadBtn, pickBtn, goBtn, cancelBtn, picker);
+    acct.append(amain, abtns);
+    wrap.append(acct, box);
 
     const danger = el('div', 'setting');
     const dmain = el('div');

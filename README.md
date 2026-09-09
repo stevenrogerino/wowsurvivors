@@ -56,7 +56,9 @@ configure.
 - **Any web host at all** — drop it in the web root over FTP.
 
 Saves live in the visitor's own `localStorage`, so each player keeps their own
-gold and unlocks and nothing is sent anywhere.
+gold and unlocks and nothing is sent anywhere — and **Settings → Back up this
+account** gets it out again, as a one-line code to paste anywhere or as plain
+readable JSON, so a cleared cache or a new laptop is not the end of it.
 
 `tools/check-shippable.js` serves that exact file alone in an empty directory,
 plays ninety seconds of a real run inside it, and fails on any request that
@@ -233,6 +235,10 @@ tools/         the single-file bundler, and the guard rails:
                               picture, every scripted line reaches the screen
                               inside its own band, a key, a tap and a pad each
                               skip it, and it hands the random stream back
+               check-account.js an account round-trips as a code and as a
+                              file, a truncated paste is refused rather than
+                              half-imported, and eleven kinds of broken or
+                              hostile save are refused or repaired
 ```
 
 Every guard carries the bug it was written for in its header, and every one of

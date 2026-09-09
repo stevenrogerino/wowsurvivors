@@ -1382,3 +1382,15 @@ input[type=range]::-moz-range-thumb {
 }
 #prologue .skip:hover { color: var(--gold, #f5c56b); }
 #prologue .skip:focus-visible { outline: 2px solid var(--gold, #f5c56b); outline-offset: 2px; }
+
+/* The import box lives under its own setting row rather than inside it: a
+   textarea in a flex row of buttons squeezes to nothing at any narrow width. */
+.import-box {
+  width: 100%; margin: -4px 0 12px; padding: 10px 12px;
+  background: var(--obsidian); color: var(--ink);
+  border: 1px solid var(--rim); border-radius: 6px; box-shadow: var(--sunk);
+  font-family: var(--fig); font-size: var(--t-small); line-height: 1.55;
+  resize: vertical; outline: none;
+}
+.import-box:focus { border-color: var(--rim-arc); }
+.import-box::placeholder { color: var(--ink-faint); }

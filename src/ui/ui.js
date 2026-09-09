@@ -262,12 +262,9 @@
     e.dpsV.textContent = WS.formatNumber(run.dps);
     e.hpsV.textContent = WS.formatNumber(run.hps);
 
-    // Whichever boss has the most health left is the one the arc tracks.
-    let boss = null;
-    for (let i = 0; i < WS.Enemy.pool.count; i++) {
-      const en = WS.Enemy.pool.active[i];
-      if (en.boss && (!boss || en.health > boss.health)) boss = en;
-    }
+    // Whichever boss has the most health left is the one the arc tracks - and
+    // the same one the score reacts to, because both ask Enemy for it.
+    const boss = WS.Enemy.leadBoss();
     if (boss) {
       e.boss.classList.remove('hidden');
       if (e.bossName.textContent !== boss.template.name) e.bossName.textContent = boss.template.name;
@@ -1174,6 +1171,129 @@
       + 'Play one-handed, or keep both on the keys.');
 
     if (inRun) return wrap;
+
+    /* ---- the account, and getting it off this machine -------------------- */
+    /* A save that only exists in one browser's localStorage is one cleared
+     * cache away from gone, and there is no way to move it to a second
+     * machine. Both halves are here, and the import deliberately makes you
+     * look at what you are about to replace before it does it. */
+    const acct = el('div', 'setting');
+    const amain = el('div');
+    amain.append(el('div', 's-name', 'Back up this account'));
+    const desc = el('div', 's-desc');
+    const sum = WS.Save.describe(WS.Save.db);
+    desc.textContent = `${sum.gold.toLocaleString()} gold, ${sum.characters} survivors, `
+      + `${sum.maps} battlefields, ${sum.runs} runs. Your progress lives in this browser `
+      + 'only - copy it somewhere safe, or move it to another machine.';
+    amain.append(desc);
+    const note = el('div', 's-desc');
+    note.style.marginTop = '6px';
+    amain.append(note);
+    const say = (msg, bad) => {
+      note.textContent = msg || '';
+      note.style.color = msg ? (bad ? 'var(--blood)' : 'var(--arc)') : '';
+    };
+
+    const abtns = el('div');
+    abtns.style.display = 'flex'; abtns.style.gap = '8px'; abtns.style.flexWrap = 'wrap';
+
+    const copyBtn = el('button', 'btn small', 'Copy code');
+    copyBtn.addEventListener('click', async () => {
+      WS.Audio.play('ui');
+      const out = WS.Save.export();
+      if (!out.code) return say('This browser would not encode the save.', true);
+      try {
+        await navigator.clipboard.writeText(out.code);
+        say('Copied. Paste it somewhere you will still have next year.');
+      } catch (e) {
+        // Clipboard is gated in plenty of contexts; the file always works.
+        say('The clipboard is blocked here - use Save to file instead.', true);
+      }
+    });
+
+    const fileBtn = el('button', 'btn small', 'Save to file');
+    fileBtn.addEventListener('click', () => {
+      WS.Audio.play('ui');
+      const out = WS.Save.export();
+      try {
+        const blob = new Blob([out.json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const day = new Date().toISOString().slice(0, 10);
+        a.href = url; a.download = `ember-watch-${day}.json`;
+        document.body.append(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+        say('Saved. It is plain JSON - you can read it, and so can a future you.');
+      } catch (e) { say('This browser would not hand over a file.', true); }
+    });
+
+    /* Import is two steps on purpose. Step one says what is in the incoming
+       account and what it would replace; step two is the only thing that
+       writes. Nobody overwrites thirty hours by mis-clicking once. */
+    let pending = null;
+    const loadBtn = el('button', 'btn small', 'Load from code or file');
+    const box = el('textarea');
+    box.className = 'import-box hidden';
+    box.rows = 3;
+    box.placeholder = 'Paste a code beginning EMBERWATCH1: - or choose a file';
+    const pickBtn = el('button', 'btn small hidden', 'Choose file...');
+    const goBtn = el('button', 'btn small primary hidden', 'Replace my progress');
+    const cancelBtn = el('button', 'btn small hidden', 'Cancel');
+    const picker = el('input');
+    picker.type = 'file'; picker.accept = '.json,application/json,text/plain';
+    picker.className = 'hidden';
+
+    const reset = () => {
+      pending = null;
+      box.value = '';
+      box.classList.add('hidden');
+      pickBtn.classList.add('hidden');
+      goBtn.classList.add('hidden');
+      cancelBtn.classList.add('hidden');
+      loadBtn.classList.remove('hidden');
+      say('');
+    };
+    const offer = (text) => {
+      const r = WS.Save.parseImport(text);
+      if (!r.ok) { pending = null; goBtn.classList.add('hidden'); return say(r.error, true); }
+      pending = r.db;
+      goBtn.classList.remove('hidden');
+      const i = r.summary, o = r.replacing;
+      say(`That account has ${i.gold.toLocaleString()} gold, ${i.characters} survivors and `
+        + `${i.runs} runs. It would replace the one on this machine `
+        + `(${o.gold.toLocaleString()} gold, ${o.characters} survivors, ${o.runs} runs). `
+        + (r.warn ? r.warn + ' ' : '') + 'This cannot be undone.');
+    };
+
+    loadBtn.addEventListener('click', () => {
+      WS.Audio.play('ui');
+      loadBtn.classList.add('hidden');
+      box.classList.remove('hidden');
+      pickBtn.classList.remove('hidden');
+      cancelBtn.classList.remove('hidden');
+      box.focus();
+    });
+    box.addEventListener('input', () => { if (box.value.trim()) offer(box.value); else say(''); });
+    pickBtn.addEventListener('click', () => picker.click());
+    picker.addEventListener('change', () => {
+      const f = picker.files && picker.files[0];
+      if (!f) return;
+      const fr = new FileReader();
+      fr.onload = () => offer(String(fr.result));
+      fr.onerror = () => say('That file could not be read.', true);
+      fr.readAsText(f);
+    });
+    cancelBtn.addEventListener('click', () => { WS.Audio.play('ui'); reset(); });
+    goBtn.addEventListener('click', () => {
+      if (!pending) return;
+      WS.Save.adopt(pending);
+      WS.Audio.play('level');
+      rerender();
+    });
+
+    abtns.append(copyBtn, fileBtn, loadBtn, pickBtn, goBtn, cancelBtn, picker);
+    acct.append(amain, abtns);
+    wrap.append(acct, box);
 
     const danger = el('div', 'setting');
     const dmain = el('div');

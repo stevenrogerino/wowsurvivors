@@ -887,9 +887,10 @@
     },
 
     /** @param {number} [frame] stride frame, or undefined for standing. */
-    hero(id, tint, size, demon, frame) {
+    hero(id, tint, size, demon, frame, pose) {
       size = WS.round(size);
-      const key = `h:${id}:${WS.hex(tint)}:${size}:${demon ? 1 : 0}:${frame === undefined ? 'x' : frame}`;
+      const key = `h:${id}:${WS.hex(tint)}:${size}:${demon ? 1 : 0}:`
+        + (pose ? `${pose.kind}${pose.frame}` : (frame === undefined ? 'x' : frame));
       let c = cache.get(key);
       if (c) return c;
       const res = size * SS;
@@ -901,6 +902,18 @@
        * hip, a hem lagging the body - and only the size the game is played at
        * ever asks for more than the standing frame, so the cache grows by a
        * few dozen small canvases and nothing else changes. */
+      if (pose) {
+        /* A pose is baked like a stride frame and for the same reason: what
+           moves is inside the drawing. The counts are small - four frames of
+           a flinch, twelve of going down - so the cache grows by sixteen
+           canvases for a survivor who has been hit, and by nothing at all for
+           one who has not. */
+        const n = WS.max(1, WS.Hero.poseFrames[pose.kind] || 1);
+        WS.Hero.draw(c.getContext('2d'), res, id, tint, demon, undefined,
+          { kind: pose.kind, k: n === 1 ? 0 : pose.frame / (n - 1) });
+        cache.set(key, c);
+        return c;
+      }
       WS.Hero.draw(c.getContext('2d'), res, id, tint, demon,
         frame === undefined ? undefined : frame / WS.Hero.frames);
       c.displaySize = size;

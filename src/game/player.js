@@ -51,6 +51,8 @@
       xp: 0,
       xpToNext: Player.xpForLevel(1),
 
+      hurtTimer: 0,
+
       rerolls: WS.Config.baseRerolls,
       banishes: WS.Config.baseBanishes,
       startLevelUps: 0,
@@ -174,6 +176,8 @@
     let dx = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
     let dy = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
     const moving = dx !== 0 || dy !== 0;
+
+    if (p.hurtTimer > 0) p.hurtTimer -= dt;
 
     let speed = p.moveSpeed;
     if (p.slowTimer > 0) { p.slowTimer -= dt; speed *= p.slowFactor; }
@@ -451,6 +455,7 @@
     p.health -= taken;
     p.invulnerable = WS.Config.hitInvulnerable;
     run.noHitStreak = 0;
+    p.hurtTimer = WS.Config.hurtBeat;
     WS.FX.playerHurt(p.x, p.y, taken);
     WS.FX.shake(5, 0.22);
     WS.Audio.play('playerHurt');
@@ -468,7 +473,7 @@
         return true;
       }
       run.killedBy = { name: srcName || 'the endless horde' };
-      WS.Game.endRun('defeated');
+      WS.Game.beginDeath();
     }
     return true;
   };

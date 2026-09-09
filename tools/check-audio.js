@@ -233,6 +233,92 @@ const PLACED = 2.5;
   if (hiddenState === 'running') fail.push('attention: a hidden page kept the clock running');
   if (shownState !== 'running') fail.push(`attention: coming back left the clock ${shownState}`);
 
+
+  /* ---- the score knows what is happening ---------------------------------
+   *
+   * Intensity had one driver and it was one expression: crowd size plus
+   * elapsed time. The music therefore did not know a boss had walked onto the
+   * field, did not know the survivor was two hits from dead, and rose steadily
+   * whether or not anything was happening - so at minute twenty-five it was
+   * pinned at maximum in a quiet moment and in the worst moment alike, which
+   * is the one thing a score must not do.
+   *
+   * Danger is now the MAXIMUM of named terms rather than their sum, and this
+   * checks the distinction, because a sum passes a naive "does it go up" test
+   * while getting the important cases exactly wrong: a survivor at nine health
+   * on an empty field is not calm, and a boss at 5% is not the same as a boss
+   * at 95%. */
+  const danger = await page.evaluate(() => {
+    WS.Save.db.seenManual = true;
+    WS.Save.unlockAll();
+    WS.Game.startRun('thornhollow', 'mage');
+    const card = document.querySelector('#overlay:not(.hidden) .card');
+    if (card) card.click();
+    const p = WS.Game.player, run = WS.Game.run;
+    const clear = () => { WS.Enemy.pool.releaseAll(); p.health = p.maxHealth; run.time = 0; };
+    const out = {};
+
+    clear(); out.calm = WS.Game.danger();
+
+    clear();
+    for (let i = 0; i < 130; i++) WS.Enemy.spawn('lampling', 100 + i, 200, 1);
+    out.crowded = WS.Game.danger();
+
+    clear(); run.time = WS.Config.deathTime * 0.9;
+    out.late = WS.Game.danger();
+
+    // A survivor about to die on an EMPTY field. A sum would call this calm.
+    clear(); p.health = p.maxHealth * 0.06;
+    out.dying = WS.Game.danger();
+
+    clear();
+    const boss = WS.Enemy.spawn('gnarlfang', 400, 300, 1);
+    out.bossFresh = WS.Game.danger();
+    boss.health = boss.maxHealth * 0.05;
+    out.bossNearlyDead = WS.Game.danger();
+
+    clear();
+    const death = WS.Enemy.spawn('death_itself', 400, 300, 1);
+    out.death = WS.Game.danger();
+    if (death) WS.Enemy.pool.releaseAll();
+
+    // and the easing: a target must not land instantly
+    clear();
+    WS.Audio.setIntensity(1);
+    out.easedNow = WS.Audio.intensity();
+    out.target = WS.Audio._music ? WS.Audio._music.want : null;
+    clear();
+    return out;
+  });
+  const D = danger;
+  if (!(D.calm < 0.15)) fail.push(`an empty field at minute zero reads ${D.calm.toFixed(2)} danger`);
+  if (!(D.crowded > 0.5)) fail.push(`a field of 130 reads ${D.crowded.toFixed(2)}`);
+  if (!(D.late > 0.35)) fail.push(`the last minutes of the night read ${D.late.toFixed(2)}`);
+  if (!(D.dying > 0.9)) {
+    fail.push(`a survivor at 6% health on an empty field reads ${D.dying.toFixed(2)} danger - `
+      + 'the score is describing the field rather than the run');
+  }
+  if (!(D.bossFresh > 0.6)) {
+    fail.push(`a boss on the field reads ${D.bossFresh.toFixed(2)} - the score does not know `
+      + 'it is there');
+  }
+  if (!(D.bossNearlyDead > D.bossFresh + 0.1)) {
+    fail.push(`a boss at 5% reads ${D.bossNearlyDead.toFixed(2)} against ${D.bossFresh.toFixed(2)} `
+      + 'at full - the end of a boss is the part that decides the run');
+  }
+  if (D.death !== undefined && !(D.death >= 0.99)) {
+    fail.push(`Death itself on the field reads ${D.death.toFixed(2)}`);
+  }
+  /* The sum-versus-max distinction, stated as a rule: nothing may push the
+     calm case up just by adding terms, and the dying case must not be diluted
+     by the field being empty. */
+  if (D.calm >= D.dying) fail.push('a dying survivor is not more dangerous than a calm one');
+  if (D.target !== 1) fail.push('setIntensity did not record the target it was given');
+  if (D.easedNow >= 0.5) {
+    fail.push(`intensity jumped to ${D.easedNow.toFixed(2)} the instant it was set - it is `
+      + 'meant to ease, or a crowd count that swings between waves reads as flutter');
+  }
+
   await browser.close();
   if (fail.length) {
     console.error('FAIL');
@@ -241,6 +327,9 @@ const PLACED = 2.5;
   }
   console.log(`ok: sound is placed in the field (${p.left}x left, `
     + `${(1 / p.right).toFixed(2)}x right, ${p.centre} centred, ${p.announce} announcing), `
-    + 'muting stops the score rather than hiding it, a stopped clock takes no '
+    + `the score reads the run rather than the field (calm ${D.calm.toFixed(2)}, a dying `
+    + `survivor on an empty field ${D.dying.toFixed(2)}, a fresh boss `
+    + `${D.bossFresh.toFixed(2)}, one at 5% ${D.bossNearlyDead.toFixed(2)}) and eases `
+    + 'toward it, muting stops the score rather than hiding it, a stopped clock takes no '
     + 'bookings, a three-second stall costs no notes, and a hidden page goes quiet');
 })();

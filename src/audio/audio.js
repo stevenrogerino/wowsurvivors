@@ -319,12 +319,26 @@
     drone.connect(droneFilter); droneFilter.connect(droneGain); droneGain.connect(bed);
     drone.start();
 
-    const state = { key, bed, drone, step: 0, nextTime: ctx.currentTime + 0.1, timer: null, intensity: 0 };
+    const state = { key, bed, drone, step: 0, nextTime: ctx.currentTime + 0.1, timer: null,
+      intensity: 0, want: 0 };
 
     state.timer = setInterval(() => {
       // A stopped clock schedules nothing: while the context is suspended the
       // pump would otherwise pile a second of the score onto a single instant.
       if (!live()) return;
+      /* Ease toward the danger the game reports rather than snapping to it.
+       *
+       * The driver is sampled every frame off a crowd count that swings by
+       * dozens between one wave and the next, and a score that tracked it
+       * exactly would flutter. Danger also arrives faster than it leaves - a
+       * boss walks on in a moment and the room takes a while to settle after
+       * it dies - so the climb is twice the fall. */
+      {
+        const dt = 0.25;
+        const gap = state.want - state.intensity;
+        const rate = gap > 0 ? 0.9 : 0.45;
+        state.intensity = WS.clamp(state.intensity + WS.clamp(gap, -rate * dt, rate * dt), 0, 1);
+      }
       const beat = score.tempo / 2;
       /* Never try to make up lost time.
        *
@@ -358,6 +372,25 @@
           osc.connect(g); g.connect(bed);
           osc.start(t0); osc.stop(t0 + beat * 1.7);
         }
+        /* A pulse under the bed once things are actually bad. Intensity used
+           to change three things - whether the arpeggio played on odd steps,
+           its gain by a twentieth, and one interval in the chord - which is
+           not enough to hear across a room. This is the one that is felt
+           rather than heard, and it only exists above the halfway mark, so
+           its arrival is itself the signal. */
+        if (state.intensity > 0.5 && s % 2 === 0) {
+          const osc = ctx.createOscillator();
+          const g = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(semitone(score.root / 2, 0), t0);
+          osc.frequency.exponentialRampToValueAtTime(semitone(score.root / 2, -5), t0 + beat);
+          const peak = 0.05 + 0.10 * (state.intensity - 0.5) * 2;
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.exponentialRampToValueAtTime(peak, t0 + 0.03);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + beat * 0.9);
+          osc.connect(g); g.connect(bed);
+          osc.start(t0); osc.stop(t0 + beat);
+        }
         // Chord bed every four steps.
         if (s % 4 === 0) {
           for (const iv of [0, 7, state.intensity > 0.6 ? 10 : 12]) {
@@ -380,10 +413,17 @@
     this._music = state;
   };
 
-  /** 0..1 - drives arpeggio density and chord colour as danger climbs. */
+  /** 0..1 - how bad it is out there, from Game.danger.
+   *
+   *  Sets a TARGET; the pump eases toward it. Writing straight to intensity
+   *  meant the score tracked a crowd count that swings by dozens between
+   *  waves, which reads as flutter rather than as tension. */
   Audio.setIntensity = function (v) {
-    if (this._music) this._music.intensity = WS.clamp(v, 0, 1);
+    if (this._music) this._music.want = WS.clamp(v, 0, 1);
   };
+
+  /** What the score is actually playing at, after easing. For measurement. */
+  Audio.intensity = function () { return this._music ? this._music.intensity : 0; };
 
   Audio.stopMusic = function () {
     const m = this._music;

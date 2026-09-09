@@ -276,6 +276,41 @@
     this.announce('True Endless', 'Nothing is coming to save you.', 3.0);
   };
 
+  /* The last second and a half.
+   *
+   * Running out of health used to be instantaneous: the survivor stopped being
+   * drawn and a results panel slid over the top of the field they died on. A
+   * run is half an hour of accumulated build and it ended like a dropped
+   * connection - no moment, nothing to watch, no beat to feel it in.
+   *
+   * So death is a STATE now. The simulation stops dead - which is right, and
+   * not a shortcut: everything that was about to kill you is frozen mid-stride
+   * where it was, so the last frame is the picture of what actually got you -
+   * while the survivor goes to a knee and over, their light goes out, and only
+   * then does the panel arrive.
+   */
+  Game.beginDeath = function () {
+    if (this.state === 'dying') return;
+    this.state = 'dying';
+    this.deathTimer = WS.Config.deathBeat;
+    this.running = false;
+    WS.FX.shake(9, 0.5);
+    /* The ember leaving. Everything the survivor was carrying goes back out
+       into the dark, which is the one image the whole game is about. */
+    if (this.player) WS.FX.burst(this.player.x, this.player.y, 18, '#f5c56b', 90, 1.4, 3.5);
+    WS.Audio.play('death');
+    WS.Audio.setIntensity(0);
+    // Bank it now. Whatever happens in the next second and a half, the run
+    // has already earned what it earned.
+    WS.Save.flush();
+  };
+
+  /** 0..1 through the death, for whatever wants to fade with it. */
+  Game.deathProgress = function () {
+    if (this.state !== 'dying') return 0;
+    return WS.clamp(1 - this.deathTimer / WS.max(0.01, WS.Config.deathBeat), 0, 1);
+  };
+
   Game.endRun = function (reason) {
     if (!this.running && this.state === 'over') return;
     this.running = false;
@@ -360,9 +395,47 @@
       return;
     }
 
-    // The score tightens as the field fills and the clock runs down.
-    WS.Audio.setIntensity(WS.min(1,
-      WS.Enemy.count() / 90 * 0.6 + WS.min(1, run.time / 1500) * 0.4));
+    WS.Audio.setIntensity(this.danger());
+  };
+
+  /* How bad is it, right now, 0 to 1.
+   *
+   * This drove the score, and it was one expression: crowd size and elapsed
+   * time, added together. Which meant the music did not know a boss had walked
+   * onto the field, did not know the survivor was two hits from dead, and rose
+   * steadily whether or not anything was happening - the one thing a score
+   * must never do is be the same at the worst moment of a run as at the
+   * calmest, and at minute twenty-five with a full field it was pinned at 1
+   * either way.
+   *
+   * So it is the MAXIMUM of named dangers rather than a sum. Danger does not
+   * average: a survivor at nine health with an empty field is not in a calm
+   * moment, and adding a small crowd term to it would say otherwise. Each term
+   * below is one sentence about the run, and the loudest one wins.
+   */
+  Game.danger = function () {
+    const run = this.run, p = this.player;
+    if (!run || !p) return 0;
+    const cfg = WS.Config;
+
+    // The field, filling.
+    let d = WS.min(1, WS.Enemy.count() / 130) * 0.7;
+    // The night, wearing on. A floor, not a ceiling - late is tense even empty.
+    d = WS.max(d, WS.min(1, run.time / cfg.deathTime) * 0.5);
+    // A boss, and how far into it you are: it tightens as the boss weakens,
+    // because the end of a boss is the part that decides the run.
+    const boss = WS.Enemy.leadBoss();
+    if (boss) {
+      const left = WS.clamp(boss.health / WS.max(1, boss.maxHealth), 0, 1);
+      d = WS.max(d, 0.7 + 0.25 * (1 - left));
+      // Death itself is not a boss fight, it is the end of one.
+      if (boss.template.family === 'death') d = 1;
+    }
+    // And the survivor, in trouble. Loudest of all, because it is the only one
+    // that is about the player rather than the field.
+    const hp = p.health / WS.max(1, p.maxHealth);
+    if (hp < 0.35) d = WS.max(d, 0.72 + 0.28 * (1 - hp / 0.35));
+    return WS.clamp(d, 0, 1);
   };
 
   /** Fixed-step update with a catch-up cap, so one frame hitch never turns
@@ -412,6 +485,15 @@
     for (let i = this.toasts.length - 1; i >= 0; i--) {
       this.toasts[i].life -= frameDt;
       if (this.toasts[i].life <= 0) this.toasts.splice(i, 1);
+    }
+
+    /* Dying runs on real time with the simulation stopped: the particles from
+       the blow that killed you keep settling, and nothing else moves. */
+    if (this.state === 'dying') {
+      WS.FX.update(frameDt);
+      this.deathTimer -= frameDt;
+      if (this.deathTimer <= 0) this.endRun('defeated');
+      return;
     }
 
     if (this.state !== 'playing' || !this.running || this.suspended) {

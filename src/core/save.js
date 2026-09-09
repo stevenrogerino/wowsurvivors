@@ -188,10 +188,16 @@
    * there is. Each is swept for values of the wrong kind, and the bad entries
    * are dropped rather than the whole map, so one junk row cannot cost a
    * player their bestiary. */
-  function scrubMap(map, kind) {
+  function scrubMap(map, kind, known) {
     if (!isPlain(map)) return {};
+    /* `known` is the table of ids this map is allowed to name. It is optional
+     * because save.js is loaded before the data files and a table that is not
+     * there yet must NOT be read as "nothing is valid" - that would quietly
+     * wipe every unlock a player has. Missing table, no whitelisting. */
+    const check = isPlain(known) && Object.keys(known).length ? known : null;
     for (const k of Object.keys(map)) {
       const v = map[k];
+      if (check && !Object.prototype.hasOwnProperty.call(check, k)) { delete map[k]; continue; }
       if (kind === 'count') {
         if (!Number.isFinite(v) || v < 0) delete map[k];
         else map[k] = WS.floor(v);
@@ -212,11 +218,24 @@
     s.bosses = scrubMap(s.bosses, 'count');
     s.families = scrubMap(s.families, 'count');
     s.bestTime = scrubMap(s.bestTime, 'count');
-    db.achievements = scrubMap(db.achievements, 'flag');
-    db.combos = scrubMap(db.combos, 'flag');
-    db.unlocks.characters = scrubMap(db.unlocks.characters, 'flag');
-    db.unlocks.maps = scrubMap(db.unlocks.maps, 'flag');
-    db.unlocks.hyper = scrubMap(db.unlocks.hyper, 'flag');
+    /* These five name things the game has to be able to find. An entry for an
+     * id that does not exist is at best a wrong number on the account screen
+     * and at worst a survivor nobody can select sitting in the unlock count -
+     * and now that a save can arrive from a file somebody typed into, it can
+     * name absolutely anything. The header of this file has claimed since it
+     * was written that "an unknown id is dropped by sanitize() later"; it did
+     * not, until the account round-trip check went looking.
+     *
+     * Renames are handled by migrate() before this runs, so an old backup has
+     * already had death_knight turned into graveblade by the time it gets
+     * here. The statistics maps are deliberately NOT whitelisted: a stale
+     * bestiary row costs nothing, and losing a kill count to a table that
+     * moved would be a worse bug than the one this fixes. */
+    db.achievements = scrubMap(db.achievements, 'flag', WS.Achievements);
+    db.combos = scrubMap(db.combos, 'flag', WS.Combos);
+    db.unlocks.characters = scrubMap(db.unlocks.characters, 'flag', WS.Characters);
+    db.unlocks.maps = scrubMap(db.unlocks.maps, 'flag', WS.Maps);
+    db.unlocks.hyper = scrubMap(db.unlocks.hyper, 'flag', WS.Maps);
 
     // Trainer ranks are the one place a bad number buys real power, so they
     // are clamped to what each upgrade actually offers rather than trusted.
@@ -294,6 +313,121 @@
      *  so there is no case for being clever about it. Write often, write on
      *  the way out, and never make a player wonder whether their run counted. */
     flush() { this.save(); },
+
+    /* ------------------------------------------------------- portability -- */
+    /* An account lives in one browser's localStorage on one machine, and that
+     * is one cleared cache, one reinstall or one new laptop away from thirty
+     * hours of unlocks being gone with nothing anybody can do about it. There
+     * has to be a way to get it OUT.
+     *
+     * Two shapes of the same thing. The FILE is plain JSON, because a backup
+     * you cannot read is a backup you cannot trust or repair, and a player
+     * six months from now with a broken save should be able to open it in a
+     * text editor. The CODE is that JSON base64'd onto one line, because the
+     * way people actually move a save is pasting it into a message to
+     * themselves, and JSON does not survive a chat client's line wrapping.
+     *
+     * Both carry a checksum. Truncation is the failure mode that matters -
+     * a code copied from a scrolled text box, a file cut short - and without
+     * one, a half-account imports as an account and the player loses the rest
+     * without ever being told.
+     */
+    EXPORT_VERSION: 1,
+
+    /** A cheap, stable digest. FNV-1a: not a security measure, and not
+     *  pretending to be - its whole job is to notice a paste that lost its
+     *  tail. */
+    digest(text) {
+      let h = 0x811c9dc5;
+      for (let i = 0; i < text.length; i++) {
+        h ^= text.charCodeAt(i) & 0xff;
+        h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+        h ^= (text.charCodeAt(i) >> 8) & 0xff;
+        h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+      }
+      return ('0000000' + h.toString(16)).slice(-8);
+    },
+
+    /** What is in an account, in words, so nobody overwrites one blind. */
+    describe(db) {
+      const u = (db && db.unlocks) || {};
+      const st = (db && db.statistics) || {};
+      const count = (m) => (isPlain(m) ? Object.keys(m).filter((k) => m[k]).length : 0);
+      return {
+        gold: (db && db.gold) || 0,
+        characters: count(u.characters),
+        maps: count(u.maps),
+        runs: st.totalRuns || 0,
+        victories: st.totalVictories || 0,
+        achievements: count(db && db.achievements),
+      };
+    },
+
+    /** The account as a portable payload. */
+    export() {
+      const body = JSON.stringify(this.db);
+      const wrapped = JSON.stringify({
+        format: 'emberwatch.save',
+        version: this.EXPORT_VERSION,
+        exported: new Date().toISOString(),
+        sum: this.digest(body),
+        save: this.db,
+      }, null, 2);
+      let code = '';
+      try {
+        // btoa is bytes, not characters; a renamed weapon with an accent in it
+        // would throw without this step.
+        code = 'EMBERWATCH1:' + btoa(unescape(encodeURIComponent(wrapped)));
+      } catch (e) { code = ''; }
+      return { json: wrapped, code, summary: this.describe(this.db) };
+    },
+
+    /** Reads a code or a file's JSON and hands back what it would import,
+     *  WITHOUT importing it. Nothing is written until the caller says so. */
+    parseImport(text) {
+      let raw = String(text || '').trim();
+      if (!raw) return { ok: false, error: 'There is nothing to import.' };
+      if (/^EMBERWATCH\d*:/i.test(raw)) {
+        try {
+          raw = decodeURIComponent(escape(atob(raw.replace(/^EMBERWATCH\d*:/i, '').replace(/\s+/g, ''))));
+        } catch (e) {
+          return { ok: false, error: 'That code is damaged - it looks like part of it '
+            + 'is missing. Copy the whole thing and try again.' };
+        }
+      }
+      let outer;
+      try { outer = JSON.parse(raw); } catch (e) {
+        return { ok: false, error: 'That is not an Ember Watch save.' };
+      }
+      if (!isPlain(outer)) return { ok: false, error: 'That is not an Ember Watch save.' };
+      // A bare account (someone pasted the inner save, or hand-edited a file
+      // down to it) is still an account. Take it, just without the checksum.
+      const inner = isPlain(outer.save) ? outer.save : outer;
+      let warn = null;
+      if (outer.sum) {
+        if (this.digest(JSON.stringify(inner)) !== outer.sum) {
+          return { ok: false, error: 'That save did not survive the trip - its checksum '
+            + 'does not match. Export it again and copy the whole thing.' };
+        }
+      } else if (!isPlain(outer.save)) {
+        warn = 'No checksum on this one, so it cannot be verified - it will still be '
+          + 'repaired and loaded.';
+      }
+      /* Through the SAME path a stored save takes, so an imported account gets
+         every migration and every repair that check-robust's sixteen malformed
+         saves proved out. An import is exactly as untrusted as localStorage. */
+      const db = sanitize(merge(migrate(clone(inner)), defaults()));
+      db.schema = SCHEMA;
+      return { ok: true, db, warn, summary: this.describe(db),
+        replacing: this.describe(this.db) };
+    },
+
+    /** Commits a parsed import. */
+    adopt(db) {
+      this.db = db;
+      this.save();
+      return this.db;
+    },
 
     reset() {
       this.db = defaults();
