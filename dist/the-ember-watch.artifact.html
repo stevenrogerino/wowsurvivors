@@ -12890,40 +12890,177 @@ window.WS = window.WS || {};
   };
 
   /* ------------------------------------------------------------ scenery -- */
+  /* THE FIELD IS BAKED WHOLE, AND IT IS NOT A TILE.
+   *
+   * It used to be a 256px canvas of mottle repeated across the world, which is
+   * the cheap way and looks it, for two separate reasons. The obvious one is
+   * that the same two hundred blobs appear fifteen times on a 1280x720 field
+   * and the eye finds that immediately. The worse one is that the blobs were
+   * drawn with plain ellipses at random positions inside the tile and NOT
+   * wrapped, so every blob near an edge was sliced off flat - which put a
+   * straight, hard cut down every seam. That is what read as a grid: not the
+   * repetition, the row of clipped edges every 256 pixels.
+   *
+   * One canvas the size of the world fixes both at once and costs less per
+   * frame than the pattern did - a drawImage instead of a patterned fillRect -
+   * because the world does not scroll and never will. It also allows something
+   * a tile cannot express at all: structure LARGER than the tile. Terrain
+   * reads as terrain because it varies at a scale bigger than its own grain,
+   * and a 256px tile could not carry a patch of ground two hundred pixels
+   * across without repeating it five times.
+   *
+   * Three octaves, coarse to fine, all soft-edged. Seeded from the map, so a
+   * battlefield looks like itself every time you play it.
+   */
+  const GROUND_SEED = {};
+  let groundCanvas = null;
+
+  /* Radial, not a filled ellipse. A hard-edged ellipse at 8% alpha still has
+   * an edge, and a few hundred of them read as scattered confetti rather than
+   * as ground.
+   *
+   * `core` is how much of the blob is flat before it starts falling off, and
+   * it is the difference between texture and haze. The first version of this
+   * used a soft falloff for every octave, and fifteen hundred soft blobs
+   * average into a smooth wash - the grid was gone and so was the ground.
+   * Grain needs a hard middle; terrain does not. */
+  function blob(g, x, y, r, colour, alpha, squash, core) {
+    g.save();
+    g.translate(x, y);
+    g.scale(1, squash === undefined ? 0.72 : squash);
+    /* Built AFTER the transform, centred on the origin.
+     *
+     * A canvas gradient is baked in the user space it is created in. Built at
+     * (x, y) and then drawn inside a translate to (x, y), every gradient ends
+     * up centred a full blob's distance away from the circle it is filling -
+     * so the circle gets whatever the gradient has out there, which past the
+     * last stop is nothing at all. Every blob on every layer painted
+     * transparent, the field came out as a flat fill, and no amount of turning
+     * the alpha up moved it a hundredth of a luminance unit. That last part is
+     * what gave it away: a number that will not move is not a weak effect, it
+     * is an effect that is not running. */
+    const grd = g.createRadialGradient(0, 0, 0, 0, 0, r);
+    grd.addColorStop(0, `rgba(${colour},${alpha.toFixed(3)})`);
+    grd.addColorStop(core === undefined ? 0.65 : core,
+      `rgba(${colour},${(alpha * (core === undefined ? 0.55 : 0.9)).toFixed(3)})`);
+    grd.addColorStop(1, `rgba(${colour},0)`);
+    g.fillStyle = grd;
+    g.beginPath(); g.arc(0, 0, r, 0, WS.TAU); g.fill();
+    g.restore();
+  }
+
   R.buildScenery = function (map) {
-    // Ground: a 256px tile of mottled earth in the zone's palette, drawn once
-    // and repeated, so the field never costs more than one fillRect a frame.
-    const tile = document.createElement('canvas');
-    tile.width = tile.height = 256;
-    const g = tile.getContext('2d');
-    g.fillStyle = WS.hex(map.ground);
-    g.fillRect(0, 0, 256, 256);
-    for (let i = 0; i < 220; i++) {
-      const x = WS.random() * 256, y = WS.random() * 256;
-      const r = 6 + WS.random() * 26;
-      g.globalAlpha = 0.05 + WS.random() * 0.10;
-      g.fillStyle = WS.hex(WS.random() < 0.5 ? map.groundAlt : WS.shade(map.ground, 0.6));
-      g.beginPath(); g.ellipse(x, y, r, r * 0.62, WS.random() * WS.PI, 0, WS.TAU); g.fill();
+    const rgb = (c) => `${WS.floor(c[0] * 255)},${WS.floor(c[1] * 255)},${WS.floor(c[2] * 255)}`;
+    const base = map.ground, alt = map.groundAlt || map.ground;
+    /* Wider than the palette gives, deliberately.
+     *
+     * `ground` and `groundAlt` sit within about ten luminance units of each
+     * other on every map, so a texture built only out of those two is invisible
+     * whatever you do with the alpha - measured, local contrast under two. The
+     * range has to be opened up, and it is opened DOWNWARD much further than
+     * upward: the loot and the survivors are both measured for how far they
+     * stand off this ground, so brightening it costs visibility where darkening
+     * it does not. */
+    const dark = WS.shade(base, 0.40);
+    const light = WS.mix(WS.mix(base, alt, 1), [1, 1, 1], 0.12);
+
+    /* Seeded per map and put back afterwards. A battlefield that reshuffled
+       its ground every run would make every measurement of it a die roll, and
+       the maps would stop having faces. */
+    const keep = WS.getSeed();
+    if (!GROUND_SEED[map.name]) GROUND_SEED[map.name] = 0;
+    let h = 2166136261;
+    for (let i = 0; i < map.name.length; i++) {
+      h = (h ^ map.name.charCodeAt(i)) >>> 0;
+      h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
     }
-    g.globalAlpha = 1;
-    this.ground = this.ctx.createPattern(tile, 'repeat');
+    WS.setSeed(h);
+
+    if (!groundCanvas) {
+      groundCanvas = document.createElement('canvas');
+      groundCanvas.width = W; groundCanvas.height = H;
+    }
+    const g = groundCanvas.getContext('2d');
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalCompositeOperation = 'source-over';
+    g.fillStyle = WS.hex(base);
+    g.fillRect(0, 0, W, H);
+
+    // 1. Terrain. Bigger than any tile, which is the whole point.
+    for (let i = 0; i < 16; i++) {
+      blob(g, WS.randRange(-120, W + 120), WS.randRange(-90, H + 90),
+        WS.randRange(190, 430),
+        rgb(WS.random() < 0.5 ? light : dark),
+        WS.randRange(0.05, 0.13), WS.randRange(0.5, 0.95));
+    }
+    // 2. Patches.
+    for (let i = 0; i < 130; i++) {
+      blob(g, WS.randRange(-60, W + 60), WS.randRange(-50, H + 50),
+        WS.randRange(45, 135),
+        rgb(WS.random() < 0.5 ? alt : dark),
+        WS.randRange(0.05, 0.13), WS.randRange(0.45, 0.9));
+    }
+    // 3. Grain, everywhere, so no square inch of it is smooth. Hard-cored,
+    //    which is what makes it read as ground rather than as haze.
+    for (let i = 0; i < 2400; i++) {
+      blob(g, WS.random() * W, WS.random() * H, WS.randRange(6, 20),
+        rgb(WS.random() < 0.55 ? alt : dark),
+        WS.randRange(0.10, 0.26), WS.randRange(0.4, 1), 0.86);
+    }
+    // 4. Speckle: stones, litter, whatever this ground is made of, at the
+    //    scale you only notice once you are standing on it.
+    for (let i = 0; i < 2000; i++) {
+      blob(g, WS.random() * W, WS.random() * H, WS.randRange(3, 8),
+        rgb(WS.random() < 0.5 ? light : WS.shade(base, 0.3)),
+        WS.randRange(0.16, 0.38), WS.randRange(0.6, 1), 0.9);
+    }
+    /* 5. Grit. Two or three pixels across, which is smaller than anything the
+     *    player will consciously see and is exactly why it is here: without a
+     *    per-pixel octave the ground is smooth between the speckles, and smooth
+     *    is what makes a field look like a fill rather than a place. */
+    for (let i = 0; i < 4200; i++) {
+      blob(g, WS.random() * W, WS.random() * H, WS.randRange(1.2, 3.2),
+        rgb(WS.random() < 0.5 ? light : dark),
+        WS.randRange(0.16, 0.38), 1, 0.92);
+    }
+    // 6. A little more light at the top than the bottom, so the field has a
+    //    direction to it rather than being one even wash.
+    const lift = g.createLinearGradient(0, 0, 0, H);
+    lift.addColorStop(0, 'rgba(255,255,255,.035)');
+    lift.addColorStop(0.55, 'rgba(255,255,255,0)');
+    lift.addColorStop(1, 'rgba(0,0,0,.10)');
+    g.fillStyle = lift;
+    g.fillRect(0, 0, W, H);
+
+    this.ground = groundCanvas;
     this.groundTint = map.ground;
 
-    // Props: scattered decoration, drawn dark so they never fight the horde.
+    /* Props CLUMP. Scattered uniformly they describe a random number
+       generator; gathered into thickets with clear ground between them they
+       describe somewhere, and they give the field landmarks to steer by. */
     this.props.length = 0;
     if (map.props && map.props.length) {
-      for (let i = 0; i < 46; i++) {
+      const groves = [];
+      for (let i = 0; i < 10; i++) {
+        groves.push({ x: WS.randRange(-40, W + 40), y: WS.randRange(-30, H + 30),
+          r: WS.randRange(90, 210) });
+      }
+      for (let i = 0; i < 52; i++) {
         const kind = map.props[WS.randInt(0, map.props.length - 1)];
-        this.props.push({
-          kind,
-          x: WS.randRange(-60, W + 60),
-          y: WS.randRange(-40, H + 40),
-          size: WS.randRange(46, 96),
-          alpha: WS.randRange(0.35, 0.7),
-        });
+        let x, y;
+        if (i % 5 === 0) {                   // a few strays, or it reads as clumps of seven
+          x = WS.randRange(-60, W + 60); y = WS.randRange(-40, H + 40);
+        } else {
+          const gr = groves[WS.randInt(0, groves.length - 1)];
+          const a = WS.random() * WS.TAU, d = WS.random() * gr.r;
+          x = gr.x + WS.cos(a) * d; y = gr.y + WS.sin(a) * d * 0.7;
+        }
+        this.props.push({ kind, x, y,
+          size: WS.randRange(46, 96), alpha: WS.randRange(0.35, 0.7) });
       }
       this.props.sort((a, b) => a.y - b.y);
     }
+    WS.setSeed(keep);
   };
 
   /* --------------------------------------------------------------- draw -- */
@@ -12975,8 +13112,8 @@ window.WS = window.WS || {};
 
     /* ---- ground ---------------------------------------------------------- */
     if (this.ground) {
-      ctx.fillStyle = this.ground;
-      ctx.fillRect(0, 0, W, H);
+      // One image the size of the world. No pattern, no tile, no seam.
+      ctx.drawImage(this.ground, 0, 0, W, H);
     } else {
       ctx.fillStyle = '#0b0d12';
       ctx.fillRect(0, 0, W, H);

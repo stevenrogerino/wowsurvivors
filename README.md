@@ -239,6 +239,10 @@ tools/         the single-file bundler, and the guard rails:
                               file, a truncated paste is refused rather than
                               half-imported, and eleven kinds of broken or
                               hostile save are refused or repaired
+               check-ground.js  no battlefield may be a tile: the field is
+                              compared against itself at every plausible
+                              period, every column checked for a seam, and the
+                              ground still has to have grain
 ```
 
 Every guard carries the bug it was written for in its header, and every one of
