@@ -33,12 +33,19 @@
  * survivor who stands still, and once against one who sprints sideways the
  * instant the charge commits. The second run is the one that catches homing.
  *
+ * And every creature and elite that LUNGES, which is the same move at a
+ * smaller size making the same promise. There are far more of them on the
+ * field than there are bosses, so if either half is going to be caught
+ * cheating, it is this one.
+ *
  * NEGATIVE TESTS, both confirmed against the code as it was. Letting the
  * charge home again fails at "curved 127px out of its own lane". Freezing the
  * lane's aim at the start of the windup fails at "the lane locked 15.7
  * degrees off the survivor" - and, tellingly, ALSO at "curved 122.9px out of
  * its own lane" for a survivor who never moved at all, because a lane aimed
- * a beat early is a lane the boss was never going to run down.
+ * a beat early is a lane the boss was never going to run down. The homing
+ * sabotage catches the small ones too: "wolf curved 62.4px out of its own
+ * lane", "raptor covered 156.3 of the 230 it drew".
  *
  *   npm i playwright && npx playwright install chromium
  *   node tools/check-telegraph.js
@@ -68,9 +75,16 @@ const AIM = 6;            // degrees the locked lane may miss the survivor by
 
     /* Arena bosses are excluded because they never reach this code path:
        arena.js drives Aethelgard's whole fight and Enemy.bossAttack is gated
-       on !template.arena, so its declared charge pattern is dead data. */
+       on !template.arena, so its declared charge pattern is dead data.
+
+       Creatures and elites that LUNGE are in the same list, because a lunge
+       is the same move at a smaller size and makes the same promise. There
+       are far more of them on the field than there are bosses, so if either
+       one is going to be caught homing at a player, it will be this half. */
     const chargers = Object.keys(WS.Bosses).filter((id) => !WS.Bosses[id].arena
       && (WS.Bosses[id].patterns || []).some((p) => p.type === 'charge'));
+    const all = Object.assign({}, WS.Enemies, WS.Elites);
+    const lungers = Object.keys(all).filter((id) => all[id].lunge);
 
     /* dodge: how the survivor behaves once the charge has committed.
      *   'stand' - stays put, so the lane and the target agree
@@ -86,11 +100,18 @@ const AIM = 6;            // degrees the locked lane may miss the survivor by
 
       const boss = WS.Enemy.spawn(id, 300, 360, 1);
       boss.maxHealth = 1e12; boss.health = 1e12;
+      p.weapons.length = 0;                 // nothing may kill the subject
       p.x = 900; p.y = 360;
 
-      // Straight to the charge, through the real attack path.
-      boss.patternIndex = boss.template.patterns.findIndex((q) => q.type === 'charge');
-      boss.attackTimer = 0.001;
+      // Straight to the move, through the real path each one actually uses.
+      if (boss.template.lunge) {
+        boss.lungeTimer = 0;
+        boss.speed = 0;                     // so it cannot simply walk into range
+        p.x = 300 + boss.template.lunge.range * 0.8;
+      } else {
+        boss.patternIndex = boss.template.patterns.findIndex((q) => q.type === 'charge');
+        boss.attackTimer = 0.001;
+      }
 
       const step = WS.CONST.TICK_RATE;
       const K = WS.Input.keys;
@@ -98,6 +119,7 @@ const AIM = 6;            // degrees the locked lane may miss the survivor by
       let maxOff = 0;
 
       while (ticks++ < 400) {
+        p.weapons.length = 0;
         if (WS.Game.state === 'levelup' || WS.Game.state === 'blessing') {
           const c = document.querySelectorAll('#overlay:not(.hidden) .card');
           if (c[0]) { c[0].click(); continue; }
@@ -136,7 +158,7 @@ const AIM = 6;            // degrees the locked lane may miss the survivor by
         length: lane.length, laneGaps, aimErr: +(Math.acos(dot) * 180 / Math.PI).toFixed(1) };
     };
 
-    for (const id of chargers) {
+    for (const id of chargers.concat(lungers)) {
       out.push(attempt(id, 'stand'));
       out.push(attempt(id, 'bolt'));
     }
@@ -168,13 +190,14 @@ const AIM = 6;            // degrees the locked lane may miss the survivor by
   await browser.close();
   if (fail.length) {
     console.error('FAIL');
-    for (const f of fail.slice(0, 12)) console.error('  - ' + f);
-    if (fail.length > 12) console.error(`  ... and ${fail.length - 12} more`);
+    for (const f of fail.slice(0, 26)) console.error('  - ' + f);
+    if (fail.length > 26) console.error(`  ... and ${fail.length - 12} more`);
     process.exit(1);
   }
   const worstOff = rows.reduce((a, r) => (r.off > a.off ? r : a));
   const worstAim = rows.reduce((a, r) => (r.aimErr > a.aimErr ? r : a));
-  console.log(`ok: ${rows.length} charges from ${rows.length / 2} bosses, each against a `
+  console.log(`ok: ${rows.length} telegraphed rushes from ${rows.length / 2} bosses, elites `
+    + 'and creatures, each against a '
     + 'survivor who stands and one who bolts; the worst stray from the marked lane is '
     + `${worstOff.off}px (${worstOff.id}), the worst aim at lock is ${worstAim.aimErr} `
     + `degrees (${worstAim.id}), and every charge covered the ground it drew`);

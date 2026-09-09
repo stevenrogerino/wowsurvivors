@@ -1,7 +1,21 @@
 /* Rank-and-file enemies. Base stats are minute-zero Thornhollow; the wave manager
  * scales health/damage/xp with time and map difficulty.
  *   family - statistics + achievements     ranged - stops and lobs bolts
- *   art    - procedural sprite archetype   tint   - body palette key colour */
+ *   art    - procedural sprite archetype   tint   - body palette key colour
+ *
+ * And the behaviours, which are what stop a field of two hundred creatures
+ * from being one creature two hundred times. Each is optional data, so a new
+ * one is a line on a template rather than a branch in the game:
+ *
+ *   lunge  {range, cooldown, windup, time}   the boss charge at small size:
+ *          plants, marks a lane, then runs down exactly that lane
+ *   orbit  {range, spin}                     holds a ring and walks it, so
+ *          circling away from the horde stops being a free answer
+ *   trail  {interval, radius, life, damagePct, tint}   leaks ground behind it
+ *   burst  {radius, damagePct, fuse, tint}   goes off where it died, which
+ *          makes WHERE you kill something matter and not only how fast
+ *   split  {into, count, scale}              comes apart into smaller things
+ */
 'use strict';
 (function (WS) {
 
@@ -18,6 +32,7 @@
     wolf: {
       name: 'Longtooth Wolf', family: 'beast', art: 'wolf', tint: [0.62, 0.62, 0.68],
       health: 22, speed: 92, damage: 8, xp: 4, radius: 14,
+      lunge: { range: 190, cooldown: 4.5 },
     },
     gilkin: {
       name: 'Gilkin Forager', family: 'gilkin', art: 'gilkin', tint: [0.45, 0.90, 0.60],
@@ -45,10 +60,12 @@
     harvest_reaper: {
       name: 'Harvest Reaper', family: 'mechanical', art: 'golem', tint: [0.80, 0.70, 0.40],
       health: 95, speed: 46, damage: 17, xp: 10, radius: 20,
+      burst: { radius: 92, damagePct: 1.1, tint: [1.00, 0.62, 0.25] },
     },
     fleshripper: {
       name: 'Young Fleshripper', family: 'beast', art: 'vulture', tint: [0.85, 0.60, 0.40],
       health: 34, speed: 100, damage: 10, xp: 6, radius: 14,
+      orbit: { range: 150, spin: 1.0 },
     },
     coyote: {
       name: 'Coyote Packrunner', family: 'beast', art: 'wolf', tint: [0.82, 0.68, 0.42],
@@ -79,6 +96,8 @@
     spider: {
       name: 'Venomweb Creeper', family: 'beast', art: 'spider', tint: [0.42, 0.32, 0.55],
       health: 38, speed: 90, damage: 11, xp: 6, radius: 14,
+      trail: { interval: 1.5, radius: 34, life: 4.5, damagePct: 0.35,
+        tint: [0.62, 0.35, 0.85] },
     },
     /* --------------------------------------------------- Ochre Plains ---- */
     longstrider: {
@@ -88,6 +107,7 @@
     raptor: {
       name: 'Sunhide Raptor', family: 'beast', art: 'raptor', tint: [0.90, 0.60, 0.25],
       health: 60, speed: 108, damage: 15, xp: 9, radius: 16,
+      lunge: { range: 230, cooldown: 3.6 },
     },
     bristlekin: {
       name: 'Thornhide Battleguard', family: 'bristlekin', art: 'bristlekin', tint: [0.85, 0.55, 0.40],
@@ -97,6 +117,7 @@
       name: 'Shrikewing Windcaller', family: 'shrikewing', art: 'shrikewing', tint: [0.65, 0.85, 1.00],
       health: 48, speed: 75, damage: 12, xp: 10, radius: 15, caster: true,
       ranged: { range: 290, cooldown: 2.6, speed: 250, school: 'nature' },
+      orbit: { range: 250, spin: 0.85 },
     },
     karrash: {
       name: 'Karrash Outrunner', family: 'karrash', art: 'karrash', tint: [0.80, 0.60, 0.42],
@@ -123,10 +144,12 @@
     abomination: {
       name: 'Stitched Horror', family: 'undead', art: 'abomination', tint: [0.65, 0.80, 0.50],
       health: 220, speed: 40, damage: 26, xp: 18, radius: 24,
+      split: { into: 'ghoul', count: 3, scale: 0.75 },
     },
     geist: {
       name: 'Hungering Geist', family: 'undead', art: 'geist', tint: [0.70, 0.85, 0.95],
       health: 55, speed: 118, damage: 14, xp: 10, radius: 14,
+      burst: { radius: 74, damagePct: 0.9, fuse: 0.55, tint: [0.60, 0.90, 1.00] },
     },
   };
 
@@ -139,6 +162,7 @@
     kerchief_enforcer: {
       name: 'Kerchief Enforcer', family: 'kerchief', elite: true, art: 'brute',
       tint: [1.00, 0.45, 0.30], health: 480, speed: 72, damage: 26, xp: 44, radius: 28,
+      lunge: { range: 300, cooldown: 5.0, windup: 0.55, time: 0.45 },
     },
     bone_sentinel: {
       name: 'Bone Sentinel', family: 'undead', elite: true, art: 'skeleton',
@@ -147,6 +171,7 @@
     karrash_battlelord: {
       name: 'Karrash Battlelord', family: 'karrash', elite: true, art: 'karrash',
       tint: [1.00, 0.62, 0.20], health: 780, speed: 78, damage: 34, xp: 68, radius: 30,
+      lunge: { range: 340, cooldown: 4.4, windup: 0.55, time: 0.5 },
     },
     deathbound_vanguard: {
       name: 'Deathbound Vanguard', family: 'undead', elite: true, art: 'skeleton',

@@ -118,6 +118,12 @@ it under **How to play**, in the menu and behind Esc.
   is Victory and unlocks that map's Hyper Mode; at that moment **Death itself**
   walks out, and returns every minute after. Claim the win, fight on, or go
   True Endless.
+- The horde has more than one verb. Wolves and raptors **lunge** — they plant,
+  mark a lane, and run down exactly that lane; vultures and windcallers
+  **orbit**, holding a ring and walking it so that circling away stops being a
+  free answer; Venomweb Creepers **leave ground** behind them; Harvest Reapers
+  and geists **burst** where they died, which is what makes *where* you kill
+  something matter; and a Stitched Horror **comes apart** into three ghouls.
 - Elites drop chests (which can jackpot). Kills can drop coins, potions,
   goblin sappers, lodestones and bronze hourglasses; supply caches and a
   wandering egg merchant appear on the field over time.
@@ -199,6 +205,11 @@ tools/         the single-file bundler, and the guard rails:
                check-bench.js the tuning bench end to end: generated from the
                               live game, an edit reaches the running game, and
                               a save survives a reload
+               check-behaviour.js each creature behaviour measured against a
+                              plain chaser - a lunge must cover ground a
+                              chaser cannot, an orbiter must travel far while
+                              closing little, and no ground may hurt on the
+                              frame it appears
 ```
 
 Every guard carries the bug it was written for in its header, and every one of

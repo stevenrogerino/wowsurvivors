@@ -190,6 +190,7 @@ window.WS = window.WS || {};
     MAX_PROJECTILES: 460,
     MAX_GEMS: 260,
     MAX_PICKUPS: 48,
+    MAX_HAZARDS: 90,
     MAX_FLOATING_TEXT: 64,
     PLAYER_RADIUS: 18,
     COLORS: {

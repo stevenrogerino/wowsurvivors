@@ -35,6 +35,15 @@
     chargeRange: 460,
     chargeLaneTail: 0.15,   // the lane outlives the charge by this, so it lands visibly
 
+    /* Rank-and-file behaviours. A lunge is the boss charge in miniature and
+     * obeys the same promise: the lane it draws is where it goes. */
+    lungeWindup: 0.42,
+    lungeTime: 0.34,
+    hazardTick: 0.45,      // how often armed ground hits whoever is standing in it
+    trailFuse: 0.22,       // ground left behind is harmless for this long
+    burstFuse: 0.65,       // and a corpse gives you this long to get clear
+    burstLife: 0.30,
+
     baseCritChance: 0.05,
     baseCritDamage: 1.5,
 

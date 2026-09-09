@@ -26,6 +26,7 @@
     WS.Projectile.init();
     WS.XP.init();
     WS.Pickup.init();
+    WS.Hazard.init();
     WS.Familiar.init();
     this.selection.character = WS.Config.startCharacter;
     this.selection.map = WS.Config.startMap;
@@ -75,6 +76,7 @@
     WS.Projectile.clear();
     WS.XP.clear();
     WS.Pickup.clear();
+    WS.Hazard.clear();
     WS.Familiar.reset();
     this.timeScale = 1;
     this.toasts.length = 0;
@@ -142,6 +144,7 @@
     WS.Projectile.clear();
     WS.XP.clear();
     WS.Pickup.clear();
+    WS.Hazard.clear();
     WS.Familiar.reset();
     WS.Audio.playMusic('menu');
     WS.UI.openMenu();
@@ -346,6 +349,8 @@
     WS.XP.update(dt);
     if (!this.running || this.leveling) return;
     WS.Pickup.update(dt);
+    if (!this.running) return;
+    WS.Hazard.update(dt);
     if (!this.running) return;
     WS.FX.update(dt);
 

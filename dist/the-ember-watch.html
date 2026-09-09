@@ -1602,6 +1602,7 @@ window.WS = window.WS || {};
     MAX_PROJECTILES: 460,
     MAX_GEMS: 260,
     MAX_PICKUPS: 48,
+    MAX_HAZARDS: 90,
     MAX_FLOATING_TEXT: 64,
     PLAYER_RADIUS: 18,
     COLORS: {
@@ -1670,6 +1671,15 @@ window.WS = window.WS || {};
     chargeTime: 1.1,
     chargeRange: 460,
     chargeLaneTail: 0.15,   // the lane outlives the charge by this, so it lands visibly
+
+    /* Rank-and-file behaviours. A lunge is the boss charge in miniature and
+     * obeys the same promise: the lane it draws is where it goes. */
+    lungeWindup: 0.42,
+    lungeTime: 0.34,
+    hazardTick: 0.45,      // how often armed ground hits whoever is standing in it
+    trailFuse: 0.22,       // ground left behind is harmless for this long
+    burstFuse: 0.65,       // and a corpse gives you this long to get clear
+    burstLife: 0.30,
 
     baseCritChance: 0.05,
     baseCritDamage: 1.5,
@@ -2558,7 +2568,21 @@ window.WS = window.WS || {};
 /* Rank-and-file enemies. Base stats are minute-zero Thornhollow; the wave manager
  * scales health/damage/xp with time and map difficulty.
  *   family - statistics + achievements     ranged - stops and lobs bolts
- *   art    - procedural sprite archetype   tint   - body palette key colour */
+ *   art    - procedural sprite archetype   tint   - body palette key colour
+ *
+ * And the behaviours, which are what stop a field of two hundred creatures
+ * from being one creature two hundred times. Each is optional data, so a new
+ * one is a line on a template rather than a branch in the game:
+ *
+ *   lunge  {range, cooldown, windup, time}   the boss charge at small size:
+ *          plants, marks a lane, then runs down exactly that lane
+ *   orbit  {range, spin}                     holds a ring and walks it, so
+ *          circling away from the horde stops being a free answer
+ *   trail  {interval, radius, life, damagePct, tint}   leaks ground behind it
+ *   burst  {radius, damagePct, fuse, tint}   goes off where it died, which
+ *          makes WHERE you kill something matter and not only how fast
+ *   split  {into, count, scale}              comes apart into smaller things
+ */
 'use strict';
 (function (WS) {
 
@@ -2575,6 +2599,7 @@ window.WS = window.WS || {};
     wolf: {
       name: 'Longtooth Wolf', family: 'beast', art: 'wolf', tint: [0.62, 0.62, 0.68],
       health: 22, speed: 92, damage: 8, xp: 4, radius: 14,
+      lunge: { range: 190, cooldown: 4.5 },
     },
     gilkin: {
       name: 'Gilkin Forager', family: 'gilkin', art: 'gilkin', tint: [0.45, 0.90, 0.60],
@@ -2602,10 +2627,12 @@ window.WS = window.WS || {};
     harvest_reaper: {
       name: 'Harvest Reaper', family: 'mechanical', art: 'golem', tint: [0.80, 0.70, 0.40],
       health: 95, speed: 46, damage: 17, xp: 10, radius: 20,
+      burst: { radius: 92, damagePct: 1.1, tint: [1.00, 0.62, 0.25] },
     },
     fleshripper: {
       name: 'Young Fleshripper', family: 'beast', art: 'vulture', tint: [0.85, 0.60, 0.40],
       health: 34, speed: 100, damage: 10, xp: 6, radius: 14,
+      orbit: { range: 150, spin: 1.0 },
     },
     coyote: {
       name: 'Coyote Packrunner', family: 'beast', art: 'wolf', tint: [0.82, 0.68, 0.42],
@@ -2636,6 +2663,8 @@ window.WS = window.WS || {};
     spider: {
       name: 'Venomweb Creeper', family: 'beast', art: 'spider', tint: [0.42, 0.32, 0.55],
       health: 38, speed: 90, damage: 11, xp: 6, radius: 14,
+      trail: { interval: 1.5, radius: 34, life: 4.5, damagePct: 0.35,
+        tint: [0.62, 0.35, 0.85] },
     },
     /* --------------------------------------------------- Ochre Plains ---- */
     longstrider: {
@@ -2645,6 +2674,7 @@ window.WS = window.WS || {};
     raptor: {
       name: 'Sunhide Raptor', family: 'beast', art: 'raptor', tint: [0.90, 0.60, 0.25],
       health: 60, speed: 108, damage: 15, xp: 9, radius: 16,
+      lunge: { range: 230, cooldown: 3.6 },
     },
     bristlekin: {
       name: 'Thornhide Battleguard', family: 'bristlekin', art: 'bristlekin', tint: [0.85, 0.55, 0.40],
@@ -2654,6 +2684,7 @@ window.WS = window.WS || {};
       name: 'Shrikewing Windcaller', family: 'shrikewing', art: 'shrikewing', tint: [0.65, 0.85, 1.00],
       health: 48, speed: 75, damage: 12, xp: 10, radius: 15, caster: true,
       ranged: { range: 290, cooldown: 2.6, speed: 250, school: 'nature' },
+      orbit: { range: 250, spin: 0.85 },
     },
     karrash: {
       name: 'Karrash Outrunner', family: 'karrash', art: 'karrash', tint: [0.80, 0.60, 0.42],
@@ -2680,10 +2711,12 @@ window.WS = window.WS || {};
     abomination: {
       name: 'Stitched Horror', family: 'undead', art: 'abomination', tint: [0.65, 0.80, 0.50],
       health: 220, speed: 40, damage: 26, xp: 18, radius: 24,
+      split: { into: 'ghoul', count: 3, scale: 0.75 },
     },
     geist: {
       name: 'Hungering Geist', family: 'undead', art: 'geist', tint: [0.70, 0.85, 0.95],
       health: 55, speed: 118, damage: 14, xp: 10, radius: 14,
+      burst: { radius: 74, damagePct: 0.9, fuse: 0.55, tint: [0.60, 0.90, 1.00] },
     },
   };
 
@@ -2696,6 +2729,7 @@ window.WS = window.WS || {};
     kerchief_enforcer: {
       name: 'Kerchief Enforcer', family: 'kerchief', elite: true, art: 'brute',
       tint: [1.00, 0.45, 0.30], health: 480, speed: 72, damage: 26, xp: 44, radius: 28,
+      lunge: { range: 300, cooldown: 5.0, windup: 0.55, time: 0.45 },
     },
     bone_sentinel: {
       name: 'Bone Sentinel', family: 'undead', elite: true, art: 'skeleton',
@@ -2704,6 +2738,7 @@ window.WS = window.WS || {};
     karrash_battlelord: {
       name: 'Karrash Battlelord', family: 'karrash', elite: true, art: 'karrash',
       tint: [1.00, 0.62, 0.20], health: 780, speed: 78, damage: 34, xp: 68, radius: 30,
+      lunge: { range: 340, cooldown: 4.4, windup: 0.55, time: 0.5 },
     },
     deathbound_vanguard: {
       name: 'Deathbound Vanguard', family: 'undead', elite: true, art: 'skeleton',
@@ -8466,7 +8501,15 @@ window.WS = window.WS || {};
     e.spawnId = ++this.spawnCounter;
     e.patternIndex = 0;
     e.windup = 0;
+    e.windupMax = 0;
     e.chargeDir = null;
+    e.chargeLen = 0;         // the lane it drew...
+    e.chargeDur = 0;         // ...and how long it has to cover it
+    e.scale = scale;         // kept so anything it splits into inherits the curve
+    e.orbitDir = WS.random() < 0.5 ? -1 : 1;
+    e.lungeTimer = template.lunge ? WS.randRange(0.5, template.lunge.cooldown) : 0;
+    e.trailTimer = template.trail ? template.trail.interval : 0;
+    e.noSplit = false;
     e.telegraph = null;      // {kind, life, maxLife, ...} drawn by the renderer
     e.attackTimer = template.interval || 3.6;
     e.rangedTimer = template.ranged ? WS.randRange(0.4, template.ranged.cooldown) : null;
@@ -8564,6 +8607,42 @@ window.WS = window.WS || {};
         e.slowTimer -= dt;
         speed *= e.slowFactor;
       }
+      /* A creature's lunge: the boss charge at rank-and-file size. It only
+       * commits from inside its own range and never from on top of you, so it
+       * is always a gap you can be pushed out of rather than a hit you were
+       * already taking. */
+      if (t.lunge && !frozen && e.windup <= 0 && e.chargeTimer <= 0) {
+        e.lungeTimer -= dt;
+        /* Only the overlap is excluded, not "anything close". Gating this on
+         * a comfortable gap meant a fast creature that reached the survivor
+         * before its cooldown came up could never lunge again, because it was
+         * permanently too close - the behaviour quietly switched itself off
+         * on exactly the creatures built to use it. Lunging from point blank
+         * carries it THROUGH and out the far side, which is the better move
+         * anyway: it has to turn around and come back. */
+        if (e.lungeTimer <= 0 && distance < t.lunge.range * 1.05
+            && distance > e.radius + player.radius) {
+          e.lungeTimer = t.lunge.cooldown;
+          this.beginCharge(e, dx, dy, t.lunge.windup || cfg.lungeWindup,
+            t.lunge.time || cfg.lungeTime, t.lunge.range, 2.0);
+        }
+      }
+
+      /* Ground left behind. Venom, rot, whatever the thing leaks - it is
+       * harmless for a beat and then it is not, and it is why a lane you ran
+       * down once is not a lane you can run down again. */
+      if (t.trail && !frozen && !e.stationary) {
+        e.trailTimer -= dt;
+        if (e.trailTimer <= 0) {
+          e.trailTimer = t.trail.interval;
+          WS.Hazard.spawn(e.x, e.y, {
+            radius: t.trail.radius, fuse: cfg.trailFuse, life: t.trail.life,
+            damage: e.damage * (t.trail.damagePct || 0.35),
+            interval: cfg.hazardTick, tint: t.trail.tint || t.tint, name: t.name,
+          });
+        }
+      }
+
       /* THE LANE IS A PROMISE. While the boss is planted the lane swings to
        * follow the survivor, so the tell is live and you can watch it come
        * round onto you; the instant it commits, the lane locks and the boss
@@ -8579,7 +8658,7 @@ window.WS = window.WS || {};
           e.telegraph.life = e.windup;
         }
         if (e.windup <= 0) {
-          e.chargeTimer = cfg.chargeTime;
+          e.chargeTimer = e.chargeDur;
           e.chargeDir = [dx, dy];
           if (e.telegraph) {
             e.telegraph.live = false;      // aimed; from here it is a fact
@@ -8587,11 +8666,11 @@ window.WS = window.WS || {};
             /* Outlive the charge by a beat. Matching the two exactly meant
                the lane expired a tick or two before the boss stopped, so the
                last of the charge happened on unmarked ground. */
-            e.telegraph.life = cfg.chargeTime + cfg.chargeLaneTail;
-            e.telegraph.maxLife = cfg.chargeTime + cfg.chargeLaneTail;
+            e.telegraph.life = e.chargeDur + cfg.chargeLaneTail;
+            e.telegraph.maxLife = e.chargeDur + cfg.chargeLaneTail;
           }
-          WS.FX.shake(5, 0.25);
-          WS.Audio.play('warn');
+          if (e.boss) WS.FX.shake(5, 0.25);
+          WS.Audio.play('warn', e.x);
         }
       } else if (e.chargeTimer > 0 && !frozen) {
         e.chargeTimer -= dt;
@@ -8603,15 +8682,27 @@ window.WS = window.WS || {};
         /* Down the lane, at the speed that covers the lane. Not toward the
          * survivor - a charge you cannot sidestep is not a charge, it is a
          * fast walk with a light show in front of it. */
-        const v = cfg.chargeRange / cfg.chargeTime;
+        const v = e.chargeLen / e.chargeDur;
         e.x = WS.clamp(e.x + e.chargeDir[0] * v * dt, e.radius, WS.CONST.WORLD_WIDTH - e.radius);
         e.y = WS.clamp(e.y + e.chargeDir[1] * v * dt, e.radius, WS.CONST.WORLD_HEIGHT - e.radius);
         e.facing = e.chargeDir[0] < 0 ? -1 : 1;
         advance = false;
       } else {
         if (advance && distance > 1) {
-          e.x += dx * speed * dt;
-          e.y += dy * speed * dt;
+          if (t.orbit && distance < t.orbit.range * 1.3) {
+            /* Holds a ring and walks it. The point is not the damage - it is
+             * that circling away from the horde stops working, because this
+             * one circles with you and closes the lane you were going to use.
+             * `pull` is the only radial component: it keeps the ring honest
+             * without ever letting the thing sit still. */
+            const pull = WS.clamp((distance - t.orbit.range) / 70, -1, 1);
+            const tx = -dy * e.orbitDir, ty = dx * e.orbitDir;
+            e.x += (dx * pull + tx * (t.orbit.spin || 0.9)) * speed * dt;
+            e.y += (dy * pull + ty * (t.orbit.spin || 0.9)) * speed * dt;
+          } else {
+            e.x += dx * speed * dt;
+            e.y += dy * speed * dt;
+          }
         }
         e.facing = dx < 0 ? -1 : 1;
       }
@@ -8667,6 +8758,23 @@ window.WS = window.WS || {};
     this.buildGrid();
   };
 
+  /** Plant, mark the ground, then run down it. One entry point for the boss
+   *  charge and for a creature's lunge, because they are the same move at two
+   *  sizes and the promise is the same: `live` says the lane is still being
+   *  aimed, and the update loop turns that off the instant it commits. */
+  Enemy.beginCharge = function (e, dx, dy, windup, time, range, girth) {
+    e.windup = windup;
+    e.windupMax = windup;
+    e.chargeDur = time;
+    e.chargeLen = range;
+    e.telegraph = {
+      kind: 'lane', live: true, firing: false,
+      life: windup, maxLife: windup,
+      dx, dy, length: range, width: e.radius * (girth || 2.0),
+    };
+    WS.FX.flash(e.x, e.y, e.radius * 1.6, WS.CONST.COLORS.enemy, 0.5);
+  };
+
   /* ------------------------------------------------------ boss patterns -- */
   Enemy.bossAttack = function (e, dx, dy) {
     const t = e.template;
@@ -8705,12 +8813,7 @@ window.WS = window.WS || {};
        * charge commits, and the same lane stays on screen while it happens so
        * the player can see the promise kept. */
       const cfg = WS.Config;
-      e.windup = cfg.chargeWindup;
-      e.telegraph = {
-        kind: 'lane', live: true, firing: false,
-        life: cfg.chargeWindup, maxLife: cfg.chargeWindup,
-        dx, dy, length: cfg.chargeRange, width: e.radius * 2.2,
-      };
+      this.beginCharge(e, dx, dy, cfg.chargeWindup, cfg.chargeTime, cfg.chargeRange, 2.2);
       WS.FX.flash(e.x, e.y, e.radius * 1.6, WS.CONST.COLORS.enemy, 0.5);
     }
   };
@@ -8793,6 +8896,32 @@ window.WS = window.WS || {};
     const run = WS.Game.run;
     const t = e.template;
     const player = WS.Game.player;
+
+    /* What it leaves behind. A stitched thing comes apart into what it was
+     * stitched from, and a body full of pressure goes off - which is the one
+     * behaviour that makes WHERE you kill something matter, not just how
+     * fast. Both happen before the corpse, so the burst lights the death
+     * rather than following it. */
+    if (t.burst) {
+      WS.Hazard.spawn(e.x, e.y, {
+        radius: t.burst.radius, fuse: t.burst.fuse || WS.Config.burstFuse,
+        life: WS.Config.burstLife, damage: e.damage * (t.burst.damagePct || 1.2),
+        interval: 99, tint: t.burst.tint || t.tint, name: t.name,
+      });
+    }
+    if (t.split && !e.noSplit) {
+      const kids = t.split.count || 2;
+      for (let n = 0; n < kids; n++) {
+        const a = (n / kids) * WS.TAU + WS.random();
+        const child = this.spawn(t.split.into,
+          WS.clamp(e.x + WS.cos(a) * e.radius, 20, WS.CONST.WORLD_WIDTH - 20),
+          WS.clamp(e.y + WS.sin(a) * e.radius, 20, WS.CONST.WORLD_HEIGHT - 20),
+          e.scale * (t.split.scale || 0.7));
+        // One generation. Anything that could split again is a spawn loop
+        // waiting for a slow machine to find it.
+        if (child) child.noSplit = true;
+      }
+    }
 
     WS.FX.corpse(e);
     WS.FX.burst(e.x, e.y, e.boss ? 26 : e.elite ? 14 : 7,
@@ -10032,6 +10161,84 @@ window.WS = window.WS || {};
 
 })(window.WS);
 
+/* ===== src/game/hazard.js ===== */
+/* Ground that will hurt you.
+ *
+ * The horde used to be one verb - walk at the survivor - and the only thing
+ * on the field that mattered was where the bodies were. Hazards are the other
+ * half: ground the player has to read and route around, left behind by things
+ * that die badly or leak as they walk.
+ *
+ * Every hazard has two lives. It FUSES first, drawn as a ring nobody has been
+ * hurt by yet, because a hazard that hurts you on the frame it appears is not
+ * a mechanic, it is a tax. Then it is ARMED for a while, and ticks damage into
+ * whoever is standing in it. Nothing here reaches the player except through
+ * Player.takeDamage, so armour, dodge, blocks and Thorns all behave exactly as
+ * they do against a claw.
+ */
+'use strict';
+(function (WS) {
+
+  const Hazard = WS.Hazard = { pool: null };
+
+  Hazard.init = function () {
+    this.pool = new WS.Pool(() => ({}), null, WS.CONST.MAX_HAZARDS);
+  };
+
+  Hazard.clear = function () { if (this.pool) this.pool.releaseAll(); };
+
+  /** @param spec {radius, fuse, life, damage, interval, tint, name} */
+  Hazard.spawn = function (x, y, spec) {
+    if (!this.pool || this.pool.count >= WS.CONST.MAX_HAZARDS) return null;
+    const h = this.pool.acquire();
+    if (!h) return null;
+    h.x = x; h.y = y;
+    h.radius = spec.radius;
+    h.fuse = spec.fuse || 0;
+    h.maxFuse = h.fuse;
+    h.life = spec.life;
+    h.maxLife = spec.life;
+    h.damage = spec.damage;
+    h.interval = spec.interval || 0.5;
+    h.timer = 0;                       // hits the moment it arms, then on interval
+    h.tint = spec.tint || [1.0, 0.45, 0.30];
+    h.name = spec.name || 'the ground';
+    h.seed = WS.random() * WS.TAU;     // so a field of them does not pulse in lockstep
+    return h;
+  };
+
+  Hazard.update = function (dt) {
+    const player = WS.Game.player;
+    let i = 0;
+    while (i < this.pool.count) {
+      const h = this.pool.active[i];
+      if (h.fuse > 0) {
+        h.fuse -= dt;
+        if (h.fuse <= 0) {
+          h.fuse = 0;
+          WS.FX.flash(h.x, h.y, h.radius, WS.hex(h.tint), 0.35);
+          WS.Audio.play('enemyHit', h.x);
+        }
+        i++;
+        continue;
+      }
+      h.life -= dt;
+      h.timer -= dt;
+      if (h.timer <= 0 && player) {
+        const dx = player.x - h.x, dy = player.y - h.y;
+        if (dx * dx + dy * dy < (h.radius + player.radius) * (h.radius + player.radius)) {
+          h.timer = h.interval;
+          WS.Player.takeDamage(player, h.damage, h.name);
+          if (!WS.Game.running) return;
+        }
+      }
+      if (h.life <= 0) this.pool.releaseAt(i);
+      else i++;
+    }
+  };
+
+})(window.WS);
+
 /* ===== src/game/familiar.js ===== */
 /* Familiars: summons that HUNT. Each picks the nearest enemy, bounds it down,
  * bites, then peels off and retargets. Spirit wolves are fast and light;
@@ -11020,6 +11227,7 @@ window.WS = window.WS || {};
     WS.Projectile.init();
     WS.XP.init();
     WS.Pickup.init();
+    WS.Hazard.init();
     WS.Familiar.init();
     this.selection.character = WS.Config.startCharacter;
     this.selection.map = WS.Config.startMap;
@@ -11069,6 +11277,7 @@ window.WS = window.WS || {};
     WS.Projectile.clear();
     WS.XP.clear();
     WS.Pickup.clear();
+    WS.Hazard.clear();
     WS.Familiar.reset();
     this.timeScale = 1;
     this.toasts.length = 0;
@@ -11136,6 +11345,7 @@ window.WS = window.WS || {};
     WS.Projectile.clear();
     WS.XP.clear();
     WS.Pickup.clear();
+    WS.Hazard.clear();
     WS.Familiar.reset();
     WS.Audio.playMusic('menu');
     WS.UI.openMenu();
@@ -11340,6 +11550,8 @@ window.WS = window.WS || {};
     WS.XP.update(dt);
     if (!this.running || this.leveling) return;
     WS.Pickup.update(dt);
+    if (!this.running) return;
+    WS.Hazard.update(dt);
     if (!this.running) return;
     WS.FX.update(dt);
 
@@ -11613,6 +11825,7 @@ window.WS = window.WS || {};
 
     /* ---- ground effects (zones, auras, arena hazards) -------------------- */
     this.drawZones(ctx, time);
+    this.drawHazards(ctx, time);
     this.drawTelegraphs(ctx, time);
     this.drawPlayerMark(ctx, player, time);
     this.drawAuras(ctx, player, time);
@@ -11737,7 +11950,7 @@ window.WS = window.WS || {};
     ctx.translate(e.x, e.y + bob);
     // Bracing for a charge: the body compresses, then springs.
     if (e.windup > 0) {
-      const k = 1 - e.windup / WS.Config.chargeWindup;
+      const k = 1 - e.windup / (e.windupMax || WS.Config.chargeWindup);
       ctx.scale(1 + k * 0.14, 1 - k * 0.12);
     }
     if (e.facing < 0) ctx.scale(-1, 1);
@@ -11922,6 +12135,55 @@ window.WS = window.WS || {};
   /** Boss tells, painted on the ground: a charge lane that fills as the wind-up
    *  runs out, and a swelling ring before a volley. Nothing should hit you
    *  without first saying so. */
+  /** Ground that will hurt, or already does.
+   *
+   *  Two readings, because they are two different facts. While it FUSES it is
+   *  an outline that grows - nothing has happened yet and you have time. Once
+   *  it ARMS it fills in, gets a hot rim, and burns down. Never the same
+   *  drawing at two opacities: a player has to be able to tell "not yet" from
+   *  "now" at a glance, in a field of two hundred enemies, without counting
+   *  frames. */
+  R.drawHazards = function (ctx, time) {
+    const pool = WS.Hazard.pool;
+    if (!pool) return;
+    for (let i = 0; i < pool.count; i++) {
+      const h = pool.active[i];
+      const c = h.tint;
+      const rgb = `${WS.floor(c[0] * 255)},${WS.floor(c[1] * 255)},${WS.floor(c[2] * 255)}`;
+      ctx.save();
+      if (h.fuse > 0) {
+        const k = 1 - h.fuse / (h.maxFuse || 1);       // 0 -> 1 as it arms
+        ctx.beginPath();
+        ctx.arc(h.x, h.y, h.radius * (0.45 + 0.55 * k), 0, WS.TAU);
+        ctx.fillStyle = `rgba(${rgb},${(0.05 + 0.09 * k).toFixed(3)})`;
+        ctx.fill();
+        ctx.setLineDash([7, 6]);
+        ctx.lineDashOffset = -time * 26;
+        ctx.strokeStyle = `rgba(${rgb},${(0.45 + 0.4 * k).toFixed(3)})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else {
+        const fade = WS.clamp(h.life / (h.maxLife || 1), 0, 1);
+        const pulse = 0.86 + 0.14 * WS.sin(time * 7 + h.seed);
+        ctx.beginPath();
+        ctx.arc(h.x, h.y, h.radius * pulse, 0, WS.TAU);
+        ctx.fillStyle = `rgba(${rgb},${(0.30 * fade).toFixed(3)})`;
+        ctx.fill();
+        ctx.strokeStyle = `rgba(${rgb},${(0.85 * fade).toFixed(3)})`;
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        if (!R.lite) {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.beginPath();
+          ctx.arc(h.x, h.y, h.radius * 0.55 * pulse, 0, WS.TAU);
+          ctx.fillStyle = `rgba(${rgb},${(0.16 * fade).toFixed(3)})`;
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+  };
+
   R.drawTelegraphs = function (ctx, time) {
     for (let i = 0; i < WS.Enemy.pool.count; i++) {
       const e = WS.Enemy.pool.active[i];

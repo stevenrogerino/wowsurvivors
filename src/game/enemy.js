@@ -74,7 +74,15 @@
     e.spawnId = ++this.spawnCounter;
     e.patternIndex = 0;
     e.windup = 0;
+    e.windupMax = 0;
     e.chargeDir = null;
+    e.chargeLen = 0;         // the lane it drew...
+    e.chargeDur = 0;         // ...and how long it has to cover it
+    e.scale = scale;         // kept so anything it splits into inherits the curve
+    e.orbitDir = WS.random() < 0.5 ? -1 : 1;
+    e.lungeTimer = template.lunge ? WS.randRange(0.5, template.lunge.cooldown) : 0;
+    e.trailTimer = template.trail ? template.trail.interval : 0;
+    e.noSplit = false;
     e.telegraph = null;      // {kind, life, maxLife, ...} drawn by the renderer
     e.attackTimer = template.interval || 3.6;
     e.rangedTimer = template.ranged ? WS.randRange(0.4, template.ranged.cooldown) : null;
@@ -172,6 +180,42 @@
         e.slowTimer -= dt;
         speed *= e.slowFactor;
       }
+      /* A creature's lunge: the boss charge at rank-and-file size. It only
+       * commits from inside its own range and never from on top of you, so it
+       * is always a gap you can be pushed out of rather than a hit you were
+       * already taking. */
+      if (t.lunge && !frozen && e.windup <= 0 && e.chargeTimer <= 0) {
+        e.lungeTimer -= dt;
+        /* Only the overlap is excluded, not "anything close". Gating this on
+         * a comfortable gap meant a fast creature that reached the survivor
+         * before its cooldown came up could never lunge again, because it was
+         * permanently too close - the behaviour quietly switched itself off
+         * on exactly the creatures built to use it. Lunging from point blank
+         * carries it THROUGH and out the far side, which is the better move
+         * anyway: it has to turn around and come back. */
+        if (e.lungeTimer <= 0 && distance < t.lunge.range * 1.05
+            && distance > e.radius + player.radius) {
+          e.lungeTimer = t.lunge.cooldown;
+          this.beginCharge(e, dx, dy, t.lunge.windup || cfg.lungeWindup,
+            t.lunge.time || cfg.lungeTime, t.lunge.range, 2.0);
+        }
+      }
+
+      /* Ground left behind. Venom, rot, whatever the thing leaks - it is
+       * harmless for a beat and then it is not, and it is why a lane you ran
+       * down once is not a lane you can run down again. */
+      if (t.trail && !frozen && !e.stationary) {
+        e.trailTimer -= dt;
+        if (e.trailTimer <= 0) {
+          e.trailTimer = t.trail.interval;
+          WS.Hazard.spawn(e.x, e.y, {
+            radius: t.trail.radius, fuse: cfg.trailFuse, life: t.trail.life,
+            damage: e.damage * (t.trail.damagePct || 0.35),
+            interval: cfg.hazardTick, tint: t.trail.tint || t.tint, name: t.name,
+          });
+        }
+      }
+
       /* THE LANE IS A PROMISE. While the boss is planted the lane swings to
        * follow the survivor, so the tell is live and you can watch it come
        * round onto you; the instant it commits, the lane locks and the boss
@@ -187,7 +231,7 @@
           e.telegraph.life = e.windup;
         }
         if (e.windup <= 0) {
-          e.chargeTimer = cfg.chargeTime;
+          e.chargeTimer = e.chargeDur;
           e.chargeDir = [dx, dy];
           if (e.telegraph) {
             e.telegraph.live = false;      // aimed; from here it is a fact
@@ -195,11 +239,11 @@
             /* Outlive the charge by a beat. Matching the two exactly meant
                the lane expired a tick or two before the boss stopped, so the
                last of the charge happened on unmarked ground. */
-            e.telegraph.life = cfg.chargeTime + cfg.chargeLaneTail;
-            e.telegraph.maxLife = cfg.chargeTime + cfg.chargeLaneTail;
+            e.telegraph.life = e.chargeDur + cfg.chargeLaneTail;
+            e.telegraph.maxLife = e.chargeDur + cfg.chargeLaneTail;
           }
-          WS.FX.shake(5, 0.25);
-          WS.Audio.play('warn');
+          if (e.boss) WS.FX.shake(5, 0.25);
+          WS.Audio.play('warn', e.x);
         }
       } else if (e.chargeTimer > 0 && !frozen) {
         e.chargeTimer -= dt;
@@ -211,15 +255,27 @@
         /* Down the lane, at the speed that covers the lane. Not toward the
          * survivor - a charge you cannot sidestep is not a charge, it is a
          * fast walk with a light show in front of it. */
-        const v = cfg.chargeRange / cfg.chargeTime;
+        const v = e.chargeLen / e.chargeDur;
         e.x = WS.clamp(e.x + e.chargeDir[0] * v * dt, e.radius, WS.CONST.WORLD_WIDTH - e.radius);
         e.y = WS.clamp(e.y + e.chargeDir[1] * v * dt, e.radius, WS.CONST.WORLD_HEIGHT - e.radius);
         e.facing = e.chargeDir[0] < 0 ? -1 : 1;
         advance = false;
       } else {
         if (advance && distance > 1) {
-          e.x += dx * speed * dt;
-          e.y += dy * speed * dt;
+          if (t.orbit && distance < t.orbit.range * 1.3) {
+            /* Holds a ring and walks it. The point is not the damage - it is
+             * that circling away from the horde stops working, because this
+             * one circles with you and closes the lane you were going to use.
+             * `pull` is the only radial component: it keeps the ring honest
+             * without ever letting the thing sit still. */
+            const pull = WS.clamp((distance - t.orbit.range) / 70, -1, 1);
+            const tx = -dy * e.orbitDir, ty = dx * e.orbitDir;
+            e.x += (dx * pull + tx * (t.orbit.spin || 0.9)) * speed * dt;
+            e.y += (dy * pull + ty * (t.orbit.spin || 0.9)) * speed * dt;
+          } else {
+            e.x += dx * speed * dt;
+            e.y += dy * speed * dt;
+          }
         }
         e.facing = dx < 0 ? -1 : 1;
       }
@@ -275,6 +331,23 @@
     this.buildGrid();
   };
 
+  /** Plant, mark the ground, then run down it. One entry point for the boss
+   *  charge and for a creature's lunge, because they are the same move at two
+   *  sizes and the promise is the same: `live` says the lane is still being
+   *  aimed, and the update loop turns that off the instant it commits. */
+  Enemy.beginCharge = function (e, dx, dy, windup, time, range, girth) {
+    e.windup = windup;
+    e.windupMax = windup;
+    e.chargeDur = time;
+    e.chargeLen = range;
+    e.telegraph = {
+      kind: 'lane', live: true, firing: false,
+      life: windup, maxLife: windup,
+      dx, dy, length: range, width: e.radius * (girth || 2.0),
+    };
+    WS.FX.flash(e.x, e.y, e.radius * 1.6, WS.CONST.COLORS.enemy, 0.5);
+  };
+
   /* ------------------------------------------------------ boss patterns -- */
   Enemy.bossAttack = function (e, dx, dy) {
     const t = e.template;
@@ -313,12 +386,7 @@
        * charge commits, and the same lane stays on screen while it happens so
        * the player can see the promise kept. */
       const cfg = WS.Config;
-      e.windup = cfg.chargeWindup;
-      e.telegraph = {
-        kind: 'lane', live: true, firing: false,
-        life: cfg.chargeWindup, maxLife: cfg.chargeWindup,
-        dx, dy, length: cfg.chargeRange, width: e.radius * 2.2,
-      };
+      this.beginCharge(e, dx, dy, cfg.chargeWindup, cfg.chargeTime, cfg.chargeRange, 2.2);
       WS.FX.flash(e.x, e.y, e.radius * 1.6, WS.CONST.COLORS.enemy, 0.5);
     }
   };
@@ -401,6 +469,32 @@
     const run = WS.Game.run;
     const t = e.template;
     const player = WS.Game.player;
+
+    /* What it leaves behind. A stitched thing comes apart into what it was
+     * stitched from, and a body full of pressure goes off - which is the one
+     * behaviour that makes WHERE you kill something matter, not just how
+     * fast. Both happen before the corpse, so the burst lights the death
+     * rather than following it. */
+    if (t.burst) {
+      WS.Hazard.spawn(e.x, e.y, {
+        radius: t.burst.radius, fuse: t.burst.fuse || WS.Config.burstFuse,
+        life: WS.Config.burstLife, damage: e.damage * (t.burst.damagePct || 1.2),
+        interval: 99, tint: t.burst.tint || t.tint, name: t.name,
+      });
+    }
+    if (t.split && !e.noSplit) {
+      const kids = t.split.count || 2;
+      for (let n = 0; n < kids; n++) {
+        const a = (n / kids) * WS.TAU + WS.random();
+        const child = this.spawn(t.split.into,
+          WS.clamp(e.x + WS.cos(a) * e.radius, 20, WS.CONST.WORLD_WIDTH - 20),
+          WS.clamp(e.y + WS.sin(a) * e.radius, 20, WS.CONST.WORLD_HEIGHT - 20),
+          e.scale * (t.split.scale || 0.7));
+        // One generation. Anything that could split again is a spawn loop
+        // waiting for a slow machine to find it.
+        if (child) child.noSplit = true;
+      }
+    }
 
     WS.FX.corpse(e);
     WS.FX.burst(e.x, e.y, e.boss ? 26 : e.elite ? 14 : 7,

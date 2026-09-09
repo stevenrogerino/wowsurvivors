@@ -175,6 +175,7 @@
 
     /* ---- ground effects (zones, auras, arena hazards) -------------------- */
     this.drawZones(ctx, time);
+    this.drawHazards(ctx, time);
     this.drawTelegraphs(ctx, time);
     this.drawPlayerMark(ctx, player, time);
     this.drawAuras(ctx, player, time);
@@ -299,7 +300,7 @@
     ctx.translate(e.x, e.y + bob);
     // Bracing for a charge: the body compresses, then springs.
     if (e.windup > 0) {
-      const k = 1 - e.windup / WS.Config.chargeWindup;
+      const k = 1 - e.windup / (e.windupMax || WS.Config.chargeWindup);
       ctx.scale(1 + k * 0.14, 1 - k * 0.12);
     }
     if (e.facing < 0) ctx.scale(-1, 1);
@@ -484,6 +485,55 @@
   /** Boss tells, painted on the ground: a charge lane that fills as the wind-up
    *  runs out, and a swelling ring before a volley. Nothing should hit you
    *  without first saying so. */
+  /** Ground that will hurt, or already does.
+   *
+   *  Two readings, because they are two different facts. While it FUSES it is
+   *  an outline that grows - nothing has happened yet and you have time. Once
+   *  it ARMS it fills in, gets a hot rim, and burns down. Never the same
+   *  drawing at two opacities: a player has to be able to tell "not yet" from
+   *  "now" at a glance, in a field of two hundred enemies, without counting
+   *  frames. */
+  R.drawHazards = function (ctx, time) {
+    const pool = WS.Hazard.pool;
+    if (!pool) return;
+    for (let i = 0; i < pool.count; i++) {
+      const h = pool.active[i];
+      const c = h.tint;
+      const rgb = `${WS.floor(c[0] * 255)},${WS.floor(c[1] * 255)},${WS.floor(c[2] * 255)}`;
+      ctx.save();
+      if (h.fuse > 0) {
+        const k = 1 - h.fuse / (h.maxFuse || 1);       // 0 -> 1 as it arms
+        ctx.beginPath();
+        ctx.arc(h.x, h.y, h.radius * (0.45 + 0.55 * k), 0, WS.TAU);
+        ctx.fillStyle = `rgba(${rgb},${(0.05 + 0.09 * k).toFixed(3)})`;
+        ctx.fill();
+        ctx.setLineDash([7, 6]);
+        ctx.lineDashOffset = -time * 26;
+        ctx.strokeStyle = `rgba(${rgb},${(0.45 + 0.4 * k).toFixed(3)})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else {
+        const fade = WS.clamp(h.life / (h.maxLife || 1), 0, 1);
+        const pulse = 0.86 + 0.14 * WS.sin(time * 7 + h.seed);
+        ctx.beginPath();
+        ctx.arc(h.x, h.y, h.radius * pulse, 0, WS.TAU);
+        ctx.fillStyle = `rgba(${rgb},${(0.30 * fade).toFixed(3)})`;
+        ctx.fill();
+        ctx.strokeStyle = `rgba(${rgb},${(0.85 * fade).toFixed(3)})`;
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        if (!R.lite) {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.beginPath();
+          ctx.arc(h.x, h.y, h.radius * 0.55 * pulse, 0, WS.TAU);
+          ctx.fillStyle = `rgba(${rgb},${(0.16 * fade).toFixed(3)})`;
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+  };
+
   R.drawTelegraphs = function (ctx, time) {
     for (let i = 0; i < WS.Enemy.pool.count; i++) {
       const e = WS.Enemy.pool.active[i];
