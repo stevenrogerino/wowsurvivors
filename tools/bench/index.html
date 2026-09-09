@@ -19,8 +19,17 @@ button,input,select,textarea{font:inherit;color:inherit}
 a{color:var(--gold)}
 
 /* ---- shell ---- */
-#shell{display:grid;grid-template-columns:212px minmax(0,1fr) 380px;
+#shell{display:grid;
+  grid-template-columns:var(--nav-w,212px) 5px minmax(0,1fr) 5px var(--aside-w,380px);
   grid-template-rows:auto minmax(0,1fr);height:100vh}
+/* Drag the panes. The live-game frame wants to be big while you watch a
+   change and small while you read a table, and no single split is right for
+   both. Widths persist per browser. */
+.grip{background:var(--line);cursor:col-resize;position:relative}
+.grip:hover,.grip.on{background:var(--gold-dim)}
+.grip::after{content:"";position:absolute;inset:0 -4px}
+body.dragging{cursor:col-resize;user-select:none}
+body.dragging iframe{pointer-events:none}
 header{grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:10px 16px;
   background:linear-gradient(180deg,#121722,#0b0e15);border-bottom:1px solid var(--line)}
 .brand{font-weight:600;letter-spacing:.14em;text-transform:uppercase;font-size:11px;
@@ -77,7 +86,7 @@ h1{font-size:17px;margin:0 0 2px;letter-spacing:.02em}
 /* Columns, not one enormous stripe. On a wide monitor a number box for
    `max: 5` was rendering fourteen hundred pixels long, which made every card
    a scroll and every value hard to find. */
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--col,310px),1fr));
   gap:5px 20px;align-items:start}
 .field{display:grid;grid-template-columns:112px minmax(0,1fr) auto;gap:8px;
   align-items:center;min-width:0}
@@ -130,6 +139,43 @@ input[type=color]{width:34px;height:26px;padding:0;background:none;border:1px so
 .derived b{color:var(--gold);font-weight:600}
 .empty{color:var(--dim);padding:30px 0;text-align:center}
 
+/* ---- charts ----
+   Three series, and only three. The hues are the first three slots of the
+   reference categorical palette stepped for a dark surface, validated by the
+   skill's own checker against THIS page's surface (#080b11) with --pairs all:
+   worst CVD deltaE 9.4, worst normal-vision 20.9, all three over 3:1 contrast. */
+.viz{--s1:#3987e5;--s2:#d95926;--s3:#199e70;
+  --grid:#1b2230;--ink:#d7dce6;--ink2:#8a93a6;
+  border:1px solid var(--line);border-radius:7px;background:var(--panel);
+  padding:14px 16px 12px;margin-bottom:16px}
+.viz h3{margin:0 0 2px;font-size:14px}
+.viz .sub{color:var(--dim);font-size:12px;margin:0 0 10px;max-width:88ch;
+  border:0;padding:0}
+.viz .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.viz .controls label{color:var(--dim);font-size:12px;display:flex;gap:6px;align-items:center}
+.viz select,.viz input[type=range]{background:#111622;border:1px solid var(--line);
+  border-radius:5px;padding:4px 7px;accent-color:var(--gold)}
+.viz .legend{display:flex;gap:14px;flex-wrap:wrap;margin:0 0 8px;font-size:12px;color:var(--ink2)}
+.viz .legend i{width:10px;height:10px;border-radius:2px;display:inline-block;margin-right:5px}
+.viz svg{display:block;width:100%;overflow:visible}
+.viz svg text{font:11px/1 var(--mono);fill:var(--ink2)}
+.viz svg text.val{fill:var(--ink)}
+.viz svg .axis{stroke:var(--grid);stroke-width:1}
+.viz .foot{color:var(--dim);font:11px/1.55 var(--mono);margin-top:8px;
+  border-top:1px solid var(--line);padding-top:7px}
+.viz .as-table{border:0;background:none;color:var(--dim);cursor:pointer;
+  font-size:12px;padding:2px 6px;border-radius:4px}
+.viz .as-table:hover{color:var(--gold);background:#151b28}
+.viz table{border-collapse:collapse;width:100%;font:11.5px/1.5 var(--mono);margin-top:8px}
+.viz table th,.viz table td{padding:3px 8px;text-align:right;border-top:1px solid #1a2030}
+.viz table th{color:var(--dim);font-weight:400}
+.viz table th:first-child,.viz table td:first-child{text-align:left}
+#tip{position:fixed;pointer-events:none;z-index:50;background:#111622;
+  border:1px solid var(--gold-dim);border-radius:5px;padding:6px 9px;
+  font:11.5px/1.5 var(--mono);color:var(--text);box-shadow:0 6px 18px #0009;
+  opacity:0;transition:opacity .08s}
+#tip.on{opacity:1}
+
 /* ---- right rail ---- */
 aside h2{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);
   margin:14px 0 7px}
@@ -152,6 +198,7 @@ aside h2:first-child{margin-top:0}
 </style>
 </head>
 <body>
+<div id="tip"></div>
 <div id="shell">
   <header>
     <div class="brand">The Ember Watch <span>/ tuning bench</span></div>
@@ -159,6 +206,13 @@ aside h2:first-child{margin-top:0}
     <label style="color:var(--dim);display:flex;gap:6px;align-items:center;white-space:nowrap">
       <input type="checkbox" id="only"> changed only
     </label>
+    <select id="density" title="how wide each field column is"
+      style="background:#111622;border:1px solid var(--line);border-radius:5px;padding:6px 8px">
+      <option value="250">narrow columns</option>
+      <option value="310" selected>medium columns</option>
+      <option value="430">wide columns</option>
+      <option value="9999">one column</option>
+    </select>
     <div class="spacer"></div>
     <span class="count zero" id="count">0 changes</span>
     <button class="btn" id="copy">Copy tuning.js</button>
@@ -167,8 +221,9 @@ aside h2:first-child{margin-top:0}
   </header>
 
   <nav id="nav"></nav>
+  <div class="grip" id="grip-nav"></div>
   <main id="main"><p class="empty">Loading the game…</p></main>
-
+  <div class="grip" id="grip-aside"></div>
   <aside>
     <h2>Live game</h2>
     <div id="frame-wrap"><iframe id="frame" src="/index.html" title="The Ember Watch"></iframe></div>
@@ -312,7 +367,7 @@ function markCounts() {
   c.classList.toggle('zero', n === 0);
   document.querySelectorAll('nav button').forEach((b) => {
     const root = b.dataset.root;
-    if (!root) return;
+    if (!root || root.charAt(0) === '#') return;
     const k = W.Tuning.diff().filter((d) => d.path.startsWith(root + '.')).length;
     const el = b.querySelector('.n');
     el.textContent = k || '';
@@ -548,6 +603,87 @@ function walkRanks(max, run) {
   return rows ? { rows, keys } : null;
 }
 
+/* ---- typing INTO a rank ------------------------------------------------
+ *
+ * The rank tables show derived numbers - rank 4 damage is the base times a
+ * step, not a field anywhere - so they used to be read-only, and "I want rank
+ * 8 to hit for 40" meant doing algebra in your head against a formula in
+ * weapon.js. These cells are editable, and they solve BACKWARDS onto the real
+ * field that produced them.
+ *
+ * The solve is a bisection over the underlying field, measuring each guess
+ * with the same function that drew the cell. It does not know or care whether
+ * the relationship is linear, which is the point: a boon that multiplies and
+ * a weapon that adds are solved by the same eight lines, and neither can go
+ * stale when the formula changes.
+ *
+ * The cell says which field it will move before you commit, because the whole
+ * risk of an inverse control is editing something you did not mean to.
+ */
+function solveFor(path, target, measure, fallback) {
+  /* Some knobs do not exist until you reach for them: a weapon inherits
+     Config.rankDamageStep until it overrides it. Seeding the field at render
+     time would have been the easy way and was the wrong one - it wrote game
+     data as a side effect of DRAWING A TABLE, and the bench's own
+     introspection check caught the invented fields appearing with no control.
+     So the knob is created here, at the moment it is actually solved for. */
+  let cur = W.Tuning.read(path);
+  if (cur === undefined && typeof fallback === 'number') {
+    W.Tuning.set(path, fallback);
+    cur = fallback;
+  }
+  if (typeof cur !== 'number' || !isFinite(target)) return null;
+  const restore = () => W.Tuning.set(path, cur);
+  const f = (x) => { W.Tuning.set(path, x); return measure(); };
+  try {
+    // Bracket outwards from the current value until the target is straddled.
+    let lo = cur === 0 ? -1 : cur, hi = cur === 0 ? 1 : cur;
+    let flo = f(lo) - target, fhi = flo;
+    for (let i = 0; i < 40 && flo * fhi > 0; i++) {
+      lo = cur === 0 ? lo * 2 : lo / 1.5;
+      hi = cur === 0 ? hi * 2 : hi * 1.5;
+      flo = f(lo) - target; fhi = f(hi) - target;
+    }
+    if (flo * fhi > 0) { restore(); return null; }   // not reachable from here
+    for (let i = 0; i < 70; i++) {
+      const mid = (lo + hi) / 2;
+      const fm = f(mid) - target;
+      if (fm === 0) { lo = hi = mid; break; }
+      if (flo * fm < 0) { hi = mid; fhi = fm; } else { lo = mid; flo = fm; }
+    }
+    const x = (lo + hi) / 2;
+    restore();
+    return Math.abs(x) < 1e-9 ? 0 : +x.toPrecision(8);
+  } catch (e) { restore(); return null; }
+}
+
+/** A table cell you can type a target into. `plan(value)` says which field
+ *  would move and how to measure it; null means this cell is read-only. */
+function solvable(td, text, plan) {
+  td.textContent = text;
+  if (!plan) return;
+  td.contentEditable = 'true';
+  td.spellcheck = false;
+  td.style.cursor = 'text';
+  td.style.borderBottom = '1px dotted var(--gold-dim)';
+  td.title = 'type a target - solves ' + plan.path.split('.').pop()
+    + ' (' + plan.path + ') to reach it';
+  const commit = () => {
+    const want = parseFloat(td.textContent.replace(/[^0-9.eE+-]/g, ''));
+    if (!isFinite(want)) { rerender(); return; }
+    const x = solveFor(plan.path, want, plan.measure, plan.fallback);
+    if (x === null) { status('No value of ' + plan.path + ' reaches ' + want + '.', 'bad'); rerender(); return; }
+    apply(plan.path, x);
+    status(plan.path + ' -> ' + x + ' so that ' + plan.what + ' is ' + want + '.', 'ok');
+    rerender();
+  };
+  td.addEventListener('blur', commit);
+  td.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); td.blur(); }
+    if (e.key === 'Escape') { e.preventDefault(); rerender(); }
+  });
+}
+
 function table(caption, head, body, foot) {
   const box = document.createElement('div');
   box.className = 'ranks';
@@ -561,7 +697,12 @@ function table(caption, head, body, foot) {
   for (const row of body) {
     const tr = document.createElement('tr');
     if (row.evo) tr.className = 'evo';
-    for (const c of row.cells) { const td = document.createElement('td'); td.textContent = c; tr.append(td); }
+    row.cells.forEach((c, i) => {
+      const td = document.createElement('td');
+      solvable(td, typeof c === 'object' ? c.text : c,
+        typeof c === 'object' ? c.plan : null);
+      tr.append(td);
+    });
     t.append(tr);
   }
   box.append(t);
@@ -574,32 +715,67 @@ const num = (v) => (Number.isInteger(v) ? String(v) : String(+v.toFixed(3)));
 function ranksFor(root, key, obj) {
   try {
     if (root === 'Weapons' && W.Weapon && W.Weapon.preview) {
+      const see = (L, evo, field) => () => {
+        const q = W.Weapon.preview(key, L, evo);
+        return q ? q[field] : NaN;
+      };
+      /* Which field a rank's number is allowed to move. Rank 1 is the base
+         itself; a later rank is the per-rank step, so typing there re-shapes
+         the curve without moving where the weapon starts. */
+      const dmgPath = (L) => (L === 1 ? 'Weapons.' + key + '.damage'
+        : 'Weapons.' + key + '.rankDamageStep');
       const rows = [];
       for (let L = 1; L <= 8; L++) {
         const q = W.Weapon.preview(key, L, false);
         if (!q) return null;
-        rows.push({ cells: ['rank ' + L, num(q.damage), String(q.count),
-          q.cooldown.toFixed(2) + 's', q.dps.toFixed(1)] });
+        rows.push({ cells: ['rank ' + L,
+          { text: num(q.damage), plan: { path: dmgPath(L), measure: see(L, false, 'damage'),
+            what: 'rank ' + L + ' damage',
+            fallback: L === 1 ? undefined : W.Config.rankDamageStep } },
+          String(q.count),
+          { text: q.cooldown.toFixed(2) + 's',
+            plan: { path: 'Weapons.' + key + '.cooldown', measure: see(L, false, 'cooldown'),
+              what: 'the cooldown' } },
+          { text: q.dps.toFixed(1), plan: { path: dmgPath(L), measure: see(L, false, 'dps'),
+            what: 'rank ' + L + ' dps',
+            fallback: L === 1 ? undefined : W.Config.rankDamageStep } }] });
       }
       const e = W.Weapon.preview(key, 8, true);
       if (e) {
-        rows.push({ evo: true, cells: ['evolved', num(e.damage), String(e.count),
-          e.cooldown.toFixed(2) + 's', e.dps.toFixed(1)] });
+        const ep = 'Weapons.' + key + '.evolveDamageMult';
+        rows.push({ evo: true, cells: ['evolved',
+          { text: num(e.damage), plan: { path: ep, measure: see(8, true, 'damage'),
+            what: 'evolved damage', fallback: W.Config.evolveDamageMult } },
+          String(e.count),
+          e.cooldown.toFixed(2) + 's',
+          { text: e.dps.toFixed(1), plan: { path: ep, measure: see(8, true, 'dps'),
+            what: 'evolved dps', fallback: W.Config.evolveDamageMult } }] });
       }
-      return table('what each rank fires', ['', 'damage', 'shots', 'cooldown', 'dps'], rows,
-        'Through WS.Weapon.preview - the same derivation the game fires with. '
-        + 'One target, a survivor with no build; pierce, chains and splash are not in it.');
+      return table('what each rank fires - type into a cell to solve for it',
+        ['', 'damage', 'shots', 'cooldown', 'dps'], rows,
+        'Through WS.Weapon.preview - the same derivation the game fires with. One '
+        + 'target, a survivor with no build; pierce, chains and splash are not in it. '
+        + 'Typing a rank-1 number moves damage; typing a later rank moves '
+        + 'rankDamageStep, so the weapon starts where it started and grows differently.');
     }
 
     if (root === 'Upgrades' && typeof obj.apply === 'function') {
       const r = walkRanks(obj.max || 5, (p) => obj.apply(p, obj));
       if (!r || !r.keys.length) return null;
+      const at = (rank, k) => () => {
+        const w = walkRanks(rank, (p) => obj.apply(p, obj));
+        return w && w.rows[rank - 1] ? w.rows[rank - 1][k] : NaN;
+      };
       const rows = r.rows.map((moved, i) => ({
         cells: ['rank ' + (i + 1)].concat(r.keys.map((k) =>
-          moved[k] === undefined ? '-' : num(moved[k]))) }));
-      return table('what each rank leaves you with', [''].concat(r.keys), rows,
+          moved[k] === undefined ? '-'
+            : { text: num(moved[k]), plan: { path: root + '.' + key + '.v',
+                measure: at(i + 1, k), what: 'rank ' + (i + 1) + ' ' + k } })) }));
+      return table('what each rank leaves you with - type into a cell to solve for it',
+        [''].concat(r.keys), rows,
         'Measured by running the real apply() on a bare survivor, so stacking '
-        + 'is whatever the code does rather than whatever the description implies.');
+        + 'is whatever the code does rather than whatever the description implies. '
+        + 'Type a target into any rank and it solves v to reach it.');
     }
 
     if (root === 'MetaUpgrades' && typeof obj.apply === 'function') {
@@ -614,9 +790,21 @@ function ranksFor(root, key, obj) {
       let spent = 0;
       const rows = r.rows.map((moved, i) => {
         spent += (obj.cost || 0) * (i + 1);
-        return { cells: ['rank ' + (i + 1)]
-          .concat(r.keys.map((k) => moved[k] === undefined ? '-' : num(moved[k])))
-          .concat([((obj.cost || 0) * (i + 1)) + 'g', spent + 'g']) };
+        const rank = i + 1;
+        const at = (k) => () => {
+          const fresh = probe();
+          const heal = W.Player.heal; W.Player.heal = () => {};
+          try { obj.apply(fresh, rank, obj); } finally { W.Player.heal = heal; }
+          return fresh[k];
+        };
+        return { cells: ['rank ' + rank]
+          .concat(r.keys.map((k) => moved[k] === undefined ? '-'
+            : { text: num(moved[k]), plan: { path: 'MetaUpgrades.' + key + '.v',
+                measure: at(k), what: 'rank ' + rank + ' ' + k } }))
+          .concat([{ text: ((obj.cost || 0) * rank) + 'g',
+            plan: { path: 'MetaUpgrades.' + key + '.cost',
+              measure: () => (W.Tuning.read('MetaUpgrades.' + key + '.cost') || 0) * rank,
+              what: 'the cost of rank ' + rank } }, spent + 'g']) };
       });
       return table('what each rank leaves you with, and what it costs',
         [''].concat(r.keys).concat(['this rank', 'spent']), rows,
@@ -627,18 +815,419 @@ function ranksFor(root, key, obj) {
   return null;
 }
 
+/* ======================= the projections tab =============================
+ *
+ * Numbers in a table tell you what a weapon does. They do not tell you which
+ * weapon is twice the others, or where a curve crosses, and those are the two
+ * questions a balance pass is actually asking. Everything below is computed
+ * from the game's own functions - WS.Weapon.preview for output, the real
+ * WaveManager.enemyScale for how much health a minute is worth - so a chart
+ * can be wrong about the model it states, but never about the game.
+ *
+ * The crowd projection is the one with a MODEL in it, and the model is
+ * printed under the chart rather than hidden in here. It is a projection, not
+ * a measurement, and it is labelled as one.
+ */
+const NS = 'http://www.w3.org/2000/svg';
+const el = (n, a) => { const e = document.createElementNS(NS, n);
+  for (const k in a) e.setAttribute(k, a[k]); return e; };
+const tip = $('#tip');
+function hover(node, html) {
+  node.addEventListener('pointerenter', () => { tip.innerHTML = html; tip.classList.add('on'); });
+  node.addEventListener('pointermove', (e) => {
+    tip.style.left = Math.min(innerWidth - tip.offsetWidth - 12, e.clientX + 14) + 'px';
+    tip.style.top = (e.clientY + 16) + 'px';
+  });
+  node.addEventListener('pointerleave', () => tip.classList.remove('on'));
+}
+
+function panel(title, sub, foot) {
+  const box = document.createElement('div');
+  box.className = 'viz';
+  const h = document.createElement('h3'); h.textContent = title;
+  const p = document.createElement('p'); p.className = 'sub'; p.textContent = sub;
+  box.append(h, p);
+  box._foot = foot;
+  return box;
+}
+function finish(box, rows, head) {
+  // A table view for every chart: the accessibility fallback, and the thing
+  // you copy into a message when you want to argue about a number.
+  const btn = document.createElement('button');
+  btn.className = 'as-table'; btn.textContent = 'show as table';
+  let t = null;
+  btn.onclick = () => {
+    if (t) { t.remove(); t = null; btn.textContent = 'show as table'; return; }
+    t = document.createElement('table');
+    const hr = document.createElement('tr');
+    for (const h of head) { const th = document.createElement('th'); th.textContent = h; hr.append(th); }
+    t.append(hr);
+    for (const r of rows) {
+      const tr = document.createElement('tr');
+      for (const c of r) { const td = document.createElement('td'); td.textContent = c; tr.append(td); }
+      t.append(tr);
+    }
+    box.append(t); btn.textContent = 'hide table';
+  };
+  const f = document.createElement('div');
+  f.className = 'foot';
+  f.append(box._foot, document.createElement('br'), btn);
+  box.append(f);
+  return box;
+}
+
+const weaponIds = () => (W.WeaponOrder || Object.keys(W.Weapons))
+  .filter((id) => W.Weapons[id]);
+
+/* ---------- 1. single-target output, rank 1 -> 8 -> evolved ---------- */
+function chartSingle() {
+  const box = panel('Single-target output',
+    'Every weapon on one axis: where it starts, where it ends, and what evolving is worth. '
+    + 'One target, a survivor with no build.',
+    'damage x shots / cooldown, through WS.Weapon.preview. Pierce, chains and splash are '
+    + 'not in this one - they are the next chart.');
+  const ids = weaponIds();
+  const data = ids.map((id) => {
+    const a = W.Weapon.preview(id, 1, false), b = W.Weapon.preview(id, 8, false),
+      c = W.Weapon.preview(id, 8, true);
+    return { id, name: W.Weapons[id].name || id, r1: a ? a.dps : 0,
+      r8: b ? b.dps : 0, ev: c ? c.dps : 0 };
+  }).filter((d) => d.r8 > 0).sort((a, b) => b.ev - a.ev);
+  if (!data.length) return null;
+
+  const leg = document.createElement('div');
+  leg.className = 'legend';
+  for (const [c, t] of [['var(--s1)', 'rank 1'], ['var(--s2)', 'rank 8'], ['var(--s3)', 'evolved']]) {
+    const sp = document.createElement('span');
+    sp.innerHTML = '<i style="background:' + c + '"></i>' + t;
+    leg.append(sp);
+  }
+  box.append(leg);
+
+  const PAD = 168, RIGHT = 58, ROW = 21, H = data.length * ROW + 26;
+  const max = Math.max(...data.map((d) => d.ev)) * 1.02;
+  const svg = el('svg', { viewBox: `0 0 900 ${H}`, role: 'img' });
+  const x = (v) => PAD + (v / max) * (900 - PAD - RIGHT);
+  for (let g = 0; g <= 4; g++) {
+    const v = max * g / 4;
+    svg.append(el('line', { x1: x(v), x2: x(v), y1: 14, y2: H - 12, class: 'axis' }));
+    const t = el('text', { x: x(v), y: 9, 'text-anchor': 'middle' });
+    t.textContent = Math.round(v); svg.append(t);
+  }
+  data.forEach((d, i) => {
+    const y = 24 + i * ROW;
+    const lab = el('text', { x: PAD - 10, y: y + 4, 'text-anchor': 'end', class: 'name' });
+    lab.textContent = d.name; svg.append(lab);
+    svg.append(el('line', { x1: x(d.r1), x2: x(d.ev), y1: y, y2: y,
+      stroke: 'var(--grid)', 'stroke-width': 2, 'stroke-linecap': 'round' }));
+    for (const [v, c] of [[d.r1, 'var(--s1)'], [d.r8, 'var(--s2)'], [d.ev, 'var(--s3)']]) {
+      // a 2px surface ring, so overlapping dots stay countable
+      svg.append(el('circle', { cx: x(v), cy: y, r: 5.5, fill: c,
+        stroke: 'var(--panel)', 'stroke-width': 2 }));
+    }
+    const val = el('text', { x: 900 - RIGHT + 8, y: y + 4, class: 'val' });
+    val.textContent = Math.round(d.ev); svg.append(val);
+    const hit = el('rect', { x: 0, y: y - ROW / 2, width: 900, height: ROW,
+      fill: 'transparent' });
+    hover(hit, `<b>${d.name}</b><br>rank 1 &nbsp;${d.r1.toFixed(1)} dps`
+      + `<br>rank 8 &nbsp;${d.r8.toFixed(1)} dps<br>evolved ${d.ev.toFixed(1)} dps`
+      + `<br>evolving is x${(d.ev / d.r8).toFixed(2)}`);
+    svg.append(hit);
+  });
+  box.append(svg);
+  return finish(box, data.map((d) => [d.name, d.r1.toFixed(1), d.r8.toFixed(1), d.ev.toFixed(1)]),
+    ['weapon', 'rank 1', 'rank 8', 'evolved']);
+}
+
+/* ---------- 2. what it does to a crowd ---------- */
+function targetsHit(id, level, crowd) {
+  /* THE MODEL, stated. Enemies are assumed spread evenly over the field, so
+     an area effect of radius r covers r^2*pi/(field area) of them, and a line
+     effect hits what it is allowed to pass through. This is a projection: real
+     crowds clump around the survivor, which makes area weapons better than
+     this says and single-target weapons no worse. */
+  const d = W.Weapons[id];
+  const field = W.CONST.WORLD_WIDTH * W.CONST.WORLD_HEIGHT;
+  const per = (r) => Math.max(1, crowd * (Math.PI * r * r) / field);
+  const q = W.Weapon.preview(id, level, false);
+  const b = d.behavior;
+  if (d.chains) return { n: d.chains, why: `chains to ${d.chains}` };
+  if (b === 'nova' || b === 'ring' || b === 'zone' || b === 'storm' || b === 'orbit') {
+    const r = (d.radius || 60) * q.area;
+    return { n: per(r), why: `area r=${Math.round(r)}` };
+  }
+  if (d.splash) {
+    const r = d.splash * q.area;
+    return { n: 1 + per(r), why: `1 + splash r=${Math.round(r)}` };
+  }
+  if (d.pierce) return { n: 1 + d.pierce, why: `pierces ${d.pierce}` };
+  return { n: 1, why: 'single target' };
+}
+
+function chartCrowd() {
+  const box = panel('Crowd projection',
+    'The same weapons against a field of enemies instead of one. This is the chart that '
+    + 'moves when you change a splash radius or a pierce count.',
+    '');
+  const controls = document.createElement('div');
+  controls.className = 'controls';
+  const crowdIn = document.createElement('input');
+  crowdIn.type = 'range'; crowdIn.min = 20; crowdIn.max = W.CONST.MAX_ENEMIES;
+  crowdIn.step = 10; crowdIn.value = 150; crowdIn.style.width = '190px';
+  const lvl = document.createElement('select');
+  for (let L = 1; L <= 8; L++) {
+    const o = document.createElement('option'); o.value = L; o.textContent = 'rank ' + L;
+    if (L === 8) o.selected = true; lvl.append(o);
+  }
+  const l1 = document.createElement('label'); l1.append('enemies on the field', crowdIn);
+  const readout = document.createElement('span');
+  readout.style.cssText = 'color:var(--gold);font:12px var(--mono)';
+  const l2 = document.createElement('label'); l2.append('at', lvl);
+  controls.append(l1, readout, l2);
+  box.append(controls);
+
+  const svg = el('svg', { role: 'img' });
+  box.append(svg);
+  let rows = [];
+  const draw = () => {
+    const crowd = +crowdIn.value, level = +lvl.value;
+    readout.textContent = crowd;
+    svg.textContent = '';
+    const data = weaponIds().map((id) => {
+      const q = W.Weapon.preview(id, level, false);
+      const t = targetsHit(id, level, crowd);
+      return { id, name: W.Weapons[id].name || id, dps: q.dps, n: t.n,
+        why: t.why, total: q.dps * t.n };
+    }).filter((d) => d.total > 0).sort((a, b) => b.total - a.total);
+    rows = data.map((d) => [d.name, d.dps.toFixed(1), d.n.toFixed(1), Math.round(d.total), d.why]);
+
+    const PAD = 168, RIGHT = 62, ROW = 21, H = data.length * ROW + 26;
+    svg.setAttribute('viewBox', `0 0 900 ${H}`);
+    const max = Math.max(...data.map((d) => d.total)) * 1.02;
+    const x = (v) => PAD + (v / max) * (900 - PAD - RIGHT);
+    for (let g = 0; g <= 4; g++) {
+      const v = max * g / 4;
+      svg.append(el('line', { x1: x(v), x2: x(v), y1: 14, y2: H - 12, class: 'axis' }));
+      const t = el('text', { x: x(v), y: 9, 'text-anchor': 'middle' });
+      t.textContent = Math.round(v); svg.append(t);
+    }
+    data.forEach((d, i) => {
+      const y = 24 + i * ROW;
+      const lab = el('text', { x: PAD - 10, y: y + 4, 'text-anchor': 'end', class: 'name' });
+      lab.textContent = d.name; svg.append(lab);
+      // thin bar, 4px rounded data-end, anchored to the baseline
+      svg.append(el('rect', { x: PAD, y: y - 6, width: Math.max(2, x(d.total) - PAD),
+        height: 12, rx: 4, fill: 'var(--s1)' }));
+      const val = el('text', { x: 900 - RIGHT + 8, y: y + 4, class: 'val' });
+      val.textContent = Math.round(d.total); svg.append(val);
+      const hit = el('rect', { x: 0, y: y - ROW / 2, width: 900, height: ROW, fill: 'transparent' });
+      hover(hit, `<b>${d.name}</b><br>${d.dps.toFixed(1)} dps x ${d.n.toFixed(1)} targets`
+        + `<br>= <b>${Math.round(d.total)}</b><br>${d.why}`);
+      svg.append(hit);
+    });
+  };
+  crowdIn.oninput = draw; lvl.onchange = draw;
+  draw();
+  box._foot = 'PROJECTION, not a measurement. Enemies are assumed spread evenly over the '
+    + `${W.CONST.WORLD_WIDTH}x${W.CONST.WORLD_HEIGHT} field, so an area effect of radius r `
+    + 'reaches crowd x pi r^2 / field area; a chaining weapon reaches its chain count; a '
+    + 'piercing one reaches pierce + 1. Real crowds bunch around the survivor, which makes '
+    + 'area weapons better than this says and single-target weapons no worse.';
+  return finish(box, rows, ['weapon', 'dps', 'targets', 'total', 'why']);
+}
+
+/* ---------- 3. how long a kill takes, minute by minute ---------- */
+function chartTTK() {
+  const box = panel('Time to kill, as the night goes on',
+    'Weapon output is flat across a run; enemy health is not. This is where a weapon stops '
+    + 'keeping up.', '');
+  const controls = document.createElement('div');
+  controls.className = 'controls';
+  const wsel = document.createElement('select');
+  for (const id of weaponIds()) {
+    const o = document.createElement('option');
+    o.value = id; o.textContent = W.Weapons[id].name || id; wsel.append(o);
+  }
+  const lvl = document.createElement('select');
+  for (const [v, t] of [['1', 'rank 1'], ['8', 'rank 8'], ['8e', 'evolved']]) {
+    const o = document.createElement('option'); o.value = v; o.textContent = t;
+    if (v === '8') o.selected = true; lvl.append(o);
+  }
+  const msel = document.createElement('select');
+  for (const id of (W.MapOrder || Object.keys(W.Maps))) {
+    if (id === 'boss_arena') continue;
+    const o = document.createElement('option');
+    o.value = id; o.textContent = (W.Maps[id] || {}).name || id; msel.append(o);
+  }
+  const la = document.createElement('label'); la.append('weapon', wsel);
+  const lb = document.createElement('label'); lb.append('at', lvl);
+  const lc = document.createElement('label'); lc.append('on', msel);
+  controls.append(la, lb, lc);
+  box.append(controls);
+
+  const leg = document.createElement('div');
+  leg.className = 'legend';
+  box.append(leg);
+  const svg = el('svg', { role: 'img' });
+  box.append(svg);
+  let rows = [];
+
+  const scaleAt = (mapId, t) => {
+    /* The GAME's own curve, not a copy of it. WaveManager.enemyScale reads the
+       live run, so a run is faked around it and put back. */
+    const wm = W.WaveManager, g = W.Game;
+    const map = wm.map, run = g.run;
+    try {
+      wm.map = W.Maps[mapId];
+      g.run = { hyper: false, diffScale: 1, victorious: false, mode: 'normal' };
+      return wm.enemyScale(t);
+    } catch (e) { return 1; } finally { wm.map = map; g.run = run; }
+  };
+
+  const draw = () => {
+    svg.textContent = ''; leg.textContent = '';
+    const id = wsel.value, mapId = msel.value;
+    const evo = lvl.value === '8e';
+    const q = W.Weapon.preview(id, evo ? 8 : +lvl.value, evo);
+    const map = W.Maps[mapId];
+    // three targets from this map's own roster: its lightest, its heaviest, its last boss
+    const ids = [...new Set((map.phases || []).flatMap((p) =>
+      (p.roster || []).map((r) => r.id)))].filter((k) => W.Enemies[k]);
+    if (!ids.length || !q) return;
+    ids.sort((a, b) => W.Enemies[a].health - W.Enemies[b].health);
+    const boss = (map.bosses || []).slice(-1)[0];
+    const picks = [{ k: ids[0], t: 'creature' }, { k: ids[ids.length - 1], t: 'toughest creature' }];
+    if (boss && W.Bosses[boss.id]) picks.push({ k: boss.id, t: 'final boss', boss: true });
+    const cols = ['var(--s1)', 'var(--s2)', 'var(--s3)'];
+
+    const mins = [];
+    for (let m = 0; m <= 30; m++) mins.push(m);
+    const series = picks.map((p, i) => {
+      const tpl = p.boss ? W.Bosses[p.k] : W.Enemies[p.k];
+      const pts = mins.map((m) => {
+        const sc = p.boss ? (W.WaveManager.bossScale ? scaleBoss(mapId, m * 60) : 1)
+          : scaleAt(mapId, m * 60);
+        const hp = tpl.health * sc * W.CONST.ENEMY_SCALE;
+        return { m, ttk: hp / q.dps };
+      });
+      return { name: tpl.name || p.k, what: p.t, colour: cols[i], pts };
+    });
+    function scaleBoss(mapId2, t) {
+      const wm = W.WaveManager, g = W.Game;
+      const map2 = wm.map, run = g.run;
+      try {
+        wm.map = W.Maps[mapId2];
+        g.run = { hyper: false, diffScale: 1, victorious: false, mode: 'normal' };
+        return wm.bossScale(t);
+      } catch (e) { return 1; } finally { wm.map = map2; g.run = run; }
+    }
+
+    /* No legend: each small multiple carries one series and is titled with it,
+       which is stronger identity than a swatch in a row above. */
+
+    /* SMALL MULTIPLES, one panel per target, each on its own scale.
+     * The first version put all three on one axis and a boss at 637 seconds
+     * flattened both creatures onto the baseline with their end labels on top
+     * of each other. The fix for two measures of wildly different size is
+     * never a second y-axis - it is more than one plot. */
+    const L = 66, R = 92, Wd = 900, PH = 74, GAP = 12;
+    const H = series.length * (PH + GAP);
+    svg.setAttribute('viewBox', `0 0 ${Wd} ${H}`);
+    const x = (m) => L + (m / 30) * (Wd - L - R);
+    series.forEach((s2, si) => {
+      const top = si * (PH + GAP) + 14;
+      const bot = top + PH - 24;
+      const hiv = Math.max(...s2.pts.map((p) => p.ttk)) * 1.08 || 1;
+      const y = (v) => bot - (v / hiv) * (bot - top);
+      const ttl = el('text', { x: L, y: top - 4, class: 'val' });
+      ttl.textContent = s2.name;
+      svg.append(ttl);
+      const what = el('text', { x: L + s2.name.length * 6.4 + 10, y: top - 4 });
+      what.textContent = s2.what;
+      svg.append(what);
+      for (const v of [0, hiv / 2, hiv]) {
+        svg.append(el('line', { x1: L, x2: Wd - R, y1: y(v), y2: y(v), class: 'axis' }));
+        const t = el('text', { x: L - 8, y: y(v) + 4, 'text-anchor': 'end' });
+        t.textContent = (v >= 10 ? Math.round(v) : +v.toFixed(1)) + 's';
+        svg.append(t);
+      }
+      const d = s2.pts.map((p, i) => (i ? 'L' : 'M') + x(p.m) + ' ' + y(p.ttk)).join(' ');
+      svg.append(el('path', { d, fill: 'none', stroke: s2.colour, 'stroke-width': 2,
+        'stroke-linejoin': 'round' }));
+      const last = s2.pts[30];
+      svg.append(el('circle', { cx: x(30), cy: y(last.ttk), r: 4.5, fill: s2.colour,
+        stroke: 'var(--panel)', 'stroke-width': 2 }));
+      const lab = el('text', { x: x(30) + 10, y: y(last.ttk) + 4, class: 'val' });
+      lab.textContent = last.ttk >= 10 ? Math.round(last.ttk) + 's' : last.ttk.toFixed(1) + 's';
+      svg.append(lab);
+      if (si === series.length - 1) {
+        for (const m of [0, 5, 10, 15, 20, 25, 30]) {
+          const t = el('text', { x: x(m), y: bot + 16, 'text-anchor': 'middle' });
+          t.textContent = m + 'm'; svg.append(t);
+        }
+      }
+    });
+    // one crosshair across all three panels
+    const line = el('line', { y1: 6, y2: H - 22, class: 'axis', stroke: 'var(--gold-dim)',
+      'stroke-width': 1, opacity: 0 });
+    svg.append(line);
+    const hit = el('rect', { x: L, y: 0, width: Wd - L - R, height: H, fill: 'transparent' });
+    hit.addEventListener('pointerleave', () => { line.setAttribute('opacity', 0); tip.classList.remove('on'); });
+    hit.addEventListener('pointermove', (e) => {
+      const r = svg.getBoundingClientRect();
+      const m = Math.round(Math.max(0, Math.min(30,
+        ((e.clientX - r.left) / r.width * Wd - L) / (Wd - L - R) * 30)));
+      line.setAttribute('x1', x(m)); line.setAttribute('x2', x(m));
+      line.setAttribute('opacity', 1);
+      tip.innerHTML = `<b>minute ${m}</b><br>`
+        + series.map((s2) => `${s2.name}: ${s2.pts[m].ttk.toFixed(1)}s`).join('<br>');
+      tip.classList.add('on');
+      tip.style.left = Math.min(innerWidth - tip.offsetWidth - 12, e.clientX + 14) + 'px';
+      tip.style.top = (e.clientY + 16) + 'px';
+    });
+    svg.append(hit);
+
+    rows = mins.map((m) => [m + 'm'].concat(series.map((s2) => s2.pts[m].ttk.toFixed(1))));
+    box._foot = `Seconds to kill one target with ${W.Weapons[id].name} at `
+      + `${lvl.selectedOptions[0].textContent} (${q.dps.toFixed(1)} dps, one target). Enemy `
+      + 'health uses the game\'s own WaveManager.enemyScale and bossScale on a normal, '
+      + 'non-hyper run - so this is the curve the game actually inflates by, not a copy of it.';
+    const old = box.querySelector('.foot');
+    if (old) { old.remove(); finish(box, rows, ['minute'].concat(series.map((s2) => s2.name))); }
+  };
+  wsel.onchange = draw; lvl.onchange = draw; msel.onchange = draw;
+  draw();
+  return box.querySelector('.foot') ? box : finish(box, rows, ['minute']);
+}
+
+function renderCharts(main) {
+  for (const make of [chartSingle, chartCrowd, chartTTK]) {
+    try { const c = make(); if (c) main.append(c); }
+    catch (e) {
+      const p = document.createElement('p');
+      p.className = 'empty';
+      p.textContent = 'a chart could not be drawn: ' + e.message;
+      main.append(p);
+    }
+  }
+}
+
 /* ---- rendering a section ----------------------------------------------- */
 function buildNav() {
   const nav = $('#nav');
   nav.innerHTML = '';
-  for (const t of TABLES) {
+  const add = (root, label) => {
     const b = document.createElement('button');
-    b.dataset.root = t.root;
+    b.dataset.root = root;
     b.innerHTML = '<span></span><span class="n"></span>';
-    b.firstChild.textContent = t.label;
-    b.onclick = () => { section = t.root; query = ''; $('#search').value = ''; render(); };
+    b.firstChild.textContent = label;
+    b.onclick = () => { section = root; query = ''; $('#search').value = ''; render(); };
     nav.append(b);
-  }
+    return b;
+  };
+  add('#charts', 'Projections');
+  nav.append(document.createElement('hr'));
+  for (const t of TABLES) add(t.root, t.label);
   markCounts();
 }
 
@@ -650,6 +1239,22 @@ function render() {
 
   const onlyChanged = $('#only').checked;
   const q = query.trim().toLowerCase();
+
+  if (!q && section === '#charts') {
+    const head = document.createElement('div');
+    head.className = 'head';
+    const h1 = document.createElement('h1'); h1.textContent = 'Projections';
+    const hint1 = document.createElement('p'); hint1.className = 'hint';
+    hint1.style.margin = '2px 0 0';
+    hint1.textContent = 'Computed from the game\'s own functions, and redrawn from whatever '
+      + 'you have tuned. Change a number in another tab and come back.';
+    head.append(h1, hint1);
+    main.append(head);
+    renderCharts(main);
+    markCounts();
+    return;
+  }
+
   const tables = q ? TABLES : TABLES.filter((t) => t.root === section);
 
   const head = document.createElement('div');
@@ -662,7 +1267,7 @@ function render() {
     h.textContent = 'Search: ' + query;
     hint.textContent = 'Every table, every field whose name, id or value matches.';
   } else {
-    const t = TABLES.find((x) => x.root === section);
+    const t = TABLES.find((x) => x.root === section) || TABLES[0];
     h.textContent = t.label;
     hint.textContent = 'Everything in WS.' + t.root
       + '. Changed values are gold, and ⟲ puts one back to what the game ships.';
@@ -808,6 +1413,46 @@ ${lines.join('\n')}${lines.length ? '\n' : ''}    },
 })(window.WS);
 `;
 }
+
+/* ---- draggable panes, remembered ---------------------------------------- */
+function drag(gripId, varName, min, max, invert) {
+  const grip = $('#' + gripId);
+  const shell = $('#shell');
+  const saved = (() => { try { return localStorage.getItem('bench.' + varName); } catch (e) { return null; } })();
+  if (saved) shell.style.setProperty(varName, saved);
+  grip.addEventListener('pointerdown', (e) => {
+    grip.classList.add('on');
+    document.body.classList.add('dragging');
+    grip.setPointerCapture(e.pointerId);
+    const move = (ev) => {
+      const w = invert ? innerWidth - ev.clientX : ev.clientX;
+      const px = Math.max(min, Math.min(max, Math.round(w))) + 'px';
+      shell.style.setProperty(varName, px);
+      fitFrame();
+    };
+    const up = () => {
+      grip.classList.remove('on');
+      document.body.classList.remove('dragging');
+      grip.removeEventListener('pointermove', move);
+      grip.removeEventListener('pointerup', up);
+      try { localStorage.setItem('bench.' + varName,
+        getComputedStyle(shell).getPropertyValue(varName).trim()); } catch (er) {}
+    };
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', up);
+  });
+}
+drag('grip-nav', '--nav-w', 130, 420, false);
+drag('grip-aside', '--aside-w', 240, 900, true);
+
+$('#density').onchange = (e) => {
+  document.documentElement.style.setProperty('--col', e.target.value + 'px');
+  try { localStorage.setItem('bench.col', e.target.value); } catch (er) {}
+};
+try {
+  const c = localStorage.getItem('bench.col');
+  if (c) { $('#density').value = c; document.documentElement.style.setProperty('--col', c + 'px'); }
+} catch (e) {}
 
 /* ---- buttons ----------------------------------------------------------- */
 function status(msg, cls) {

@@ -91,6 +91,46 @@ Name the pass in the box above the notes and that becomes the heading.
 If you would rather not run the server at all, **Copy tuning.js** puts the
 whole file on the clipboard — paste it over `src/data/tuning.js` and reload.
 
+### Typing into a rank
+
+The rank tables are not read-only. Rank 4's damage is not a field anywhere —
+it's the base times a step — so **type the number you want and the bench solves
+backwards onto the field that produces it.** Want Rimeshard doing 90 dps at
+rank 8? Type 90 into that cell. It bisects over `rankDamageStep`, measuring
+each guess with the game's own `Weapon.preview`, and tells you what it moved.
+
+- Typing into **rank 1** moves the base (`damage`, `cooldown`).
+- Typing into a **later rank** moves `rankDamageStep`, so the weapon starts
+  where it started and *grows* differently.
+- Typing into the **evolved** row moves `evolveDamageMult`.
+- On a boon or a lesson, any rank solves `v`; a Trainer cost cell solves `cost`.
+
+The solve doesn't know whether the relationship is linear — that's the point. A
+boon that multiplies and a weapon that adds go through the same eight lines,
+and neither can go stale when a formula changes.
+
+## Projections
+
+The first tab is charts, all computed from the game's own functions and redrawn
+from whatever you've tuned:
+
+- **Single-target output** — every weapon on one axis, showing rank 1 → rank 8 →
+  evolved. This is the chart that tells you Knifestorm is nine times Hallowed
+  Ring.
+- **Crowd projection** — the same weapons against a field of enemies, with a
+  slider for how many. This is where a splash radius or a pierce count shows up.
+  It is a *projection* and the model is printed under it: enemies assumed spread
+  evenly over the field, area effects reaching `crowd × πr² / field`, chains
+  reaching their chain count, pierce reaching pierce + 1. Real crowds bunch, so
+  area weapons do better than this says.
+- **Time to kill, as the night goes on** — seconds to kill, minute by minute,
+  using the game's real `WaveManager.enemyScale` and `bossScale`. Three small
+  multiples (a creature, the map's toughest creature, its final boss), each on
+  its own scale, because a 600-second boss on a shared axis flattens everything
+  else to a line.
+
+Every chart has a **show as table** toggle.
+
 ## Working in it
 
 - **Live.** Most values reach the running game the instant you type. Spawn
@@ -105,6 +145,9 @@ whole file on the clipboard — paste it over `src/data/tuning.js` and reload.
 - Changed values are gold; so is the count beside each section in the sidebar.
 - Cards start collapsed with **expand all / collapse all** at the top, and each
   card's fields lay out in as many columns as the window is wide.
+- **Drag the dividers** between the sidebar, the editor and the live game — the
+  widths are remembered per browser. The dropdown next to *changed only* sets
+  how wide the field columns are, down to a single column.
 
 ## Shipping tuning
 

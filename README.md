@@ -68,10 +68,14 @@ than asserted.
 `bench.bat` (Windows) or `./bench.sh` starts a local tuning bench at
 http://localhost:8770 — no internet, no account. It builds itself from the
 game's own data at runtime, so **everything** is editable: numbers, names,
-descriptions, colours, spawn tables, boss patterns. Changes land in the live
-game beside the controls, and saving writes `src/data/tuning.js` plus patch
-notes into `CHANGELOG-BALANCE.md`. Shipped values are never overwritten, so
-reset is real.
+descriptions, colours, spawn tables, boss patterns, the engine scalars and the
+whole Eclipse Arena fight. Every weapon, boon and Trainer lesson carries a rank
+table you can type a target into — it solves backwards onto the field that
+produces the number. A Projections tab charts single-target output, a crowd
+model and time-to-kill minute by minute, all computed from the game's own
+functions. Changes land in the live game beside the controls, and saving writes
+`src/data/tuning.js` plus patch notes into `CHANGELOG-BALANCE.md`. Shipped
+values are never overwritten, so reset is real.
 
 See [TUNING.md](TUNING.md).
 

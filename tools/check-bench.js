@@ -33,6 +33,18 @@
  *                cumulative gold, and checks the weapon table agrees with
  *                WS.Weapon.preview to the digit.
  *
+ *   solving      A rank table is a readout until you can type into it. "I want
+ *                rank 8 to do 90 dps" must move the field that produces that
+ *                number - and the game's own preview must then say 90.
+ *
+ *   projections  Three charts, each computed from the game rather than from a
+ *                copy of its formulas, each offering a table view, none of
+ *                them drawing a series flat because something of a different
+ *                magnitude shares its axis, and all of them using the series
+ *                colours that were put through the palette validator.
+ *
+ *   panes        The dividers move and the widths are remembered.
+ *
  *   nothing      No control anywhere may read "undefined". Every apply() in
  *   undefined    the game used to render as an editable box containing that
  *                word, because JSON.stringify returns undefined for a
@@ -63,6 +75,12 @@
  *     render as editable boxes containing \"undefined\""
  *   - dropping CONST and Arena.tuning from the tuning layer fails at "the
  *     engine scalars and the Eclipse Arena fight cannot be tuned"
+ *   - making the rank cells read-only again fails at "asked for 90 dps at rank
+ *     8 and the game now reports 108.40 - the solve did not land"
+ *   - putting the time-to-kill series back on one shared y-axis fails at "a
+ *     time-to-kill series is drawn flat (0, 1, 36px tall)", which is exactly
+ *     what it looked like before it became small multiples
+ *   - swapping in chart colours nobody validated fails by naming them
  *
  *   npm i playwright && npx playwright install chromium
  *   node tools/check-bench.js
@@ -276,6 +294,128 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     }
     if (!reach.restored) fail.push('clearing an override did not put the value back');
 
+    /* ---- typing into a rank solves backwards ---------------------------- */
+    /* The rank tables show derived numbers, so being able to type "I want rank
+       8 to do 90 dps" and have the bench work out the field that produces it
+       is the difference between a readout and a tool. This checks the SOLVE,
+       not the display: after typing, the game's own preview must return the
+       number that was asked for. */
+    const solved = await page.evaluate(async () => {
+      const game = document.querySelector('#frame').contentWindow.WS;
+      document.querySelector('nav button[data-root="Weapons"]').click();
+      const card = document.querySelector('#main .entry[data-path="Weapons.rimeshard"]');
+      card.open = true;
+      const rows = [...card.querySelectorAll('.ranks tr')];
+      const row8 = rows.find((r) => r.children[0].textContent === 'rank 8');
+      const cell = row8.children[4];                       // the dps column
+      const before = game.Weapon.preview('rimeshard', 8, false).dps;
+      const step = game.Weapons.rimeshard.rankDamageStep;
+      cell.textContent = '90';
+      cell.dispatchEvent(new Event('blur'));
+      await new Promise((r) => setTimeout(r, 120));
+      const out = { before, after: game.Weapon.preview('rimeshard', 8, false).dps,
+        stepBefore: step, stepAfter: game.Weapons.rimeshard.rankDamageStep,
+        rank1: game.Weapon.preview('rimeshard', 1, false).dps,
+        editable: cell.contentEditable === 'true',
+        overridden: Object.keys(game.Tuning.overrides).filter((k) => /rimeshard/.test(k)) };
+      // Put it back. The save test below counts overrides, and a leftover from
+      // this one would quietly make that count a lie.
+      for (const k of out.overridden) game.Tuning.clear(k);
+      return out;
+    });
+    if (!solved.editable) fail.push('the rank cells cannot be typed into');
+    if (Math.abs(solved.after - 90) > 0.05) {
+      fail.push(`asked for 90 dps at rank 8 and the game now reports `
+        + `${solved.after.toFixed(2)} - the solve did not land`);
+    }
+    if (solved.stepAfter === solved.stepBefore) {
+      fail.push('typing into rank 8 did not move rankDamageStep');
+    }
+    if (!solved.overridden.some((k) => /rankDamageStep/.test(k))) {
+      fail.push('the solved value was not recorded as an override, so it will not save');
+    }
+
+    /* ---- the projections ------------------------------------------------ */
+    const viz = await page.evaluate(() => {
+      const game = document.querySelector('#frame').contentWindow.WS;
+      document.querySelector('nav button[data-root="#charts"]').click();
+      const panels = [...document.querySelectorAll('#main .viz')];
+      const cs = getComputedStyle(panels[0] || document.body);
+      const marks = panels.map((p) =>
+        p.querySelectorAll('svg circle, svg rect[rx], svg path').length);
+      // every chart offers a table
+      let tables = 0;
+      for (const p of panels) {
+        const b = p.querySelector('.as-table');
+        if (b) { b.click(); if (p.querySelector('table')) tables++; b.click(); }
+      }
+      // the single-target chart must agree with the game about the biggest weapon
+      const ids = (game.WeaponOrder || Object.keys(game.Weapons));
+      let top = null, best = -1;
+      for (const id of ids) {
+        const q = game.Weapon.preview(id, 8, true);
+        if (q && q.dps > best) { best = q.dps; top = game.Weapons[id].name; }
+      }
+      const firstLabel = panels[0].querySelector('svg text.name');
+      // and the time-to-kill panel must not have flattened any series: measure
+      // the drawn height of each line
+      const ttk = panels[2];
+      const heights = [...ttk.querySelectorAll('svg path')].map((pa) => {
+        const b = pa.getBBox(); return Math.round(b.height);
+      });
+      return { panels: panels.length, marks, tables, top, firstLabel: firstLabel && firstLabel.textContent,
+        heights, series: [cs.getPropertyValue('--s1').trim(),
+          cs.getPropertyValue('--s2').trim(), cs.getPropertyValue('--s3').trim()] };
+    });
+    if (viz.panels !== 3) fail.push(`the projections tab drew ${viz.panels} charts, not 3`);
+    if (viz.marks.some((m) => m < 3)) {
+      fail.push('a chart drew almost nothing: marks per panel ' + viz.marks.join(', '));
+    }
+    if (viz.tables !== 3) {
+      fail.push(`${viz.tables} of 3 charts offer a table view - every chart needs one`);
+    }
+    if (viz.firstLabel !== viz.top) {
+      fail.push(`the single-target chart's top weapon is "${viz.firstLabel}" but the game `
+        + `says it is "${viz.top}" - the chart is not computed from the game`);
+    }
+    /* The defect this replaced: one shared y-axis let a 637-second boss flatten
+       both creature lines onto the baseline. Small multiples fixed it, and a
+       flattened series is what regressing would look like. */
+    if (viz.heights.some((h) => h < 12)) {
+      fail.push('a time-to-kill series is drawn flat (' + viz.heights.join(', ') + 'px tall) '
+        + '- something has put series of different magnitude back on one scale');
+    }
+    /* The three series hues are the first three slots of the reference
+       categorical palette, stepped for dark, and were run through the dataviz
+       validator against this page's own surface (#080b11, --pairs all): worst
+       CVD deltaE 9.4, worst normal-vision 20.9, all over 3:1. Changing them
+       without re-validating is how a chart quietly stops being readable. */
+    const WANT = ['#3987e5', '#d95926', '#199e70'];
+    if (viz.series.join(',').toLowerCase() !== WANT.join(',')) {
+      fail.push(`the chart series colours are ${viz.series.join(', ')}, not the validated `
+        + `${WANT.join(', ')} - re-run the palette validator if this is deliberate`);
+    }
+
+    /* ---- panes resize, and remember --------------------------------------- */
+    const panes = await page.evaluate(async () => {
+      const shell = document.querySelector('#shell');
+      const before = getComputedStyle(shell).getPropertyValue('--aside-w').trim();
+      const grip = document.querySelector('#grip-aside');
+      const r = grip.getBoundingClientRect();
+      grip.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1,
+        clientX: r.x, clientY: r.y + 40 }));
+      grip.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId: 1,
+        clientX: innerWidth - 620, clientY: r.y + 40 }));
+      grip.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1 }));
+      await new Promise((res) => setTimeout(res, 60));
+      return { before, after: getComputedStyle(shell).getPropertyValue('--aside-w').trim(),
+        stored: localStorage.getItem('bench.--aside-w') };
+    });
+    if (panes.after === panes.before || !/\d/.test(panes.after)) {
+      fail.push(`dragging the divider left the pane at ${panes.after}`);
+    }
+    if (!panes.stored) fail.push('a dragged pane width is not remembered');
+
     /* ---- live ----------------------------------------------------------- */
     const live = await page.evaluate(async () => {
       const game = document.querySelector('#frame').contentWindow.WS;
@@ -298,6 +438,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
         name: game.Weapons.cinderfall.name,
         shipped: game.Tuning.shippedValue('Weapons.cinderfall.damage'),
         count: document.querySelector('#count').textContent,
+        keys: Object.keys(game.Tuning.overrides).join(' '),
         notes: document.querySelector('#notes').textContent,
         marked: !!card.classList.contains('touched') };
     });
@@ -309,7 +450,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     if (live.shipped !== live.before) {
       fail.push(`the shipped value was lost: it reads ${live.shipped}, not ${live.before}`);
     }
-    if (!/2 changes/.test(live.count)) fail.push(`the change counter says "${live.count}"`);
+    if (!/2 changes/.test(live.count)) fail.push(`the change counter says "${live.count}" (overrides: ${live.keys})`);
     if (!live.marked) fail.push('the edited card is not marked as changed');
     if (!/Emberfall/.test(live.notes) || !/damage/.test(live.notes)) {
       fail.push('the patch notes do not describe the change: ' + live.notes.slice(0, 90));
