@@ -145,6 +145,104 @@ const PLACED = 2.5;
       bar: placedBar,
     };
 
+    /* ---- the wall: chatter cannot drown what matters ----------------------
+     *
+     * Hits, kills, gems and casts are the game talking to itself, and the old
+     * throttle allowed about sixty of them a second in a busy run, every one at
+     * the same gain, all on the same bus as a level-up and a boss horn. That is
+     * not feedback, it is a wall - and it is the reason a run's loudest moments
+     * had nothing left to be loud with.
+     *
+     * Measured off the real master, not asserted from the graph: drive the
+     * chatter as hard as the game ever can, and the sound that matters must
+     * still come out clearly on top of it. */
+    /* Measured at sfxGain, which is BEFORE the master limiter.
+     *
+     * The limiter's whole job is to pin the peak of whatever reaches it, so
+     * measuring "does this cut through" at the master output asks a question
+     * the limiter has already answered: both windows come back at the ceiling
+     * and the comparison is meaningless. The claim is about the effects MIX,
+     * and the effects mix is one node earlier. */
+    const SL = ctx.createAnalyser(), SR = ctx.createAnalyser();
+    SL.fftSize = 2048; SR.fftSize = 2048;
+    const sfxSplit = ctx.createChannelSplitter(2);
+    WS.Audio.sfxGain.connect(sfxSplit);
+    sfxSplit.connect(SL, 0); sfxSplit.connect(SR, 1);
+    const sl = new Float32Array(SL.fftSize), sr = new Float32Array(SR.fftSize);
+
+    /* PEAK, not summed energy, for this one.
+     *
+     * The first version of this measurement compared total energy and reported
+     * that a level-up made the mix 19% QUIETER - which was true and was the
+     * ducking working exactly as intended. Total energy is the wrong question:
+     * what matters is whether the important sound CUTS THROUGH, and that is a
+     * peak. */
+    const peak = async (ms, during) => {
+      let hi = 0, e = 0;
+      const until = performance.now() + ms;
+      while (performance.now() < until) {
+        if (during) during();
+        await sleep(11);
+        SL.getFloatTimeDomainData(sl); SR.getFloatTimeDomainData(sr);
+        for (let i = 0; i < sl.length; i++) {
+          const v = Math.abs(sl[i]) + Math.abs(sr[i]);
+          if (v > hi) hi = v;
+        }
+        e += rms(sl) + rms(sr);
+      }
+      return { hi, e };
+    };
+    const px2 = WS.Game.player.x;
+    // Everything the game can throw at once, called every frame like the real
+    // thing does - the throttle is what decides how much of it sounds.
+    const storm = () => {
+      for (let i = 0; i < 6; i++) {
+        WS.Audio.play('hit', px2 + (i - 3) * 90);
+        WS.Audio.play('enemyHit', px2 + (i - 3) * 70);
+        WS.Audio.play('cast', px2);
+        WS.Audio.play('gem', px2 + i * 40);
+      }
+    };
+    await sleep(400);
+    out.quiet = await peak(500, null);
+    await sleep(400);
+    /* BEFORE and AFTER, both with the wall running.
+     *
+     * Comparing one long window against another does not work: the "with a
+     * level-up" window still contains the un-ducked wall that came before the
+     * level-up fired, and its peak is the peak of the whole window. The
+     * question is whether the mix's peak RISES at the moment the important
+     * sound arrives, so the windows have to be either side of that moment. */
+    out.wallOnly = await peak(700, storm);
+    WS.Audio.play('level');
+    out.wallPlusLevel = await peak(700, storm);
+    await sleep(800);
+    out.levelAlone = await peak(700, (() => {
+      let n = 0;
+      return () => { if (n++ === 2) WS.Audio.play('level'); };
+    })());
+    out.hasChatterBus = !!(WS.Audio.chatter && WS.Audio.chatterGain);
+
+    /* ---- density: a clump must not sound like a single event -------------- */
+    /* The old throttle DROPPED everything it could not fit, so forty hits in a
+     * tick sounded exactly like two and the player learned nothing from the
+     * difference. They are counted now and the next voice carries them. */
+    await sleep(600);
+    // one event on a quiet field
+    WS.Audio.play('hit', px2);
+    const single = WS.Audio.lastShape;
+    // then thirty in a tick, which the throttle will not let through - the
+    // next voice out has to carry what they would have said
+    await sleep(200);
+    for (let i = 0; i < 30; i++) WS.Audio.play('hit', px2);
+    /* Long enough that the WIDENED gap has elapsed - a clump deliberately
+       spaces itself out, so 55ms was still inside it - and short enough that
+       the backlog has not aged out. */
+    await sleep(110);
+    WS.Audio.play('hit', px2);
+    const clump = WS.Audio.lastShape;
+    out.density = { single, clump };
+
     /* ---- muted: the score stops, it does not just go quiet ---------------- */
     WS.Save.settings.music = true; WS.Audio.applySettings();
     WS.Audio.playMusic('forest');
@@ -290,6 +388,61 @@ const PLACED = 2.5;
     clear();
     return out;
   });
+  /* ---- the wall, and the density shaping ---------------------------------- */
+  if (!report.hasChatterBus) {
+    fail.push('there is no chatter bus - the hits, kills and gems share one output with '
+      + 'the sounds that matter, and out-number them sixty to one');
+  }
+  /* Does the important sound OWN its moment?
+   *
+   * The obvious comparison - is the mix louder with a level-up in it - is
+   * exactly backwards, and measuring it said so: the mix gets 45% QUIETER,
+   * because the chatter ducks out of the way. That is the system working. So
+   * the two things worth asserting are that the wall does get out of the way,
+   * and that what is left in the gap is mostly the level-up rather than the
+   * remains of the wall.
+   *
+   * Measured: a full wall peaks 0.297; the same wall the instant a level-up
+   * fires peaks 0.163; the level-up alone peaks 0.141. So four fifths of what
+   * you hear in that moment is the level-up.
+   */
+  const gotOut = report.wallPlusLevel.hi / Math.max(1e-9, report.wallOnly.hi);
+  const owns = report.wallPlusLevel.hi / Math.max(1e-9, report.levelAlone.hi);
+  if (!(report.levelAlone.hi > 0.02)) {
+    fail.push('a level-up on a silent field barely registers - the comparisons below '
+      + 'would be measuring nothing');
+  }
+  if (!(report.wallOnly.e > report.quiet.e * 1.5)) {
+    fail.push('driving every chatter kit as hard as the game can barely registers - '
+      + 'this measurement is not reaching the mix');
+  }
+  if (!(gotOut < 0.85)) {
+    fail.push(`a level-up over a full wall of chatter leaves the mix at `
+      + `${(gotOut * 100).toFixed(0)}% of the wall's own peak - the chatter is not `
+      + 'getting out of the way of the thing it is supposed to make room for');
+  }
+  if (!(owns < 1.7)) {
+    fail.push(`in the moment a level-up fires, the mix peaks ${owns.toFixed(2)}x what the `
+      + 'level-up makes on its own - most of what the player hears is still the wall');
+  }
+
+  const s1 = report.density.single, sc = report.density.clump;
+  if (!s1 || !sc) fail.push('the chatter voices are not being shaped at all');
+  else {
+    if (!(sc.heft > 0.5)) {
+      fail.push(`thirty hits in a tick left the next voice at heft ${sc.heft.toFixed(2)} - `
+        + 'the events the throttle refused are being dropped rather than counted');
+    }
+    if (!(sc.gain > s1.gain * 1.4)) {
+      fail.push(`a clump of thirty sounds ${(sc.gain / s1.gain).toFixed(2)}x a single hit - `
+        + 'the player cannot hear the difference between killing three things and thirty');
+    }
+    if (!(sc.pitch < s1.pitch * 0.95)) {
+      fail.push('a clump is not pitched below a single event, so it reads as more of the '
+        + 'same rather than as something heavier');
+    }
+  }
+
   const D = danger;
   if (!(D.calm < 0.15)) fail.push(`an empty field at minute zero reads ${D.calm.toFixed(2)} danger`);
   if (!(D.crowded > 0.5)) fail.push(`a field of 130 reads ${D.crowded.toFixed(2)}`);
@@ -327,6 +480,11 @@ const PLACED = 2.5;
   }
   console.log(`ok: sound is placed in the field (${p.left}x left, `
     + `${(1 / p.right).toFixed(2)}x right, ${p.centre} centred, ${p.announce} announcing), `
+    + `a wall of chatter gets out of the way of a level-up (down to `
+    + `${(gotOut * 100).toFixed(0)}% of its own peak, and ${(100 / owns).toFixed(0)}% of `
+    + `what is left is the level-up itself) while a clump of thirty hits comes out `
+    + `${(sc.gain / s1.gain).toFixed(1)}x heavier and `
+    + `${((1 - sc.pitch / s1.pitch) * 100).toFixed(0)}% lower than a single one, `
     + `the score reads the run rather than the field (calm ${D.calm.toFixed(2)}, a dying `
     + `survivor on an empty field ${D.dying.toFixed(2)}, a fresh boss `
     + `${D.bossFresh.toFixed(2)}, one at 5% ${D.bossNearlyDead.toFixed(2)}) and eases `

@@ -7886,6 +7886,12 @@ window.WS = window.WS || {};
    *  is running is the difference between a sound and an ambush. */
   function live() { return Audio.ctx && Audio.ctx.state === 'running'; }
 
+  /** How loud the game's own chatter is allowed to be, against everything
+   *  else. One number, in one place, and nothing can exceed it. */
+  const CHATTER_LEVEL = 0.8;
+  /** ...and how far under that it goes when something important speaks. */
+  const CHATTER_DUCK = 0.45;
+
   /** Created on the first user gesture - browsers block audio before that. */
   Audio.init = function () {
     if (this.ctx) return;
@@ -7905,11 +7911,41 @@ window.WS = window.WS || {};
 
     this.sfxGain = this.ctx.createGain();
     this.musicGain = this.ctx.createGain();
+
+    /* CHATTER HAS ITS OWN BUS, AND A CEILING.
+     *
+     * Hits, kills, gems and casts are the game talking to itself, and late in
+     * a run there are a lot of them: the old throttle allowed twenty-two hits,
+     * sixteen kills and twenty casts a second, forever, every one at the same
+     * gain. That is not feedback, it is a wall - and the sounds that actually
+     * matter, a level, a boss horn, being hurt, had to fight it on equal
+     * terms because everything shared one bus.
+     *
+     * Putting the chatter behind its own compressor and its own gain makes the
+     * important sounds louder than it BY CONSTRUCTION rather than by luck. The
+     * compressor is doing the job a compressor is for - the more of it there
+     * is at once, the harder it is squashed - and the gain caps what share of
+     * the mix it can ever have. Which is what makes it safe to be generous
+     * with the density: it physically cannot take over. */
+    this.chatter = this.ctx.createDynamicsCompressor();
+    this.chatter.threshold.value = -30;
+    this.chatter.knee.value = 18;
+    this.chatter.ratio.value = 12;
+    this.chatter.attack.value = 0.003;
+    this.chatter.release.value = 0.14;
+    this.chatterGain = this.ctx.createGain();
+    /* Chatter sits a step back from everything else, permanently. This is the
+       number that decides what share of the mix the game's own background
+       noise is allowed to have, and having it in one place is the entire
+       reason for the bus. */
+    this.chatterGain.gain.value = CHATTER_LEVEL;
+    this.chatter.connect(this.chatterGain);
     // The score sits behind a duck stage, so a boss horn or a level-up pushes
     // it down rather than talking over it.
     this.duck = this.ctx.createGain();
     this.duck.gain.value = 1;
     this.sfxGain.connect(this.master);
+    this.chatterGain.connect(this.sfxGain);
     this.musicGain.connect(this.duck);
     this.duck.connect(this.master);
     this.applySettings();
@@ -7945,8 +7981,13 @@ window.WS = window.WS || {};
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = opts.type || 'sine';
-    osc.frequency.setValueAtTime(opts.freq, t0);
-    if (opts.to) osc.frequency.exponentialRampToValueAtTime(WS.max(20, opts.to), t0 + (opts.slide || opts.decay));
+    /* Audio.pitch spreads repeats apart. Twenty identical bursts a second stack
+       into one steady tone; the same twenty scattered across a band read as a
+       texture, and the ear stops hearing them as a machine. It is set per play
+       and widens with how much is happening. */
+    const pq = Audio.pitch;
+    osc.frequency.setValueAtTime(opts.freq * pq, t0);
+    if (opts.to) osc.frequency.exponentialRampToValueAtTime(WS.max(20, opts.to * pq), t0 + (opts.slide || opts.decay));
     let last = osc;
     if (opts.filter) {
       const f = ctx.createBiquadFilter();
@@ -7975,8 +8016,9 @@ window.WS = window.WS || {};
     src.loop = true;
     const f = ctx.createBiquadFilter();
     f.type = opts.filter || 'bandpass';
-    f.frequency.setValueAtTime(opts.freq || 900, t0);
-    if (opts.to) f.frequency.exponentialRampToValueAtTime(WS.max(40, opts.to), t0 + (opts.decay || 0.2));
+    const pq = Audio.pitch;
+    f.frequency.setValueAtTime((opts.freq || 900) * pq, t0);
+    if (opts.to) f.frequency.exponentialRampToValueAtTime(WS.max(40, opts.to * pq), t0 + (opts.decay || 0.2));
     f.Q.value = opts.q === undefined ? 1.2 : opts.q;
     const gain = ctx.createGain();
     src.connect(f); f.connect(gain); gain.connect(opts.bus || Audio.voiceBus || Audio.sfxGain);
@@ -7997,14 +8039,14 @@ window.WS = window.WS || {};
    * unpleasant on headphones and reads as a fault rather than a direction. */
   const SPREAD = 420, LIMIT = 0.75;
 
-  function placeAt(x) {
+  function placeAt(x, dest) {
     const ctx = Audio.ctx;
     const p = WS.Game && WS.Game.player;
     if (!ctx || !ctx.createStereoPanner || typeof x !== 'number' || !p) return null;
     const pan = WS.clamp((x - p.x) / SPREAD, -1, 1) * LIMIT;
     const node = ctx.createStereoPanner();
     node.pan.value = pan;
-    node.connect(Audio.sfxGain);
+    node.connect(dest || Audio.sfxGain);
     return node;
   }
 
@@ -8016,6 +8058,18 @@ window.WS = window.WS || {};
     hit: 0.045, crit: 0.07, gem: 0.06, cast: 0.05, enemyHit: 0.06,
     explode: 0.09, freeze: 0.2, coin: 0.08, hover: 0.045,
   };
+
+  /* The kits that are the game talking to itself, rather than telling you
+   * something. These go through the chatter bus and get the treatment below;
+   * everything else - a level, a boss, being hurt - goes straight through. */
+  const CHATTER = { hit: 1, crit: 1, enemyHit: 1, gem: 1, cast: 1, coin: 1 };
+
+  /* Events that arrived while a kit was throttled. They used to be dropped,
+   * which is the whole problem: forty hits landing in one tick sounded exactly
+   * like two, so the player learned nothing from the difference. Counting them
+   * turns a discarded event into information about the next voice. */
+  const waiting = Object.create(null);
+  const HEFT = 8;          // events in one gap that count as a full clump
 
   const KITS = {
     cast() { tone({ type: 'triangle', freq: 520, to: 780, decay: 0.10, gain: 0.10 }); },
@@ -8094,33 +8148,94 @@ window.WS = window.WS || {};
   };
 
   /** @param {string} kit  @param {number} [x] world x, to place it in the field. */
+  Audio.pitch = 1;
+
   Audio.play = function (kit, x) {
     if (!live() || !WS.Save.settings.sound) return;
     const t = this.ctx.currentTime;
+    const chatter = CHATTER[kit];
     const gap = THROTTLE[kit];
+    /* LATELY, not ever.
+     *
+     * The backlog only grows while a kit is being throttled, but it did not
+     * shrink on its own - so after clearing a room, walking away and coming
+     * back, the very next single hit carried the weight of the two hundred
+     * before it and landed like a hammer for no reason. A count of what has
+     * been happening has to be a count of what has been happening RECENTLY;
+     * a long enough silence means the backlog is about a moment that has
+     * passed. */
+    if (chatter && gap && waiting[kit]
+        && t - (lastPlayed[kit] || 0) > gap * 3) {
+      waiting[kit] = 0;
+    }
+    /* How much has been happening in this kit lately, 0 to 1. Everything below
+       reads the run's density through this one number. */
+    const heft = chatter ? WS.min(1, (waiting[kit] || 0) / HEFT) : 0;
     if (gap) {
-      if (lastPlayed[kit] && t - lastPlayed[kit] < gap) return;
+      /* The gap WIDENS as it gets busy, and the voice gets heavier to match.
+       * A fixed gap is a rate limit: it caps how often, never how loud, so a
+       * crowded field is the same twenty-two ticks a second as a quiet one and
+       * the player cannot hear the difference between killing three things and
+       * three hundred. Spacing the clumps out and making each one bigger says
+       * more with fewer voices - which is the whole trade. */
+      if (lastPlayed[kit] && t - lastPlayed[kit] < gap * (1 + 0.9 * heft)) {
+        if (chatter) waiting[kit] = (waiting[kit] || 0) + 1;   // remembered, not lost
+        return;
+      }
       lastPlayed[kit] = t;
     }
     const d = DUCK[kit];
     if (d && this.duck) {
       const [floor, hold] = d;
-      try {
-        this.duck.gain.cancelScheduledValues(t);
-        this.duck.gain.setValueAtTime(this.duck.gain.value, t);
-        this.duck.gain.linearRampToValueAtTime(floor, t + 0.06);
-        this.duck.gain.setValueAtTime(floor, t + hold * 0.5);
-        this.duck.gain.linearRampToValueAtTime(1, t + hold);
-      } catch (e) { /* scheduling raced a context change */ }
+      /* Duck the CHATTER as well as the score. A boss horn arriving over a
+         wall of hit ticks was previously fighting them at equal level, because
+         ducking only ever applied to the music - and the music was never the
+         thing drowning it. */
+      const dip = (node, to, back) => {
+        try {
+          node.gain.cancelScheduledValues(t);
+          node.gain.setValueAtTime(node.gain.value, t);
+          node.gain.linearRampToValueAtTime(to, t + 0.06);
+          node.gain.setValueAtTime(to, t + hold * 0.5);
+          node.gain.linearRampToValueAtTime(back, t + hold);
+        } catch (e) { /* scheduling raced a context change */ }
+      };
+      dip(this.duck, floor, 1);
+      /* HARDER than the music, because the music was never the thing drowning
+         it. Measured: a level-up over a full wall of hits, kills, casts and
+         gems peaked seven per cent BELOW the wall - it was inaudible in the
+         moment it exists for. */
+      if (this.chatterGain) {
+        dip(this.chatterGain, CHATTER_LEVEL * floor * CHATTER_DUCK, CHATTER_LEVEL);
+      }
     }
     const fn = KITS[kit];
     if (!fn) return;
     // The kits take no arguments by design - they are recipes, not routers - so
     // the destination is handed to them through voiceBus, which every voice in
     // the kit picks up. Synchronous, so it cannot be seen by anything else.
-    this.voiceBus = placeAt(x);
+    let dest = this.sfxGain;
+    if (chatter) {
+      waiting[kit] = 0;
+      /* One voice, carrying what the ones it replaced would have said: louder
+         and lower for a clump, light and bright for a single event. The player
+         hears the difference between three kills and thirty without hearing
+         thirty sounds. */
+      const shape = this.ctx.createGain();
+      shape.gain.value = 1 + 1.1 * heft;
+      shape.connect(this.chatter);
+      dest = shape;
+      this.pitch = (1 - 0.26 * heft)
+        * (1 + (Math.random() - 0.5) * (0.05 + 0.3 * heft));
+      /* What the last chatter voice was shaped into. Exposed because it is the
+         only way to measure from outside that a clump sounds different from a
+         single event - the voice itself is gone by the time anything could
+         look at it. */
+      this.lastShape = { kit, heft, gain: shape.gain.value, pitch: this.pitch };
+    }
+    this.voiceBus = placeAt(x, dest) || dest;
     try { fn(); } catch (e) { /* audio graph exhausted */ }
-    finally { this.voiceBus = null; }
+    finally { this.voiceBus = null; this.pitch = 1; }
   };
 
   /* --------------------------------------------------------------- music -- */
