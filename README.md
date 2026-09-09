@@ -63,6 +63,18 @@ plays ninety seconds of a real run inside it, and fails on any request that
 leaves the host, any 404 and any error — so the claim above is checked rather
 than asserted.
 
+### Tuning it
+
+`bench.bat` (Windows) or `./bench.sh` starts a local tuning bench at
+http://localhost:8770 — no internet, no account. It builds itself from the
+game's own data at runtime, so **everything** is editable: numbers, names,
+descriptions, colours, spawn tables, boss patterns. Changes land in the live
+game beside the controls, and saving writes `src/data/tuning.js` plus patch
+notes into `CHANGELOG-BALANCE.md`. Shipped values are never overwritten, so
+reset is real.
+
+See [TUNING.md](TUNING.md).
+
 ### As a desktop application
 
 `desktop/` wraps that same single file in Electron for Windows, macOS and
@@ -181,6 +193,12 @@ tools/         the single-file bundler, and the guard rails:
                check-desktop.js the desktop shell launched twice: an account
                               banked in one launch must still be there in the
                               next (needs a display; use xvfb-run headless)
+               check-telegraph.js every charging boss, against a survivor who
+                              stands and one who bolts - where the lane points
+                              when it locks is where the boss must end up
+               check-bench.js the tuning bench end to end: generated from the
+                              live game, an edit reaches the running game, and
+                              a save survives a reload
 ```
 
 Every guard carries the bug it was written for in its header, and every one of

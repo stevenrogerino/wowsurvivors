@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Ember Watch - Tuning Bench</title>
+<style>
+:root{
+  --ink:#06070b; --panel:#0e1118; --panel2:#141822; --line:#252c3a;
+  --text:#d7dce6; --dim:#8a93a6; --gold:#f5c56b; --gold-dim:#7a6132;
+  --hot:#ffd88a; --bad:#e2483d; --ok:#6fd39b;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--ink);color:var(--text);
+  font:13px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--gold)}
+
+/* ---- shell ---- */
+#shell{display:grid;grid-template-columns:212px minmax(0,1fr) 380px;
+  grid-template-rows:auto minmax(0,1fr);height:100vh}
+header{grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:10px 16px;
+  background:linear-gradient(180deg,#121722,#0b0e15);border-bottom:1px solid var(--line)}
+.brand{font-weight:600;letter-spacing:.14em;text-transform:uppercase;font-size:11px;
+  color:var(--gold);white-space:nowrap}
+.brand span{color:var(--dim)}
+#search{flex:1;max-width:420px;padding:7px 10px;background:#0a0d14;
+  border:1px solid var(--line);border-radius:5px;outline:none}
+#search:focus{border-color:var(--gold-dim)}
+.spacer{flex:1}
+.btn{padding:7px 13px;background:#1a2030;border:1px solid var(--line);border-radius:5px;
+  cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--gold-dim);background:#212a3d}
+.btn.primary{background:var(--gold);color:#1a1405;border-color:var(--gold);font-weight:600}
+.btn.primary:hover{background:var(--hot)}
+.btn:disabled{opacity:.4;cursor:default}
+.count{font:600 11px/1 var(--mono);padding:4px 7px;border-radius:20px;
+  background:var(--gold-dim);color:#1a1405}
+.count.zero{background:#222a38;color:var(--dim)}
+
+nav{overflow-y:auto;border-right:1px solid var(--line);background:#0a0d14;padding:8px 0}
+nav button{display:flex;justify-content:space-between;gap:8px;width:100%;text-align:left;
+  padding:7px 14px;background:none;border:0;border-left:2px solid transparent;
+  cursor:pointer;color:var(--dim)}
+nav button:hover{color:var(--text);background:#111622}
+nav button.on{color:var(--gold);border-left-color:var(--gold);background:#121826}
+nav .n{font:11px/1.5 var(--mono);opacity:.7}
+nav .n.has{color:var(--gold);opacity:1}
+nav hr{border:0;border-top:1px solid var(--line);margin:8px 0}
+
+main{overflow-y:auto;padding:16px 20px 80px}
+aside{overflow-y:auto;border-left:1px solid var(--line);background:#0a0d14;padding:12px}
+
+/* ---- editor ---- */
+h1{font-size:17px;margin:0 0 2px;letter-spacing:.02em}
+.hint{color:var(--dim);margin:0 0 16px;max-width:70ch}
+.entry{border:1px solid var(--line);border-radius:7px;margin-bottom:12px;background:var(--panel)}
+.entry.touched{border-color:var(--gold-dim)}
+.entry>summary{padding:9px 12px;cursor:pointer;display:flex;align-items:center;gap:9px;
+  list-style:none;user-select:none}
+.entry>summary::-webkit-details-marker{display:none}
+.entry>summary::before{content:"›";color:var(--dim);transition:transform .12s;display:inline-block}
+.entry[open]>summary::before{transform:rotate(90deg)}
+.entry .nm{font-weight:600}
+.entry .id{font:11px/1 var(--mono);color:var(--dim)}
+.entry .dot{width:6px;height:6px;border-radius:50%;background:var(--gold);margin-left:auto}
+.body{padding:2px 12px 12px;border-top:1px solid var(--line)}
+.grid{display:grid;grid-template-columns:minmax(120px,190px) minmax(0,1fr) auto;
+  gap:4px 10px;align-items:center}
+.grid>label{color:var(--dim);font-size:12px;padding:3px 0;overflow-wrap:anywhere}
+.grid>label.changed{color:var(--gold)}
+.f{width:100%;padding:5px 8px;background:#080b11;border:1px solid var(--line);
+  border-radius:4px;outline:none;font-family:var(--mono);font-size:12px}
+.f:focus{border-color:var(--gold-dim)}
+.f.changed{border-color:var(--gold);color:var(--hot)}
+textarea.f{min-height:52px;resize:vertical;line-height:1.45}
+textarea.f.bad{border-color:var(--bad)}
+input[type=checkbox].f{width:16px;height:16px;padding:0;accent-color:var(--gold)}
+input[type=color]{width:34px;height:26px;padding:0;background:none;border:1px solid var(--line);
+  border-radius:4px;cursor:pointer}
+.was{font:11px/1 var(--mono);color:var(--dim);white-space:nowrap}
+.revert{border:0;background:none;color:var(--dim);cursor:pointer;padding:2px 5px;font-size:14px}
+.revert:hover{color:var(--gold)}
+.sub{grid-column:1/-1;border-left:2px solid var(--line);margin:4px 0 8px 4px;padding-left:10px}
+.sub>.cap{color:var(--gold);font-size:11px;text-transform:uppercase;letter-spacing:.1em;
+  margin:6px 0 4px}
+.row{border-top:1px dashed var(--line);padding-top:6px;margin-top:6px}
+.row:first-of-type{border-top:0;margin-top:0}
+.derived{grid-column:1/-1;font:11px/1.6 var(--mono);color:var(--dim);
+  background:#080b11;border:1px solid var(--line);border-radius:4px;padding:6px 9px;margin:6px 0}
+.derived b{color:var(--gold);font-weight:600}
+.empty{color:var(--dim);padding:30px 0;text-align:center}
+
+/* ---- right rail ---- */
+aside h2{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);
+  margin:14px 0 7px}
+aside h2:first-child{margin-top:0}
+#frame-wrap{position:relative;width:100%;aspect-ratio:16/9;background:#000;
+  border:1px solid var(--line);border-radius:6px;overflow:hidden}
+#frame{width:1280px;height:720px;border:0;transform-origin:0 0;position:absolute;top:0;left:0}
+.rowbtns{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.rowbtns select,.rowbtns .btn{flex:1;min-width:0;padding:6px 8px;font-size:12px;
+  background:#111622;border:1px solid var(--line);border-radius:5px}
+#notes{white-space:pre-wrap;font:11.5px/1.6 var(--mono);background:#080b11;
+  border:1px solid var(--line);border-radius:6px;padding:10px;max-height:38vh;overflow:auto;
+  color:var(--dim)}
+#notes .add{color:var(--gold)}
+#status{margin-top:8px;font-size:12px;color:var(--dim);min-height:18px}
+#status.ok{color:var(--ok)} #status.bad{color:var(--bad)}
+.note{color:var(--dim);font-size:11.5px;line-height:1.5}
+#label{width:100%;padding:6px 8px;background:#080b11;border:1px solid var(--line);
+  border-radius:4px;outline:none;margin-bottom:8px}
+</style>
+</head>
+<body>
+<div id="shell">
+  <header>
+    <div class="brand">The Ember Watch <span>/ tuning bench</span></div>
+    <input id="search" placeholder="Search everything - name, id, field, value">
+    <label style="color:var(--dim);display:flex;gap:6px;align-items:center;white-space:nowrap">
+      <input type="checkbox" id="only"> changed only
+    </label>
+    <div class="spacer"></div>
+    <span class="count zero" id="count">0 changes</span>
+    <button class="btn" id="copy">Copy tuning.js</button>
+    <button class="btn" id="reset">Reset all</button>
+    <button class="btn primary" id="save">Save to game</button>
+  </header>
+
+  <nav id="nav"></nav>
+  <main id="main"><p class="empty">Loading the game…</p></main>
+
+  <aside>
+    <h2>Live game</h2>
+    <div id="frame-wrap"><iframe id="frame" src="/index.html" title="The Ember Watch"></iframe></div>
+    <div class="rowbtns">
+      <select id="pick-map"></select>
+      <select id="pick-char"></select>
+    </div>
+    <div class="rowbtns">
+      <button class="btn" id="go">Start run</button>
+      <button class="btn" id="reload">Reload game</button>
+    </div>
+    <p class="note">Most values apply to the running game the moment you change them.
+      Spawn tables, map timelines and survivor base stats are read when a run starts -
+      hit <b>Start run</b> to see those. This frame keeps its own save, so tuning never
+      touches the account you play on.</p>
+
+    <h2>Patch notes</h2>
+    <input id="label" placeholder="What is this pass called? (optional)">
+    <div id="notes">No changes yet.</div>
+    <div id="status"></div>
+  </aside>
+</div>
+
+<script>
+'use strict';
+/* The bench introspects the game rather than describing it.
+ *
+ * The tempting way to build this is a hand-written form with a box per value,
+ * and it is the wrong way: the moment a weapon, a creature or a config knob is
+ * added to the game, a hand-written bench is silently out of date and the new
+ * thing is untunable. So nothing here knows what a weapon is. It reads the
+ * live WS tables out of the running game, walks whatever it finds, and builds
+ * an editor from the shape of the data. Add a field to any data file and it
+ * appears here on the next reload, typed correctly, with its shipped value
+ * already known.
+ */
+const TABLES = [
+  { root:'Config',        label:'Global rules',   flat:true },
+  { root:'Characters',    label:'Survivors',      order:'CharacterOrder' },
+  { root:'Weapons',       label:'Weapons',        order:'WeaponOrder' },
+  { root:'Unions',        label:'Unions' },
+  { root:'Upgrades',      label:'Level-up boons', order:'UpgradeOrder' },
+  { root:'MetaUpgrades',  label:'Trainer',        order:'MetaUpgradeOrder' },
+  { root:'Blessings',     label:'Blessings',      order:'BlessingOrder' },
+  { root:'Combos',        label:'Discoveries',    order:'ComboOrder' },
+  { root:'Enemies',       label:'Creatures' },
+  { root:'Elites',        label:'Elites' },
+  { root:'Bosses',        label:'Bosses' },
+  { root:'Maps',          label:'Battlefields',   order:'MapOrder' },
+  { root:'Achievements',  label:'Achievements',   order:'AchievementOrder' },
+];
+const MAX_DEPTH = 3;          // deeper than this and it is edited as JSON
+
+const $ = (s) => document.querySelector(s);
+const frame = $('#frame');
+let W = null;                 // the game's window
+let section = 'Config';
+let query = '';
+
+/* ---- getting hold of the game ----------------------------------------- */
+function fitFrame() {
+  const w = $('#frame-wrap').clientWidth;
+  frame.style.transform = 'scale(' + (w / 1280) + ')';
+}
+addEventListener('resize', fitFrame);
+
+function waitForGame() {
+  const w = frame.contentWindow;
+  if (w && w.WS && w.WS.Tuning && w.WS.Game && w.WS.Config) {
+    W = w.WS;
+    try {
+      // The frame's own save is brand new every time, so the game greets it
+      // with the manual. Wave it through and unlock the roster - this is a
+      // workbench, not a first play.
+      W.Save.db.seenManual = true; W.Save.unlockAll(); W.Save.save();
+      W.UI.openMenu();
+    } catch (e) {}
+    fitFrame(); buildNav(); fillPickers(); render(); refreshNotes();
+    return;
+  }
+  setTimeout(waitForGame, 120);
+}
+frame.addEventListener('load', () => { W = null; waitForGame(); });
+waitForGame();
+
+/* ---- reading the shape of the data ------------------------------------ */
+function entriesOf(t) {
+  const table = W[t.root];
+  if (!table) return [];
+  if (t.flat) return [{ key: null, obj: table, name: t.label, path: t.root }];
+  if (Array.isArray(table)) {
+    return table.map((obj, i) => ({ key: String(i), obj,
+      name: obj.name || obj.result || ('#' + (i + 1)), path: t.root + '.' + i }));
+  }
+  const keys = Object.keys(table);
+  const order = t.order && W[t.order];
+  if (Array.isArray(order)) {
+    const seen = new Set(order.filter((k) => k in table));
+    keys.sort((a, b) => {
+      const ia = order.indexOf(a), ib = order.indexOf(b);
+      if (seen.has(a) && seen.has(b)) return ia - ib;
+      if (seen.has(a)) return -1;
+      if (seen.has(b)) return 1;
+      return a < b ? -1 : 1;
+    });
+  }
+  return keys.map((k) => ({ key: k, obj: table[k],
+    name: (table[k] && table[k].name) || k, path: t.root + '.' + k }));
+}
+
+const isColour = (v) => Array.isArray(v) && v.length === 3
+  && v.every((n) => typeof n === 'number' && n >= 0 && n <= 1);
+const isPrimitiveList = (v) => Array.isArray(v) && v.length
+  && v.every((n) => typeof n === 'number' || typeof n === 'string');
+const isPlainObject = (v) => v && typeof v === 'object' && !Array.isArray(v);
+
+/* ---- change bookkeeping ------------------------------------------------ */
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+function changed(path) {
+  return !same(W.Tuning.shippedValue(path), W.Tuning.read(path));
+}
+function countChanges() { return W ? W.Tuning.diff().length : 0; }
+
+function apply(path, value) {
+  const shipped = W.Tuning.shippedValue(path);
+  if (same(shipped, value)) W.Tuning.clear(path);
+  else W.Tuning.set(path, value);
+  markCounts();
+  refreshNotes();
+}
+
+function markCounts() {
+  const n = countChanges();
+  const c = $('#count');
+  c.textContent = n + (n === 1 ? ' change' : ' changes');
+  c.classList.toggle('zero', n === 0);
+  document.querySelectorAll('nav button').forEach((b) => {
+    const root = b.dataset.root;
+    if (!root) return;
+    const k = W.Tuning.diff().filter((d) => d.path.startsWith(root + '.')).length;
+    const el = b.querySelector('.n');
+    el.textContent = k || '';
+    el.classList.toggle('has', !!k);
+  });
+}
+
+/* ---- widgets ----------------------------------------------------------- */
+function fieldRow(host, path, label, value, depth) {
+  const lab = document.createElement('label');
+  // camelCase and snake_case are how the data reads; this is how a person
+  // reads. The exact path stays one hover away, because that is what you need
+  // when you are talking to someone about a value.
+  lab.textContent = String(label)
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/_/g, ' ').toLowerCase();
+  lab.title = path;
+  host.append(lab);
+
+  const shipped = W.Tuning.shippedValue(path);
+  const wrap = document.createElement('div');
+  const meta = document.createElement('div');
+  meta.style.display = 'flex'; meta.style.alignItems = 'center'; meta.style.gap = '4px';
+
+  const mark = () => {
+    const on = changed(path);
+    lab.classList.toggle('changed', on);
+    wrap.querySelectorAll('.f').forEach((e) => e.classList.toggle('changed', on));
+    meta.innerHTML = '';
+    if (on) {
+      const was = document.createElement('span');
+      was.className = 'was';
+      was.textContent = 'was ' + brief(shipped);
+      const rv = document.createElement('button');
+      rv.className = 'revert'; rv.textContent = '⟲'; rv.title = 'back to shipped';
+      rv.onclick = () => { W.Tuning.clear(path); rerender(); };
+      meta.append(was, rv);
+    }
+    const card = lab.closest('.entry');
+    if (card) {
+      const any = W.Tuning.diff().some((d) => d.path.startsWith(card.dataset.path + '.'));
+      card.classList.toggle('touched', any);
+      card.querySelector('.dot').style.display = any ? '' : 'none';
+    }
+  };
+
+  const commit = (v) => { apply(path, v); mark(); };
+
+  if (typeof value === 'number') {
+    const i = document.createElement('input');
+    i.className = 'f'; i.type = 'number'; i.value = value;
+    i.step = Math.abs(value) < 3 && !Number.isInteger(value) ? 0.01
+      : Number.isInteger(value) ? 1 : 0.1;
+    i.oninput = () => { if (i.value !== '' && isFinite(+i.value)) commit(+i.value); };
+    wrap.append(i);
+  } else if (typeof value === 'boolean') {
+    const i = document.createElement('input');
+    i.className = 'f'; i.type = 'checkbox'; i.checked = value;
+    i.onchange = () => commit(i.checked);
+    wrap.append(i);
+  } else if (typeof value === 'string') {
+    const long = value.length > 58 || value.includes('\n');
+    const i = document.createElement(long ? 'textarea' : 'input');
+    i.className = 'f'; i.value = value;
+    if (long) i.rows = 2;
+    i.oninput = () => commit(i.value);
+    wrap.append(i);
+  } else if (isColour(value)) {
+    const hex = (a) => '#' + a.map((n) =>
+      Math.round(Math.max(0, Math.min(1, n)) * 255).toString(16).padStart(2, '0')).join('');
+    const box = document.createElement('div');
+    box.style.display = 'flex'; box.style.gap = '6px'; box.style.alignItems = 'center';
+    const c = document.createElement('input');
+    c.type = 'color'; c.value = hex(value);
+    const t = document.createElement('input');
+    t.className = 'f'; t.value = value.map((n) => +n.toFixed(3)).join(', ');
+    t.style.flex = '1';
+    const push = (arr) => { c.value = hex(arr); t.value = arr.map((n) => +n.toFixed(3)).join(', '); commit(arr); };
+    c.oninput = () => push([1, 3, 5].map((i) => +(parseInt(c.value.substr(i, 2), 16) / 255).toFixed(3)));
+    t.oninput = () => {
+      const a = t.value.split(',').map((s) => parseFloat(s));
+      if (a.length === 3 && a.every((n) => isFinite(n))) { c.value = hex(a); commit(a); }
+    };
+    box.append(c, t); wrap.append(box);
+  } else if (isPrimitiveList(value) && depth < MAX_DEPTH) {
+    const i = document.createElement('input');
+    i.className = 'f';
+    const numeric = value.every((n) => typeof n === 'number');
+    i.value = value.join(', ');
+    i.oninput = () => {
+      const parts = i.value.split(',').map((s) => s.trim()).filter((s) => s !== '');
+      const out = numeric ? parts.map(Number) : parts;
+      if (!numeric || out.every((n) => isFinite(n))) commit(out);
+    };
+    wrap.append(i);
+  } else if ((Array.isArray(value) || isPlainObject(value)) && depth < MAX_DEPTH) {
+    // A real sub-structure: spawn phases, boss patterns, a map's timeline.
+    // Rendered as its own little grid rather than dumped as JSON.
+    host.append(wrap, meta);
+    const sub = document.createElement('div');
+    sub.className = 'sub';
+    host.append(sub);
+    const keys = Array.isArray(value) ? value.map((_, i) => String(i)) : Object.keys(value);
+    keys.forEach((k, n) => {
+      const child = value[k];
+      const holder = document.createElement('div');
+      holder.className = Array.isArray(value) ? 'row' : '';
+      if (Array.isArray(value)) {
+        const cap = document.createElement('div');
+        cap.className = 'cap';
+        cap.textContent = label.replace(/s$/, '') + ' ' + (n + 1)
+          + (isPlainObject(child) && (child.id || child.type)
+            ? ' - ' + (child.type || child.id) : '');
+        holder.append(cap);
+      }
+      const g = document.createElement('div');
+      g.className = 'grid';
+      if (isPlainObject(child) || Array.isArray(child)) {
+        for (const ck of Object.keys(child)) {
+          fieldRow(g, path + '.' + k + '.' + ck, ck, child[ck], depth + 1);
+        }
+      } else {
+        fieldRow(g, path + '.' + k, k, child, depth + 1);
+      }
+      holder.append(g); sub.append(holder);
+    });
+    lab.classList.toggle('changed',
+      W.Tuning.diff().some((d) => d.path.startsWith(path + '.')));
+    return;
+  } else {
+    const i = document.createElement('textarea');
+    i.className = 'f'; i.rows = 3;
+    i.value = JSON.stringify(value, null, 1);
+    i.oninput = () => {
+      try { const v = JSON.parse(i.value); i.classList.remove('bad'); commit(v); }
+      catch (e) { i.classList.add('bad'); }
+    };
+    wrap.append(i);
+  }
+  host.append(wrap, meta);
+  mark();
+}
+
+function brief(v) {
+  if (typeof v === 'string') return v.length > 22 ? JSON.stringify(v.slice(0, 20)) + '…' : JSON.stringify(v);
+  if (Array.isArray(v)) return '[' + v.map((x) => typeof x === 'number' ? +x.toFixed(2) : '…').join(',') + ']';
+  if (v && typeof v === 'object') return '{…}';
+  if (typeof v === 'number') return String(+v.toFixed(4));
+  return String(v);
+}
+
+/* One honest derived figure for weapons: the formula, spelled out, so it
+   cannot quietly mean something other than what it says. */
+function derivedFor(root, obj) {
+  if (root !== 'Weapons' || typeof obj.damage !== 'number' || !obj.cooldown) return null;
+  const n = obj.projectiles || 1;
+  const dps = obj.damage * n / obj.cooldown;
+  return `damage ${obj.damage} × ${n} projectile${n === 1 ? '' : 's'} ÷ ${obj.cooldown}s `
+    + `cooldown = ${dps.toFixed(1)} dps at rank 1, one target, before pierce, `
+    + `chains, splash and every player multiplier`;
+}
+
+/* ---- rendering a section ----------------------------------------------- */
+function buildNav() {
+  const nav = $('#nav');
+  nav.innerHTML = '';
+  for (const t of TABLES) {
+    const b = document.createElement('button');
+    b.dataset.root = t.root;
+    b.innerHTML = '<span></span><span class="n"></span>';
+    b.firstChild.textContent = t.label;
+    b.onclick = () => { section = t.root; query = ''; $('#search').value = ''; render(); };
+    nav.append(b);
+  }
+  markCounts();
+}
+
+function render() {
+  const main = $('#main');
+  main.innerHTML = '';
+  document.querySelectorAll('nav button').forEach((b) =>
+    b.classList.toggle('on', b.dataset.root === section && !query));
+
+  const onlyChanged = $('#only').checked;
+  const q = query.trim().toLowerCase();
+  const tables = q ? TABLES : TABLES.filter((t) => t.root === section);
+
+  const h = document.createElement('h1');
+  const hint = document.createElement('p');
+  hint.className = 'hint';
+  if (q) {
+    h.textContent = 'Search: ' + query;
+    hint.textContent = 'Every table, every field whose name, id or value matches.';
+  } else {
+    const t = TABLES.find((x) => x.root === section);
+    h.textContent = t.label;
+    hint.textContent = 'Everything in WS.' + t.root
+      + '. Changed values are gold, and ⟲ puts one back to what the game ships.';
+  }
+  main.append(h, hint);
+
+  let shown = 0;
+  for (const t of tables) {
+    for (const e of entriesOf(t)) {
+      const fields = Object.keys(e.obj).filter((k) => {
+        const p = e.path + (e.key === null ? '' : '') + '.' + k;
+        if (onlyChanged && !W.Tuning.diff().some((d) => d.path === p || d.path.startsWith(p + '.'))) return false;
+        if (!q) return true;
+        return (k + ' ' + e.name + ' ' + (e.key || '') + ' ' + t.root + ' '
+          + JSON.stringify(e.obj[k])).toLowerCase().includes(q);
+      });
+      if (!fields.length) continue;
+      shown++;
+
+      const card = document.createElement('details');
+      card.className = 'entry';
+      card.dataset.path = e.path;
+      card.open = !!q || onlyChanged || t.flat || shown <= 3;
+      const sum = document.createElement('summary');
+      const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = e.name;
+      const id = document.createElement('span'); id.className = 'id';
+      id.textContent = q ? t.root + (e.key === null ? '' : '.' + e.key)
+        : (e.key === null ? '' : e.key);
+      const dot = document.createElement('span'); dot.className = 'dot';
+      sum.append(nm, id, dot);
+      card.append(sum);
+
+      const body = document.createElement('div'); body.className = 'body';
+      const grid = document.createElement('div'); grid.className = 'grid';
+      const d = derivedFor(t.root, e.obj);
+      if (d && !q) {
+        const dv = document.createElement('div'); dv.className = 'derived';
+        dv.innerHTML = '<b>rank-1 output</b> — ' + d;
+        grid.append(dv);
+      }
+      for (const k of fields) fieldRow(grid, e.path + '.' + k, k, e.obj[k], 1);
+      body.append(grid); card.append(body); main.append(card);
+
+      const any = W.Tuning.diff().some((x) => x.path.startsWith(e.path + '.'));
+      card.classList.toggle('touched', any);
+      dot.style.display = any ? '' : 'none';
+    }
+  }
+  if (!shown) {
+    const p = document.createElement('p');
+    p.className = 'empty';
+    p.textContent = onlyChanged ? 'Nothing changed here yet.' : 'Nothing matches.';
+    main.append(p);
+  }
+  markCounts();
+}
+function rerender() { const y = $('#main').scrollTop; render(); $('#main').scrollTop = y; }
+
+/* ---- patch notes ------------------------------------------------------- */
+function labelFor(path) {
+  const parts = path.split('.');
+  const root = parts[0];
+  const t = TABLES.find((x) => x.root === root);
+  if (!t) return path;
+  if (t.flat) return parts.slice(1).join(' → ');
+  const table = W[root];
+  const entry = Array.isArray(table) ? table[+parts[1]] : table && table[parts[1]];
+  /* The SHIPPED name, not the current one. Patch notes describe a change away
+     from what the game ships, so renaming the wolf should read "Longtooth
+     Wolf renamed ...", not the nonsense of the new name renaming itself. */
+  const shipped = W.Tuning.shippedValue(root + '.' + parts[1] + '.name');
+  const name = shipped || (entry && entry.name) || parts[1];
+  return name + ' ' + parts.slice(2).join(' → ');
+}
+
+function noteLine(d) {
+  const label = labelFor(d.path);
+  if (typeof d.from === 'number' && typeof d.to === 'number') {
+    const pct = d.from ? ((d.to - d.from) / Math.abs(d.from)) * 100 : 0;
+    const tail = d.from ? ` (${pct >= 0 ? '+' : ''}${pct.toFixed(0)}%)` : '';
+    return `- ${label} ${+d.from.toFixed(4)} → ${+d.to.toFixed(4)}${tail}`;
+  }
+  if (typeof d.from === 'string' && typeof d.to === 'string') {
+    return `- ${label} renamed "${d.from}" → "${d.to}"`;
+  }
+  return `- ${label} ${brief(d.from)} → ${brief(d.to)}`;
+}
+
+function patchNotes() {
+  const diff = W.Tuning.diff();
+  if (!diff.length) return '';
+  const groups = new Map();
+  for (const d of diff) {
+    const t = TABLES.find((x) => x.root === d.path.split('.')[0]);
+    const g = t ? t.label : d.path.split('.')[0];
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(noteLine(d));
+  }
+  const stamp = new Date().toISOString().slice(0, 10);
+  const title = $('#label').value.trim();
+  let out = `## ${stamp}${title ? ' — ' + title : ''}\n`;
+  for (const t of TABLES) {
+    if (!groups.has(t.label)) continue;
+    out += `\n### ${t.label}\n` + groups.get(t.label).sort().join('\n') + '\n';
+  }
+  return out;
+}
+
+function refreshNotes() {
+  const n = patchNotes();
+  const box = $('#notes');
+  box.textContent = n || 'No changes yet.';
+  box.classList.toggle('add', !!n);
+}
+$('#label').oninput = refreshNotes;
+
+/* ---- the file, for the no-server path ---------------------------------- */
+function tuningFile() {
+  const o = W.Tuning.overrides;
+  const lines = Object.keys(o).sort()
+    .map((k) => '      ' + JSON.stringify(k) + ': ' + JSON.stringify(o[k]) + ',');
+  return `/* Local tuning overrides. WRITTEN BY THE TUNING BENCH. */
+'use strict';
+(function (WS) {
+
+  WS.Tuning = {
+    savedAt: ${JSON.stringify(new Date().toISOString())},
+    overrides: {
+${lines.join('\n')}${lines.length ? '\n' : ''}    },
+  };
+
+})(window.WS);
+`;
+}
+
+/* ---- buttons ----------------------------------------------------------- */
+function status(msg, cls) {
+  const s = $('#status');
+  s.textContent = msg; s.className = cls || '';
+}
+
+$('#save').onclick = async () => {
+  const n = countChanges();
+  try {
+    const r = await fetch('/api/save', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ overrides: W.Tuning.overrides, markdown: patchNotes() }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+    status(`Saved ${n} change${n === 1 ? '' : 's'} to src/data/tuning.js`
+      + (j.logged ? ' and CHANGELOG-BALANCE.md.' : '.'), 'ok');
+  } catch (e) {
+    status('Could not save: ' + e.message + ' — use Copy tuning.js instead.', 'bad');
+  }
+};
+
+$('#copy').onclick = async () => {
+  try {
+    await navigator.clipboard.writeText(tuningFile());
+    status('tuning.js copied — paste it over src/data/tuning.js.', 'ok');
+  } catch (e) { status('Clipboard refused: ' + e.message, 'bad'); }
+};
+
+$('#reset').onclick = () => {
+  if (!countChanges()) return status('Already exactly as shipped.');
+  if (!confirm('Put every value back to what the game ships?\n\n'
+    + 'This clears the bench. It does not write the file - save afterwards to '
+    + 'make it stick.')) return;
+  W.Tuning.clearAll();
+  rerender(); refreshNotes();
+  status('Everything is back to shipped. Save to write that out.');
+};
+
+$('#search').oninput = (e) => { query = e.target.value; render(); };
+$('#only').onchange = render;
+$('#reload').onclick = () => { frame.contentWindow.location.reload(); };
+
+function fillPickers() {
+  const m = $('#pick-map'), c = $('#pick-char');
+  m.innerHTML = ''; c.innerHTML = '';
+  for (const id of (W.MapOrder || Object.keys(W.Maps))) {
+    const o = document.createElement('option');
+    o.value = id; o.textContent = (W.Maps[id] || {}).name || id; m.append(o);
+  }
+  for (const id of (W.CharacterOrder || Object.keys(W.Characters))) {
+    const ch = W.Characters[id] || {};
+    const o = document.createElement('option');
+    o.value = id;
+    o.textContent = ch.className ? ch.className + ' - ' + ch.name : (ch.name || id);
+    c.append(o);
+  }
+}
+$('#go').onclick = () => {
+  try {
+    W.Save.unlockAll();
+    W.Game.startRun($('#pick-map').value, $('#pick-char').value);
+    const card = frame.contentWindow.document.querySelector('#overlay:not(.hidden) .card');
+    if (card) card.click();
+    frame.contentWindow.focus();
+    status('Run started on ' + $('#pick-map').selectedOptions[0].textContent + '.');
+  } catch (e) { status('Could not start: ' + e.message, 'bad'); }
+};
+</script>
+</body>
+</html>
