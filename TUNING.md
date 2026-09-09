@@ -118,11 +118,20 @@ from whatever you've tuned:
   evolved. This is the chart that tells you Knifestorm is nine times Hallowed
   Ring.
 - **Crowd projection** — the same weapons against a field of enemies, with a
-  slider for how many. This is where a splash radius or a pierce count shows up.
-  It is a *projection* and the model is printed under it: enemies assumed spread
-  evenly over the field, area effects reaching `crowd × πr² / field`, chains
-  reaching their chain count, pierce reaching pierce + 1. Real crowds bunch, so
-  area weapons do better than this says.
+  slider for how many. This is where a splash radius, a pierce count or a zone's
+  duration shows up.
+
+  What each weapon *reaches* is modelled per behaviour in `WS.Weapon.reach`,
+  which lives in `weapon.js` **beside the handlers it describes** — a beam
+  covers its line, a zone hits everything inside it on every tick of its
+  duration, an orbit sweeps at half damage five times a second, a bounce
+  reaches its ricochets, a storm drops several bolts each with its own splash,
+  and every projectile counts. Single-target output is the same model asked
+  about a crowd of one, so the two charts can never disagree.
+
+  The one assumption in it is that enemies are spread evenly over the field.
+  Real crowds bunch toward the survivor, so area weapons do better than this
+  says and single-target weapons no worse. That is printed under the chart.
 - **Time to kill, as the night goes on** — seconds to kill, minute by minute,
   using the game's real `WaveManager.enemyScale` and `bossScale`. Three small
   multiples (a creature, the map's toughest creature, its final boss), each on

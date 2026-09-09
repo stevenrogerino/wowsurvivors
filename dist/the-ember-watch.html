@@ -9084,7 +9084,14 @@ window.WS = window.WS || {};
     const damage = damageOf(p, w);
     const count = countOf(p, w);
     const cooldown = Weapon.cooldown(p, w);
-    return { damage, count, cooldown, dps: damage * count / cooldown,
+    /* dps is the reach model at a crowd of one, NOT damage x count / cooldown.
+     * countOf is a projectile count, and six of the ten behaviours never read
+     * one - a nova does not fire projectiles - so the old arithmetic reported
+     * Dawnpulse at three times its real output and nothing said so. Asking the
+     * reach model for the single-target case is the same question one way. */
+    const one = Weapon.reach(id, w.level, w.evolved, 1, p);
+    return { damage, count, cooldown, hits: one ? one.targets : count,
+      dps: one ? one.dps : damage * count / cooldown,
       area: areaOf(p, w, 1), speed: speedOf(p, w) };
   };
 
@@ -9337,6 +9344,146 @@ window.WS = window.WS || {};
     WS.FX.flash(player.x, player.y, width, schoolColour(w), 0.2);
     WS.Audio.play('cast');
     return true;
+  };
+
+  /* --------------------------------------------------------------- reach --
+   *
+   * How many things one activation of a weapon actually touches, and what it
+   * therefore does per second against a crowd.
+   *
+   * THIS LIVES HERE, BESIDE THE BEHAVIORS, AND NOT IN THE TUNING BENCH. The
+   * bench had its own copy and it was wrong about seven of the ten behaviors:
+   * it read `radius` on an orbit (the size of one axe) as if it were an area
+   * of effect, it did not know what a beam, a bounce or a storm was at all,
+   * and it ignored how many projectiles a weapon launches - so Knifestorm,
+   * which throws six knives that each pierce, was projected as single-target.
+   * A model of the code that lives away from the code drifts from it silently.
+   *
+   * Every entry below is derived from the handler directly above it, and
+   * REACH_MODELS is keyed by behavior name so that adding an eleventh behavior
+   * without saying what it reaches is a hole a check can see. `crowd` is how
+   * many enemies are on the field; they are assumed spread evenly over it,
+   * which is the one assumption here that is a guess rather than a reading -
+   * real crowds bunch toward the survivor, so area weapons do better than
+   * this says and single-target weapons no worse.
+   */
+  const FIELD = () => WS.CONST.WORLD_WIDTH * WS.CONST.WORLD_HEIGHT;
+  /** Expected enemies inside a circle of radius r. Never less than one - you
+   *  do not fire a weapon at nothing - and never more than there are. That
+   *  upper clamp is what makes crowd = 1 mean "single target" for every
+   *  behaviour, so one function answers both questions. */
+  const clamp1 = (n, crowd) => Math.max(1, Math.min(crowd, n));
+  const inCircle = (r, crowd) => clamp1(crowd * Math.PI * r * r / FIELD(), crowd);
+  /** ...and inside a line of that length and full width. */
+  const inLine = (len, width, crowd) => clamp1(crowd * len * width / FIELD(), crowd);
+
+  const REACH_MODELS = {
+    /* Each of `count` bolts passes through pierce+1 enemies, and every one of
+       those hits splashes if the weapon splashes. */
+    aimed: (p, w, crowd, q) => {
+      // Pierce is worth nothing against one enemy, so it is capped by the crowd.
+      const hits = Math.min(q.pierce + 1, crowd);
+      const each = w.data.splash ? inCircle(q.splash, crowd) : 1;
+      return { per: q.count * hits * each,
+        why: `${q.count} shot(s) x ${hits} through`
+          + (w.data.splash ? ` x ${each.toFixed(1)} in splash` : '') };
+    },
+    spray: (p, w, crowd, q) => REACH_MODELS.aimed(p, w, crowd, q),
+    ring: (p, w, crowd, q) => REACH_MODELS.aimed(p, w, crowd, q),
+    /* One disc per count, ricocheting between bounces+1 targets. */
+    bounce: (p, w, crowd, q) => {
+      const hits = Math.min((w.data.bounces || 3) + p.projectileBonus
+        + (w.evolved ? 3 : 0) + 1, crowd);
+      const n = 1 + (w.evolved ? 1 : 0);
+      return { per: n * hits, why: `${n} disc(s) x ${hits} target(s)` };
+    },
+    /* A line of fire the full length of its range. */
+    beam: (p, w, crowd) => {
+      const len = areaOf(p, w, w.data.range || 620);
+      const wid = areaOf(p, w, w.data.beamWidth || 26);
+      const n = inLine(len, wid, crowd);
+      return { per: n, why: `${Math.round(len)}x${Math.round(wid)} line` };
+    },
+    /* Everything inside the burst, once. */
+    nova: (p, w, crowd) => {
+      const r = areaOf(p, w, w.data.radius || 150);
+      return { per: inCircle(r, crowd), why: `burst r=${Math.round(r)}` };
+    },
+    /* Everything inside the field, once per tick, for its whole duration. */
+    zone: (p, w, crowd) => {
+      const r = areaOf(p, w, w.data.radius || 120);
+      const ticks = Math.max(1, Math.round(durationOf(p, w, w.data.duration || 4)
+        / (w.data.tickRate || 0.5)));
+      return { per: inCircle(r, crowd) * ticks,
+        why: `r=${Math.round(r)} x ${ticks} ticks` };
+    },
+    /* Hops from target to target, each hop 6% weaker than the last. */
+    chain: (p, w, crowd) => {
+      const chains = (w.data.chains || 4) + p.projectileBonus + (w.evolved ? 2 : 0);
+      let sum = 0;
+      for (let i = 0; i < Math.min(chains, Math.max(1, crowd)); i++) sum += 1 - i * 0.06;
+      return { per: sum, why: `${chains} hops, each 6% weaker` };
+    },
+    /* Several bolts, each with its own splash. */
+    storm: (p, w, crowd) => {
+      const strikes = (w.data.strikes || 5) + p.projectileBonus + (w.evolved ? 2 : 0);
+      const splash = areaOf(p, w, w.data.splash || 60);
+      const each = inCircle(splash, crowd);
+      return { per: strikes * each,
+        why: `${strikes} strikes x ${each.toFixed(1)} in r=${Math.round(splash)}` };
+    },
+    /* Blades circling the survivor. Each carries HALF the weapon's damage and
+       may re-hit every 0.18s for the whole spin, which is why an orbit reads
+       as weak on a single-target chart and is not. */
+    orbit: (p, w, crowd) => {
+      const cfg = WS.Config;
+      let blades = (w.data.projectiles || 2) + p.projectileBonus;
+      if (w.evolved) blades += cfg.evolveOrbitBlades;
+      if (w.level >= cfg.projRankA) blades++;
+      if (w.level >= cfg.projRankB) blades++;
+      const size = areaOf(p, w, w.data.radius || 20);
+      const ticks = Math.max(1, Math.round(durationOf(p, w, w.data.duration || 3.2) / 0.18));
+      /* hitBy is cleared once per tick and shared by every blade, so within a
+         tick each enemy takes at most ONE hit however many blades sweep it.
+         Without that cap a four-bladed gyre read as four hundred single-target
+         dps, which is four times the best weapon in the game. */
+      const perTick = clamp1(blades * inCircle(size, crowd), crowd);
+      return { per: 0.5 * ticks * perTick, halved: true,
+        why: `${blades} blades x ${ticks} sweeps, ${perTick.toFixed(1)} hit(s) a sweep, `
+          + 'at half damage' };
+    },
+  };
+  Weapon.reachModels = REACH_MODELS;
+
+  /** Total damage per second against `crowd` enemies on the field.
+   *
+   *  Returns null for a behavior nobody has modelled, rather than quietly
+   *  guessing single-target - a missing model should be visible. */
+  Weapon.reach = function (id, level, evolved, crowd, player) {
+    const data = WS.Weapons[id];
+    if (!data) return null;
+    const b = (evolved && data.evolvedBehavior) || data.behavior;
+    const model = REACH_MODELS[b];
+    if (!model) return null;
+    let p = player;
+    if (!p) {
+      p = Weapon._probe || (Weapon._probe = WS.Player.create('mage'));
+      p.damageMultiplier = 1; p.cooldownMultiplier = 1; p.areaMultiplier = 1;
+      p.projectileBonus = 0; p.projectileSpeed = 1; p.metaTimer = 0;
+    }
+    const w = { id, data, level: level || 1, evolved: !!evolved, mods: {} };
+    const q = {
+      count: countOf(p, w),
+      pierce: (data.pierce || 0) + (w.evolved ? WS.Config.evolvePierce : 0),
+      splash: data.splash ? areaOf(p, w, data.splash) : 0,
+    };
+    const r = model(p, w, Math.max(1, crowd || 1), q);
+    const damage = damageOf(p, w);
+    const cooldown = Weapon.cooldown(p, w);
+    // `per` already counts every projectile, so it is not multiplied by count
+    // again - the models that use q.count have folded it in themselves.
+    return { behavior: b, targets: r.per, why: r.why,
+      dps: damage * r.per / cooldown };
   };
 
   /* --------------------------------------------------------------- fire -- */

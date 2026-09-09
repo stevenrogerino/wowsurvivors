@@ -37,6 +37,19 @@
  *                rank 8 to do 90 dps" must move the field that produces that
  *                number - and the game's own preview must then say 90.
  *
+ *   reach        Every weapon behaviour must have a model of what it actually
+ *                touches, and that model lives in weapon.js beside the
+ *                handlers rather than in the bench. The bench had its own copy
+ *                and it was wrong about SEVEN of the ten behaviours - it had
+ *                never heard of a beam, a bounce or a storm, it read an
+ *                orbit's blade size as an area of effect, and it ignored how
+ *                many projectiles a weapon launches, so Knifestorm's six
+ *                piercing knives were projected as single-target. A model of
+ *                the code that lives away from the code drifts silently, so
+ *                this checks the set of models covers the set of behaviours,
+ *                and that single-target output is the same model asked about
+ *                a crowd of one rather than a second opinion.
+ *
  *   projections  Three charts, each computed from the game rather than from a
  *                copy of its formulas, each offering a table view, none of
  *                them drawing a series flat because something of a different
@@ -81,6 +94,15 @@
  *     time-to-kill series is drawn flat (0, 1, 36px tall)", which is exactly
  *     what it looked like before it became small multiples
  *   - swapping in chart colours nobody validated fails by naming them
+ *   - deleting the beam, bounce, storm and orbit models fails at "these
+ *     behaviours have no reach model" and then names Axe Gyre, Judgement Disc
+ *     and Verdant Lance - the three weapons whose projections a player
+ *     recognised as wrong
+ *   - going back to damage x projectile count for single-target output fails
+ *     at "Dawnpulse: preview says 74.5 single-target but the reach model at a
+ *     crowd of one says 24.8 - two answers to the same question"
+ *   - uncapping pierce fails at "Seeking Motes pierces 2, and against a single
+ *     enemy the model has it landing 15 times from 5 shot(s)"
  *
  *   npm i playwright && npx playwright install chromium
  *   node tools/check-bench.js
@@ -367,6 +389,65 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
         heights, series: [cs.getPropertyValue('--s1').trim(),
           cs.getPropertyValue('--s2').trim(), cs.getPropertyValue('--s3').trim()] };
     });
+    /* ---- the reach model is complete and lives in the game ---------------- */
+    /* The bench used to carry its own model of what each weapon hits, and it
+       was wrong about seven of the ten behaviours: a beam and a bounce it had
+       never heard of, an orbit whose blade size it read as an area of effect,
+       a storm it read as a single bolt, and every multi-projectile weapon
+       counted as one - Knifestorm throws six knives that each pierce and was
+       projected as single-target. A model of the code that lives away from
+       the code drifts from it silently, so it now lives in weapon.js beside
+       the handlers, and this checks it covers all of them. */
+    const model = await page.evaluate(() => {
+      const g = document.querySelector('#frame').contentWindow.WS;
+      const unmodelled = Object.keys(g.Weapon.behaviors)
+        .filter((b) => !g.Weapon.reachModels[b]);
+      const rows = (g.WeaponOrder || Object.keys(g.Weapons)).map((id) => {
+        const r = g.Weapon.reach(id, 8, false, 150);
+        const one = g.Weapon.preview(id, 8, false);
+        const solo = g.Weapon.reach(id, 8, false, 1) || {};
+        return { id, name: g.Weapons[id].name, behavior: r && r.behavior,
+          hits: r && r.targets, crowd: r && r.dps, single: one && one.dps,
+          singleFromReach: solo.dps, oneHits: solo.targets,
+          count: one && one.count, pierces: g.Weapons[id].pierce,
+          splash: g.Weapons[id].splash };
+      });
+      return { unmodelled, rows };
+    });
+    if (model.unmodelled.length) {
+      fail.push('these behaviours have no reach model, so a crowd projection for them '
+        + 'would be a guess: ' + model.unmodelled.join(', '));
+    }
+    for (const r of model.rows) {
+      if (!r.behavior) { fail.push(`${r.name} has no reach at all`); continue; }
+      if (Math.abs(r.single - r.singleFromReach) > 0.01) {
+        fail.push(`${r.name}: preview says ${r.single.toFixed(1)} single-target but the `
+          + `reach model at a crowd of one says ${r.singleFromReach.toFixed(1)} - two `
+          + 'answers to the same question');
+      }
+      /* Anything that is not point-and-shoot must reach more than one enemy in
+         a crowd of 150. This is the exact class of weapon the old model got
+         wrong, one behaviour at a time. */
+      if (['beam', 'bounce', 'orbit', 'zone', 'storm', 'ring', 'chain', 'nova']
+        .includes(r.behavior) && r.hits <= 1.01) {
+        fail.push(`${r.name} is a ${r.behavior} and the projection has it hitting `
+          + `${r.hits.toFixed(1)} enemies in a crowd of 150`);
+      }
+      /* Against ONE enemy a piercing bolt still hits once. Uncapping pierce is
+         an easy and invisible way to make every aimed weapon look better than
+         it is on a single target. */
+      if (r.oneHits !== undefined && r.count !== undefined && r.pierces && !r.splash
+        && Math.abs(r.oneHits - r.count) > 0.01) {
+        fail.push(`${r.name} pierces ${r.pierces}, and against a single enemy the model `
+          + `has it landing ${r.oneHits} times from ${r.count} shot(s) - pierce is not `
+          + 'being capped by how many enemies there are');
+      }
+      if (r.crowd < r.single - 0.01) {
+        fail.push(`${r.name} does less against 150 enemies (${r.crowd.toFixed(0)}) than `
+          + `against one (${r.single.toFixed(0)})`);
+      }
+    }
+
     if (viz.panels !== 3) fail.push(`the projections tab drew ${viz.panels} charts, not 3`);
     if (viz.marks.some((m) => m < 3)) {
       fail.push('a chart drew almost nothing: marks per panel ' + viz.marks.join(', '));

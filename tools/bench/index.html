@@ -732,7 +732,7 @@ function ranksFor(root, key, obj) {
           { text: num(q.damage), plan: { path: dmgPath(L), measure: see(L, false, 'damage'),
             what: 'rank ' + L + ' damage',
             fallback: L === 1 ? undefined : W.Config.rankDamageStep } },
-          String(q.count),
+          num(q.hits),
           { text: q.cooldown.toFixed(2) + 's',
             plan: { path: 'Weapons.' + key + '.cooldown', measure: see(L, false, 'cooldown'),
               what: 'the cooldown' } },
@@ -746,16 +746,17 @@ function ranksFor(root, key, obj) {
         rows.push({ evo: true, cells: ['evolved',
           { text: num(e.damage), plan: { path: ep, measure: see(8, true, 'damage'),
             what: 'evolved damage', fallback: W.Config.evolveDamageMult } },
-          String(e.count),
+          num(e.hits),
           e.cooldown.toFixed(2) + 's',
           { text: e.dps.toFixed(1), plan: { path: ep, measure: see(8, true, 'dps'),
             what: 'evolved dps', fallback: W.Config.evolveDamageMult } }] });
       }
       return table('what each rank fires - type into a cell to solve for it',
-        ['', 'damage', 'shots', 'cooldown', 'dps'], rows,
-        'Through WS.Weapon.preview - the same derivation the game fires with. One '
-        + 'target, a survivor with no build; pierce, chains and splash are not in it. '
-        + 'Typing a rank-1 number moves damage; typing a later rank moves '
+        ['', 'damage', 'hits', 'cooldown', 'dps'], rows,
+        'Through WS.Weapon.preview - the same derivation the game fires with, against '
+        + 'ONE enemy. "hits" is how many times an activation lands on that one target: a '
+        + 'zone ticks, an orbit sweeps, and pierce is worth nothing until there is a '
+        + 'second enemy. Typing a rank-1 number moves damage; typing a later rank moves '
         + 'rankDamageStep, so the weapon starts where it started and grows differently.');
     }
 
@@ -884,8 +885,9 @@ function chartSingle() {
   const box = panel('Single-target output',
     'Every weapon on one axis: where it starts, where it ends, and what evolving is worth. '
     + 'One target, a survivor with no build.',
-    'damage x shots / cooldown, through WS.Weapon.preview. Pierce, chains and splash are '
-    + 'not in this one - they are the next chart.');
+    'Through WS.Weapon.preview, which is the reach model at a crowd of one - so a zone '
+    + 'gets credit for every tick it lands on the one enemy standing in it, and pierce '
+    + 'gets none. The crowd is the next chart.');
   const ids = weaponIds();
   const data = ids.map((id) => {
     const a = W.Weapon.preview(id, 1, false), b = W.Weapon.preview(id, 8, false),
@@ -940,34 +942,10 @@ function chartSingle() {
 }
 
 /* ---------- 2. what it does to a crowd ---------- */
-function targetsHit(id, level, crowd) {
-  /* THE MODEL, stated. Enemies are assumed spread evenly over the field, so
-     an area effect of radius r covers r^2*pi/(field area) of them, and a line
-     effect hits what it is allowed to pass through. This is a projection: real
-     crowds clump around the survivor, which makes area weapons better than
-     this says and single-target weapons no worse. */
-  const d = W.Weapons[id];
-  const field = W.CONST.WORLD_WIDTH * W.CONST.WORLD_HEIGHT;
-  const per = (r) => Math.max(1, crowd * (Math.PI * r * r) / field);
-  const q = W.Weapon.preview(id, level, false);
-  const b = d.behavior;
-  if (d.chains) return { n: d.chains, why: `chains to ${d.chains}` };
-  if (b === 'nova' || b === 'ring' || b === 'zone' || b === 'storm' || b === 'orbit') {
-    const r = (d.radius || 60) * q.area;
-    return { n: per(r), why: `area r=${Math.round(r)}` };
-  }
-  if (d.splash) {
-    const r = d.splash * q.area;
-    return { n: 1 + per(r), why: `1 + splash r=${Math.round(r)}` };
-  }
-  if (d.pierce) return { n: 1 + d.pierce, why: `pierces ${d.pierce}` };
-  return { n: 1, why: 'single target' };
-}
-
 function chartCrowd() {
   const box = panel('Crowd projection',
     'The same weapons against a field of enemies instead of one. This is the chart that '
-    + 'moves when you change a splash radius or a pierce count.',
+    + 'moves when you change a splash radius, a pierce count or how long a zone lasts.',
     '');
   const controls = document.createElement('div');
   controls.className = 'controls';
@@ -975,9 +953,9 @@ function chartCrowd() {
   crowdIn.type = 'range'; crowdIn.min = 20; crowdIn.max = W.CONST.MAX_ENEMIES;
   crowdIn.step = 10; crowdIn.value = 150; crowdIn.style.width = '190px';
   const lvl = document.createElement('select');
-  for (let L = 1; L <= 8; L++) {
-    const o = document.createElement('option'); o.value = L; o.textContent = 'rank ' + L;
-    if (L === 8) o.selected = true; lvl.append(o);
+  for (const [v, t] of [['1', 'rank 1'], ['4', 'rank 4'], ['8', 'rank 8'], ['8e', 'evolved']]) {
+    const o = document.createElement('option'); o.value = v; o.textContent = t;
+    if (v === '8') o.selected = true; lvl.append(o);
   }
   const l1 = document.createElement('label'); l1.append('enemies on the field', crowdIn);
   const readout = document.createElement('span');
@@ -990,20 +968,29 @@ function chartCrowd() {
   box.append(svg);
   let rows = [];
   const draw = () => {
-    const crowd = +crowdIn.value, level = +lvl.value;
+    const crowd = +crowdIn.value;
+    const evo = lvl.value === '8e', level = evo ? 8 : +lvl.value;
     readout.textContent = crowd;
     svg.textContent = '';
+    /* The model is WS.Weapon.reach, which lives beside the behaviour handlers
+       in weapon.js. The bench used to carry its own copy and it was wrong
+       about seven of the ten behaviours - a beam and a bounce it had never
+       heard of, an orbit whose blade size it read as an area of effect, and
+       every multi-projectile weapon counted as one. */
+    const missing = [];
     const data = weaponIds().map((id) => {
-      const q = W.Weapon.preview(id, level, false);
-      const t = targetsHit(id, level, crowd);
-      return { id, name: W.Weapons[id].name || id, dps: q.dps, n: t.n,
-        why: t.why, total: q.dps * t.n };
-    }).filter((d) => d.total > 0).sort((a, b) => b.total - a.total);
-    rows = data.map((d) => [d.name, d.dps.toFixed(1), d.n.toFixed(1), Math.round(d.total), d.why]);
+      const r = W.Weapon.reach(id, level, evo, crowd);
+      if (!r) { missing.push(W.Weapons[id].name || id); return null; }
+      const one = W.Weapon.preview(id, level, evo);
+      return { id, name: W.Weapons[id].name || id, dps: r.dps, single: one ? one.dps : 0,
+        targets: r.targets, why: r.why, behavior: r.behavior };
+    }).filter((d) => d && d.dps > 0).sort((a, b) => b.dps - a.dps);
+    rows = data.map((d) => [d.name, d.behavior, d.single.toFixed(1), d.targets.toFixed(1),
+      Math.round(d.dps), d.why]);
 
-    const PAD = 168, RIGHT = 62, ROW = 21, H = data.length * ROW + 26;
+    const PAD = 168, RIGHT = 66, ROW = 21, H = data.length * ROW + 26;
     svg.setAttribute('viewBox', `0 0 900 ${H}`);
-    const max = Math.max(...data.map((d) => d.total)) * 1.02;
+    const max = Math.max(...data.map((d) => d.dps)) * 1.02;
     const x = (v) => PAD + (v / max) * (900 - PAD - RIGHT);
     for (let g = 0; g <= 4; g++) {
       const v = max * g / 4;
@@ -1016,24 +1003,32 @@ function chartCrowd() {
       const lab = el('text', { x: PAD - 10, y: y + 4, 'text-anchor': 'end', class: 'name' });
       lab.textContent = d.name; svg.append(lab);
       // thin bar, 4px rounded data-end, anchored to the baseline
-      svg.append(el('rect', { x: PAD, y: y - 6, width: Math.max(2, x(d.total) - PAD),
+      svg.append(el('rect', { x: PAD, y: y - 6, width: Math.max(2, x(d.dps) - PAD),
         height: 12, rx: 4, fill: 'var(--s1)' }));
       const val = el('text', { x: 900 - RIGHT + 8, y: y + 4, class: 'val' });
-      val.textContent = Math.round(d.total); svg.append(val);
+      val.textContent = Math.round(d.dps); svg.append(val);
       const hit = el('rect', { x: 0, y: y - ROW / 2, width: 900, height: ROW, fill: 'transparent' });
-      hover(hit, `<b>${d.name}</b><br>${d.dps.toFixed(1)} dps x ${d.n.toFixed(1)} targets`
-        + `<br>= <b>${Math.round(d.total)}</b><br>${d.why}`);
+      hover(hit, `<b>${d.name}</b> <span style="opacity:.6">${d.behavior}</span>`
+        + `<br>${d.why}<br>= ${d.targets.toFixed(1)} hits an activation`
+        + `<br><b>${Math.round(d.dps)}</b> dps against ${crowd}`
+        + `<br>single target: ${d.single.toFixed(1)}`);
       svg.append(hit);
     });
+    box._foot = 'Through WS.Weapon.reach, which is modelled per behaviour beside the '
+      + 'handlers in weapon.js - a beam covers its line, a zone hits every tick of its '
+      + 'duration, an orbit sweeps at half damage five times a second, a bounce reaches '
+      + 'its ricochets, and every projectile counts. The one guess in it is that enemies '
+      + `are spread evenly over the ${W.CONST.WORLD_WIDTH}x${W.CONST.WORLD_HEIGHT} field; `
+      + 'real crowds bunch toward the survivor, so area weapons do better than this says '
+      + 'and single-target weapons no worse.'
+      + (missing.length ? '  NO REACH MODEL FOR: ' + missing.join(', ') : '');
+    const old = box.querySelector('.foot');
+    if (old) { old.remove(); finish(box, rows, ['weapon', 'behaviour', 'single', 'hits', 'crowd dps', 'model']); }
   };
   crowdIn.oninput = draw; lvl.onchange = draw;
   draw();
-  box._foot = 'PROJECTION, not a measurement. Enemies are assumed spread evenly over the '
-    + `${W.CONST.WORLD_WIDTH}x${W.CONST.WORLD_HEIGHT} field, so an area effect of radius r `
-    + 'reaches crowd x pi r^2 / field area; a chaining weapon reaches its chain count; a '
-    + 'piercing one reaches pierce + 1. Real crowds bunch around the survivor, which makes '
-    + 'area weapons better than this says and single-target weapons no worse.';
-  return finish(box, rows, ['weapon', 'dps', 'targets', 'total', 'why']);
+  return box.querySelector('.foot') ? box
+    : finish(box, rows, ['weapon', 'behaviour', 'single', 'hits', 'crowd dps', 'model']);
 }
 
 /* ---------- 3. how long a kill takes, minute by minute ---------- */
