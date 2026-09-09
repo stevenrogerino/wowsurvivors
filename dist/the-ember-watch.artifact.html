@@ -3814,9 +3814,15 @@ window.WS = window.WS || {};
 (function (WS) {
 
   // The only roots a tuning path may start from.
-  const ROOTS = ['Config', 'Characters', 'Weapons', 'Unions', 'Enemies', 'Elites',
-    'Bosses', 'Maps', 'Upgrades', 'MetaUpgrades', 'Blessings', 'Combos',
-    'Achievements'];
+  /* Every root a tuning path may start from. The last two are not data files
+   * but are unambiguously tuning: CONST holds the global damage/speed scalars
+   * and the pool ceilings, and Arena.tuning is the entire Eclipse Arena fight.
+   * Both were reachable from nowhere until the bench went looking for what it
+   * could not edit. A root is written as a path so a table can live inside a
+   * system rather than only at the top level. */
+  const ROOTS = ['Config', 'CONST', 'Characters', 'Weapons', 'Unions', 'Enemies',
+    'Elites', 'Bosses', 'Maps', 'Upgrades', 'MetaUpgrades', 'Blessings',
+    'Combos', 'Achievements', 'Arena.tuning'];
   /* A Set, not an object literal. `{ __proto__: 1 }` does not create a key
    * called __proto__ - it sets the object's prototype - so the literal form of
    * this list silently failed to contain the one name it exists to catch, and
@@ -3834,9 +3840,16 @@ window.WS = window.WS || {};
    *  that is not a real, reachable, permitted location. */
   function locate(path) {
     if (typeof path !== 'string' || !path) return null;
-    const parts = path.split('.');
-    if (parts.length < 2 || ROOTS.indexOf(parts[0]) < 0) return null;
-    let node = WS[parts[0]];
+    // The longest matching root wins, so 'Arena.tuning' is one root rather
+    // than a walk into WS.Arena that any path could have taken.
+    let root = null;
+    for (const r of ROOTS) {
+      if ((path === r || path.startsWith(r + '.')) && (!root || r.length > root.length)) root = r;
+    }
+    if (!root) return null;
+    const parts = [root].concat(path.slice(root.length + 1).split('.'));
+    if (parts.length < 2 || parts[1] === '') return null;
+    let node = root.split('.').reduce((o, k) => (o == null ? o : o[k]), WS);
     for (let i = 1; i < parts.length - 1; i++) {
       const k = parts[i];
       if (FORBIDDEN.has(k)) return null;
@@ -9031,6 +9044,37 @@ window.WS = window.WS || {};
     if (!(base > 0) || base > 20) base = 20;
     if (base < 0.05) base = 0.05;
     return base;
+  };
+
+  /** What a weapon actually puts out at a given rank, through the same
+   *  derivation the game fires with.
+   *
+   *  Written for the tuning bench, which needs to show what rank 4 of a
+   *  weapon is worth while you are dragging its damage around. It could have
+   *  reimplemented these three formulas; it must not, because a preview that
+   *  drifts from the code is worse than no preview - you tune against the
+   *  wrong number and never find out. So the bench asks the game.
+   *
+   *  `player` may be omitted, in which case a bare survivor is used and the
+   *  answer is the weapon on its own, before any build. */
+  Weapon.preview = function (id, level, evolved, player) {
+    const data = WS.Weapons[id];
+    if (!data) return null;
+    let p = player;
+    if (!p) {
+      /* A deliberately neutral survivor. Player.create applies the chosen
+         character's perk, and a preview quietly carrying the mage's cooldown
+         bonus is exactly the kind of wrong number this exists to prevent. */
+      p = Weapon._probe || (Weapon._probe = WS.Player.create('mage'));
+      p.damageMultiplier = 1; p.cooldownMultiplier = 1; p.areaMultiplier = 1;
+      p.projectileBonus = 0; p.projectileSpeed = 1; p.metaTimer = 0;
+    }
+    const w = { id, data, level: level || 1, evolved: !!evolved, mods: {} };
+    const damage = damageOf(p, w);
+    const count = countOf(p, w);
+    const cooldown = Weapon.cooldown(p, w);
+    return { damage, count, cooldown, dps: damage * count / cooldown,
+      area: areaOf(p, w, 1), speed: speedOf(p, w) };
   };
 
   /** The colour a weapon paints with - data may override its school palette. */

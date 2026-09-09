@@ -61,6 +61,37 @@
     return base;
   };
 
+  /** What a weapon actually puts out at a given rank, through the same
+   *  derivation the game fires with.
+   *
+   *  Written for the tuning bench, which needs to show what rank 4 of a
+   *  weapon is worth while you are dragging its damage around. It could have
+   *  reimplemented these three formulas; it must not, because a preview that
+   *  drifts from the code is worse than no preview - you tune against the
+   *  wrong number and never find out. So the bench asks the game.
+   *
+   *  `player` may be omitted, in which case a bare survivor is used and the
+   *  answer is the weapon on its own, before any build. */
+  Weapon.preview = function (id, level, evolved, player) {
+    const data = WS.Weapons[id];
+    if (!data) return null;
+    let p = player;
+    if (!p) {
+      /* A deliberately neutral survivor. Player.create applies the chosen
+         character's perk, and a preview quietly carrying the mage's cooldown
+         bonus is exactly the kind of wrong number this exists to prevent. */
+      p = Weapon._probe || (Weapon._probe = WS.Player.create('mage'));
+      p.damageMultiplier = 1; p.cooldownMultiplier = 1; p.areaMultiplier = 1;
+      p.projectileBonus = 0; p.projectileSpeed = 1; p.metaTimer = 0;
+    }
+    const w = { id, data, level: level || 1, evolved: !!evolved, mods: {} };
+    const damage = damageOf(p, w);
+    const count = countOf(p, w);
+    const cooldown = Weapon.cooldown(p, w);
+    return { damage, count, cooldown, dps: damage * count / cooldown,
+      area: areaOf(p, w, 1), speed: speedOf(p, w) };
+  };
+
   /** The colour a weapon paints with - data may override its school palette. */
   function schoolColour(w) {
     if (w.evolved && w.data.evolvedColor) return w.data.evolvedColor;

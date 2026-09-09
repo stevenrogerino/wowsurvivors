@@ -20,8 +20,9 @@ Everything. That is not a figure of speech: **the bench is generated from the
 game's own data at runtime**, not written out by hand. It reads `WS.Config`,
 `WS.Weapons`, `WS.Enemies`, `WS.Bosses`, `WS.Maps`, `WS.Characters`,
 `WS.Upgrades`, `WS.MetaUpgrades`, `WS.Blessings`, `WS.Combos`, `WS.Unions`,
-`WS.Elites` and `WS.Achievements`, walks whatever it finds, and builds a
-control per field from the shape of the value:
+`WS.Elites`, `WS.Achievements`, `WS.CONST` (the global damage/speed scalars and
+pool ceilings) and `WS.Arena.tuning` (the entire Eclipse Arena fight), walks
+whatever it finds, and builds a control per field from the shape of the value:
 
 | what it finds | what you get |
 | --- | --- |
@@ -31,6 +32,21 @@ control per field from the shape of the value:
 | `[0.62, 0.62, 0.68]` | a colour swatch and a picker |
 | `[300, 630, 960, 1320, 1620]` | an editable list |
 | a map's spawn phases, a boss's patterns | a nested editor, one row per entry |
+
+Two things are shown rather than edited:
+
+- **`apply()` functions** appear as read-only code. A function is not data, and
+  a tuning file that could contain one would not be a tuning file. It is shown
+  because it is the most useful thing on a boon's card — it says what the
+  number above it actually *does*.
+- **Rank tables.** Every weapon, level-up boon and Trainer lesson shows what
+  each rank is worth. This is *measured*, not described: the weapon table asks
+  `WS.Weapon.preview`, the same derivation the game fires with, and the boon
+  and lesson tables **run the real `apply()`** on a throwaway survivor and
+  report what moved. That matters because Might adds (rank 5 = ×1.5) and Haste
+  multiplies (rank 5 = 0.92⁵ = ×0.659), and the only thing that knows which is
+  a one-line function. The Trainer table also carries cost per rank and total
+  gold spent — maxing a 200g lesson is 11,000g.
 
 **Add a field to any data file and it appears in the bench** — typed
 correctly, with its shipped value already known. Add a weapon and its card is
@@ -87,6 +103,8 @@ whole file on the clipboard — paste it over `src/data/tuning.js` and reload.
   `cooldown` finds every cooldown in the game.
 - **Changed only** collapses everything to what you have actually touched.
 - Changed values are gold; so is the count beside each section in the sidebar.
+- Cards start collapsed with **expand all / collapse all** at the top, and each
+  card's fields lay out in as many columns as the window is wide.
 
 ## Shipping tuning
 

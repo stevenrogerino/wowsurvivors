@@ -24,6 +24,20 @@
  *                there - applied over the shipped data, with the shipped
  *                value still known so it can be put back.
  *
+ *   ranks        A boon's card has to say what rank 4 of it is worth, and the
+ *                bench must MEASURE that by running the game's own apply()
+ *                rather than assuming how ranks stack. Might adds and Haste
+ *                multiplies, and the only thing that knows which is a
+ *                one-line function on the data. So this checks Might rank 5
+ *                is 1.5 and Haste rank 5 is 0.92^5, checks the Trainer's
+ *                cumulative gold, and checks the weapon table agrees with
+ *                WS.Weapon.preview to the digit.
+ *
+ *   nothing      No control anywhere may read "undefined". Every apply() in
+ *   undefined    the game used to render as an editable box containing that
+ *                word, because JSON.stringify returns undefined for a
+ *                function - and typing in it wrote garbage to the file.
+ *
  * It also checks the shipped data files are NOT touched, because that is the
  * promise the override layer makes, and checks a hostile path is refused -
  * a tuning file is data, and data that can reach __proto__ is not data.
@@ -42,6 +56,13 @@
  *     the first place, not a hypothetical
  *   - dropping the server's Origin check fails at "a page on another origin
  *     rewrote src/data/tuning.js"
+ *   - having the rank table assume `v x rank` instead of running apply()
+ *     fails at "Haste rank 5 shows 5.6, but Haste multiplies - 0.92^5 is
+ *     0.659", which is the whole argument for measuring it
+ *   - rendering functions as JSON again fails at "Characters.mage.apply ...
+ *     render as editable boxes containing \"undefined\""
+ *   - dropping CONST and Arena.tuning from the tuning layer fails at "the
+ *     engine scalars and the Eclipse Arena fight cannot be tuned"
  *
  *   npm i playwright && npx playwright install chromium
  *   node tools/check-bench.js
@@ -103,14 +124,14 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const game = document.querySelector('#frame').contentWindow.WS;
       const cards = [...document.querySelectorAll('#main .entry')];
       const first = cards[0];
-      const labels = [...first.querySelectorAll('.grid > label')].map((l) => l.title);
+      const labels = [...first.querySelectorAll('.field > label')].map((l) => l.title);
       const id = first.dataset.path.split('.')[1];
       return {
         cards: cards.length,
         weapons: Object.keys(game.Weapons).length,
         labels,
         fields: Object.keys(game.Weapons[id]).map((k) => 'Weapons.' + id + '.' + k),
-        derived: !!first.querySelector('.derived'),
+        derived: !!first.querySelector('.ranks'),
       };
     });
     if (built.cards !== built.weapons) {
@@ -122,7 +143,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
           + 'is not being generated from the data');
       }
     }
-    if (!built.derived) fail.push('the weapon card shows no derived rank-1 output');
+    if (!built.derived) fail.push('the weapon card shows no rank table');
 
     /* A field NOBODY wrote a form for. If the bench is really introspective,
        inventing a field on a live object makes an editor for it appear. */
@@ -132,10 +153,10 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       game.Weapons.cinderfall.epithet = 'the slow heavy one';
       document.querySelector('nav button[data-root="Weapons"]').click();
       const card = document.querySelector('#main .entry[data-path="Weapons.cinderfall"]');
-      const got = [...card.querySelectorAll('.grid > label')].map((l) => l.title);
+      const got = [...card.querySelectorAll('.field > label')].map((l) => l.title);
       const kinds = {};
       for (const k of ['wobbliness', 'epithet']) {
-        const lab = [...card.querySelectorAll('.grid > label')]
+        const lab = [...card.querySelectorAll('.field > label')]
           .find((l) => l.title === 'Weapons.cinderfall.' + k);
         kinds[k] = lab ? lab.nextElementSibling.querySelector('.f').type
           || lab.nextElementSibling.querySelector('.f').tagName.toLowerCase() : null;
@@ -153,19 +174,121 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
         + `and ${invented.kinds.epithet}, not number and text`);
     }
 
+    /* ---- nothing renders as an editable "undefined" --------------------- */
+    /* JSON.stringify hands back undefined for a function, so every apply() in
+       the game - and there is one on most upgrades, lessons and blessings -
+       rendered as an editable box containing the word "undefined". Typing in
+       it wrote garbage into the tuning file. This sweeps every table. */
+    const undef = await page.evaluate(() => {
+      const bad = [], code = [];
+      for (const b of document.querySelectorAll('nav button')) {
+        b.click();
+        for (const f of document.querySelectorAll('#main .f')) {
+          if (f.value === 'undefined' || f.value === '') {
+            if (f.value === 'undefined') bad.push(f.closest('.field').querySelector('label').title);
+          }
+        }
+        code.push(...[...document.querySelectorAll('#main .code')].map((c) => c.title));
+      }
+      return { bad: bad.slice(0, 5), codeShown: code.length };
+    });
+    if (undef.bad.length) {
+      fail.push('these render as editable boxes containing "undefined": '
+        + undef.bad.join(', ') + ' - a function is code, not data');
+    }
+    if (!undef.codeShown) {
+      fail.push('no apply() function is shown anywhere - the most useful thing on a '
+        + 'boon card is what its number feeds into');
+    }
+
+    /* ---- rank tables, measured rather than assumed ----------------------- */
+    /* Might adds (rank 5 = 1.5) and Haste multiplies (rank 5 = 0.92^5 = 0.659),
+       and the only way to know which is to run the apply(). A bench that
+       displayed "v x rank" would get Haste wrong by a third and nobody would
+       ever see it. */
+    const ranks = await page.evaluate(() => {
+      const read = (root, id) => {
+        document.querySelector(`nav button[data-root="${root}"]`).click();
+        const card = document.querySelector(`#main .entry[data-path="${root}.${id}"]`);
+        if (!card) return null;
+        card.open = true;
+        const t = card.querySelector('.ranks table');
+        if (!t) return null;
+        return [...t.querySelectorAll('tr')].map((tr) =>
+          [...tr.children].map((c) => c.textContent));
+      };
+      return { might: read('Upgrades', 'might'), haste: read('Upgrades', 'haste'),
+        lesson: read('MetaUpgrades', 'meta_might'),
+        motes: read('Weapons', 'seeking_motes'),
+        live: (() => {
+          const g = document.querySelector('#frame').contentWindow.WS;
+          return g.Weapon.preview('seeking_motes', 7, false);
+        })() };
+    });
+    for (const [what, rows] of Object.entries(ranks)) {
+      if (what !== 'live' && !rows) fail.push(`no rank table on the ${what} card`);
+    }
+    if (ranks.might && ranks.might[5] && !/^1\.5$/.test(ranks.might[5][1])) {
+      fail.push(`Might rank 5 shows ${ranks.might[5][1]}, not 1.5`);
+    }
+    if (ranks.haste && ranks.haste[5]) {
+      const v = parseFloat(ranks.haste[5][1]);
+      if (Math.abs(v - Math.pow(0.92, 5)) > 0.002) {
+        fail.push(`Haste rank 5 shows ${ranks.haste[5][1]}, but Haste multiplies - `
+          + `0.92^5 is ${Math.pow(0.92, 5).toFixed(3)}. The table is assuming how ranks `
+          + 'stack instead of running the code');
+      }
+    }
+    if (ranks.lesson && ranks.lesson[10]) {
+      const row = ranks.lesson[10];
+      if (row[row.length - 1] !== '11000g') {
+        fail.push(`the Trainer table says rank 10 of a 200g lesson costs `
+          + `${row[row.length - 1]} in total, not 11000g`);
+      }
+    }
+    if (ranks.motes && ranks.live) {
+      const row = ranks.motes[7];   // header + ranks 1..6, so this is rank 7
+      if (!row || row[0] !== 'rank 7' || +row[1] !== +ranks.live.damage.toFixed(3)) {
+        fail.push('the weapon rank table disagrees with WS.Weapon.preview - it is '
+          + 'reimplementing the derivation instead of asking the game');
+      }
+    }
+
+    /* ---- everything the tuning layer allows is reachable ----------------- */
+    const reach = await page.evaluate(() => {
+      const g = document.querySelector('#frame').contentWindow.WS;
+      const nav = [...document.querySelectorAll('nav button')].map((b) => b.dataset.root);
+      const missing = g.Tuning.roots.filter((r) => !nav.includes(r));
+      // and the two that were reachable from nowhere until the bench looked
+      const wrote = g.Tuning.set('CONST.ENEMY_SCALE', 1.5)
+        && g.Tuning.set('Arena.tuning.ringDamage', 99);
+      const landed = g.CONST.ENEMY_SCALE === 1.5 && g.Arena.tuning.ringDamage === 99;
+      g.Tuning.clear('CONST.ENEMY_SCALE'); g.Tuning.clear('Arena.tuning.ringDamage');
+      return { missing, wrote, landed,
+        restored: g.CONST.ENEMY_SCALE !== 1.5 && g.Arena.tuning.ringDamage !== 99 };
+    });
+    if (reach.missing.length) {
+      fail.push('the tuning layer allows roots the bench never shows: '
+        + reach.missing.join(', '));
+    }
+    if (!reach.wrote || !reach.landed) {
+      fail.push('the engine scalars and the Eclipse Arena fight cannot be tuned');
+    }
+    if (!reach.restored) fail.push('clearing an override did not put the value back');
+
     /* ---- live ----------------------------------------------------------- */
     const live = await page.evaluate(async () => {
       const game = document.querySelector('#frame').contentWindow.WS;
       const before = game.Weapons.cinderfall.damage;
       document.querySelector('nav button[data-root="Weapons"]').click();
       const card = document.querySelector('#main .entry[data-path="Weapons.cinderfall"]');
-      const lab = [...card.querySelectorAll('.grid > label')]
+      const lab = [...card.querySelectorAll('.field > label')]
         .find((l) => l.title === 'Weapons.cinderfall.damage');
       const input = lab.nextElementSibling.querySelector('input');
       input.value = String(before + 11);
       input.dispatchEvent(new Event('input', { bubbles: true }));
       // and a rename, because "renamed" is half of what this tool is for
-      const nlab = [...card.querySelectorAll('.grid > label')]
+      const nlab = [...card.querySelectorAll('.field > label')]
         .find((l) => l.title === 'Weapons.cinderfall.name');
       const ninput = nlab.nextElementSibling.querySelector('input,textarea');
       ninput.value = 'Emberfall';

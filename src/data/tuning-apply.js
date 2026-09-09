@@ -25,9 +25,15 @@
 (function (WS) {
 
   // The only roots a tuning path may start from.
-  const ROOTS = ['Config', 'Characters', 'Weapons', 'Unions', 'Enemies', 'Elites',
-    'Bosses', 'Maps', 'Upgrades', 'MetaUpgrades', 'Blessings', 'Combos',
-    'Achievements'];
+  /* Every root a tuning path may start from. The last two are not data files
+   * but are unambiguously tuning: CONST holds the global damage/speed scalars
+   * and the pool ceilings, and Arena.tuning is the entire Eclipse Arena fight.
+   * Both were reachable from nowhere until the bench went looking for what it
+   * could not edit. A root is written as a path so a table can live inside a
+   * system rather than only at the top level. */
+  const ROOTS = ['Config', 'CONST', 'Characters', 'Weapons', 'Unions', 'Enemies',
+    'Elites', 'Bosses', 'Maps', 'Upgrades', 'MetaUpgrades', 'Blessings',
+    'Combos', 'Achievements', 'Arena.tuning'];
   /* A Set, not an object literal. `{ __proto__: 1 }` does not create a key
    * called __proto__ - it sets the object's prototype - so the literal form of
    * this list silently failed to contain the one name it exists to catch, and
@@ -45,9 +51,16 @@
    *  that is not a real, reachable, permitted location. */
   function locate(path) {
     if (typeof path !== 'string' || !path) return null;
-    const parts = path.split('.');
-    if (parts.length < 2 || ROOTS.indexOf(parts[0]) < 0) return null;
-    let node = WS[parts[0]];
+    // The longest matching root wins, so 'Arena.tuning' is one root rather
+    // than a walk into WS.Arena that any path could have taken.
+    let root = null;
+    for (const r of ROOTS) {
+      if ((path === r || path.startsWith(r + '.')) && (!root || r.length > root.length)) root = r;
+    }
+    if (!root) return null;
+    const parts = [root].concat(path.slice(root.length + 1).split('.'));
+    if (parts.length < 2 || parts[1] === '') return null;
+    let node = root.split('.').reduce((o, k) => (o == null ? o : o[k]), WS);
     for (let i = 1; i < parts.length - 1; i++) {
       const k = parts[i];
       if (FORBIDDEN.has(k)) return null;
