@@ -694,16 +694,50 @@
       WS.Audio.play('ui');
     });
 
+    /* Hyper is armed globally and applies PER BATTLEFIELD, and this button used
+     * to only know about the first half.
+     *
+     * `hyperArmed` is one flag for the whole account, but a run is only a Hyper
+     * run when the map it is on has been won - game.js: `unlocks.hyper[mapId]
+     * && hyperArmed`. So arming it and then picking a battlefield you have not
+     * cleared gave you a footer reading "Hyper: ON" above a Begin Run that
+     * started an ordinary run. Measured: armed, Thornhollow won, begin
+     * Thornhollow -> run.hyper true; same armed state, begin Pale Wastes ->
+     * run.hyper false, button still reading ON. The summary afterwards was
+     * honest about it, which meant the only place the lie appeared was the
+     * moment the player was deciding.
+     *
+     * It reads the selected battlefield now, and says which of the three
+     * things is true: this one is armed, this one has to be won first, or -
+     * for the Arena, which runs its own fight and never touches the wave
+     * scaling Hyper multiplies - it does not apply here at all. */
     const hyper = el('button', 'btn', '');
     const setHyperLabel = () => {
-      hyper.textContent = 'Hyper: ' + (WS.Save.db.hyperArmed ? 'ON' : 'off');
-      hyper.disabled = !Object.keys(WS.Save.db.unlocks.hyper).length;
+      const id = WS.Game.selection.map;
+      const map = WS.Maps[id];
+      if (map && map.arena) {
+        hyper.textContent = 'Hyper: —';
+        hyper.title = map.name + ' runs its own fight, so Hyper has nothing to scale.';
+        hyper.disabled = true;
+        return;
+      }
+      const has = !!(WS.Save.db.unlocks.hyper && WS.Save.db.unlocks.hyper[id]);
+      hyper.disabled = !has;
+      hyper.textContent = has
+        ? 'Hyper: ' + (WS.Save.db.hyperArmed ? 'ON' : 'off')
+        : 'Hyper: win here first';
+      hyper.title = has
+        ? 'Enemies and bosses 40% stronger, and waves a third more often.'
+        : (map ? `Survive thirty minutes on ${map.name} to open Hyper there.` : '');
     };
     setHyperLabel();
     hyper.addEventListener('click', () => {
       WS.Save.db.hyperArmed = !WS.Save.db.hyperArmed;
       WS.Save.save(); setHyperLabel(); WS.Audio.play('ui');
     });
+    /* Picking a battlefield does not rebuild the menu - it swaps the cartouche
+       in place - so the footer has to be told. */
+    UI.syncModes = setHyperLabel;
 
     const help = el('button', 'btn', 'How to play');
     help.addEventListener('click', () => { WS.Audio.play('ui'); UI.openManual(); });
@@ -890,6 +924,8 @@
           for (const n of grid.children) n.classList.remove('selected');
           node.classList.add('selected');
           fillMapCartouche(detail, id);
+          // Hyper is per-battlefield, so the footer changes with this pick.
+          if (UI.syncModes) UI.syncModes();
         });
       }
       grid.append(node);
