@@ -353,6 +353,7 @@
     if (this.player) WS.FX.burst(this.player.x, this.player.y, 18, '#f5c56b', 90, 1.4, 3.5);
     WS.Audio.play('death');
     WS.Audio.setIntensity(0);
+    WS.Audio.setBoss(null);
     // Bank it now. Whatever happens in the next second and a half, the run
     // has already earned what it earned.
     WS.Save.flush();
@@ -460,6 +461,15 @@
     }
 
     WS.Audio.setIntensity(this.danger());
+    /* And WHAT it is, not only how bad. Intensity is a dial the score turns
+       slowly; a boss is an event, and the layer it brings in has to arrive
+       with it rather than ease in behind it. Death gets its own word because
+       the last boss in the game is not the same kind of trouble as the
+       others. */
+    const lead = WS.Enemy.leadBoss();
+    WS.Audio.setBoss(lead
+      ? (lead.template && lead.template.family === 'death' ? 'death' : 'boss')
+      : null);
   };
 
   /* How bad is it, right now, 0 to 1.

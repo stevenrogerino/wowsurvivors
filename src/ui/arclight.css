@@ -1507,6 +1507,42 @@ input[type=range]::-moz-range-thumb {
 #prologue .skip:hover { color: var(--gold, #f5c56b); }
 #prologue .skip:focus-visible { outline: 2px solid var(--gold, #f5c56b); outline-offset: 2px; }
 
+/* The line that buys the piece a voice.
+ *
+ * A browser will not hand out an AudioContext until someone has interacted
+ * with the page, and the prologue starts on boot - so on a first run it had
+ * no sound at all, and the only gesture that would have fixed that was wired
+ * to skip it. It waits here instead, on frame one, on night, until a key
+ * starts it properly. Only then; a replay from the settings screen never
+ * sees this because the player has long since clicked something.
+ *
+ * It breathes rather than blinking. A hard flash on an otherwise motionless
+ * night reads as a fault, and this is the first thing anyone sees of the
+ * game. Anyone who has asked for less movement gets a still line. */
+#prologue .wake {
+  position: absolute; left: 0; right: 0; bottom: 12vh;
+  margin: 0; text-align: center; pointer-events: none;
+  font-family: var(--ui, 'Archivo', system-ui, sans-serif);
+  font-size: clamp(10px, 1.05vw, 13px); letter-spacing: .34em;
+  text-transform: uppercase; color: #8a93a6;
+  opacity: 0; visibility: hidden;
+  transition: opacity .5s var(--ease, ease);
+}
+#prologue.waiting .wake {
+  visibility: visible;
+  animation: wake-breathe 3.4s var(--ease, ease-in-out) .6s infinite;
+}
+/* The skip line is a lie until the piece is running - there is nothing yet
+   to skip - so it stays out of the way while the gate is up. */
+#prologue.waiting .skip { opacity: 0; pointer-events: none; }
+@keyframes wake-breathe {
+  0%, 100% { opacity: .30; }
+  50%      { opacity: .78; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #prologue.waiting .wake { animation: none; opacity: .62; }
+}
+
 /* The import box lives under its own setting row rather than inside it: a
    textarea in a flex row of buttons squeezes to nothing at any narrow width. */
 .import-box {

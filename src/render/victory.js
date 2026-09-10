@@ -353,6 +353,7 @@
     this.active = true;
     this.done = onDone || null;
     this.t = 0;
+    this._cued = null;
     this.last = null;
     this.scene = -1;
     WS.Game.state = 'cinematic';
@@ -384,6 +385,10 @@
 
     WS.Audio.play('victory');
     WS.Audio.setIntensity(0);
+    /* Whatever was on the field when the clock ran out, it is not on the
+       field now - and a boss layer left running under the cinematic would
+       score the sunrise with the thing the sunrise ended. */
+    WS.Audio.setBoss(null);
     return true;
   };
 
@@ -423,6 +428,18 @@
     const env = { light: this.light(this.t), burn: this.burnAt(this.t),
       day: this.morning(this.t) };
     const runK = WS.clamp(now.runK, 0, 1);
+    /* Score the beat, once, on the frame it becomes the current one.
+     *
+     * The piece is a sequence of named beats and the cue table is keyed by
+     * those same names, so a scene added to the script is scored by adding a
+     * cue with its name and nothing else here changes. A name the table does
+     * not know is silence, deliberately - a script may run ahead of the score.
+     */
+    if (this._cued !== now.scene.beat) {
+      this._cued = now.scene.beat;
+      WS.Audio.cue('vic:' + now.scene.beat);
+    }
+
     const beat = BEATS[now.scene.beat] || BEATS.last;
 
     ctx.save();

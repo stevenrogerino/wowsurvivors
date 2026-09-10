@@ -24,6 +24,9 @@
   WS.Lore = {
     prologue: {
       skip: 'any key to skip',
+      /* Shown only when the browser has not yet let the game have a
+         voice - see P.arm. It asks for the keypress that buys one. */
+      begin: 'press any key to begin',
       title: 'The Ember Watch',
       subtitle: 'Thirty minutes until dawn',
       scenes: [

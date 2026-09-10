@@ -342,6 +342,43 @@
     return null;
   };
 
+  /* ---------------------------------------------------------------- gate --
+   * A cinematic that could never make a sound.
+   *
+   * The prologue starts on boot, and a browser will not give a page an
+   * AudioContext until someone has interacted with it. Measured on a fresh
+   * profile with the shipping autoplay policy: through the whole first-run
+   * prologue there was no context at all - not a suspended one, none - so
+   * playMusic returned at its first line and the best thing in the game ran
+   * in silence. And the single gesture that would have unlocked audio, a
+   * keypress, was wired to SKIP the piece. There was no way to hear it.
+   *
+   * So when there is no running context the piece holds on its first frame
+   * with a line asking for a key, and that key starts it WITH SOUND instead
+   * of ending it. Every key after that skips, as before.
+   *
+   * The gate only exists when it is needed. Replaying the cinematic from the
+   * settings screen happens long after the player has clicked something, so
+   * `armed` is already true there and the piece begins immediately. */
+  P.canHear = function () {
+    return !!(WS.Audio.ctx && WS.Audio.ctx.state === 'running');
+  };
+
+  P.arm = function () {
+    if (this.armed) return false;
+    WS.Audio.init();
+    WS.Audio.resume();
+    WS.Audio.applySettings();
+    WS.Audio.playMusic('vigil');
+    this.armed = true;
+    /* The clock has been stopped on frame one; start it from HERE rather than
+       from whenever the layer was built, or the piece opens by jumping
+       forward by however long the player took to press a key. */
+    this.last = null;
+    if (this.layer) this.layer.classList.remove('waiting');
+    return true;
+  };
+
   P.begin = function (onDone) {
     if (this.active) return;
     if (!this.scenes().length) { if (onDone) onDone(); return; }
@@ -349,8 +386,10 @@
     this.active = true;
     this.done = onDone || null;
     this.t = 0;
+    this._cued = null;
     this.last = null;
     this.scene = -1;
+    this.armed = this.canHear();
     WS.Game.state = 'prologue';
 
     const lore = WS.Lore.prologue;
@@ -370,16 +409,24 @@
     skip.textContent = lore.skip || 'skip';
     skip.addEventListener('click', () => P.finish());
     layer.append(skip);
+    const wake = document.createElement('p');
+    wake.className = 'wake';
+    wake.textContent = lore.begin || 'press any key to begin';
+    layer.append(wake);
+    if (!this.armed) layer.classList.add('waiting');
     layer.querySelector('.title em').textContent = lore.subtitle || '';
     (document.getElementById('stage') || document.body).append(layer);
     this.layer = layer;
 
-    this.onKey = () => P.finish();
-    this.onTap = (e) => { if (e.target !== skip) P.finish(); };
+    this.onKey = () => { if (!P.arm()) P.finish(); };
+    this.onTap = (e) => {
+      if (e.target === skip) return;
+      if (!P.arm()) P.finish();
+    };
     window.addEventListener('keydown', this.onKey);
     layer.addEventListener('pointerdown', this.onTap);
 
-    WS.Audio.playMusic('menu');
+    if (this.armed) WS.Audio.playMusic('vigil');
     return true;
   };
 
@@ -396,12 +443,31 @@
 
   /** Called by Renderer.draw, inside the letterboxed world transform. */
   P.render = function (ctx, time) {
-    if (this.last === null) this.last = time;
-    this.t += WS.min(0.1, WS.max(0, time - this.last));
-    this.last = time;
+    /* Held on frame one until the piece has a voice. The scene still draws -
+       the first thing on screen is night, exactly as before - but its clock
+       does not run, so nobody watches the opening play out in silence while
+       the browser waits to be asked. */
+    if (!this.armed) { this.last = null; this.t = 0; }
+    else {
+      if (this.last === null) this.last = time;
+      this.t += WS.min(0.1, WS.max(0, time - this.last));
+      this.last = time;
+    }
 
     const now = this.at(this.t);
     if (!now) { this.finish(); return; }
+    /* Score the beat, once, on the frame it becomes the current one.
+     *
+     * The piece is a sequence of named beats and the cue table is keyed by
+     * those same names, so a scene added to the script is scored by adding a
+     * cue with its name and nothing else here changes. A name the table does
+     * not know is silence, deliberately - a script may run ahead of the score.
+     */
+    if (this.armed && this._cued !== now.scene.beat) {
+      this._cued = now.scene.beat;
+      WS.Audio.cue('pro:' + now.scene.beat);
+    }
+
     const beat = BEATS[now.scene.beat] || BEATS.night;
     beat(ctx, this.t, WS.clamp(now.k, 0, 1));
 
