@@ -341,11 +341,31 @@ const fail = [];
   if (woke.t <= 0) fail.push('the prologue was armed but its clock never started');
   if (woke.prompted) fail.push('the prompt stayed up after the piece began');
 
-  // ...and a second key skips, exactly as it always did.
-  await sp.keyboard.press('Space');
+  /* ...and once it is running, a second key STEPS rather than ending it.
+   *
+   * The gate would otherwise have been paid for by making the piece easier to
+   * lose: the same press that used to skip is now the one that starts it, so
+   * the very next press falling through to a skip would put a player one
+   * keystroke from throwing away the thing they had just asked to see. */
+  const stepped = await sp.evaluate(async () => {
+    const before = WS.Prologue.t;
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'x', bubbles: true }));
+    await new Promise((r) => setTimeout(r, 120));
+    return { active: WS.Prologue.active, moved: WS.Prologue.t > before };
+  });
+  if (!stepped.active) fail.push('the key after the one that started it ended the piece');
+  if (!stepped.moved) fail.push('a key did not step the prologue on');
+
+  // Escape leaves, and nothing on screen advertises it.
+  const quiet = await sp.evaluate(() => {
+    const t = (document.querySelector('#prologue .step') || {}).textContent || '';
+    return /skip|esc/i.test(t + ' ' + (WS.Lore.prologue.next || ''));
+  });
+  if (quiet) fail.push('the prologue advertises the escape hatch it is meant to keep quiet');
+  await sp.keyboard.press('Escape');
   await sp.waitForTimeout(400);
   const gone = await sp.evaluate(() => WS.Prologue.active);
-  if (gone) fail.push('a key no longer skips the prologue once it is running');
+  if (gone) fail.push('escape did not leave the prologue');
 
   await strict.close();
   await browser.close();
@@ -358,5 +378,5 @@ const fail = [];
   console.log(`ok: seven scores that sound like seven different places, a boss that takes the `
     + `score over by ${report.boss.arrives}dB and gives it back, Death that does not sound like `
     + `any other boss, ${report.cues.length} cinematic cues that all make a noise, every beat of `
-    + `both scripts scored, and a first-run prologue that can actually be heard`);
+    + `both scripts scored, a first-run prologue that can actually be heard, and a key that steps it on rather than throwing it away`);
 })();

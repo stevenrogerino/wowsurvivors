@@ -627,11 +627,11 @@
     layer.querySelector('.art').textContent = words.length > 2 ? words[0] : '';
     layer.querySelector('.nm').textContent = words[words.length - 2] || 'Ember';
     layer.querySelector('.wm').textContent = words[words.length - 1] || 'Watch';
-    const skip = document.createElement('button');
-    skip.className = 'skip';
-    skip.textContent = lore.skip || 'skip';
-    skip.addEventListener('click', () => P.finish());
-    layer.append(skip);
+    const step = document.createElement('button');
+    step.className = 'step';
+    step.textContent = lore.next || 'next';
+    step.addEventListener('click', () => { if (!P.arm()) P.next(); });
+    layer.append(step);
     const wake = document.createElement('p');
     wake.className = 'wake';
     wake.textContent = lore.begin || 'press any key to begin';
@@ -641,15 +641,50 @@
     (document.getElementById('stage') || document.body).append(layer);
     this.layer = layer;
 
-    this.onKey = () => { if (!P.arm()) P.finish(); };
+    this.onKey = (e) => {
+      if (P.arm()) return;                 // the first key buys it a voice
+      if (e && (e.key === 'Escape' || e.key === 'Esc')) P.finish();
+      else P.next();
+    };
     this.onTap = (e) => {
-      if (e.target === skip) return;
-      if (!P.arm()) P.finish();
+      if (e.target === step) return;       // the button speaks for itself
+      if (!P.arm()) P.next();
     };
     window.addEventListener('keydown', this.onKey);
     layer.addEventListener('pointerdown', this.onTap);
 
     if (this.armed) WS.Audio.playMusic('vigil');
+    return true;
+  };
+
+  /* ------------------------------------------------------------- stepping --
+   * Any key used to end the whole piece, which made the cinematic very easy
+   * to lose by accident: one stray keypress anywhere in fifty-two seconds and
+   * it was gone, with nothing to say what had just been thrown away.
+   *
+   * So an input is NEXT, like a slide. A misplaced key costs one scene rather
+   * than the piece, which is a mistake worth making. Escape still ends the
+   * whole thing - it is the one key everybody already tries - and it is
+   * deliberately not advertised, because the corner of the screen saying
+   * "next" is an invitation to keep going and saying "skip" is an invitation
+   * to leave.
+   *
+   * Stepping past the last scene finishes, so holding the key down still
+   * gets you out without needing to know about Escape at all. */
+  P.next = function () {
+    const list = this.scenes();
+    let acc = 0, i = 0;
+    for (; i < list.length; i++) {
+      const hold = list[i].hold || 0;
+      if (this.t < acc + hold - 1e-6) break;
+      acc += hold;
+    }
+    if (i >= list.length - 1) { this.finish(); return false; }
+    this.t = acc + (list[i].hold || 0);
+    /* The clock restarts from this frame rather than carrying the gap it was
+       jumped over, and the beat re-cues itself on the next render if the
+       picture actually changed. */
+    this.last = null;
     return true;
   };
 
@@ -838,18 +873,24 @@
   };
 
   /** A pad should skip this as readily as a keyboard. */
+  /* Standard gamepad mapping: 9 is Start. */
+  const PAD_SKIP = 9;
+
   P.padCheck = function () {
     if (!navigator.getGamepads) return;
     const pads = navigator.getGamepads();
     for (const pad of pads) {
       if (!pad) continue;
-      for (const b of pad.buttons) {
+      for (let i = 0; i < pad.buttons.length; i++) {
+        const b = pad.buttons[i];
         if (!b || !b.pressed) continue;
-        /* Same rule as a key: the first press buys the piece a voice, and
-           only after that does a press skip it. A pad player is exactly as
-           entitled to hear the prologue as anyone else, and they were the
-           one input that could never have. */
-        if (!this.arm()) this.finish();
+        /* Same rules as a key: the first press buys the piece a voice, then a
+           press steps. A pad player is exactly as entitled to hear the
+           prologue as anyone else, and they were the one input that could
+           never have. Start is the pad's Escape - unadvertised, like it. */
+        if (this.arm()) return;
+        if (i === PAD_SKIP) this.finish();
+        else this.next();
         return;
       }
     }

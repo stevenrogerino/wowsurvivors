@@ -205,16 +205,19 @@ const sample = (page, t) => page.evaluate(async (tt) => {
       + `it moves the picture ${worst.ratio.toFixed(1)}x as much as a typical step`);
   }
 
-  /* ---- it ends, three ways, and hands over ------------------------------- */
+  /* ---- it steps, it ends, and it hands over -------------------------------
+   * An input is NEXT here too, for the same reason as the prologue and more
+   * of it: this one arrives after half an hour of play, so losing it to a
+   * stray key is worse. Escape ends it outright, unadvertised. */
   const ends = await page.evaluate(async () => {
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'x', bubbles: true }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await new Promise((r) => setTimeout(r, 400));
     return { active: WS.Victory.active, state: WS.Game.state,
       layer: !!document.getElementById('prologue'),
       hud: document.getElementById('hud').classList.contains('hidden'),
       panel: !document.getElementById('overlay').classList.contains('hidden') };
   });
-  if (ends.active || ends.layer) fail.push('a key press did not end the cinematic');
+  if (ends.active || ends.layer) fail.push('escape did not end the cinematic');
   if (!ends.panel) fail.push('ending the cinematic did not put the results panel up');
   if (ends.state !== 'over') fail.push(`state after it is "${ends.state}", not "over"`);
   if (ends.hud) {
@@ -224,23 +227,52 @@ const sample = (page, t) => page.evaluate(async (tt) => {
   const tap = await page.evaluate(async () => {
     WS.Victory.begin(WS.Game.player, WS.Game.run, () => {});
     const layer = document.getElementById('prologue');
+    const before = WS.Victory.t;
     layer.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
     await new Promise((r) => setTimeout(r, 80));
-    return WS.Victory.active;
+    const out = { active: WS.Victory.active, moved: WS.Victory.t > before };
+    WS.Victory.finish();
+    return out;
   });
-  if (tap) fail.push('tapping the screen did not end the cinematic');
+  if (!tap.active) fail.push('a tap ended the cinematic instead of stepping it');
+  if (!tap.moved) fail.push('tapping the screen did not step the cinematic on');
+
+  // Stepping off the end leaves, so nobody has to know Escape does anything.
+  const run = await page.evaluate(async () => {
+    WS.Victory.begin(WS.Game.player, WS.Game.run, () => {});
+    let guard = 0;
+    while (WS.Victory.active && guard++ < 40) {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'x', bubbles: true }));
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    return { presses: guard, scenes: WS.Victory.scenes().length, over: !WS.Victory.active };
+  });
+  if (!run.over) fail.push('stepping past the last scene never ended the cinematic');
+  if (run.presses > run.scenes + 1) {
+    fail.push(`it took ${run.presses} presses to step through ${run.scenes} scenes`);
+  }
 
   const pad = await page.evaluate(async () => {
     const real = navigator.getGamepads;
-    navigator.getGamepads = () => [{ buttons: [{ pressed: true }], axes: [0, 0] }];
+    const mk = (n) => {
+      const buttons = [];
+      for (let i = 0; i < 12; i++) buttons.push({ pressed: i === n });
+      return [{ buttons, axes: [0, 0] }];
+    };
+    navigator.getGamepads = () => mk(0);
     WS.Victory.begin(WS.Game.player, WS.Game.run, () => {});
+    const before = WS.Victory.t;
+    WS.Victory.padCheck();
+    const stepped = WS.Victory.active && WS.Victory.t > before;
+    navigator.getGamepads = () => mk(9);
     WS.Victory.padCheck();
     const stopped = !WS.Victory.active;
     navigator.getGamepads = real;
     WS.Victory.finish();
-    return stopped;
+    return { stepped, stopped };
   });
-  if (!pad) fail.push('a gamepad button did not end the cinematic');
+  if (!pad.stepped) fail.push('a gamepad button did not step the cinematic on');
+  if (!pad.stopped) fail.push('the pad had no way to leave the cinematic');
   await page.close();
 
   /* ---- STARS THE PLAYER --------------------------------------------------
@@ -305,6 +337,6 @@ const sample = (page, t) => page.evaluate(async (tt) => {
     + `from the last of the night to full morning with its worst scene boundary moving the `
     + `picture ${worst.ratio.toFixed(1)}x a typical step; two different survivors give two `
     + `pictures differing across ${shots.pct.toFixed(1)}% of the frame and two different `
-    + 'names; a key, a tap and a pad each end it into the results panel with the HUD back; '
+    + 'names; a key, a tap and a pad each step it on, stepping off the end and escape each leave it into the results panel with the HUD back; '
     + 'and the setting turns it off without losing the panel');
 })();

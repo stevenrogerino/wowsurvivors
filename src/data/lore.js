@@ -23,7 +23,11 @@
 
   WS.Lore = {
     prologue: {
-      skip: 'any key to skip',
+      /* An input steps to the next scene rather than ending the piece, so the
+         corner says so. Escape ends it outright and is deliberately absent
+         from here: a screen offering to skip is a screen suggesting you
+         should, and this one has thirty seconds of work in it. */
+      next: 'next',
       /* Shown only when the browser has not yet let the game have a
          voice - see P.arm. It asks for the keypress that buys one. */
       begin: 'press any key to begin',
@@ -69,7 +73,7 @@
      * at the end of a marathon.
      */
     victory: {
-      skip: 'any key to skip',
+      next: 'next',
       scenes: [
         { beat: 'last', hold: 4.0, lines: [
           'The last of them come out of the ground.'] },

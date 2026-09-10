@@ -1551,15 +1551,15 @@ input[type=range]::-moz-range-thumb {
   text-transform: uppercase; color: var(--ink-faint, #6b7488);
 }
 
-#prologue .skip {
+#prologue .step {
   position: absolute; right: 3vw; bottom: 3.4vh;
   background: none; border: 0; cursor: pointer;
   font-family: var(--ui, 'Archivo', system-ui, sans-serif);
   font-size: 11px; letter-spacing: .26em; text-transform: uppercase;
   color: #6b7488; padding: 8px 10px; border-radius: 5px;
 }
-#prologue .skip:hover { color: var(--gold, #f5c56b); }
-#prologue .skip:focus-visible { outline: 2px solid var(--gold, #f5c56b); outline-offset: 2px; }
+#prologue .step:hover { color: var(--gold, #f5c56b); }
+#prologue .step:focus-visible { outline: 2px solid var(--gold, #f5c56b); outline-offset: 2px; }
 
 /* The line that buys the piece a voice.
  *
@@ -1586,9 +1586,9 @@ input[type=range]::-moz-range-thumb {
   visibility: visible;
   animation: wake-breathe 3.4s var(--ease, ease-in-out) .6s infinite;
 }
-/* The skip line is a lie until the piece is running - there is nothing yet
-   to skip - so it stays out of the way while the gate is up. */
-#prologue.waiting .skip { opacity: 0; pointer-events: none; }
+/* There is no next until there is a piece, so the step control stays out of
+   the way while the gate is up. */
+#prologue.waiting .step { opacity: 0; pointer-events: none; }
 @keyframes wake-breathe {
   0%, 100% { opacity: .30; }
   50%      { opacity: .78; }
@@ -4356,7 +4356,11 @@ window.WS = window.WS || {};
 
   WS.Lore = {
     prologue: {
-      skip: 'any key to skip',
+      /* An input steps to the next scene rather than ending the piece, so the
+         corner says so. Escape ends it outright and is deliberately absent
+         from here: a screen offering to skip is a screen suggesting you
+         should, and this one has thirty seconds of work in it. */
+      next: 'next',
       /* Shown only when the browser has not yet let the game have a
          voice - see P.arm. It asks for the keypress that buys one. */
       begin: 'press any key to begin',
@@ -4402,7 +4406,7 @@ window.WS = window.WS || {};
      * at the end of a marathon.
      */
     victory: {
-      skip: 'any key to skip',
+      next: 'next',
       scenes: [
         { beat: 'last', hold: 4.0, lines: [
           'The last of them come out of the ground.'] },
@@ -14547,11 +14551,11 @@ window.WS = window.WS || {};
     layer.querySelector('.art').textContent = words.length > 2 ? words[0] : '';
     layer.querySelector('.nm').textContent = words[words.length - 2] || 'Ember';
     layer.querySelector('.wm').textContent = words[words.length - 1] || 'Watch';
-    const skip = document.createElement('button');
-    skip.className = 'skip';
-    skip.textContent = lore.skip || 'skip';
-    skip.addEventListener('click', () => P.finish());
-    layer.append(skip);
+    const step = document.createElement('button');
+    step.className = 'step';
+    step.textContent = lore.next || 'next';
+    step.addEventListener('click', () => { if (!P.arm()) P.next(); });
+    layer.append(step);
     const wake = document.createElement('p');
     wake.className = 'wake';
     wake.textContent = lore.begin || 'press any key to begin';
@@ -14561,15 +14565,50 @@ window.WS = window.WS || {};
     (document.getElementById('stage') || document.body).append(layer);
     this.layer = layer;
 
-    this.onKey = () => { if (!P.arm()) P.finish(); };
+    this.onKey = (e) => {
+      if (P.arm()) return;                 // the first key buys it a voice
+      if (e && (e.key === 'Escape' || e.key === 'Esc')) P.finish();
+      else P.next();
+    };
     this.onTap = (e) => {
-      if (e.target === skip) return;
-      if (!P.arm()) P.finish();
+      if (e.target === step) return;       // the button speaks for itself
+      if (!P.arm()) P.next();
     };
     window.addEventListener('keydown', this.onKey);
     layer.addEventListener('pointerdown', this.onTap);
 
     if (this.armed) WS.Audio.playMusic('vigil');
+    return true;
+  };
+
+  /* ------------------------------------------------------------- stepping --
+   * Any key used to end the whole piece, which made the cinematic very easy
+   * to lose by accident: one stray keypress anywhere in fifty-two seconds and
+   * it was gone, with nothing to say what had just been thrown away.
+   *
+   * So an input is NEXT, like a slide. A misplaced key costs one scene rather
+   * than the piece, which is a mistake worth making. Escape still ends the
+   * whole thing - it is the one key everybody already tries - and it is
+   * deliberately not advertised, because the corner of the screen saying
+   * "next" is an invitation to keep going and saying "skip" is an invitation
+   * to leave.
+   *
+   * Stepping past the last scene finishes, so holding the key down still
+   * gets you out without needing to know about Escape at all. */
+  P.next = function () {
+    const list = this.scenes();
+    let acc = 0, i = 0;
+    for (; i < list.length; i++) {
+      const hold = list[i].hold || 0;
+      if (this.t < acc + hold - 1e-6) break;
+      acc += hold;
+    }
+    if (i >= list.length - 1) { this.finish(); return false; }
+    this.t = acc + (list[i].hold || 0);
+    /* The clock restarts from this frame rather than carrying the gap it was
+       jumped over, and the beat re-cues itself on the next render if the
+       picture actually changed. */
+    this.last = null;
     return true;
   };
 
@@ -14655,18 +14694,24 @@ window.WS = window.WS || {};
   };
 
   /** A pad should skip this as readily as a keyboard. */
+  /* Standard gamepad mapping: 9 is Start. */
+  const PAD_SKIP = 9;
+
   P.padCheck = function () {
     if (!navigator.getGamepads) return;
     const pads = navigator.getGamepads();
     for (const pad of pads) {
       if (!pad) continue;
-      for (const b of pad.buttons) {
+      for (let i = 0; i < pad.buttons.length; i++) {
+        const b = pad.buttons[i];
         if (!b || !b.pressed) continue;
-        /* Same rule as a key: the first press buys the piece a voice, and
-           only after that does a press skip it. A pad player is exactly as
-           entitled to hear the prologue as anyone else, and they were the
-           one input that could never have. */
-        if (!this.arm()) this.finish();
+        /* Same rules as a key: the first press buys the piece a voice, then a
+           press steps. A pad player is exactly as entitled to hear the
+           prologue as anyone else, and they were the one input that could
+           never have. Start is the pad's Escape - unadvertised, like it. */
+        if (this.arm()) return;
+        if (i === PAD_SKIP) this.finish();
+        else this.next();
         return;
       }
     }
@@ -15313,11 +15358,11 @@ window.WS = window.WS || {};
     layer.querySelector('.art').textContent = words.length > 2 ? words[0] : '';
     layer.querySelector('.nm').textContent = words[words.length - 2] || 'Ember';
     layer.querySelector('.wm').textContent = words[words.length - 1] || 'Watch';
-    const skip = document.createElement('button');
-    skip.className = 'skip';
-    skip.textContent = lore.skip || 'skip';
-    skip.addEventListener('click', () => P.finish());
-    layer.append(skip);
+    const step = document.createElement('button');
+    step.className = 'step';
+    step.textContent = lore.next || 'next';
+    step.addEventListener('click', () => { if (!P.arm()) P.next(); });
+    layer.append(step);
     const wake = document.createElement('p');
     wake.className = 'wake';
     wake.textContent = lore.begin || 'press any key to begin';
@@ -15327,15 +15372,50 @@ window.WS = window.WS || {};
     (document.getElementById('stage') || document.body).append(layer);
     this.layer = layer;
 
-    this.onKey = () => { if (!P.arm()) P.finish(); };
+    this.onKey = (e) => {
+      if (P.arm()) return;                 // the first key buys it a voice
+      if (e && (e.key === 'Escape' || e.key === 'Esc')) P.finish();
+      else P.next();
+    };
     this.onTap = (e) => {
-      if (e.target === skip) return;
-      if (!P.arm()) P.finish();
+      if (e.target === step) return;       // the button speaks for itself
+      if (!P.arm()) P.next();
     };
     window.addEventListener('keydown', this.onKey);
     layer.addEventListener('pointerdown', this.onTap);
 
     if (this.armed) WS.Audio.playMusic('vigil');
+    return true;
+  };
+
+  /* ------------------------------------------------------------- stepping --
+   * Any key used to end the whole piece, which made the cinematic very easy
+   * to lose by accident: one stray keypress anywhere in fifty-two seconds and
+   * it was gone, with nothing to say what had just been thrown away.
+   *
+   * So an input is NEXT, like a slide. A misplaced key costs one scene rather
+   * than the piece, which is a mistake worth making. Escape still ends the
+   * whole thing - it is the one key everybody already tries - and it is
+   * deliberately not advertised, because the corner of the screen saying
+   * "next" is an invitation to keep going and saying "skip" is an invitation
+   * to leave.
+   *
+   * Stepping past the last scene finishes, so holding the key down still
+   * gets you out without needing to know about Escape at all. */
+  P.next = function () {
+    const list = this.scenes();
+    let acc = 0, i = 0;
+    for (; i < list.length; i++) {
+      const hold = list[i].hold || 0;
+      if (this.t < acc + hold - 1e-6) break;
+      acc += hold;
+    }
+    if (i >= list.length - 1) { this.finish(); return false; }
+    this.t = acc + (list[i].hold || 0);
+    /* The clock restarts from this frame rather than carrying the gap it was
+       jumped over, and the beat re-cues itself on the next render if the
+       picture actually changed. */
+    this.last = null;
     return true;
   };
 
@@ -15524,18 +15604,24 @@ window.WS = window.WS || {};
   };
 
   /** A pad should skip this as readily as a keyboard. */
+  /* Standard gamepad mapping: 9 is Start. */
+  const PAD_SKIP = 9;
+
   P.padCheck = function () {
     if (!navigator.getGamepads) return;
     const pads = navigator.getGamepads();
     for (const pad of pads) {
       if (!pad) continue;
-      for (const b of pad.buttons) {
+      for (let i = 0; i < pad.buttons.length; i++) {
+        const b = pad.buttons[i];
         if (!b || !b.pressed) continue;
-        /* Same rule as a key: the first press buys the piece a voice, and
-           only after that does a press skip it. A pad player is exactly as
-           entitled to hear the prologue as anyone else, and they were the
-           one input that could never have. */
-        if (!this.arm()) this.finish();
+        /* Same rules as a key: the first press buys the piece a voice, then a
+           press steps. A pad player is exactly as entitled to hear the
+           prologue as anyone else, and they were the one input that could
+           never have. Start is the pad's Escape - unadvertised, like it. */
+        if (this.arm()) return;
+        if (i === PAD_SKIP) this.finish();
+        else this.next();
         return;
       }
     }
@@ -15982,11 +16068,11 @@ window.WS = window.WS || {};
     layer.id = 'prologue';               // the same layer, the same typography
     layer.classList.add('victory');
     layer.innerHTML = '<div class="lines"></div>';
-    const skip = document.createElement('button');
-    skip.className = 'skip';
-    skip.textContent = lore.skip || 'skip';
-    skip.addEventListener('click', () => V.finish());
-    layer.append(skip);
+    const step = document.createElement('button');
+    step.className = 'step';
+    step.textContent = lore.next || 'next';
+    step.addEventListener('click', () => V.next());
+    layer.append(step);
     (document.getElementById('stage') || document.body).append(layer);
     this.layer = layer;
 
@@ -15997,8 +16083,14 @@ window.WS = window.WS || {};
     this.hudWas = WS.UI.hud && WS.UI.hud.classList.contains('hidden');
     if (WS.UI.hud) WS.UI.hud.classList.add('hidden');
 
-    this.onKey = () => V.finish();
-    this.onTap = (e) => { if (e.target !== skip) V.finish(); };
+    /* Same rule as the prologue: a stray key costs one scene, not the piece.
+       This one arrives after half an hour of play, so losing it by accident
+       is worse here than there. */
+    this.onKey = (e) => {
+      if (e && (e.key === 'Escape' || e.key === 'Esc')) V.finish();
+      else V.next();
+    };
+    this.onTap = (e) => { if (e.target !== step) V.next(); };
     window.addEventListener('keydown', this.onKey);
     layer.addEventListener('pointerdown', this.onTap);
 
@@ -16008,6 +16100,37 @@ window.WS = window.WS || {};
        field now - and a boss layer left running under the cinematic would
        score the sunrise with the thing the sunrise ended. */
     WS.Audio.setBoss(null);
+    return true;
+  };
+
+  /* ------------------------------------------------------------- stepping --
+   * Any key used to end the whole piece, which made the cinematic very easy
+   * to lose by accident: one stray keypress anywhere in fifty-two seconds and
+   * it was gone, with nothing to say what had just been thrown away.
+   *
+   * So an input is NEXT, like a slide. A misplaced key costs one scene rather
+   * than the piece, which is a mistake worth making. Escape still ends the
+   * whole thing - it is the one key everybody already tries - and it is
+   * deliberately not advertised, because the corner of the screen saying
+   * "next" is an invitation to keep going and saying "skip" is an invitation
+   * to leave.
+   *
+   * Stepping past the last scene finishes, so holding the key down still
+   * gets you out without needing to know about Escape at all. */
+  V.next = function () {
+    const list = this.scenes();
+    let acc = 0, i = 0;
+    for (; i < list.length; i++) {
+      const hold = list[i].hold || 0;
+      if (this.t < acc + hold - 1e-6) break;
+      acc += hold;
+    }
+    if (i >= list.length - 1) { this.finish(); return false; }
+    this.t = acc + (list[i].hold || 0);
+    /* The clock restarts from this frame rather than carrying the gap it was
+       jumped over, and the beat re-cues itself on the next render if the
+       picture actually changed. */
+    this.last = null;
     return true;
   };
 
@@ -16125,12 +16248,21 @@ window.WS = window.WS || {};
     });
   };
 
+  /* Standard gamepad mapping: 9 is Start, which is the pad's Escape. */
+  const PAD_SKIP = 9;
+
   V.padCheck = function () {
     if (!navigator.getGamepads) return;
     const pads = navigator.getGamepads();
     for (const pad of pads) {
       if (!pad) continue;
-      for (const b of pad.buttons) if (b && b.pressed) { this.finish(); return; }
+      for (let i = 0; i < pad.buttons.length; i++) {
+        const b = pad.buttons[i];
+        if (!b || !b.pressed) continue;
+        if (i === PAD_SKIP) this.finish();
+        else this.next();
+        return;
+      }
     }
   };
 

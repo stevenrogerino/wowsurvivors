@@ -363,11 +363,11 @@
     layer.id = 'prologue';               // the same layer, the same typography
     layer.classList.add('victory');
     layer.innerHTML = '<div class="lines"></div>';
-    const skip = document.createElement('button');
-    skip.className = 'skip';
-    skip.textContent = lore.skip || 'skip';
-    skip.addEventListener('click', () => V.finish());
-    layer.append(skip);
+    const step = document.createElement('button');
+    step.className = 'step';
+    step.textContent = lore.next || 'next';
+    step.addEventListener('click', () => V.next());
+    layer.append(step);
     (document.getElementById('stage') || document.body).append(layer);
     this.layer = layer;
 
@@ -378,8 +378,14 @@
     this.hudWas = WS.UI.hud && WS.UI.hud.classList.contains('hidden');
     if (WS.UI.hud) WS.UI.hud.classList.add('hidden');
 
-    this.onKey = () => V.finish();
-    this.onTap = (e) => { if (e.target !== skip) V.finish(); };
+    /* Same rule as the prologue: a stray key costs one scene, not the piece.
+       This one arrives after half an hour of play, so losing it by accident
+       is worse here than there. */
+    this.onKey = (e) => {
+      if (e && (e.key === 'Escape' || e.key === 'Esc')) V.finish();
+      else V.next();
+    };
+    this.onTap = (e) => { if (e.target !== step) V.next(); };
     window.addEventListener('keydown', this.onKey);
     layer.addEventListener('pointerdown', this.onTap);
 
@@ -389,6 +395,37 @@
        field now - and a boss layer left running under the cinematic would
        score the sunrise with the thing the sunrise ended. */
     WS.Audio.setBoss(null);
+    return true;
+  };
+
+  /* ------------------------------------------------------------- stepping --
+   * Any key used to end the whole piece, which made the cinematic very easy
+   * to lose by accident: one stray keypress anywhere in fifty-two seconds and
+   * it was gone, with nothing to say what had just been thrown away.
+   *
+   * So an input is NEXT, like a slide. A misplaced key costs one scene rather
+   * than the piece, which is a mistake worth making. Escape still ends the
+   * whole thing - it is the one key everybody already tries - and it is
+   * deliberately not advertised, because the corner of the screen saying
+   * "next" is an invitation to keep going and saying "skip" is an invitation
+   * to leave.
+   *
+   * Stepping past the last scene finishes, so holding the key down still
+   * gets you out without needing to know about Escape at all. */
+  V.next = function () {
+    const list = this.scenes();
+    let acc = 0, i = 0;
+    for (; i < list.length; i++) {
+      const hold = list[i].hold || 0;
+      if (this.t < acc + hold - 1e-6) break;
+      acc += hold;
+    }
+    if (i >= list.length - 1) { this.finish(); return false; }
+    this.t = acc + (list[i].hold || 0);
+    /* The clock restarts from this frame rather than carrying the gap it was
+       jumped over, and the beat re-cues itself on the next render if the
+       picture actually changed. */
+    this.last = null;
     return true;
   };
 
@@ -506,12 +543,21 @@
     });
   };
 
+  /* Standard gamepad mapping: 9 is Start, which is the pad's Escape. */
+  const PAD_SKIP = 9;
+
   V.padCheck = function () {
     if (!navigator.getGamepads) return;
     const pads = navigator.getGamepads();
     for (const pad of pads) {
       if (!pad) continue;
-      for (const b of pad.buttons) if (b && b.pressed) { this.finish(); return; }
+      for (let i = 0; i < pad.buttons.length; i++) {
+        const b = pad.buttons[i];
+        if (!b || !b.pressed) continue;
+        if (i === PAD_SKIP) this.finish();
+        else this.next();
+        return;
+      }
     }
   };
 

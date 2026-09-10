@@ -328,50 +328,103 @@ async function pass(browser, version) {
       + `${seeds.after}) - every run after it would be the same run`);
   }
 
-  /* ---- it ends, three ways -----------------------------------------------
+  /* ---- it steps, and it ends ---------------------------------------------
+   * An input used to end the whole piece, and it was far too easy to lose it
+   * that way: one stray key anywhere in fifty-two seconds and it was gone.
+   * An input is NEXT now, like a slide, so a misplaced key costs one scene.
+   * Escape ends it outright, and is not advertised anywhere on screen.
+   *
    * Each of these arms the piece first, which is the returning player: they
-   * have clicked something at some point, the browser has given the page a
-   * voice, and one key skips. On a FIRST run there is no voice yet, and the
-   * first input buys one instead of ending the piece - that posture, and the
-   * reason for it, is check-score's to prove. Without the arm here all three
-   * of these tests would be measuring the gate rather than the skip. */
+   * have clicked something at some point, so the browser has given the page a
+   * voice and there is no gate. On a FIRST run the first input buys the voice
+   * instead - that posture is check-score's to prove. Without the arm here
+   * every one of these would be measuring the gate rather than the input. */
   const ends = {};
   ends.key = await page.evaluate(async () => {
     WS.Prologue.begin(() => { window.__landed = 'yes'; });
     WS.Prologue.arm();
     window.__landed = null;
+    const list = WS.Prologue.scenes();
+    const before = WS.Prologue.t;
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'x', bubbles: true }));
     await new Promise((r) => setTimeout(r, 60));
-    return { active: WS.Prologue.active, landed: window.__landed,
-      layer: !!document.getElementById('prologue') };
+    const stepped = { active: WS.Prologue.active, t: WS.Prologue.t, before,
+      firstHold: list[0].hold || 0 };
+    // ...and Escape, which nothing on screen mentions, ends it outright.
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await new Promise((r) => setTimeout(r, 60));
+    return Object.assign(stepped, { after: WS.Prologue.active,
+      landed: window.__landed, layer: !!document.getElementById('prologue') });
   });
-  if (ends.key.active || ends.key.layer) say(version, 'a key press did not end the prologue');
+  if (!ends.key.active) say(version, 'a stray key ended the prologue instead of stepping it');
+  if (ends.key.t <= ends.key.before) say(version, 'a key press did not step the prologue on');
+  /* Landing ON the second scene, give or take the frames that run between the
+     jump and the measurement - the piece's clock is live and keeps going. */
+  if (ends.key.t < ends.key.firstHold || ends.key.t > ends.key.firstHold + 0.3) {
+    say(version, `stepping landed at ${ends.key.t.toFixed(2)}s rather than on the `
+      + `second scene at ${ends.key.firstHold}s`);
+  }
+  if (ends.key.after || ends.key.layer) say(version, 'escape did not end the prologue');
   if (ends.key.landed !== 'yes') say(version, 'skipping the prologue did not hand back to the game');
 
   ends.tap = await page.evaluate(async () => {
     WS.Prologue.begin(() => {});
     WS.Prologue.arm();
     const layer = document.getElementById('prologue');
+    const before = WS.Prologue.t;
     layer.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
     await new Promise((r) => setTimeout(r, 60));
-    return WS.Prologue.active;
+    const out = { active: WS.Prologue.active, moved: WS.Prologue.t > before };
+    WS.Prologue.finish();
+    return out;
   });
-  if (ends.tap) say(version, 'tapping the screen did not end the prologue');
+  if (!ends.tap.active) say(version, 'a tap ended the prologue instead of stepping it');
+  if (!ends.tap.moved) say(version, 'tapping the screen did not step the prologue on');
+
+  /* Stepping off the end finishes, so holding a key still gets a player out
+     without ever having to know that Escape does anything. */
+  ends.run = await page.evaluate(async () => {
+    WS.Prologue.begin(() => { window.__ran = 'yes'; });
+    WS.Prologue.arm();
+    window.__ran = null;
+    let guard = 0;
+    while (WS.Prologue.active && guard++ < 60) {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'x', bubbles: true }));
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    return { presses: guard, landed: window.__ran, scenes: WS.Prologue.scenes().length };
+  });
+  if (ends.run.landed !== 'yes') say(version, 'stepping past the last scene never ended the piece');
+  if (ends.run.presses > ends.run.scenes + 1) {
+    say(version, `it took ${ends.run.presses} presses to step through `
+      + `${ends.run.scenes} scenes`);
+  }
 
   /* A pad is the one input that cannot dispatch a DOM event, so the prologue
-     polls for it - and a poll that never runs is a player stuck on a sofa. */
+     polls for it - and a poll that never runs is a player stuck on a sofa.
+     Start is the pad's Escape, and is no more advertised than Escape is. */
   ends.pad = await page.evaluate(async () => {
     const real = navigator.getGamepads;
-    navigator.getGamepads = () => [{ buttons: [{ pressed: true }], axes: [0, 0] }];
+    const pad = (n) => {
+      const buttons = [];
+      for (let i = 0; i < 12; i++) buttons.push({ pressed: i === n });
+      return [{ buttons, axes: [0, 0] }];
+    };
+    navigator.getGamepads = () => pad(0);
     WS.Prologue.begin(() => {});
     WS.Prologue.arm();
+    const before = WS.Prologue.t;
+    WS.Prologue.padCheck();
+    const stepped = WS.Prologue.active && WS.Prologue.t > before;
+    navigator.getGamepads = () => pad(9);
     WS.Prologue.padCheck();
     const stopped = !WS.Prologue.active;
     navigator.getGamepads = real;
     WS.Prologue.finish();
-    return stopped;
+    return { stepped, stopped };
   });
-  if (!ends.pad) say(version, 'a gamepad button did not end the prologue');
+  if (!ends.pad.stepped) say(version, 'a gamepad button did not step the prologue on');
+  if (!ends.pad.stopped) say(version, 'the pad had no way to leave the prologue');
 
   /* ---- and it is still reachable afterwards ------------------------------ */
   const again = await page.evaluate(async () => {
@@ -430,7 +483,7 @@ async function pass(browser, version) {
     + (r.rise === null ? '' : ` and its light coming up over ${r.rise.seconds.toFixed(0)}s `
       + `from ${r.rise.from.toFixed(0)} to ${r.rise.to.toFixed(0)}`)).join('; ');
   console.log(`ok: ${each} - in both, every scripted line reaches the screen inside its own `
-    + 'band, every beat draws its own picture, a key, a tap and a pad each end it, the '
+    + 'band, every beat draws its own picture, a key, a tap and a pad each step it on and stepping off the end leaves, escape ends it outright, the '
     + 'random stream comes back untouched, it is watchable again from the menu, and a '
     + 'returning save is left alone');
 })();

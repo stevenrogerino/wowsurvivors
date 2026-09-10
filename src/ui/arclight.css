@@ -1497,15 +1497,15 @@ input[type=range]::-moz-range-thumb {
   text-transform: uppercase; color: var(--ink-faint, #6b7488);
 }
 
-#prologue .skip {
+#prologue .step {
   position: absolute; right: 3vw; bottom: 3.4vh;
   background: none; border: 0; cursor: pointer;
   font-family: var(--ui, 'Archivo', system-ui, sans-serif);
   font-size: 11px; letter-spacing: .26em; text-transform: uppercase;
   color: #6b7488; padding: 8px 10px; border-radius: 5px;
 }
-#prologue .skip:hover { color: var(--gold, #f5c56b); }
-#prologue .skip:focus-visible { outline: 2px solid var(--gold, #f5c56b); outline-offset: 2px; }
+#prologue .step:hover { color: var(--gold, #f5c56b); }
+#prologue .step:focus-visible { outline: 2px solid var(--gold, #f5c56b); outline-offset: 2px; }
 
 /* The line that buys the piece a voice.
  *
@@ -1532,9 +1532,9 @@ input[type=range]::-moz-range-thumb {
   visibility: visible;
   animation: wake-breathe 3.4s var(--ease, ease-in-out) .6s infinite;
 }
-/* The skip line is a lie until the piece is running - there is nothing yet
-   to skip - so it stays out of the way while the gate is up. */
-#prologue.waiting .skip { opacity: 0; pointer-events: none; }
+/* There is no next until there is a piece, so the step control stays out of
+   the way while the gate is up. */
+#prologue.waiting .step { opacity: 0; pointer-events: none; }
 @keyframes wake-breathe {
   0%, 100% { opacity: .30; }
   50%      { opacity: .78; }
