@@ -9,6 +9,7 @@
     running: false,
     leveling: false,
     pendingLevelUps: 0,
+    settle: 0,             // seconds left of the slow-down into a level-up
     player: null,
     run: null,
     arenaBounds: null,
@@ -82,6 +83,8 @@
     this.toasts.length = 0;
     this.banner = null;
     this.pendingLevelUps = 0;
+    this.settle = 0;
+    this.leveling = false;
     this.leveling = false;
 
     this.player = WS.Player.create(characterId);
@@ -195,9 +198,27 @@
   };
 
   /* ---------------------------------------------------------- level-ups -- */
+  /* How long the world takes to come to a stop in front of a level-up.
+     The line at the top of this file has always claimed timeScale "ramps down
+     into a level-up and back out of it"; only the second half was ever true.
+     A gem finished a bar and the battlefield stopped between one frame and the
+     next, which is the single largest jolt in the game. */
+  const SETTLE = 0.16;
+
   Game.openLevelUp = function () {
     if (this.leveling || this.pendingLevelUps <= 0) return;
     this.leveling = true;
+    /* Nothing to slow down when a choice is already on screen: this is the
+       second of a stacked pair and the world stopped for the first one. */
+    if (this.state === 'playing' && this.running && !this.suspended) {
+      this.settle = SETTLE;
+      return;
+    }
+    this.presentLevelUp();
+  };
+
+  Game.presentLevelUp = function () {
+    this.settle = 0;
     this.timeScale = 1;
     this.state = 'levelup';
     this.levelChoices = WS.LevelUp.buildChoices(this.player);
@@ -382,8 +403,13 @@
     if (!this.running) return;
     WS.Familiar.update(dt);
     WS.XP.update(dt);
-    if (!this.running || this.leveling) return;
-    WS.Pickup.update(dt);
+    if (!this.running) return;
+    /* Gathering is the one system that must stop the moment a level is owed,
+       or a gem swept up on the way into the choice stacks a second one behind
+       it. Everything below keeps running: the settle is 160ms of real ticks
+       now, and freezing the particles while the enemies still walk would read
+       as a stall rather than a slow-down. */
+    if (!this.leveling) WS.Pickup.update(dt);
     if (!this.running) return;
     WS.Hazard.update(dt);
     if (!this.running) return;
@@ -511,6 +537,15 @@
       return;
     }
 
+    /* Coming to a stop in front of a level-up. The simulation keeps running,
+       just slower and slower, so the last thing the player sees before the
+       cards is their own shot finishing its arc. */
+    if (this.settle > 0) {
+      this.settle = WS.max(0, this.settle - frameDt);
+      this.timeScale = WS.max(0.05, this.settle / SETTLE);
+      if (this.settle <= 0) { this.presentLevelUp(); return; }
+    }
+
     const step = WS.CONST.TICK_RATE;
     this.accumulator += WS.min(frameDt, 0.25) * this.timeScale;
     let ticks = 0;
@@ -521,7 +556,9 @@
       if (this.state !== 'playing') break;
     }
     if (ticks >= WS.CONST.MAX_TICKS_PER_FRAME) this.accumulator = 0;
-    if (this.timeScale < 1) this.timeScale = WS.min(1, this.timeScale + frameDt * 2.2);
+    if (this.timeScale < 1 && this.settle <= 0) {
+      this.timeScale = WS.min(1, this.timeScale + frameDt * 2.2);
+    }
   };
 
   WS.Game = Game;

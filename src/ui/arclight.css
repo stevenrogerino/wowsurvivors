@@ -229,6 +229,25 @@ html, body {
 #overlay.scene .row-item,
 #overlay.scene .pick { background-color: rgba(8,10,15,.82); }
 #overlay.hidden { display: none; }
+/* The overlay arrives and leaves; it does not cut.
+ *
+ * It used to be pure display toggling, so a level-up snapped a 4px blur and a
+ * black scrim onto the battlefield in one frame and tore them off again in
+ * one frame. Measured: on the first animation frame after a card was clicked
+ * the overlay was already hidden with zero children. Fading the overlay
+ * ITSELF is what fades the backdrop-filter too - opacity groups the element
+ * with its backdrop result - so one property carries the scrim, the blur and
+ * the panels together.
+ *
+ * The enter animation restarts on its own because the element passes through
+ * display:none between screens. The leave is driven by a class, and by a
+ * timer in UI.closeOverlay that matches the duration below. */
+@keyframes overlay-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes overlay-out { from { opacity: 1; } to { opacity: 0; } }
+#overlay { animation: overlay-in .2s var(--ease-out); }
+#overlay.leaving { animation: overlay-out .18s var(--ease) forwards; pointer-events: none; }
+#overlay.leaving .overlay-inner { animation: sweep-out .18s var(--ease) forwards; }
+@keyframes sweep-out { to { opacity: 0; transform: translateY(-7px) scale(.995); } }
 
 .overlay-inner {
   position: relative;
@@ -341,7 +360,8 @@ html, body {
   cursor: pointer; text-align: left; font-family: inherit; color: inherit;
   display: flex; flex-direction: column; gap: 11px;
   transition: transform .18s var(--ease-out), border-color .18s var(--ease),
-              box-shadow .18s var(--ease);
+              box-shadow .18s var(--ease), opacity .16s var(--ease),
+              filter .16s var(--ease);
   position: relative; overflow: hidden;
   animation: card-in .34s var(--ease-out) both;
 }
@@ -349,11 +369,24 @@ html, body {
 .card:nth-child(3) { animation-delay: .1s; }
 /* Cards arrive eager: they overshoot the mark by three pixels and settle.
    A straight lerp to rest is correct and lifeless; the overshoot is the
-   difference between a dialog appearing and a hand dealing you a card. */
+   difference between a dialog appearing and a hand dealing you a card.
+ *
+ * The deal moves `translate` and `scale`, NOT `transform`, and that is the
+ * whole point of writing it this way. It used to animate `transform` with
+ * fill-mode `both`, which means the last keyframe - transform: none - keeps
+ * applying for as long as the card exists; and an animation outranks a normal
+ * declaration in the cascade, so `.card:hover { transform: translateY(-5px) }`
+ * was simply never applied. Measured: hovering a level-up card moved it 0.00
+ * pixels. The glow lit, the border lit, the card sat still, and the whole
+ * screen felt half-dead without anything obviously being broken.
+ *
+ * `translate`/`scale`/`rotate` are separate properties that compose with
+ * `transform` instead of overwriting it, so the deal and the lift can both be
+ * true at once. */
 @keyframes card-in {
-  0%   { opacity: 0; transform: translateY(16px) scale(.985); }
-  62%  { opacity: 1; transform: translateY(-3px) scale(1.004); }
-  100% { opacity: 1; transform: none; }
+  0%   { opacity: 0; translate: 0 16px; scale: .985; }
+  62%  { opacity: 1; translate: 0 -3px; scale: 1.004; }
+  100% { opacity: 1; translate: none; scale: none; }
 }
 /* The quality arc across the shoulders of the card. */
 .card::before {
@@ -428,6 +461,38 @@ html, body {
 .card.locked { cursor: not-allowed; opacity: .45; }
 .card.locked:hover { transform: none; border-color: var(--rim); box-shadow: none; }
 .card.selected { border-color: var(--arc); box-shadow: 0 0 0 1px var(--arc), 0 0 46px -16px var(--arc); }
+
+/* The commit beat.
+ *
+ * Picking a card used to be answered by the entire screen disappearing on the
+ * next frame - the one moment in the game where the player makes a decision,
+ * and the interface acknowledged it by ceasing to exist. So the card they
+ * chose takes the frame for a sixth of a second: it lifts, its quality colour
+ * floods, and the two they passed over step back and dim. Only then does the
+ * choice apply and the overlay leave.
+ *
+ * The delay is real time, but it is spent BEFORE Game.chooseLevelUp is
+ * called, while the world is still frozen and the overlay is still up - so it
+ * costs the player nothing they could have been doing with it. Applying first
+ * and fading afterwards would hand back control under a curtain. */
+.card.chosen {
+  transform: translateY(-8px);
+  border-color: var(--q, var(--arc));
+  box-shadow: var(--bevel-deep), var(--lift-2), 0 0 66px -8px var(--q, var(--arc));
+  animation: card-commit .34s var(--ease-out) both;
+}
+.card.chosen::after { opacity: .34; }
+.card.chosen .card-inlay i { opacity: 1; }
+@keyframes card-commit {
+  0%   { scale: 1; }
+  34%  { scale: 1.028; }
+  100% { scale: 1.012; }
+}
+.card-row.committing .card:not(.chosen) {
+  opacity: .3; filter: saturate(.4);
+  transform: translateY(4px) scale(.985);
+  pointer-events: none;
+}
 
 /* ------------------------------------------------------------ pick grids */
 .pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(205px, 1fr)); gap: 10px; }

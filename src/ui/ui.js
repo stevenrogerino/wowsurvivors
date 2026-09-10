@@ -353,10 +353,46 @@
   };
 
   /* ============================================================ overlays == */
+  /* How long the overlay takes to leave, in ms. Kept in one place because the
+     CSS animation and this timer have to agree or the panel is torn out from
+     under its own fade. Zero when the reader has asked for less motion. */
+  const LEAVE_MS = 180;
+  UI.leaveMs = function () {
+    return window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : LEAVE_MS;
+  };
+
+  /* The overlay leaves under its own power.
+   *
+   * This used to hide the element and wipe its children in the same statement,
+   * which is why picking a level-up card felt like the screen being switched
+   * off: measured, the overlay was hidden with zero children on the very first
+   * animation frame after the click.
+   *
+   * The token exists because closing and re-opening happen back to back all
+   * over the game - resume, quit to menu, a stacked level-up - and a timer
+   * from the old screen must never be allowed to wipe the new one. show()
+   * bumps the token, and a stale finish quietly does nothing. */
+  UI._leaveToken = 0;
+  UI._leaveTimer = null;
   UI.closeOverlay = function () {
-    this.overlay.classList.add('hidden');
-    this.overlay.innerHTML = '';
     this.banishMode = false;
+    this._levelUI = null;
+    const o = this.overlay;
+    if (o.classList.contains('hidden')) { o.innerHTML = ''; return; }
+    const token = ++this._leaveToken;
+    const finish = () => {
+      if (token !== this._leaveToken) return;    // a new screen got here first
+      this._leaveTimer = null;
+      o.classList.remove('leaving');
+      o.classList.add('hidden');
+      o.innerHTML = '';
+    };
+    const ms = this.leaveMs();
+    if (!ms) { finish(); return; }
+    o.classList.add('leaving');
+    if (this._leaveTimer) clearTimeout(this._leaveTimer);
+    this._leaveTimer = setTimeout(finish, ms);
   };
 
   function shell(title, sub) {
@@ -501,6 +537,10 @@
   };
 
   UI.show = function (inner) {
+    // Any leave still in flight belongs to a screen that is now gone.
+    this._leaveToken++;
+    if (this._leaveTimer) { clearTimeout(this._leaveTimer); this._leaveTimer = null; }
+    this.overlay.classList.remove('leaving');
     this.overlay.innerHTML = '';
     this.overlay.append(inner);
     this.overlay.classList.remove('hidden');
@@ -564,7 +604,7 @@
       card.append(el('div', 'card-detail', choice.detail));
     }
     if (index !== undefined) card.append(el('div', 'card-key', String(index + 1)));
-    card.addEventListener('click', () => onPick(choice));
+    card.addEventListener('click', () => onPick(choice, card));
     return card;
   }
 
@@ -1318,7 +1358,10 @@
   UI.openBlessing = function (choices) {
     const s = shell('Choose a Blessing', 'One boon, and it stays with you.');
     const row = el('div', 'card-row');
-    choices.forEach((c, i) => row.append(cardFor(c, (choice) => WS.Game.chooseBlessing(choice), i)));
+    this._committing = false;
+    choices.forEach((c, i) => row.append(cardFor(c, (choice, card) => {
+      this.commitCard(card, () => WS.Game.chooseBlessing(choice));
+    }, i)));
     s.body.append(row);
     this.show(s.inner);
   };
@@ -1346,13 +1389,40 @@
     ui.banish.setAttribute('aria-pressed', on ? 'true' : 'false');
   };
 
+  function levelSub() {
+    return WS.Game.pendingLevelUps > 1
+      ? `${WS.Game.pendingLevelUps} more after this one.` : 'Take what you need.';
+  }
+
   UI.openLevelUp = function (choices) {
     const p = WS.Game.player;
+
+    /* Two levels at once is the most ordinary thing that happens in this game
+     * - one gem finishes a bar and starts the next - and it used to tear the
+     * screen down and build it again between them: a new shell handed to
+     * show(), the overlay animation replayed, the scroll port re-measured,
+     * three fresh cards dealt into a frame that had just been thrown away.
+     * Measured: the .overlay-inner element after the first pick was not the
+     * one before it, and the new one was running sweep-in.
+     *
+     * That is the same fault the banish mode below was already fixed for. So
+     * a level-up that opens while a level-up is already up keeps its frame and
+     * changes what is written in it - the heading counts on, the subtitle says
+     * how many are left, and only the cards are re-dealt. */
+    const ui = this._levelUI;
+    if (ui && !this.overlay.classList.contains('hidden')
+      && !this.overlay.classList.contains('leaving') && document.contains(ui.row)) {
+      ui.title.textContent = 'Level ' + p.level;
+      ui.sub.textContent = levelSub();
+      this.setBanishMode(false);
+      this.fillLevelChoices(choices);
+      return;
+    }
+
     // Copy carries as much of the tone as the art does. The game wants to be
     // playable at a stroll and sweatable if you lean in, so the prompts invite
     // rather than instruct - "take what you need", not "choose a boon".
-    const s = shell('Level ' + p.level, WS.Game.pendingLevelUps > 1
-      ? `${WS.Game.pendingLevelUps} more after this one.` : 'Take what you need.');
+    const s = shell('Level ' + p.level, levelSub());
     const row = el('div', 'card-row');
 
     const bar = el('div', 'choice-bar');
@@ -1372,7 +1442,10 @@
 
     s.body.append(row);
     s.foot.append(el('div', 'spacer'), bar, el('div', 'spacer'));
-    this._levelUI = { row, bar, banish, reroll, hint };
+    this._levelUI = {
+      row, bar, banish, reroll, hint,
+      title: s.head.querySelector('h1'), sub: s.head.querySelector('.sub'),
+    };
     this.fillLevelChoices(choices);
     this.show(s.inner);
     this.setBanishMode(false);
@@ -1381,12 +1454,33 @@
   /** Swap the three cards without touching the shell around them, so a reroll
    *  or a banish deals new cards into the same frame instead of reloading the
    *  screen underneath them. */
+  /* Long enough to read as an answer, short enough that nobody waits for it.
+     Spent while the world is frozen, so it is not time taken off the player. */
+  const COMMIT_MS = 155;
+
+  /** Hold the frame on the card that was picked, then act on it. `run` is the
+   *  thing that actually happens - applying the boon, or taking the blessing -
+   *  and it happens after the beat, never during it. A second click inside the
+   *  window is ignored: the choice is already made. */
+  UI.commitCard = function (card, run) {
+    if (this._committing) return;
+    this._committing = true;
+    const row = card.parentElement;
+    card.classList.add('chosen');
+    if (row) row.classList.add('committing');
+    const go = () => { this._committing = false; run(); };
+    const ms = this.leaveMs() ? COMMIT_MS : 0;
+    if (!ms) go(); else setTimeout(go, ms);
+  };
+
   UI.fillLevelChoices = function (choices) {
     const ui = this._levelUI;
     if (!ui) return;
+    this._committing = false;
+    ui.row.classList.remove('committing');
     ui.row.replaceChildren();
     choices.forEach((c, i) => {
-      ui.row.append(cardFor(c, (choice) => {
+      ui.row.append(cardFor(c, (choice, card) => {
         if (this.banishMode) {
           this.setBanishMode(false);
           // banishLevelUp returns false when there are still cards to choose
@@ -1394,7 +1488,7 @@
           if (!WS.Game.banishLevelUp(choice)) this.fillLevelChoices(WS.Game.levelChoices);
           return;
         }
-        WS.Game.chooseLevelUp(choice);
+        this.commitCard(card, () => WS.Game.chooseLevelUp(choice));
       }, i));
     });
     const p = WS.Game.player;
