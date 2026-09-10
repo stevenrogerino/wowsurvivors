@@ -395,6 +395,12 @@ const MOTION = 0.04;             // fraction of the figure that must move per fr
     WS.Enemy.pool.releaseAll();
     const e = WS.Enemy.spawn('mongrel', 300, 300, 1);
     const seen = [];
+    /* Count what the death actually says. There is a beat between the blow and
+       the results panel now, and both ends of it used to play the death kit -
+       so a single death was heard twice, a second and a half apart. */
+    const heard = [];
+    const realPlay = WS.Audio.play;
+    WS.Audio.play = function (kit, x) { heard.push(kit); return realPlay.call(this, kit, x); };
     p.health = 1;
     WS.Player.takeDamage(p, 9999, 'the check');
     const started = WS.Game.state;
@@ -408,7 +414,9 @@ const MOTION = 0.04;             // fraction of the figure that must move per fr
     const moved = Math.hypot(e.x - where.x, e.y - where.y);
     // and run it out
     for (let i = 0; i < 30 && WS.Game.state === 'dying'; i++) WS.Game.update(0.1);
+    WS.Audio.play = realPlay;
     return { started, frames, moved, ended: WS.Game.state,
+      deaths: heard.filter((k) => k === 'death').length,
       overlay: !document.getElementById('overlay').classList.contains('hidden'),
       beat: WS.Config.deathBeat };
   });
@@ -427,6 +435,10 @@ const MOTION = 0.04;             // fraction of the figure that must move per fr
     fail.push(`the death ended in state "${death.ended}", not on the death screen`);
   }
   if (!death.overlay) fail.push('the death screen never arrived');
+  if (death.deaths !== 1) {
+    fail.push(`dying once played the death sound ${death.deaths} times - it belongs at the `
+      + 'blow, and the results panel is not a second death');
+  }
 
   await browser.close();
   /* Poses obey the frame rule too, and must actually be drawings - a pose

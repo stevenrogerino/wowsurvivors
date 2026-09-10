@@ -349,10 +349,16 @@
     WS.Achievements.check();
     WS.Save.save();
 
-    if (reason === 'defeated') {
-      WS.Audio.play('death');
-      WS.FX.screen('rgba(226,72,61,.35)', 1.0);
-    }
+    /* No death sound here.
+     *
+     * It plays in beginDeath, at the blow - and the only way to reach
+     * endRun('defeated') is through beginDeath, because 'dying' has one
+     * entrance and one exit. So this was a second play of the same kit a
+     * second and a half after the first, at the moment the results panel
+     * arrived: you heard yourself die twice. It came in with the death
+     * animation, which put a beat between the blow and the panel where there
+     * had not been one before. */
+    if (reason === 'defeated') WS.FX.screen('rgba(226,72,61,.35)', 1.0);
     WS.Arena.stop();
     WS.UI.openGameOver(reason);
   };
