@@ -8920,7 +8920,11 @@ window.WS = window.WS || {};
     b.slowDuration = spec.slowDuration;
     b.bounces = spec.bounces || 0;
     b.homingTarget = spec.homingTarget || null;
-    b.homing = !!spec.homingTarget;
+    /* The FLAG, not just the mark. Keying this off the target alone meant a
+       bolt launched able to seek but with nobody in particular to seek could
+       never start - and the re-acquire below is perfectly capable of finding
+       it someone. */
+    b.homing = !!(spec.homing || spec.homingTarget);
     // The speed a seeking bolt holds for its whole life. Kept because steering
     // must never be allowed to change it - see the turn in P.update.
     b.speed = WS.sqrt(vx * vx + vy * vy);
@@ -9148,10 +9152,17 @@ window.WS = window.WS || {};
           const a = o.angle + (n / o.count) * WS.TAU;
           const bx = player.x + WS.cos(a) * o.radius;
           const by = player.y + WS.sin(a) * o.radius;
-          const before = WS.Enemy.pool.count;
-          WS.Enemy.damageArea(bx, by, o.size, o.damage, o.hitBy, null, o.source);
-          if (o.procChain > 0 && WS.Enemy.pool.count !== before) {
-            if (WS.random() < o.procChain) WS.Weapon.chainFrom(bx, by, o.damage * 0.7, 3, 220, o.source);
+          const struck = WS.Enemy.damageArea(bx, by, o.size, o.damage, o.hitBy, null, o.source);
+          /* On a STRIKE. This used to compare the enemy pool's count before and
+             after, which does not detect a hit - it detects a DEATH, because
+             the count only moves when something is released. So Tempest Pact,
+             whose whole text is "blades sometimes call the storm, loosing
+             arcweb on those they strike", could not proc on anything that
+             survived being struck. Against a boss - the one fight where you
+             would most want it - it did nothing at all, forever. Every other
+             weapon in the game procs this off a hit; see the bolt path above. */
+          if (o.procChain > 0 && struck > 0 && WS.random() < o.procChain) {
+            WS.Weapon.chainFrom(bx, by, o.damage * 0.7, 3, 220, o.source);
           }
         }
       }
@@ -9611,13 +9622,17 @@ window.WS = window.WS || {};
     if (e.health <= 0) this.kill(e);
   };
 
+  /** Returns how many it hit, so a caller can proc on a STRIKE rather than
+   *  having to infer one from the pool count changing - which only ever told
+   *  it about a kill. */
   Enemy.damageArea = function (x, y, radius, amount, hitBy, knockback, source) {
-    let i = 0;
+    let i = 0, struck = 0;
     while (i < this.pool.count) {
       const e = this.pool.active[i];
       const reach = radius + e.radius;
       if ((!hitBy || hitBy.get(e) !== e.spawnId) && WS.dist2(x, y, e.x, e.y) <= reach * reach) {
         if (hitBy) hitBy.set(e, e.spawnId);
+        struck++;
         if (knockback && !e.boss) {
           const [kx, ky] = WS.normalize(e.x - x, e.y - y);
           e.x += kx * knockback;
@@ -9627,6 +9642,7 @@ window.WS = window.WS || {};
         if (!e._dead) i++;
       } else i++;
     }
+    return struck;
   };
 
   /** Damage everything within halfWidth of the segment (beams). */
@@ -9868,6 +9884,20 @@ window.WS = window.WS || {};
     spec.pierce = (d.pierce || 0) + (w.evolved ? cfg.evolvePierce : 0);
     spec.art = d.art;
     spec.colour = schoolColour(w);
+    /* Decided HERE, with every other mod, and not inside one behaviour.
+     *
+     * This used to live in fireAimedShot alone, which meant `homing` was a
+     * property only the `aimed` weapons had. Truestrike sets it on Volley, and
+     * Volley is `spray` - so the discovery whose entire purpose is to make
+     * arrows curve had never once made an arrow curve. Nothing said so: the
+     * mod was set, the toast fired, the codex recorded it.
+     *
+     * The flag and the initial mark are separate because they answer different
+     * questions. `homing` is whether this bolt steers at all; `homingTarget` is
+     * who it starts out aimed at, which behaviours that have no single target -
+     * a ring, a nova - simply do not have. A bolt with the flag and no mark
+     * acquires one on its first update. */
+    spec.homing = !!(d.homing || w.mods.homing);
     spec.homingTarget = null;
     const splash = d.splash || w.mods.splash;
     spec.splash = splash ? areaOf(player, w, splash) : null;
@@ -9889,7 +9919,7 @@ window.WS = window.WS || {};
     fillSpec(player, w);
     const speed = speedOf(player, w);
     const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
-    spec.homingTarget = (d.homing || w.mods.homing) ? target : null;
+    if (spec.homing) spec.homingTarget = target;
     WS.Projectile.launchBolt(player.x, player.y, dx * speed, dy * speed, spec);
   }
 
@@ -9928,6 +9958,7 @@ window.WS = window.WS || {};
     const speed = speedOf(player, w);
     const count = countOf(player, w);
     const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
+    if (spec.homing) spec.homingTarget = target;
     const spread = d.spread || 0.16;
     for (let i = 0; i < count; i++) {
       const a = (i - (count - 1) / 2) * spread;

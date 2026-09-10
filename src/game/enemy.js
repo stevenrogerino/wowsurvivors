@@ -436,13 +436,17 @@
     if (e.health <= 0) this.kill(e);
   };
 
+  /** Returns how many it hit, so a caller can proc on a STRIKE rather than
+   *  having to infer one from the pool count changing - which only ever told
+   *  it about a kill. */
   Enemy.damageArea = function (x, y, radius, amount, hitBy, knockback, source) {
-    let i = 0;
+    let i = 0, struck = 0;
     while (i < this.pool.count) {
       const e = this.pool.active[i];
       const reach = radius + e.radius;
       if ((!hitBy || hitBy.get(e) !== e.spawnId) && WS.dist2(x, y, e.x, e.y) <= reach * reach) {
         if (hitBy) hitBy.set(e, e.spawnId);
+        struck++;
         if (knockback && !e.boss) {
           const [kx, ky] = WS.normalize(e.x - x, e.y - y);
           e.x += kx * knockback;
@@ -452,6 +456,7 @@
         if (!e._dead) i++;
       } else i++;
     }
+    return struck;
   };
 
   /** Damage everything within halfWidth of the segment (beams). */

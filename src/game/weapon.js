@@ -122,6 +122,20 @@
     spec.pierce = (d.pierce || 0) + (w.evolved ? cfg.evolvePierce : 0);
     spec.art = d.art;
     spec.colour = schoolColour(w);
+    /* Decided HERE, with every other mod, and not inside one behaviour.
+     *
+     * This used to live in fireAimedShot alone, which meant `homing` was a
+     * property only the `aimed` weapons had. Truestrike sets it on Volley, and
+     * Volley is `spray` - so the discovery whose entire purpose is to make
+     * arrows curve had never once made an arrow curve. Nothing said so: the
+     * mod was set, the toast fired, the codex recorded it.
+     *
+     * The flag and the initial mark are separate because they answer different
+     * questions. `homing` is whether this bolt steers at all; `homingTarget` is
+     * who it starts out aimed at, which behaviours that have no single target -
+     * a ring, a nova - simply do not have. A bolt with the flag and no mark
+     * acquires one on its first update. */
+    spec.homing = !!(d.homing || w.mods.homing);
     spec.homingTarget = null;
     const splash = d.splash || w.mods.splash;
     spec.splash = splash ? areaOf(player, w, splash) : null;
@@ -143,7 +157,7 @@
     fillSpec(player, w);
     const speed = speedOf(player, w);
     const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
-    spec.homingTarget = (d.homing || w.mods.homing) ? target : null;
+    if (spec.homing) spec.homingTarget = target;
     WS.Projectile.launchBolt(player.x, player.y, dx * speed, dy * speed, spec);
   }
 
@@ -182,6 +196,7 @@
     const speed = speedOf(player, w);
     const count = countOf(player, w);
     const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
+    if (spec.homing) spec.homingTarget = target;
     const spread = d.spread || 0.16;
     for (let i = 0; i < count; i++) {
       const a = (i - (count - 1) / 2) * spread;

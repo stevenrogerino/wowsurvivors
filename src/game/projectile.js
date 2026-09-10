@@ -51,7 +51,11 @@
     b.slowDuration = spec.slowDuration;
     b.bounces = spec.bounces || 0;
     b.homingTarget = spec.homingTarget || null;
-    b.homing = !!spec.homingTarget;
+    /* The FLAG, not just the mark. Keying this off the target alone meant a
+       bolt launched able to seek but with nobody in particular to seek could
+       never start - and the re-acquire below is perfectly capable of finding
+       it someone. */
+    b.homing = !!(spec.homing || spec.homingTarget);
     // The speed a seeking bolt holds for its whole life. Kept because steering
     // must never be allowed to change it - see the turn in P.update.
     b.speed = WS.sqrt(vx * vx + vy * vy);
@@ -279,10 +283,17 @@
           const a = o.angle + (n / o.count) * WS.TAU;
           const bx = player.x + WS.cos(a) * o.radius;
           const by = player.y + WS.sin(a) * o.radius;
-          const before = WS.Enemy.pool.count;
-          WS.Enemy.damageArea(bx, by, o.size, o.damage, o.hitBy, null, o.source);
-          if (o.procChain > 0 && WS.Enemy.pool.count !== before) {
-            if (WS.random() < o.procChain) WS.Weapon.chainFrom(bx, by, o.damage * 0.7, 3, 220, o.source);
+          const struck = WS.Enemy.damageArea(bx, by, o.size, o.damage, o.hitBy, null, o.source);
+          /* On a STRIKE. This used to compare the enemy pool's count before and
+             after, which does not detect a hit - it detects a DEATH, because
+             the count only moves when something is released. So Tempest Pact,
+             whose whole text is "blades sometimes call the storm, loosing
+             arcweb on those they strike", could not proc on anything that
+             survived being struck. Against a boss - the one fight where you
+             would most want it - it did nothing at all, forever. Every other
+             weapon in the game procs this off a hit; see the bolt path above. */
+          if (o.procChain > 0 && struck > 0 && WS.random() < o.procChain) {
+            WS.Weapon.chainFrom(bx, by, o.damage * 0.7, 3, 220, o.source);
           }
         }
       }
