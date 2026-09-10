@@ -1,0 +1,9 @@
+{
+  "name": "the-ember-watch",
+  "private": true,
+  "description": "The game ships as plain files and needs none of this. These are the harnesses' dependencies only - nothing here is loaded by, bundled into, or required to play the game.",
+  "devDependencies": {
+    "electron": "44.3.0",
+    "playwright": "1.56.0"
+  }
+}
