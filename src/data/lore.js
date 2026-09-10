@@ -51,6 +51,35 @@
         { beat: 'title', hold: 5.0, lines: [] },
       ],
     },
+
+    /* The other end of it.
+     *
+     * The prologue says "Hold until the light comes back." Thirty minutes
+     * later the light comes back, and for the whole life of this game that was
+     * a results panel sliding up over a battlefield. This is the sentence
+     * being finished.
+     *
+     * It stars whoever the player actually ran, so {name}, {title} and
+     * {class} are filled in from their survivor and {map} from the ground they
+     * held. Twenty-three seconds - a fifth of what the prologue takes, because
+     * this one arrives after half an hour of play and nobody wants a lecture
+     * at the end of a marathon.
+     */
+    victory: {
+      skip: 'any key to skip',
+      scenes: [
+        { beat: 'last', hold: 4.0, lines: [
+          'The last of them come out of the ground.'] },
+        { beat: 'break', hold: 4.5, lines: [
+          'And the night runs out of dark.'] },
+        { beat: 'burn', hold: 5.0, lines: [
+          'Nothing that lives down there can hold what you held.'] },
+        { beat: 'named', hold: 5.0, lines: [
+          '{name}', '{title}'] },
+        { beat: 'day', hold: 4.5, lines: [
+          'You kept the watch at {map} until dawn.'] },
+      ],
+    },
   };
 
 })(window.WS);

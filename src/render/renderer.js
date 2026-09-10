@@ -291,6 +291,12 @@
       ctx.restore();
       return;
     }
+    // And the other end of it, for the same reason and on the same terms.
+    if (WS.Victory && WS.Victory.active) {
+      WS.Victory.render(ctx, time);
+      ctx.restore();
+      return;
+    }
 
     /* ---- ground ---------------------------------------------------------- */
     if (this.ground) {

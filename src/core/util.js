@@ -176,6 +176,10 @@ window.WS = window.WS || {};
     return text.replace(/\{(\w+)([%*~]*)\}/g, (all, key, op) => {
       const v = source[key];
       if (v === undefined) return all;
+      /* A string substitutes as itself. Every caller until now fed this
+         numbers - blessing and upgrade descriptions - so the default branch
+         rounds, and the first template with a name in it rendered "NAN". */
+      if (typeof v === 'string') return v;
       if (op === '%') return String(WS.round(v * 100));
       if (op === '*%') return String(WS.round((v - 1) * 100));
       if (op === '~%') return String(WS.round((1 - v) * 100));

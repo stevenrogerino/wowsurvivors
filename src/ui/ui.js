@@ -1218,6 +1218,9 @@
         [[1, 'Version one'], [2, 'Version two']],
         (v) => WS.Cinematic.select(v));
     }
+    toggle('victoryCinematic', 'Victory cinematic',
+      'Twenty-three seconds at thirty minutes, starring the survivor you ran, '
+      + 'before the results. Off puts you straight on the numbers.');
     toggle('mouseSteer', 'Steer with the mouse',
       'Hold the left button anywhere on the field and drag, the same as touch. '
       + 'Play one-handed, or keep both on the keys.');

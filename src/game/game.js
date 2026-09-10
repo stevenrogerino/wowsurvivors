@@ -136,6 +136,7 @@
   };
 
   Game.quitToMenu = function () {
+    if (WS.Victory && WS.Victory.active) WS.Victory.finish();
     this.running = false;
     this.state = 'menu';
     this.player = null;
@@ -279,13 +280,25 @@
     WS.Save.stats.totalVictories++;
     WS.Save.db.unlocks.hyper[run.mapId] = true;
     WS.Save.save();
+    this.state = 'over';
+    this.running = false;
+    WS.Achievements.check();
+
+    /* Thirty minutes of holding the line earns more than a panel sliding up.
+     *
+     * The prologue's last line is "Hold until the light comes back"; this is
+     * the light coming back, starring whoever the player actually ran. It is
+     * off by one setting for anyone who has seen it and would rather have the
+     * numbers, and it hands over to the same panel when it ends or is skipped
+     * - so nothing downstream of here has to know whether it played. */
+    const wanted = WS.Save.settings.victoryCinematic !== false;
+    if (wanted && WS.Victory
+      && WS.Victory.begin(this.player, run, () => WS.UI.openVictory())) return;
+
     WS.Audio.play('victory');
     WS.FX.screen('rgba(245,197,107,.35)', 1.2);
     this.announce('Victory!', 'The battlefield is yours. Fight on, or claim it.', 4.0,
       { kind: 'glory' });
-    this.state = 'over';
-    this.running = false;
-    WS.Achievements.check();
     WS.UI.openVictory();
   };
 

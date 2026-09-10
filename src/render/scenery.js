@@ -541,6 +541,31 @@
       ctx.restore();
     },
 
+    /* Past dawn, into morning.
+     *
+     * The sky here tops out at the colour of a sun on the horizon, because the
+     * prologue ends the moment the sun arrives and has no use for anything
+     * later. The victory piece runs on past that: it has to land on daylight,
+     * and a victory that ends on the same dusky orange it started breaking
+     * into has not gone anywhere. This lifts the whole frame toward a pale
+     * morning - blue at the top, warm at the horizon - and it is applied over
+     * the far landscape but under whatever is standing in front of it, so the
+     * survivor keeps their contrast while the world behind them goes light. */
+    day(ctx, k) {
+      if (k <= 0.001) return;
+      const g = ctx.createLinearGradient(0, -40, 0, GROUND);
+      g.addColorStop(0, `rgba(122,158,208,${(0.50 * k).toFixed(3)})`);
+      g.addColorStop(0.55, `rgba(196,186,196,${(0.36 * k).toFixed(3)})`);
+      g.addColorStop(1, `rgba(255,224,176,${(0.40 * k).toFixed(3)})`);
+      ctx.fillStyle = g;
+      ctx.fillRect(-40, -40, W + 80, GROUND + 42);
+      const f = ctx.createLinearGradient(0, GROUND, 0, H);
+      f.addColorStop(0, `rgba(226,196,158,${(0.34 * k).toFixed(3)})`);
+      f.addColorStop(1, `rgba(150,124,104,${(0.10 * k).toFixed(3)})`);
+      ctx.fillStyle = f;
+      ctx.fillRect(-40, GROUND, W + 80, H - GROUND + 40);
+    },
+
     /* A vignette closes the frame: this is a scene, not a screen. Light,
        because a heavy one over a dark mass along the horizon is how a
        landscape turns into a cave mouth. */

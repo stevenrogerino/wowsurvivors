@@ -155,6 +155,8 @@
       /* Which cut of the prologue plays. Two exist while the author decides
          which one to keep; see src/render/cinematic.js. */
       cinematic: 2,
+      // The victory piece at 30:00, before the results panel.
+      victoryCinematic: true,
       // 'strip' lays the arsenal and passives along the foot of the screen;
       // 'rail' stands them up the two edges, which on anything wider than
       // 16:9 puts them in the letterbox and off the battlefield entirely.
