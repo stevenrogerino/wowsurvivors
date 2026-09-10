@@ -347,7 +347,24 @@ html, body {
 @keyframes arc-draw { from { transform: scaleX(0); opacity: 0; } to { transform: none; opacity: .85; } }
 
 /* ----------------------------------------------------------------- cards */
-.card-row { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; }
+/* The row reserves the room the commit beat needs, ALWAYS.
+ *
+ * The beat lifts the chosen card 8px and scales it 2.8%, and drops the two you
+ * passed over by 4px. Transformed content still counts toward a scroll
+ * container's overflow area, so with the row sized exactly to the cards those
+ * few pixels escaped the scroll port: measured, scrollHeight went 316 -> 318
+ * against a clientHeight of 316, which flashed a scrollbar in for the length
+ * of the beat, and the chosen card's top landed at 197 against a port starting
+ * at 209 - clipped by twelve pixels at exactly the moment it is meant to be
+ * the thing you are looking at.
+ *
+ * The padding is static, so picking a card changes nothing about the layout.
+ * That is the same rule the banish mode already had to obey: the screen must
+ * not reorganise itself while answering a question. */
+.card-row {
+  display: flex; gap: 18px; justify-content: center; flex-wrap: wrap;
+  padding: 15px 6px;
+}
 .card {
   width: 270px; min-height: 316px;
   background:
@@ -490,7 +507,10 @@ html, body {
 }
 .card-row.committing .card:not(.chosen) {
   opacity: .3; filter: saturate(.4);
-  transform: translateY(4px) scale(.985);
+  /* Scale only. Sliding them DOWN pushed the bottom of the row past the foot
+     of the scroll port, which is half of where the flashing scrollbar came
+     from; shrinking in place says the same thing and cannot overflow. */
+  scale: .975;
   pointer-events: none;
 }
 

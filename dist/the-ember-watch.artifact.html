@@ -394,7 +394,24 @@ html, body {
 @keyframes arc-draw { from { transform: scaleX(0); opacity: 0; } to { transform: none; opacity: .85; } }
 
 /* ----------------------------------------------------------------- cards */
-.card-row { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; }
+/* The row reserves the room the commit beat needs, ALWAYS.
+ *
+ * The beat lifts the chosen card 8px and scales it 2.8%, and drops the two you
+ * passed over by 4px. Transformed content still counts toward a scroll
+ * container's overflow area, so with the row sized exactly to the cards those
+ * few pixels escaped the scroll port: measured, scrollHeight went 316 -> 318
+ * against a clientHeight of 316, which flashed a scrollbar in for the length
+ * of the beat, and the chosen card's top landed at 197 against a port starting
+ * at 209 - clipped by twelve pixels at exactly the moment it is meant to be
+ * the thing you are looking at.
+ *
+ * The padding is static, so picking a card changes nothing about the layout.
+ * That is the same rule the banish mode already had to obey: the screen must
+ * not reorganise itself while answering a question. */
+.card-row {
+  display: flex; gap: 18px; justify-content: center; flex-wrap: wrap;
+  padding: 15px 6px;
+}
 .card {
   width: 270px; min-height: 316px;
   background:
@@ -537,7 +554,10 @@ html, body {
 }
 .card-row.committing .card:not(.chosen) {
   opacity: .3; filter: saturate(.4);
-  transform: translateY(4px) scale(.985);
+  /* Scale only. Sliding them DOWN pushed the bottom of the row past the foot
+     of the scroll port, which is half of where the flashing scrollbar came
+     from; shrinking in place says the same thing and cannot overflow. */
+  scale: .975;
   pointer-events: none;
 }
 
@@ -1545,6 +1565,25 @@ input[type=range]::-moz-range-thumb {
       </div>
     </div>
   </div>
+
+  <script>
+    addEventListener('load', function () {
+      if (window.WS && window.WS.Game) return;
+      document.body.innerHTML =
+        '<div style="min-height:100vh;display:flex;align-items:center;'
+        + 'justify-content:center;padding:24px;background:#0b0d12;color:#cdd4e4;'
+        + 'font:16px/1.6 system-ui,sans-serif;text-align:center">'
+        + '<div style="max-width:34em">'
+        + '<div style="font-size:22px;color:#f5c56b;letter-spacing:.04em;'
+        + 'margin-bottom:14px">The Ember Watch could not load its own files</div>'
+        + '<p style="margin:0 0 14px">index.html is not the whole game. It needs the '
+        + '<code>src</code> folder sitting beside it, and none of it arrived.</p>'
+        + '<p style="margin:0;color:#8b93a5">To host or hand over the game as a single '
+        + 'file, use <code>dist/the-ember-watch.html</code> instead - everything is '
+        + 'inlined into it and it needs nothing else.</p>'
+        + '</div></div>';
+    });
+  </script>
 <script>
 /* ===== src/core/util.js ===== */
 /* The Ember Watch - core utilities.
@@ -12214,9 +12253,21 @@ window.WS = window.WS || {};
     this.running = true;
     this.state = 'playing';
     WS.UI.enterGame();
-    // Veteran's Instincts: start the run already owed some level-ups.
-    if (this.player.startLevelUps > 0) {
-      this.pendingLevelUps += this.player.startLevelUps;
+    /* Veteran's Instincts: start the run already owed some level-ups.
+     *
+     * And SAY SO. At three ranks this hands the player three choice screens
+     * back to back before they have taken a step, and with nothing naming the
+     * reason it reads as the game malfunctioning rather than as the thing they
+     * bought. The banner is up while the cards are, because a title card whose
+     * clock is stopped behind an overlay is exactly what Game.update already
+     * arranges. */
+    const owed = this.player.startLevelUps;
+    if (owed > 0) {
+      const up = WS.MetaUpgrades && WS.MetaUpgrades.meta_headstart;
+      this.announce(up ? up.name : 'Veteran\u2019s Instincts',
+        owed === 1 ? 'One level, before the first of them arrives.'
+          : `${owed} levels, before the first of them arrives.`, 3.2, { kind: 'glory' });
+      this.pendingLevelUps += owed;
       this.openLevelUp();
     }
   };

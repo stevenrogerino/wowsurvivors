@@ -85,5 +85,31 @@
   <script src="src/render/renderer.js"></script>
   <script src="src/ui/ui.js"></script>
   <script src="src/main.js"></script>
+
+  <!-- If nothing above loaded, say why.
+       index.html is not the whole game: it is a page that pulls in src/. Drag
+       it somewhere on its own and every stylesheet and script 404s, the CSS
+       that hides the portrait prompt goes with them, and what you get is an
+       unstyled "Turn your device" on a black page - which says nothing at all
+       about what actually went wrong. This has to be inline, because by
+       definition it runs in the case where nothing external arrived. -->
+  <script>
+    addEventListener('load', function () {
+      if (window.WS && window.WS.Game) return;
+      document.body.innerHTML =
+        '<div style="min-height:100vh;display:flex;align-items:center;'
+        + 'justify-content:center;padding:24px;background:#0b0d12;color:#cdd4e4;'
+        + 'font:16px/1.6 system-ui,sans-serif;text-align:center">'
+        + '<div style="max-width:34em">'
+        + '<div style="font-size:22px;color:#f5c56b;letter-spacing:.04em;'
+        + 'margin-bottom:14px">The Ember Watch could not load its own files</div>'
+        + '<p style="margin:0 0 14px">index.html is not the whole game. It needs the '
+        + '<code>src</code> folder sitting beside it, and none of it arrived.</p>'
+        + '<p style="margin:0;color:#8b93a5">To host or hand over the game as a single '
+        + 'file, use <code>dist/the-ember-watch.html</code> instead - everything is '
+        + 'inlined into it and it needs nothing else.</p>'
+        + '</div></div>';
+    });
+  </script>
 </body>
 </html>

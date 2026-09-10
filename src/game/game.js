@@ -116,9 +116,21 @@
     this.running = true;
     this.state = 'playing';
     WS.UI.enterGame();
-    // Veteran's Instincts: start the run already owed some level-ups.
-    if (this.player.startLevelUps > 0) {
-      this.pendingLevelUps += this.player.startLevelUps;
+    /* Veteran's Instincts: start the run already owed some level-ups.
+     *
+     * And SAY SO. At three ranks this hands the player three choice screens
+     * back to back before they have taken a step, and with nothing naming the
+     * reason it reads as the game malfunctioning rather than as the thing they
+     * bought. The banner is up while the cards are, because a title card whose
+     * clock is stopped behind an overlay is exactly what Game.update already
+     * arranges. */
+    const owed = this.player.startLevelUps;
+    if (owed > 0) {
+      const up = WS.MetaUpgrades && WS.MetaUpgrades.meta_headstart;
+      this.announce(up ? up.name : 'Veteran\u2019s Instincts',
+        owed === 1 ? 'One level, before the first of them arrives.'
+          : `${owed} levels, before the first of them arrives.`, 3.2, { kind: 'glory' });
+      this.pendingLevelUps += owed;
       this.openLevelUp();
     }
   };

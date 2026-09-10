@@ -127,8 +127,45 @@ const note = [];
   }
   await page.waitForTimeout(420);
 
+  /* ---------------------------------------------------------------- room --
+   * The beat must not reorganise the screen it is playing on.
+   *
+   * It lifts the chosen card and shrinks the others, and transformed content
+   * still counts toward a scroll container's overflow area - so with the row
+   * sized exactly to the cards those few pixels escaped the port. Measured:
+   * scrollHeight went 316 -> 318 against a clientHeight of 316, flashing a
+   * scrollbar in for the length of the beat, and the chosen card's top landed
+   * twelve pixels above the top of the port and was clipped there, at exactly
+   * the moment it is meant to be the thing you are looking at.
+   *
+   * Both halves are one question - does anything leave the box - so both are
+   * asked here, before and during. */
+  const roomBefore = await page.evaluate(() => {
+    const body = document.querySelector('.overlay-body');
+    return { scrolls: body.scrollHeight > body.clientHeight };
+  });
+
   await page.evaluate(() => document.querySelectorAll('.card')[1].click());
   await page.waitForTimeout(40);
+  const room = await page.evaluate(() => {
+    const body = document.querySelector('.overlay-body');
+    const b = body.getBoundingClientRect();
+    const cards = [...document.querySelectorAll('.card')].map((c) => c.getBoundingClientRect());
+    return {
+      scrolls: body.scrollHeight > body.clientHeight,
+      over: Math.round(Math.max(0, b.top - Math.min(...cards.map((r) => r.top)))),
+      under: Math.round(Math.max(0, Math.max(...cards.map((r) => r.bottom)) - b.bottom)),
+    };
+  });
+  if (room.scrolls && !roomBefore.scrolls) {
+    fail.push('picking a card makes the screen scroll - the beat pushes the cards past the '
+      + 'edge of their own scroll port and a scrollbar flashes in for its duration');
+  }
+  if (room.over > 0 || room.under > 0) {
+    fail.push(`the chosen card is clipped by its scroll port (${room.over}px off the top, `
+      + `${room.under}px off the bottom) at the moment it is meant to be what you are `
+      + 'looking at');
+  }
   const beat = await page.evaluate(() => ({
     chosen: document.querySelectorAll('.card.chosen').length,
     dimmed: !!document.querySelector('.card-row.committing'),
@@ -139,7 +176,8 @@ const note = [];
     fail.push('beat: a pick is not acknowledged - 40ms after the click, chosen='
       + beat.chosen + ' dimmed=' + beat.dimmed + ' overlay up=' + beat.up);
   } else {
-    note.push('the card you pick holds the frame while the two you passed over step back');
+    note.push('the card you pick holds the frame while the two you passed over step back, '
+      + 'without pushing anything out of its own scroll port');
   }
 
   await page.waitForTimeout(420);
