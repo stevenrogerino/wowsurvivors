@@ -221,9 +221,10 @@ const fail = [];
    * loudest sentence. It has to be reserved for something worth saying it
    * about. */
   if (r.lungers.trash.length) {
-    fail.push(`${r.lungers.trash.join(', ')} ${r.lungers.trash.length > 1 ? 'are' : 'is'} `
-      + 'rank and file and declare a lunge - a charge tell that arrives in packs from '
-      + 'minute one is weather, not a warning, and its sound ducks the whole mix');
+    const many = r.lungers.trash.length > 1;
+    fail.push(`${r.lungers.trash.join(', ')} ${many ? 'are' : 'is'} rank and file and `
+      + `${many ? 'declare' : 'declares'} a lunge - a charge tell that arrives in packs `
+      + 'from minute one is weather, not a warning, and its sound ducks the whole mix');
   }
   if (!r.lungers.elite.length) {
     fail.push('nothing in the elite table lunges any more - the charge tell has left the '
