@@ -17,6 +17,13 @@ const SIGN = (n) => (n > 0.01 ? 1 : n < -0.01 ? -1 : 0);
 
 (async () => {
   const b = await chromium.launch({ executablePath: process.env.CHROME || undefined, args: ['--no-sandbox'] });
+  /* A picked card is answered before it is applied: the chosen card holds the
+     frame for ~155ms and the overlay then fades for ~180ms. This harness picks
+     cards through the real UI on purpose - the thing it measures is that a
+     held key survives a level-up - so it has to wait the beat out. It waited
+     150ms, which is five milliseconds short of the commit and was passing or
+     failing on how loaded the machine was. */
+  const SETTLED = 480;
   const page = await b.newPage({ viewport: { width: 1280, height: 720 } });
   const fail = [];
   page.on('pageerror', (e) => fail.push('PAGEERROR ' + e.message));
@@ -33,7 +40,7 @@ const SIGN = (n) => (n > 0.01 ? 1 : n < -0.01 ? -1 : 0);
     const c = document.querySelector('#overlay:not(.hidden) .card');
     if (c) c.click();
   });
-  await page.waitForTimeout(150);
+  await page.waitForTimeout(SETTLED);
 
   // Hold a north-east diagonal, and keep holding it for the whole test.
   await page.keyboard.down('w');
@@ -53,7 +60,7 @@ const SIGN = (n) => (n > 0.01 ? 1 : n < -0.01 ? -1 : 0);
   await page.evaluate(() => { WS.Game.pendingLevelUps = 1; WS.Game.openLevelUp(); });
   await page.waitForTimeout(300);
   await page.click('#overlay .card');
-  await page.waitForTimeout(200);
+  await page.waitForTimeout(SETTLED);
 
   const after = await step();
   if (SIGN(after.dx) !== 1 || SIGN(after.dy) !== -1) {

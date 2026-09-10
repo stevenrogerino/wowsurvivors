@@ -163,8 +163,20 @@ const PLACED = 2.5;
      * the limiter has already answered: both windows come back at the ceiling
      * and the comparison is meaningless. The claim is about the effects MIX,
      * and the effects mix is one node earlier. */
+    /* 32768 samples is 682ms at 48kHz - long enough that ONE read holds an
+     * entire measurement window.
+     *
+     * At 2048 the buffer is 43ms wide and the loop below read it every 11ms,
+     * which is gapless only while the machine can keep that up. Under load a
+     * sleep(11) becomes sleep(100) and half the timeline is never looked at -
+     * and the half that goes missing hurts the dense random wall far more than
+     * it hurts a single deterministic level-up chime, because the wall's peak
+     * can be anywhere and the chime's is always at its own attack. Measured:
+     * this check reported the chatter down to 59% of its peak on an idle
+     * machine and 95% with twenty browsers running, off the same build. The
+     * windows below are 600ms so one read covers each of them whole. */
     const SL = ctx.createAnalyser(), SR = ctx.createAnalyser();
-    SL.fftSize = 2048; SR.fftSize = 2048;
+    SL.fftSize = 32768; SR.fftSize = 32768;
     const sfxSplit = ctx.createChannelSplitter(2);
     WS.Audio.sfxGain.connect(sfxSplit);
     sfxSplit.connect(SL, 0); sfxSplit.connect(SR, 1);
@@ -177,20 +189,28 @@ const PLACED = 2.5;
      * ducking working exactly as intended. Total energy is the wrong question:
      * what matters is whether the important sound CUTS THROUGH, and that is a
      * peak. */
-    const peak = async (ms, during) => {
-      let hi = 0, e = 0;
-      const until = performance.now() + ms;
+    /* A duck is not instant, and it must not be measured as though it were.
+     * `lead` drives the source for that long BEFORE the measured window opens,
+     * so a window that follows a ducking sound can start after the ramp has
+     * finished rather than on top of it. */
+    const peak = async (ms, during, lead) => {
+      const until = performance.now() + ms + (lead || 0);
       while (performance.now() < until) {
         if (during) during();
         await sleep(11);
-        SL.getFloatTimeDomainData(sl); SR.getFloatTimeDomainData(sr);
-        for (let i = 0; i < sl.length; i++) {
-          const v = Math.abs(sl[i]) + Math.abs(sr[i]);
-          if (v > hi) hi = v;
-        }
-        e += rms(sl) + rms(sr);
       }
-      return { hi, e };
+      // One read at the end, of the last `ms` worth of it. How often the loop
+      // above managed to run no longer decides what gets measured.
+      SL.getFloatTimeDomainData(sl); SR.getFloatTimeDomainData(sr);
+      const want = Math.round(ctx.sampleRate * ms / 1000);
+      const from = Math.max(0, sl.length - want);
+      let hi = 0, s2 = 0;
+      for (let i = from; i < sl.length; i++) {
+        const v = Math.abs(sl[i]) + Math.abs(sr[i]);
+        if (v > hi) hi = v;
+        s2 += sl[i] * sl[i] + sr[i] * sr[i];
+      }
+      return { hi, e: Math.sqrt(s2 / Math.max(1, (sl.length - from) * 2)) };
     };
     const px2 = WS.Game.player.x;
     // Everything the game can throw at once, called every frame like the real
@@ -213,14 +233,23 @@ const PLACED = 2.5;
      * level-up fired, and its peak is the peak of the whole window. The
      * question is whether the mix's peak RISES at the moment the important
      * sound arrives, so the windows have to be either side of that moment. */
-    out.wallOnly = await peak(700, storm);
+    /* `level` ducks to a floor of 0.4 over a hold of 0.9s, and the way down is
+     * a 60ms ramp. Sliced at 50ms and printed, a wall of chatter measures
+     * 0.139 on its own and 0.129 / 0.070 / 0.056 / 0.064 / 0.075 across the
+     * first 250ms after a level-up - so the FIRST slice is the wall at nearly
+     * full level, because the duck has not happened yet, and every slice after
+     * it is the duck. A window that opens at zero is therefore guaranteed to
+     * peak at least as high as the wall alone no matter how well the ducking
+     * works, and this check used to pass only because it was missing samples.
+     * The window opens once the ramp is down. */
+    const LEAD = 60;
+    out.wallOnly = await peak(400, storm);
     WS.Audio.play('level');
-    out.wallPlusLevel = await peak(700, storm);
+    out.wallPlusLevel = await peak(400, storm, LEAD);
     await sleep(800);
-    out.levelAlone = await peak(700, (() => {
-      let n = 0;
-      return () => { if (n++ === 2) WS.Audio.play('level'); };
-    })());
+    // The same sound, the same offset, nothing else in the mix.
+    WS.Audio.play('level');
+    out.levelAlone = await peak(400, null, LEAD);
     out.hasChatterBus = !!(WS.Audio.chatter && WS.Audio.chatterGain);
 
     /* ---- density: a clump must not sound like a single event -------------- */
