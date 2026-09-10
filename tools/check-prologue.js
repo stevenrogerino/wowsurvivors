@@ -328,10 +328,17 @@ async function pass(browser, version) {
       + `${seeds.after}) - every run after it would be the same run`);
   }
 
-  /* ---- it ends, three ways ----------------------------------------------- */
+  /* ---- it ends, three ways -----------------------------------------------
+   * Each of these arms the piece first, which is the returning player: they
+   * have clicked something at some point, the browser has given the page a
+   * voice, and one key skips. On a FIRST run there is no voice yet, and the
+   * first input buys one instead of ending the piece - that posture, and the
+   * reason for it, is check-score's to prove. Without the arm here all three
+   * of these tests would be measuring the gate rather than the skip. */
   const ends = {};
   ends.key = await page.evaluate(async () => {
     WS.Prologue.begin(() => { window.__landed = 'yes'; });
+    WS.Prologue.arm();
     window.__landed = null;
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'x', bubbles: true }));
     await new Promise((r) => setTimeout(r, 60));
@@ -343,6 +350,7 @@ async function pass(browser, version) {
 
   ends.tap = await page.evaluate(async () => {
     WS.Prologue.begin(() => {});
+    WS.Prologue.arm();
     const layer = document.getElementById('prologue');
     layer.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
     await new Promise((r) => setTimeout(r, 60));
@@ -356,6 +364,7 @@ async function pass(browser, version) {
     const real = navigator.getGamepads;
     navigator.getGamepads = () => [{ buttons: [{ pressed: true }], axes: [0, 0] }];
     WS.Prologue.begin(() => {});
+    WS.Prologue.arm();
     WS.Prologue.padCheck();
     const stopped = !WS.Prologue.active;
     navigator.getGamepads = real;

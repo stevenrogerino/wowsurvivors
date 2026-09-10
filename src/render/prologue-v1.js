@@ -517,7 +517,15 @@
     const pads = navigator.getGamepads();
     for (const pad of pads) {
       if (!pad) continue;
-      for (const b of pad.buttons) if (b && b.pressed) { this.finish(); return; }
+      for (const b of pad.buttons) {
+        if (!b || !b.pressed) continue;
+        /* Same rule as a key: the first press buys the piece a voice, and
+           only after that does a press skip it. A pad player is exactly as
+           entitled to hear the prologue as anyone else, and they were the
+           one input that could never have. */
+        if (!this.arm()) this.finish();
+        return;
+      }
     }
   };
 
