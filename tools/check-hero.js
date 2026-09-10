@@ -391,6 +391,13 @@ const MOTION = 0.04;             // fraction of the figure that must move per fr
     WS.Game.startRun('thornhollow', 'mage');
     WS.Game.chooseBlessing({ type: 'blessing', id: 'kings' });
     const p = WS.Game.player;
+    /* No Ashen Ankh. This harness calls Save.unlockAll() further up to get the
+       whole roster on screen, and unlockAll now opens the Trainer too - which
+       includes the rank that lets you cheat death once per run. So the killing
+       blow below stopped killing: the survivor came back at half health and
+       the run carried on, and this read as "there is no moment of dying at
+       all". What is being measured here is the death, so the revive goes. */
+    p.revives = 0;
     // Something on the field, so we can tell whether the world froze.
     WS.Enemy.pool.releaseAll();
     const e = WS.Enemy.spawn('mongrel', 300, 300, 1);
