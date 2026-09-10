@@ -91,8 +91,13 @@ const fail = [];
     for (const map of Object.keys(WS.Maps)) {
       if (WS.Maps[map].arena) continue;
       WS.Game.startRun(map, 'mage');
-      const card = document.querySelector('#overlay:not(.hidden) .card');
-      if (card) card.click();
+      /* Straight to the game, not through the card.
+         Picking a card is a UI act and the UI now holds the frame for a beat
+         before it resolves - which a harness that drives Game.update in a
+         synchronous loop can never wait out. The choice screens have their own
+         guard in tools/check-choice.js; what this file is measuring is what
+         happens after one. */
+      WS.Game.chooseBlessing({ type: 'blessing', id: 'kings' });
       /* Bare ground and nothing else: no horde, no loot, no survivor, no
          props. Props are legitimately repeated art and would swamp every
          measurement here with their own similarity. */

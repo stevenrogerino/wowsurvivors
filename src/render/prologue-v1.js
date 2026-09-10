@@ -1,4 +1,12 @@
-/* The prologue: what the night is, and why you are standing in it.
+/* The prologue, VERSION ONE. Frozen.
+ *
+ * This is the cut that shipped and that the author liked, kept whole while a
+ * second one is built beside it so the two can be watched back to back and one
+ * of them deleted. Nothing in here should be improved: the whole value of it is
+ * that it is exactly what it was. src/render/prologue-v2.js is where work goes,
+ * and src/render/cinematic.js decides which of them WS.Prologue points at.
+ *
+ * What the night is, and why you are standing in it.
  *
  * Drawn, not filmed. There is no video here and there could not be - the game
  * ships without a single asset file, and a cinematic that broke that would
@@ -452,7 +460,8 @@
      - compares different times as well as different beats, so every beat
      "differs" even when they are all secretly the same one. */
   P.beats = BEATS;
+  P.version = 1;
 
-  WS.Prologue = P;
+  WS.PrologueV1 = P;
 
 })(window.WS);

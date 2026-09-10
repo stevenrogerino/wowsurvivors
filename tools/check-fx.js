@@ -46,13 +46,21 @@ const MAX_SPEED = 1200;
   });
   const worst = await page.evaluate((MAX_SPEED) => {
     WS.Game.startRun('thornhollow', 'mage');
+      /* Straight to the game, not through the card.
+         Picking a card is a UI act and the UI now holds the frame for a beat
+         before it resolves - which a harness that drives Game.update in a
+         synchronous loop can never wait out. The choice screens have their own
+         guard in tools/check-choice.js; what this file is measuring is what
+         happens after one. */
+    const BLESSING = { type: 'blessing', id: 'kings' };
     const W = WS.CONST.WORLD_WIDTH, H = WS.CONST.WORLD_HEIGHT, K = WS.Input.keys;
     let maxSpeed = 0, offworld = 0, nan = 0, seen = 0, fastest = null;
     let slowestBolt = 1, boltSamples = 0, stalled = null;
     for (let i = 0; i < 60 * 240; i++) {
-      if (WS.Game.state === 'levelup' || WS.Game.state === 'blessing') {
-        const c = document.querySelector('#overlay:not(.hidden) .card');
-        if (c) { c.click(); continue; }
+      if (WS.Game.state === 'blessing') { WS.Game.chooseBlessing(BLESSING); continue; }
+      if (WS.Game.state === 'levelup') {
+        WS.Game.chooseLevelUp(WS.Game.levelChoices[0]);
+        continue;
       }
       if (WS.Game.state !== 'playing') break;
       const pl = WS.Game.player, t = WS.Game.run.time;

@@ -389,8 +389,7 @@ const MOTION = 0.04;             // fraction of the figure that must move per fr
     if (WS.Prologue && WS.Prologue.active) WS.Prologue.finish();
     WS.Save.db.seenManual = true;
     WS.Game.startRun('thornhollow', 'mage');
-    const card = document.querySelector('#overlay:not(.hidden) .card');
-    if (card) card.click();
+    WS.Game.chooseBlessing({ type: 'blessing', id: 'kings' });
     const p = WS.Game.player;
     // Something on the field, so we can tell whether the world froze.
     WS.Enemy.pool.releaseAll();

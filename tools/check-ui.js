@@ -210,7 +210,9 @@ const path = require('path');
   await page.evaluate(() => {
     const c = document.querySelector('#overlay:not(.hidden) .card'); if (c) c.click();
   });
-  await page.waitForTimeout(150);
+  // Long enough for the commit beat AND the overlay's fade out to finish;
+  // forcing a level-up on top of a half-resolved blessing is not the test.
+  await page.waitForTimeout(500);
   await page.evaluate(() => {
     WS.Game.player.banishes = 2; WS.Game.player.rerolls = 2;
     WS.Game.leveling = false; WS.Game.pendingLevelUps = 1; WS.Game.openLevelUp();
@@ -233,6 +235,13 @@ const path = require('path');
      rebuilt?" - and unlike geometry it cannot be satisfied by a rebuild that
      happens to settle back to the same pixels, which is exactly how an earlier
      version of this check passed while the bug was still in. */
+  /* Park the pointer in a corner first. A hovered card lifts five pixels -
+     that is the point of it - and this harness had just clicked a card, so the
+     "before" sample was taken with the cursor still resting on one and the
+     "after" sample with it over the banish button. The five pixels that showed
+     up were the hover releasing, not the mode change moving anything. */
+  await page.mouse.move(3, 3);
+  await page.waitForTimeout(260);
   const before = await geometry();
   if (!before.cards.length) seen.add('banish: no level-up cards to test against');
   else {

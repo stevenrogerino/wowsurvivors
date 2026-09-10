@@ -96,8 +96,11 @@ const AIM = 6;            // degrees the locked lane may miss the survivor by
      *             would follow and a real one would miss */
     const attempt = (id, dodge) => {
       WS.Game.startRun('thornhollow', 'mage');
-      const card = document.querySelector('#overlay:not(.hidden) .card');
-      if (card) card.click();
+      /* Straight to the game, not through the card. Picking a card is a UI act
+         and the UI now holds the frame for a beat before it resolves, which a
+         harness that drives Game.tick in a synchronous loop can never wait out.
+         tools/check-choice.js guards the screens themselves. */
+      WS.Game.chooseBlessing({ type: 'blessing', id: 'kings' });
       const p = WS.Game.player;
       p.maxHealth = 1e7; p.health = 1e7; p.armor = 95;
       WS.Enemy.pool.releaseAll();
@@ -124,9 +127,11 @@ const AIM = 6;            // degrees the locked lane may miss the survivor by
 
       while (ticks++ < 400) {
         p.weapons.length = 0;
-        if (WS.Game.state === 'levelup' || WS.Game.state === 'blessing') {
-          const c = document.querySelectorAll('#overlay:not(.hidden) .card');
-          if (c[0]) { c[0].click(); continue; }
+        if (WS.Game.state === 'blessing') {
+          WS.Game.chooseBlessing({ type: 'blessing', id: 'kings' }); continue;
+        }
+        if (WS.Game.state === 'levelup') {
+          WS.Game.chooseLevelUp(WS.Game.levelChoices[0]); continue;
         }
         if (boss._dead || WS.Game.state === 'over') break;
 

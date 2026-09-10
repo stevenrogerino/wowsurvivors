@@ -257,6 +257,7 @@
     if (!WS.Config.difficulties[st.difficulty]) st.difficulty = 'veteran';
     if (st.hudLayout !== 'strip' && st.hudLayout !== 'rail') st.hudLayout = 'strip';
     if (st.quality !== 'high' && st.quality !== 'balanced') st.quality = 'high';
+    if (st.cinematic !== 1 && st.cinematic !== 2) st.cinematic = 2;
 
     // The starting roster is a floor, not a stored fact: a save that lost it
     // would otherwise leave the player with nothing they are allowed to play.

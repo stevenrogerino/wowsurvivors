@@ -541,6 +541,7 @@
     this._leaveToken++;
     if (this._leaveTimer) { clearTimeout(this._leaveTimer); this._leaveTimer = null; }
     this.overlay.classList.remove('leaving');
+    this._committing = false;
     this.overlay.innerHTML = '';
     this.overlay.append(inner);
     this.overlay.classList.remove('hidden');
@@ -1206,6 +1207,17 @@
       [['strip', 'Along the foot'], ['rail', 'Up the edges']], () => UI.applyHudLayout());
     choose('quality', 'Graphics', 'Balanced drops trails, glows and ground detail for frames on a slower machine.',
       [['high', 'High'], ['balanced', 'Balanced']], () => WS.Renderer.applyQuality());
+    /* Two cuts of the prologue exist while the author decides which one to
+       keep, and the only way to decide is to watch them one after the other.
+       The button that plays it is in the menu footer, so this sits here and
+       changes what that button plays. */
+    if (WS.Cinematic && WS.PrologueV1 && WS.PrologueV2) {
+      choose('cinematic', 'Prologue',
+        'Two cuts. Version two adds parallax, cross-fades, weather and the rest '
+        + 'of the roster cresting the hill at dawn. Watch either from the menu.',
+        [[1, 'Version one'], [2, 'Version two']],
+        (v) => WS.Cinematic.select(v));
+    }
     toggle('mouseSteer', 'Steer with the mouse',
       'Hold the left button anywhere on the field and drag, the same as touch. '
       + 'Play one-handed, or keep both on the keys.');
@@ -1468,7 +1480,19 @@
     const row = card.parentElement;
     card.classList.add('chosen');
     if (row) row.classList.add('committing');
-    const go = () => { this._committing = false; run(); };
+    const go = () => {
+      this._committing = false;
+      /* The screen may not be the screen any more. A beat is 155ms of real
+         time and anything can happen in it - the run ends, another screen is
+         pushed, the player quits - and a queued pick that fires into a screen
+         that has been replaced applies a boon nobody chose and tears down
+         whatever is up now. Measured: a blessing picked 150ms before a
+         level-up was forced open resolved INTO the level-up and closed it.
+         If the card is no longer in the document, its screen is gone and so
+         is its choice. */
+      if (!document.contains(card)) return;
+      run();
+    };
     const ms = this.leaveMs() ? COMMIT_MS : 0;
     if (!ms) go(); else setTimeout(go, ms);
   };

@@ -86,8 +86,13 @@ const fail = [];
        * cost two runs that disagreed with each other. */
       WS.setSeed(20260909);
       WS.Game.startRun('thornhollow', 'mage');
-      const card = document.querySelector('#overlay:not(.hidden) .card');
-      if (card) card.click();
+      /* Straight to the game, not through the card.
+         Picking a card is a UI act and the UI now holds the frame for a beat
+         before it resolves - which a harness that drives Game.update in a
+         synchronous loop can never wait out. The choice screens have their own
+         guard in tools/check-choice.js; what this file is measuring is what
+         happens after one. */
+      WS.Game.chooseBlessing({ type: 'blessing', id: 'kings' });
       const p = WS.Game.player;
       p.maxHealth = 1e9; p.health = 1e9; p.armor = 99;
       p.x = 640; p.y = 360;

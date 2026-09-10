@@ -32,6 +32,14 @@
  *              every run after the prologue deterministic in a way nobody
  *              asked for.
  *
+ * ALL OF IT, TWICE. There are two cuts of the prologue while the author decides
+ * which one to keep - src/render/prologue-v1.js and -v2.js, chosen by a setting
+ * and pointed at by src/render/cinematic.js. The whole suite runs against each
+ * of them, because the one that is not currently selected is exactly the one
+ * that will rot: nobody watches it, so nothing would say when a change to the
+ * shared lore, the shared sprites or the shared layer CSS broke it. When one of
+ * the two is deleted, VERSIONS below becomes a single entry.
+ *
  * NEGATIVE TESTS, all four confirmed: making every beat draw the same night
  * fails at "the ember beat draws the same picture as night"; dropping a
  * scene's lines from the DOM fails at "no scene put ... on screen"; not
@@ -55,16 +63,38 @@ const path = require('path');
 const GAME = 'file://' + path.resolve(__dirname, '..', 'index.html');
 const fail = [];
 
-(async () => {
-  const browser = await chromium.launch({
-    executablePath: process.env.CHROME || undefined, args: ['--no-sandbox'],
-  });
+const VERSIONS = [2, 1];
+const say = (v, msg) => fail.push(`v${v}: ${msg}`);
+
+async function pass(browser, version) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const page = await ctx.newPage();
-  page.on('pageerror', (e) => fail.push('page error: ' + e.message));
+  page.on('pageerror', (e) => say(version, 'page error: ' + e.message));
+
+  /* A fresh profile boots straight into whatever cinematic.js picked, so the
+     version under test is set on the first visit and the page is reloaded with
+     seenPrologue cleared - which is the only way to watch a given cut arrive
+     the way a new player gets it. */
   await page.goto(GAME);
   await page.waitForFunction(() => window.WS && WS.Prologue);
+  await page.waitForTimeout(300);
+  await page.evaluate((v) => {
+    if (WS.Prologue.active) WS.Prologue.finish();
+    WS.UI.closeOverlay();
+    WS.Save.settings.cinematic = v;
+    WS.Save.db.seenPrologue = false;
+    WS.Save.db.seenManual = true;
+    WS.Save.save();
+    WS.Save.flush();
+  }, version);
+  await page.reload();
+  await page.waitForFunction(() => window.WS && WS.Prologue);
   await page.waitForTimeout(400);
+
+  const running = await page.evaluate(() => (WS.Prologue && WS.Prologue.version) || 0);
+  if (running !== version) {
+    say(version, `the setting asks for cut ${version} and cut ${running} is what plays`);
+  }
 
   /* ---- plays, unprompted, on a new save ---------------------------------- */
   const first = await page.evaluate(() => ({
@@ -75,10 +105,10 @@ const fail = [];
     seconds: WS.Prologue.length(),
     scenes: WS.Prologue.scenes().length,
   }));
-  if (!first.active) fail.push('a brand-new save did not get the prologue');
-  if (first.state !== 'prologue') fail.push(`state is "${first.state}" during the prologue`);
-  if (!first.marked) fail.push('the prologue did not record that it had been seen');
-  if (first.seconds < 20) fail.push(`the whole prologue is ${first.seconds}s long`);
+  if (!first.active) say(version, 'a brand-new save did not get the prologue');
+  if (first.state !== 'prologue') say(version, `state is "${first.state}" during the prologue`);
+  if (!first.marked) say(version, 'the prologue did not record that it had been seen');
+  if (first.seconds < 20) say(version, `the whole prologue is ${first.seconds}s long`);
 
   /* ---- every beat draws, and draws something of its own ------------------ */
   const beats = await page.evaluate(async () => {
@@ -115,22 +145,22 @@ const fail = [];
 
   for (const b of beats) {
     if (b.colours < 12 || b.lit < 40) {
-      fail.push(`the ${b.beat} beat draws almost nothing (${b.colours} colours, `
+      say(version, `the ${b.beat} beat draws almost nothing (${b.colours} colours, `
         + `${b.lit} lit samples) - an empty night is not a scene`);
     }
     for (const line of b.lines) {
       if (!b.text.includes(line)) {
-        fail.push(`no scene put "${line.slice(0, 42)}..." on screen - a line in the `
+        say(version, `no scene put "${line.slice(0, 42)}..." on screen - a line in the `
           + 'script never reaches the player');
       }
     }
     if (b.lines.length && b.rect) {
       if (b.rect.top < 720 * 0.6) {
-        fail.push(`the words are drawn over the scene (top ${b.rect.top}px of 720) - `
+        say(version, `the words are drawn over the scene (top ${b.rect.top}px of 720) - `
           + 'they belong in their own band');
       }
       if (b.rect.left < 0 || b.rect.right > 1280 || b.rect.bottom > 720) {
-        fail.push(`the words spill off the screen (${JSON.stringify(b.rect)})`);
+        say(version, `the words spill off the screen (${JSON.stringify(b.rect)})`);
       }
     }
   }
@@ -166,7 +196,7 @@ const fail = [];
   const seenShape = new Map();
   for (const [name, hash] of Object.entries(shapes)) {
     if (seenShape.has(hash)) {
-      fail.push(`the ${name} beat draws the same picture as ${seenShape.get(hash)}`);
+      say(version, `the ${name} beat draws the same picture as ${seenShape.get(hash)}`);
     }
     seenShape.set(hash, name);
   }
@@ -182,7 +212,7 @@ const fail = [];
     return { before, after };
   });
   if (seeds.before !== seeds.after) {
-    fail.push(`the prologue left the random stream seeded (${seeds.before} -> `
+    say(version, `the prologue left the random stream seeded (${seeds.before} -> `
       + `${seeds.after}) - every run after it would be the same run`);
   }
 
@@ -196,8 +226,8 @@ const fail = [];
     return { active: WS.Prologue.active, landed: window.__landed,
       layer: !!document.getElementById('prologue') };
   });
-  if (ends.key.active || ends.key.layer) fail.push('a key press did not end the prologue');
-  if (ends.key.landed !== 'yes') fail.push('skipping the prologue did not hand back to the game');
+  if (ends.key.active || ends.key.layer) say(version, 'a key press did not end the prologue');
+  if (ends.key.landed !== 'yes') say(version, 'skipping the prologue did not hand back to the game');
 
   ends.tap = await page.evaluate(async () => {
     WS.Prologue.begin(() => {});
@@ -206,7 +236,7 @@ const fail = [];
     await new Promise((r) => setTimeout(r, 60));
     return WS.Prologue.active;
   });
-  if (ends.tap) fail.push('tapping the screen did not end the prologue');
+  if (ends.tap) say(version, 'tapping the screen did not end the prologue');
 
   /* A pad is the one input that cannot dispatch a DOM event, so the prologue
      polls for it - and a poll that never runs is a player stuck on a sofa. */
@@ -220,7 +250,7 @@ const fail = [];
     WS.Prologue.finish();
     return stopped;
   });
-  if (!ends.pad) fail.push('a gamepad button did not end the prologue');
+  if (!ends.pad) say(version, 'a gamepad button did not end the prologue');
 
   /* ---- and it is still reachable afterwards ------------------------------ */
   const again = await page.evaluate(async () => {
@@ -237,23 +267,33 @@ const fail = [];
     return { found: true, active, back: WS.Game.state,
       menu: !document.getElementById('overlay').classList.contains('hidden') };
   });
-  if (!again.found) fail.push('there is no way to watch the prologue again from the menu');
+  if (!again.found) say(version, 'there is no way to watch the prologue again from the menu');
   else {
-    if (!again.active) fail.push('the menu button did not start the prologue');
-    if (!again.menu) fail.push('leaving the prologue did not put the menu back');
+    if (!again.active) say(version, 'the menu button did not start the prologue');
+    if (!again.menu) say(version, 'leaving the prologue did not put the menu back');
   }
 
   /* ---- a returning save is left alone ------------------------------------ */
   const page2 = await ctx.newPage();
-  page2.on('pageerror', (e) => fail.push('page error on the second visit: ' + e.message));
+  page2.on('pageerror', (e) => say(version, 'page error on the second visit: ' + e.message));
   await page2.goto(GAME);
   await page2.waitForFunction(() => window.WS && WS.Prologue);
   await page2.waitForTimeout(500);
   const second = await page2.evaluate(() => ({
     active: WS.Prologue.active, seen: WS.Save.db.seenPrologue }));
-  if (!second.seen) fail.push('the second visit did not remember it had been seen');
-  if (second.active) fail.push('a returning player was made to watch the prologue again');
+  if (!second.seen) say(version, 'the second visit did not remember it had been seen');
+  if (second.active) say(version, 'a returning player was made to watch the prologue again');
 
+  await ctx.close();
+  return { scenes: first.scenes, seconds: first.seconds, beats: byBeat.size };
+}
+
+(async () => {
+  const browser = await chromium.launch({
+    executablePath: process.env.CHROME || undefined, args: ['--no-sandbox'],
+  });
+  const seen = [];
+  for (const v of VERSIONS) seen.push([v, await pass(browser, v)]);
   await browser.close();
   if (fail.length) {
     console.error('FAIL');
@@ -261,9 +301,10 @@ const fail = [];
     if (fail.length > 14) console.error(`  ... and ${fail.length - 14} more`);
     process.exit(1);
   }
-  console.log(`ok: ${first.scenes} scenes over ${first.seconds.toFixed(0)}s, `
-    + `${byBeat.size} distinct beats each drawing their own picture, every scripted line `
-    + 'reaches the screen inside its own band, a key, a tap and a pad each end it, the '
+  const each = seen.map(([v, r]) => `cut ${v} runs ${r.scenes} scenes over `
+    + `${r.seconds.toFixed(0)}s in ${r.beats} distinct beats`).join(', ');
+  console.log(`ok: ${each} - in both, every scripted line reaches the screen inside its own `
+    + 'band, every beat draws its own picture, a key, a tap and a pad each end it, the '
     + 'random stream comes back untouched, it is watchable again from the menu, and a '
     + 'returning save is left alone');
 })();

@@ -144,6 +144,9 @@
     const stick = document.getElementById('stick');
 
     WS.Save.load();
+    /* cinematic.js picks a version at load time, when the save is still the
+       defaults. This is the first moment the player's actual choice exists. */
+    if (WS.Cinematic) WS.Cinematic.select(WS.Cinematic.wanted());
     WS.Input.init();
     WS.Renderer.init(canvas);
     WS.Game.init();

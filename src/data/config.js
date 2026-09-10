@@ -152,6 +152,9 @@
       healNumbers: true,
       showHealthBars: true,
       levelUpTooltips: true,
+      /* Which cut of the prologue plays. Two exist while the author decides
+         which one to keep; see src/render/cinematic.js. */
+      cinematic: 2,
       // 'strip' lays the arsenal and passives along the foot of the screen;
       // 'rail' stands them up the two edges, which on anything wider than
       // 16:9 puts them in the letterbox and off the battlefield entirely.
