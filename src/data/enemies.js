@@ -8,7 +8,16 @@
  * one is a line on a template rather than a branch in the game:
  *
  *   lunge  {range, cooldown, windup, time}   the boss charge at small size:
- *          plants, marks a lane, then runs down exactly that lane
+ *          plants, marks a lane, then runs down exactly that lane. ELITES AND
+ *          BOSSES ONLY - see WS.Elites below. It was on two rank-and-file
+ *          templates, the Longtooth Wolf and the Sunhide Raptor, and both of
+ *          those arrive in packs from the first minute. Measured over five
+ *          minutes of Thornhollow: eleven of them on the field at once, a
+ *          charge committing every 3.2 seconds and twenty-two inside one
+ *          thirty-second stretch. A tell that fires that often is not a tell,
+ *          it is weather - and the sound it plays ducks the whole mix, so a
+ *          fifth of the run was spent at half volume. Something that plants
+ *          and marks the ground has to mean "look at THIS one".
  *   orbit  {range, spin}                     holds a ring and walks it, so
  *          circling away from the horde stops being a free answer
  *   trail  {interval, radius, life, damagePct, tint}   leaks ground behind it
@@ -32,7 +41,6 @@
     wolf: {
       name: 'Longtooth Wolf', family: 'beast', art: 'wolf', tint: [0.62, 0.62, 0.68],
       health: 22, speed: 92, damage: 8, xp: 4, radius: 14,
-      lunge: { range: 190, cooldown: 4.5 },
     },
     gilkin: {
       name: 'Gilkin Forager', family: 'gilkin', art: 'gilkin', tint: [0.45, 0.90, 0.60],
@@ -107,7 +115,6 @@
     raptor: {
       name: 'Sunhide Raptor', family: 'beast', art: 'raptor', tint: [0.90, 0.60, 0.25],
       health: 60, speed: 108, damage: 15, xp: 9, radius: 16,
-      lunge: { range: 230, cooldown: 3.6 },
     },
     bristlekin: {
       name: 'Thornhide Battleguard', family: 'bristlekin', art: 'bristlekin', tint: [0.85, 0.55, 0.40],

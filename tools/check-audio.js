@@ -66,6 +66,7 @@ const PLACED = 2.5;
   });
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   const fail = [];
+let warnStack = null;
   page.on('pageerror', (e) => fail.push('page error: ' + e.message));
 
   // Let the page believe it can be hidden, so the real handler can be exercised.
@@ -272,6 +273,28 @@ const PLACED = 2.5;
     const clump = WS.Audio.lastShape;
     out.density = { single, clump };
 
+    /* ---- a repeated warning must not stack into a wall -------------------- *
+     * `warn` is the sound a charge makes when it commits, and it is the only
+     * kit outside the one-shots that also DUCKS - it pulls the whole mix to
+     * half for seven tenths of a second. That is right for one charge and a
+     * lie about several. It used to be on two rank-and-file creatures that
+     * arrive in packs; measured over five minutes of Thornhollow, a charge
+     * committed every 3.2 seconds and a fifth of the run was spent at half
+     * volume. The move is elite-and-boss only now, but several elites and a
+     * boss can still commit inside a second, so the sound needs a floor of its
+     * own: a second warning a third of a second after the first tells the
+     * player nothing the first did not. */
+    await sleep(700);
+    WS.Audio.play('warn', px2);
+    out.warnOne = await peak(320, null);
+    await sleep(900);
+    out.warnMany = await peak(320, (() => {
+      let n = 0;
+      // ten of them across the window, which is four elites and a boss all
+      // committing at once and then again
+      return () => { if (n++ % 3 === 0) WS.Audio.play('warn', px2); };
+    })());
+
     /* ---- muted: the score stops, it does not just go quiet ---------------- */
     WS.Save.settings.music = true; WS.Audio.applySettings();
     WS.Audio.playMusic('forest');
@@ -454,6 +477,18 @@ const PLACED = 2.5;
       + 'level-up makes on its own - most of what the player hears is still the wall');
   }
 
+  if (report.warnOne && report.warnMany) {
+    const stack = report.warnMany.hi / Math.max(1e-9, report.warnOne.hi);
+    if (!(report.warnOne.hi > 0.01)) {
+      fail.push('a charge warning on a quiet field barely registers - the comparison '
+        + 'below would be measuring nothing');
+    } else if (stack > 1.6) {
+      fail.push(`ten charge warnings in a third of a second come out ${stack.toFixed(1)}x `
+        + 'one of them - the sound that ducks the whole mix is stacking on itself');
+    }
+    warnStack = stack;
+  }
+
   const s1 = report.density.single, sc = report.density.clump;
   if (!s1 || !sc) fail.push('the chatter voices are not being shaped at all');
   else {
@@ -510,7 +545,9 @@ const PLACED = 2.5;
     + `${(1 / p.right).toFixed(2)}x right, ${p.centre} centred, ${p.announce} announcing), `
     + `a wall of chatter gets out of the way of a level-up (down to `
     + `${(gotOut * 100).toFixed(0)}% of its own peak, and ${(100 / owns).toFixed(0)}% of `
-    + `what is left is the level-up itself) while a clump of thirty hits comes out `
+    + `what is left is the level-up itself), ten charge warnings at once come out `
+    + `${warnStack === null ? '?' : warnStack.toFixed(1)}x one of them, `
+    + `a clump of thirty hits comes out `
     + `${(sc.gain / s1.gain).toFixed(1)}x heavier and `
     + `${((1 - sc.pitch / s1.pitch) * 100).toFixed(0)}% lower than a single one, `
     + `the score reads the run rather than the field (calm ${D.calm.toFixed(2)}, a dying `

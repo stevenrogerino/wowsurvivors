@@ -208,6 +208,14 @@
   const THROTTLE = {
     hit: 0.045, crit: 0.07, gem: 0.06, cast: 0.05, enemyHit: 0.06,
     explode: 0.09, freeze: 0.2, coin: 0.08, hover: 0.045,
+    /* `warn` is the only one of these that also DUCKS - it pulls the whole mix
+       to half for seven tenths of a second, because a charge committing is
+       worth hearing over everything else. That is true of one charge and a
+       lie about several: two elites and a boss committing inside a second
+       would duck the mix three times over and each one would sound like the
+       last one stuttering. A second warning inside a third of a second tells
+       the player nothing the first did not. */
+    warn: 0.34,
   };
 
   /* The kits that are the game talking to itself, rather than telling you

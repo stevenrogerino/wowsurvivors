@@ -140,14 +140,28 @@ const fail = [];
       return { track, e };
     };
 
+    /* The first elite in the table that actually lunges, so this follows the
+       data instead of naming a template that may be retired. */
+    const LUNGER = Object.keys(WS.Elites).find((k) => WS.Elites[k].lunge);
+    if (!LUNGER) return { noLunger: true };
+
     const res = {};
     // A plain chaser, as the yardstick for everything below.
     let r = bare('mongrel', 3.0, [340, 360]);
     res.chase = { path: Math.round(r.track.path), close: Math.round(r.track.dClose) };
 
-    r = bare('raptor', 6.0, [340, 360]);
+    /* An ELITE, because the lunge is now an elite-and-boss move. It used to be
+       measured on the Sunhide Raptor, which is rank-and-file: eleven of them
+       could be on the field at once, committing a charge every three seconds,
+       and a tell that fires that often is weather rather than a warning. */
+    r = bare(LUNGER, 7.0, [340, 360]);
     res.lunge = { path: Math.round(r.track.path), lanes: r.track.lanes.length,
-      stray: +r.track.stray.toFixed(1), laneLen: r.track.lanes[0] || 0 };
+      stray: +r.track.stray.toFixed(1), laneLen: r.track.lanes[0] || 0,
+      speed: r.e.template.speed };
+    res.chase.speed = WS.Enemies.mongrel.speed;
+    // Who declares a lunge, and are any of them rank and file?
+    res.lungers = { elite: Object.keys(WS.Elites).filter((k) => WS.Elites[k].lunge),
+      trash: Object.keys(WS.Enemies).filter((k) => WS.Enemies[k].lunge) };
 
     r = bare('fleshripper', 6.0, [340, 360]);
     res.orbit = { path: Math.round(r.track.path), close: Math.round(r.track.dClose),
@@ -194,13 +208,39 @@ const fail = [];
   });
 
   const r = out;
+  /* Lunge is an elite and boss mechanic.
+   *
+   * It was on the Longtooth Wolf and the Sunhide Raptor, both of which arrive
+   * in packs from the first minute of their maps. Measured over five minutes
+   * of Thornhollow: eleven lungers on the field at once, a charge committing
+   * every 3.2 seconds, twenty-two inside one thirty-second stretch - and the
+   * sound a commit plays is the one kit that ducks the entire mix to half for
+   * seven tenths of a second, so a fifth of the run was spent at half volume.
+   *
+   * Planting, marking the ground and running the lane down is the game's
+   * loudest sentence. It has to be reserved for something worth saying it
+   * about. */
+  if (r.lungers.trash.length) {
+    fail.push(`${r.lungers.trash.join(', ')} ${r.lungers.trash.length > 1 ? 'are' : 'is'} `
+      + 'rank and file and declare a lunge - a charge tell that arrives in packs from '
+      + 'minute one is weather, not a warning, and its sound ducks the whole mix');
+  }
+  if (!r.lungers.elite.length) {
+    fail.push('nothing in the elite table lunges any more - the charge tell has left the '
+      + 'game below boss level entirely');
+  }
+
   // lunge
-  if (r.lunge.lanes < 1) fail.push('lunge never drew a lane in six seconds');
+  if (r.lunge.lanes < 1) fail.push('lunge never drew a lane in seven seconds');
   if (r.lunge.stray > 12) {
     fail.push(`lunge strayed ${r.lunge.stray}px out of the lane it drew - a small `
       + 'charge has to keep the same promise a big one does');
   }
-  if (r.lunge.path < r.chase.path * 1.15) {
+  /* Scaled by walking speed. The yardstick is a mongrel and the subject is now
+     an elite, and elites are heavier and slower - so comparing raw distance
+     would ask whether the elite is faster, not whether lunging beats walking. */
+  const walkRatio = (r.lunge.speed || 1) / (r.chase.speed || 1);
+  if (r.lunge.path < r.chase.path * walkRatio * 1.15) {
     fail.push(`lunge covered ${r.lunge.path}px where a plain chaser covers `
       + `${r.chase.path} - it is not actually lunging`);
   }
@@ -247,7 +287,9 @@ const fail = [];
     process.exit(1);
   }
   console.log(`ok: ${r.roster.verbs} of ${r.roster.total} creatures do something other than `
-    + `walk at you. A lunge covers ${r.lunge.path}px against a chaser's ${r.chase.path} and `
+    + `walk at you. Only elites and bosses lunge (${r.lungers.elite.join(', ')}); one covers `
+    + `${r.lunge.path}px against a chaser's ${r.chase.path} at ${Math.round(walkRatio * 100)}% `
+    + 'of its walking speed and '
     + `stays within ${r.lunge.stray}px of the lane it drew; an orbiter travels `
     + `${r.orbit.path}px while closing only ${r.orbit.close} and settles at `
     + `${r.orbit.settled}px; a trail lays ground that is harmless for `
