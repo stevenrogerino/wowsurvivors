@@ -649,9 +649,19 @@
      *
      * A fight score does not sit on top of the exploring score, it TAKES OVER
      * from it. With the arpeggio, the chord bed and the zone's rhythm on one
-     * bus, the boss layer can push them down as it comes up - so the shape of
-     * the mix changes rather than its level. The drone and the weather stay
-     * on the bed underneath: the place does not go anywhere. */
+     * bus, the boss layer can push them down as it comes up. The drone and
+     * the weather stay on the bed underneath: the place does not go anywhere.
+     *
+     * Honest note on what actually fixed the measurement, since it was not
+     * this. Deleting the duck and re-running the guard still passed - it is
+     * worth about a quarter of a decibel. What made a boss audible was giving
+     * its layer somewhere to BE: the horn was behind a 620Hz lowpass, which
+     * is a sine with extra steps, in the same bottom octave the zone drone
+     * already owned. Opening it up and adding the off-beat rattle put the
+     * layer where the zone is quietest. The duck stays because it is right -
+     * the fight should own the mix - but it is not the reason the number
+     * moved, and check-score asserts it directly rather than hoping it shows
+     * up in an average. */
     const zone = ctx.createGain();
     zone.gain.value = 1;
     zone.connect(bed);

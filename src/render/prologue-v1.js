@@ -447,7 +447,7 @@
        the first thing on screen is night, exactly as before - but its clock
        does not run, so nobody watches the opening play out in silence while
        the browser waits to be asked. */
-    if (!this.armed) { this.last = null; this.t = 0; }
+    if (!this.armed) { this.last = null; }
     else {
       if (this.last === null) this.last = time;
       this.t += WS.min(0.1, WS.max(0, time - this.last));

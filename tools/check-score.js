@@ -63,8 +63,11 @@ const INDEX = 'file://' + path.resolve(__dirname, '..', 'index.html');
  * every pair the fixed build produces. */
 const PLACES = 3;
 /* And how much a boss has to change the mix it arrives in. Same units. The
- * layer alone, without the duck that makes room for it, measured under 2. */
-const BOSS = 4;
+ * old layer, buried under a 620Hz lowpass in the octave the zone drone
+ * already owned, measured 1.5. This is a FLOOR and not the mechanism: healthy
+ * runs measure 4.5-4.8 and a sabotaged one measured 3.9, which overlaps, so
+ * the parts a boss is actually made of are asserted directly below instead. */
+const BOSS = 3.5;
 /* A cue has to be at least this far above the quiet before it. */
 const AUDIBLE = 12;
 
@@ -187,6 +190,12 @@ const fail = [];
     WS.Audio.setBoss('boss');
     if (WS.Audio._music) { WS.Audio._music.intensity = 0.9; WS.Audio._music.want = 0.9; }
     await sleep(2600);
+    /* Read the duck WHILE the boss is up, rather than inferring it from the
+       spectrum afterwards. Deleting it outright cost a quarter of a decibel
+       on the aggregate - well inside the run-to-run spread - so an averaged
+       number cannot police it and this does. */
+    const duckedTo = WS.Audio._music ? +WS.Audio._music.zone.gain.value.toFixed(2) : -1;
+    const layered = !!(WS.Audio._music && WS.Audio._music.bossGain);
     const onBoss = await bands(16000);
     WS.Audio.setBoss('death');
     await sleep(2600);
@@ -200,7 +209,8 @@ const fail = [];
       death: dist(onBoss, onDeath),
       leaves: dist(calm, after),
       cleared: WS.Audio.boss(),
-      ducked: WS.Audio._music ? +WS.Audio._music.zone.gain.value.toFixed(2) : -1,
+      restored: WS.Audio._music ? +WS.Audio._music.zone.gain.value.toFixed(2) : -1,
+      duckedTo, layered,
     };
 
     /* ---- cues: every one of them makes a noise --------------------------- */
@@ -254,8 +264,12 @@ const fail = [];
     fail.push(`the score did not come back after the boss (${report.boss.leaves}dB from where it started)`);
   }
   if (report.boss.cleared !== null) fail.push('the boss layer was never cleared');
-  if (report.boss.ducked < 0.9) {
-    fail.push(`the zone was left ducked at ${report.boss.ducked} after the boss died`);
+  if (!report.boss.layered) fail.push('a boss put no layer into the score at all');
+  if (report.boss.duckedTo > 0.6) {
+    fail.push(`the zone did not get out of the way for the boss (held at ${report.boss.duckedTo})`);
+  }
+  if (report.boss.restored < 0.9) {
+    fail.push(`the zone was left ducked at ${report.boss.restored} after the boss died`);
   }
   for (const s of report.silent) fail.push(s);
   if (report.muted.nodes > 4) {
