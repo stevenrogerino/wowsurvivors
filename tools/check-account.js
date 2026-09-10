@@ -257,7 +257,7 @@ const fail = [];
     await new Promise((r) => setTimeout(r, 60));
     const btns = [...document.querySelectorAll('#overlay button')];
     const find = (re) => btns.find((b) => re.test(b.textContent));
-    const load = find(/load from code/i);
+    const load = find(/^load from/i);
     if (!load) return { found: false, labels: btns.map((b) => b.textContent).slice(0, 20) };
     load.click();
     await new Promise((r) => setTimeout(r, 40));
@@ -284,6 +284,115 @@ const fail = [];
     if (!ui.offered) fail.push('pasting a valid code did not offer to import it');
     if (ui.gold !== 4242) fail.push(`importing from the screen left ${ui.gold} gold, not 4242`);
     if (ui.exportables !== 2) fail.push('the settings screen does not offer both a code and a file');
+  }
+
+  /* ---- the short code, and the drop that means nobody needs it ------------
+   * A played account base64s to about six thousand characters, which is not a
+   * thing anybody pastes - it is a thing they give up on. Two answers: the
+   * code is gzipped now, and a file dropped on the window skips the paste
+   * entirely.
+   *
+   * The rules are that the short code round-trips, that every older format
+   * still reads (a code someone saved last month has to keep working), that a
+   * packed code reaching parseImport un-unpacked says something useful rather
+   * than "that is not an Ember Watch save", and above all that a DROP DOES NOT
+   * WRITE. A dropped file replaces an account that may be thirty hours old, so
+   * it has to stop and ask, exactly like the settings screen does. */
+  const transport = await page.evaluate(async () => {
+    WS.Save.reset();
+    WS.Save.unlockAll();
+    WS.Save.db.gold = 424242;
+    const s = WS.Save.db.statistics;
+    s.totalKills = 421339; s.totalRuns = 214;
+    for (const id of Object.keys(WS.Enemies)) s.bestiary[id] = 1000;
+    for (const id of Object.keys(WS.Achievements)) WS.Save.db.achievements[id] = true;
+    const old = WS.Save.export();
+    const packed = await WS.Save.pack();
+    const back = WS.Save.parseImport(await WS.Save.unpack(packed));
+    return {
+      oldLen: old.code.length, newLen: packed.length,
+      packedOk: back.ok && back.db.gold === 424242
+        && back.db.statistics.totalKills === 421339,
+      // every older shape still reads
+      v1: WS.Save.parseImport(old.code).ok,
+      rawJson: WS.Save.parseImport(old.json).ok,
+      // and unpack leaves anything that is not a packed code alone
+      passthrough: (await WS.Save.unpack(old.code)) === old.code,
+      // a packed code that skipped unpack has to explain itself
+      bare: WS.Save.parseImport(packed).error || '',
+    };
+  });
+  if (!transport.packedOk) fail.push('the compressed code does not round-trip');
+  if (!transport.v1) fail.push('an older EMBERWATCH1 code no longer imports');
+  if (!transport.rawJson) fail.push('a plain JSON file no longer imports');
+  if (!transport.passthrough) {
+    fail.push('unpack mangles input that is not a packed code, so a caller cannot run it '
+      + 'over whatever it was given');
+  }
+  if (!/compressed|unpack|file instead/i.test(transport.bare)) {
+    fail.push('a packed code handed straight to parseImport says "' + transport.bare
+      + '" instead of naming the problem');
+  }
+  if (!(transport.newLen < transport.oldLen * 0.5)) {
+    fail.push(`the compressed code is ${transport.newLen} characters against the old `
+      + `${transport.oldLen} - that is not worth a format`);
+  }
+
+  const drop = await page.evaluate(async () => {
+    const json = WS.Save.export().json;
+    WS.Save.reset();
+    WS.Save.db.seenManual = true; WS.Save.db.seenPrologue = true;
+    WS.Game.state = 'menu'; WS.Game.player = null;
+    WS.UI.openMenu();
+    const goldBefore = WS.Save.db.gold;
+    const dt = new DataTransfer();
+    dt.items.add(new File([json], 'dropped.json', { type: 'application/json' }));
+    const stage = document.getElementById('stage');
+    stage.dispatchEvent(new DragEvent('dragenter', { dataTransfer: dt, bubbles: true }));
+    const litOnDrag = stage.classList.contains('dropping');
+    stage.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true }));
+    await new Promise((r) => setTimeout(r, 400));
+    const title = (document.querySelector('.overlay-head h1') || {}).textContent || '';
+    const go = [...document.querySelectorAll('#overlay button')]
+      .find((b) => /replace my progress/i.test(b.textContent));
+    const goldAtOffer = WS.Save.db.gold;
+    if (go) go.click();
+    await new Promise((r) => setTimeout(r, 300));
+    return { litOnDrag, title, offered: !!go, goldBefore, goldAtOffer,
+      goldAfter: WS.Save.db.gold, stillLit: stage.classList.contains('dropping') };
+  });
+  if (!drop.offered) {
+    fail.push(`dropping a save file on the window did nothing (the screen said `
+      + `"${drop.title}")`);
+  } else {
+    if (drop.goldAtOffer !== drop.goldBefore) {
+      fail.push('dropping a file WROTE before anyone confirmed - it went from '
+        + `${drop.goldBefore} to ${drop.goldAtOffer} gold just by being dropped`);
+    }
+    if (drop.goldAfter === drop.goldBefore) {
+      fail.push('confirming the dropped account did not load it');
+    }
+  }
+  if (!drop.litOnDrag) fail.push('dragging a file over the window shows no sign it can be dropped');
+  if (drop.stillLit) fail.push('the drop highlight never cleared');
+
+  const midRun = await page.evaluate(async () => {
+    const json = WS.Save.export().json;
+    WS.Game.startRun('thornhollow', 'mage');
+    const gold = WS.Save.db.gold;
+    const dt = new DataTransfer();
+    dt.items.add(new File([json], 'dropped.json', { type: 'application/json' }));
+    document.getElementById('stage').dispatchEvent(
+      new DragEvent('drop', { dataTransfer: dt, bubbles: true }));
+    await new Promise((r) => setTimeout(r, 300));
+    const offered = [...document.querySelectorAll('#overlay button')]
+      .some((b) => /replace my progress/i.test(b.textContent));
+    WS.Game.quitToMenu();
+    return { offered, changed: WS.Save.db.gold !== gold };
+  });
+  if (midRun.offered || midRun.changed) {
+    fail.push('a save file dropped DURING a run was accepted - swapping the account out '
+      + 'from under a live run leaves it pointing at unlocks that no longer exist');
   }
 
   /* ---- the beta save files still load ------------------------------------
@@ -338,7 +447,10 @@ const fail = [];
     + 'as a one-line code and as readable JSON, a truncated paste is refused rather than '
     + 'half-imported, eleven kinds of broken or hostile save are either refused or repaired '
     + 'into something playable, a backup from before the rename keeps its unlocks, parsing '
-    + 'never writes, the whole thing works from the settings screen, and '
+    + 'never writes, the whole thing works from the settings screen, a played account '
+    + `packs from ${transport.oldLen} characters down to ${transport.newLen} while every `
+    + 'older format still reads, a save file dropped on the window asks before it writes '
+    + 'and is refused mid-run, and '
     + `${betaOk} beta save file${betaOk === 1 ? '' : 's'} still import with the whole roster `
     + 'and every battlefield open');
 })();

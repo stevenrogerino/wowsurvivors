@@ -383,11 +383,79 @@
       return { json: wrapped, code, summary: this.describe(this.db) };
     },
 
+    /* ------------------------------------------------------- transport ---
+     *
+     * A played account is 2.9KB of JSON, which base64s to a six-thousand
+     * character code. That is not something anybody pastes into a chat; it is
+     * something they give up on. Gzipped first it is about a quarter of that.
+     *
+     * This is a wrapper around the import path and deliberately not part of
+     * it. parseImport carries every migration and repair that sixteen
+     * malformed saves proved out, and it is synchronous, and a dozen checks
+     * call it that way. Compression is a transport concern - how the bytes
+     * travel - so it sits outside, and pack/unpack are the only async things
+     * in the file.
+     *
+     * The FILE stays uncompressed on purpose. A .json you can open, read and
+     * hand-edit is worth more than a smaller one you cannot; the short code is
+     * for when you are moving an account through something that only takes
+     * text. */
+    CODE_PREFIX: 'EMBERWATCH2:',
+
+    /** The account as the shortest code this browser can make. Falls back to
+     *  the uncompressed v1 code where CompressionStream is missing, which is
+     *  still readable by every build. */
+    async pack() {
+      const out = this.export();
+      if (typeof CompressionStream !== 'function') return out.code;
+      try {
+        const cs = new CompressionStream('gzip');
+        const w = cs.writable.getWriter();
+        w.write(new TextEncoder().encode(out.json));
+        w.close();
+        const buf = new Uint8Array(await new Response(cs.readable).arrayBuffer());
+        /* Chunked, because String.fromCharCode.apply on a whole multi-kilobyte
+           array is a stack overflow waiting for a big enough account. */
+        let bin = '';
+        for (let i = 0; i < buf.length; i += 0x8000) {
+          bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+        }
+        return this.CODE_PREFIX + btoa(bin);
+      } catch (e) {
+        return out.code;
+      }
+    },
+
+    /** Turns whatever was pasted into something parseImport understands.
+     *  Anything that is not a packed code comes back untouched, so a caller
+     *  can always run it and never has to ask what it was given. */
+    async unpack(text) {
+      const raw = String(text || '').trim();
+      if (!new RegExp('^' + this.CODE_PREFIX, 'i').test(raw)) return raw;
+      if (typeof DecompressionStream !== 'function') return raw;
+      try {
+        const bin = atob(raw.slice(this.CODE_PREFIX.length).replace(/\s+/g, ''));
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const ds = new DecompressionStream('gzip');
+        const w = ds.writable.getWriter();
+        w.write(bytes);
+        w.close();
+        return await new Response(ds.readable).text();
+      } catch (e) {
+        return raw;      // let parseImport give the damaged-code message
+      }
+    },
+
     /** Reads a code or a file's JSON and hands back what it would import,
      *  WITHOUT importing it. Nothing is written until the caller says so. */
     parseImport(text) {
       let raw = String(text || '').trim();
       if (!raw) return { ok: false, error: 'There is nothing to import.' };
+      if (new RegExp('^' + this.CODE_PREFIX, 'i').test(raw)) {
+        return { ok: false, error: 'That is a compressed code and this build cannot '
+          + 'unpack it. Use the file instead, or a browser from the last few years.' };
+      }
       if (/^EMBERWATCH\d*:/i.test(raw)) {
         try {
           raw = decodeURIComponent(escape(atob(raw.replace(/^EMBERWATCH\d*:/i, '').replace(/\s+/g, ''))));

@@ -1291,11 +1291,12 @@
     const copyBtn = el('button', 'btn small', 'Copy code');
     copyBtn.addEventListener('click', async () => {
       WS.Audio.play('ui');
-      const out = WS.Save.export();
-      if (!out.code) return say('This browser would not encode the save.', true);
+      const code = await WS.Save.pack();
+      if (!code) return say('This browser would not encode the save.', true);
       try {
-        await navigator.clipboard.writeText(out.code);
-        say('Copied. Paste it somewhere you will still have next year.');
+        await navigator.clipboard.writeText(code);
+        say(`Copied - ${code.length.toLocaleString()} characters. Paste it somewhere you `
+          + 'will still have next year.');
       } catch (e) {
         // Clipboard is gated in plenty of contexts; the file always works.
         say('The clipboard is blocked here - use Save to file instead.', true);
@@ -1322,11 +1323,11 @@
        account and what it would replace; step two is the only thing that
        writes. Nobody overwrites thirty hours by mis-clicking once. */
     let pending = null;
-    const loadBtn = el('button', 'btn small', 'Load from code or file');
+    const loadBtn = el('button', 'btn small', 'Load from a file or code');
     const box = el('textarea');
     box.className = 'import-box hidden';
     box.rows = 3;
-    box.placeholder = 'Paste a code beginning EMBERWATCH1: - or choose a file';
+    box.placeholder = 'Drop a save file on the window, choose one below, or paste a code';
     const pickBtn = el('button', 'btn small hidden', 'Choose file...');
     const goBtn = el('button', 'btn small primary hidden', 'Replace my progress');
     const cancelBtn = el('button', 'btn small hidden', 'Cancel');
@@ -1344,8 +1345,10 @@
       loadBtn.classList.remove('hidden');
       say('');
     };
-    const offer = (text) => {
-      const r = WS.Save.parseImport(text);
+    const offer = async (text) => {
+      // unpack is a no-op on anything that is not a packed code, so this can
+      // run over a pasted file, an old code or a new one without asking which
+      const r = WS.Save.parseImport(await WS.Save.unpack(text));
       if (!r.ok) { pending = null; goBtn.classList.add('hidden'); return say(r.error, true); }
       pending = r.db;
       goBtn.classList.remove('hidden');
@@ -1896,6 +1899,100 @@
     this.show(s.inner);
   };
 
+
+  /* ---------------------------------------------------- dropped accounts --
+   *
+   * The shortest path between two machines is a file you drag onto the window,
+   * and it was the one path the game did not offer. Everything else - a code
+   * to copy, a picker to click through - is a workaround for not having this.
+   *
+   * It is deliberately NOT a silent import. A dropped file replaces an account
+   * that may be thirty hours old, so it goes through the same two steps the
+   * settings screen uses: here is what is in it, here is what it would take
+   * the place of, and only then a button that writes. */
+  UI.wireDropImport = function (root) {
+    let depth = 0;
+    const lit = (on) => root.classList.toggle('dropping', on);
+    const carriesFile = (e) => !!(e.dataTransfer
+      && Array.from(e.dataTransfer.types || []).indexOf('Files') >= 0);
+
+    root.addEventListener('dragenter', (e) => {
+      if (!carriesFile(e)) return;
+      e.preventDefault();
+      // Counted rather than toggled: dragenter/dragleave fire again for every
+      // child the pointer crosses, so a plain toggle flickers the whole way in.
+      depth++; lit(true);
+    });
+    root.addEventListener('dragover', (e) => { if (carriesFile(e)) e.preventDefault(); });
+    root.addEventListener('dragleave', (e) => {
+      if (!carriesFile(e)) return;
+      depth = WS.max(0, depth - 1);
+      if (!depth) lit(false);
+    });
+    root.addEventListener('drop', async (e) => {
+      if (!carriesFile(e)) return;
+      e.preventDefault();
+      depth = 0; lit(false);
+      const file = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!file) return;
+      /* Not mid-run. Swapping the account out from under a live run would
+         leave the run's own bookkeeping pointing at a survivor and a set of
+         unlocks that no longer exist. */
+      if (WS.Game.player && WS.Game.state !== 'menu') {
+        return WS.Game.toast('Not while a run is going',
+          'Finish or abandon it first, then drop the file again.');
+      }
+      let text = '';
+      try { text = await file.text(); } catch (err) {
+        return WS.Game.toast('That file could not be read', file.name);
+      }
+      const r = WS.Save.parseImport(await WS.Save.unpack(text));
+      if (!r.ok) return WS.Game.toast('That is not an account', r.error);
+      this.openImportOffer(r, file.name);
+    });
+  };
+
+  /** The one screen that stands between a dropped file and thirty hours. */
+  UI.openImportOffer = function (r, name) {
+    const s = shell('Load this account?', name || 'From a dropped file');
+    const i = r.summary, o = r.replacing;
+    const body = el('div', 'panel');
+    const row = (label, a, b) => {
+      const line = el('div', 'setting');
+      const main = el('div');
+      main.append(el('div', 's-name', label));
+      main.append(el('div', 's-desc', `${b} on this machine now`));
+      const value = el('div', 'import-value', String(a));
+      line.append(main, value);
+      body.append(line);
+    };
+    row('Gold', i.gold.toLocaleString(), o.gold.toLocaleString());
+    row('Survivors', i.characters, o.characters);
+    row('Battlefields', i.maps, o.maps);
+    row('Runs', i.runs, o.runs);
+    s.body.append(body);
+    const warn = el('div', 's-desc');
+    warn.style.marginTop = '10px';
+    warn.textContent = (r.warn ? r.warn + ' ' : '')
+      + 'Loading this replaces the account in this browser. It cannot be undone.';
+    s.body.append(warn);
+
+    const go = el('button', 'btn primary', 'Replace my progress');
+    go.addEventListener('click', () => {
+      WS.Save.adopt(r.db);
+      WS.Save.save();
+      WS.Audio.play('level');
+      UI.tab = 'roster';
+      UI.openMenu();
+      WS.Game.toast('Account loaded', `${i.gold.toLocaleString()} gold, `
+        + `${i.characters} survivors, ${i.runs} runs.`);
+    });
+    const cancel = el('button', 'btn', 'Keep what I have');
+    cancel.addEventListener('click', () => UI.openMenu());
+    s.foot.append(el('div', 'spacer'), cancel, go);
+    this.show(s.inner);
+  };
+
   /* ------------------------------------------------------------- wiring -- */
   UI.init = function (root, overlay, hud) {
     this.root = root; this.overlay = overlay; this.hud = hud;
@@ -1904,6 +2001,7 @@
     this.wireHover(overlay);
     this.wireHover(hud);
     this.wireNavMode();
+    this.wireDropImport(root);
 
     WS.Input.onKey = (e) => {
       // Arrows move the focus while a menu is open; the survivor is not

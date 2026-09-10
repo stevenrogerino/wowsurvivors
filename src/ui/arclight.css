@@ -206,6 +206,20 @@ html, body {
 .btn.small { padding: 7px 13px; font-size: var(--t-micro); letter-spacing: .1em; }
 .btn.danger:hover { border-color: rgba(226,72,61,.7); color: #ff8f84; }
 
+/* A save file dragged over the window. The whole stage lights rather than a
+   drop zone somewhere in a menu, because the file can be dropped anywhere and
+   the feedback should say so. */
+#stage.dropping::after {
+  content: "Drop to load this account";
+  position: absolute; inset: 14px; z-index: 60; pointer-events: none;
+  border: 2px dashed var(--arc); border-radius: 3px;
+  background: rgba(245,197,107,.07);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding-bottom: 5vh;
+  font-family: var(--ui); font-size: var(--t-micro); letter-spacing: .26em;
+  text-transform: uppercase; color: var(--arc);
+}
+
 /* -------------------------------------------------------------- overlays */
 #overlay {
   position: absolute; inset: 0; z-index: 20;
@@ -1299,6 +1313,12 @@ body.hud-rail #hud-toasts { left: 76px; bottom: 20px; }
 }
 .setting .s-name { font-size: var(--t-body); }
 .setting .s-desc { font-size: var(--t-small); color: var(--ink-dim); margin-top: 2px; }
+/* The incoming figure on the dropped-account screen: what you would GET, set
+   large and gilt, against what you have said quietly underneath its label. */
+.setting .import-value {
+  font-family: var(--fig); font-size: 22px; color: var(--arc);
+  white-space: nowrap; padding-left: 18px;
+}
 .switch {
   width: 42px; height: 22px; border-radius: 11px; background: var(--obsidian-4);
   border: 1px solid var(--rim); position: relative; cursor: pointer; flex: none;

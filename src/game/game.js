@@ -18,6 +18,7 @@
     banner: null,
     toasts: [],
     levelChoices: null,
+    blessingChoices: null,
     selection: { character: null, map: null },
   };
 
@@ -109,7 +110,13 @@
     this.state = 'blessing';
     this.running = false;
     WS.Audio.playMusic(this.run.map.music);
-    WS.UI.openBlessing(WS.LevelUp.buildBlessingChoices(this.player));
+    /* Held on the game, exactly like levelChoices, and for the same reason:
+       the draft on screen has to be reachable by something other than a
+       click. The commit beat spends real time before chooseBlessing runs, so
+       anything driving the game a tick at a time - a harness, a replay - can
+       never get past the opening draft by clicking, only by choosing. */
+    this.blessingChoices = WS.LevelUp.buildBlessingChoices(this.player);
+    WS.UI.openBlessing(this.blessingChoices);
   };
 
   Game.beginWaves = function () {

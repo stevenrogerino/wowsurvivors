@@ -253,6 +253,20 @@ html, body {
 .btn.small { padding: 7px 13px; font-size: var(--t-micro); letter-spacing: .1em; }
 .btn.danger:hover { border-color: rgba(226,72,61,.7); color: #ff8f84; }
 
+/* A save file dragged over the window. The whole stage lights rather than a
+   drop zone somewhere in a menu, because the file can be dropped anywhere and
+   the feedback should say so. */
+#stage.dropping::after {
+  content: "Drop to load this account";
+  position: absolute; inset: 14px; z-index: 60; pointer-events: none;
+  border: 2px dashed var(--arc); border-radius: 3px;
+  background: rgba(245,197,107,.07);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding-bottom: 5vh;
+  font-family: var(--ui); font-size: var(--t-micro); letter-spacing: .26em;
+  text-transform: uppercase; color: var(--arc);
+}
+
 /* -------------------------------------------------------------- overlays */
 #overlay {
   position: absolute; inset: 0; z-index: 20;
@@ -1346,6 +1360,12 @@ body.hud-rail #hud-toasts { left: 76px; bottom: 20px; }
 }
 .setting .s-name { font-size: var(--t-body); }
 .setting .s-desc { font-size: var(--t-small); color: var(--ink-dim); margin-top: 2px; }
+/* The incoming figure on the dropped-account screen: what you would GET, set
+   large and gilt, against what you have said quietly underneath its label. */
+.setting .import-value {
+  font-family: var(--fig); font-size: 22px; color: var(--arc);
+  white-space: nowrap; padding-left: 18px;
+}
 .switch {
   width: 42px; height: 22px; border-radius: 11px; background: var(--obsidian-4);
   border: 1px solid var(--rim); position: relative; cursor: pointer; flex: none;
@@ -2383,11 +2403,79 @@ window.WS = window.WS || {};
       return { json: wrapped, code, summary: this.describe(this.db) };
     },
 
+    /* ------------------------------------------------------- transport ---
+     *
+     * A played account is 2.9KB of JSON, which base64s to a six-thousand
+     * character code. That is not something anybody pastes into a chat; it is
+     * something they give up on. Gzipped first it is about a quarter of that.
+     *
+     * This is a wrapper around the import path and deliberately not part of
+     * it. parseImport carries every migration and repair that sixteen
+     * malformed saves proved out, and it is synchronous, and a dozen checks
+     * call it that way. Compression is a transport concern - how the bytes
+     * travel - so it sits outside, and pack/unpack are the only async things
+     * in the file.
+     *
+     * The FILE stays uncompressed on purpose. A .json you can open, read and
+     * hand-edit is worth more than a smaller one you cannot; the short code is
+     * for when you are moving an account through something that only takes
+     * text. */
+    CODE_PREFIX: 'EMBERWATCH2:',
+
+    /** The account as the shortest code this browser can make. Falls back to
+     *  the uncompressed v1 code where CompressionStream is missing, which is
+     *  still readable by every build. */
+    async pack() {
+      const out = this.export();
+      if (typeof CompressionStream !== 'function') return out.code;
+      try {
+        const cs = new CompressionStream('gzip');
+        const w = cs.writable.getWriter();
+        w.write(new TextEncoder().encode(out.json));
+        w.close();
+        const buf = new Uint8Array(await new Response(cs.readable).arrayBuffer());
+        /* Chunked, because String.fromCharCode.apply on a whole multi-kilobyte
+           array is a stack overflow waiting for a big enough account. */
+        let bin = '';
+        for (let i = 0; i < buf.length; i += 0x8000) {
+          bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+        }
+        return this.CODE_PREFIX + btoa(bin);
+      } catch (e) {
+        return out.code;
+      }
+    },
+
+    /** Turns whatever was pasted into something parseImport understands.
+     *  Anything that is not a packed code comes back untouched, so a caller
+     *  can always run it and never has to ask what it was given. */
+    async unpack(text) {
+      const raw = String(text || '').trim();
+      if (!new RegExp('^' + this.CODE_PREFIX, 'i').test(raw)) return raw;
+      if (typeof DecompressionStream !== 'function') return raw;
+      try {
+        const bin = atob(raw.slice(this.CODE_PREFIX.length).replace(/\s+/g, ''));
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const ds = new DecompressionStream('gzip');
+        const w = ds.writable.getWriter();
+        w.write(bytes);
+        w.close();
+        return await new Response(ds.readable).text();
+      } catch (e) {
+        return raw;      // let parseImport give the damaged-code message
+      }
+    },
+
     /** Reads a code or a file's JSON and hands back what it would import,
      *  WITHOUT importing it. Nothing is written until the caller says so. */
     parseImport(text) {
       let raw = String(text || '').trim();
       if (!raw) return { ok: false, error: 'There is nothing to import.' };
+      if (new RegExp('^' + this.CODE_PREFIX, 'i').test(raw)) {
+        return { ok: false, error: 'That is a compressed code and this build cannot '
+          + 'unpack it. Use the file instead, or a browser from the last few years.' };
+      }
       if (/^EMBERWATCH\d*:/i.test(raw)) {
         try {
           raw = decodeURIComponent(escape(atob(raw.replace(/^EMBERWATCH\d*:/i, '').replace(/\s+/g, ''))));
@@ -12261,6 +12349,7 @@ window.WS = window.WS || {};
     banner: null,
     toasts: [],
     levelChoices: null,
+    blessingChoices: null,
     selection: { character: null, map: null },
   };
 
@@ -12352,7 +12441,13 @@ window.WS = window.WS || {};
     this.state = 'blessing';
     this.running = false;
     WS.Audio.playMusic(this.run.map.music);
-    WS.UI.openBlessing(WS.LevelUp.buildBlessingChoices(this.player));
+    /* Held on the game, exactly like levelChoices, and for the same reason:
+       the draft on screen has to be reachable by something other than a
+       click. The commit beat spends real time before chooseBlessing runs, so
+       anything driving the game a tick at a time - a harness, a replay - can
+       never get past the opening draft by clicking, only by choosing. */
+    this.blessingChoices = WS.LevelUp.buildBlessingChoices(this.player);
+    WS.UI.openBlessing(this.blessingChoices);
   };
 
   Game.beginWaves = function () {
@@ -18340,11 +18435,12 @@ window.WS = window.WS || {};
     const copyBtn = el('button', 'btn small', 'Copy code');
     copyBtn.addEventListener('click', async () => {
       WS.Audio.play('ui');
-      const out = WS.Save.export();
-      if (!out.code) return say('This browser would not encode the save.', true);
+      const code = await WS.Save.pack();
+      if (!code) return say('This browser would not encode the save.', true);
       try {
-        await navigator.clipboard.writeText(out.code);
-        say('Copied. Paste it somewhere you will still have next year.');
+        await navigator.clipboard.writeText(code);
+        say(`Copied - ${code.length.toLocaleString()} characters. Paste it somewhere you `
+          + 'will still have next year.');
       } catch (e) {
         // Clipboard is gated in plenty of contexts; the file always works.
         say('The clipboard is blocked here - use Save to file instead.', true);
@@ -18371,11 +18467,11 @@ window.WS = window.WS || {};
        account and what it would replace; step two is the only thing that
        writes. Nobody overwrites thirty hours by mis-clicking once. */
     let pending = null;
-    const loadBtn = el('button', 'btn small', 'Load from code or file');
+    const loadBtn = el('button', 'btn small', 'Load from a file or code');
     const box = el('textarea');
     box.className = 'import-box hidden';
     box.rows = 3;
-    box.placeholder = 'Paste a code beginning EMBERWATCH1: - or choose a file';
+    box.placeholder = 'Drop a save file on the window, choose one below, or paste a code';
     const pickBtn = el('button', 'btn small hidden', 'Choose file...');
     const goBtn = el('button', 'btn small primary hidden', 'Replace my progress');
     const cancelBtn = el('button', 'btn small hidden', 'Cancel');
@@ -18393,8 +18489,10 @@ window.WS = window.WS || {};
       loadBtn.classList.remove('hidden');
       say('');
     };
-    const offer = (text) => {
-      const r = WS.Save.parseImport(text);
+    const offer = async (text) => {
+      // unpack is a no-op on anything that is not a packed code, so this can
+      // run over a pasted file, an old code or a new one without asking which
+      const r = WS.Save.parseImport(await WS.Save.unpack(text));
       if (!r.ok) { pending = null; goBtn.classList.add('hidden'); return say(r.error, true); }
       pending = r.db;
       goBtn.classList.remove('hidden');
@@ -18945,6 +19043,100 @@ window.WS = window.WS || {};
     this.show(s.inner);
   };
 
+
+  /* ---------------------------------------------------- dropped accounts --
+   *
+   * The shortest path between two machines is a file you drag onto the window,
+   * and it was the one path the game did not offer. Everything else - a code
+   * to copy, a picker to click through - is a workaround for not having this.
+   *
+   * It is deliberately NOT a silent import. A dropped file replaces an account
+   * that may be thirty hours old, so it goes through the same two steps the
+   * settings screen uses: here is what is in it, here is what it would take
+   * the place of, and only then a button that writes. */
+  UI.wireDropImport = function (root) {
+    let depth = 0;
+    const lit = (on) => root.classList.toggle('dropping', on);
+    const carriesFile = (e) => !!(e.dataTransfer
+      && Array.from(e.dataTransfer.types || []).indexOf('Files') >= 0);
+
+    root.addEventListener('dragenter', (e) => {
+      if (!carriesFile(e)) return;
+      e.preventDefault();
+      // Counted rather than toggled: dragenter/dragleave fire again for every
+      // child the pointer crosses, so a plain toggle flickers the whole way in.
+      depth++; lit(true);
+    });
+    root.addEventListener('dragover', (e) => { if (carriesFile(e)) e.preventDefault(); });
+    root.addEventListener('dragleave', (e) => {
+      if (!carriesFile(e)) return;
+      depth = WS.max(0, depth - 1);
+      if (!depth) lit(false);
+    });
+    root.addEventListener('drop', async (e) => {
+      if (!carriesFile(e)) return;
+      e.preventDefault();
+      depth = 0; lit(false);
+      const file = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!file) return;
+      /* Not mid-run. Swapping the account out from under a live run would
+         leave the run's own bookkeeping pointing at a survivor and a set of
+         unlocks that no longer exist. */
+      if (WS.Game.player && WS.Game.state !== 'menu') {
+        return WS.Game.toast('Not while a run is going',
+          'Finish or abandon it first, then drop the file again.');
+      }
+      let text = '';
+      try { text = await file.text(); } catch (err) {
+        return WS.Game.toast('That file could not be read', file.name);
+      }
+      const r = WS.Save.parseImport(await WS.Save.unpack(text));
+      if (!r.ok) return WS.Game.toast('That is not an account', r.error);
+      this.openImportOffer(r, file.name);
+    });
+  };
+
+  /** The one screen that stands between a dropped file and thirty hours. */
+  UI.openImportOffer = function (r, name) {
+    const s = shell('Load this account?', name || 'From a dropped file');
+    const i = r.summary, o = r.replacing;
+    const body = el('div', 'panel');
+    const row = (label, a, b) => {
+      const line = el('div', 'setting');
+      const main = el('div');
+      main.append(el('div', 's-name', label));
+      main.append(el('div', 's-desc', `${b} on this machine now`));
+      const value = el('div', 'import-value', String(a));
+      line.append(main, value);
+      body.append(line);
+    };
+    row('Gold', i.gold.toLocaleString(), o.gold.toLocaleString());
+    row('Survivors', i.characters, o.characters);
+    row('Battlefields', i.maps, o.maps);
+    row('Runs', i.runs, o.runs);
+    s.body.append(body);
+    const warn = el('div', 's-desc');
+    warn.style.marginTop = '10px';
+    warn.textContent = (r.warn ? r.warn + ' ' : '')
+      + 'Loading this replaces the account in this browser. It cannot be undone.';
+    s.body.append(warn);
+
+    const go = el('button', 'btn primary', 'Replace my progress');
+    go.addEventListener('click', () => {
+      WS.Save.adopt(r.db);
+      WS.Save.save();
+      WS.Audio.play('level');
+      UI.tab = 'roster';
+      UI.openMenu();
+      WS.Game.toast('Account loaded', `${i.gold.toLocaleString()} gold, `
+        + `${i.characters} survivors, ${i.runs} runs.`);
+    });
+    const cancel = el('button', 'btn', 'Keep what I have');
+    cancel.addEventListener('click', () => UI.openMenu());
+    s.foot.append(el('div', 'spacer'), cancel, go);
+    this.show(s.inner);
+  };
+
   /* ------------------------------------------------------------- wiring -- */
   UI.init = function (root, overlay, hud) {
     this.root = root; this.overlay = overlay; this.hud = hud;
@@ -18953,6 +19145,7 @@ window.WS = window.WS || {};
     this.wireHover(overlay);
     this.wireHover(hud);
     this.wireNavMode();
+    this.wireDropImport(root);
 
     WS.Input.onKey = (e) => {
       // Arrows move the focus while a menu is open; the survivor is not

@@ -68,10 +68,24 @@ const os = require('os');
     WS.Save.db.seenManual = true;
     WS.Save.unlockAll();
     WS.Game.startRun('thornhollow', 'shaman');
+    /* Choose through the game, not through the cards.
+     *
+     * Clicking a card starts the commit beat, which spends 155ms of REAL time
+     * before the choice applies - and this loop is synchronous, so that timer
+     * can never fire inside it. Driving it by clicks meant every one of these
+     * 5400 iterations re-clicked the opening blessing draft and the run never
+     * started: the probe reported 0 seconds, 0 kills, and passed, because
+     * nothing here was checking that it had played at all. Both halves of
+     * that are fixed - it chooses through the API, and the numbers below are
+     * asserted. */
     for (let i = 0; i < 60 * 90; i++) {
-      if (WS.Game.state === 'levelup' || WS.Game.state === 'blessing') {
-        const c = document.querySelectorAll('#overlay:not(.hidden) .card');
-        if (c[0]) { c[0].click(); continue; }
+      if (WS.Game.state === 'blessing') {
+        WS.Game.chooseBlessing(WS.Game.blessingChoices[0]);
+        continue;
+      }
+      if (WS.Game.state === 'levelup') {
+        WS.Game.chooseLevelUp(WS.Game.levelChoices[0]);
+        continue;
       }
       if (WS.Game.state !== 'playing') break;
       WS.Game.player.health = WS.Game.player.maxHealth;
@@ -97,7 +111,18 @@ const os = require('os');
   await b.close();
   server.close();
   fs.rmSync(dir, { recursive: true, force: true });
-  const bad = offsite.length + failures.length + errors.length;
+  /* The probe has to have PLAYED. A run that never leaves the opening draft
+     makes no requests either, so silence here is not evidence of anything -
+     it is the shape a broken probe has. Ninety seconds of Thornhollow with a
+     fully unlocked account is a level and a kill many times over. */
+  const idle = [];
+  if (played.time < 30) idle.push(`only ${played.time}s of the run was played`);
+  if (played.kills < 1) idle.push('nothing was killed');
+  if (played.level < 2) idle.push('the player never levelled');
+  if (played.fonts < 1) idle.push('no font loaded from inside the file');
+  for (const i of idle) console.log('   DID NOT PLAY: ' + i);
+
+  const bad = offsite.length + failures.length + errors.length + idle.length;
   console.log(bad === 0 ? '\nSELF-CONTAINED: this one file is the whole game.'
     : `\nNOT self-contained: ${bad} problem(s) above.`);
   process.exitCode = bad ? 1 : 0;
