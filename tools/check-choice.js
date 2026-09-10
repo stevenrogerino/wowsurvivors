@@ -140,13 +140,21 @@ const note = [];
    *
    * Both halves are one question - does anything leave the box - so both are
    * asked here, before and during. */
+  /* The states are put on by hand rather than by clicking a card. The beat only
+     lasts 155ms and its transform takes 180ms to travel, so a probe hung off a
+     real click either samples before anything has moved or races the moment the
+     row is re-dealt - measured, a sabotage that reintroduced the overflow
+     sailed through at 40ms because the card had shifted two pixels so far. This
+     asks the CSS the question directly, and gets to wait for it to finish. */
   const roomBefore = await page.evaluate(() => {
     const body = document.querySelector('.overlay-body');
     return { scrolls: body.scrollHeight > body.clientHeight };
   });
-
-  await page.evaluate(() => document.querySelectorAll('.card')[1].click());
-  await page.waitForTimeout(40);
+  await page.evaluate(() => {
+    document.querySelectorAll('.card')[1].classList.add('chosen');
+    document.querySelector('.card-row').classList.add('committing');
+  });
+  await page.waitForTimeout(280);          // the lift travels for 180ms
   const room = await page.evaluate(() => {
     const body = document.querySelector('.overlay-body');
     const b = body.getBoundingClientRect();
@@ -157,6 +165,15 @@ const note = [];
       under: Math.round(Math.max(0, Math.max(...cards.map((r) => r.bottom)) - b.bottom)),
     };
   });
+  await page.evaluate(() => {
+    document.querySelectorAll('.card').forEach((c) => c.classList.remove('chosen'));
+    document.querySelector('.card-row').classList.remove('committing');
+  });
+  await page.waitForTimeout(220);
+
+  // and now the real thing, which the beat check below is about
+  await page.evaluate(() => document.querySelectorAll('.card')[1].click());
+  await page.waitForTimeout(40);
   if (room.scrolls && !roomBefore.scrolls) {
     fail.push('picking a card makes the screen scroll - the beat pushes the cards past the '
       + 'edge of their own scroll port and a scrollbar flashes in for its duration');
