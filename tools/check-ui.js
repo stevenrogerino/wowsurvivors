@@ -204,6 +204,57 @@ const path = require('path');
     (await scan()).forEach((x) => seen.add('maxed/' + t + ' ' + x));
   }
 
+  /* ---- the menu may not offer a mode the run will not be in --------------
+   * Hyper is armed by one account-wide flag and applied per battlefield, so
+   * the footer button and the run it starts can disagree - and for a long time
+   * they did: armed, on a battlefield you had not won, the button read
+   * "Hyper: ON" and Begin Run started an ordinary run. The summary afterwards
+   * was honest, so the only place it lied was the moment you were choosing.
+   *
+   * The rule is the invariant rather than the wording: whatever the button
+   * says about the selected battlefield has to be what run.hyper comes out as
+   * on that battlefield. That survives somebody rewriting the label, and it
+   * catches a drift in either direction. */
+  const modes = await page.evaluate(() => {
+    WS.Save.unlockAll();
+    WS.Save.db.unlocks.hyper = { thornhollow: true };   // won on exactly one
+    WS.Save.db.hyperArmed = true;
+    const find = () => [...document.querySelectorAll('#overlay .overlay-foot button')]
+      .find((b) => /hyper/i.test(b.textContent));
+    const rows = [];
+    for (const id of WS.MapOrder) {
+      WS.Game.quitToMenu();
+      WS.Game.selection.map = id;
+      WS.UI.openMenu();
+      if (WS.UI.syncModes) WS.UI.syncModes();
+      const b = find();
+      if (!b) { rows.push({ id, missing: true }); continue; }
+      const row = { id, said: /\bON\b/.test(b.textContent), label: b.textContent,
+        disabled: b.disabled, tip: b.title };
+      WS.Game.startRun(id, 'mage');
+      row.real = !!WS.Game.run.hyper;
+      rows.push(row);
+    }
+    WS.Game.quitToMenu();
+    return rows;
+  });
+  for (const r of modes) {
+    if (r.missing) { seen.add('hyper: there is no Hyper control in the menu footer'); continue; }
+    if (r.said !== r.real) {
+      seen.add(`hyper: the menu says "${r.label}" for ${r.id} and the run comes out `
+        + `hyper=${r.real} - the footer describes a different run from the one Begin Run `
+        + 'starts');
+    }
+    if (!r.real && !r.disabled) {
+      seen.add(`hyper: ${r.id} cannot be a Hyper run and its button is still live`);
+    }
+    if (r.disabled && !r.tip) {
+      seen.add(`hyper: the button is disabled on ${r.id} and does not say why`);
+    }
+  }
+  await page.evaluate(() => { WS.Save.reset(); WS.Save.db.seenManual = true; WS.UI.openMenu(); });
+  await page.waitForTimeout(200);
+
   /* Arming banish is a mode change, not new content: nothing may move. */
   await page.evaluate(() => { WS.Game.startRun('thornhollow', 'mage'); });
   await page.waitForTimeout(250);
@@ -359,6 +410,8 @@ const path = require('path');
 
   console.log(seen.size ? [...seen].join('\n')
     : 'ok: no bracket collisions, no false scrims, a maxed save lays out clean,'
+      + ` the Hyper control agrees with the run it starts on all ${modes.length} `
+      + 'battlefields,'
       + ` arming banish moves nothing, and ${ledger.length} purchases totalling `
       + `${spent}g each land on the footer's banked total, and `
       + `${framing.panels} framed surfaces scroll from the inside`);
