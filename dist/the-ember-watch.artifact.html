@@ -12361,10 +12361,16 @@ window.WS = window.WS || {};
     WS.Achievements.check();
     WS.Save.save();
 
-    if (reason === 'defeated') {
-      WS.Audio.play('death');
-      WS.FX.screen('rgba(226,72,61,.35)', 1.0);
-    }
+    /* No death sound here.
+     *
+     * It plays in beginDeath, at the blow - and the only way to reach
+     * endRun('defeated') is through beginDeath, because 'dying' has one
+     * entrance and one exit. So this was a second play of the same kit a
+     * second and a half after the first, at the moment the results panel
+     * arrived: you heard yourself die twice. It came in with the death
+     * animation, which put a beat between the blow and the panel where there
+     * had not been one before. */
+    if (reason === 'defeated') WS.FX.screen('rgba(226,72,61,.35)', 1.0);
     WS.Arena.stop();
     WS.UI.openGameOver(reason);
   };
@@ -13100,7 +13106,7 @@ window.WS = window.WS || {};
   /* How long a beat takes to become the next beat. Long enough to read as a
      dissolve rather than a flicker; short enough that no scene spends a fifth
      of itself being two scenes at once. */
-  const FADE = 0.75;
+  const FADE = 1.05;
   /* The last stretch of the piece, over which the roster comes up. It is taken
      off the END of the script rather than off a named scene, so re-timing the
      lore does not silently move it somewhere else. */
@@ -13109,7 +13115,7 @@ window.WS = window.WS || {};
   const P = { active: false, done: null, layer: null, t: 0, last: null, scene: 0 };
 
   /* ------------------------------------------------------------- scenery -- */
-  let stars = null, ridge = null, woodFar = null, woodNear = null;
+  let stars = null, ranges = null, woodFar = null, woodNear = null;
   let crowd = null, motes = null, grain = null, cast = null, built = false;
 
   function buildScenery() {
@@ -13125,16 +13131,26 @@ window.WS = window.WS || {};
         big: WS.random() < 0.06 });
     }
 
-    /* The far ridge: one polyline of hills, walked left to right with a
-       wandering height. Drawn once into its own shape so the camera can move
-       it at its own rate. */
-    ridge = [];
-    let hy = GROUND - 96;
-    for (let x = -60; x <= W + 60; x += 26) {
-      hy += (WS.random() - 0.5) * 26;
-      hy = WS.clamp(hy, GROUND - 150, GROUND - 44);
-      ridge.push({ x, y: hy });
-    }
+    /* THREE ranges, not one wandering line.
+     *
+     * The first version walked a single polyline left to right with a random
+     * step, which makes lumps rather than mountains, and filled it with one
+     * flat colour darker than the sky. A dark unbroken mass along the bottom
+     * of a vignetted frame does not read as distance - it reads as the mouth
+     * of a cave, which is exactly what it was called.
+     *
+     * Two things fix that and they are both about air. Real ranges are cut
+     * into peaks and valleys with sky between them, so these alternate peak,
+     * valley, peak. And distant land is LIGHTER and lower in contrast than
+     * near land, never darker, because there are miles of atmosphere in front
+     * of it - so each range is filled with a gradient that is palest at its
+     * base, where the haze pools, and the far range is paler than the near
+     * one. Value going the wrong way is what makes a hill look like a wall. */
+    ranges = [
+      buildRange(7, 92, 152, 0.34),
+      buildRange(9, 58, 104, 0.30),
+      buildRange(11, 40, 86, 0.26),
+    ];
 
     const wood = (n, spread, hMin, hMax) => {
       const out = [];
@@ -13270,6 +13286,15 @@ window.WS = window.WS || {};
   }
   function ease(k) { const t = WS.clamp(k, 0, 1); return t * t * (3 - 2 * t); }
 
+  /** Every beat draws itself at the same light level, taken from the piece
+   *  rather than from the scene, so the sunrise crosses scene boundaries
+   *  instead of being switched on at one. `fallback` is what a beat drawn bare
+   *  should use - the guard draws each of them with no env to check they are
+   *  all different pictures. */
+  function lightOf(env, fallback) {
+    return env && env.light !== undefined ? env.light : fallback;
+  }
+
   /* --------------------------------------------------------------- layers -- */
   function sky(ctx, t, lift) {
     const g = ctx.createLinearGradient(0, 0, 0, GROUND);
@@ -13346,16 +13371,65 @@ window.WS = window.WS || {};
     void t;
   }
 
+  /** One range: `peaks` summits between `hiMin` and `hiMax` above the horizon,
+   *  with a valley cut between each pair. `slack` is how far a summit may
+   *  wander off its even spacing, so the spacing does not read as a comb. */
+  function buildRange(peaks, hiMin, hiMax, slack) {
+    const pts = [];
+    const step = (W + 200) / peaks;
+    for (let i = 0; i <= peaks; i++) {
+      const h = hiMin + WS.random() * (hiMax - hiMin);
+      const x = -100 + i * step + (WS.random() - 0.5) * step * slack;
+      pts.push({ x, y: GROUND - h });
+      if (i < peaks) {
+        pts.push({ x: x + step * (0.42 + WS.random() * 0.24),
+          y: GROUND - h * (0.24 + WS.random() * 0.30) });
+      }
+    }
+    return pts;
+  }
+
+  /* Far to near, palest to darkest. The three pairs are top-of-peak and
+     base-of-haze for each range; `lift` walks them into the dawn. */
+  const RANGE_NIGHT = [
+    ['#0a0f1c', '#131a2b'],
+    ['#06090f', '#0b111c'],
+    ['#030509', '#06090f'],
+  ];
+  /* At dawn the far haze LIGHTS and the near land goes to silhouette - the
+     two ends of the same range table move in opposite directions, which is
+     what a sunrise does to a landscape and why the near range has to be dark
+     enough to read as a shape against it. */
+  const RANGE_DAWN = [
+    ['#4a3550', '#8f6668'],
+    ['#251a2e', '#402a3a'],
+    ['#0c0810', '#150e1a'],
+  ];
+
   function ridgeline(ctx, lift) {
     ctx.save();
-    ctx.fillStyle = lift > 0 ? mix('#05070d', '#241624', lift) : '#05070d';
-    ctx.beginPath();
-    ctx.moveTo(ridge[0].x, GROUND + 4);
-    for (const p of ridge) ctx.lineTo(p.x, p.y);
-    ctx.lineTo(ridge[ridge.length - 1].x, GROUND + 4);
-    ctx.closePath(); ctx.fill();
+    for (let i = 0; i < ranges.length; i++) {
+      const pts = ranges[i];
+      let top = GROUND;
+      for (const p of pts) if (p.y < top) top = p.y;
+      const [tn, bn] = RANGE_NIGHT[i], [td, bd] = RANGE_DAWN[i];
+      const g = ctx.createLinearGradient(0, top, 0, GROUND + 4);
+      g.addColorStop(0, lift > 0 ? mix(tn, td, lift) : tn);
+      g.addColorStop(1, lift > 0 ? mix(bn, bd, lift) : bn);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(-100, GROUND + 8);
+      for (const p of pts) ctx.lineTo(p.x, p.y);
+      ctx.lineTo(W + 100, GROUND + 8);
+      ctx.closePath(); ctx.fill();
+    }
     ctx.restore();
   }
+
+  /* The far wood stands among the hazed ranges, so it carries some of that
+     haze; the near wood is the closest thing in the frame and stays black.
+     Two bands of the same near-black read as one band at two sizes. */
+  const WOOD_FAR = '#0a1120';
 
   function wood(ctx, band, colour) {
     ctx.fillStyle = colour;
@@ -13432,17 +13506,47 @@ window.WS = window.WS || {};
 
   /** The sun. A disc with an edge, not a wash - a wash is weather, an edge is
    *  a sunrise. `k` lifts it out of the ground. */
-  function sunrise(ctx, k) {
+  function sunrise(ctx, light) {
+    /* The glow arrives before the disc does. Holding the sun back until the
+       sky has already been warming for a while is the difference between a
+       sunrise and a light being switched on. */
+    const k = WS.clamp((light - 0.30) / 0.70, 0, 1);
     if (k <= 0.001) return;
-    const y = GROUND + 66 - 106 * ease(k), r = 78;
+    const y = GROUND + 66 - 134 * ease(k), r = 78;
     ctx.save();
+    /* Five stops on a smooth decay, not two and a kink.
+     *
+     * With a single mid stop at 45% the falloff changed slope there, and a
+     * change of slope in a gradient is a mach band - a soft arc appeared
+     * across the sky at exactly 225px from the sun, and it read as the edge of
+     * something rather than as light. */
     const halo = ctx.createRadialGradient(W * 0.5, y, r * 0.5, W * 0.5, y, r * 6.4);
-    halo.addColorStop(0, `rgba(255,196,110,${(0.42 * k).toFixed(3)})`);
-    halo.addColorStop(0.45, `rgba(255,150,70,${(0.15 * k).toFixed(3)})`);
-    halo.addColorStop(1, 'rgba(255,150,70,0)');
+    halo.addColorStop(0.00, `rgba(255,199,116,${(0.42 * k).toFixed(3)})`);
+    halo.addColorStop(0.18, `rgba(255,178,96,${(0.26 * k).toFixed(3)})`);
+    halo.addColorStop(0.38, `rgba(255,158,80,${(0.14 * k).toFixed(3)})`);
+    halo.addColorStop(0.62, `rgba(250,140,72,${(0.06 * k).toFixed(3)})`);
+    halo.addColorStop(0.82, `rgba(240,128,68,${(0.02 * k).toFixed(3)})`);
+    halo.addColorStop(1.00, 'rgba(240,128,68,0)');
     ctx.fillStyle = halo;
     ctx.beginPath(); ctx.arc(W * 0.5, y, r * 6.4, 0, WS.TAU); ctx.fill();
 
+    ctx.restore();
+    // What the sun puts on the floor in front of it. The bottom third of a
+    // dawn frame was the emptiest part of the picture.
+    ctx.save();
+    ctx.globalAlpha = 0.5 * k;
+    const floor = ctx.createRadialGradient(W * 0.5, GROUND, 0, W * 0.5, GROUND, W * 0.42);
+    floor.addColorStop(0.00, 'rgba(255,186,104,.30)');
+    floor.addColorStop(0.35, 'rgba(255,166,92,.16)');
+    floor.addColorStop(0.68, 'rgba(250,146,80,.05)');
+    floor.addColorStop(1.00, 'rgba(250,146,80,0)');
+    ctx.fillStyle = floor;
+    ctx.beginPath();
+    ctx.ellipse(W * 0.5, GROUND + 4, W * 0.42, (H - GROUND) * 0.86, 0, 0, WS.TAU);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
     ctx.beginPath(); ctx.rect(-40, -40, W + 80, GROUND + 40); ctx.clip();
     const disc = ctx.createRadialGradient(W * 0.5, y, 0, W * 0.5, y, r);
     disc.addColorStop(0, `rgba(255,246,222,${(0.96 * k).toFixed(3)})`);
@@ -13559,7 +13663,12 @@ window.WS = window.WS || {};
       if (!ch) continue;
       const size = WS.round(c.size);
       const known = unlocked(c.id);
-      const a = rise * (1 - out);
+      /* Alpha rises FASTER than the body does, so the early part of the climb
+         - when all that is above the ground is the top of a head - happens at
+         almost nothing. Linear alpha left a row of small pale blobs sitting on
+         the horizon for the first second of the crest, which reads as debris
+         rather than as somebody arriving. */
+      const a = rise * rise * (1 - out);
       // rising: they come up out of the ground, and the ground hides the rest
       const hidden = (1 - rise) * size * 0.86;
       const rgb = rgbOf(ch.color);
@@ -13581,7 +13690,7 @@ window.WS = window.WS || {};
          backlight actually falls. */
       const gy = c.y - size * 0.52 + hidden;
       const halo = ctx.createRadialGradient(c.x, gy, size * 0.10, c.x, gy, size * 0.62);
-      halo.addColorStop(0, `rgba(${rgb},${(known ? 0.30 : 0.40).toFixed(3)})`);
+      halo.addColorStop(0, `rgba(${rgb},${(known ? 0.24 : 0.32).toFixed(3)})`);
       halo.addColorStop(1, `rgba(${rgb},0)`);
       ctx.fillStyle = halo;
       ctx.beginPath(); ctx.arc(c.x, gy, size * 0.62, 0, WS.TAU); ctx.fill();
@@ -13591,7 +13700,7 @@ window.WS = window.WS || {};
          no compositing tricks, and it is what stops a black shape against a
          sunrise from being a black shape. */
       const rimS = size * 1.07, rimO = (rimS - size) / 2;
-      ctx.globalAlpha = a * (known ? 0.42 : 0.60);
+      ctx.globalAlpha = a * (known ? 0.34 : 0.46);
       ctx.drawImage(flood(sprite, `rgba(${rgb},1)`),
         c.x - rimS / 2, top - rimO, rimS, rimS);
       ctx.globalAlpha = a;
@@ -13651,13 +13760,14 @@ window.WS = window.WS || {};
    * to survive being called without it, because the guard draws them bare to
    * check they are all different pictures. */
   const BEATS = {
-    night(ctx, t) {
+    night(ctx, t, k, env) {
       ensure();
-      sky(ctx, t, 0); ridgeline(ctx, 0);
-      wood(ctx, woodFar, '#04060b');
-      ground(ctx, 0);
+      const l = lightOf(env, 0);
+      sky(ctx, t, l); ridgeline(ctx, l);
+      wood(ctx, woodFar, WOOD_FAR);
+      ground(ctx, l);
       wood(ctx, woodNear, '#020407');
-      mist(ctx, t, 0);
+      mist(ctx, t, l);
       // something moving in the dark, never quite resolved
       ctx.save();
       ctx.globalAlpha = 0.5;
@@ -13671,15 +13781,16 @@ window.WS = window.WS || {};
       ctx.restore();
     },
 
-    ember(ctx, t, k) {
+    ember(ctx, t, k, env) {
       ensure();
-      sky(ctx, t, 0); ridgeline(ctx, 0);
-      wood(ctx, woodFar, '#04060b');
-      ground(ctx, 0);
+      const l = lightOf(env, 0);
+      sky(ctx, t, l); ridgeline(ctx, l);
+      wood(ctx, woodFar, WOOD_FAR);
+      ground(ctx, l);
       wood(ctx, woodNear, '#020407');
       const glow = 0.25 + 0.75 * k * (0.85 + 0.15 * WS.sin(t * 3));
       gem(ctx, W * 0.5, GROUND - 26, 17 + 5 * k, glow);
-      mist(ctx, t, 0);
+      mist(ctx, t, l);
       drift(ctx, t, k * 0.8, 0);
       // motes lifting straight off the stone
       ctx.save();
@@ -13697,11 +13808,12 @@ window.WS = window.WS || {};
       ctx.restore();
     },
 
-    draw(ctx, t, k) {
+    draw(ctx, t, k, env) {
       ensure();
-      sky(ctx, t, 0); ridgeline(ctx, 0);
-      wood(ctx, woodFar, '#04060b');
-      ground(ctx, 0);
+      const l = lightOf(env, 0);
+      sky(ctx, t, l); ridgeline(ctx, l);
+      wood(ctx, woodFar, WOOD_FAR);
+      ground(ctx, l);
       wood(ctx, woodNear, '#020407');
       const gx = W * 0.5 - 150, gy = GROUND - 26;
       const px = W * 0.5 + 90;
@@ -13722,16 +13834,17 @@ window.WS = window.WS || {};
         ctx.beginPath(); ctx.arc(x, y, 6.5, 0, WS.TAU); ctx.fill();
       }
       ctx.restore();
-      mist(ctx, t, 0);
+      mist(ctx, t, l);
       watcher(ctx, px, 146, carry, t);
       drift(ctx, t, carry, carry);
     },
 
-    horde(ctx, t, k) {
+    horde(ctx, t, k, env) {
       ensure();
-      sky(ctx, t, 0); ridgeline(ctx, 0);
-      wood(ctx, woodFar, '#04060b');
-      ground(ctx, 0);
+      const l = lightOf(env, 0);
+      sky(ctx, t, l); ridgeline(ctx, l);
+      wood(ctx, woodFar, WOOD_FAR);
+      ground(ctx, l);
       watcher(ctx, W * 0.5, 146, 0.85, t);
       // they close from both edges, and they keep closing
       const march = k * 250;
@@ -13751,25 +13864,37 @@ window.WS = window.WS || {};
       }
       ctx.restore();
       wood(ctx, woodNear, '#020407');
-      mist(ctx, t, 0);
+      mist(ctx, t, l);
       drift(ctx, t, 0.6, 1);
     },
 
-    stand(ctx, t, k) {
+    stand(ctx, t, k, env) {
+      /* The last scene before dawn, and the light is already on its way: this
+         is where the horizon starts to warm, under the ring, while she is
+         still holding it. Version one's best moment was the light coming up
+         slowly, and it comes up slowly by starting before anybody looks. */
       ensure();
-      sky(ctx, t, 0); ridgeline(ctx, 0);
-      wood(ctx, woodFar, '#04060b');
-      ground(ctx, 0);
+      const l = lightOf(env, 0);
+      sky(ctx, t, l); ridgeline(ctx, l);
+      wood(ctx, woodFar, WOOD_FAR);
+      ground(ctx, l);
       const cx = W * 0.5, cy = GROUND - 56;
       const r = 190 + 26 * WS.sin(t * 1.6);
+      /* The ring gives way as the sky takes over. Measured, the frame got
+         DARKER at t=40.8 - the moment the dawn begins - because this ring is
+         the brightest thing in the piece and it was simply dissolving away
+         under a sky that had not caught up yet. The light she is holding fades
+         as the light she is waiting for arrives, which is both the fix and the
+         thing the scene is about. */
+      const held = WS.max(0, 1 - lightOf(env, 0) * 2.6);
       // the ring of held light, and the dark stopped at the edge of it
       const g = ctx.createRadialGradient(cx, cy, r * 0.30, cx, cy, r);
-      g.addColorStop(0, 'rgba(245,197,107,.18)');
-      g.addColorStop(0.72, 'rgba(245,197,107,.06)');
+      g.addColorStop(0, `rgba(245,197,107,${(0.18 * held).toFixed(3)})`);
+      g.addColorStop(0.72, `rgba(245,197,107,${(0.06 * held).toFixed(3)})`);
       g.addColorStop(1, 'rgba(245,197,107,0)');
       ctx.fillStyle = g;
       ctx.beginPath(); ctx.arc(cx, cy, r, 0, WS.TAU); ctx.fill();
-      ctx.strokeStyle = `rgba(245,197,107,${(0.30 + 0.2 * WS.sin(t * 1.6)).toFixed(3)})`;
+      ctx.strokeStyle = `rgba(245,197,107,${((0.30 + 0.2 * WS.sin(t * 1.6)) * held).toFixed(3)})`;
       ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(cx, cy, r, 0, WS.TAU); ctx.stroke();
       ctx.save();
@@ -13783,7 +13908,7 @@ window.WS = window.WS || {};
         ctx.drawImage(sprite, x - c.s * 0.45, y - c.s * 0.56, c.s * 0.9, c.s * 0.9);
       }
       ctx.restore();
-      mist(ctx, t, 0);
+      mist(ctx, t, l);
       watcher(ctx, cx, 150, 0.75 + 0.25 * k, t);
       drift(ctx, t, 0.9, 1);
     },
@@ -13791,36 +13916,38 @@ window.WS = window.WS || {};
     dawn(ctx, t, k, env) {
       ensure();
       const crest = env && env.crest !== undefined ? env.crest : k * 0.5;
-      sky(ctx, t, k);
-      sunrise(ctx, k);
-      ridgeline(ctx, k);
-      wood(ctx, woodFar, mix('#04060b', '#1b1018', k));
-      ground(ctx, k);
+      const l = lightOf(env, k);
+      sky(ctx, t, l);
+      sunrise(ctx, l);
+      ridgeline(ctx, l);
+      wood(ctx, woodFar, mix(WOOD_FAR, '#3a2432', l));
+      ground(ctx, l);
       /* The near wood goes BEHIND the roster here and only here. Everywhere
          else it is the nearest thing in the frame and belongs in front; at the
          crest it put a tree squarely across three survivors' faces, and a
          title card that hides half its own subject is a worse lie than a
          clearing that happens to be conveniently placed. */
-      wood(ctx, woodNear, mix('#020407', '#150c14', k));
+      wood(ctx, woodNear, mix('#020407', '#150c14', l));
       roster(ctx, t, crest);
-      shadow(ctx, W * 0.5, GROUND + 2, 146, k, crest);
-      mist(ctx, t, k);
+      shadow(ctx, W * 0.5, GROUND + 2, 146, l, crest);
+      mist(ctx, t, l);
       drift(ctx, t, 0.7, 1);
-      watcher(ctx, W * 0.5, 146, 1 - k * 0.5, t, 1, k * 0.42);
+      watcher(ctx, W * 0.5, 146, 1 - l * 0.5, t, 1, l * 0.5);
     },
 
     title(ctx, t, k, env) {
       ensure();
       const crest = env && env.crest !== undefined ? env.crest : 0.6 + k * 0.4;
-      sky(ctx, t, 1);
-      sunrise(ctx, 1);
-      ridgeline(ctx, 1);
-      wood(ctx, woodFar, mix('#04060b', '#1b1018', 1));
-      ground(ctx, 1);
-      wood(ctx, woodNear, mix('#020407', '#150c14', 1));
+      const l = lightOf(env, 1);
+      sky(ctx, t, l);
+      sunrise(ctx, l);
+      ridgeline(ctx, l);
+      wood(ctx, woodFar, mix(WOOD_FAR, '#3a2432', l));
+      ground(ctx, l);
+      wood(ctx, woodNear, mix('#020407', '#150c14', l));
       roster(ctx, t, crest);
       shadow(ctx, W * 0.5, GROUND + 2, 140, 1 - ease(WS.clamp((crest - 0.78) / 0.22, 0, 1)) * 0.85, crest);
-      mist(ctx, t, 1);
+      mist(ctx, t, l);
       drift(ctx, t, 0.5, 1);
       /* The lead holds their ground while the title comes up over them and the
          rank behind them goes out. In v1 they walked out of frame, because
@@ -13837,13 +13964,33 @@ window.WS = window.WS || {};
   P.scenes = () => (WS.Lore && WS.Lore.prologue && WS.Lore.prologue.scenes) || [];
   P.length = () => P.scenes().reduce((a, s) => a + (s.hold || 0), 0);
 
-  /** Which scene is on screen at `t`, and how far through it we are. */
+  /** Which scene is on screen at `t`, how far through it we are - and how far
+   *  through the RUN OF SCENES SHARING ITS BEAT.
+   *
+   *  That second number is the one the picture is drawn from, and it did not
+   *  used to exist. Half the script is two consecutive scenes of the same
+   *  beat with different words over them, and a beat draws itself from k - so
+   *  at the boundary between them k fell from 1 straight back to 0 and the
+   *  picture jumped. Measured: the gem's glow is `0.25 + 0.75 * k`, and at
+   *  t=15.0 it snapped from full to a quarter in one frame, moving the frame
+   *  twelve times as much as a typical step. The words still fade on the
+   *  scene's own k; only the picture reads the run. */
   P.at = function (t) {
-    let acc = 0;
     const list = this.scenes();
+    let acc = 0;
     for (let i = 0; i < list.length; i++) {
       const hold = list[i].hold || 0;
-      if (t < acc + hold) return { i, scene: list[i], k: (t - acc) / hold, start: acc };
+      if (t < acc + hold) {
+        let a = i, runStart = acc, total = hold;
+        while (a > 0 && list[a - 1].beat === list[i].beat) {
+          a--; runStart -= list[a].hold || 0; total += list[a].hold || 0;
+        }
+        for (let b = i + 1; b < list.length && list[b].beat === list[i].beat; b++) {
+          total += list[b].hold || 0;
+        }
+        return { i, scene: list[i], k: (t - acc) / hold, start: acc,
+          runIndex: a, runStart, runK: total > 0 ? (t - runStart) / total : 0 };
+      }
       acc += hold;
     }
     return null;
@@ -13854,6 +14001,7 @@ window.WS = window.WS || {};
     if (!this.scenes().length) { if (onDone) onDone(); return; }
     buildScenery();
     warmCast();
+    this.dawnStart = this.findDawn();
     this.active = true;
     this.done = onDone || null;
     this.t = 0;
@@ -13903,17 +14051,26 @@ window.WS = window.WS || {};
     if (done) done();
   };
 
-  /* The camera never stops moving.
+  /* The camera never stops moving, and it never starts over.
    *
-   * Every scene gets its own slow push and its own direction, derived from the
-   * scene index so it is the same drift every time. It is small - a couple of
-   * percent of zoom and a few pixels of pan - and it is the single cheapest
-   * thing that separates a cinematic from a slideshow. */
-  function drive(ctx, i, k) {
-    const dir = (i % 3) - 1;              // -1, 0, 1, repeating
-    const zoom = 1.012 + 0.026 * ease(k) + (i % 2 ? 0.006 : 0);
-    const panX = dir * 13 * ease(k);
-    const panY = -4 * ease(k) + (i % 2 ? 2 : 0);
+   * It used to take the scene index and the scene's own k, which meant it
+   * pushed in across a scene and then SNAPPED back to its start at the cut -
+   * nine hard camera resets in fifty-two seconds. Measured by stepping the
+   * piece at 15fps and diffing consecutive frames, the night-to-night
+   * boundary - where nothing else in the picture changes at all - moved the
+   * frame four times as much as a typical step. That was the camera and
+   * nothing else.
+   *
+   * It is a function of absolute time now: one continuous push-in for the
+   * whole piece with a slow lateral wander over it, on periods long enough
+   * that no cycle ever repeats inside the running time. Because both the
+   * outgoing and incoming beats of a dissolve are drawn at the same t, they
+   * now share the camera exactly, so a dissolve is purely a change of
+   * content. */
+  function drive(ctx, t) {
+    const zoom = 1.018 + 0.030 * (t / 60) + 0.004 * WS.sin(t * 0.11);
+    const panX = 16 * WS.sin(t * 0.055) + 6 * WS.sin(t * 0.017 + 1.7);
+    const panY = -3 * WS.sin(t * 0.043);
     ctx.translate(W / 2 + panX, GROUND + panY);
     ctx.scale(zoom, zoom);
     ctx.translate(-W / 2, -GROUND);
@@ -13931,6 +14088,40 @@ window.WS = window.WS || {};
     return g;
   }
 
+  /** How far up the light is, 0 to 1, across the WHOLE piece.
+   *
+   * This is the thing version one got right and version two lost, and it was
+   * the first note back on it: the light coming up is the best moment in the
+   * prologue and it has to be slow. v2 took it from a luminance of 13 to 28 in
+   * six seconds - a sunrise on a stopwatch.
+   *
+   * So it is one curve over sixteen seconds, anchored to where the dawn scene
+   * actually starts rather than to a scene index, and it begins BEFORE that:
+   * the horizon is already warming faintly while the survivor is still holding
+   * the ring, which is what makes the dawn feel earned rather than announced.
+   * The exponent keeps the first half slower than the second, so it creeps and
+   * then breaks instead of sliding up at a constant rate. */
+  const PRE = 5.0;          // seconds of warming before the dawn scene proper
+  const PRE_LIGHT = 0.13;   // how much of it has happened by then
+  P.light = function (t) {
+    const D = this.dawnStart === undefined ? this.length() * 0.78 : this.dawnStart;
+    const end = this.length();
+    if (t < D - PRE) return 0;
+    if (t < D) return PRE_LIGHT * ease((t - (D - PRE)) / PRE);
+    const x = WS.clamp((t - D) / WS.max(0.01, end - D), 0, 1);
+    return PRE_LIGHT + (1 - PRE_LIGHT) * WS.pow(x, 1.45);
+  };
+
+  /** Absolute time at which the first dawn scene begins. */
+  P.findDawn = function () {
+    let acc = 0;
+    for (const s of this.scenes()) {
+      if (s.beat === 'dawn') return acc;
+      acc += s.hold || 0;
+    }
+    return this.length() * 0.78;
+  };
+
   /** Called by Renderer.draw, inside the letterboxed world transform. */
   P.render = function (ctx, time) {
     if (this.last === null) this.last = time;
@@ -13945,25 +14136,28 @@ window.WS = window.WS || {};
        of stranding it in the middle of a shot. */
     const total = this.length();
     const crest = WS.clamp(1 - (total - this.t) / CREST, 0, 1);
-    const env = { crest };
+    const light = this.light(this.t);
+    const env = { crest, light };
+    const runK = WS.clamp(now.runK, 0, 1);
 
     const beat = BEATS[now.scene.beat] || BEATS.night;
     ctx.save();
-    drive(ctx, now.i, WS.clamp(now.k, 0, 1));
-    beat(ctx, this.t, WS.clamp(now.k, 0, 1), env);
+    drive(ctx, this.t);
+    beat(ctx, this.t, runK, env);
     ctx.restore();
 
-    /* Dissolve out of the scene before this one, but only where the BEAT
-       changes: half the script is two scenes of the same picture with
-       different words over it, and cross-fading a shot with itself is a
-       stutter, not a transition. */
-    const prev = now.i > 0 ? this.scenes()[now.i - 1] : null;
-    const into = this.t - now.start;
-    if (prev && prev.beat !== now.scene.beat && into < FADE) {
+    /* Dissolve out of the beat before this one. Same-beat boundaries have
+       nothing to dissolve - runK carries straight through them - so this fires
+       only where the picture genuinely changes, and it measures from the start
+       of the RUN rather than of the scene. */
+    const list = this.scenes();
+    const prev = now.runIndex > 0 ? list[now.runIndex - 1] : null;
+    const into = this.t - now.runStart;
+    if (prev && into < FADE) {
       const g = bufferCtx();
       const out = BEATS[prev.beat] || BEATS.night;
       g.save();
-      drive(g, now.i - 1, 1);
+      drive(g, this.t);
       out(g, this.t, 1, env);
       g.restore();
       ctx.save();
@@ -13993,19 +14187,29 @@ window.WS = window.WS || {};
     }
 
     // a hard vignette: this is a scene, not a screen
-    const v = ctx.createRadialGradient(W / 2, H * 0.42, H * 0.28, W / 2, H * 0.42, H * 0.88);
+    /* Softer than it was. A heavy vignette plus a dark unbroken mass along the
+       horizon is how a landscape turns into a cave mouth; the ranges above
+       carry the haze now, and this only has to close the frame. */
+    const v = ctx.createRadialGradient(W / 2, H * 0.44, H * 0.34, W / 2, H * 0.44, H * 0.94);
     v.addColorStop(0, 'rgba(0,0,0,0)');
-    v.addColorStop(0.62, 'rgba(0,0,0,.30)');
-    v.addColorStop(1, 'rgba(0,0,0,.80)');
+    v.addColorStop(0.62, 'rgba(0,0,0,.16)');
+    v.addColorStop(1, 'rgba(0,0,0,.62)');
     ctx.fillStyle = v;
     ctx.fillRect(0, 0, W, H);
 
     /* The lower third belongs to the words. Without this the crowd walked
        straight through the sentence describing it. It eases off under the
        title, where there is one short line and a rank of survivors that the
-       band would otherwise be sitting on. */
+       band would otherwise be sitting on.
+     *
+     * EASED, not switched. As a boolean this was the third of the three jump
+     * cuts: the band went from 80/95% opacity to 50/59% in a single frame at
+     * t=47.33, and because it covers the bottom quarter of the screen that
+     * moved the frame ten times as much as a typical step - a visible flash
+     * across the foot of the picture exactly as the title arrived. It rides
+     * the crest now, which is already smooth. */
     const isTitle = now.scene.beat === 'title';
-    const band = isTitle ? 0.62 : 1;
+    const band = 1 - 0.38 * ease(WS.clamp((crest - 0.30) / 0.30, 0, 1));
     const s2 = ctx.createLinearGradient(0, TEXT_TOP - 96, 0, H);
     s2.addColorStop(0, 'rgba(4,5,8,0)');
     s2.addColorStop(0.55, `rgba(4,5,8,${(0.80 * band).toFixed(3)})`);

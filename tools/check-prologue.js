@@ -67,6 +67,7 @@ const VERSIONS = [2, 1];
 const say = (v, msg) => fail.push(`v${v}: ${msg}`);
 
 async function pass(browser, version) {
+  let smoothness = null, rise = null;
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => say(version, 'page error: ' + e.message));
@@ -201,6 +202,117 @@ async function pass(browser, version) {
     seenShape.set(hash, name);
   }
 
+  /* ---- it does not cut ---------------------------------------------------
+   * Version two only. Version one is frozen and cuts at almost every scene
+   * boundary by its own design; measured, it moves the picture up to 52.8x a
+   * typical step at t=25.6. This rule is the thing version two exists to do.
+   *
+   * The piece is stepped at 15fps and consecutive frames are diffed. A
+   * dissolve is a slope and a cut is a spike, so the question is simply
+   * whether any scene boundary moves the frame far more than the frames
+   * around it do. All three of v2's original spikes were invisible in code
+   * review and obvious here: the gem's glow is `0.25 + 0.75 * k` and k reset
+   * to zero between two ember scenes (12x); the camera restarted its push at
+   * every boundary, which showed up at night-to-night where NOTHING else in
+   * the picture changes (4x); and the lower-third scrim was switched from
+   * 0.80 to 0.50 opacity in one frame under the title (10x). */
+  if (version === 2) {
+    const smooth = await page.evaluate(async () => {
+      const canvas = document.getElementById('game-canvas');
+      const g = canvas.getContext('2d');
+      const total = WS.Prologue.length();
+      const N = 4096;
+      const steps = [];
+      let prev = null;
+      for (let t = 0.2; t < total - 0.05; t += 1 / 15) {
+        WS.Prologue.t = t; WS.Prologue.last = null;
+        await new Promise((r) => requestAnimationFrame(r));
+        const d = g.getImageData(0, 0, canvas.width, canvas.height).data;
+        const stride = Math.max(4, Math.floor(d.length / 4 / N) * 4);
+        const cur = [];
+        for (let i = 0; i < d.length && cur.length < N; i += stride) {
+          cur.push(d[i] + d[i + 1] + d[i + 2]);
+        }
+        let diff = 0;
+        if (prev) {
+          for (let i = 0; i < cur.length; i++) diff += Math.abs(cur[i] - prev[i]);
+          diff /= cur.length * 3;
+        }
+        steps.push({ t, diff });
+        prev = cur;
+      }
+      // where the scenes actually change, taken from the script
+      const bounds = [];
+      let acc = 0;
+      for (const sc of WS.Prologue.scenes()) { acc += sc.hold || 0; bounds.push(acc); }
+      bounds.pop();
+      return { steps, bounds };
+    });
+    const diffs = smooth.steps.map((r) => r.diff).sort((a, b) => a - b);
+    const med = diffs[Math.floor(diffs.length / 2)] || 1e-6;
+    let worst = { at: 0, ratio: 0 };
+    for (const b of smooth.bounds) {
+      const near = smooth.steps.filter((r) => r.t >= b - 0.02 && r.t <= b + 0.24);
+      const hi = Math.max(0, ...near.map((r) => r.diff));
+      if (hi / med > worst.ratio) worst = { at: b, ratio: hi / med };
+    }
+    if (worst.ratio > 6) {
+      say(version, `the scene boundary at ${worst.at.toFixed(1)}s is a cut, not a `
+        + `transition - it moves the picture ${worst.ratio.toFixed(1)}x as much as a `
+        + 'typical step of the same length elsewhere in the piece');
+    }
+    smoothness = worst.ratio;
+  }
+
+  /* ---- the light comes up, and it comes up SLOWLY -------------------------
+   * The best thing in version one is the light rising, and the first pass at
+   * version two lost it: the frame went from a luminance of 13 to 28 in six
+   * seconds, which is a sunrise on a stopwatch. It has to be a long move, and
+   * it has to be going the right way the whole time - a dip anywhere in it is
+   * the sky getting darker while the sun comes up. */
+  if (version === 2) {
+    const lum = await page.evaluate(async () => {
+      const canvas = document.getElementById('game-canvas');
+      const g = canvas.getContext('2d');
+      const total = WS.Prologue.length();
+      const out = [];
+      for (let t = 0.5; t < total - 0.05; t += 0.5) {
+        WS.Prologue.t = t; WS.Prologue.last = null;
+        await new Promise((r) => requestAnimationFrame(r));
+        const d = g.getImageData(0, 0, canvas.width, canvas.height).data;
+        let sum = 0, n = 0;
+        for (let i = 0; i < d.length; i += 4 * 41) { sum += d[i] + d[i + 1] + d[i + 2]; n++; }
+        out.push({ t, v: sum / (n * 3) });
+      }
+      return out;
+    });
+    const lo = Math.min(...lum.map((r) => r.v));
+    const hi = Math.max(...lum.map((r) => r.v));
+    // when does the rise begin? the first sample a quarter of the way up
+    const quarter = lo + (hi - lo) * 0.25;
+    const began = (lum.find((r) => r.v >= quarter) || lum[lum.length - 1]).t;
+    const ended = (lum.slice().reverse().find((r) => r.v < hi * 0.98) || lum[0]).t;
+    rise = { seconds: ended - began, from: lo, to: hi };
+    if (hi < lo * 2.2) {
+      say(version, `the whole piece only brightens from ${lo.toFixed(0)} to ${hi.toFixed(0)} `
+        + '- the light never really comes up');
+    }
+    if (rise.seconds < 10) {
+      say(version, `the light comes up in ${rise.seconds.toFixed(1)}s - it is the best `
+        + 'moment in the piece and it is being spent like a light switch');
+    }
+    // and it must never go backwards by more than a rounding wobble
+    let dip = 0, dipAt = 0;
+    for (let i = 1; i < lum.length; i++) {
+      const d = lum[i - 1].v - lum[i].v;
+      if (lum[i].t > began && d > dip) { dip = d; dipAt = lum[i].t; }
+    }
+    if (dip > (hi - lo) * 0.10) {
+      say(version, `the sky gets ${dip.toFixed(1)} DARKER at ${dipAt.toFixed(1)}s, in the `
+        + 'middle of the sunrise');
+    }
+  }
+
   /* ---- the random stream is handed back ---------------------------------- */
   const seeds = await page.evaluate(() => {
     WS.setSeed(12345);
@@ -285,7 +397,8 @@ async function pass(browser, version) {
   if (second.active) say(version, 'a returning player was made to watch the prologue again');
 
   await ctx.close();
-  return { scenes: first.scenes, seconds: first.seconds, beats: byBeat.size };
+  return { scenes: first.scenes, seconds: first.seconds, beats: byBeat.size,
+    smoothness, rise };
 }
 
 (async () => {
@@ -302,7 +415,11 @@ async function pass(browser, version) {
     process.exit(1);
   }
   const each = seen.map(([v, r]) => `cut ${v} runs ${r.scenes} scenes over `
-    + `${r.seconds.toFixed(0)}s in ${r.beats} distinct beats`).join(', ');
+    + `${r.seconds.toFixed(0)}s in ${r.beats} distinct beats`
+    + (r.smoothness === null ? '' : `, its worst scene boundary moving the picture `
+      + `${r.smoothness.toFixed(1)}x a typical step`)
+    + (r.rise === null ? '' : ` and its light coming up over ${r.rise.seconds.toFixed(0)}s `
+      + `from ${r.rise.from.toFixed(0)} to ${r.rise.to.toFixed(0)}`)).join('; ');
   console.log(`ok: ${each} - in both, every scripted line reaches the screen inside its own `
     + 'band, every beat draws its own picture, a key, a tap and a pad each end it, the '
     + 'random stream comes back untouched, it is watchable again from the menu, and a '
