@@ -61,7 +61,7 @@
     quantity: {
       name: 'Duplicity', art: 'triple', quality: 'rare',
       description: '+1 projectile for volley weapons', max: 3, v: 1,
-      detail: 'Adds a projectile to bolts, knives, arrows, axes, shields, storm strikes, and chain leaps. Auras are unaffected.',
+      detail: 'Adds a projectile to bolts, knives, arrows, axes, shields, storm strikes, and chain leaps. Auras and beams are unaffected.',
       apply: (p, up) => { p.projectileBonus += up.v; },
     },
     luck: {

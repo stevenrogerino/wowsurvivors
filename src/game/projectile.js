@@ -197,9 +197,20 @@
         resolveHit(b, e);
 
         if (b.bounces > 0) {
-          // Ricochet: turn toward another target rather than dying.
+          /* Ricochet: turn toward another target rather than dying.
+           *
+           * Excluding EVERYTHING it has already hit, not just the one it came
+           * off. hitBy stops a bolt damaging the same enemy twice, so a shield
+           * that bounced back onto an earlier victim simply passed through it
+           * and flew off the field with its whole remaining budget unspent.
+           * Measured on Judgement Disc surrounded by sixteen targets: three
+           * bounces, six bounces and eleven bounces all landed exactly four
+           * hits. Every extra ricochet the game has ever granted - Duplicity,
+           * the Verdict discovery, Reckoning's evolution - was worth nothing.
+           * The homing re-acquire above already excludes hitBy for the very
+           * same reason; this is that fix, in the other branch. */
           b.bounces--;
-          const next = WS.Enemy.findNearest(b.x, b.y, 320, new Set([e]));
+          const next = WS.Enemy.findNearest(b.x, b.y, 320, b.hitBy);
           if (next) {
             const speed = WS.sqrt(b.vx * b.vx + b.vy * b.vy);
             const [nx, ny] = WS.normalize(next.x - b.x, next.y - b.y);
