@@ -2408,9 +2408,26 @@ window.WS = window.WS || {};
     },
 
     /** Unlocks everything, for showcasing the whole roster. */
-    unlockAll() {
+    /* Everything the account can hold, for testing.
+     *
+     * This used to be characters and maps only, which is half of what the
+     * button says: a tester who pressed "Unlock all" got the whole roster and
+     * every battlefield and then stood in front of a Trainer with no gold and
+     * no ranks, which is most of the meta-progression in the game. It opens
+     * the whole account now - roster, battlefields, Hyper on every one of
+     * them, every Trainer rank at its cap, and a bank to spend.
+     *
+     * It deliberately does NOT touch achievements or the discovery codex.
+     * Those are a record of things that were actually done, and filling them
+     * in would not unlock anything - it would only make the statistics lie. */
+    unlockAll(gold) {
       for (const id of WS.CharacterOrder) this.db.unlocks.characters[id] = true;
       for (const id of WS.MapOrder) this.db.unlocks.maps[id] = true;
+      for (const id of WS.MapOrder) this.db.unlocks.hyper[id] = true;
+      for (const id of Object.keys(WS.MetaUpgrades || {})) {
+        this.db.meta[id] = WS.MetaUpgrades[id].max;
+      }
+      this.db.gold = WS.max(this.db.gold, gold === undefined ? 250000 : gold);
       this.save();
     },
 

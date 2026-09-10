@@ -1,0 +1,100 @@
+{
+  "format": "emberwatch.save",
+  "version": 1,
+  "exported": "2026-09-10T06:41:08.582Z",
+  "sum": "3e0802ed",
+  "save": {
+    "schema": 2,
+    "gold": 1000000,
+    "hyperArmed": false,
+    "seenManual": true,
+    "seenPrologue": true,
+    "meta": {
+      "meta_might": 0,
+      "meta_toughness": 0,
+      "meta_swiftness": 0,
+      "meta_armor": 0,
+      "meta_greed": 0,
+      "meta_wisdom": 0,
+      "meta_recovery": 0,
+      "meta_luck": 0,
+      "meta_reroll": 0,
+      "meta_banish": 0,
+      "meta_headstart": 0,
+      "meta_revive": 0,
+      "meta_egg": 0
+    },
+    "unlocks": {
+      "characters": {
+        "mage": true,
+        "priest": true,
+        "rogue": true,
+        "hunter": true,
+        "warrior": true,
+        "warlock": true,
+        "shaman": true,
+        "paladin": true,
+        "graveblade": true,
+        "ruinseeker": true
+      },
+      "maps": {
+        "thornhollow": true,
+        "dustreach": true,
+        "mourneholt": true,
+        "ochre": true,
+        "palewastes": true,
+        "boss_arena": true
+      },
+      "hyper": {
+        "thornhollow": true,
+        "dustreach": true,
+        "mourneholt": true,
+        "ochre": true,
+        "palewastes": true,
+        "boss_arena": true
+      }
+    },
+    "achievements": {},
+    "combos": {},
+    "settings": {
+      "sound": true,
+      "music": true,
+      "effectsVolume": 0.7,
+      "musicVolume": 0.45,
+      "screenShake": true,
+      "damageNumbers": true,
+      "healNumbers": true,
+      "showHealthBars": true,
+      "levelUpTooltips": true,
+      "cinematic": 2,
+      "victoryCinematic": true,
+      "hudLayout": "strip",
+      "mouseSteer": true,
+      "difficulty": "veteran",
+      "quality": "high"
+    },
+    "statistics": {
+      "totalKills": 0,
+      "totalGold": 0,
+      "totalRuns": 0,
+      "totalVictories": 0,
+      "totalTime": 0,
+      "gemsCollected": 0,
+      "bestRunTime": 0,
+      "bestLevel": 0,
+      "bestBossesInRun": 0,
+      "bestNoHitStreak": 0,
+      "bestDamage": 0,
+      "maxWeapons": 0,
+      "evolutions": 0,
+      "unions": 0,
+      "coffinsOpened": 0,
+      "gravebladesClaimed": 0,
+      "glaivesClaimed": 0,
+      "bestTime": {},
+      "bosses": {},
+      "families": {},
+      "bestiary": {}
+    }
+  }
+}
