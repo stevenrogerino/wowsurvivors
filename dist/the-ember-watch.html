@@ -2877,10 +2877,74 @@ window.WS = window.WS || {};
       evolveDescription: 'Judgment finds every last one of them.',
     },
 
-    /* ---- Union super-weapons: never offered as ordinary new weapons ------ */
+    /* ---- Union super-weapons: never offered as ordinary new weapons ------
+     *
+     * TUNED AGAINST THE PAIR EACH ONE EATS, at roughly 82% of it. Below the
+     * pair on purpose: merging hands a weapon slot back, and what goes in that
+     * slot is the rest of the trade. Too far below and the deepest thing a
+     * build can reach feels like a punishment.
+     *
+     * The numbers came from measuring effective damage - overkill clipped -
+     * over twenty seconds of real waves ten minutes into a run, five seeds,
+     * against the two evolved weapons the merge consumes. Not from dummies: a
+     * ring of rooted immortal targets flatters persistent ground damage so
+     * badly that it rated Sanctuary at 31% of its pair when a live fight rates
+     * it 86%.
+     *
+     * MEASURED AT TWENTY-ONE MINUTES, not ten. A union cannot exist until two
+     * weapons are at rank 8 AND evolved, so the fight it is balanced for is
+     * the late one - where enemies carry far more health and a weapon that
+     * looked fine at ten minutes can have fallen off badly. Firmament reads
+     * 78% of its pair at 10:00 and 60% at 21:00; Stormcall reads 78% and then
+     * 109%. Balancing these at the wrong minute balances a different weapon.
+     *
+     * COOLDOWN LAST. Cast rate changes how a weapon FEELS more than how strong
+     * it is, so it is not the first knob to reach for - but it is the right
+     * one when a weapon is genuinely rate-limited rather than reach-limited.
+     * None of the five needed it. Each is tuned on whatever it is actually
+     * limited by, and that turns out to be structural per behaviour:
+     *
+     *   storm   strikes   - each bolt already kills what it lands on, so what
+     *                       limits Firmament is how much ground it covers.
+     *                       +40% damage moved it three points.
+     *   aimed   splash    - Ruin Unbound one-shots; its blast radius is reach.
+     *   ring    knives    - same: coverage, not per-knife damage.
+     *   nova    radius    - area goes as the square, so 205 -> 190 is -14%.
+     *   orbit   blades    - Stormcall. Damage looked like the knob once (+40%
+     *                       took it from 109% of its pair to 139%) and then
+     *                       did nothing on a longer sample, which is how you
+     *                       find out you were reading noise. A blade is a
+     *                       coverage change and it moved consistently.
+     *
+     * The target is 82%, moved either way by how a union AGES - but only two of
+     * the five were moved, because only two showed a signal bigger than the
+     * measurement. Run to run, twenty seconds of real waves over several seeds
+     * varies by about ten points; three of these sit between 73% and 92%,
+     * which is inside that. Firmament at 60% and Stormcall at 109% are not,
+     * and they are the two that changed. Fitting the middle three any closer
+     * would be fitting noise, and the tuning bench is a better place to do it
+     * with a longer sample than a comment block is to pretend otherwise.
+     *
+     * And CLEAR RATE is the target, not raw output. The two disagree: Ruin
+     * Unbound measured 93% of its pair on effective damage while killing 106%
+     * as many things, because it is a precision nuke that overkills what it
+     * touches. Kills is what a player feels and it cannot be inflated by
+     * overkill, so it is the number these were fitted to.
+     *
+     * Expect the response to be SUB-LINEAR. Slowing a weapon leaves more alive,
+     * a denser field gives the next swing more to hit, and the ratio drifts
+     * back: a 24% longer cooldown on Ruin Unbound bought only nine points.
+     * Every change here is over-applied by about half to account for it.
+     *
+     * COOLDOWN is the knob, not damage. This deep into a run these weapons
+     * already kill most of what they touch in one blow, so per-hit damage
+     * mostly moves overkill: Ruin Unbound's damage was cut 42% in testing and
+     * its effective output fell only from 102% to 91%. How often it goes off
+     * is what actually limits it.
+     */
     union_firmament: {
       name: 'Firmament', school: 'arcane', behavior: 'storm', isUnion: true, art: 'moon',
-      cooldown: 1.05, damage: 20, strikes: 7, stormRadius: 270, splash: 72, radius: 12,
+      cooldown: 1.05, damage: 20, strikes: 8, stormRadius: 270, splash: 72, radius: 12,
       description: 'Sun and moon rain from the heavens without end.',
     },
     union_ruin: {
@@ -2901,7 +2965,7 @@ window.WS = window.WS || {};
     },
     union_stormcall: {
       name: 'Stormcall', school: 'nature', behavior: 'orbit', isUnion: true, art: 'sword',
-      cooldown: 4.60, damage: 26, projectiles: 6, orbitRadius: 95, orbitSpeed: 5.0,
+      cooldown: 4.60, damage: 26, projectiles: 5, orbitRadius: 95, orbitSpeed: 5.0,
       duration: 4.0, radius: 22, procChain: 0.35, color: [0.45, 0.85, 1.00],
       description: 'Blessed blade of the Tempest: a cyclone of steel that answers every cut with lightning.',
     },
