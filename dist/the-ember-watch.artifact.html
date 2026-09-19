@@ -1814,20 +1814,47 @@ window.WS = window.WS || {};
   /** Substitutes {field}, {field%}, {field*%} and {field~%} in a description,
    *  exactly like the addon's tooltip templating:
    *    {v}    -> raw value            {v%}   -> value x100
-   *    {v*%}  -> (value-1) x100       {v~%}  -> (1-value) x100 */
+   *    {v*%}  -> (value-1) x100       {v~%}  -> (1-value) x100
+   *
+   *  A dotted key is read from the tuning tables instead of the record:
+   *  {Config.deathTime}, {Weapons.cinderfall.damage}. That exists because the
+   *  numbers a tooltip quotes are very often NOT its own. The manual says six
+   *  weapons and rank eight; Warding Light names three block intervals that
+   *  live in Config; Ruin Hunger quoted a fel rate that had been duplicated
+   *  onto the upgrade and had already drifted from the Config value the game
+   *  actually used. A tooltip that cannot reach the number it describes will
+   *  eventually lie about it.
+   *
+   *  It resolves through WS.Tuning.read, so a dotted key reaches exactly what
+   *  the tuning bench can reach and nothing else - the same rooted, walled
+   *  path table, and no way to reach __proto__ from a description string. */
+  /* Two decimals, trailing zeros dropped.
+   *
+   * Rounding a percentage to a whole number is right for nearly all of them
+   * and wrong for the one that matters most: the Curious Egg grants 0.001,
+   * which is a tenth of a percent, and a whole-number round printed "+0%
+   * damage per egg" on a hundred-rank upgrade that costs a fortune. Floating
+   * point also needs the slack - (1 - 0.92) * 100 is 8.000000000000007, and
+   * that has to print as 8. */
+  function fmt(n) {
+    const r = Math.round(n * 100) / 100;
+    return String(Object.is(r, -0) ? 0 : r);
+  }
+
   WS.template = function (text, source) {
     if (!text) return '';
-    return text.replace(/\{(\w+)([%*~]*)\}/g, (all, key, op) => {
-      const v = source[key];
+    return text.replace(/\{([\w.]+)([%*~]*)\}/g, (all, key, op) => {
+      let v = source ? source[key] : undefined;
+      if (v === undefined && key.indexOf('.') > 0 && WS.Tuning) v = WS.Tuning.read(key);
       if (v === undefined) return all;
       /* A string substitutes as itself. Every caller until now fed this
          numbers - blessing and upgrade descriptions - so the default branch
          rounds, and the first template with a name in it rendered "NAN". */
       if (typeof v === 'string') return v;
-      if (op === '%') return String(WS.round(v * 100));
-      if (op === '*%') return String(WS.round((v - 1) * 100));
-      if (op === '~%') return String(WS.round((1 - v) * 100));
-      return String(WS.round(v * 100) / 100);
+      if (op === '%') return fmt(v * 100);
+      if (op === '*%') return fmt((v - 1) * 100);
+      if (op === '~%') return fmt(1e-9 + (1 - v) * 100);
+      return fmt(v);
     });
   };
 
@@ -1936,6 +1963,15 @@ window.WS = window.WS || {};
     dodgeInvulnerable: 0.2,
 
     blockInterval1: 30, blockInterval2: 22, blockInterval3: 15,
+    /* The kit, and the rank ceiling. Read through WS.MAX_WEAPONS and
+       WS.WEAPON_MAX_LEVEL, which are getters over these. */
+    maxWeapons: 6,
+    weaponMaxLevel: 8,
+    /* Dark Bargain's price, which was two numbers written into the middle of
+       waves.js and enemy.js. The upgrade's own tooltip quotes them, so they
+       had to be somewhere a tooltip could reach. */
+    curseSpawnRate: 0.20,
+    curseEnemySpeed: 0.08,
 
     homingReacquireRange: 520,
 
@@ -2048,8 +2084,20 @@ window.WS = window.WS || {};
     },
   };
 
-  WS.WEAPON_MAX_LEVEL = 8;
-  WS.MAX_WEAPONS = 6;
+  /* These two were bare constants on WS, which put them outside every tuning
+   * root: the cap on a weapon's rank and the size of your kit - two of the
+   * most consequential numbers in a survivors-like - were the only balance
+   * figures in the game that could not be tuned. They live in Config now.
+   *
+   * WS.WEAPON_MAX_LEVEL and WS.MAX_WEAPONS stay as getters over them rather
+   * than being renamed at fifteen call sites, in the game and in the test
+   * harnesses both. That is not to save the edit: a call site missed in a
+   * rename would go on reading a frozen 8 for ever and nothing would say so,
+   * whereas a getter cannot be out of date. */
+  Object.defineProperty(WS, 'WEAPON_MAX_LEVEL',
+    { get: () => WS.Config.weaponMaxLevel, configurable: true });
+  Object.defineProperty(WS, 'MAX_WEAPONS',
+    { get: () => WS.Config.maxWeapons, configurable: true });
 
 })(window.WS);
 
@@ -3665,91 +3713,91 @@ window.WS = window.WS || {};
   WS.Upgrades = {
     might: {
       name: 'Might', art: 'fist', quality: 'common',
-      description: '+10% weapon damage', max: 5, v: 0.10,
+      description: '+{v%}% weapon damage', max: 5, v: 0.10,
       detail: 'Multiplies the damage of every weapon you carry.',
       apply: (p, up) => { p.damageMultiplier += up.v; },
     },
     haste: {
       name: 'Haste', art: 'wing', quality: 'common',
-      description: '-8% weapon cooldowns', max: 5, v: 0.92,
+      description: '-{v~%}% weapon cooldowns', max: 5, v: 0.92,
       detail: 'Every weapon fires more often. Ranks stack multiplicatively.',
       apply: (p, up) => { p.cooldownMultiplier *= up.v; },
     },
     fleetfoot: {
       name: 'Fleetfoot', art: 'boot', quality: 'common',
-      description: '+12% movement speed', max: 5, v: 1.12,
+      description: '+{v*%}% movement speed', max: 5, v: 1.12,
       detail: 'You move faster.',
       apply: (p, up) => { p.moveSpeed *= up.v; },
     },
     magnet: {
       name: "Greed's Pull", art: 'magnet', quality: 'common',
-      description: '+25 pickup radius', max: 5, v: 25,
+      description: '+{v} pickup radius', max: 5, v: 25,
       detail: 'Gems, coins, and potions fly to you from farther away.',
       apply: (p, up) => { p.pickupRadius += up.v; },
     },
     vitality: {
       name: 'Vitality', art: 'heart', quality: 'common',
-      description: '+25 maximum health (and heals it)', max: 5, v: 25,
+      description: '+{v} maximum health (and heals it)', max: 5, v: 25,
       detail: 'A bigger health pool, plus a free heal when taken.',
       apply: (p, up) => { p.maxHealth += up.v; WS.Player.heal(p, up.v, 'vitality'); },
     },
     armor: {
       name: 'Ironhide', art: 'shield', quality: 'common',
-      description: '+2 armor (diminishing damage reduction)', max: 5, v: 2,
+      description: '+{v} armor (diminishing damage reduction)', max: 5, v: 2,
       detail: 'Every hit is cut by a share based on your armor - each point helps a little less than the last, and it never blocks a hit completely.',
       apply: (p, up) => { p.armor += up.v; },
     },
     precision: {
       name: 'Precision', art: 'crosshair', quality: 'uncommon',
-      description: '+7% critical strike chance', max: 5, v: 0.07,
+      description: '+{v%}% critical strike chance', max: 5, v: 0.07,
       detail: 'Chance for any weapon hit to strike critically.',
       apply: (p, up) => { p.critChance += up.v; },
     },
     ferocity: {
       name: 'Ferocity', art: 'claw', quality: 'uncommon',
-      description: '+25% critical strike damage', max: 4, v: 0.25,
+      description: '+{v%}% critical strike damage', max: 4, v: 0.25,
       detail: 'Your critical strikes hit even harder.',
       apply: (p, up) => { p.critDamage += up.v; },
     },
     area: {
       name: 'Expanse', art: 'expand', quality: 'uncommon',
-      description: '+12% effect area', max: 5, v: 0.12,
+      description: '+{v%}% effect area', max: 5, v: 0.12,
       detail: 'Bigger auras and splashes, wider orbits, longer chain leaps.',
       apply: (p, up) => { p.areaMultiplier += up.v; },
     },
     quantity: {
       name: 'Duplicity', art: 'triple', quality: 'rare',
-      description: '+1 projectile for volley weapons', max: 3, v: 1,
+      description: '+{v} projectile for volley weapons', max: 3, v: 1,
       detail: 'Adds a projectile to bolts, knives, arrows, axes, shields, storm strikes, and chain leaps. Auras and beams are unaffected.',
       apply: (p, up) => { p.projectileBonus += up.v; },
     },
     luck: {
       name: 'Fortune', art: 'coin', quality: 'uncommon',
-      description: '+15% luck (better and more drops)', max: 4, v: 0.15,
+      description: '+{v%}% luck (better and more drops)', max: 4, v: 0.15,
       detail: 'Better odds of coins, potions, sapper charges, and lodestones.',
       apply: (p, up) => { p.luck += up.v; },
     },
     wisdom: {
       name: 'Wisdom', art: 'book', quality: 'uncommon',
-      description: '+10% experience gained', max: 4, v: 0.10,
+      description: '+{v%}% experience gained', max: 4, v: 0.10,
       detail: 'Every gem is worth more experience.',
       apply: (p, up) => { p.xpMultiplier += up.v; },
     },
     recovery: {
       name: 'Recovery', art: 'leaf', quality: 'common',
-      description: '+0.5 health regenerated per second', max: 4, v: 0.5,
+      description: '+{v} health regenerated per second', max: 4, v: 0.5,
       detail: 'Steady healing, always ticking.',
       apply: (p, up) => { p.healthRegen += up.v; },
     },
     velocity: {
       name: 'Velocity', art: 'spear', quality: 'common',
-      description: '+15% projectile speed', max: 3, v: 0.15,
+      description: '+{v%}% projectile speed', max: 3, v: 0.15,
       detail: 'Bolts, knives, arrows, and shields fly faster. No effect on chains, auras, gyres, or storms.',
       apply: (p, up) => { p.projectileSpeed += up.v; },
     },
     dark_bargain: {
       name: 'Dark Bargain', art: 'skull', quality: 'epic',
-      description: 'The horde grows: +20% spawns, +8% enemy speed. You grow too: +15% XP and gold.',
+      description: 'The horde grows: +{Config.curseSpawnRate%}% spawns, +{Config.curseEnemySpeed%}% enemy speed. You grow too: +{v%}% XP and gold.',
       max: 3, v: 0.15,
       detail: 'A curse you choose. More enemies means more gems, more gold, more danger. Stacks.',
       apply: (p, up) => { p.curse += 1; p.xpMultiplier += up.v; p.goldMultiplier += up.v; },
@@ -3757,7 +3805,7 @@ window.WS = window.WS || {};
     warding_light: {
       name: 'Warding Light', art: 'aegis', quality: 'rare',
       description: 'A warding light blocks one hit entirely. Recharges over time.', max: 3,
-      detail: 'Blocks one hit every 30 / 22 / 15 seconds by rank.',
+      detail: 'Blocks one hit every {Config.blockInterval1} / {Config.blockInterval2} / {Config.blockInterval3} seconds by rank.',
       apply: (p) => {
         const c = WS.Config;
         const intervals = [c.blockInterval1, c.blockInterval2, c.blockInterval3];
@@ -3785,7 +3833,7 @@ window.WS = window.WS || {};
     },
     dread_command: {
       name: 'Dread Command', art: 'command', quality: 'epic',
-      description: '+30% summon damage and +10% summon attack speed', max: 5,
+      description: '+{v%}% summon damage and +{haste%}% summon attack speed', max: 5,
       detail: 'Drives everything you have summoned - spirit wolves and ghouls alike - to strike harder and more often. Worthless without something to command.',
       offer: (p) => (p.upgradeLevels.spirit_companion || 0) > 0 || (p.upgradeLevels.grave_call || 0) > 0,
       v: 0.30, haste: 0.10,
@@ -3796,12 +3844,12 @@ window.WS = window.WS || {};
     thorns: {
       name: 'Thorns', art: 'thorn', quality: 'uncommon',
       description: 'Attackers take damage back - melee and ranged.', max: 5,
-      detail: 'Any enemy that hits you - a melee swing OR a ranged bolt - takes 10 + 40% of that damage back per rank (even if you dodge or block). Ranged bolts reflect to the caster that fired them.',
+      detail: 'Any enemy that hits you - a melee swing OR a ranged bolt - takes {Config.thornsFlat} + {Config.thornsDamagePct%}% of that damage back per rank (even if you dodge or block). Ranged bolts reflect to the caster that fired them.',
       apply: (p) => { p.thornsRank += 1; },
     },
     curdled: {
       name: 'Curdled Light', art: 'desecrate', quality: 'epic',
-      description: '+15% of your healing lashes out as shadow damage', max: 5, v: 0.15,
+      description: '+{v%}% of your healing lashes out as shadow damage', max: 5, v: 0.15,
       detail: 'Healing you cannot use rots instead of going to waste: overheal erupts around you, and a growing share of the healing that does land strikes with it. Feeds on regeneration, lifesteal, and healing weapons.',
       offer: (p) => p.curdled > 0 || p.healthRegen > 0 || p.lifesteal > 0,
       apply: (p, up) => {
@@ -3812,7 +3860,11 @@ window.WS = window.WS || {};
     },
     ruin_hunger: {
       name: 'Ruin Hunger', art: 'soulrend', quality: 'epic',
-      description: '+25% fel from overkill, and +1s of Ruinform', max: 5, v: 0.25,
+      /* The two figures here belong to Config and are applied from there -
+         soulRending is a rank counter, and this upgrade's own `v` was a
+         COPY of Config.felPerRank that nothing read. A duplicated number is
+         a number that will disagree with itself eventually. */
+      description: '+{Config.felPerRank%}% fel from overkill, and +{Config.metaDurationPerRank}s of Ruinform', max: 5,
       detail: 'Every scrap of overkill feeds the ruin faster, and the transformation holds a second longer per rank.',
       offer: (p) => p.felAttuned > 0,
       apply: (p) => { p.soulRending += 1; },
@@ -3825,7 +3877,7 @@ window.WS = window.WS || {};
     },
     dodge: {
       name: 'Evasion', art: 'feint', quality: 'uncommon',
-      description: '+8% chance to avoid a hit entirely.', max: 4, v: 0.08,
+      description: '+{v%}% chance to avoid a hit entirely.', max: 4, v: 0.08,
       detail: 'Each rank adds a chance to completely dodge an incoming hit. Stacks with armor and blocks.',
       apply: (p, up) => { p.dodgeChance += up.v; },
     },
@@ -3850,57 +3902,57 @@ window.WS = window.WS || {};
   WS.MetaUpgrades = {
     meta_might: {
       name: 'Lessons: Strength', art: 'fist',
-      description: '+2% weapon damage per rank', max: 10, cost: 200, v: 0.02,
+      description: '+{v%}% weapon damage per rank', max: 10, cost: 200, v: 0.02,
       apply: (p, rank, m) => { p.damageMultiplier += m.v * rank; },
     },
     meta_toughness: {
       name: 'Lessons: Toughness', art: 'heart',
-      description: '+10 maximum health per rank', max: 10, cost: 180, v: 10,
+      description: '+{v} maximum health per rank', max: 10, cost: 180, v: 10,
       apply: (p, rank, m) => { p.maxHealth += m.v * rank; p.health += m.v * rank; },
     },
     meta_swiftness: {
       name: 'Lessons: Swiftness', art: 'boot',
-      description: '+2% movement speed per rank', max: 8, cost: 180, v: 0.02,
+      description: '+{v%}% movement speed per rank', max: 8, cost: 180, v: 0.02,
       apply: (p, rank, m) => { p.moveSpeed *= (1 + m.v * rank); },
     },
     meta_armor: {
       name: 'Lessons: Defense', art: 'shield',
-      description: '+1 armor per rank', max: 5, cost: 250, v: 1,
+      description: '+{v} armor per rank', max: 5, cost: 250, v: 1,
       apply: (p, rank, m) => { p.armor += m.v * rank; },
     },
     meta_greed: {
       name: 'Lessons: Greed', art: 'coin',
-      description: '+10% gold found per rank', max: 8, cost: 150, v: 0.10,
+      description: '+{v%}% gold found per rank', max: 8, cost: 150, v: 0.10,
       apply: (p, rank, m) => { p.goldMultiplier += m.v * rank; },
     },
     meta_wisdom: {
       name: 'Lessons: Wisdom', art: 'book',
-      description: '+4% experience per rank', max: 8, cost: 150, v: 0.04,
+      description: '+{v%}% experience per rank', max: 8, cost: 150, v: 0.04,
       apply: (p, rank, m) => { p.xpMultiplier += m.v * rank; },
     },
     meta_recovery: {
       name: 'Lessons: Recovery', art: 'leaf',
-      description: '+0.2 health per second per rank', max: 6, cost: 250, v: 0.2,
+      description: '+{v} health per second per rank', max: 6, cost: 250, v: 0.2,
       apply: (p, rank, m) => { p.healthRegen += m.v * rank; },
     },
     meta_luck: {
       name: 'Lessons: Fortune', art: 'clover',
-      description: '+5% luck per rank', max: 6, cost: 220, v: 0.05,
+      description: '+{v%}% luck per rank', max: 6, cost: 220, v: 0.05,
       apply: (p, rank, m) => { p.luck += m.v * rank; },
     },
     meta_reroll: {
       name: 'Tactical Retreat', art: 'reroll',
-      description: '+1 level-up reroll per rank', max: 3, cost: 500, v: 1,
+      description: '+{v} level-up reroll per rank', max: 3, cost: 500, v: 1,
       apply: (p, rank, m) => { p.rerolls += m.v * rank; },
     },
     meta_banish: {
       name: 'Forbidden Words', art: 'banish',
-      description: '+1 level-up banish per rank', max: 3, cost: 750, v: 1,
+      description: '+{v} level-up banish per rank', max: 3, cost: 750, v: 1,
       apply: (p, rank, m) => { p.banishes += m.v * rank; },
     },
     meta_headstart: {
       name: "Veteran's Instincts", art: 'hourglass',
-      description: 'Begin each run with 1 free level-up per rank', max: 3, cost: 750, v: 1,
+      description: 'Begin each run with {v} free level-up per rank', max: 3, cost: 750, v: 1,
       apply: (p, rank, m) => { p.startLevelUps += m.v * rank; },
     },
     meta_revive: {
@@ -3911,7 +3963,7 @@ window.WS = window.WS || {};
     // A deep permanent sink: tiny gains at ever-rising prices, capped at 100.
     meta_egg: {
       name: 'Curious Egg', art: 'egg',
-      description: '+0.1% damage and +1 health per egg. Up to 100 eggs.',
+      description: '+{eggDmg%}% damage and +{eggHp} health per egg. Up to {max} eggs.',
       max: 100, cost: 100, eggDmg: 0.001, eggHp: 1,
       apply: (p, rank, m) => {
         p.damageMultiplier += m.eggDmg * rank;
@@ -4070,7 +4122,7 @@ window.WS = window.WS || {};
   WS.Combos = {
     frostfire: {
       name: 'Frostfire Bolt', weapons: ['rimeshard', 'cinderfall'],
-      description: 'Cinderfalls chill whatever survives them, and both bolts hit 10% harder.',
+      description: 'Cinderfalls chill whatever survives them, and both bolts hit {dmgMult*%}% harder.',
       hint: 'When frost meets flame, something ancient stirs...',
       dmgMult: 1.10, slowFactor: 0.60, slowDuration: 1.5,
       apply: (w1, w2, c) => {
@@ -4124,7 +4176,7 @@ window.WS = window.WS || {};
     },
     verdict: {
       name: 'Verdict', weapons: ['judgement_disc', 'hallowed_ring'],
-      description: 'The shield judges from hallowed ground: +1 ricochet and 10% more damage.',
+      description: 'The shield judges from hallowed ground: +{extraBounces} ricochet and {dmgMult*%}% more damage.',
       hint: 'A shield thrown from sacred ground carries a verdict.',
       extraBounces: 1, dmgMult: 1.10,
       apply: (w1, w2, c) => {
@@ -4345,6 +4397,43 @@ window.WS = window.WS || {};
 (function (WS) {
 
   WS.Lore = {
+    /* The manual. It lived in ui.js as two array literals, which made the
+     * longest run of player-facing prose in the game the only text that could
+     * not be tuned - and it quotes numbers, which is worse: "six weapons",
+     * "rank a weapon to 8", "thirty minutes" were all written out by hand
+     * beside constants that the bench can now change. Templated, so they
+     * cannot drift, and here, so they can be rewritten without editing the
+     * interface. */
+    manual: {
+      title: 'How to play',
+      subtitle: 'Ninety seconds, and you will not need it again.',
+      ledeTitle: 'You only move.',
+      ledeBody: 'Your weapons attack on their own. Everything else is a consequence of where you choose to stand.',
+      runTitle: 'The run',
+      controlsTitle: 'Controls',
+      loop: [
+        { name: 'Your weapons fire themselves',
+          text: 'You never press an attack button. Everything you carry swings, casts and reloads on its own timer, at whatever is nearest. Your whole job is where you stand.' },
+        { name: 'Walk over the gems',
+          text: 'Everything you kill drops experience. Gather enough and you level, and a level is a choice of three: a new weapon, a rank on one you carry, or a passive.' },
+        { name: '{Config.maxWeapons} weapons, and no more',
+          text: 'Take one more and you cannot. Ranking a weapon to {Config.weaponMaxLevel} and learning its paired passive evolves it into something far stronger - the card tells you which passive it wants.' },
+        { name: 'Two evolved weapons can become one',
+          text: 'Some pairs merge into a single greater weapon and give you the slot back. The Codex remembers every pairing you find.' },
+        { name: 'Thirty minutes is the win',
+          text: 'Bosses arrive on a schedule and the horde never stops thickening. Survive to 30:00 and the battlefield is yours - though Death itself turns up at exactly that moment, so leaving is also a decision.' },
+        { name: 'Gold outlives the run',
+          text: 'You keep every coin whether you win, die or walk away. Spend it with the Trainer on permanent lessons that apply to every run after.' },
+      ],
+      controls: [
+        { key: 'WASD  /  arrow keys', text: 'Move. On a pad, the left stick or the d-pad.' },
+        { key: 'Touch, or hold the mouse', text: 'Drag anywhere on the field to steer. Mouse steering is off until you turn it on in Settings.' },
+        { key: '1  2  3', text: 'Take the matching card when you level up.' },
+        { key: 'R  /  B', text: 'Reroll or banish the cards on offer, if you have any left.' },
+        { key: 'Esc', text: 'Pause. Your build, the damage meter and the settings are in there.' },
+        { key: 'Arrow keys  /  pad', text: 'Move around any menu. Enter or A picks.' },
+      ],
+    },
     prologue: {
       /* An input steps to the next scene rather than ending the piece, so the
          corner says so. Escape ends it outright and is deliberately absent
@@ -9999,7 +10088,8 @@ window.WS = window.WS || {};
     e.health = e.maxHealth;
     e.damage = template.damage * scale * WS.CONST.ENEMY_SCALE;
     e.xp = WS.max(1, WS.floor(template.xp * WS.min(scale, 3)));
-    e.speed = template.speed * (1 + 0.08 * (WS.Game.player ? WS.Game.player.curse : 0));
+    e.speed = template.speed
+      * (1 + WS.Config.curseEnemySpeed * (WS.Game.player ? WS.Game.player.curse : 0));
     e.contactCooldown = 0.3;
     e.slowTimer = 0; e.slowFactor = 1;
     e.chargeTimer = 0;
@@ -12235,9 +12325,10 @@ window.WS = window.WS || {};
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0 && phase.count > 0) {
       this.spawnTimer = phase.interval * WS.Config.spawnIntervalMult
-        * run.diffInterval * (run.hyper ? 0.75 : 1) / (1 + 0.20 * curse);
+        * run.diffInterval * (run.hyper ? 0.75 : 1) / (1 + WS.Config.curseSpawnRate * curse);
       const scale = this.enemyScale(time);
-      const count = WS.max(1, WS.round(phase.count * WS.Config.spawnCountMult * (1 + 0.20 * curse)));
+      const count = WS.max(1, WS.round(phase.count * WS.Config.spawnCountMult
+        * (1 + WS.Config.curseSpawnRate * curse)));
       for (let n = 0; n < count; n++) {
         const pick = WS.weightedPick(phase.roster);
         WS.Enemy.spawnRing(pick.id, 700 + WS.random() * 160, scale);
@@ -12426,7 +12517,7 @@ window.WS = window.WS || {};
       if (w.level < WS.WEAPON_MAX_LEVEL) {
         candidates.push({
           type: 'weapon_rank', id: w.id, art: d.art, school: d.school, weight: 3,
-          name: d.name, description: d.description,
+          name: d.name, description: WS.template(d.description, d),
           note: `Rank ${w.level}  >  ${w.level + 1}`,
         });
       } else if (!w.evolved && d.evolvePairing && (p.upgradeLevels[d.evolvePairing] || 0) > 0) {
@@ -12449,7 +12540,7 @@ window.WS = window.WS || {};
         const d = WS.Weapons[recipe.result];
         candidates.push({
           type: 'union', id: recipe.result, art: d.art, school: d.school, weight: 10,
-          unionFrom: recipe.from, name: d.name, description: d.description,
+          unionFrom: recipe.from, name: d.name, description: WS.template(d.description, d),
           note: `UNION - merges evolved ${WS.Weapons[a].name} + ${WS.Weapons[b].name}`,
         });
       }
@@ -12462,7 +12553,7 @@ window.WS = window.WS || {};
         const d = WS.Weapons[id];
         candidates.push({
           type: 'new_weapon', id, art: d.art, school: d.school, weight: 2,
-          name: d.name, description: d.description,
+          name: d.name, description: WS.template(d.description, d),
           note: 'New Weapon  -  pairs with ' + WS.Upgrades[d.evolvePairing].name,
         });
       }
@@ -12476,7 +12567,8 @@ window.WS = window.WS || {};
       if (rank < up.max && !p.banished[id] && offerable) {
         candidates.push({
           type: 'stat', id, art: up.art, quality: up.quality, weight: 2,
-          name: up.name, description: up.description, detail: up.detail,
+          name: up.name, description: WS.template(up.description, up),
+          detail: WS.template(up.detail, up),
           note: `Rank ${rank + 1} / ${up.max}`,
         });
       }
@@ -18228,7 +18320,8 @@ window.WS = window.WS || {};
       const rank = el('div', 'rank', w.evolved ? 'MAX' : String(w.level));
       const flash = el('div', 'flash');
       slot.append(img, svg, rank, flash);
-      slot.title = `${w.evolved ? w.data.evolveName : w.data.name}\n${w.data.description}`;
+      slot.title = `${w.evolved ? w.data.evolveName : w.data.name}`
+        + `\n${WS.template(w.data.description, w.data)}`;
       wrap.append(slot);
       this.els.weaponSlots.set(w.id, { arc, circ, rank, slot, lastCd: 0 });
     }
@@ -18250,7 +18343,8 @@ window.WS = window.WS || {};
       const up = WS.Upgrades[id];
       const slot = el('div', 'pslot');
       slot.append(icon(up.art, qualityColour(up.quality), 34), el('div', 'rank', String(rank)));
-      slot.title = `${up.name} - rank ${rank}/${up.max}\n${up.description}`;
+      slot.title = `${up.name} - rank ${rank}/${up.max}`
+        + `\n${WS.template(up.description, up)}`;
       wrap.append(slot);
     }
   };
@@ -18813,7 +18907,7 @@ window.WS = window.WS || {};
     const body = el('div');
     body.append(el('h3', null, c.name));
     body.append(el('div', 'label role', `${c.className} · ${c.title}`));
-    body.append(el('p', 'flavour', c.description));
+    body.append(el('p', 'flavour', WS.template(c.description, c)));
 
     const stats = el('div', 'stat-line');
     const stat = (k, v) => {
@@ -18847,7 +18941,7 @@ window.WS = window.WS || {};
     const body = el('div');
     body.append(el('h3', null, m.name));
     body.append(el('div', 'label role', m.subtitle));
-    body.append(el('p', 'flavour', m.description));
+    body.append(el('p', 'flavour', WS.template(m.description, m)));
 
     const stats = el('div', 'stat-line');
     const stat = (k, v) => {
@@ -18981,7 +19075,7 @@ window.WS = window.WS || {};
       row.append(icon(m.art, WS.CONST.COLORS.arc, 40));
       const main = el('div', 'row-main');
       main.append(el('div', 'row-name', m.name));
-      main.append(el('div', 'row-sub', m.description));
+      main.append(el('div', 'row-sub', WS.template(m.description, m)));
       row.append(main);
 
       /* Two ways to show a rank, chosen by how many there are.
@@ -19051,7 +19145,7 @@ window.WS = window.WS || {};
       row.append(icon(a.art, done ? WS.CONST.QUALITY.uncommon : [0.35, 0.38, 0.45], 40));
       const main = el('div', 'row-main');
       main.append(el('div', 'row-name', a.name));
-      main.append(el('div', 'row-sub', a.description));
+      main.append(el('div', 'row-sub', WS.template(a.description, a)));
       row.append(main);
       if (a.reward) row.append(el('div', 'row-value', WS.Achievements.rewardText(a)));
       achRows.append(row);
@@ -19607,49 +19701,32 @@ window.WS = window.WS || {};
    * first time the game is ever opened - because the moment someone needs it
    * is exactly the moment they will not go hunting for it.
    */
-  const CONTROLS = [
-    ['WASD  /  arrow keys', 'Move. On a pad, the left stick or the d-pad.'],
-    ['Touch, or hold the mouse', 'Drag anywhere on the field to steer. Mouse steering is off until you turn it on in Settings.'],
-    ['1  2  3', 'Take the matching card when you level up.'],
-    ['R  /  B', 'Reroll or banish the cards on offer, if you have any left.'],
-    ['Esc', 'Pause. Your build, the damage meter and the settings are in there.'],
-    ['Arrow keys  /  pad', 'Move around any menu. Enter or A picks.'],
-  ];
-
-  const LOOP = [
-    ['Your weapons fire themselves',
-      'You never press an attack button. Everything you carry swings, casts and reloads on its own timer, at whatever is nearest. Your whole job is where you stand.'],
-    ['Walk over the gems',
-      'Everything you kill drops experience. Gather enough and you level, and a level is a choice of three: a new weapon, a rank on one you carry, or a passive.'],
-    ['Six weapons, and no more',
-      'Take a seventh and you cannot. Ranking a weapon to 8 and learning its paired passive evolves it into something far stronger - the card tells you which passive it wants.'],
-    ['Two evolved weapons can become one',
-      'Some pairs merge into a single greater weapon and give you the slot back. The Codex remembers every pairing you find.'],
-    ['Thirty minutes is the win',
-      'Bosses arrive on a schedule and the horde never stops thickening. Survive to 30:00 and the battlefield is yours - though Death itself turns up at exactly that moment, so leaving is also a decision.'],
-    ['Gold outlives the run',
-      'You keep every coin whether you win, die or walk away. Spend it with the Trainer on permanent lessons that apply to every run after.'],
-  ];
+  /* The manual's words live in WS.Lore.manual, not here - it is the longest
+     run of player-facing prose in the game and it quotes numbers that the
+     tuning bench can change, so it belongs in the data layer with the rest of
+     the text. Everything below renders it through WS.template. */
+  const manual = () => (WS.Lore && WS.Lore.manual) || {};
 
   UI.paneManual = function () {
     const wrap = el('div');
     wrap.style.marginTop = '16px';
 
     const lede = el('div', 'manual-lede');
-    lede.append(el('div', 'manual-lede-title', 'You only move.'),
-      el('div', 'manual-lede-body',
-        'Your weapons attack on their own. Everything else is a consequence of where you choose to stand.'));
+    lede.append(el('div', 'manual-lede-title', manual().ledeTitle || 'You only move.'),
+      el('div', 'manual-lede-body', manual().ledeBody
+        || 'Your weapons attack on their own. Everything else is a consequence of where you choose to stand.'));
     wrap.append(lede);
 
+    const m = manual();
     const head = el('div', 'codex-head');
-    head.append(el('h3', 'panel-title', 'The run'));
+    head.append(el('h3', 'panel-title', m.runTitle || 'The run'));
     wrap.append(head);
     const rows = el('div', 'rows');
-    for (const [title, body] of LOOP) {
+    for (const entry of (m.loop || [])) {
       const row = el('div', 'row');
       const main = el('div', 'row-main');
-      main.append(el('div', 'row-name', title));
-      main.append(el('div', 'row-sub', body));
+      main.append(el('div', 'row-name', WS.template(entry.name, entry)));
+      main.append(el('div', 'row-sub', WS.template(entry.text, entry)));
       row.append(main);
       rows.append(row);
     }
@@ -19657,12 +19734,13 @@ window.WS = window.WS || {};
 
     const chead = el('div', 'codex-head');
     chead.style.marginTop = '22px';
-    chead.append(el('h3', 'panel-title', 'Controls'));
+    chead.append(el('h3', 'panel-title', m.controlsTitle || 'Controls'));
     wrap.append(chead);
     const keys = el('div', 'key-grid');
-    for (const [k, what] of CONTROLS) {
+    for (const entry of (m.controls || [])) {
       const row = el('div', 'key-row');
-      row.append(el('kbd', null, k), el('span', null, what));
+      row.append(el('kbd', null, WS.template(entry.key, entry)),
+        el('span', null, WS.template(entry.text, entry)));
       keys.append(row);
     }
     wrap.append(keys);
@@ -19671,7 +19749,9 @@ window.WS = window.WS || {};
 
   /** The manual as its own overlay, for the menu button and the first run. */
   UI.openManual = function (onClose) {
-    const s = shell('How to play', 'Ninety seconds, and you will not need it again.');
+    const m = manual();
+    const s = shell(m.title || 'How to play',
+      m.subtitle || 'Ninety seconds, and you will not need it again.');
     s.body.append(this.paneManual());
     const done = el('button', 'btn primary', onClose ? 'Got it' : 'Back');
     done.addEventListener('click', () => {
