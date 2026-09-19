@@ -9,7 +9,7 @@
   WS.Combos = {
     frostfire: {
       name: 'Frostfire Bolt', weapons: ['rimeshard', 'cinderfall'],
-      description: 'Cinderfalls chill whatever survives them, and both bolts hit 10% harder.',
+      description: 'Cinderfalls chill whatever survives them, and both bolts hit {dmgMult*%}% harder.',
       hint: 'When frost meets flame, something ancient stirs...',
       dmgMult: 1.10, slowFactor: 0.60, slowDuration: 1.5,
       apply: (w1, w2, c) => {
@@ -63,7 +63,7 @@
     },
     verdict: {
       name: 'Verdict', weapons: ['judgement_disc', 'hallowed_ring'],
-      description: 'The shield judges from hallowed ground: +1 ricochet and 10% more damage.',
+      description: 'The shield judges from hallowed ground: +{extraBounces} ricochet and {dmgMult*%}% more damage.',
       hint: 'A shield thrown from sacred ground carries a verdict.',
       extraBounces: 1, dmgMult: 1.10,
       apply: (w1, w2, c) => {

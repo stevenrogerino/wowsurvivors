@@ -22,6 +22,43 @@
 (function (WS) {
 
   WS.Lore = {
+    /* The manual. It lived in ui.js as two array literals, which made the
+     * longest run of player-facing prose in the game the only text that could
+     * not be tuned - and it quotes numbers, which is worse: "six weapons",
+     * "rank a weapon to 8", "thirty minutes" were all written out by hand
+     * beside constants that the bench can now change. Templated, so they
+     * cannot drift, and here, so they can be rewritten without editing the
+     * interface. */
+    manual: {
+      title: 'How to play',
+      subtitle: 'Ninety seconds, and you will not need it again.',
+      ledeTitle: 'You only move.',
+      ledeBody: 'Your weapons attack on their own. Everything else is a consequence of where you choose to stand.',
+      runTitle: 'The run',
+      controlsTitle: 'Controls',
+      loop: [
+        { name: 'Your weapons fire themselves',
+          text: 'You never press an attack button. Everything you carry swings, casts and reloads on its own timer, at whatever is nearest. Your whole job is where you stand.' },
+        { name: 'Walk over the gems',
+          text: 'Everything you kill drops experience. Gather enough and you level, and a level is a choice of three: a new weapon, a rank on one you carry, or a passive.' },
+        { name: '{Config.maxWeapons} weapons, and no more',
+          text: 'Take one more and you cannot. Ranking a weapon to {Config.weaponMaxLevel} and learning its paired passive evolves it into something far stronger - the card tells you which passive it wants.' },
+        { name: 'Two evolved weapons can become one',
+          text: 'Some pairs merge into a single greater weapon and give you the slot back. The Codex remembers every pairing you find.' },
+        { name: 'Thirty minutes is the win',
+          text: 'Bosses arrive on a schedule and the horde never stops thickening. Survive to 30:00 and the battlefield is yours - though Death itself turns up at exactly that moment, so leaving is also a decision.' },
+        { name: 'Gold outlives the run',
+          text: 'You keep every coin whether you win, die or walk away. Spend it with the Trainer on permanent lessons that apply to every run after.' },
+      ],
+      controls: [
+        { key: 'WASD  /  arrow keys', text: 'Move. On a pad, the left stick or the d-pad.' },
+        { key: 'Touch, or hold the mouse', text: 'Drag anywhere on the field to steer. Mouse steering is off until you turn it on in Settings.' },
+        { key: '1  2  3', text: 'Take the matching card when you level up.' },
+        { key: 'R  /  B', text: 'Reroll or banish the cards on offer, if you have any left.' },
+        { key: 'Esc', text: 'Pause. Your build, the damage meter and the settings are in there.' },
+        { key: 'Arrow keys  /  pad', text: 'Move around any menu. Enter or A picks.' },
+      ],
+    },
     prologue: {
       /* An input steps to the next scene rather than ending the piece, so the
          corner says so. Escape ends it outright and is deliberately absent

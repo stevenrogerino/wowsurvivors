@@ -200,7 +200,8 @@
       const rank = el('div', 'rank', w.evolved ? 'MAX' : String(w.level));
       const flash = el('div', 'flash');
       slot.append(img, svg, rank, flash);
-      slot.title = `${w.evolved ? w.data.evolveName : w.data.name}\n${w.data.description}`;
+      slot.title = `${w.evolved ? w.data.evolveName : w.data.name}`
+        + `\n${WS.template(w.data.description, w.data)}`;
       wrap.append(slot);
       this.els.weaponSlots.set(w.id, { arc, circ, rank, slot, lastCd: 0 });
     }
@@ -222,7 +223,8 @@
       const up = WS.Upgrades[id];
       const slot = el('div', 'pslot');
       slot.append(icon(up.art, qualityColour(up.quality), 34), el('div', 'rank', String(rank)));
-      slot.title = `${up.name} - rank ${rank}/${up.max}\n${up.description}`;
+      slot.title = `${up.name} - rank ${rank}/${up.max}`
+        + `\n${WS.template(up.description, up)}`;
       wrap.append(slot);
     }
   };
@@ -785,7 +787,7 @@
     const body = el('div');
     body.append(el('h3', null, c.name));
     body.append(el('div', 'label role', `${c.className} · ${c.title}`));
-    body.append(el('p', 'flavour', c.description));
+    body.append(el('p', 'flavour', WS.template(c.description, c)));
 
     const stats = el('div', 'stat-line');
     const stat = (k, v) => {
@@ -819,7 +821,7 @@
     const body = el('div');
     body.append(el('h3', null, m.name));
     body.append(el('div', 'label role', m.subtitle));
-    body.append(el('p', 'flavour', m.description));
+    body.append(el('p', 'flavour', WS.template(m.description, m)));
 
     const stats = el('div', 'stat-line');
     const stat = (k, v) => {
@@ -953,7 +955,7 @@
       row.append(icon(m.art, WS.CONST.COLORS.arc, 40));
       const main = el('div', 'row-main');
       main.append(el('div', 'row-name', m.name));
-      main.append(el('div', 'row-sub', m.description));
+      main.append(el('div', 'row-sub', WS.template(m.description, m)));
       row.append(main);
 
       /* Two ways to show a rank, chosen by how many there are.
@@ -1023,7 +1025,7 @@
       row.append(icon(a.art, done ? WS.CONST.QUALITY.uncommon : [0.35, 0.38, 0.45], 40));
       const main = el('div', 'row-main');
       main.append(el('div', 'row-name', a.name));
-      main.append(el('div', 'row-sub', a.description));
+      main.append(el('div', 'row-sub', WS.template(a.description, a)));
       row.append(main);
       if (a.reward) row.append(el('div', 'row-value', WS.Achievements.rewardText(a)));
       achRows.append(row);
@@ -1579,49 +1581,32 @@
    * first time the game is ever opened - because the moment someone needs it
    * is exactly the moment they will not go hunting for it.
    */
-  const CONTROLS = [
-    ['WASD  /  arrow keys', 'Move. On a pad, the left stick or the d-pad.'],
-    ['Touch, or hold the mouse', 'Drag anywhere on the field to steer. Mouse steering is off until you turn it on in Settings.'],
-    ['1  2  3', 'Take the matching card when you level up.'],
-    ['R  /  B', 'Reroll or banish the cards on offer, if you have any left.'],
-    ['Esc', 'Pause. Your build, the damage meter and the settings are in there.'],
-    ['Arrow keys  /  pad', 'Move around any menu. Enter or A picks.'],
-  ];
-
-  const LOOP = [
-    ['Your weapons fire themselves',
-      'You never press an attack button. Everything you carry swings, casts and reloads on its own timer, at whatever is nearest. Your whole job is where you stand.'],
-    ['Walk over the gems',
-      'Everything you kill drops experience. Gather enough and you level, and a level is a choice of three: a new weapon, a rank on one you carry, or a passive.'],
-    ['Six weapons, and no more',
-      'Take a seventh and you cannot. Ranking a weapon to 8 and learning its paired passive evolves it into something far stronger - the card tells you which passive it wants.'],
-    ['Two evolved weapons can become one',
-      'Some pairs merge into a single greater weapon and give you the slot back. The Codex remembers every pairing you find.'],
-    ['Thirty minutes is the win',
-      'Bosses arrive on a schedule and the horde never stops thickening. Survive to 30:00 and the battlefield is yours - though Death itself turns up at exactly that moment, so leaving is also a decision.'],
-    ['Gold outlives the run',
-      'You keep every coin whether you win, die or walk away. Spend it with the Trainer on permanent lessons that apply to every run after.'],
-  ];
+  /* The manual's words live in WS.Lore.manual, not here - it is the longest
+     run of player-facing prose in the game and it quotes numbers that the
+     tuning bench can change, so it belongs in the data layer with the rest of
+     the text. Everything below renders it through WS.template. */
+  const manual = () => (WS.Lore && WS.Lore.manual) || {};
 
   UI.paneManual = function () {
     const wrap = el('div');
     wrap.style.marginTop = '16px';
 
     const lede = el('div', 'manual-lede');
-    lede.append(el('div', 'manual-lede-title', 'You only move.'),
-      el('div', 'manual-lede-body',
-        'Your weapons attack on their own. Everything else is a consequence of where you choose to stand.'));
+    lede.append(el('div', 'manual-lede-title', manual().ledeTitle || 'You only move.'),
+      el('div', 'manual-lede-body', manual().ledeBody
+        || 'Your weapons attack on their own. Everything else is a consequence of where you choose to stand.'));
     wrap.append(lede);
 
+    const m = manual();
     const head = el('div', 'codex-head');
-    head.append(el('h3', 'panel-title', 'The run'));
+    head.append(el('h3', 'panel-title', m.runTitle || 'The run'));
     wrap.append(head);
     const rows = el('div', 'rows');
-    for (const [title, body] of LOOP) {
+    for (const entry of (m.loop || [])) {
       const row = el('div', 'row');
       const main = el('div', 'row-main');
-      main.append(el('div', 'row-name', title));
-      main.append(el('div', 'row-sub', body));
+      main.append(el('div', 'row-name', WS.template(entry.name, entry)));
+      main.append(el('div', 'row-sub', WS.template(entry.text, entry)));
       row.append(main);
       rows.append(row);
     }
@@ -1629,12 +1614,13 @@
 
     const chead = el('div', 'codex-head');
     chead.style.marginTop = '22px';
-    chead.append(el('h3', 'panel-title', 'Controls'));
+    chead.append(el('h3', 'panel-title', m.controlsTitle || 'Controls'));
     wrap.append(chead);
     const keys = el('div', 'key-grid');
-    for (const [k, what] of CONTROLS) {
+    for (const entry of (m.controls || [])) {
       const row = el('div', 'key-row');
-      row.append(el('kbd', null, k), el('span', null, what));
+      row.append(el('kbd', null, WS.template(entry.key, entry)),
+        el('span', null, WS.template(entry.text, entry)));
       keys.append(row);
     }
     wrap.append(keys);
@@ -1643,7 +1629,9 @@
 
   /** The manual as its own overlay, for the menu button and the first run. */
   UI.openManual = function (onClose) {
-    const s = shell('How to play', 'Ninety seconds, and you will not need it again.');
+    const m = manual();
+    const s = shell(m.title || 'How to play',
+      m.subtitle || 'Ninety seconds, and you will not need it again.');
     s.body.append(this.paneManual());
     const done = el('button', 'btn primary', onClose ? 'Got it' : 'Back');
     done.addEventListener('click', () => {

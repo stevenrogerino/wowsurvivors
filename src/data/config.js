@@ -57,6 +57,15 @@
     dodgeInvulnerable: 0.2,
 
     blockInterval1: 30, blockInterval2: 22, blockInterval3: 15,
+    /* The kit, and the rank ceiling. Read through WS.MAX_WEAPONS and
+       WS.WEAPON_MAX_LEVEL, which are getters over these. */
+    maxWeapons: 6,
+    weaponMaxLevel: 8,
+    /* Dark Bargain's price, which was two numbers written into the middle of
+       waves.js and enemy.js. The upgrade's own tooltip quotes them, so they
+       had to be somewhere a tooltip could reach. */
+    curseSpawnRate: 0.20,
+    curseEnemySpeed: 0.08,
 
     homingReacquireRange: 520,
 
@@ -169,7 +178,19 @@
     },
   };
 
-  WS.WEAPON_MAX_LEVEL = 8;
-  WS.MAX_WEAPONS = 6;
+  /* These two were bare constants on WS, which put them outside every tuning
+   * root: the cap on a weapon's rank and the size of your kit - two of the
+   * most consequential numbers in a survivors-like - were the only balance
+   * figures in the game that could not be tuned. They live in Config now.
+   *
+   * WS.WEAPON_MAX_LEVEL and WS.MAX_WEAPONS stay as getters over them rather
+   * than being renamed at fifteen call sites, in the game and in the test
+   * harnesses both. That is not to save the edit: a call site missed in a
+   * rename would go on reading a frozen 8 for ever and nothing would say so,
+   * whereas a getter cannot be out of date. */
+  Object.defineProperty(WS, 'WEAPON_MAX_LEVEL',
+    { get: () => WS.Config.weaponMaxLevel, configurable: true });
+  Object.defineProperty(WS, 'MAX_WEAPONS',
+    { get: () => WS.Config.maxWeapons, configurable: true });
 
 })(window.WS);

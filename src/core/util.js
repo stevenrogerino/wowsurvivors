@@ -170,20 +170,47 @@ window.WS = window.WS || {};
   /** Substitutes {field}, {field%}, {field*%} and {field~%} in a description,
    *  exactly like the addon's tooltip templating:
    *    {v}    -> raw value            {v%}   -> value x100
-   *    {v*%}  -> (value-1) x100       {v~%}  -> (1-value) x100 */
+   *    {v*%}  -> (value-1) x100       {v~%}  -> (1-value) x100
+   *
+   *  A dotted key is read from the tuning tables instead of the record:
+   *  {Config.deathTime}, {Weapons.cinderfall.damage}. That exists because the
+   *  numbers a tooltip quotes are very often NOT its own. The manual says six
+   *  weapons and rank eight; Warding Light names three block intervals that
+   *  live in Config; Ruin Hunger quoted a fel rate that had been duplicated
+   *  onto the upgrade and had already drifted from the Config value the game
+   *  actually used. A tooltip that cannot reach the number it describes will
+   *  eventually lie about it.
+   *
+   *  It resolves through WS.Tuning.read, so a dotted key reaches exactly what
+   *  the tuning bench can reach and nothing else - the same rooted, walled
+   *  path table, and no way to reach __proto__ from a description string. */
+  /* Two decimals, trailing zeros dropped.
+   *
+   * Rounding a percentage to a whole number is right for nearly all of them
+   * and wrong for the one that matters most: the Curious Egg grants 0.001,
+   * which is a tenth of a percent, and a whole-number round printed "+0%
+   * damage per egg" on a hundred-rank upgrade that costs a fortune. Floating
+   * point also needs the slack - (1 - 0.92) * 100 is 8.000000000000007, and
+   * that has to print as 8. */
+  function fmt(n) {
+    const r = Math.round(n * 100) / 100;
+    return String(Object.is(r, -0) ? 0 : r);
+  }
+
   WS.template = function (text, source) {
     if (!text) return '';
-    return text.replace(/\{(\w+)([%*~]*)\}/g, (all, key, op) => {
-      const v = source[key];
+    return text.replace(/\{([\w.]+)([%*~]*)\}/g, (all, key, op) => {
+      let v = source ? source[key] : undefined;
+      if (v === undefined && key.indexOf('.') > 0 && WS.Tuning) v = WS.Tuning.read(key);
       if (v === undefined) return all;
       /* A string substitutes as itself. Every caller until now fed this
          numbers - blessing and upgrade descriptions - so the default branch
          rounds, and the first template with a name in it rendered "NAN". */
       if (typeof v === 'string') return v;
-      if (op === '%') return String(WS.round(v * 100));
-      if (op === '*%') return String(WS.round((v - 1) * 100));
-      if (op === '~%') return String(WS.round((1 - v) * 100));
-      return String(WS.round(v * 100) / 100);
+      if (op === '%') return fmt(v * 100);
+      if (op === '*%') return fmt((v - 1) * 100);
+      if (op === '~%') return fmt(1e-9 + (1 - v) * 100);
+      return fmt(v);
     });
   };
 

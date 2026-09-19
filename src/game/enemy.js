@@ -79,7 +79,8 @@
     e.health = e.maxHealth;
     e.damage = template.damage * scale * WS.CONST.ENEMY_SCALE;
     e.xp = WS.max(1, WS.floor(template.xp * WS.min(scale, 3)));
-    e.speed = template.speed * (1 + 0.08 * (WS.Game.player ? WS.Game.player.curse : 0));
+    e.speed = template.speed
+      * (1 + WS.Config.curseEnemySpeed * (WS.Game.player ? WS.Game.player.curse : 0));
     e.contactCooldown = 0.3;
     e.slowTimer = 0; e.slowFactor = 1;
     e.chargeTimer = 0;

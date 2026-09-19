@@ -85,9 +85,10 @@
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0 && phase.count > 0) {
       this.spawnTimer = phase.interval * WS.Config.spawnIntervalMult
-        * run.diffInterval * (run.hyper ? 0.75 : 1) / (1 + 0.20 * curse);
+        * run.diffInterval * (run.hyper ? 0.75 : 1) / (1 + WS.Config.curseSpawnRate * curse);
       const scale = this.enemyScale(time);
-      const count = WS.max(1, WS.round(phase.count * WS.Config.spawnCountMult * (1 + 0.20 * curse)));
+      const count = WS.max(1, WS.round(phase.count * WS.Config.spawnCountMult
+        * (1 + WS.Config.curseSpawnRate * curse)));
       for (let n = 0; n < count; n++) {
         const pick = WS.weightedPick(phase.roster);
         WS.Enemy.spawnRing(pick.id, 700 + WS.random() * 160, scale);

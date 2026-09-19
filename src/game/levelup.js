@@ -40,7 +40,7 @@
       if (w.level < WS.WEAPON_MAX_LEVEL) {
         candidates.push({
           type: 'weapon_rank', id: w.id, art: d.art, school: d.school, weight: 3,
-          name: d.name, description: d.description,
+          name: d.name, description: WS.template(d.description, d),
           note: `Rank ${w.level}  >  ${w.level + 1}`,
         });
       } else if (!w.evolved && d.evolvePairing && (p.upgradeLevels[d.evolvePairing] || 0) > 0) {
@@ -63,7 +63,7 @@
         const d = WS.Weapons[recipe.result];
         candidates.push({
           type: 'union', id: recipe.result, art: d.art, school: d.school, weight: 10,
-          unionFrom: recipe.from, name: d.name, description: d.description,
+          unionFrom: recipe.from, name: d.name, description: WS.template(d.description, d),
           note: `UNION - merges evolved ${WS.Weapons[a].name} + ${WS.Weapons[b].name}`,
         });
       }
@@ -76,7 +76,7 @@
         const d = WS.Weapons[id];
         candidates.push({
           type: 'new_weapon', id, art: d.art, school: d.school, weight: 2,
-          name: d.name, description: d.description,
+          name: d.name, description: WS.template(d.description, d),
           note: 'New Weapon  -  pairs with ' + WS.Upgrades[d.evolvePairing].name,
         });
       }
@@ -90,7 +90,8 @@
       if (rank < up.max && !p.banished[id] && offerable) {
         candidates.push({
           type: 'stat', id, art: up.art, quality: up.quality, weight: 2,
-          name: up.name, description: up.description, detail: up.detail,
+          name: up.name, description: WS.template(up.description, up),
+          detail: WS.template(up.detail, up),
           note: `Rank ${rank + 1} / ${up.max}`,
         });
       }

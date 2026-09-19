@@ -620,6 +620,101 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
         + 'in the browser could retune the game while the bench is running');
     }
 
+    /* ---- a tooltip may not restate a number it does not own ---------------
+     * The bench's whole promise is that a number changed here is changed
+     * everywhere, and the place that promise breaks is prose. Twenty upgrade
+     * descriptions and twelve Trainer ones had their figures typed out by
+     * hand beside the field the game actually reads: retuning Might left the
+     * card still saying "+10% weapon damage". Ruin Hunger was worse than
+     * stale - it quoted a fel rate copied onto the upgrade that nothing read,
+     * while the game applied a different one from Config.
+     *
+     * So in the tables whose text is mechanical, a description or detail may
+     * not contain a bare number. Anything it wants to quote it quotes with a
+     * field - {v%}, or {Config.felPerRank%} for a number living elsewhere -
+     * and then it cannot go stale, because it is not a copy. */
+    const prose = await page.evaluate(() => {
+      const W = document.getElementById('frame').contentWindow;
+      const bad = [];
+      const tables = ['Upgrades', 'MetaUpgrades', 'Blessings', 'Combos', 'Weapons'];
+      for (const tn of tables) {
+        for (const [id, rec] of Object.entries(W.WS[tn] || {})) {
+          for (const f of ['description', 'detail']) {
+            const raw = rec[f];
+            if (typeof raw !== 'string') continue;
+            const literal = raw.replace(/\{[\w.]+[%*~]*\}/g, '').match(/\d+(?:\.\d+)?/g);
+            if (literal) bad.push(`${tn}.${id}.${f} writes ${literal.join(', ')} by hand`);
+          }
+        }
+      }
+      return bad;
+    });
+    for (const b of prose) fail.push(b);
+
+    /* ...and the binding actually binds: change the number, read the text. */
+    const bound = await page.evaluate(() => {
+      const W = document.getElementById('frame').contentWindow;
+      const read = () => ({
+        might: W.WS.template(W.WS.Upgrades.might.description, W.WS.Upgrades.might),
+        // a tooltip quoting a number from another table entirely
+        ward: W.WS.template(W.WS.Upgrades.warding_light.detail, W.WS.Upgrades.warding_light),
+        // and the manual, which quotes the two constants that had no home
+        manual: W.WS.template(W.WS.Lore.manual.loop[2].name, {}),
+      });
+      const was = read();
+      W.WS.Tuning.set('Upgrades.might.v', 0.37);
+      W.WS.Tuning.set('Config.blockInterval1', 11);
+      W.WS.Tuning.set('Config.maxWeapons', 4);
+      const now = read();
+      const maxWeapons = W.WS.MAX_WEAPONS;
+      for (const k of ['Upgrades.might.v', 'Config.blockInterval1', 'Config.maxWeapons']) {
+        W.WS.Tuning.clear(k);
+      }
+      return { was, now, maxWeapons };
+    });
+    if (!/37/.test(bound.now.might)) {
+      fail.push(`retuning an upgrade left its card reading "${bound.now.might}"`);
+    }
+    if (!/11/.test(bound.now.ward)) {
+      fail.push(`a tooltip quoting Config did not follow it: "${bound.now.ward}"`);
+    }
+    if (!/4/.test(bound.now.manual)) {
+      fail.push(`the manual did not follow the weapon cap: "${bound.now.manual}"`);
+    }
+    if (bound.maxWeapons !== 4) {
+      fail.push(`WS.MAX_WEAPONS read ${bound.maxWeapons} after Config said 4 - the `
+        + 'constant is not actually tunable');
+    }
+    for (const k of ['was', 'now']) {
+      if (!bound[k].might || !bound[k].ward) fail.push('a description rendered empty');
+    }
+
+    /* ---- and nothing the bench cannot reach ------------------------------
+     * The bench builds itself from the tuning roots, so a table outside them
+     * is invisible and its contents are untunable however much they matter.
+     * The manual used to be two array literals in ui.js for exactly this
+     * reason: nobody had noticed that the longest piece of prose in the game
+     * was not data. */
+    const unreachable = await page.evaluate(() => {
+      const W = document.getElementById('frame').contentWindow;
+      const roots = W.WS.Tuning.roots.map((r) => r.split('.')[0]);
+      const out = [];
+      for (const k of Object.keys(W.WS)) {
+        const v = W.WS[k];
+        if (!v || typeof v !== 'object' || Array.isArray(v)) continue;
+        const keys = Object.keys(v);
+        if (!keys.length || roots.indexOf(k) >= 0) continue;
+        // a table of pure data with no behaviour on it is content, not a system
+        if (keys.some((x) => typeof v[x] === 'function')) continue;
+        if (!keys.every((x) => v[x] && typeof v[x] === 'object')) continue;
+        out.push(k + ' (' + keys.length + ' entries)');
+      }
+      return out;
+    });
+    for (const u of unreachable) {
+      fail.push(`WS.${u} is a data table the tuning bench cannot reach`);
+    }
+
     await browser.close();
   } finally {
     stop();

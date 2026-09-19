@@ -104,6 +104,11 @@ input[type=checkbox].f{width:16px;height:16px;padding:0;accent-color:var(--gold)
 input[type=color]{width:34px;height:26px;padding:0;background:none;border:1px solid var(--line);
   border-radius:4px;cursor:pointer}
 .was{font:11px/1 var(--mono);color:var(--dim);white-space:nowrap}
+/* The resolved sentence, under the template that produced it. Quiet, and
+   marked as an output rather than another thing to type in. */
+.preview{margin-top:5px;font-size:12px;line-height:1.4;color:var(--gold,#f5c56b);
+  opacity:.85;padding-left:9px;border-left:2px solid rgba(245,197,107,.28)}
+.preview[hidden]{display:none}
 .revert{border:0;background:none;color:var(--dim);cursor:pointer;padding:2px 5px;font-size:14px}
 .revert:hover{color:var(--gold)}
 .sub{grid-column:1/-1;border-left:2px solid var(--line);margin:2px 0 8px 4px;padding-left:10px}
@@ -274,13 +279,34 @@ const TABLES = [
   { root:'Bosses',        label:'Bosses' },
   { root:'Maps',          label:'Battlefields',   order:'MapOrder' },
   { root:'Achievements',  label:'Achievements',   order:'AchievementOrder' },
-  { root:'Lore',          label:'Prologue' },
+  { root:'Lore',          label:'Script & manual' },
   { root:'CONST',         label:'Engine',         flat:true },
   { root:'Arena.tuning',  label:'Eclipse Arena',  flat:true },
 ];
 const MAX_DEPTH = 3;          // deeper than this and it is edited as JSON
 
 const $ = (s) => document.querySelector(s);
+
+/* Every resolved-text line currently on screen. Rebuilt with the panel, and
+   repainted after ANY edit, because the number a sentence quotes is very
+   often not in the same row - or the same table. */
+let previews = [];
+function paintPreview(p) {
+  const rec = at(p.parent);
+  const raw = rec ? rec[p.key] : '';
+  if (typeof raw !== 'string') { p.el.textContent = ''; p.el.hidden = true; return; }
+  const out = W.template(raw, rec || {});
+  /* Silent unless it is telling you something. A sentence with no fields in
+     it renders as itself, and printing every line of prose twice would bury
+     the handful that are live. */
+  const live = out !== raw;
+  p.el.hidden = !live;
+  p.el.textContent = live ? out : '';
+}
+function refreshPreviews() {
+  previews = previews.filter((p) => p.el.isConnected);
+  for (const p of previews) paintPreview(p);
+}
 /* Roots may be a path - 'Arena.tuning' is one table living inside a system -
    so nothing here indexes WS directly. */
 const at = (path) => path.split('.').reduce((o, k) => (o == null ? o : o[k]), W);
@@ -435,7 +461,7 @@ function fieldRow(host, path, label, value, depth) {
     }
   };
 
-  const commit = (v) => { apply(path, v); mark(); };
+  const commit = (v) => { apply(path, v); mark(); refreshPreviews(); };
 
   if (typeof value === 'number') {
     const i = document.createElement('input');
@@ -457,6 +483,24 @@ function fieldRow(host, path, label, value, depth) {
     if (long) i.rows = 2;
     i.oninput = () => commit(i.value);
     wrap.append(i);
+    /* WHAT THE PLAYER WILL ACTUALLY READ.
+     *
+     * A description like '+{v%}% weapon damage' is not what anybody sees, and
+     * the number it quotes lives in a different row - often in a different
+     * table, since a tooltip may name a Config value. So every string gets a
+     * resolved line under it, and every commit anywhere refreshes all of them:
+     * drag `v` from 0.10 to 0.25 and the sentence under `description`
+     * becomes "+25% weapon damage" while you are still dragging.
+     *
+     * The line is built for every string, not only the ones with braces in
+     * them today, so that typing a template into a plain sentence shows you
+     * what you just wrote instead of waiting for a reload. */
+    const pv = document.createElement('div');
+    pv.className = 'preview';
+    wrap.append(pv);
+    previews.push({ el: pv, parent: path.slice(0, path.lastIndexOf('.')),
+      key: path.slice(path.lastIndexOf('.') + 1) });
+    paintPreview(previews[previews.length - 1]);
   } else if (isColour(value)) {
     cell.classList.add('wide');
     const hex = (a) => '#' + a.map((n) =>
@@ -1230,6 +1274,7 @@ function buildNav() {
 function render() {
   const main = $('#main');
   main.innerHTML = '';
+  previews = [];            // the old ones went out with the old panel
   document.querySelectorAll('nav button').forEach((b) =>
     b.classList.toggle('on', b.dataset.root === section && !query));
 
