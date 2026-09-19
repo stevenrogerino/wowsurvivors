@@ -16789,15 +16789,40 @@ window.WS = window.WS || {};
     ctx.globalAlpha = 1;
   }
 
+  /* A bar over a creature that has taken a scratch is noise; a bar over one
+   * that is nearly dead is information.
+   *
+   * Every damaged creature got one, from the first point of damage, at full
+   * strength. Measured over eight minutes of a real run that is 25 red dashes
+   * on screen at any moment and 85 at the peak - and the game aims itself, so
+   * knowing the exact health of one creature in a crowd of eighty changes
+   * nothing a player can act on. What is worth reading is which ones are
+   * about to break.
+   *
+   * So fodder keeps its bar only once it is under FODDER_BAR_AT, and fades it
+   * in across the last of that rather than popping it on. Champions are
+   * unchanged: an elite or a boss is a fight, and a fight you watch the whole
+   * length of. */
+  const FODDER_BAR_AT = 0.6;
+
   function healthBar(ctx, e) {
     if (e.health >= e.maxHealth) return;
-    const w = e.radius * 2, h = 3;
+    const pct = WS.clamp(e.health / e.maxHealth, 0, 1);
+    const champion = e.boss || e.elite;
+    let alpha = 1;
+    if (!champion) {
+      if (pct >= FODDER_BAR_AT) return;
+      alpha = WS.clamp((FODDER_BAR_AT - pct) / 0.16, 0, 1);
+    }
+    const w = e.radius * 2, h = champion ? 3 : 2;
     const x = e.x - w / 2, y = e.y - e.radius * 1.9;
+    ctx.save();
+    ctx.globalAlpha = alpha;
     ctx.fillStyle = 'rgba(0,0,0,.55)';
     ctx.fillRect(x, y, w, h);
-    const pct = WS.clamp(e.health / e.maxHealth, 0, 1);
     ctx.fillStyle = e.boss ? '#e2483d' : e.elite ? '#f5c56b' : '#c6483d';
     ctx.fillRect(x, y, w * pct, h);
+    ctx.restore();
   }
 
   R.draw = function (time) {
