@@ -281,13 +281,71 @@ const fail = [];
       + 'walk at you');
   }
 
+  /* ---- nothing walks on stage ------------------------------------------
+   * The field IS the screen - there is no camera - so a spawn ring drawn
+   * around the survivor is only off-screen if somebody checks. It did not:
+   * the ring stepped 700-860 along an angle and clamped x and y into the
+   * padded world box independently, which does not keep a point outside a
+   * rectangle, it drags it onto the edge of a larger one. Measured over
+   * thousands of placements, 1% landed in view from the middle of the field
+   * and 14-17% from an edge or a corner.
+   *
+   * It is worst under a time stop, which is where it was reported from. A
+   * creature that lands in view normally starts running in the same frame and
+   * the motion hides the arrival; a frozen one appears and stands perfectly
+   * still. The horde still spawns through a freeze - it should - but it does
+   * so out of sight. */
+  const ring = await page.evaluate(() => {
+    const W = WS.CONST.WORLD_WIDTH, H = WS.CONST.WORLD_HEIGHT;
+    const pl = WS.Game.player;
+    const spots = [[640, 360], [90, 360], [90, 90], [1190, 630], [220, 160]];
+    let seen = 0, inView = 0, worst = null;
+    for (const [px, py] of spots) {
+      for (let i = 0; i < 400; i++) {
+        pl.x = px; pl.y = py;
+        WS.Enemy.clear();
+        const e = WS.Enemy.spawnRing('lampling', 700 + WS.random() * 160, 1, true);
+        if (!e) continue;
+        seen++;
+        if (e.x > 0 && e.x < W && e.y > 0 && e.y < H) {
+          inView++;
+          if (!worst) worst = { from: [px, py], at: [Math.round(e.x), Math.round(e.y)] };
+        }
+      }
+    }
+    // ...and a time stop does not stop the horde arriving, only its arriving
+    // where you can watch it happen.
+    WS.Enemy.clear();
+    WS.Enemy.freezeAll(6);
+    const frozen = WS.Enemy.freezeTimer > 0;
+    pl.x = 120; pl.y = 110;
+    let frozenInView = 0;
+    for (let i = 0; i < 300; i++) {
+      const e = WS.Enemy.spawnRing('lampling', 700 + WS.random() * 160, 1, true);
+      if (e && e.x > 0 && e.x < W && e.y > 0 && e.y < H) frozenInView++;
+      WS.Enemy.clear();
+    }
+    WS.Enemy.freezeTimer = 0;
+    return { seen, inView, worst, frozen, frozenInView };
+  });
+  if (ring.inView > 0) {
+    fail.push(`${ring.inView} of ${ring.seen} ring spawns landed inside the field - one from `
+      + `${ring.worst.from} appeared at ${ring.worst.at}, in full view of the player`);
+  }
+  if (!ring.frozen) fail.push('the freeze under test never took hold');
+  if (ring.frozenInView > 0) {
+    fail.push(`${ring.frozenInView} creatures spawned in view during a time stop, where `
+      + 'nothing moves to cover the arrival');
+  }
+
   await browser.close();
   if (fail.length) {
     console.error('FAIL');
     for (const f of fail) console.error('  - ' + f);
     process.exit(1);
   }
-  console.log(`ok: ${r.roster.verbs} of ${r.roster.total} creatures do something other than `
+  console.log(`ok: no ring spawn out of ${ring.seen} landed in view, frozen or not, and `
+    + `${r.roster.verbs} of ${r.roster.total} creatures do something other than `
     + `walk at you. Only elites and bosses lunge (${r.lungers.elite.join(', ')}); one covers `
     + `${r.lunge.path}px against a chaser's ${r.chase.path} at ${Math.round(walkRatio * 100)}% `
     + 'of its walking speed and '

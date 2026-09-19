@@ -1135,28 +1135,62 @@
       drawBoltShape(ctx, b, r);
       ctx.restore();
     }
-    // Hostile bolts read as hard-edged, so they never blur into friendly fire.
+    /* Hostile bolts, which must not be mistaken for something worth walking
+     * into.
+     *
+     * The comment here used to say they "read as hard-edged" and the code
+     * drew a soft radial glow with a bright WHITE RING on top of it - which
+     * is, precisely, how a pickup is drawn. Rendered side by side and
+     * measured off the canvas, a frost bolt sat 36 units of colour from a
+     * lodestone and covered nearly twice its lit area: same hue, same size,
+     * same silhouette of a glowing ring with a pale centre. The player was
+     * being asked to tell a reward from a projectile by shade alone.
+     *
+     * Three things separate them now, none of which is colour - colour is
+     * still free to say which school the bolt belongs to:
+     *
+     *   shape   A dart with corners, elongated along the direction of travel.
+     *           Nothing on the ground is pointed, and nothing on the ground
+     *           has a direction.
+     *   rim     A pickup is a bright halo around a dark pad. This is the
+     *           inverse: a dark rim around a hot core, so the two read
+     *           differently even out of focus at the edge of vision.
+     *   motion  A tail, which a thing lying in the grass can never have.
+     */
     const host = WS.Projectile.hostiles;
     for (let i = 0; i < host.count; i++) {
       const h = host.active[i];
+      const r = h.radius;
+      /* Along its travel, not its spin. A bolt that tumbles tells the player
+         nothing; a bolt that points says where it is going. */
+      const ang = (h.vx || h.vy) ? WS.atan2(h.vy, h.vx) : h.spin;
+      const dart = (len, wide, back) => {
+        ctx.beginPath();
+        ctx.moveTo(len, 0);
+        ctx.lineTo(0, -wide);
+        ctx.lineTo(-back, 0);
+        ctx.lineTo(0, wide);
+        ctx.closePath();
+      };
       ctx.save();
       ctx.translate(h.x, h.y);
-      ctx.rotate(h.spin);
-      if (this.lite) {
-        ctx.fillStyle = WS.rgb(h.colour, 0.55);
-        ctx.beginPath(); ctx.arc(0, 0, h.radius * 1.4, 0, WS.TAU); ctx.fill();
-      } else {
-        const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, h.radius * 2.2);
-        grd.addColorStop(0, WS.rgb(h.colour, 1));
-        grd.addColorStop(1, WS.rgb(h.colour, 0));
-        ctx.fillStyle = grd;
-        ctx.beginPath(); ctx.arc(0, 0, h.radius * 2.2, 0, WS.TAU); ctx.fill();
+      ctx.rotate(ang);
+      if (!this.lite) {
+        const tail = ctx.createLinearGradient(-r * 3.6, 0, 0, 0);
+        tail.addColorStop(0, WS.rgb(h.colour, 0));
+        tail.addColorStop(1, WS.rgb(h.colour, 0.45));
+        ctx.fillStyle = tail;
+        ctx.beginPath();
+        ctx.moveTo(-r * 3.6, 0); ctx.lineTo(0, -r * 0.55); ctx.lineTo(0, r * 0.55);
+        ctx.closePath(); ctx.fill();
       }
-      ctx.restore();
-      ctx.save();
-      ctx.strokeStyle = 'rgba(255,255,255,.85)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(h.x, h.y, h.radius * 0.8, 0, WS.TAU); ctx.stroke();
+      // the dark rim, drawn wider than the body it is a rim for
+      ctx.fillStyle = 'rgba(2,4,8,.88)';
+      dart(r * 2.6, r * 1.28, r * 1.5); ctx.fill();
+      ctx.fillStyle = WS.rgb(h.colour, 1);
+      dart(r * 2.0, r * 0.88, r * 1.05); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.92)';
+      dart(r * 0.95, r * 0.36, r * 0.5); ctx.fill();
       ctx.restore();
     }
     ctx.restore();
