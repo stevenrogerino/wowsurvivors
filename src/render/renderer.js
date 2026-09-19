@@ -903,13 +903,35 @@
       }
 
       // 2. The energy itself, hottest off-centre so it does not read as a lamp.
+      /* Rank turns the field up rather than out. A zone's radius IS its
+         damage area and moving it would retune the weapon, so what grows with
+         rank is how hard the ground burns inside it - and past the ranks that
+         buy other weapons a projectile, a corona just beyond the rim. */
+      const zr = z.rank || 1;
+      const hot = 1 + 0.10 * (zr - 1) + (z.evolved ? 0.5 : 0);
       ctx.globalCompositeOperation = 'lighter';
       const grd = ctx.createRadialGradient(z.x, z.y, R * 0.15, z.x, z.y, R);
-      grd.addColorStop(0, WS.rgb(z.colour, 0.34 * fade));
-      grd.addColorStop(0.62, WS.rgb(z.colour, 0.17 * fade));
+      grd.addColorStop(0, WS.rgb(z.colour, 0.34 * fade * hot));
+      grd.addColorStop(0.62, WS.rgb(z.colour, 0.17 * fade * hot));
       grd.addColorStop(1, WS.rgb(z.colour, 0));
       ctx.fillStyle = grd;
       ctx.beginPath(); ctx.arc(z.x, z.y, R, 0, WS.TAU); ctx.fill();
+      if (zr >= WS.Config.projRankA && !this.lite) {
+        const far = R * (zr >= WS.Config.projRankB ? 1.26 : 1.15) * (z.evolved ? 1.1 : 1);
+        const halo = ctx.createRadialGradient(z.x, z.y, R * 0.9, z.x, z.y, far);
+        halo.addColorStop(0, WS.rgb(z.colour, 0.18 * fade));
+        halo.addColorStop(1, WS.rgb(z.colour, 0));
+        ctx.fillStyle = halo;
+        ctx.beginPath(); ctx.arc(z.x, z.y, far, 0, WS.TAU); ctx.fill();
+      }
+      // what a discovery has mixed into it, at the heart of the field
+      if (z.blend) {
+        const bl = ctx.createRadialGradient(z.x, z.y, 0, z.x, z.y, R * 0.45);
+        bl.addColorStop(0, WS.rgb(z.blend, 0.30 * fade));
+        bl.addColorStop(1, WS.rgb(z.blend, 0));
+        ctx.fillStyle = bl;
+        ctx.beginPath(); ctx.arc(z.x, z.y, R * 0.45, 0, WS.TAU); ctx.fill();
+      }
 
       // 3. Two edges: a soft one just inside, a bright hairline on the rim.
       const breathe = 0.98 + 0.02 * WS.sin(time * 4 + z.phase);
@@ -1203,7 +1225,25 @@
     for (let i = 0; i < bolts.count; i++) {
       const b = bolts.active[i];
       const r = b.radius;
-      const c = b.colour;
+      /* WHAT THIS SHOT IS, as opposed to where it is.
+       *
+       * Two things the bolt knew and never showed. Measured as the light a
+       * weapon puts on the field, a rank-8 weapon is about twice a rank-1 one
+       * - which is honest, but it arrives as eight helpings of five percent,
+       * and nobody sees a five percent radius step. Power that grows only by
+       * scaling never feels like it grew. So rank buys WEIGHT here: a longer
+       * streak, a hotter core, and past the ranks where the weapon gains a
+       * projectile, a halo around the glow. None of it touches a hitbox.
+       *
+       * And a discovery paints the bolt it changed. Frostfire made Cinderfall
+       * chill what it hit and left it looking exactly like a Cinderfall; the
+       * player was told about the pairing by a toast and then never saw it
+       * again. A combined weapon now carries its partner's colour in its
+       * core, so the thing on the field says what it has become. */
+      const rank = b.rank || 1;
+      const heft = 1 + 0.10 * (rank - 1) + (b.evolved ? 0.45 : 0);
+      const c = b.blend ? WS.mix(b.colour, b.blend, 0.34) : b.colour;
+      const core = b.blend ? WS.mix(b.colour, b.blend, 0.66) : null;
 
       /* The streak. Every bolt has carried a `trail` flag since launch and
          nothing ever read it, so the whole arsenal flew without motion.
@@ -1215,7 +1255,7 @@
         const speed = WS.sqrt(b.vx * b.vx + b.vy * b.vy);
         // The streak has to clear the bolt's own glow, which reaches r*2.4, or
         // it just thickens the blob. At 0.055 it did exactly that.
-        const len = WS.min(speed * 0.13, r * 14);
+        const len = WS.min(speed * 0.13 * heft, r * 14 * heft);
         if (len > r * 3) {
           ctx.save();
           ctx.translate(b.x, b.y);
@@ -1245,12 +1285,56 @@
         ctx.fillStyle = WS.rgb(c, 0.4);
         ctx.beginPath(); ctx.arc(0, 0, r * 1.5, 0, WS.TAU); ctx.fill();
       } else {
+        /* The halo. It appears at the ranks where the weapon gains a
+           projectile, so the two milestones the player already feels are also
+           the two they can see. */
+        if (rank >= WS.Config.projRankA) {
+          const far = r * (rank >= WS.Config.projRankB ? 5.2 : 4.2) * (b.evolved ? 1.2 : 1);
+          const ring = ctx.createRadialGradient(0, 0, r * 1.6, 0, 0, far);
+          ring.addColorStop(0, WS.rgb(c, 0.20));
+          ring.addColorStop(1, WS.rgb(c, 0));
+          ctx.fillStyle = ring;
+          ctx.beginPath(); ctx.arc(0, 0, far, 0, WS.TAU); ctx.fill();
+        }
         const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 2.4);
         grd.addColorStop(0, WS.rgb(c, 0.95));
         grd.addColorStop(0.4, WS.rgb(c, 0.45));
         grd.addColorStop(1, WS.rgb(c, 0));
         ctx.fillStyle = grd;
         ctx.beginPath(); ctx.arc(0, 0, r * 2.4, 0, WS.TAU); ctx.fill();
+      }
+      /* A combined weapon's second colour, RING-WISE AROUND its own shape and
+         drawn before it.
+         
+         This started out painted over the top of the bolt and measured as
+         almost nothing, for a reason worth keeping: the whole pass composites
+         with 'lighter', the bolt's own core is near-white, and adding a
+         colour to white is not an operation - white is already at the
+         ceiling. Underneath, it tints the halo the white core sits in. */
+      if (core) {
+        ctx.fillStyle = WS.rgb(core, 0.85);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, r * 1.15, r * 0.85, 0, 0, WS.TAU);
+        ctx.fill();
+        /* And two pips, off the bolt's shoulders.
+         *
+         * Colour alone cannot carry this. Verdict pairs Judgement Disc with
+         * Hallowed Ring and both are holy, so the partner's colour IS the
+         * weapon's own and the blend above is arithmetically nothing - the
+         * guard measured 149 changed pixels and was right to fail it. A pair
+         * of marks is a change of SHAPE, which works however close the two
+         * schools happen to sit. */
+        ctx.fillStyle = WS.rgb(core, 0.95);
+        for (const side of [-1, 1]) {
+          /* Clear of the widest bolt shape there is. The shield fills a disc
+             at r*1.1 and strokes inside it, and pips tucked at r*1.35 were
+             half-swallowed by it - verdict measured 368 changed pixels one
+             run and 432 the next, which is a signal too close to its own
+             noise to build a rule on. */
+          ctx.beginPath();
+          ctx.arc(-r * 0.35, side * r * 1.85, r * 0.38, 0, WS.TAU);
+          ctx.fill();
+        }
       }
       drawBoltShape(ctx, b, r);
       ctx.restore();
@@ -1348,11 +1432,28 @@
           ctx.fillStyle = WS.rgb(o.colour, 0.5);
           ctx.beginPath(); ctx.arc(0, 0, o.size * 0.7, 0, WS.TAU); ctx.fill();
         } else {
-          const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, o.size);
+          /* Rank buys the blade a corona. The orbit's radius and the blade's
+             size are both damage geometry and stay where they are; what grows
+             is the light around them, so a maxed whirl reads as heavier
+             without occupying more of the field than it hits. */
+          const far = o.size * (1 + 0.14 * ((o.rank || 1) - 1) + (o.evolved ? 0.7 : 0));
+          const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, far);
           grd.addColorStop(0, WS.rgb(o.colour, 0.9));
+          grd.addColorStop(o.size / far * 0.8, WS.rgb(o.colour, 0.35));
           grd.addColorStop(1, WS.rgb(o.colour, 0));
           ctx.fillStyle = grd;
-          ctx.beginPath(); ctx.arc(0, 0, o.size, 0, WS.TAU); ctx.fill();
+          ctx.beginPath(); ctx.arc(0, 0, far, 0, WS.TAU); ctx.fill();
+        }
+        // A discovery's colour, under the blade rather than over it - see the
+        // note in drawBolts about painting onto white in a 'lighter' pass.
+        if (o.blend) {
+          ctx.fillStyle = WS.rgb(o.blend, 0.8);
+          ctx.beginPath(); ctx.arc(0, 0, o.size * 0.62, 0, WS.TAU); ctx.fill();
+          // a ring outside the blade, for the same reason as the bolt's pips:
+          // a pairing of two weapons from one school has no colour to give
+          ctx.strokeStyle = WS.rgb(o.blend, 0.9);
+          ctx.lineWidth = WS.max(1, o.size * 0.13);
+          ctx.beginPath(); ctx.arc(0, 0, o.size * 1.05, 0, WS.TAU); ctx.stroke();
         }
         ctx.fillStyle = 'rgba(255,255,255,.9)';
         ctx.beginPath();
@@ -1375,9 +1476,15 @@
       const fade = WS.clamp(b.life / b.maxLife, 0, 1);
       // Three passes - bloom, body, core - so a beam reads as light with a hot
       // centre rather than a coloured stick laid on the ground.
+      /* Only the BLOOM grows with rank. A beam's width is the width it damages
+         along - damageLine is handed half of it - so widening the beam itself
+         with rank would quietly retune the weapon. The light around it can do
+         what it likes. */
+      const br = b.rank || 1;
+      const bloom = 2.2 * (1 + 0.16 * (br - 1) + (b.evolved ? 0.8 : 0));
       ctx.globalAlpha = fade * 0.5;
       ctx.strokeStyle = WS.rgb(b.colour, 0.35);
-      ctx.lineWidth = b.width * 2.2;
+      ctx.lineWidth = b.width * bloom;
       ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2); ctx.stroke();
       ctx.globalAlpha = fade;
       ctx.strokeStyle = WS.rgb(b.colour, 0.6);
@@ -1386,6 +1493,12 @@
       ctx.strokeStyle = 'rgba(255,255,255,.95)';
       ctx.lineWidth = WS.max(1.5, b.width * 0.22);
       ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2); ctx.stroke();
+      if (b.blend) {
+        ctx.strokeStyle = WS.rgb(b.blend, 0.75);
+        ctx.lineWidth = WS.max(1, b.width * 0.5);
+        ctx.globalAlpha = fade * 0.55;
+        ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2); ctx.stroke();
+      }
     }
     ctx.restore();
   };

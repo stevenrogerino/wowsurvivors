@@ -146,11 +146,31 @@
     spec.heal = (w.evolved ? (d.evolvedHeal || 0) : 0) + (w.mods.healBonus || 0) + (d.heal || 0);
     spec.procChain = d.procChain || w.mods.procChain || 0;
     spec.spinRate = d.art === 'dagger' || d.art === 'axe' ? 14 : 0;
+    /* Carried so the renderer can show them. Neither touches a hitbox: rank
+       is how hard this thing should LOOK, and blend is the colour a discovery
+       has mixed into it. */
+    spec.rank = w.level;
+    spec.evolved = !!w.evolved;
+    spec.blend = w.mods.blend || null;
     return spec;
   }
 
   /* ---------------------------------------------------------- behaviors -- */
   Weapon.behaviors = {};
+
+  /** Stamps the rank, the evolution and a discovery's colour onto the thing a
+   *  weapon has just put into a pool. Bolts take these through their spec;
+   *  zones and orbits are spawned through older signatures that would need a
+   *  fourth and fifth trailing argument each, so they are marked after the
+   *  fact - the newest entry in the pool is the one just made. */
+  function mark(pool, w) {
+    if (!pool || !pool.count) return;
+    const o = pool.active[pool.count - 1];
+    if (!o) return;
+    o.rank = w.level;
+    o.evolved = !!w.evolved;
+    o.blend = w.mods.blend || null;
+  }
 
   function fireAimedShot(player, w, target) {
     const d = w.data;
@@ -227,8 +247,21 @@
     const heal = (w.evolved ? (d.evolvedHeal || 0) : 0) + (w.mods.healBonus || 0) + (d.heal || 0);
 
     WS.Enemy.damageArea(player.x, player.y, radius, damage, null, d.knockback, w.id);
-    WS.FX.flash(player.x, player.y, radius, colour, d.expandTime || 0.35);
-    WS.FX.flash(player.x, player.y, radius * 0.6, colour, (d.expandTime || 0.35) * 0.7);
+    /* A nova's reach is its damage area and must not move, so rank buys it
+       RINGS instead: one more wave of light past each of the ranks where
+       other weapons gain a projectile, and a longer bloom. None of these
+       touch damageArea. */
+    const grow = 1 + 0.06 * (w.level - 1) + (w.evolved ? 0.35 : 0);
+    const hold = (d.expandTime || 0.35) * (1 + 0.10 * (w.level - 1));
+    WS.FX.flash(player.x, player.y, radius, colour, hold);
+    WS.FX.flash(player.x, player.y, radius * 0.6, colour, hold * 0.7);
+    if (w.level >= (d.projRankA || WS.Config.projRankA)) {
+      WS.FX.flash(player.x, player.y, radius * 1.22 * grow, colour, hold * 1.25);
+    }
+    if (w.level >= (d.projRankB || WS.Config.projRankB)) {
+      WS.FX.flash(player.x, player.y, radius * 0.3, colour, hold * 1.6);
+    }
+    if (w.mods.blend) WS.FX.flash(player.x, player.y, radius * 0.45, w.mods.blend, hold * 0.9);
     if (heal > 0) WS.Player.heal(player, heal, 'holy');
     WS.Audio.play('cast');
     return true;
@@ -243,33 +276,57 @@
       d.tickRate || 0.5,
       schoolColour(w), w.id,
       (w.evolved ? (d.evolvedHeal || 0) : 0) + (w.mods.healBonus || 0));
+    mark(WS.Projectile.zones, w);
     WS.Audio.play('cast');
     return true;
   };
+
+  /* How far the lightning walks.
+   *
+   * Every weapon in the game gains a projectile at rank 4 and another at rank
+   * 7 - except this one, which never read w.level at all. Measured as the
+   * light a weapon puts on the field, every other weapon roughly doubles its
+   * presence between rank 1 and rank 8; Arcweb came out at 0.93, which is to
+   * say it got very slightly smaller. Eight ranks of investment bought more
+   * damage per bolt and not one more hop. A chain link is this weapon's
+   * projectile and it is counted like one now. */
+  function chainCount(player, w) {
+    const d = w.data, cfg = WS.Config;
+    let n = (d.chains || 4) + player.projectileBonus + (w.evolved ? 2 : 0);
+    if (w.level >= (d.projRankA || cfg.projRankA)) n++;
+    if (w.level >= (d.projRankB || cfg.projRankB)) n++;
+    return n;
+  }
 
   Weapon.behaviors.chain = function (player, w) {
     const d = w.data;
     const range = areaOf(player, w, d.range || 250);
     const first = WS.Enemy.findNearest(player.x, player.y, range * 1.6);
     if (!first) { w.cooldown = RETRY_COOLDOWN; return false; }
-    const chains = (d.chains || 4) + player.projectileBonus + (w.evolved ? 2 : 0);
-    Weapon.chainFrom(player.x, player.y, damageOf(player, w), chains, range, w.id, schoolColour(w));
+    const chains = chainCount(player, w);
+    Weapon.chainFrom(player.x, player.y, damageOf(player, w), chains, range, w.id,
+      schoolColour(w), w);
     WS.Audio.play('cast');
     return true;
   };
 
   /** Shared lightning hop, also used by the Tempest proc. */
-  Weapon.chainFrom = function (x, y, damage, chains, range, source, colour) {
+  Weapon.chainFrom = function (x, y, damage, chains, range, source, colour, w) {
     colour = colour || WS.CONST.COLORS.nature;
+    /* The bolt thickens with the rank behind it. A storm at rank 8 is not a
+       rank-1 spark that happens to hurt more. */
+    const rank = w ? w.level : 1;
+    const heavy = 1 + 0.085 * (rank - 1) + (w && w.evolved ? 0.5 : 0);
     const visited = new Set();
     let px = x, py = y;
     for (let i = 0; i < chains; i++) {
       const target = WS.Enemy.findNearest(px, py, range, visited);
       if (!target) break;
       visited.add(target);
-      WS.Projectile.spawnBeam(px, py, target.x, target.y, 4, colour, 0.16);
+      WS.Projectile.spawnBeam(px, py, target.x, target.y, 4 * heavy, colour, 0.16);
+      if (w) mark(WS.Projectile.beams, w);
       WS.Enemy.hit(target, damage * (1 - i * 0.06), source);
-      WS.FX.flash(target.x, target.y, 22, colour, 0.18);
+      WS.FX.flash(target.x, target.y, 22 * heavy, colour, 0.18);
       px = target.x; py = target.y;
       if (target._dead) continue;
     }
@@ -296,6 +353,7 @@
       areaOf(player, w, d.radius || 20),
       durationOf(player, w, d.duration || 3.2),
       schoolColour(w), w.id, d.procChain || w.mods.procChain || 0);
+    mark(WS.Projectile.orbits, w);
     player.spinTimer = durationOf(player, w, d.duration || 3.2);
     WS.Audio.play('cast');
     return true;
@@ -360,6 +418,7 @@
     const damage = damageOf(player, w);
     WS.Enemy.damageLine(player.x, player.y, x2, y2, width * 0.5, damage, w.id);
     WS.Projectile.spawnBeam(player.x, player.y, x2, y2, width, schoolColour(w), 0.22);
+    mark(WS.Projectile.beams, w);
     WS.FX.flash(player.x, player.y, width, schoolColour(w), 0.2);
     WS.Audio.play('cast');
     return true;
@@ -438,7 +497,7 @@
     },
     /* Hops from target to target, each hop 6% weaker than the last. */
     chain: (p, w, crowd) => {
-      const chains = (w.data.chains || 4) + p.projectileBonus + (w.evolved ? 2 : 0);
+      const chains = chainCount(p, w);
       let sum = 0;
       for (let i = 0; i < Math.min(chains, Math.max(1, crowd)); i++) sum += 1 - i * 0.06;
       return { per: sum, why: `${chains} hops, each 6% weaker` };

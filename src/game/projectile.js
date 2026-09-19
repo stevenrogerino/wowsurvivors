@@ -50,6 +50,12 @@
     b.slowFactor = spec.slowFactor;
     b.slowDuration = spec.slowDuration;
     b.bounces = spec.bounces || 0;
+    /* What the renderer needs to show what this bolt IS, none of which touches
+       a hitbox: the rank behind it, whether it evolved, and the colour a
+       discovery has mixed into it. */
+    b.rank = spec.rank || 1;
+    b.evolved = !!spec.evolved;
+    b.blend = spec.blend || null;
     b.homingTarget = spec.homingTarget || null;
     /* The FLAG, not just the mark. Keying this off the target alone meant a
        bolt launched able to seek but with nobody in particular to seek could
@@ -77,6 +83,7 @@
     z.tickRate = tickRate; z.tick = 0;
     z.colour = colour; z.source = source; z.heal = heal || 0;
     z.phase = WS.random() * WS.TAU;
+    z.rank = 1; z.evolved = false; z.blend = null;   // set by the weapon
     return z;
   };
 
@@ -88,6 +95,7 @@
     o.life = duration; o.maxLife = duration;
     o.angle = 0; o.colour = colour; o.source = source;
     o.tick = 0; o.procChain = procChain || 0;
+    o.rank = 1; o.evolved = false; o.blend = null;   // set by the weapon
     o.hitBy.clear();
     return o;
   };
@@ -97,6 +105,7 @@
     if (!b) return null;
     b.x1 = x1; b.y1 = y1; b.x2 = x2; b.y2 = y2;
     b.width = width; b.colour = colour;
+    b.rank = 1; b.evolved = false; b.blend = null;   // set by the weapon
     b.life = life || 0.18; b.maxLife = b.life;
     return b;
   };
