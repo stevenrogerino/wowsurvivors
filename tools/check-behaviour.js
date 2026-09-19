@@ -338,13 +338,83 @@ const fail = [];
       + 'nothing moves to cover the arrival');
   }
 
+  /* ---- the ones that shoot do not look like the ones that do not --------
+   * Every caster in the game is drawn from the same art as a melee creature
+   * and separated only by tint. Measured as the mean difference between their
+   * silhouettes on a common grid, gilkin and Gilkin Tidecaller came out at
+   * 0.0000 - the same shape exactly - and Kerchief Footpad and Kerchief
+   * Pillager at 0.0034 in shape with only 17.6 of colour between them. The
+   * creature that walks at you and the creature that shoots you from 280
+   * pixels looked the same.
+   *
+   * This compares what is DRAWN rather than the cached sprite, because the
+   * mark that tells them apart is painted by the renderer and not baked into
+   * the art - which is the point of it: it applies to every caster the game
+   * ever gains without anyone drawing a second sprite. */
+  const casters = await page.evaluate(() => {
+    const N = 72;
+    const foot = (id, k) => {
+      WS.Enemy.clear();
+      const e = WS.Enemy.spawn(id, 300, 300, 1, true);
+      if (!e) return null;
+      const t = WS.Enemies[id];
+      if (t.ranged) e.rangedTimer = (t.ranged.cooldown || 3) * (1 - k);
+      e.bob = 0;
+      const c = document.createElement('canvas');
+      c.width = N; c.height = N;
+      const g = c.getContext('2d');
+      g.translate(N / 2 - 300, N / 2 - 300 + 10);
+      WS.Renderer.drawEnemy(g, e, 0);
+      const d = g.getImageData(0, 0, N, N).data;
+      const a = new Float32Array(N * N);
+      for (let i = 0; i < N * N; i++) a[i] = d[i * 4 + 3] / 255;
+      return a;
+    };
+    const diff = (x, y) => {
+      let s = 0;
+      for (let i = 0; i < x.length; i++) s += Math.abs(x[i] - y[i]);
+      return +(s / x.length).toFixed(4);
+    };
+    // every melee/caster pair that shares one piece of art
+    const ids = Object.keys(WS.Enemies);
+    const out = [];
+    for (const c of ids) {
+      const tc = WS.Enemies[c];
+      if (!tc.ranged) continue;
+      const twin = ids.find((m) => m !== c && WS.Enemies[m].art === tc.art && !WS.Enemies[m].ranged);
+      const idleA = foot(c, 0.15), hot = foot(c, 0.95);
+      const entry = { caster: c, twin: twin || null,
+        charge: idleA && hot ? diff(idleA, hot) : -1 };
+      if (twin) {
+        const mel = foot(twin, 0);
+        entry.fromTwin = mel && idleA ? diff(mel, idleA) : -1;
+      }
+      out.push(entry);
+    }
+    WS.Enemy.clear();
+    return out;
+  });
+  for (const c of casters) {
+    if (c.twin && c.fromTwin < 0.008) {
+      fail.push(`${c.caster} is drawn ${c.fromTwin} from ${c.twin}, which shares its art - `
+        + 'the creature that shoots looks like the creature that does not');
+    }
+    if (c.charge < 0.006) {
+      fail.push(`${c.caster} looks the same about to fire as it does idle (${c.charge}) - `
+        + 'nothing tells the player the shot is coming');
+    }
+  }
+  if (!casters.length) fail.push('no casters found to check');
+
   await browser.close();
   if (fail.length) {
     console.error('FAIL');
     for (const f of fail) console.error('  - ' + f);
     process.exit(1);
   }
-  console.log(`ok: no ring spawn out of ${ring.seen} landed in view, frozen or not, and `
+  console.log(`ok: no ring spawn out of ${ring.seen} landed in view, frozen or not; each of `
+    + `${casters.length} casters is marked apart from the melee twin it shares art with and `
+    + 'shows its shot coming; and '
     + `${r.roster.verbs} of ${r.roster.total} creatures do something other than `
     + `walk at you. Only elites and bosses lunge (${r.lungers.elite.join(', ')}); one covers `
     + `${r.lunge.path}px against a chaser's ${r.chase.path} at ${Math.round(walkRatio * 100)}% `

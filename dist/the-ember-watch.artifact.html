@@ -16984,6 +16984,59 @@ window.WS = window.WS || {};
     ctx.drawImage(sprite, -size / 2, -size * 0.62, size, size);
     ctx.restore();
 
+    /* THE ONES THAT SHOOT.
+     *
+     * Every caster in the game is drawn from the same art as its harmless
+     * melee twin and separated only by tint. Measured as the mean difference
+     * between their silhouettes on a common grid, gilkin and Gilkin
+     * Tidecaller came out at 0.0000 - the same shape, exactly - and so did
+     * skeleton and Skeletal Frostweaver at 0.0059. The worst pair was
+     * Kerchief Footpad and Kerchief Pillager: 0.0034 apart in shape and only
+     * 17.6 apart in colour, which is to say indistinguishable. The creature
+     * that walks at you and the creature that shoots you from 280 pixels
+     * looked the same, and the one you have to react to is the second.
+     *
+     * So a caster carries a focus above its head. It is a SHAPE, with a dark
+     * rim, because the arena pass already settled that a thing the player
+     * must react to cannot be told by colour alone - though the colour is
+     * free to say which school, as it does for the bolt when it comes.
+     *
+     * And it charges. The cooldown is already ticking in e.rangedTimer, so
+     * the mark can grow and brighten toward the shot and flare on the frame
+     * before it - which turns "that one is a caster" into "that one is about
+     * to fire", for nothing but a value that was already there. */
+    if (t.ranged && e.rangedTimer !== null && e.rangedTimer !== undefined) {
+      const cd = t.ranged.cooldown || 3;
+      const k = WS.clamp(1 - e.rangedTimer / cd, 0, 1);
+      const col = WS.CONST.COLORS[t.ranged.school] || WS.CONST.COLORS.arcane;
+      const fx = e.x;
+      const fy = e.y - e.radius * 1.62 + WS.sin(time * 2.2 + e.bob) * 1.5;
+      const r = e.radius * (0.22 + 0.09 * k);
+      const kite = (cx, cy, w, h) => {
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - h);
+        ctx.lineTo(cx + w, cy);
+        ctx.lineTo(cx, cy + h);
+        ctx.lineTo(cx - w, cy);
+        ctx.closePath();
+      };
+      ctx.save();
+      ctx.fillStyle = 'rgba(3,5,9,.86)';
+      kite(fx, fy, r * 1.55, r * 2.15); ctx.fill();
+      ctx.fillStyle = WS.rgb(col, 0.55 + 0.45 * k);
+      kite(fx, fy, r, r * 1.5); ctx.fill();
+      ctx.fillStyle = `rgba(255,255,255,${(0.25 + 0.55 * k).toFixed(2)})`;
+      kite(fx, fy, r * 0.4, r * 0.62); ctx.fill();
+      // the last fifth of the cooldown: a ring, so the shot is seen coming
+      if (k > 0.8) {
+        ctx.globalAlpha = (k - 0.8) / 0.2;
+        ctx.strokeStyle = WS.rgb(col, 1);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(fx, fy, r * 3.0, 0, WS.TAU); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     if (e.flash > 0) {
       // A hit tints the silhouette rather than replacing it.
       ctx.save();
