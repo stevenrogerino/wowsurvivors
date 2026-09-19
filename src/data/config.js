@@ -59,6 +59,9 @@
     blockInterval1: 30, blockInterval2: 22, blockInterval3: 15,
     /* The kit, and the rank ceiling. Read through WS.MAX_WEAPONS and
        WS.WEAPON_MAX_LEVEL, which are getters over these. */
+    /* When the one extra blessing arrives, in seconds. Half of deathTime.
+       Zero turns it off entirely. */
+    secondBlessingAt: 900,
     maxWeapons: 6,
     weaponMaxLevel: 8,
     /* Dark Bargain's price, which was two numbers written into the middle of

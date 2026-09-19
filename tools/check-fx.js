@@ -114,9 +114,63 @@ const MAX_SPEED = 1200;
       ` (art ${worst.stalled}) - steering is bleeding speed, and a bolt that stalls sits on the field like a mine`);
   }
 
+  /* ---- the numbers do not land on each other ----------------------------
+   * Measured across 778 sampled frames of a ten-minute run, 64% of the live
+   * floating text was sitting on top of another number, and the worst frames
+   * were at 100% - every number on screen overlapping another. Two things
+   * fixed it: a number looks for a clear spot before it lands (the fan it had
+   * was global, so two hits seven pushes apart got the same slot and the same
+   * pixel), and repeat hits on one target add to the number already there
+   * instead of stacking another beside it. */
+  const text = await page.evaluate(() => {
+    if (WS.Prologue && WS.Prologue.active) WS.Prologue.finish();
+    WS.Save.db.seenManual = true;
+    WS.Save.unlockAll();
+    WS.Game.startRun('thornhollow', 'shaman');
+    if (WS.Game.state === 'blessing') WS.Game.chooseBlessing(WS.Game.blessingChoices[0]);
+    const pl = WS.Game.player;
+    let over = 0, total = 0, worst = 0, samples = 0;
+    for (let i = 0; i < 60 * 540; i++) {
+      if (WS.Game.state === 'levelup') { WS.Game.chooseLevelUp(WS.Game.levelChoices[0]); continue; }
+      if (WS.Game.state === 'blessing') { WS.Game.chooseBlessing(WS.Game.blessingChoices[0]); continue; }
+      if (WS.Game.state !== 'playing') break;
+      pl.health = pl.maxHealth;
+      WS.Game.tick(WS.CONST.TICK_RATE);
+      WS.Game.update(WS.CONST.TICK_RATE);
+      if (i < 60 * 120 || i % 41) continue;
+      const pool = WS.FX.texts;
+      const live = pool.active.slice(0, pool.count);
+      const box = (t) => ({ x: t.x, y: t.y, w: t.text.length * t.size * 0.58, h: t.size });
+      let hits = 0;
+      for (let a = 0; a < live.length; a++) {
+        const A = box(live[a]);
+        for (let c = 0; c < live.length; c++) {
+          if (c === a) continue;
+          const B = box(live[c]);
+          if (Math.abs(A.x - B.x) < (A.w + B.w) / 2 && Math.abs(A.y - B.y) < (A.h + B.h) / 2) {
+            hits++; break;
+          }
+        }
+      }
+      total += live.length; over += hits; samples++;
+      if (live.length && hits / live.length > worst) worst = hits / live.length;
+    }
+    return { pct: Math.round(over / Math.max(1, total) * 100),
+      worst: Math.round(worst * 100), total, samples };
+  });
+  if (text.samples < 40) fail.push(`only ${text.samples} frames of combat text sampled`);
+  if (text.pct > 28) {
+    fail.push(`${text.pct}% of floating combat text overlaps another number `
+      + '- the field reads as a smear of digits rather than as feedback');
+  }
+  if (text.worst > 80) {
+    fail.push(`in the worst frame ${text.worst}% of the numbers were on top of each other`);
+  }
+
   console.log(fail.length ? fail.join('\n')
     : `ok: ${worst.seen} particle samples, fastest ${worst.maxSpeed.toFixed(0)} px/s, none off-world;` +
-      ` ${worst.boltSamples} seeking-bolt samples, slowest ${(worst.slowestBolt * 100).toFixed(0)}% of launch speed`);
+      ` ${worst.boltSamples} seeking-bolt samples, slowest ${(worst.slowestBolt * 100).toFixed(0)}% of launch speed;` +
+      ` ${text.pct}% of floating combat text overlaps another number, worst frame ${text.worst}%`);
   await b.close();
   process.exitCode = fail.length ? 1 : 0;
 })();
