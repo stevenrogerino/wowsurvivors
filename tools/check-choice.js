@@ -270,6 +270,54 @@ const note = [];
   const played = await page.evaluate(() => WS.Game.state);
   if (played !== 'playing') fail.push('blessing: the run did not begin (state ' + played + ')');
 
+  /* ---- two blessings, and the second one lands at the halfway mark ------
+   * A run used to hand out exactly one, at the start, and never another -
+   * even though buildBlessingChoices filters out what you already hold and
+   * the survivor keeps a LIST of blessing names. Fourteen of the fifteen
+   * never appeared in a run. There is one more now, at fifteen minutes, and
+   * the two things worth guarding are that it arrives exactly once and that
+   * it HANDS THE RUN BACK: the opening draft starts the waves and this one
+   * must not, or a fresh headstart fires in the middle of a fight. */
+  const arc = await page.evaluate(() => {
+    if (WS.Prologue && WS.Prologue.active) WS.Prologue.finish();
+    WS.Save.db.seenManual = true;
+    WS.Save.unlockAll();
+    WS.Game.startRun('thornhollow', 'shaman');
+    const pl = WS.Game.player;
+    const at = [];
+    let resumedRunning = true;
+    for (let i = 0; i < 60 * 60 * 31; i++) {
+      if (WS.Game.state === 'blessing') {
+        at.push(Math.round(WS.Game.run.time));
+        WS.Game.chooseBlessing(WS.Game.blessingChoices[0]);
+        if (at.length > 1 && !WS.Game.running) resumedRunning = false;
+        continue;
+      }
+      if (WS.Game.state === 'levelup') { WS.Game.chooseLevelUp(WS.Game.levelChoices[0]); continue; }
+      if (WS.Game.state !== 'playing') break;
+      pl.health = pl.maxHealth;
+      WS.Game.tick(WS.CONST.TICK_RATE);
+      // the clock-driven half of the loop, which is where the offer lives
+      WS.Game.update(WS.CONST.TICK_RATE);
+    }
+    return { at, held: pl.blessingNames.slice(), resumedRunning,
+      minutes: Math.round(WS.Game.run.time / 60), want: WS.Config.secondBlessingAt };
+  });
+  if (arc.at.length !== 2) {
+    fail.push(`a full run offered ${arc.at.length} blessing drafts, not two (at ${arc.at})`);
+  } else {
+    if (arc.at[0] !== 0) fail.push(`the opening draft came at ${arc.at[0]}s, not at the start`);
+    if (Math.abs(arc.at[1] - arc.want) > 2) {
+      fail.push(`the second blessing came at ${arc.at[1]}s rather than ${arc.want}s`);
+    }
+    if (arc.held.length !== 2 || arc.held[0] === arc.held[1]) {
+      fail.push(`the second draft did not add a different blessing (${arc.held.join(', ')})`);
+    }
+    if (!arc.resumedRunning) fail.push('the midpoint draft stopped the run instead of pausing it');
+    if (arc.minutes < 30) fail.push(`the run ended at ${arc.minutes} minutes`);
+    note.push(`a run draws two blessings, at ${arc.at[0]}s and ${arc.at[1]}s, and no more`);
+  }
+
   await b.close();
 
   if (fail.length) {

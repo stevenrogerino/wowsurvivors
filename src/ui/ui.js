@@ -1411,8 +1411,8 @@
   };
 
   /* -------------------------------------------------------- run overlays -- */
-  UI.openBlessing = function (choices) {
-    const s = shell('Choose a Blessing', 'One boon, and it stays with you.');
+  UI.openBlessing = function (choices, sub) {
+    const s = shell('Choose a Blessing', sub || 'One boon, and it stays with you.');
     const row = el('div', 'card-row');
     this._committing = false;
     choices.forEach((c, i) => row.append(cardFor(c, (choice, card) => {

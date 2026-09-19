@@ -13100,6 +13100,7 @@ window.WS = window.WS || {};
       metamorphoses: 0,
       victorious: false,
       finalBossSeen: false,
+      secondBlessing: false,
       hyper: !!(WS.Save.db.unlocks.hyper[mapId] && WS.Save.db.hyperArmed),
       goldMult: map.goldMult * diff.gold,
       diffScale: diff.scale,
@@ -13323,10 +13324,34 @@ window.WS = window.WS || {};
     return true;
   };
 
+  /** The midpoint draft. Unlike the opening one the run is already going, so
+   *  this stops it rather than starting it. */
+  Game.offerBlessing = function () {
+    const choices = WS.LevelUp.buildBlessingChoices(this.player);
+    if (!choices.length) return;        // nothing left unheld: say nothing
+    this.blessingChoices = choices;
+    this.state = 'blessing';
+    this.timeScale = 1;
+    WS.Audio.play('evolve');
+    /* Named, because a choice screen that arrives unannounced in the middle
+       of a fight reads as the game interrupting you rather than as a thing
+       the run had been building toward. The banner's clock is stopped behind
+       an overlay, so it plays when the cards clear. */
+    this.announce('The Second Blessing', 'Halfway. The dark has taken your measure.',
+      3.2, { kind: 'glory' });
+    WS.UI.openBlessing(choices, 'Halfway to dawn. One more, and no more.');
+  };
+
   Game.chooseBlessing = function (choice) {
     WS.LevelUp.apply(this.player, choice);
     WS.UI.closeOverlay();
-    this.beginWaves();
+    /* Which draft was that? The opening one happens before the first wave and
+       has to start it; the midpoint one interrupts a run that is already
+       under way and has to hand it back. `running` is the difference and
+       needs no flag of its own. */
+    if (!this.running) { this.beginWaves(); return; }
+    this.state = 'playing';
+    this.timeScale = 0.25;              // the world comes back up to speed
   };
 
   /* ------------------------------------------------------- run outcomes -- */
@@ -13491,6 +13516,23 @@ window.WS = window.WS || {};
     WS.Hazard.update(dt);
     if (!this.running) return;
     WS.FX.update(dt);
+
+    /* Halfway. One more blessing, and only one.
+     *
+     * The draft that opens a run was the only one there had ever been, even
+     * though everything around it was built for more: buildBlessingChoices
+     * filters out anything already taken, and the survivor carries a set of
+     * what they hold and a LIST of names. Fifteen minutes in is the middle of
+     * the thirty, which is where a run stops being a build and starts being a
+     * defence - and it is late enough that the choice is made knowing what
+     * the build actually became. */
+    const at = WS.Config.secondBlessingAt;
+    if (at > 0 && !run.secondBlessing && !run.map.arena && !run.victorious
+      && run.time >= at) {
+      run.secondBlessing = true;
+      this.offerBlessing();
+      return;
+    }
 
     // Victory is banked the moment the survivor reaches 30:00.
     if (!run.victorious && !run.map.arena && run.time >= WS.Config.deathTime) {
@@ -19599,8 +19641,8 @@ window.WS = window.WS || {};
   };
 
   /* -------------------------------------------------------- run overlays -- */
-  UI.openBlessing = function (choices) {
-    const s = shell('Choose a Blessing', 'One boon, and it stays with you.');
+  UI.openBlessing = function (choices, sub) {
+    const s = shell('Choose a Blessing', sub || 'One boon, and it stays with you.');
     const row = el('div', 'card-row');
     this._committing = false;
     choices.forEach((c, i) => row.append(cardFor(c, (choice, card) => {
