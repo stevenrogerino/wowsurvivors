@@ -731,6 +731,9 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   console.log('ok: the bench builds itself from the live game (a field invented at runtime '
     + 'gets a correctly typed control), an edit reaches the running game, saving writes '
     + 'src/data/tuning.js and readable patch notes without touching a shipped data file, '
-    + 'the change survives a reload with its shipped value still recoverable, and neither '
+    + 'the change survives a reload with its shipped value still recoverable, '
+    + 'every mechanical tooltip quotes its numbers rather than restating them '
+    + '(retuning one rewrites the card, and a tooltip naming a Config value follows '
+    + 'that too), no data table sits outside the tuning roots, and neither '
     + 'a hostile tuning path nor a cross-origin POST gets through');
 })().catch((e) => { console.error('FAIL\n  - ' + (e.stack || e.message)); process.exit(1); });
