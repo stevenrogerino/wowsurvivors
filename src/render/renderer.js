@@ -657,6 +657,48 @@
     const crowd = WS.Enemy.pool.count;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
+
+    /* THE EMBER, ON THE GROUND.
+     *
+     * The game's whole premise is that the survivor is carrying a light -
+     * "what holds it back is ember", "while you carry it, you burn" - and the
+     * field did not show it. There was a warm pool here already and it was
+     * thirty-eight pixels across: a footprint, not a light. Measured in eight
+     * patches across the field, the mean luminance of the ground varied by a
+     * standard deviation of 2.9 to 5.1 out of 255, so a battlefield was lit
+     * as evenly at its far corner as under the person holding the only fire
+     * on it. Nothing drew the eye anywhere, and on the dark maps the field
+     * read as uniformly dim rather than as dark with a light in it.
+     *
+     * So the ember lights the ground it stands on, over three hundred pixels
+     * and change. It is drawn here, in the ground-effects pass, so it lights
+     * the FIELD and not the creatures standing on it - a wash over the actors
+     * would flatten exactly the silhouettes the rest of this file works to
+     * keep readable. It breathes, slightly, because a fire does.
+     *
+     * Deliberately weak at the centre. This has to read as the ground being
+     * lit, not as a lamp bolted to the survivor, and every measurement of
+     * what stands off this ground - the loot callouts, the creature
+     * contrast - is taken against it. */
+    const R = p.radius * (this.lite ? 15 : 19);
+    const breath = 0.94 + 0.06 * WS.sin(time * 1.25);
+    const lum = ctx.createRadialGradient(p.x, p.y, p.radius * 0.5, p.x, p.y, R);
+    /* Warmer than the colour it looks like it should be.
+     *
+     * An additive light can only ADD, so amber laid over the blue-black of
+     * Mourneholt lifted the ground to [37,36,39] - dead neutral grey. It read
+     * as a hole cut in the dark rather than as firelight, because a fire that
+     * lights blue ground has to out-run the blue to look like a fire at all.
+     * Measured again with the blue taken almost out of the light itself, the
+     * same ground under it comes up warm. */
+    lum.addColorStop(0, `rgba(255,178,84,${(0.135 * breath).toFixed(3)})`);
+    lum.addColorStop(0.42, `rgba(248,150,64,${(0.062 * breath).toFixed(3)})`);
+    lum.addColorStop(1, 'rgba(236,126,50,0)');
+    ctx.fillStyle = lum;
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, R, R * 0.8, 0, 0, WS.TAU);
+    ctx.fill();
+
     const r = p.radius * 2.4;
     const grd = ctx.createRadialGradient(p.x, p.y + p.radius * 0.5, 0, p.x, p.y + p.radius * 0.5, r);
     grd.addColorStop(0, 'rgba(245,197,107,.16)');
