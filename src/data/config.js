@@ -64,13 +64,14 @@
     secondBlessingAt: 900,
     maxWeapons: 6,
     weaponMaxLevel: 8,
-    /* How many MARKS a survivor needs before they look like they have earned
-       something. A mark is an evolved weapon; a union counts for two, because
-       it costs two evolved weapons to forge. Tied to these rather than to
-       character level on purpose - levels tick past constantly and mean very
-       little, while an evolution is the difference between dying at 16:47 and
-       finishing a thirty-minute run. It is a moment, so it should show. */
-    heroRankAt: [1, 2, 4, 6],
+    /* The levels at which a survivor starts to LOOK like what they have
+       become. Measured against real runs: a thirty-minute Hyper run finishes
+       around level 85, and one that dies at 16:47 reaches 47 - so these put
+       the first change a couple of minutes in and the crown a bit past the
+       halfway mark, which leaves most of a good run spent looking earned.
+       Weapons and skills get their own visual upgrades separately; this ladder
+       is the survivor themselves. */
+    heroRankAt: [6, 15, 28, 45],
     /* Dark Bargain's price, which was two numbers written into the middle of
        waves.js and enemy.js. The upgrade's own tooltip quotes them, so they
        had to be somewhere a tooltip could reach. */

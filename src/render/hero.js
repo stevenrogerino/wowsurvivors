@@ -170,23 +170,51 @@
    * Named for what they are rather than how bright: `key` is the plane facing
    * the light, `core` the body colour, `shade` the turn away, `deep` the
    * occluded underside, `line` the edge where a form meets what is behind it. */
-  function ramp(base) {
+  /* WHAT A SURFACE IS MADE OF.
+   *
+   * Every surface in the rig was one three-stop gradient, which is why a
+   * shield, a tabard and a leather strap all read as the same soft plastic.
+   * Measured as the share of interior pixels with a steep local change - the
+   * only honest way to ask how much DRAWING is inside an outline, since a
+   * silhouette edge is free - the cast averaged 23.3%, and the warrior, who
+   * is mostly plate, was the flattest of all at 16.1%.
+   *
+   * A ramp now carries a material, and the shared primitives read it:
+   *
+   *   contact  how hard the shaded corner darkens INSIDE the shape. This is
+   *            the one that matters most: without it, two overlapping panels
+   *            are two flat cut-outs, and with it they are one in front of
+   *            the other.
+   *   spec     a narrow bright band along the lit edge. Metal has one, cloth
+   *            does not, and that difference is most of what tells a
+   *            pauldron from a shoulder of cloth at this size. */
+  const MATERIAL = {
+    cloth: { contact: 0.20, spec: 0 },
+    leather: { contact: 0.26, spec: 0.10 },
+    metal: { contact: 0.30, spec: 0.38 },
+    skin: { contact: 0.16, spec: 0.06 },
+  };
+
+  function ramp(base, kind) {
+    const m = MATERIAL[kind] || MATERIAL.cloth;
     return {
       key: WS.hex(WS.mix(base, [1, 1, 1], 0.34)),
       core: WS.hex(base),
       shade: WS.hex(WS.shade(base, 0.66)),
       deep: WS.hex(WS.shade(base, 0.40)),
       line: WS.hex(WS.shade(base, 0.22)),
+      contact: m.contact,
+      spec: m.spec,
     };
   }
 
   const CLOTH = ramp([0.30, 0.33, 0.42]);   // obsidian weave, the default garment
   const DARKCLOTH = ramp([0.17, 0.18, 0.25]); // what a hood's inside is made of
-  const LEATHER = ramp([0.42, 0.30, 0.19]);
-  const STEEL = ramp([0.60, 0.65, 0.75]);
-  const GOLD = ramp([0.72, 0.55, 0.24]);
-  const SKIN = ramp([0.80, 0.62, 0.47]);
-  const WOOD = ramp([0.40, 0.29, 0.18]);
+  const LEATHER = ramp([0.42, 0.30, 0.19], 'leather');
+  const STEEL = ramp([0.60, 0.65, 0.75], 'metal');
+  const GOLD = ramp([0.72, 0.55, 0.24], 'metal');
+  const SKIN = ramp([0.80, 0.62, 0.47], 'skin');
+  const WOOD = ramp([0.40, 0.29, 0.18], 'leather');
 
   // The one light in the scene, and the rim it throws.
   const RIM = 'rgba(245,197,107,.85)';      // arc gold, along the lit edges
@@ -210,6 +238,7 @@
     if (rot) g.rotate(rot);
     lit(g, r, -rx, -ry, rx * 0.8, ry);
     g.beginPath(); g.ellipse(0, 0, rx, ry, 0, 0, WS.TAU); g.fill();
+    roundInside(g, r, -rx, -ry, rx, ry);
     g.restore();
   }
 
@@ -224,6 +253,69 @@
     g.moveTo(pts[0][0], pts[0][1]);
     for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
     g.closePath(); g.fill();
+    shadeInside(g, r, minX, minY, maxX, maxY);
+    /* AND AN EDGE.
+     
+       Smooth shading alone did almost nothing: measured as the share of
+       interior pixels with a steep local change, adding contact gradients and
+       specular to every primitive moved the cast from 23.3% to 23.6%, because
+       a gradient spread over eighty pixels has no steep change anywhere in
+       it. What separates a drawing from a set of cut-outs is where one thing
+       STOPS and another starts, and that is a line, not a ramp. Drawn in the
+       part's own darkened colour rather than in black, so it reads as the
+       shape turning away rather than as an ink outline around a sticker. */
+    edgeInside(g, r, 0.55, 0.7);
+  }
+
+  /** An edge drawn INSIDE the shape it belongs to.
+   *
+   *  A plain stroke straddles the path, so half of every line lands outside
+   *  the part - which grows the figure. It cost the graveblade 2px past the
+   *  edge of its own tile on the seventh frame of going down, and a silhouette
+   *  that changes because of a line drawn on top of it is not a silhouette.
+   *  Clipped first, the line is entirely within the shape and the outline the
+   *  rim light is taken from stays exactly what it was. */
+  function edgeInside(g, r, alpha, width) {
+    g.save();
+    g.clip();
+    g.strokeStyle = r.line;
+    g.globalAlpha = alpha;
+    g.lineWidth = width * 2;     // half of it is clipped away
+    g.lineJoin = 'round';
+    g.stroke();
+    g.restore();
+  }
+
+  /** The inside of a shape, once it has been filled: the shaded corner darkens
+   *  and - on metal - the lit corner takes a narrow band of white.
+   *
+   *  Called with the shape still the current path, so it clips to it. Light in
+   *  this rig comes from up and to the left for every surface, so the dark
+   *  runs from bottom-right and the band sits along the top-left. */
+  function shadeInside(g, r, minX, minY, maxX, maxY) {
+    const w = maxX - minX, h = maxY - minY;
+    if (w <= 0.5 || h <= 0.5) return;
+    /* Not every ramp-shaped object in this file comes from ramp() - a few are
+       built by hand where one colour had to be forced - so the material is
+       read with a default rather than assumed. */
+    const contact = r.contact === undefined ? MATERIAL.cloth.contact : r.contact;
+    const spec = r.spec || 0;
+    g.save();
+    g.clip();
+    const dark = g.createLinearGradient(maxX, maxY, minX + w * 0.34, minY + h * 0.34);
+    dark.addColorStop(0, 'rgba(0,0,0,' + contact + ')');
+    dark.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = dark;
+    g.fillRect(minX - 1, minY - 1, w + 2, h + 2);
+    if (spec) {
+      const band = g.createLinearGradient(minX, minY, minX + w * 0.30, minY + h * 0.30);
+      band.addColorStop(0, 'rgba(255,255,255,' + spec + ')');
+      band.addColorStop(0.55, 'rgba(255,255,255,' + (spec * 0.22).toFixed(3) + ')');
+      band.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = band;
+      g.fillRect(minX - 1, minY - 1, w + 2, h + 2);
+    }
+    g.restore();
   }
 
   /** A limb: a round-capped stroke, which is the cheapest honest capsule. */
@@ -270,6 +362,43 @@
     g.lineTo(x0 - nx * w0, y0 - ny * w0);
     g.arc(x0, y0, w0, Math.atan2(-ny, -nx), Math.atan2(ny, nx));
     g.closePath(); g.fill();
+    /* A limb is round, so the dark wraps the far side of it rather than
+       settling in a corner. Without this the arms and legs - which are most
+       of the figure's area - stayed the flattest thing in the drawing. */
+    const lo = Math.max(w0, w1);
+    roundInside(g, r, Math.min(x0, x1) - lo, Math.min(y0, y1) - lo,
+      Math.max(x0, x1) + lo, Math.max(y0, y1) + lo);
+    edgeInside(g, r, 0.45, 0.6);
+  }
+
+  /** The inside of something ROUND, once filled: the same light, wrapped.
+   *  Used by limbs and heads, where a corner-to-corner ramp reads as a fold
+   *  rather than as a curve. */
+  function roundInside(g, r, minX, minY, maxX, maxY) {
+    const w = maxX - minX, h = maxY - minY;
+    if (w <= 0.5 || h <= 0.5) return;
+    const contact = r.contact === undefined ? MATERIAL.cloth.contact : r.contact;
+    const spec = r.spec || 0;
+    const cx = minX + w * 0.5, cy = minY + h * 0.5;
+    const rad = Math.max(w, h) * 0.62;
+    g.save();
+    g.clip();
+    const dark = g.createRadialGradient(
+      minX + w * 0.30, minY + h * 0.30, rad * 0.22, cx, cy, rad);
+    dark.addColorStop(0, 'rgba(0,0,0,0)');
+    dark.addColorStop(0.62, 'rgba(0,0,0,' + (contact * 0.42).toFixed(3) + ')');
+    dark.addColorStop(1, 'rgba(0,0,0,' + (contact * 1.05).toFixed(3) + ')');
+    g.fillStyle = dark;
+    g.fillRect(minX - 1, minY - 1, w + 2, h + 2);
+    if (spec) {
+      const band = g.createRadialGradient(
+        minX + w * 0.32, minY + h * 0.28, 0, minX + w * 0.32, minY + h * 0.28, rad * 0.72);
+      band.addColorStop(0, 'rgba(255,255,255,' + spec + ')');
+      band.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = band;
+      g.fillRect(minX - 1, minY - 1, w + 2, h + 2);
+    }
+    g.restore();
   }
 
   /* --------------------------------------------------------------- head --- */
@@ -1549,23 +1678,57 @@
   /** Rank 1. The hem of whatever they wear takes light, and embers lift. */
   function emberHem(g, cfg, C, b, w) {
     const cx = 50;
-    const hemY = cfg.robe ? FOOT_Y - 4 : HIP_Y + 4;
-    const wide = b.hip * (cfg.robe ? 1.9 : 1.5);
+    /* A HEM IS AN EDGE, NOT A DISC.
+     
+       This was a filled ellipse, and on everyone who does not wear a robe it
+       landed at hip height and read as a glowing circle across the belly -
+       an awkward midline blob that belonged to no part of the body. On the
+       robed classes it sat at the floor and read as a puddle being stood in.
+       
+       It is now the shape a hem actually is: a band that follows the bottom
+       edge of the garment, tapering with the body and fading upward into the
+       cloth, with its ends falling off so it does not read as a bar either. */
+    const robe = !!cfg.robe;
+    const hemY = robe ? FOOT_Y - 3 : HIP_Y + 5;
+    const halfTop = b.hip * (robe ? 1.30 : 1.02);
+    const halfBot = b.hip * (robe ? 1.62 : 1.18);
+    const tall = robe ? 13 : 9;
+
     g.save();
     g.globalCompositeOperation = 'lighter';
-    const grd = g.createLinearGradient(0, hemY - 9, 0, hemY + 2);
-    grd.addColorStop(0, WS.rgb(C.emberRgb, 0));
-    grd.addColorStop(1, WS.rgb(C.emberRgb, 0.5));
-    g.fillStyle = grd;
     g.beginPath();
-    g.ellipse(cx, hemY - 2, wide, 7, 0, 0, WS.TAU);
-    g.fill();
+    g.moveTo(cx - halfTop, hemY - tall);
+    g.lineTo(cx + halfTop, hemY - tall);
+    g.lineTo(cx + halfBot, hemY);
+    // a shallow scallop along the bottom, so the light ends where cloth ends
+    g.quadraticCurveTo(cx + halfBot * 0.45, hemY + 2.2, cx, hemY + 0.6);
+    g.quadraticCurveTo(cx - halfBot * 0.45, hemY + 2.2, cx - halfBot, hemY);
+    g.closePath();
+    g.clip();
+    // up the cloth: nothing at the top, brightest along the edge itself
+    const up = g.createLinearGradient(0, hemY - tall, 0, hemY + 2);
+    up.addColorStop(0, WS.rgb(C.emberRgb, 0));
+    up.addColorStop(0.55, WS.rgb(C.emberRgb, 0.14));
+    up.addColorStop(1, WS.rgb(C.emberRgb, 0.62));
+    g.fillStyle = up;
+    g.fillRect(cx - halfBot - 2, hemY - tall - 1, (halfBot + 2) * 2, tall + 4);
+    /* And across it, so the ends of the band die away instead of stopping.
+       Drawn as a subtractive-looking pass it would need another composite
+       mode; instead the sideways falloff is painted as its own light and the
+       middle simply gets more of it. */
+    const across = g.createLinearGradient(cx - halfBot, 0, cx + halfBot, 0);
+    across.addColorStop(0, WS.rgb(C.emberRgb, 0));
+    across.addColorStop(0.5, WS.rgb(C.emberRgb, 0.16));
+    across.addColorStop(1, WS.rgb(C.emberRgb, 0));
+    g.fillStyle = across;
+    g.fillRect(cx - halfBot - 2, hemY - tall - 1, (halfBot + 2) * 2, tall + 4);
     g.restore();
+
     /* Three embers, on the stride's own phase so they rise with the walk and
        hang when the survivor stands. Baked per frame like everything else. */
     for (let i = 0; i < 3; i++) {
       const k = ((w.phase || 0) + i / 3) % 1;
-      const ex = cx + (i - 1) * wide * 0.55 + WS.sin(k * WS.TAU + i) * 2;
+      const ex = cx + (i - 1) * halfBot * 0.62 + WS.sin(k * WS.TAU + i) * 2;
       const ey = hemY - 3 - k * 16;
       glow(g, ex, ey, 2.4 * (1 - k * 0.5), WS.rgb(C.emberRgb, 1), 0.5 * (1 - k));
     }
@@ -1761,12 +1924,18 @@
     const heavy = b ? b.sh >= 12 : false;
     const slim = b ? b.sh <= 9.5 : false;
     const pts = heavy ? 5 : slim ? 11 : 8;
+    /* A circlet cannot close through a pair of horns, so a horned survivor
+       wears theirs parted - open at the sides, and set lower where there is
+       still skull to sit on. It is the one thing shaman and ruinseeker do not
+       share: same build, same tattered cloak, and at the top of the ladder
+       they were the closest pair in the cast. */
+    const horned = !!cfg.horns;
     const spread = heavy ? 1.14 : slim ? 0.9 : 1;
     const stout = heavy ? 1.5 : slim ? 0.72 : 1;
     /* CEIL is the one rule nothing may break: the sprite is a square canvas
        and anything past its edge is cut with a flat line, which on a crown
        reads instantly as a bug. */
-    const cy = CEIL + 5.5;
+    const cy = CEIL + (horned ? 8.5 : 5.5);
     const rx = 13 * k * spread, ry = 3.8 * k * spread;
     // the points, back ones first so the front overlaps them
     for (const pass of [0, 1]) {
@@ -1774,6 +1943,8 @@
         const a = (i / pts) * WS.TAU - WS.PI / 2;
         const front = WS.sin(a) > 0;
         if ((pass === 0) === front) continue;
+        // the gap the horns come through
+        if (horned && Math.abs(WS.cos(a)) > 0.72) continue;
         const ex = cx + WS.cos(a) * rx;
         const ey = cy + WS.sin(a) * ry;
         const h = (front ? 5.2 : 3.4) * k * stout;

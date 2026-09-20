@@ -108,17 +108,12 @@
   /* ------------------------------------------------------------ weapons -- */
   /** How far along the survivor LOOKS, 0 to Hero.maxRank.
    *
-   *  Counted from what a run has actually achieved rather than from its
-   *  clock: every evolved weapon is a mark, and a union is two because it
-   *  costs two evolved weapons to forge. See Config.heroRankAt. */
+   *  Read off character level. See Config.heroRankAt. */
   Player.rank = function (p) {
     if (!p) return 0;
-    let marks = 0;
-    for (const w of p.weapons) if (w.evolved) marks++;
-    for (const k in p.unionsForged) if (p.unionsForged[k]) marks += 2;
     const at = WS.Config.heroRankAt || [];
     let r = 0;
-    for (let i = 0; i < at.length; i++) if (marks >= at[i]) r = i + 1;
+    for (let i = 0; i < at.length; i++) if (p.level >= at[i]) r = i + 1;
     return r;
   };
 
