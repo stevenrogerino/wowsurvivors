@@ -2382,6 +2382,13 @@ window.WS = window.WS || {};
       },
       achievements: {},
       combos: {},          // discovery codex
+      /* The other two things a run can turn up, and the only two the codex
+         could not show you: which weapons you have seen grow into their
+         evolved form, and which unions you have forged. Both were counted -
+         statistics.evolutions, statistics.unions - and a count cannot tell
+         you WHICH, so it cannot tell you what is left to hunt. */
+      evolved: {},
+      unions: {},
       settings: Object.assign({}, WS.Config.defaultSettings),
       statistics: {
         totalKills: 0,
@@ -2493,6 +2500,11 @@ window.WS = window.WS || {};
      * moved would be a worse bug than the one this fixes. */
     db.achievements = scrubMap(db.achievements, 'flag', WS.Achievements);
     db.combos = scrubMap(db.combos, 'flag', WS.Combos);
+    db.evolved = scrubMap(db.evolved, 'flag', WS.Weapons);
+    /* No whitelist: unions are a list, not a table keyed by id, so there is
+       nothing of the right shape to check against. The shape check still
+       drops anything that is not a flag. */
+    db.unions = scrubMap(db.unions, 'flag');
     db.unlocks.characters = scrubMap(db.unlocks.characters, 'flag', WS.Characters);
     db.unlocks.maps = scrubMap(db.unlocks.maps, 'flag', WS.Maps);
     db.unlocks.hyper = scrubMap(db.unlocks.hyper, 'flag', WS.Maps);
@@ -13222,6 +13234,7 @@ window.WS = window.WS || {};
       if (w) { w.level = WS.WEAPON_MAX_LEVEL; p.weaponLevels[choice.id] = WS.WEAPON_MAX_LEVEL; }
       p.unionsForged[choice.id] = true;
       WS.Save.stats.unions++;
+      WS.Save.db.unions[choice.id] = true;   // for the codex, which wants which
       WS.Audio.play('evolve');
       WS.FX.shake(6, 0.5);
       WS.Game.announce(choice.name + '!', 'Two weapons become one.', 3.0, { kind: 'glory' });
@@ -13239,6 +13252,7 @@ window.WS = window.WS || {};
       if (w && !w.evolved) {
         w.evolved = true;
         WS.Save.stats.evolutions++;
+        WS.Save.db.evolved[choice.id] = true;   // ditto
         WS.Audio.play('evolve');
         WS.FX.shake(5, 0.4);
         WS.Game.announce(w.data.evolveName + '!', 'Your weapon has grown into something else.', 3.0,
@@ -20209,7 +20223,76 @@ window.WS = window.WS || {};
       comboRows.append(row);
     }
 
-    wrap.append(achHead, achRows, comboHead, comboRows);
+    /* Evolutions and unions: the two things a run can turn up that the codex
+       could not show you. Both were counted and neither was named, and a
+       count tells you how many you have, not which ones are left - which is
+       the only question this page exists to answer.
+       
+       The recipe is shown whether or not you have earned it, because the
+       level-up card already says "Evolves with Precision into Skybreak" the
+       moment you pick the weapon up. Hiding it here would not be a secret
+       kept, it would be the same fact told in one place and not the other.
+       What an unearned row does is sit there greyed, so the gaps are
+       countable at a glance. */
+    /* Title and count only in the head - the same two things the sections
+       above it carry. A third element in there pushes the count into the
+       middle of the bar, where it reads as a stray number rather than as
+       this section's score. The line belongs under it. */
+    const section = (title, rows, done, total, note) => {
+      const head = el('div', 'codex-head');
+      head.style.marginTop = '22px';
+      head.append(el('h3', 'panel-title', title));
+      head.append(el('div', 'codex-count', `${done} / ${total}`));
+      const out = [head];
+      if (note) {
+        const line = el('div', 'card-body', note);
+        line.style.margin = '-4px 0 10px';
+        out.push(line);
+      }
+      out.push(rows);
+      return out;
+    };
+
+    const evolvable = WS.WeaponOrder.filter((id) => WS.Weapons[id].evolveName);
+    const evoDone = evolvable.filter((id) => WS.Save.db.evolved[id]).length;
+    const evoRows = el('div', 'rows');
+    for (const id of evolvable) {
+      const d = WS.Weapons[id];
+      const got = !!WS.Save.db.evolved[id];
+      const up = WS.Upgrades[d.evolvePairing];
+      const row = el('div', 'row ' + (got ? 'done' : 'undone'));
+      row.append(icon(d.art, got ? (WS.CONST.COLORS[d.school] || WS.CONST.QUALITY.epic)
+        : [0.35, 0.38, 0.45], 40));
+      const main = el('div', 'row-main');
+      main.append(el('div', 'row-name', d.evolveName));
+      main.append(el('div', 'row-sub',
+        `${d.name} at its last rank, with ${up ? up.name : d.evolvePairing}`
+        + (d.evolveDescription ? ' - ' + WS.template(d.evolveDescription, d) : '')));
+      row.append(main);
+      evoRows.append(row);
+    }
+
+    const uniDone = WS.Unions.filter((u) => WS.Save.db.unions[u.result]).length;
+    const uniRows = el('div', 'rows');
+    for (const u of WS.Unions) {
+      const d = WS.Weapons[u.result];
+      const got = !!WS.Save.db.unions[u.result];
+      const row = el('div', 'row ' + (got ? 'done' : 'undone'));
+      row.append(icon(d ? d.art : 'rune',
+        got ? WS.CONST.QUALITY.legendary : [0.35, 0.38, 0.45], 40));
+      const main = el('div', 'row-main');
+      main.append(el('div', 'row-name', d ? d.name : u.result));
+      main.append(el('div', 'row-sub',
+        `${WS.Weapons[u.from[0]].name} and ${WS.Weapons[u.from[1]].name}, both fully evolved`));
+      row.append(main);
+      uniRows.append(row);
+    }
+
+    wrap.append(achHead, achRows, comboHead, comboRows,
+      ...section('Evolutions', evoRows, evoDone, evolvable.length,
+        'Every weapon becomes something else, if you take the right lesson with it.'),
+      ...section('Unions', uniRows, uniDone, WS.Unions.length,
+        'Two finished weapons, one slot, something neither of them was.'));
     return wrap;
   };
 

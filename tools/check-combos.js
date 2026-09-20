@@ -190,6 +190,54 @@ const fail = [];
     }
   }
 
+  /* ---- the codex has to name what is left to find -----------------------
+   *
+   * Achievements and Discoveries were listed; evolutions and unions were
+   * COUNTED - statistics.evolutions, statistics.unions - and never named. A
+   * count tells you how many you have and not which, so it cannot answer the
+   * only question the page exists for: what is still out there. This checks
+   * that every evolution and every union has a row, that the rows say what
+   * makes them, and that an earned one looks different from one you have not
+   * found - a page where those two render alike is a page with no gaps in it,
+   * which is a page that tells you nothing. */
+  const codex = await page.evaluate(() => {
+    WS.Save.db.evolved = { seeking_motes: true };
+    WS.Save.db.unions = { union_ruin: true };
+    const pane = WS.UI.paneCodex();
+    const text = pane.textContent;
+    const evolvable = WS.WeaponOrder.filter((id) => WS.Weapons[id].evolveName);
+    const rows = Array.from(pane.querySelectorAll('.row'));
+    const named = (n) => text.includes(n);
+    return {
+      evolutions: evolvable.length,
+      evoNamed: evolvable.filter((id) => named(WS.Weapons[id].evolveName)).length,
+      unions: WS.Unions.length,
+      uniNamed: WS.Unions.filter((u) => named(WS.Weapons[u.result].name)).length,
+      /* the recipe, not just the name: a list of results you cannot hunt for
+         is a list of things to be surprised by */
+      recipes: WS.Unions.filter((u) => named(WS.Weapons[u.from[0]].name)
+        && named(WS.Weapons[u.from[1]].name)).length,
+      done: rows.filter((r) => r.classList.contains('done')).length,
+      undone: rows.filter((r) => r.classList.contains('undone')).length,
+      counts: (text.match(/\d+\s*\/\s*\d+/g) || []).length,
+    };
+  });
+  if (codex.evoNamed !== codex.evolutions) {
+    fail.push(`the codex names ${codex.evoNamed} of ${codex.evolutions} evolutions`);
+  }
+  if (codex.uniNamed !== codex.unions) {
+    fail.push(`the codex names ${codex.uniNamed} of ${codex.unions} unions`);
+  }
+  if (codex.recipes !== codex.unions) {
+    fail.push(`${codex.unions - codex.recipes} unions do not say which two weapons make them`);
+  }
+  if (codex.counts < 4) {
+    fail.push(`only ${codex.counts} of the codex's four sections say how many are left`);
+  }
+  if (!codex.done || !codex.undone) {
+    fail.push('the codex does not tell a found entry from one still to find');
+  }
+
   await browser.close();
 
   const table = report.map((c) => {

@@ -231,6 +231,7 @@
       if (w) { w.level = WS.WEAPON_MAX_LEVEL; p.weaponLevels[choice.id] = WS.WEAPON_MAX_LEVEL; }
       p.unionsForged[choice.id] = true;
       WS.Save.stats.unions++;
+      WS.Save.db.unions[choice.id] = true;   // for the codex, which wants which
       WS.Audio.play('evolve');
       WS.FX.shake(6, 0.5);
       WS.Game.announce(choice.name + '!', 'Two weapons become one.', 3.0, { kind: 'glory' });
@@ -248,6 +249,7 @@
       if (w && !w.evolved) {
         w.evolved = true;
         WS.Save.stats.evolutions++;
+        WS.Save.db.evolved[choice.id] = true;   // ditto
         WS.Audio.play('evolve');
         WS.FX.shake(5, 0.4);
         WS.Game.announce(w.data.evolveName + '!', 'Your weapon has grown into something else.', 3.0,

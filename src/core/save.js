@@ -123,6 +123,13 @@
       },
       achievements: {},
       combos: {},          // discovery codex
+      /* The other two things a run can turn up, and the only two the codex
+         could not show you: which weapons you have seen grow into their
+         evolved form, and which unions you have forged. Both were counted -
+         statistics.evolutions, statistics.unions - and a count cannot tell
+         you WHICH, so it cannot tell you what is left to hunt. */
+      evolved: {},
+      unions: {},
       settings: Object.assign({}, WS.Config.defaultSettings),
       statistics: {
         totalKills: 0,
@@ -234,6 +241,11 @@
      * moved would be a worse bug than the one this fixes. */
     db.achievements = scrubMap(db.achievements, 'flag', WS.Achievements);
     db.combos = scrubMap(db.combos, 'flag', WS.Combos);
+    db.evolved = scrubMap(db.evolved, 'flag', WS.Weapons);
+    /* No whitelist: unions are a list, not a table keyed by id, so there is
+       nothing of the right shape to check against. The shape check still
+       drops anything that is not a flag. */
+    db.unions = scrubMap(db.unions, 'flag');
     db.unlocks.characters = scrubMap(db.unlocks.characters, 'flag', WS.Characters);
     db.unlocks.maps = scrubMap(db.unlocks.maps, 'flag', WS.Maps);
     db.unlocks.hyper = scrubMap(db.unlocks.hyper, 'flag', WS.Maps);

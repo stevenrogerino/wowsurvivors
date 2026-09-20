@@ -1110,7 +1110,76 @@
       comboRows.append(row);
     }
 
-    wrap.append(achHead, achRows, comboHead, comboRows);
+    /* Evolutions and unions: the two things a run can turn up that the codex
+       could not show you. Both were counted and neither was named, and a
+       count tells you how many you have, not which ones are left - which is
+       the only question this page exists to answer.
+       
+       The recipe is shown whether or not you have earned it, because the
+       level-up card already says "Evolves with Precision into Skybreak" the
+       moment you pick the weapon up. Hiding it here would not be a secret
+       kept, it would be the same fact told in one place and not the other.
+       What an unearned row does is sit there greyed, so the gaps are
+       countable at a glance. */
+    /* Title and count only in the head - the same two things the sections
+       above it carry. A third element in there pushes the count into the
+       middle of the bar, where it reads as a stray number rather than as
+       this section's score. The line belongs under it. */
+    const section = (title, rows, done, total, note) => {
+      const head = el('div', 'codex-head');
+      head.style.marginTop = '22px';
+      head.append(el('h3', 'panel-title', title));
+      head.append(el('div', 'codex-count', `${done} / ${total}`));
+      const out = [head];
+      if (note) {
+        const line = el('div', 'card-body', note);
+        line.style.margin = '-4px 0 10px';
+        out.push(line);
+      }
+      out.push(rows);
+      return out;
+    };
+
+    const evolvable = WS.WeaponOrder.filter((id) => WS.Weapons[id].evolveName);
+    const evoDone = evolvable.filter((id) => WS.Save.db.evolved[id]).length;
+    const evoRows = el('div', 'rows');
+    for (const id of evolvable) {
+      const d = WS.Weapons[id];
+      const got = !!WS.Save.db.evolved[id];
+      const up = WS.Upgrades[d.evolvePairing];
+      const row = el('div', 'row ' + (got ? 'done' : 'undone'));
+      row.append(icon(d.art, got ? (WS.CONST.COLORS[d.school] || WS.CONST.QUALITY.epic)
+        : [0.35, 0.38, 0.45], 40));
+      const main = el('div', 'row-main');
+      main.append(el('div', 'row-name', d.evolveName));
+      main.append(el('div', 'row-sub',
+        `${d.name} at its last rank, with ${up ? up.name : d.evolvePairing}`
+        + (d.evolveDescription ? ' - ' + WS.template(d.evolveDescription, d) : '')));
+      row.append(main);
+      evoRows.append(row);
+    }
+
+    const uniDone = WS.Unions.filter((u) => WS.Save.db.unions[u.result]).length;
+    const uniRows = el('div', 'rows');
+    for (const u of WS.Unions) {
+      const d = WS.Weapons[u.result];
+      const got = !!WS.Save.db.unions[u.result];
+      const row = el('div', 'row ' + (got ? 'done' : 'undone'));
+      row.append(icon(d ? d.art : 'rune',
+        got ? WS.CONST.QUALITY.legendary : [0.35, 0.38, 0.45], 40));
+      const main = el('div', 'row-main');
+      main.append(el('div', 'row-name', d ? d.name : u.result));
+      main.append(el('div', 'row-sub',
+        `${WS.Weapons[u.from[0]].name} and ${WS.Weapons[u.from[1]].name}, both fully evolved`));
+      row.append(main);
+      uniRows.append(row);
+    }
+
+    wrap.append(achHead, achRows, comboHead, comboRows,
+      ...section('Evolutions', evoRows, evoDone, evolvable.length,
+        'Every weapon becomes something else, if you take the right lesson with it.'),
+      ...section('Unions', uniRows, uniDone, WS.Unions.length,
+        'Two finished weapons, one slot, something neither of them was.'));
     return wrap;
   };
 
