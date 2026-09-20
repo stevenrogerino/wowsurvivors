@@ -325,6 +325,36 @@ const sample = (page, t) => page.evaluate(async (tt) => {
   }
   await off.close();
 
+  /* ------------------------------------------------- and it is THEM, at rank --
+   *
+   * The survivor earns four ranks of kit over a run - a hem, a mantle, a
+   * train, a crown - and the victory is the one moment the game stops and
+   * looks at them. Scene.figure took no rank and passed none, so it drew
+   * every staged figure at rank 0: the cinematic that plays when you win
+   * showed the survivor exactly as they set out.
+   *
+   * Read off the rendered canvas rather than off the call site, because a
+   * rank threaded through four arguments and dropped by the fifth still
+   * type-checks. The same beat of the same scene is drawn at rank 0 and at
+   * the top rank and the two are required to differ. */
+  const dressAt = async (rank) => {
+    const p = await toVictory(ctx, 'warrior');
+    await p.evaluate((r) => { WS.Victory.rank = r; }, rank);
+    const s = await sample(p, 15.0);
+    await p.close();
+    return s.px;
+  };
+  const bare = await dressAt(0);
+  const crowned = await dressAt(4);
+  let dressDiff = 0;
+  for (let i = 0; i < bare.length; i++) if (Math.abs(bare[i] - crowned[i]) > 12) dressDiff++;
+  if (dressDiff < 12) {
+    fail.push(`the victory drew the same frame at rank 0 and at the top rank `
+      + `(${dressDiff} of ${bare.length} sampled pixels differ) - the survivor earns `
+      + 'their kit over a run and the cinematic that celebrates it shows them as they '
+      + 'set out');
+  }
+
   await browser.close();
   if (fail.length) {
     console.error('FAIL');
@@ -338,5 +368,7 @@ const sample = (page, t) => page.evaluate(async (tt) => {
     + `picture ${worst.ratio.toFixed(1)}x a typical step; two different survivors give two `
     + `pictures differing across ${shots.pct.toFixed(1)}% of the frame and two different `
     + 'names; a key, a tap and a pad each step it on, stepping off the end and escape each leave it into the results panel with the HUD back; '
-    + 'and the setting turns it off without losing the panel');
+    + 'the survivor arrives in the kit they earned rather than the kit they set out '
+    + `in (${dressDiff} of ${bare.length} sampled pixels move between rank 0 and the `
+    + 'top rank); and the setting turns it off without losing the panel');
 })();

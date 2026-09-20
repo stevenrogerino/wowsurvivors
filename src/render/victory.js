@@ -36,7 +36,7 @@
   const FADE = 0.9;
 
   const V = { active: false, done: null, layer: null, t: 0, last: null, scene: 0,
-    hero: null, run: null };
+    hero: null, run: null, rank: 0 };
 
   /* --------------------------------------------------------------- horde -- */
   /* The last of them, and then the last of them going. Built per run rather
@@ -136,7 +136,7 @@
    *  table, so a new one added later stars in this without a line of code. */
   function star(ctx, o) {
     const h = V.hero || { art: 'warrior', color: [0.96, 0.77, 0.42] };
-    WS.Scene.figure(ctx, Object.assign({ id: h.art, tint: h.color,
+    WS.Scene.figure(ctx, Object.assign({ id: h.art, tint: h.color, rank: V.rank,
       x: W * 0.5, size: 164 }, o));
   }
 
@@ -349,6 +349,9 @@
     WS.Scene.build();
     buildCrowd(run && run.mapId);
     this.hero = hero;
+    /* Captured here rather than read per-frame: the run is over by the time
+       this plays and the player object goes on being mutated behind it. */
+    this.rank = WS.Player.rank(player);
     this.run = run;
     this.active = true;
     this.done = onDone || null;

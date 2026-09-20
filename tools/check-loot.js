@@ -267,6 +267,61 @@ const LOUDER = 2.0;      // how much more presence a run-changing pickup needs
       maxGems: WS.CONST.MAX_GEMS, maxPicks: WS.CONST.MAX_PICKUPS };
   });
 
+  /* ----------------------------------------------- and WHAT gets recycled --
+   *
+   * Distance decides which pickup gives way, because what is behind you is
+   * what you are not going to reach. But a wave usually dies in one place, so
+   * the things at the far edge are a cluster that fell together, and among
+   * those the cheap ones should go first: coins, then chests and caches, then
+   * potions, then the run-changing items.
+   *
+   * Placed deliberately rather than read off a live field, because a live
+   * field cannot ask the question - it never offers two kinds at the same
+   * distance on the same frame. */
+  const order = await page.evaluate(() => {
+    const WS = window.WS;
+    const cap = WS.CONST.MAX_PICKUPS;
+    const put = (kinds, dist) => {
+      WS.Pickup.clear();
+      const p = WS.Game.player;
+      p.x = 640; p.y = 360;
+      kinds.forEach((k, i) => {
+        const a = (i / kinds.length) * WS.TAU;
+        WS.Pickup.spawn(k, p.x + Math.cos(a) * (dist[i] === undefined ? 300 : dist[i]),
+          p.y + Math.sin(a) * (dist[i] === undefined ? 300 : dist[i]), 1);
+      });
+      while (WS.Pickup.pool.count < cap) WS.Pickup.spawn('bomb', p.x + 40, p.y, 1);
+      const before = WS.Pickup.pool.active.map((q) => q.kind);
+      WS.Pickup.spawn('potion', p.x, p.y, 1);          // forces one eviction
+      const after = WS.Pickup.pool.active.map((q) => q.kind);
+      // whichever kind lost a copy is the one that was chosen
+      for (const k of new Set(before)) {
+        if (after.filter((x) => x === k).length < before.filter((x) => x === k).length) return k;
+      }
+      return null;
+    };
+    return {
+      // all four at the SAME distance: the ladder decides
+      tie: put(['bomb', 'potion', 'chest', 'coin'], [300, 300, 300, 300]),
+      // the coin far nearer than the item: distance still wins
+      far: put(['bomb', 'coin'], [560, 40]),
+      // a destination is never taken, however far out it is
+      keep: put(['merchant', 'coin'], [600, 60]),
+    };
+  });
+  if (order.tie !== 'coin') {
+    fail.push(`with a coin, a chest, a potion and an item all the same distance out, `
+      + `the field gave up the ${order.tie} - the cheap thing goes first when they `
+      + 'fell together');
+  }
+  if (order.far !== 'bomb') {
+    fail.push(`a coin at 40px was recycled ahead of an item at 560px (${order.far}) - `
+      + 'distance is still what decides; the kind only breaks a near tie');
+  }
+  if (order.keep === 'merchant') {
+    fail.push('the merchant was recycled to make room - a destination is not loot');
+  }
+
   // The measurement is only worth anything if it got past the caps.
   if (drops.gems < drops.maxGems || drops.picks < drops.maxPicks) {
     fail.push(`the drop run never saturated (${drops.gems}/${drops.maxGems} gems, `

@@ -232,6 +232,58 @@
     return grd;
   }
 
+  /** A hand: a palm, a thumb, and a line where the fingers fold.
+   *
+   *  Every hand on the cast was a bare ellipse. At play size that is fine and
+   *  at any size above it the figure is holding its weapon in a mitten - and
+   *  the hands are where the eye goes, because they are where the person meets
+   *  the thing they are using. Three marks fix it and none of them costs a
+   *  silhouette: a thumb wedge on the side the haft is on, one crease across
+   *  the knuckles, and a cuff where the sleeve or the gauntlet stops.
+   *
+   *  `dir` is which way the thumb points - toward the body's centre, because
+   *  that is the side a held haft passes on.
+   */
+  function hand(g, cx, cy, rx, ry, r, dir, cuff) {
+    // the thumb first, so the palm's own shading closes over its root
+    g.save();
+    lit(g, r, cx - dir * rx, cy - ry, cx + dir * rx, cy + ry);
+    g.beginPath();
+    g.moveTo(cx + dir * rx * 0.30, cy - ry * 0.62);
+    g.quadraticCurveTo(cx + dir * rx * 1.42, cy - ry * 0.52,
+      cx + dir * rx * 1.30, cy + ry * 0.16);
+    g.quadraticCurveTo(cx + dir * rx * 1.00, cy + ry * 0.54,
+      cx + dir * rx * 0.34, cy + ry * 0.44);
+    g.closePath(); g.fill();
+    g.restore();
+    blob(g, cx, cy, rx, ry, r);
+    // the fold across the knuckles, and a shorter one below it
+    g.save();
+    g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, WS.TAU); g.clip();
+    g.strokeStyle = r.line;
+    g.globalAlpha = 0.5; g.lineWidth = 0.8;
+    g.beginPath();
+    g.moveTo(cx - dir * rx * 0.9, cy - ry * 0.18);
+    g.quadraticCurveTo(cx, cy - ry * 0.44, cx + dir * rx * 0.8, cy - ry * 0.22);
+    g.stroke();
+    g.globalAlpha = 0.34; g.lineWidth = 0.7;
+    g.beginPath();
+    g.moveTo(cx - dir * rx * 0.72, cy + ry * 0.36);
+    g.quadraticCurveTo(cx, cy + ry * 0.16, cx + dir * rx * 0.5, cy + ry * 0.34);
+    g.stroke();
+    g.restore();
+    if (cuff) {
+      // where the sleeve stops. An arm that runs straight into a hand has no
+      // wrist, and the wrist is what makes the hand read as attached.
+      g.save();
+      lit(g, cuff, cx - rx, cy - ry * 1.9, cx + rx, cy - ry * 0.6);
+      g.beginPath();
+      g.ellipse(cx - dir * rx * 0.12, cy - ry * 1.16, rx * 1.02, ry * 0.46, 0, 0, WS.TAU);
+      g.fill();
+      g.restore();
+    }
+  }
+
   function blob(g, cx, cy, rx, ry, r, rot) {
     g.save();
     g.translate(cx, cy);
@@ -1062,10 +1114,11 @@
         }
         g.restore();
       } else if (cfg.gauntlets) {
-        blob(g, hx - 0.8, hy + 0.4, b.arm * 0.44, b.arm * 0.5, ramp([0.26, 0.28, 0.33], 'metal'));
+        hand(g, hx - 0.8, hy + 0.4, b.arm * 0.44, b.arm * 0.5,
+          ramp([0.26, 0.28, 0.33], 'metal'), 1, null);
       } else {
-        blob(g, hx - 0.8, hy + 0.4, b.arm * 0.40, b.arm * 0.45,
-          ramp(WS.shade([0.80, 0.62, 0.47], 0.72), 'skin'));
+        hand(g, hx - 0.8, hy + 0.4, b.arm * 0.40, b.arm * 0.45,
+          ramp(WS.shade([0.80, 0.62, 0.47], 0.72), 'skin'), 1, null);
       }
     }
 
@@ -1084,14 +1137,54 @@
       g.beginPath(); g.moveTo(cx - b.hip - 8 + drag, FOOT_Y);
       g.lineTo(cx + b.hip + 8 + drag, FOOT_Y); g.lineTo(cx + b.hip + 6 + drag, FOOT_Y - 1.5);
       g.lineTo(cx - b.hip - 6.5 + drag, FOOT_Y - 1.5); g.closePath(); g.fill();
-      // Two folds, which is all a bell needs to stop reading as a triangle.
-      g.strokeStyle = 'rgba(0,0,0,.26)'; g.lineWidth = 1.4;
-      for (const dx of [-5, 5]) {
+      /* FOLDS, and a fold is not a line.
+       *
+       * These were two dark strokes down the bell, which is a drawing of a
+       * crease rather than a crease: cloth gathered at a belt and hanging free
+       * makes a shaded side and a LIT CREST beside it, and the crest is the
+       * half that reads. The three flattest survivors in the cast were the
+       * three biggest robes, all of them carrying two strokes each.
+       *
+       * Five of them, at uneven spacing and uneven width, clipped to the bell
+       * so the silhouette is untouched. Uneven because a garment folded at
+       * regular intervals is a pleated skirt, which is a different thing and
+       * reads as one. */
+      g.save();
+      g.beginPath();
+      g.moveTo(cx - b.waist, WAIST_Y - 4 - lift);
+      g.lineTo(cx + b.waist, WAIST_Y - 4 - lift);
+      g.lineTo(cx + b.hip + 8 + drag, FOOT_Y);
+      g.lineTo(cx - b.hip - 8 + drag, FOOT_Y);
+      g.closePath(); g.clip();
+      for (const u of [-0.74, -0.36, 0.05, 0.42, 0.78]) {
+        const topX = cx + u * b.waist * 0.86;
+        const botX = cx + u * (b.hip + 8) * 0.94 + drag;
+        const w0 = 1.5 + 0.8 * Math.abs(u), w1 = 2.9 + 1.9 * Math.abs(u);
+        const grd = g.createLinearGradient(botX - w1, 0, botX + w1, 0);
+        grd.addColorStop(0, 'rgba(0,0,0,.30)');
+        grd.addColorStop(0.52, 'rgba(0,0,0,.04)');
+        grd.addColorStop(0.72, 'rgba(255,255,255,.25)');
+        grd.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = grd;
         g.beginPath();
-        g.moveTo(cx + dx, WAIST_Y - lift);
-        g.lineTo(cx + dx * 2.1 + drag, FOOT_Y - 2);
+        g.moveTo(topX - w0, WAIST_Y - 4 - lift);
+        g.lineTo(topX + w0, WAIST_Y - 4 - lift);
+        g.lineTo(botX + w1, FOOT_Y);
+        g.lineTo(botX - w1, FOOT_Y);
+        g.closePath(); g.fill();
+        /* And the terminator. The gradient alone measured nothing - the same
+           result the whole material pass got, for the same reason: a ramp
+           spread over eighty pixels has no steep change anywhere in it. Cloth
+           that turns away from the light does it at an edge, and that edge is
+           a line. */
+        g.strokeStyle = 'rgba(0,0,0,.27)';
+        g.lineWidth = 0.9;
+        g.beginPath();
+        g.moveTo(topX - w0, WAIST_Y - 4 - lift);
+        g.lineTo(botX - w1, FOOT_Y);
         g.stroke();
       }
+      g.restore();
     } else {
       for (const dir of [-1, 1]) {
         const hx = cx + dir * (b.hip - b.leg * 0.5);
@@ -1104,6 +1197,36 @@
         // leg between them stretches. That is the whole mechanism.
         const foot = FOOT_Y - 6;
         taper(g, hx, HIP_Y - 4 - lift, fx, foot, b.leg * 0.62, b.leg * 0.42, C.legRamp, dir < 0);
+        /* A KNEE. The leg was one tapered column from hip to boot - the
+           longest unbroken shape on the figure and the last part of the rig
+           with nothing drawn on it. One band across it at the joint, lit on
+           top and shaded under, is enough to say the limb bends there, and it
+           travels with the stride because the knee is between the hip and the
+           foot rather than at a fixed height. */
+        {
+          const kt = 0.52;
+          const kx = hx + (fx - hx) * kt;
+          const ky = (HIP_Y - 4 - lift) + (foot - (HIP_Y - 4 - lift)) * kt;
+          const kw = b.leg * 0.53;
+          g.save();
+          /* Light ON TOP of the cap and shadow under it, at low opacity. At
+             full strength this was a dark ring round the leg and read as a
+             garter - a knee is where the limb catches the light, not a band
+             tied round it. */
+          g.globalAlpha = dir < 0 ? 0.22 : 0.4;
+          lit(g, C.legRamp, kx - kw, ky - 3.2, kx + kw, ky + 2.2);
+          g.beginPath();
+          g.ellipse(kx + dir * 0.4, ky - 0.5, kw, 2.3, 0, 0, WS.TAU);
+          g.fill();
+          g.strokeStyle = C.legRamp.line;
+          g.globalAlpha = dir < 0 ? 0.3 : 0.5;
+          g.lineWidth = 0.8;
+          g.beginPath();
+          g.moveTo(kx - kw * 0.85, ky + 1.9);
+          g.quadraticCurveTo(kx + dir * 0.4, ky + 3.2, kx + kw * 0.85, ky + 1.9);
+          g.stroke();
+          g.restore();
+        }
         /* The boot is drawn as a shape with a toe, sitting ON the ground line
          * rather than an ellipse hovering near it. Two survivors ago these
          * were detached brown ovals and the whole cast looked like it was on
@@ -1447,14 +1570,25 @@
     if (cfg.gauntlets) {
       taper(g, cx + b.sh - 1, WAIST_Y - 14, cx + b.sh + 2, WAIST_Y - 2,
         b.arm * 0.6, b.arm * 0.46, ramp([0.30, 0.32, 0.38]));
-      blob(g, cx + b.sh + 2.4, WAIST_Y - 0.5, b.arm * 0.5, b.arm * 0.56,
-        ramp([0.38, 0.40, 0.46]));
+      const plate = ramp([0.38, 0.40, 0.46], 'metal');
+      hand(g, cx + b.sh + 2.4, WAIST_Y - 0.5, b.arm * 0.5, b.arm * 0.56,
+        plate, -1, ramp([0.30, 0.32, 0.38], 'metal'));
+      // and a plate over the back of it, which is the point of a gauntlet
+      g.save();
+      g.beginPath();
+      g.ellipse(cx + b.sh + 2.4, WAIST_Y - 0.5, b.arm * 0.5, b.arm * 0.56, 0, 0, WS.TAU);
+      g.clip();
+      panel(g, [[cx + b.sh + 0.6, WAIST_Y - 3.2], [cx + b.sh + 4.6, WAIST_Y - 2.8],
+        [cx + b.sh + 4.4, WAIST_Y + 0.4], [cx + b.sh + 0.8, WAIST_Y]],
+        ramp([0.46, 0.48, 0.55], 'metal'));
+      g.restore();
       g.fillStyle = 'rgba(255,255,255,.22)';
       g.beginPath();
       g.ellipse(cx + b.sh + 1.4, WAIST_Y - 1.8, b.arm * 0.22, b.arm * 0.16, -0.4, 0, WS.TAU);
       g.fill();
     } else {
-      blob(g, cx + b.sh + 2.4, WAIST_Y - 0.5, b.arm * 0.44, b.arm * 0.5, SKIN);
+      hand(g, cx + b.sh + 2.4, WAIST_Y - 0.5, b.arm * 0.44, b.arm * 0.5, SKIN, -1,
+        cfg.bracer ? null : C.bodyRamp);
     }
   }
 
@@ -1522,7 +1656,7 @@
       // and the lit crest just beside it, which is what makes it read as a
       // ridge rather than as a stripe
       const crest = g.createLinearGradient(topX + wide, 0, topX + wide * 3.2, 0);
-      crest.addColorStop(0, 'rgba(255,255,255,.085)');
+      crest.addColorStop(0, 'rgba(255,255,255,.21)');
       crest.addColorStop(1, 'rgba(255,255,255,0)');
       g.fillStyle = crest;
       g.beginPath();
@@ -1532,6 +1666,16 @@
       g.lineTo(botX + wide * 2.1, foot + 2);
       g.closePath();
       g.fill();
+      /* The line where the two meet. Shade and crest are both ramps, and two
+         ramps butted together still measure as flat - the cloaked survivors
+         were the three lowest in the cast for interior detail while carrying
+         four folds each. The ridge itself is an edge. */
+      g.strokeStyle = 'rgba(0,0,0,.21)';
+      g.lineWidth = 0.85;
+      g.beginPath();
+      g.moveTo(topX + wide, SHOULDER_Y - 4);
+      g.lineTo(botX + wide * 2.1, foot + 2);
+      g.stroke();
     }
     g.restore();
     void drop;

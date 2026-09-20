@@ -317,7 +317,20 @@ const path = require('path');
     if (!survived.armed) seen.add('banish: arming it did not put the row into banish mode');
 
     const after = await geometry();
-    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    /* Compared to the pixel, this failed about one run in four on a single
+       coordinate moving by one - sub-pixel layout rounding, not the overlay
+       being rebuilt, which is the thing the rule is about. A rule that cries
+       wolf gets ignored, and this one guards a real regression (arming banish
+       used to re-deal the whole row). One pixel of slack; two is still a
+       failure, and a rebuild moves things by tens. */
+    const SLACK = 1;
+    const same = (a, b) => {
+      if (typeof a === 'number' && typeof b === 'number') return Math.abs(a - b) <= SLACK;
+      if (Array.isArray(a) && Array.isArray(b)) {
+        return a.length === b.length && a.every((v, i) => same(v, b[i]));
+      }
+      return JSON.stringify(a) === JSON.stringify(b);
+    };
     for (const k of ['cards', 'inner', 'bar', 'names']) {
       if (!same(before[k], after[k])) {
         seen.add(`banish: arming it changed ${k} - ${JSON.stringify(before[k])} -> ${JSON.stringify(after[k])}`);

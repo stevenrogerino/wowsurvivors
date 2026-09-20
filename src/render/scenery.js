@@ -461,8 +461,13 @@
     ctx.fill();
     ctx.restore();
 
+    /* o.rank carries the survivor's earned kit into the scene.
+       Without it every staged figure was drawn at rank 0, which is right for
+       the prologue - nobody has earned anything yet - and wrong for the
+       victory, where the one moment the game stops to look at the survivor
+       showed them exactly as they set out. */
     const sprite = WS.Sprites.hero(o.id || 'warrior', o.tint || [0.96, 0.77, 0.42],
-      WS.round(size), false, o.frame);
+      WS.round(size), false, o.frame, null, o.rank || 0);
     const back = o.backlit || 0;
     const top = foot - size + size * 0.06;
     if (back > 0.02) {

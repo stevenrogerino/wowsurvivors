@@ -19,7 +19,26 @@
     merchant: { art: 'merchant', tint: [0.95, 0.85, 0.45], size: 30, noMagnet: true },
   };
 
-  const Pickup = { pool: null, TYPES };
+  /* HOW EXPENDABLE EACH KIND IS when the field is full and something has to
+   * go. Distance still decides - what is behind you is what you are not going
+   * to reach - but among things at a SIMILAR distance the cheap ones go first,
+   * so a chest that fell at the back of the field outlives the coins that fell
+   * with it.
+   *
+   * The scale is in units of BAND below: a coin is treated as though it were
+   * three bands further out than an item, so a coin only survives a run-
+   * changing pickup when it is more than three bands nearer. The story objects
+   * are not on this table at all and are never chosen - a coffin or a merchant
+   * is a destination, not loot. */
+  const EXPENDABLE = {
+    coin: 3,
+    chest: 2, cache: 2,
+    potion: 1,
+  };
+  const KEEP = { coffin: 1, graveblade: 1, twinglaive: 1, merchant: 1 };
+  const BAND = 150;          // how much nearer a coin has to be to outrank
+
+  const Pickup = { pool: null, TYPES, EXPENDABLE, KEEP };
 
   Pickup.init = function () {
     this.pool = new WS.Pool(() => ({}), null, WS.CONST.MAX_PICKUPS);
@@ -43,22 +62,25 @@
    *  survives. */
   Pickup.spawn = function (kind, x, y, value) {
     if (this.pool.count >= WS.CONST.MAX_PICKUPS) {
-      let coin = -1;
+      /* One pass, scoring every pickup by how willing we are to lose it:
+         its distance from the survivor plus its expendability in bands. That
+         keeps distance the primary term - a cache at the far edge still goes
+         before a coin at your feet - while letting the kind decide between
+         things that fell together, which is the case that actually comes up
+         when a wave dies in one place. */
+      const player = WS.Game.player;
+      let worst = -1, worstScore = -1;
       for (let i = 0; i < this.pool.count; i++) {
-        if (this.pool.active[i].kind === 'coin') { coin = i; break; }
+        const q = this.pool.active[i];
+        if (KEEP[q.kind]) continue;
+        const dx = q.x - player.x, dy = q.y - player.y;
+        const score = Math.sqrt(dx * dx + dy * dy)
+          + (EXPENDABLE[q.kind] || 0) * BAND;
+        if (score > worstScore) { worstScore = score; worst = i; }
       }
-      if (coin >= 0) this.pool.releaseAt(coin);
-      else {
-        const player = WS.Game.player;
-        let worst = 0, worstD = -1;
-        for (let i = 0; i < this.pool.count; i++) {
-          const q = this.pool.active[i];
-          const dx = q.x - player.x, dy = q.y - player.y;
-          const d = dx * dx + dy * dy;
-          if (d > worstD) { worstD = d; worst = i; }
-        }
-        this.pool.releaseAt(worst);
-      }
+      // Everything on the field is a destination: refuse rather than take one.
+      if (worst < 0) return null;
+      this.pool.releaseAt(worst);
     }
     const p = this.pool.acquire();
     if (!p) return null;
