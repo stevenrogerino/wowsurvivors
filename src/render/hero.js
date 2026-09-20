@@ -342,9 +342,20 @@
    *
    *  Every weapon in the rig was a plain dowel from end to end, so there was
    *  nothing to say which part of it is held - and the hand, drawn later,
-   *  landed on bare wood. A few turns of wrap put the grip where the grip is. */
-  function grip(g, x0, y0, x1, y1, w) {
+   *  landed on bare wood.
+   *
+   *  Takes the HAFT'S OWN endpoints and a span along it, rather than a second
+   *  pair of coordinates typed out by hand. Typed by hand, the axe's wrap ran
+   *  from gx+4.6 down to gx+2.2 while the haft under it ran gx+1.3 down to
+   *  gx+3.3 - off the shaft, and leaning the opposite way. The wraps are
+   *  perpendicular to the shaft for the same reason: at a fixed slope they
+   *  cross a raked haft at whatever angle happens to fall out. */
+  function grip(g, hx0, hy0, hx1, hy1, t0, t1, w) {
+    const x0 = hx0 + (hx1 - hx0) * t0, y0 = hy0 + (hy1 - hy0) * t0;
+    const x1 = hx0 + (hx1 - hx0) * t1, y1 = hy0 + (hy1 - hy0) * t1;
     limb(g, x0, y0, x1, y1, w, LEATHER);
+    const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len, ny = dx / len;          // across the shaft
     const n = 4;
     g.save();
     g.strokeStyle = LEATHER.line;
@@ -352,10 +363,10 @@
     g.lineWidth = 0.7;
     for (let i = 1; i < n; i++) {
       const t = i / n;
-      const mx = x0 + (x1 - x0) * t, my = y0 + (y1 - y0) * t;
+      const mx = x0 + dx * t, my = y0 + dy * t;
       g.beginPath();
-      g.moveTo(mx - w * 0.52, my - 0.6);
-      g.lineTo(mx + w * 0.52, my + 0.6);
+      g.moveTo(mx - nx * w * 0.5, my - ny * w * 0.5);
+      g.lineTo(mx + nx * w * 0.5, my + ny * w * 0.5);
       g.stroke();
     }
     g.restore();
@@ -683,26 +694,7 @@
         // Crest, in the survivor's colour.
         panel(g, [[cx - 2.2, CEIL + 2], [cx + 2.2, CEIL + 2],
           [cx + 3, HEAD_CY - 5], [cx - 3, HEAD_CY - 5]], C.accentRamp);
-        if (cfg.helmHorns) {
-          /* Horns off the helm, curving forward. Two survivors wear steel and
-           * the crest alone was not enough to tell their heads apart at 34px -
-           * this one is the brawler and now his outline says so before any
-           * colour does. */
-          /* Heavy at the root and curling UP. The first pair left the helm
-           * almost horizontally and at a constant thinness, which on a head
-           * reads as antennae - two twigs, not two horns. Thickness at the
-           * base and a turn upward are the whole difference. */
-          for (const dir of [-1, 1]) {
-            lit(g, ramp([0.56, 0.53, 0.47]), cx + dir * 8, HEAD_CY - 4, cx + dir * 17, CEIL + 3);
-            g.beginPath();
-            g.moveTo(cx + dir * 7.5, HEAD_CY - 9);
-            g.bezierCurveTo(cx + dir * 15, HEAD_CY - 9, cx + dir * 17.5, HEAD_CY - 15,
-              cx + dir * 14.5, CEIL + 3);
-            g.bezierCurveTo(cx + dir * 14, HEAD_CY - 13, cx + dir * 12, HEAD_CY - 8,
-              cx + dir * 7, HEAD_CY - 1.5);
-            g.closePath(); g.fill();
-          }
-        }
+        if (cfg.helmHorns) sideHorns(g, cx);
       } else if (cfg.blindfold) {
         /* Bound eyes, and the light gets out anyway.
          *
@@ -729,6 +721,57 @@
           ramp([0.16, 0.13, 0.19]));
       } else {
         eyes(g, cx, eyeY, C, false, false);
+        if (cfg.beard) {
+          /* A beard is a jaw made of hair: it starts BELOW the eyes, covers
+             the mouth, and carries on past the chin. Measured from the eye
+             line rather than from a guess at where the jaw is - the first
+             version took HEAD_CY + HEAD_RY*0.38 for the jaw, which is 28, put
+             the moustache at 21, and drew the whole thing over the eyes. The
+             head came out a brown egg with horns. eyeY is 25 and the chin is
+             at 36; everything here is hung off those two. */
+          const lip = eyeY + 4.2;          // under the nose
+          const chin = HEAD_CY + HEAD_RY;  // where the face actually ends
+          const w = HEAD_RX * 0.94;
+          panel(g, [
+            [cx - w, lip + 0.5],
+            [cx - w - 1.2, chin - 2],
+            [cx - w * 0.72, chin + 4.5],
+            [cx - 3, chin + 6.5],
+            [cx + 3, chin + 6.5],
+            [cx + w * 0.72, chin + 4.5],
+            [cx + w + 1.2, chin - 2],
+            [cx + w, lip + 0.5],
+          ], cfg.beard);
+          // the moustache, over the lip and no higher
+          panel(g, [
+            [cx - w * 0.72, lip - 1.6], [cx + w * 0.72, lip - 1.6],
+            [cx + w * 0.58, lip + 1.8], [cx - w * 0.58, lip + 1.8],
+          ], cfg.beard);
+          // one parting down it, the same asymmetry the hair uses
+          g.save();
+          g.strokeStyle = cfg.beard.line;
+          g.globalAlpha = 0.5;
+          g.lineWidth = 0.8;
+          g.beginPath();
+          g.moveTo(cx + 1.1, lip + 2.5);
+          g.lineTo(cx + 0.2, chin + 5);
+          g.stroke();
+          g.restore();
+        }
+        if (cfg.browband) {
+          /* A band of iron across the brow. It is what a man who will not wear
+             a helm wears instead, and it gives the horns something to be
+             mounted on - horns growing out of bare hair read as a costume. */
+          panel(g, [
+            [cx - HEAD_RX - 0.8, eyeY - 7.6], [cx + HEAD_RX + 0.8, eyeY - 8.2],
+            [cx + HEAD_RX + 0.8, eyeY - 4.2], [cx - HEAD_RX - 0.8, eyeY - 3.6],
+          ], ramp([0.44, 0.44, 0.48], 'metal'));
+          g.fillStyle = GOLD.core;
+          g.beginPath();
+          g.ellipse(cx, eyeY - 5.9, 2.1, 1.7, 0, 0, WS.TAU);
+          g.fill();
+          if (cfg.helmHorns) sideHorns(g, cx);
+        }
         if (cfg.warpaint) {
           /* One band of the survivor's own colour across the eyes, in the
            * place a mask would sit. It costs nothing, it survives the shrink,
@@ -778,6 +821,32 @@
       g.beginPath(); g.ellipse(cx, CEIL + 3.5, 12.5, 3.2, 0, 0, WS.TAU); g.stroke();
       g.restore();
       glow(g, cx, CEIL + 3.5, 9, C.accent, 0.26);
+    }
+  }
+
+  /** A pair of horns off the sides of the head.
+   *
+   *  Heavy at the root and curling UP. The first pair left almost
+   *  horizontally at a constant thinness, which on a head reads as antennae -
+   *  two twigs, not two horns. Thickness at the base and a turn upward are
+   *  the whole difference.
+   *
+   *  Lifted out of the helm branch so a browband can carry them too: horns
+   *  growing straight out of bare hair read as a costume, and a band of iron
+   *  is what mounts them on a man who will not wear a helm. */
+  function sideHorns(g, cx) {
+    for (const dir of [-1, 1]) {
+      lit(g, ramp([0.56, 0.53, 0.47]), cx + dir * 8, HEAD_CY - 4, cx + dir * 17, CEIL + 3);
+      g.beginPath();
+      g.moveTo(cx + dir * 7.5, HEAD_CY - 9);
+      g.bezierCurveTo(cx + dir * 15, HEAD_CY - 9, cx + dir * 17.5, HEAD_CY - 15,
+        cx + dir * 14.5, CEIL + 3);
+      g.bezierCurveTo(cx + dir * 14, HEAD_CY - 13, cx + dir * 12, HEAD_CY - 8,
+        cx + dir * 7, HEAD_CY - 1.5);
+      g.closePath(); g.fill();
+      finish(g, ramp([0.56, 0.53, 0.47], 'leather'),
+        cx + Math.min(dir * 7, dir * 17.5), CEIL + 3,
+        cx + Math.max(dir * 7, dir * 17.5), HEAD_CY - 1.5);
     }
   }
 
@@ -1348,7 +1417,7 @@
        * something a person is about to use. */
       const gx = 50 + b.sh + 3;
       limb(g, gx + 6, FOOT_Y - 4, gx - 2, 33, 3, WOOD);
-      grip(g, gx + 4.6, WAIST_Y - 6, gx + 2.2, WAIST_Y + 7, 3.4);
+      grip(g, gx + 6, FOOT_Y - 4, gx - 2, 33, 0.42, 0.70, 3.4);
       /* The bit is a fan with a curved edge and a hollow back.
        *
        * Two flat slabs read as a mallet; a subtle crescent with a big white
@@ -1468,7 +1537,7 @@
        * crescent or a blade at any size. */
       const gx = 50 + b.sh + 3, head = 26;
       limb(g, gx + 3, FOOT_Y - 6, gx - 1, head + 5, 3.2, WOOD);
-      grip(g, gx + 2.2, WAIST_Y - 7, gx + 1.2, WAIST_Y + 6, 3.6);
+      grip(g, gx + 3, FOOT_Y - 6, gx - 1, head + 5, 0.38, 0.66, 3.6);
       // The head: a square face with a chamfer, and a spike behind it.
       panel(g, [[gx - 9, head - 1], [gx + 8, head - 4], [gx + 9, head + 8],
         [gx - 8, head + 11]], STEEL);
@@ -1619,8 +1688,14 @@
        and it is stated here rather than left to the drawing code to remember
        - a survivor's anatomy is part of who they are. The off arm ends in a
        capped stump, and no hand is drawn on it. */
-    warrior: { build: 'heavy', head: 'helm', pauldrons: 2.1, weapon: 'axe',
-      helmHorns: true, sash: true, stump: 'far' },
+    /* Not a helm. Two survivors in the cast wore steel over the whole face and
+       the crest alone was never quite enough to tell them apart; an open face
+       under a band of iron, with a beard for a jaw, is a different head at any
+       size - and the right one for a fallen soldier who has stopped bothering
+       with the rest of the armoury. */
+    warrior: { build: 'heavy', head: 'bare', pauldrons: 2.1, weapon: 'axe',
+      helmHorns: true, browband: true, sash: true, stump: 'far',
+      beard: ramp([0.46, 0.34, 0.21]), hair: ramp([0.40, 0.29, 0.18]) },
     warlock: { build: 'normal', head: 'hood', robe: true, cloak: 'tattered',
       weapon: 'orb', chains: true, tome: true, wisp: true, hood: DARKCLOTH },
     /* The shaman used to be a robed slim silhouette with a long cloak, which
