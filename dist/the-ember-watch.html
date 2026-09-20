@@ -5258,6 +5258,36 @@ window.WS = window.WS || {};
    *  gx+3.3 - off the shaft, and leaning the opposite way. The wraps are
    *  perpendicular to the shaft for the same reason: at a fixed slope they
    *  cross a raked haft at whatever angle happens to fall out. */
+  /** The outline of a swept cone, from a centreline P(t) and a half-width
+   *  W(t) walked out one side and back the other.
+   *
+   *  Two hand-placed beziers that are meant to meet at a point do not meet at
+   *  a point - they leave a blunt cut wherever the control points disagree,
+   *  which is what the old horns and the old bow limb both had. Built this way
+   *  the taper reaches exactly zero because the width function says so, and
+   *  every station comes with the local normal, which is what a binding or a
+   *  growth ring has to be drawn across. */
+  function sweptPath(g, P, W, N) {
+    const pts = [];
+    for (let i = 0; i <= N; i++) {
+      const t = i / N;
+      const a = P(t), b = P(WS.min(1, t + 0.02)), c = P(WS.max(0, t - 0.02));
+      const dx = b[0] - c[0], dy = b[1] - c[1];
+      const len = Math.hypot(dx, dy) || 1;
+      pts.push({ t, x: a[0], y: a[1], nx: -dy / len, ny: dx / len, w: W(t) });
+    }
+    g.beginPath();
+    g.moveTo(pts[0].x + pts[0].nx * pts[0].w, pts[0].y + pts[0].ny * pts[0].w);
+    for (let i = 1; i <= N; i++) {
+      g.lineTo(pts[i].x + pts[i].nx * pts[i].w, pts[i].y + pts[i].ny * pts[i].w);
+    }
+    for (let i = N; i >= 0; i--) {
+      g.lineTo(pts[i].x - pts[i].nx * pts[i].w, pts[i].y - pts[i].ny * pts[i].w);
+    }
+    g.closePath();
+    return pts;
+  }
+
   function grip(g, hx0, hy0, hx1, hy1, t0, t1, w) {
     const x0 = hx0 + (hx1 - hx0) * t0, y0 = hy0 + (hy1 - hy0) * t0;
     const x1 = hx0 + (hx1 - hx0) * t1, y1 = hy0 + (hy1 - hy0) * t1;
@@ -5882,21 +5912,9 @@ window.WS = window.WS || {};
       // half-width: full at the root, nothing at the tip, falling slowly at
       // first so the horn stays heavy where it leaves the skull
       const W = (t) => base * 0.5 * Math.pow(1 - t, 0.8);
-      const N = 16, pts = [];
-      for (let i = 0; i <= N; i++) {
-        const t = i / N;
-        const a = P(t), b = P(Math.min(1, t + 0.02)), c = P(Math.max(0, t - 0.02));
-        let dx = b[0] - c[0], dy = b[1] - c[1];
-        const len = Math.hypot(dx, dy) || 1;
-        pts.push({ t, x: a[0], y: a[1], nx: -dy / len, ny: dx / len, w: W(t) });
-      }
       g.save();
       lit(g, dir < 0 ? HORN_DARK : HORN, rx, rootY0 + base, tipX, tipY);
-      g.beginPath();
-      g.moveTo(pts[0].x + pts[0].nx * pts[0].w, pts[0].y + pts[0].ny * pts[0].w);
-      for (let i = 1; i <= N; i++) g.lineTo(pts[i].x + pts[i].nx * pts[i].w, pts[i].y + pts[i].ny * pts[i].w);
-      for (let i = N; i >= 0; i--) g.lineTo(pts[i].x - pts[i].nx * pts[i].w, pts[i].y - pts[i].ny * pts[i].w);
-      g.closePath();
+      sweptPath(g, P, W, 16);
       g.fill();
       finish(g, dir < 0 ? HORN_DARK : HORN,
         Math.min(rx, tipX) - base, tipY, Math.max(rx, tipX) + base, rootY0 + base);
@@ -6439,13 +6457,55 @@ window.WS = window.WS || {};
    * the figure's outline so it registers at a glance. */
   const WEAPONS = {
     staff(g, C, b) {
+      /* The haft had nothing on it between the hand and the head - a smooth
+         dowel with a gold pill balanced on top. It is gripped where the hand
+         is, and the stone is HELD by a collar rather than resting on the end
+         of a stick. */
       const gx = 50 + b.sh + 3;
       limb(g, gx - 2, FOOT_Y - 2, gx + 3, CEIL + 9, 3.2, WOOD);
-      g.fillStyle = GOLD.core;
-      g.beginPath(); g.ellipse(gx + 3, CEIL + 10, 4.6, 3, 0, 0, WS.TAU); g.fill();
-      glow(g, gx + 3, CEIL + 6, 6, C.accent, 0.9);
+      grip(g, gx - 2, FOOT_Y - 2, gx + 3, CEIL + 9, 0.34, 0.58, 3.6);
+      /* A CLAW SETTING, and the claws go in FRONT of the stone.
+         Drawn behind it they were hidden completely, and three thick gold
+         prongs converging over a pale bead read as a lit torch rather than as
+         something holding a gem. The order is collar, stone, claws - the same
+         order a jeweller works in, and the only one where the metal is seen to
+         grip anything. */
+      const sx = gx + 3, sy = CEIL + 6.4;
+      panel(g, [[sx - 5.2, CEIL + 13.2], [sx + 5.2, CEIL + 12.8],
+        [sx + 4.2, CEIL + 10.2], [sx - 4.2, CEIL + 10.6]], GOLD);
+      // the back prong, behind the stone: three claws in the silhouette, only
+      // two of them crossing the face
+      g.save();
+      lit(g, ramp([0.52, 0.40, 0.16], 'metal'), sx, CEIL + 11, sx, CEIL + 2);
+      g.beginPath();
+      g.moveTo(sx - 1, CEIL + 11);
+      g.quadraticCurveTo(sx - 1.2, sy, sx - 0.8, CEIL + 1.9);
+      g.lineTo(sx + 0.8, CEIL + 1.9);
+      g.quadraticCurveTo(sx + 1.2, sy, sx + 1, CEIL + 11);
+      g.closePath(); g.fill();
+      g.restore();
+      glow(g, sx, sy, 6, C.accent, 0.9);
       g.fillStyle = C.accentLight;
-      g.beginPath(); g.arc(gx + 3, CEIL + 6, 3.4, 0, WS.TAU); g.fill();
+      g.beginPath(); g.arc(sx, sy, 3.6, 0, WS.TAU); g.fill();
+      g.save();
+      g.beginPath(); g.arc(sx, sy, 3.6, 0, WS.TAU); g.clip();
+      const gsh = g.createRadialGradient(sx - 1.3, sy - 1.5, 0.4, sx + 1.2, sy + 1.8, 5.2);
+      gsh.addColorStop(0, 'rgba(255,255,255,0)');
+      gsh.addColorStop(1, 'rgba(18,24,48,.5)');
+      g.fillStyle = gsh;
+      g.beginPath(); g.arc(sx, sy, 3.6, 0, WS.TAU); g.fill();
+      g.restore();
+      for (const k of [-1, 1]) {
+        g.save();
+        lit(g, GOLD, sx + k * 4, CEIL + 11, sx + k * 3.4, CEIL + 2.4);
+        g.beginPath();
+        g.moveTo(sx + k * 4.2 - 0.7, CEIL + 11.2);
+        g.quadraticCurveTo(sx + k * 5, sy, sx + k * 3.2, CEIL + 2.6);
+        g.lineTo(sx + k * 2.4, CEIL + 3.2);
+        g.quadraticCurveTo(sx + k * 3.6, sy, sx + k * 4.2 + 0.7, CEIL + 11.2);
+        g.closePath(); g.fill();
+        g.restore();
+      }
       // Three runes holding station around the head of it. Nothing else in the
       // cast has anything floating, which is most of why it reads as magic.
       for (let i = 0; i < 3; i++) {
@@ -6463,11 +6523,38 @@ window.WS = window.WS || {};
       // A lamp on a chain, swinging out from the hand. The chain is what makes
       // the light belong to the figure rather than hover beside it.
       const gx = 50 + b.sh + 2, hy = WAIST_Y - 2;
-      g.strokeStyle = GOLD.shade; g.lineWidth = 1.1;
-      g.beginPath(); g.moveTo(gx, hy); g.quadraticCurveTo(gx + 6, hy + 6, gx + 7, hy + 13); g.stroke();
-      panel(g, [[gx + 3, hy + 14], [gx + 11, hy + 14], [gx + 9.5, hy + 22], [gx + 4.5, hy + 22]], GOLD);
+      /* A CHAIN, not a wire. One stroked curve of constant width is a cable;
+         what says chain is that it is made of separate pieces, and at this
+         size four links are enough to say it. */
+      const link = (t) => {
+        const u = 1 - t;
+        return [u * u * gx + 2 * u * t * (gx + 6) + t * t * (gx + 7),
+          u * u * hy + 2 * u * t * (hy + 6) + t * t * (hy + 13)];
+      };
+      for (let i = 0; i < 5; i++) {
+        const a = link(i / 4.6), nb = link(i / 4.6 + 0.06);
+        g.save();
+        g.translate(a[0], a[1]);
+        g.rotate(Math.atan2(nb[1] - a[1], nb[0] - a[0]));
+        g.strokeStyle = i % 2 ? GOLD.shade : GOLD.core;
+        g.lineWidth = 0.85;
+        g.beginPath(); g.ellipse(0, 0, 1.9, 1.15, 0, 0, WS.TAU); g.stroke();
+        g.restore();
+      }
+      // The lamp: a lid, a pierced body, a foot. It was one trapezoid.
+      panel(g, [[gx + 2.6, hy + 14.6], [gx + 11.4, hy + 14.6],
+        [gx + 10, hy + 16.4], [gx + 4, hy + 16.4]], GOLD);
+      panel(g, [[gx + 3.6, hy + 16.2], [gx + 10.4, hy + 16.2],
+        [gx + 9.5, hy + 22.4], [gx + 4.5, hy + 22.4]], GOLD);
+      panel(g, [[gx + 4.4, hy + 22], [gx + 9.6, hy + 22],
+        [gx + 8.8, hy + 24], [gx + 5.2, hy + 24]], GOLD);
+      // the window the light comes out of, framed rather than painted on
+      g.save();
+      g.fillStyle = 'rgba(20,14,8,.7)';
+      g.fillRect(gx + 4.6, hy + 17.2, 5.2, 4.4);
       g.fillStyle = C.accentLight;
-      g.fillRect(gx + 5, hy + 17, 4, 4);
+      g.fillRect(gx + 5.2, hy + 17.8, 4, 3.2);
+      g.restore();
       glow(g, gx + 7, hy + 19, 14, C.accent, 0.8);
       /* And the light lands on HER. A lamp that glows beside a figure without
        * touching it is a lamp painted on the same layer, not a lamp in the
@@ -6500,33 +6587,92 @@ window.WS = window.WS || {};
         g.save();
         g.translate(hx, WAIST_Y - 1); g.rotate(dir * 2.75);
         panel(g, [[-2.4, 0], [2.4, 0], [1.6, -19], [0, -24], [-1.6, -19]], STEEL);
-        g.fillStyle = 'rgba(255,255,255,.4)';
-        g.beginPath(); g.moveTo(0.6, -1); g.lineTo(1.3, -19); g.lineTo(0, -23);
-        g.closePath(); g.fill();
-        g.fillStyle = LEATHER.core; g.fillRect(-2.6, 0, 5.2, 6);
+        // A fuller down the middle, not a pale triangle laid over the face:
+        // the groove is what makes a blade read as forged rather than cut out
+        // of paper, and it is a dark line with a light one beside it.
+        g.strokeStyle = 'rgba(18,22,30,.45)'; g.lineWidth = 0.9;
+        g.beginPath(); g.moveTo(0, -2.5); g.lineTo(0, -19); g.stroke();
+        g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 0.7;
+        g.beginPath(); g.moveTo(1.15, -3); g.lineTo(0.8, -18.5); g.lineTo(0, -22.6);
+        g.stroke();
+        /* A hilt, which this did not have: the blade ran straight into a
+           leather block. A knife is a crossguard, a bound grip and a pommel,
+           and those three marks are most of what tells it from a shard. */
+        panel(g, [[-4.2, -0.6], [4.2, -0.6], [3.6, 1.8], [-3.6, 1.8]],
+          ramp([0.40, 0.42, 0.48], 'metal'));
+        panel(g, [[-2.3, 1.6], [2.3, 1.6], [2, 6.4], [-2, 6.4]], LEATHER);
+        g.save();
+        g.strokeStyle = LEATHER.line; g.globalAlpha = 0.6; g.lineWidth = 0.65;
+        for (const y of [2.8, 4.1, 5.4]) {
+          g.beginPath(); g.moveTo(-2.15, y); g.lineTo(2.15, y); g.stroke();
+        }
+        g.restore();
+        g.fillStyle = GOLD.core;
+        g.beginPath(); g.ellipse(0, 6.9, 2.3, 1.5, 0, 0, WS.TAU); g.fill();
         g.restore();
       }
     },
     bow(g, C, b) {
-      // The limb curves away from a grip that sits IN the hand, and the string
-      // closes the shape - without it the bow was an unexplained arc in the air.
+      /* A bow is THICK AT THE RISER AND THIN AT THE NOCKS - that taper is the
+         whole reason it bends, and a stroked arc cannot have it. This was one
+         2.4px stroke of constant width from tip to tip, which is a hoop
+         segment; the limbs are filled and tapered now, built from the same
+         swept cone the horns are, so each one actually comes to a nock. */
       const gx = 50 + b.sh + 2, gy = WAIST_Y - 6, rad = 20;
-      g.strokeStyle = WOOD.core; g.lineWidth = 2.4; g.lineCap = 'round';
-      g.beginPath(); g.arc(gx, gy, rad, -1.25, 1.25); g.stroke();
+      const END = 1.25;
+      const tip = (k) => [gx + rad * Math.cos(k * END), gy + rad * Math.sin(k * END)];
+      for (const k of [-1, 1]) {
+        // centreline: the riser out to one tip, along the same arc as before
+        const P = (t) => {
+          const a = k * END * t;
+          return [gx + rad * Math.cos(a), gy + rad * Math.sin(a)];
+        };
+        const W = (t) => 1.75 * Math.pow(1 - t, 0.55) + 0.35;
+        g.save();
+        const e = tip(k);
+        lit(g, WOOD, gx + rad, gy, e[0], e[1]);
+        sweptPath(g, P, W, 14);
+        g.fill();
+        finish(g, WOOD, WS.min(gx + rad - 3, e[0] - 2), WS.min(gy - 2, e[1] - 2),
+          WS.max(gx + rad + 3, e[0] + 2), WS.max(gy + 2, e[1] + 2));
+        // the nock: a notch of horn at the thin end
+        g.fillStyle = ramp([0.74, 0.70, 0.60], 'leather').core;
+        g.beginPath();
+        g.ellipse(e[0], e[1], 1.5, 1.1, Math.atan2(e[1] - gy, e[0] - gx), 0, WS.TAU);
+        g.fill();
+        g.restore();
+      }
+      const a = tip(-1), c = tip(1);
       g.strokeStyle = 'rgba(226,233,245,.7)'; g.lineWidth = 0.8;
-      g.beginPath();
-      g.moveTo(gx + rad * Math.cos(-1.25), gy + rad * Math.sin(-1.25));
-      g.lineTo(gx + rad * Math.cos(1.25), gy + rad * Math.sin(1.25));
-      g.stroke();
-      g.fillStyle = LEATHER.core;
-      g.fillRect(gx + rad - 2, gy - 5, 3.6, 10);
+      g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(c[0], c[1]); g.stroke();
+      // the riser, bound: a grip sits IN the hand, so it is wrapped like one
+      panel(g, [[gx + rad - 2.2, gy - 5.2], [gx + rad + 1.6, gy - 5],
+        [gx + rad + 1.6, gy + 5], [gx + rad - 2.2, gy + 5.2]], LEATHER);
+      g.save();
+      g.strokeStyle = LEATHER.line; g.globalAlpha = 0.6; g.lineWidth = 0.65;
+      for (const dy of [-3, -1, 1, 3]) {
+        g.beginPath();
+        g.moveTo(gx + rad - 2.1, gy + dy); g.lineTo(gx + rad + 1.5, gy + dy);
+        g.stroke();
+      }
+      g.restore();
       // A quiver over the far shoulder: the hunter's second silhouette cue.
       g.save();
       g.translate(50 - b.sh - 1, SHOULDER_Y + 4); g.rotate(-0.34);
       panel(g, [[-3.4, -12], [3.4, -12], [2.8, 10], [-2.8, 10]], LEATHER);
+      // a strap and a rim, so the quiver is worn rather than stuck on
+      panel(g, [[-3.6, -12.4], [3.6, -12.4], [3.4, -10], [-3.4, -10]],
+        ramp([0.30, 0.22, 0.14], 'leather'));
+      // and arrows with FLETCHING - three bare slivers read as pencils
       for (const dx of [-1.8, 0.2, 2]) {
         g.fillStyle = '#cdd5e4';
         g.fillRect(dx, -17, 1.2, 6);
+        g.fillStyle = dx === 0.2 ? '#c9705c' : '#8f9bb0';
+        g.beginPath();
+        g.moveTo(dx + 0.6, -17.2);
+        g.lineTo(dx + 2.4, -15.4);
+        g.lineTo(dx + 0.6, -14.6);
+        g.closePath(); g.fill();
       }
       g.restore();
     },
@@ -6613,12 +6759,55 @@ window.WS = window.WS || {};
       glow(g, gx + 8, WAIST_Y - 26, 15, C.accent, 0.35);
     },
     orb(g, C, b) {
-      const gx = 50 + b.sh + 6;
-      glow(g, gx, WAIST_Y - 12, 15, C.accent, 0.95);
+      /* The orb was a lit circle floating beside the warlock with nothing
+         joining it to him - the same fault the censer's chain exists to fix.
+         It is HELD now: a clawed setting grips the stone and a short stem runs
+         back into the fist, so the light belongs to the figure. */
+      const gx = 50 + b.sh + 6, oy = WAIST_Y - 12;
+      const dark = ramp([0.22, 0.18, 0.26], 'metal');
+      limb(g, 50 + b.sh - 1, WAIST_Y - 3, gx - 1, oy + 4, 2.4, dark);
+      // the setting: a cup under the stone and three claws up around it
+      panel(g, [[gx - 4.4, oy + 3.2], [gx + 4.4, oy + 3.2],
+        [gx + 2.6, oy + 7], [gx - 2.6, oy + 7]], dark);
+      // the back claw, behind the stone
+      g.save();
+      lit(g, dark, gx, oy + 4, gx, oy - 5);
+      g.beginPath();
+      g.moveTo(gx - 1, oy + 3.8);
+      g.quadraticCurveTo(gx - 1.2, oy, gx - 0.9, oy - 5.1);
+      g.lineTo(gx + 0.9, oy - 5.1);
+      g.quadraticCurveTo(gx + 1.2, oy, gx + 1, oy + 3.8);
+      g.closePath(); g.fill();
+      g.restore();
+      glow(g, gx, oy, 13, C.accent, 0.78);
       g.fillStyle = C.accentLight;
-      g.beginPath(); g.arc(gx, WAIST_Y - 12, 4.4, 0, WS.TAU); g.fill();
+      g.beginPath(); g.arc(gx, oy, 4.4, 0, WS.TAU); g.fill();
+      // the stone is a SPHERE: dark where it curves away, one catchlight
+      g.save();
+      g.beginPath(); g.arc(gx, oy, 4.4, 0, WS.TAU); g.clip();
+      const sh = g.createRadialGradient(gx - 1.6, oy - 1.8, 0.5, gx + 1.4, oy + 2, 6.2);
+      sh.addColorStop(0, 'rgba(255,255,255,0)');
+      sh.addColorStop(1, 'rgba(20,10,30,.55)');
+      g.fillStyle = sh;
+      g.beginPath(); g.arc(gx, oy, 4.4, 0, WS.TAU); g.fill();
+      g.restore();
       g.fillStyle = 'rgba(255,255,255,.8)';
-      g.beginPath(); g.arc(gx - 1.4, WAIST_Y - 13.4, 1.5, 0, WS.TAU); g.fill();
+      g.beginPath(); g.arc(gx - 1.4, oy - 1.4, 1.5, 0, WS.TAU); g.fill();
+      /* The claws last, over both the stone and its glow. Behind them the
+         setting was invisible - a 15px glow at .95 erases anything it is
+         drawn on top of, which is exactly why this looked like a free-floating
+         light in the first place. */
+      for (const k of [-1, 1]) {
+        g.save();
+        lit(g, dark, gx + k * 4, oy + 4, gx + k * 4.6, oy - 4.4);
+        g.beginPath();
+        g.moveTo(gx + k * 3.4 - 1, oy + 3.8);
+        g.quadraticCurveTo(gx + k * 5.2, oy - 1, gx + k * 4.2, oy - 4.6);
+        g.lineTo(gx + k * 3.1, oy - 4.1);
+        g.quadraticCurveTo(gx + k * 3.8, oy - 1, gx + k * 3.4 + 1, oy + 3.8);
+        g.closePath(); g.fill();
+        g.restore();
+      }
     },
     totem(g, C, b) {
       /* A carved head on a haft, not a painted broom.
@@ -6629,12 +6818,28 @@ window.WS = window.WS || {};
        * feather on a thong hanging off the shaft. */
       const gx = 50 + b.sh + 4, top = CEIL + 14;
       limb(g, gx, FOOT_Y - 3, gx + 2, top + 4, 5.4, WOOD);
+      grip(g, gx, FOOT_Y - 3, gx + 2, top + 4, 0.30, 0.52, 5.8);
+      // Two carved bands further down the haft - a totem is worked along its
+      // whole length, and the shaft was the one blank part of the shaman.
+      g.save();
+      g.strokeStyle = WOOD.line; g.globalAlpha = 0.5; g.lineWidth = 0.8;
+      for (const t of [0.64, 0.70, 0.82, 0.88]) {
+        const x = gx + 2 * t, y = FOOT_Y - 3 + (top + 4 - (FOOT_Y - 3)) * t;
+        g.beginPath(); g.moveTo(x - 2.7, y); g.lineTo(x + 2.7, y); g.stroke();
+      }
+      g.restore();
       // The head: wider than the haft, with a heavy brow and a cut jaw.
       panel(g, [[gx - 5.5, top + 9], [gx - 6, top - 3], [gx - 2, top - 6],
         [gx + 6, top - 5], [gx + 7, top + 3], [gx + 4, top + 10],
         [gx - 1, top + 11]], ramp([0.34, 0.25, 0.16]));
-      g.fillStyle = 'rgba(12,8,5,.6)';                 // the mouth, cut across
-      g.fillRect(gx - 4.5, top + 5.5, 10, 2.2);
+      // The mouth, cut across - with teeth in it, because an open jaw with a
+      // flat dark bar in it is a letterbox.
+      g.fillStyle = 'rgba(12,8,5,.72)';
+      g.fillRect(gx - 4.5, top + 5.5, 10, 2.4);
+      g.fillStyle = 'rgba(228,220,198,.78)';
+      for (const dx of [-3.6, -1.4, 0.8, 3]) g.fillRect(gx + dx, top + 5.5, 1.1, 2.4);
+      g.fillStyle = 'rgba(255,255,255,.18)';
+      g.fillRect(gx - 4.5, top + 7.5, 10, 0.6);
       for (const dx of [-2.6, 2.4]) {
         g.fillStyle = C.accent;
         g.beginPath(); g.ellipse(gx + dx, top + 1, 1.5, 1.1, 0, 0, WS.TAU); g.fill();
@@ -6643,8 +6848,26 @@ window.WS = window.WS || {};
       // Hide collar where the head is lashed on, and a feather on a thong.
       panel(g, [[gx - 4.5, top + 11], [gx + 4.5, top + 11],
         [gx + 3.5, top + 15], [gx - 3.5, top + 15]], LEATHER);
+      /* The feather had no spine and no barbs, so at any size it was a leaf.
+         One rib down the middle and a few strokes off it and the same four
+         points read as a feather. */
       panel(g, [[gx + 3, top + 15], [gx + 5, top + 15],
         [gx + 8, top + 27], [gx + 4.5, top + 25]], C.featherRamp);
+      g.save();
+      g.strokeStyle = C.featherRamp.line;
+      g.globalAlpha = 0.6; g.lineWidth = 0.7;
+      g.beginPath();
+      g.moveTo(gx + 4, top + 15.4);
+      g.quadraticCurveTo(gx + 5.4, top + 20, gx + 6.4, top + 25.8);
+      g.stroke();
+      g.globalAlpha = 0.4; g.lineWidth = 0.55;
+      for (let i = 1; i <= 4; i++) {
+        const t = i / 5;
+        const x = gx + 4 + 2.4 * t * t + 0.6 * t, y = top + 15.4 + 10.4 * t;
+        g.beginPath(); g.moveTo(x, y); g.lineTo(x + 1.5, y + 1.9); g.stroke();
+        g.beginPath(); g.moveTo(x, y); g.lineTo(x - 1.2, y + 1.6); g.stroke();
+      }
+      g.restore();
     },
     hammer(g, C, b) {
       /* A warhammer, held head-up in the near hand.
@@ -6704,20 +6927,33 @@ window.WS = window.WS || {};
         g.translate(50 + dir * (b.sh + 3), WAIST_Y - 3);
         g.scale(dir, 1);
         g.rotate(0.42);
-        lit(g, ramp([0.30, 0.26, 0.34]), -2, -14, 12, 10);
+        const GL = ramp([0.30, 0.26, 0.34], 'metal');
+        lit(g, GL, -2, -14, 12, 10);
         g.beginPath();
         g.moveTo(-2.5, 2);
         g.bezierCurveTo(6, 0, 12, -6, 12.5, -15);
         g.bezierCurveTo(9, -7, 4, -3.5, -2.5, -3);
         g.closePath(); g.fill();
+        // The body of the blade turns away from the light along its inside
+        // curve. Without that it is a flat crescent with a bright line on it.
+        finish(g, GL, -3, -15, 13, 2);
         // The edge, lit: one bright taper along the outside of the curve.
         g.strokeStyle = C.accentLight; g.lineWidth = 1.3; g.lineCap = 'round';
         g.beginPath();
         g.moveTo(-2, 1.4);
         g.bezierCurveTo(6, -0.6, 11.4, -6.4, 11.9, -14.6);
         g.stroke();
-        g.fillStyle = LEATHER.core;                    // the grip in the fist
-        g.fillRect(-4.5, -3.4, 4.5, 6);
+        /* The grip in the fist - a bound bar with a guard where the blade
+           leaves it, rather than a leather rectangle butted against steel. */
+        panel(g, [[-1.6, -4.2], [0.6, -3.8], [0.6, 2.6], [-1.6, 2.4]],
+          ramp([0.40, 0.42, 0.48], 'metal'));
+        panel(g, [[-5, -3.4], [-1.4, -3.6], [-1.4, 2.6], [-5, 2.4]], LEATHER);
+        g.save();
+        g.strokeStyle = LEATHER.line; g.globalAlpha = 0.6; g.lineWidth = 0.6;
+        for (const y of [-1.8, -0.2, 1.4]) {
+          g.beginPath(); g.moveTo(-4.9, y); g.lineTo(-1.5, y); g.stroke();
+        }
+        g.restore();
         g.restore();
         glow(g, 50 + dir * (b.sh + 8), WAIST_Y - 12, 11, C.accent, 0.42);
       }
