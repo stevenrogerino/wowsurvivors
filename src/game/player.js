@@ -345,8 +345,14 @@
   Player.applyHeal = function (p, scaled, source) {
     const room = WS.max(0, p.maxHealth - p.health);
     const gained = WS.min(scaled, room);
+    const wasted = scaled - gained;
+    if (wasted > 0) {
+      const run = WS.Game.run;
+      run.overhealDone += wasted;
+      run.overhealBySource[source] = (run.overhealBySource[source] || 0) + wasted;
+    }
     if (p.curdled > 0) {
-      Player.desecrate(p, (scaled - gained) * p.curdleOverheal + gained * p.curdleShare);
+      Player.desecrate(p, wasted * p.curdleOverheal + gained * p.curdleShare);
     }
     if (gained <= 0) return 0;
     p.health += gained;

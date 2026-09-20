@@ -103,7 +103,20 @@
     axe_gyre: {
       name: 'Axe Gyre', school: 'physical', behavior: 'orbit', art: 'axe',
       color: [0.85, 0.88, 0.96], evolvedColor: [1.00, 0.55, 0.25],
-      cooldown: 5.50, damage: 22, projectiles: 2, orbitRadius: 85, orbitSpeed: 4.2,
+      /* Three blades and a shorter breath between gyres. Measured in the
+         training ground, the old pair at a 5.5s cooldown cleared 8 of 282 at
+         rank 1 against a median of 60, and 125 at rank 8 against a median of
+         183 - last in the game while taking the most damage of any build.
+         Most of that was the hit model, which tested for contact once every
+         0.18s and shared one re-hit ledger across every blade, so a third
+         blade would have bought exactly nothing; see Projectile.update. With
+         each blade hitting what it sweeps through and keeping its own ledger,
+         blades are worth something, and these two numbers put the weapon at
+         164 with the second-lowest damage taken - a short-range orbiter that
+         keeps things off you, rather than the worst weapon on the list. The
+         cooldown stays above the duration on purpose: at 3.4 it measured 174
+         but never stops turning, and the weapon loses its rhythm. */
+      cooldown: 4.20, damage: 22, projectiles: 3, orbitRadius: 85, orbitSpeed: 4.2,
       duration: 3.2, radius: 20,
       description: 'Axes circle the survivor, shredding all who close in.',
       evolveName: 'Gyrestorm', evolvePairing: 'ferocity',

@@ -78,7 +78,18 @@ const os = require('os');
      * nothing here was checking that it had played at all. Both halves of
      * that are fixed - it chooses through the API, and the numbers below are
      * asserted. */
+    /* And it has to MOVE. A survivor who stands still only ever levels on the
+       gems that happen to fall inside the pickup radius, which is why the
+       level this reported wandered between 1 and 6 from run to run. The same
+       four keys the player's fingers set, on a slow circuit. */
+    WS.Input.poll = function () {};
+    const drive = (i) => {
+      const leg = Math.floor(i / 240) % 4;
+      const k = WS.Input.keys;
+      k.up = leg === 0; k.right = leg === 1; k.down = leg === 2; k.left = leg === 3;
+    };
     for (let i = 0; i < 60 * 90; i++) {
+      drive(i);
       if (WS.Game.state === 'blessing') {
         WS.Game.chooseBlessing(WS.Game.blessingChoices[0]);
         continue;
@@ -89,7 +100,19 @@ const os = require('os');
       }
       if (WS.Game.state !== 'playing') break;
       WS.Game.player.health = WS.Game.player.maxHealth;
-      WS.Game.tick(WS.CONST.TICK_RATE);
+      /* Game.update, not Game.tick.
+       
+         tick is the simulation; update is the frame, and the two are not
+         interchangeable for a probe. Reaching a level does not put the cards
+         on screen - openLevelUp sets a short `settle` and returns, so the
+         world can come to a stop instead of stopping between two frames, and
+         the countdown that finally presents the choice lives in update. A
+         tick-only loop therefore defers the first level-up forever, leaves
+         `leveling` true so every later one early-returns, and reports a
+         survivor who never levelled. It did, about one run in ten, and the
+         other nine passed on the strength of the XP level rising underneath
+         the card that was never shown. */
+      WS.Game.update(WS.CONST.TICK_RATE);
     }
     WS.Renderer.draw(9);
     return { time: Math.round(WS.Game.run.time), kills: WS.Game.run.kills,

@@ -6,6 +6,12 @@
 (function (WS) {
 
   const MAX = 6;   // shared cap across every summon kind
+  /* A leashed summon is only released once it is back inside this fraction of
+     the leash, and it only takes marks inside this fraction of it. Both exist
+     to keep the come-home and the go-hunt decisions from meeting at a single
+     pixel and arguing there forever. */
+  const RECALL = 0.55;
+  const HUNT_IN = 0.90;
 
   const Familiar = {
     list: [],
@@ -47,6 +53,7 @@
       target: null,
       biteTimer: 0,
       pounce: 0,
+      leashed: false,
       bob: WS.random() * WS.TAU,
       facing: 1,
     });
@@ -64,19 +71,42 @@
       const cdMult = spec.cdMult ? t[spec.cdMult] : 1;
       const dmgMult = spec.dmgMult ? t[spec.dmgMult] : 1;
 
-      // Retarget when the mark dies or strays out of the hunt.
-      if (!fam.target || fam.target._dead
-        || WS.dist(fam.x, fam.y, fam.target.x, fam.target.y) > t.huntRange) {
-        fam.target = WS.Enemy.findNearest(fam.x, fam.y, t.huntRange);
+      /* Leash, with hysteresis: once called off, a summon comes properly home
+         before it hunts again.
+         
+         Without the second threshold this was a one-frame limit cycle and it
+         pinned summons in place. Crossing the leash cleared the target and
+         sent the summon home; one frame later it was a pixel inside the leash,
+         reacquired the same mark, dashed out, and was called off again.
+         Traced, a wolf sat between 434 and 445 pixels from the survivor - the
+         leash is 440 - with NO target for 1.6 seconds while a creature stood
+         148 pixels away.
+         
+         It shows up worst during a timestop, which is what was reported: the
+         leash is anchored to the survivor, so walking drags the summon out of
+         the cycle on its own. Stand still - which is exactly what a timestop
+         invites you to do - and nothing breaks it. */
+      const homeDist = WS.dist(fam.x, fam.y, player.x, player.y);
+      if (homeDist > t.leash) fam.leashed = true;
+      else if (homeDist < t.leash * RECALL) fam.leashed = false;
+
+      /* Hunt around the SURVIVOR, not around the summon. Measured from the
+         summon, a wolf already out at the leash could commit to a mark another
+         huntRange beyond it - a mark it is structurally forbidden to reach.
+         Bounded by the leash, everything it can see is something it can get
+         to. */
+      const reachable = WS.min(t.huntRange, t.leash * HUNT_IN);
+      if (fam.leashed) {
+        fam.target = null;
+      } else if (!fam.target || fam.target._dead
+        || WS.dist(player.x, player.y, fam.target.x, fam.target.y) > reachable) {
+        fam.target = WS.Enemy.findNearest(player.x, player.y, reachable);
       }
 
-      // Leash: past this the summon breaks off and comes home.
-      const homeDist = WS.dist(fam.x, fam.y, player.x, player.y);
       let tx, ty, speed;
-      if (homeDist > t.leash) {
+      if (fam.leashed) {
         [tx, ty] = WS.normalize(player.x - fam.x, player.y - fam.y);
         speed = t.dashSpeed * speedMult;
-        fam.target = null;
       } else if (fam.target) {
         [tx, ty] = WS.normalize(fam.target.x - fam.x, fam.target.y - fam.y);
         speed = t.dashSpeed * speedMult * (1 + player.summonHaste * 0.25);

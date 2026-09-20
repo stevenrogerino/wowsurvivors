@@ -15,7 +15,12 @@
     this.bolts = new WS.Pool(() => ({ hitBy: new Map() }), (b) => b.hitBy.clear(), WS.CONST.MAX_PROJECTILES);
     this.hostiles = new WS.Pool(() => ({}), null, 220);
     this.zones = new WS.Pool(() => ({ hitBy: new Map() }), (z) => z.hitBy.clear(), 24);
-    this.orbits = new WS.Pool(() => ({ hitBy: new Map() }), (o) => o.hitBy.clear(), 32);
+    /* One re-hit ledger PER BLADE, not one for the whole gyre - see the
+       update loop for why that distinction is the weapon. */
+    this.orbits = new WS.Pool(
+      () => ({ hitBy: [], gates: [] }),
+      (o) => { for (const m of o.hitBy) m.clear(); },
+      32);
     this.beams = new WS.Pool(() => ({}), null, 24);
   };
 
@@ -87,6 +92,9 @@
     return z;
   };
 
+  /** How often one blade may strike the same creature. */
+  const REHIT = 0.18;
+
   P.spawnOrbit = function (player, count, radius, speed, damage, size, duration, colour, source, procChain) {
     const o = this.orbits.acquire();
     if (!o) return null;
@@ -96,7 +104,28 @@
     o.angle = 0; o.colour = colour; o.source = source;
     o.tick = 0; o.procChain = procChain || 0;
     o.rank = 1; o.evolved = false; o.blend = null;   // set by the weapon
-    o.hitBy.clear();
+    /* Grown once and kept. A gate is allocated per blade the first time a
+       gyre that wide exists, then reused - this runs every frame for every
+       blade, and per-frame objects here are how a renderer starts collecting
+       garbage mid-fight. */
+    while (o.hitBy.length < count) {
+      const m = new Map();
+      const gate = {
+        m, now: 0,
+        get(e) {
+          const r = this.m.get(e);
+          return (r && r.id === e.spawnId && r.until > this.now) ? e.spawnId : undefined;
+        },
+        set(e) {
+          let r = this.m.get(e);
+          if (!r) { r = { id: 0, until: 0 }; this.m.set(e, r); }
+          r.id = e.spawnId; r.until = this.now + REHIT;
+        },
+      };
+      o.hitBy.push(m);
+      o.gates.push(gate);
+    }
+    for (const m of o.hitBy) m.clear();
     return o;
   };
 
@@ -255,9 +284,15 @@
       }
       const reach = h.radius + player.radius;
       if (WS.dist2(h.x, h.y, player.x, player.y) <= reach * reach) {
-        const connected = WS.Player.takeDamage(player, h.damage, h.srcName);
-        if (connected && player.thornsRank > 0 && h.srcEnemy && !h.srcEnemy._dead) {
-          // Thorns reflects a ranged hit back to whoever cast it.
+        WS.Player.takeDamage(player, h.damage, h.srcName);
+        /* Thorns reflects a ranged hit back to whoever cast it, on the same
+           terms as a melee swing: the bolt was spent on you, so it answers,
+           whether you dodged it, blocked it, or were still inside the
+           invulnerability from the last hit. The melee path has always read
+           that way - "the swing always triggers Thorns" - and this one gated
+           on takeDamage's return instead, which is false during i-frames. The
+           bolt was consumed either way; only the reflection went missing. */
+        if (player.thornsRank > 0 && h.srcEnemy && !h.srcEnemy._dead) {
           WS.Enemy.hit(h.srcEnemy,
             (WS.Config.thornsFlat + h.damage * WS.Config.thornsDamagePct) * player.thornsRank, 'thorns');
         }
@@ -289,32 +324,49 @@
     }
 
     /* ---- orbiting blades ------------------------------------------------- */
+    /* A spinning blade hits what it sweeps through.
+     
+       It used to test for contact once every 0.18s and do nothing in between,
+       and it shared ONE re-hit ledger across every blade on the gyre. Those
+       two together were the whole of Axe Gyre's problem. A blade at rank 1
+       covers about 43 degrees between one sample and the next, so anything
+       standing in the arc it crossed was never tested at all - the blade went
+       straight through it. And because the ledger was shared and cleared once
+       per sample, a creature could be struck once per sample NO MATTER HOW
+       MANY BLADES were out: the weapon's rank buys blades, and blades bought
+       nothing. Measured in the training ground it killed 8 of 282 at rank 1
+       against a median of 68, and came last at rank 8 while taking the most
+       damage of any build.
+     
+       Now every blade is tested every frame and keeps its own ledger, so it
+       connects with whatever it passes over and a second blade is a second
+       set of hits. REHIT is what stops that becoming 60 hits a second: each
+       blade may strike the same creature this often and no oftener, which is
+       the cadence the old sample rate was reaching for. */
     i = 0;
     while (i < this.orbits.count) {
       const o = this.orbits.active[i];
       o.life -= dt;
       if (o.life <= 0) { this.orbits.releaseAt(i); continue; }
       o.angle += o.speed * dt;
-      o.tick -= dt;
-      if (o.tick <= 0) {
-        o.tick = 0.18;              // each blade can re-hit ~5 times a second
-        o.hitBy.clear();
-        for (let n = 0; n < o.count; n++) {
-          const a = o.angle + (n / o.count) * WS.TAU;
-          const bx = player.x + WS.cos(a) * o.radius;
-          const by = player.y + WS.sin(a) * o.radius;
-          const struck = WS.Enemy.damageArea(bx, by, o.size, o.damage, o.hitBy, null, o.source);
-          /* On a STRIKE. This used to compare the enemy pool's count before and
-             after, which does not detect a hit - it detects a DEATH, because
-             the count only moves when something is released. So Tempest Pact,
-             whose whole text is "blades sometimes call the storm, loosing
-             arcweb on those they strike", could not proc on anything that
-             survived being struck. Against a boss - the one fight where you
-             would most want it - it did nothing at all, forever. Every other
-             weapon in the game procs this off a hit; see the bolt path above. */
-          if (o.procChain > 0 && struck > 0 && WS.random() < o.procChain) {
-            WS.Weapon.chainFrom(bx, by, o.damage * 0.7, 3, 220, o.source);
-          }
+      o.tick += dt;
+      for (let n = 0; n < o.count; n++) {
+        const a = o.angle + (n / o.count) * WS.TAU;
+        const bx = player.x + WS.cos(a) * o.radius;
+        const by = player.y + WS.sin(a) * o.radius;
+        const gate = o.gates[n];
+        gate.now = o.tick;
+        const struck = WS.Enemy.damageArea(bx, by, o.size, o.damage, gate, null, o.source);
+        /* On a STRIKE. This used to compare the enemy pool's count before and
+           after, which does not detect a hit - it detects a DEATH, because
+           the count only moves when something is released. So Tempest Pact,
+           whose whole text is "blades sometimes call the storm, loosing
+           arcweb on those they strike", could not proc on anything that
+           survived being struck. Against a boss - the one fight where you
+           would most want it - it did nothing at all, forever. Every other
+           weapon in the game procs this off a hit; see the bolt path above. */
+        if (o.procChain > 0 && struck > 0 && WS.random() < o.procChain) {
+          WS.Weapon.chainFrom(bx, by, o.damage * 0.7, 3, 220, o.source);
         }
       }
       i++;

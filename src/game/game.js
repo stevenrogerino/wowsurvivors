@@ -52,11 +52,16 @@
       damageTaken: 0,
       damagePrevented: 0,
       healingDone: 0,
+      /* Healing that had nowhere to go. It was invisible, which made Curdled
+         Light - a boon that eats precisely this - impossible to read: you
+         could not tell whether you were feeding it or wasting it. */
+      overhealDone: 0,
       damageByWeapon: {},
       healingBySource: {},
-      dps: 0, hps: 0,
-      _dpsWindow: [], _hpsWindow: [],
-      _lastDamage: 0, _lastHealing: 0, _meterTick: 0,
+      overhealBySource: {},
+      dps: 0, hps: 0, ohps: 0,
+      _dpsWindow: [], _hpsWindow: [], _ohpsWindow: [],
+      _lastDamage: 0, _lastHealing: 0, _lastOverheal: 0, _meterTick: 0,
       noHitStreak: 0,
       bestNoHitStreak: 0,
       metamorphoses: 0,
@@ -401,6 +406,7 @@
     stats.bestRunTime = WS.max(stats.bestRunTime, run.time);
     stats.bestBossesInRun = WS.max(stats.bestBossesInRun, run.bossesSlain);
     stats.bestDamage = WS.max(stats.bestDamage, run.damageDone);
+    stats.deathsSlain = (stats.deathsSlain || 0) + run.deathsSlain;
     stats.bestNoHitStreak = WS.max(stats.bestNoHitStreak, run.bestNoHitStreak);
     stats.bestTime[run.mapId] = WS.max(stats.bestTime[run.mapId] || 0, run.time);
     WS.Save.save();
@@ -434,16 +440,24 @@
       run._meterTick = 0.25;
       const dmg = run.damageDone - run._lastDamage;
       const heal = run.healingDone - run._lastHealing;
+      const over = run.overhealDone - run._lastOverheal;
       run._lastDamage = run.damageDone;
       run._lastHealing = run.healingDone;
+      run._lastOverheal = run.overhealDone;
       run._dpsWindow.push(dmg);
       run._hpsWindow.push(heal);
-      if (run._dpsWindow.length > 40) { run._dpsWindow.shift(); run._hpsWindow.shift(); }
-      let ds = 0, hs = 0;
-      for (let i = 0; i < run._dpsWindow.length; i++) { ds += run._dpsWindow[i]; hs += run._hpsWindow[i]; }
+      run._ohpsWindow.push(over);
+      if (run._dpsWindow.length > 40) {
+        run._dpsWindow.shift(); run._hpsWindow.shift(); run._ohpsWindow.shift();
+      }
+      let ds = 0, hs = 0, os = 0;
+      for (let i = 0; i < run._dpsWindow.length; i++) {
+        ds += run._dpsWindow[i]; hs += run._hpsWindow[i]; os += run._ohpsWindow[i];
+      }
       const span = run._dpsWindow.length * 0.25;
       run.dps = span > 0 ? ds / span : 0;
       run.hps = span > 0 ? hs / span : 0;
+      run.ohps = span > 0 ? os / span : 0;
     }
 
     run.noHitStreak += dt;

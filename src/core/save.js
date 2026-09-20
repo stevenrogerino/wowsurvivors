@@ -136,6 +136,7 @@
         bestBossesInRun: 0,
         bestNoHitStreak: 0,
         bestDamage: 0,
+        deathsSlain: 0,
         maxWeapons: 0,
         evolutions: 0,
         unions: 0,

@@ -280,7 +280,11 @@
     e.goldV.textContent = WS.formatNumber(run.gold);
     e.killV.textContent = WS.formatNumber(run.kills);
     e.dpsV.textContent = WS.formatNumber(run.dps);
-    e.hpsV.textContent = WS.formatNumber(run.hps);
+    /* HPS, and beside it what the healing could not use. A survivor at full
+       health reads 0 HPS whether nothing is healing them or everything is -
+       and with Curdled Light those are opposite situations. */
+    e.hpsV.textContent = WS.formatNumber(run.hps)
+      + (run.ohps >= 1 ? ' +' + WS.formatNumber(run.ohps) : '');
 
     // Whichever boss has the most health left is the one the arc tracks - and
     // the same one the score reacts to, because both ask Enemy for it.
@@ -1783,25 +1787,44 @@
     kv('Damage taken', WS.formatNumber(run.damageTaken));
     kv('Damage prevented', WS.formatNumber(run.damagePrevented));
     kv('Healing', WS.formatNumber(run.healingDone));
+    if (run.overhealDone > 0) kv('Overhealing', WS.formatNumber(run.overhealDone));
+    if (run.deathsSlain > 0) {
+      kv('Death itself slain', run.deathsSlain
+        + (WS.Save.stats.deathsSlain ? `  (${WS.Save.stats.deathsSlain} all told)` : ''));
+    } else if (WS.Save.stats.deathsSlain) {
+      kv('Death itself slain', `0  (${WS.Save.stats.deathsSlain} all told)`);
+    }
     kv('Gold this run', WS.formatNumber(run.gold));
 
-    // The damage meter, largest first.
-    const meter = el('div');
-    meter.append(el('h3', null, 'Damage meter'));
-    const entries = Object.entries(run.damageByWeapon).sort((a, b) => b[1] - a[1]);
-    const total = entries.reduce((sum, e) => sum + e[1], 0) || 1;
-    const top = entries.length ? entries[0][1] : 1;
-    for (const [key, value] of entries.slice(0, 10)) {
-      const w = WS.Weapons[key];
-      const label = w ? w.name : key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
-      const line = el('div', 'kv meter-row');
-      line.style.setProperty('--share', (value / top * 100) + '%');
-      if (w) line.style.setProperty('--q', WS.hex(WS.CONST.COLORS[w.school] || WS.CONST.COLORS.arc));
-      line.append(el('span', null, label),
-        el('span', null, `${WS.formatNumber(value)}  (${WS.round(value / total * 100)}%)`));
-      meter.append(line);
-    }
-    right.append(meter);
+    /* Two meters, built the same way: what you dealt, and what you mended.
+       A healing build had nothing to read at the end of a run - every number
+       it cared about was summed into one line called "Healing". */
+    const meterFor = (title, table, tint) => {
+      const entries = Object.entries(table).sort((a, b) => b[1] - a[1]);
+      if (!entries.length) return null;
+      const meter = el('div');
+      meter.append(el('h3', null, title));
+      const total = entries.reduce((sum, e) => sum + e[1], 0) || 1;
+      const top = entries[0][1];
+      for (const [key, value] of entries.slice(0, 10)) {
+        const w = WS.Weapons[key];
+        const label = w ? w.name : key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
+        const line = el('div', 'kv meter-row');
+        line.style.setProperty('--share', (value / top * 100) + '%');
+        line.style.setProperty('--q', WS.hex(
+          w ? (WS.CONST.COLORS[w.school] || WS.CONST.COLORS.arc) : tint));
+        line.append(el('span', null, label),
+          el('span', null, `${WS.formatNumber(value)}  (${WS.round(value / total * 100)}%)`));
+        meter.append(line);
+      }
+      return meter;
+    };
+    const dmgMeter = meterFor('Damage meter', run.damageByWeapon, WS.CONST.COLORS.arc);
+    if (dmgMeter) right.append(dmgMeter);
+    const healMeter = meterFor('Healing meter', run.healingBySource, WS.CONST.COLORS.heal);
+    if (healMeter) right.append(healMeter);
+    const overMeter = meterFor('Overhealing', run.overhealBySource, WS.CONST.COLORS.shadow);
+    if (overMeter) right.append(overMeter);
 
     sheet.append(left.frame, right.frame);
     return sheet;
