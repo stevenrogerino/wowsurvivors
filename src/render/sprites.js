@@ -18,6 +18,53 @@
     return c;
   }
 
+  /** ONE line round the whole creature.
+   *
+   *  Drawn from the finished sprite rather than per shape: the alpha is
+   *  thresholded into a hard silhouette, that silhouette is stamped eight ways
+   *  round a small circle to dilate it by a pixel, the result is tinted, and
+   *  the creature is laid back on top. What survives is exactly the outer
+   *  boundary and nothing else - no seam where two masses overlap, and no ring
+   *  round a head that is sunk into a chest.
+   *
+   *  The threshold is what makes this safe around light. Several creatures
+   *  carry a glow, and glow is a wide skirt of half-transparent pixels; tracing
+   *  the sprite's alpha directly would draw a dark line round the outside of
+   *  the light, which is the one place a line must never be.
+   *
+   *  The line is the creature's own darkened colour rather than black, for the
+   *  same reason the survivors' edges are: black reads as ink round a sticker,
+   *  and a shape's own shadow reads as the shape turning away.
+   */
+  function outline(src, res, p) {
+    const W = 2;                          // device pixels, so 1 at world scale
+    const mask = make(res, res);
+    const mg = mask.getContext('2d');
+    mg.drawImage(src, 0, 0);
+    const img = mg.getImageData(0, 0, res, res);
+    const d = img.data;
+    for (let i = 3; i < d.length; i += 4) d[i] = d[i] >= 170 ? 255 : 0;
+    mg.putImageData(img, 0, 0);
+
+    const ring = make(res, res);
+    const rg = ring.getContext('2d');
+    for (let k = 0; k < 8; k++) {
+      const a = k * WS.PI / 4;
+      rg.drawImage(mask, WS.cos(a) * W, WS.sin(a) * W);
+    }
+    rg.globalCompositeOperation = 'source-in';
+    rg.fillStyle = p.line;
+    rg.fillRect(0, 0, res, res);
+
+    const out = make(res, res);
+    const og = out.getContext('2d');
+    og.globalAlpha = 0.85;
+    og.drawImage(ring, 0, 0);
+    og.globalAlpha = 1;
+    og.drawImage(src, 0, 0);
+    return out;
+  }
+
   /** Five-stop palette derived from a single tint, so every creature is lit
    *  consistently no matter what colour it was given. */
   function palette(tint) {
@@ -59,9 +106,31 @@
     g.ellipse(0, 0, rx, ry, 0, 0, WS.TAU);
     g.fillStyle = grd;
     g.fill();
-    g.lineWidth = WS.max(1.6, rx * 0.16);
+    /* NO FULL OUTLINE.
+     *
+     * Every mass used to stroke its whole boundary, and every creature here is
+     * built from four or five overlapping masses - so each one drew a complete
+     * dark ring straight across the body behind it. The cat came out three
+     * segments bolted together, the gilkin wore a ring round its head, and the
+     * vulture's neck cut a line through its own chest. None of those rings sat
+     * on a real edge of the form; they were the seams of the construction
+     * showing through.
+     *
+     * The silhouette is drawn ONCE for the whole creature, in creature()
+     * below. What is left here is a soft inner edge, clipped so it cannot
+     * bulge the shape, which is enough to say a limb is in front of a body
+     * without stamping a hoop on it. */
+    g.save();
+    g.beginPath();
+    g.ellipse(0, 0, rx, ry, 0, 0, WS.TAU);
+    g.clip();
+    g.globalAlpha = 0.34;
     g.strokeStyle = p.line;
+    g.lineWidth = WS.max(1.4, rx * 0.15) * 2;
+    g.beginPath();
+    g.ellipse(0, 0, rx, ry, 0, 0, WS.TAU);
     g.stroke();
+    g.restore();
     /* The lit edge, along THIS body's own ellipse and clipped inside it, so
        only the inner half of the stroke shows and it reads as light catching
        the form. It used to be a separate circular arc laid over the body at a
@@ -72,12 +141,18 @@
     g.beginPath();
     g.ellipse(0, 0, rx, ry, 0, 0, WS.TAU);
     g.clip();
-    g.globalAlpha = 0.55;
+    /* Struck in three passes that shorten and brighten, so the highlight
+       FADES OUT at both ends. One arc at one alpha stopped dead mid-body and
+       read as a scratch on the paint rather than as light on a curve. */
     g.strokeStyle = p.hi;
-    g.lineWidth = WS.max(1.6, rx * 0.2);
-    g.beginPath();
-    g.ellipse(0, 0, rx, ry, 0, WS.PI * 0.92, WS.PI * 1.72);
-    g.stroke();
+    const arc = [[0.92, 1.72, 0.22], [1.00, 1.64, 0.22], [1.10, 1.54, 0.26]];
+    for (const [a0, a1, al] of arc) {
+      g.globalAlpha = al;
+      g.lineWidth = WS.max(1.6, rx * 0.2);
+      g.beginPath();
+      g.ellipse(0, 0, rx, ry, 0, WS.PI * a0, WS.PI * a1);
+      g.stroke();
+    }
 
     /* THE FORM, not just the light on it.
      *
@@ -384,7 +459,10 @@
       const cx = s / 2, cy = s * 0.58, u = s / 100;
       legs(g, p, cx, cy + 24 * u, u, [-8, 8], 9, 5);
       shaded(g, cx, cy + 4 * u, 18 * u, 24 * u, p);
-      ellipse(g, cx, cy + 12 * u, 19 * u, 12 * u, p.dark);        // coat skirt
+      // The coat skirt, shaded and cut rather than a flat dark disc laid
+      // over the body.
+      shaded(g, cx, cy + 12 * u, 19 * u, 12 * u,
+        { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow });
       shaded(g, cx, cy - 20 * u, 11 * u, 11 * u, { hi: '#d6c2a8', mid: '#b89b7c', lo: '#7a6350', line: '#4a3b2f', glow: '#fff' });
       g.fillStyle = p.mid;                                        // red bandana
       g.beginPath(); g.ellipse(cx, cy - 18 * u, 11.5 * u, 5 * u, 0, WS.PI, WS.TAU); g.fill();
@@ -445,11 +523,15 @@
         [cx + dir * 23 * u, cy + 9 * u], [cx + dir * 10 * u, cy - 2 * u]], p.mid, p.line, u);
         // A pale cuff at the wrist. The sleeve in the robe's own shadow tone
         // vanished into it; the cuff is what makes the arm a separate mass.
-        ellipse(g, cx + dir * 24 * u, cy + 2 * u, 5 * u, 4 * u, p.hi);
+        shaded(g, cx + dir * 24 * u, cy + 2 * u, 5 * u, 4 * u, p);
       }
       poly(g, [[cx - 22 * u, cy + 26 * u], [cx - 12 * u, cy - 22 * u], [cx + 12 * u, cy - 22 * u], [cx + 22 * u, cy + 26 * u]], p.mid, p.line, u);
-      // A hem, so the robe has a foot instead of dissolving into the ground.
-      ellipse(g, cx, cy + 26 * u, 22 * u, 5 * u, p.dark);
+      /* A hem, so the robe has a foot instead of dissolving into the ground.
+         It was a flat disc of the darkest tone, which on the one creature in
+         the bestiary with no interior structure at all was the largest
+         unlit shape on the field. */
+      shaded(g, cx, cy + 26 * u, 22 * u, 5 * u,
+        { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow });
       poly(g, [[cx - 12 * u, cy - 18 * u], [cx, cy - 40 * u], [cx + 12 * u, cy - 18 * u]], p.lo, p.line, u); // hood
       g.fillStyle = '#0a0a12';
       g.beginPath(); g.ellipse(cx, cy - 22 * u, 8 * u, 9 * u, 0, 0, WS.TAU); g.fill();
@@ -827,17 +909,38 @@
     karrash(g, s, p) {
       const cx = s / 2, cy = s * 0.60, u = s / 100;
       shaded(g, cx + 4 * u, cy + 8 * u, 26 * u, 15 * u, p);        // horse barrel
-      g.strokeStyle = p.dark; g.lineWidth = 4 * u; g.lineCap = 'round';
-      for (const dx of [-14, -4, 12, 22]) {
-        g.beginPath(); g.moveTo(cx + dx * u, cy + 18 * u); g.lineTo(cx + dx * u + 2 * u, cy + 32 * u); g.stroke();
-      }
+      // Four legs with feet on them, like every other quadruped here. These
+      // were four bare round-capped strokes - the only limbs in the bestiary
+      // that did not stand on anything.
+      legs(g, p, cx, cy + 18 * u, u, [-14, -4, 12, 22], 14, 4);
       poly(g, [[cx + 28 * u, cy + 4 * u], [cx + 44 * u, cy - 6 * u], [cx + 30 * u, cy + 12 * u]], p.lo, p.line, u);
       shaded(g, cx - 12 * u, cy - 14 * u, 13 * u, 16 * u, p);      // humanoid torso
       shaded(g, cx - 12 * u, cy - 32 * u, 10 * u, 9 * u, p);
       eyes(g, cx - 12 * u, cy - 33 * u, 4 * u, 1.6 * u, '#ffd98f');
-      g.strokeStyle = '#cfd6e2'; g.lineWidth = 3 * u;              // spear
-      g.beginPath(); g.moveTo(cx - 30 * u, cy + 20 * u); g.lineTo(cx + 6 * u, cy - 44 * u); g.stroke();
-      poly(g, [[cx + 6 * u, cy - 44 * u], [cx + 12 * u, cy - 34 * u], [cx, cy - 36 * u]], '#e7ecf5', '#8a90a0', u);
+      /* A SPEAR, not a scratch. This was one 3u white stroke of constant width
+         from hip to point with a flat triangle stuck on the end - no haft, no
+         grip, no material, and at any size it read as a line somebody had
+         drawn across the drawing. A haft is wood, it is bound where the hand
+         closes on it, and the head is steel with an edge. */
+      const bx = cx - 30 * u, by = cy + 20 * u, tx = cx + 4 * u, ty = cy - 34 * u;
+      g.save();
+      g.lineCap = 'round';
+      const haft = g.createLinearGradient(bx, by, tx, ty);
+      haft.addColorStop(0, '#6d5233');
+      haft.addColorStop(0.5, '#9c7b4d');
+      haft.addColorStop(1, '#6d5233');
+      g.strokeStyle = haft; g.lineWidth = 3.4 * u;
+      g.beginPath(); g.moveTo(bx, by); g.lineTo(tx, ty); g.stroke();
+      // the binding, across the haft where the hand is
+      g.strokeStyle = '#4c3721'; g.lineWidth = 0.9 * u;
+      const dx = tx - bx, dy = ty - by, len = Math.hypot(dx, dy) || 1;
+      const nx = -dy / len * 1.9 * u, ny = dx / len * 1.9 * u;
+      for (const t of [0.30, 0.36, 0.42, 0.48]) {
+        const mx = bx + dx * t, my = by + dy * t;
+        g.beginPath(); g.moveTo(mx - nx, my - ny); g.lineTo(mx + nx, my + ny); g.stroke();
+      }
+      g.restore();
+      blade(g, tx, ty, 16 * u, 3.4 * u, Math.atan2(dx, -dy), '#e7ecf5', '#8a90a0');
     },
 
     golem(g, s, p) {
@@ -1148,10 +1251,10 @@
       let c = cache.get(key);
       if (c) return c;
       const res = size * SS;
-      c = make(res, res);
-      const g = c.getContext('2d');
+      const body = make(res, res);
       const draw = CREATURES[art] || CREATURES.lampling;
-      draw(g, res, palette(tint));
+      draw(body.getContext('2d'), res, palette(tint));
+      c = outline(body, res, palette(tint));
       c.displaySize = size;
       cache.set(key, c);
       return c;
