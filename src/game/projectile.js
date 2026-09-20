@@ -116,7 +116,7 @@
     if (!h) return null;
     h.x = x; h.y = y; h.vx = vx; h.vy = vy;
     h.damage = damage;
-    h.colour = WS.CONST.COLORS[school] || WS.CONST.COLORS.shadow;
+    h.colour = WS.CONST.HOSTILE[school] || WS.CONST.COLORS[school] || WS.CONST.COLORS.shadow;
     h.radius = 8;
     h.life = 5;
     h.srcName = srcName;

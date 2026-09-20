@@ -261,7 +261,30 @@
     if (w.level >= (d.projRankB || WS.Config.projRankB)) {
       WS.FX.flash(player.x, player.y, radius * 0.3, colour, hold * 1.6);
     }
-    if (w.mods.blend) WS.FX.flash(player.x, player.y, radius * 0.45, w.mods.blend, hold * 0.9);
+    /* A combined nova, marked as beads ON the ring rather than as another
+       ring of light.
+       
+       This used to be a single flash at radius*0.45 in the partner's colour,
+       and for Curdle - Dawnpulse with Hallowed Ring, both holy - the partner's
+       colour IS the nova's own. Measured over five seeds it repainted 253
+       pixels against 2245 to 26287 for every pairing whose partner brings a
+       different colour: additive light dropped on ground the nova has already
+       lit to near-white is arithmetically almost nothing. Beads change the
+       SHAPE, which works however close the two schools sit.
+       
+       They sit INSIDE the damage radius on purpose. A nova's reach is its
+       damage area, and light drawn past it would promise a hit that never
+       lands. */
+    if (w.mods.blend) {
+      const beads = 6;
+      for (let i = 0; i < beads; i++) {
+        const a = (i / beads) * WS.TAU + (w.level * 0.21);
+        WS.FX.flash(player.x + WS.cos(a) * radius * 0.86,
+          player.y + WS.sin(a) * radius * 0.86,
+          radius * 0.17, w.mods.blend, hold * 1.1);
+      }
+      WS.FX.flash(player.x, player.y, radius * 0.22, w.mods.blend, hold * 0.9);
+    }
     if (heal > 0) WS.Player.heal(player, heal, 'holy');
     WS.Audio.play('cast');
     return true;

@@ -1345,16 +1345,27 @@
          * of marks is a change of SHAPE, which works however close the two
          * schools happen to sit. */
         ctx.fillStyle = WS.rgb(core, 0.95);
+        /* Clear of the widest bolt shape there is. The shield fills a disc at
+           r*1.1 and strokes inside it, and pips tucked at r*1.35 were
+           half-swallowed by it.
+           
+           Three of them, and half again the size they were. Measured across
+           five seeds, the two pairings that combine weapons of the SAME
+           school - verdict, two holy; curdle, two nature - repainted 210 and
+           253 pixels, against 2245 to 26287 for every pairing whose partner
+           brings a different colour. They were passing a floor of 300 on the
+           strength of run-to-run noise, not on the strength of the mark. The
+           mark is now the whole signal for those two, so it has to be a mark
+           you can see rather than a detail you could find. */
         for (const side of [-1, 1]) {
-          /* Clear of the widest bolt shape there is. The shield fills a disc
-             at r*1.1 and strokes inside it, and pips tucked at r*1.35 were
-             half-swallowed by it - verdict measured 368 changed pixels one
-             run and 432 the next, which is a signal too close to its own
-             noise to build a rule on. */
           ctx.beginPath();
-          ctx.arc(-r * 0.35, side * r * 1.85, r * 0.38, 0, WS.TAU);
+          ctx.arc(-r * 0.30, side * r * 1.95, r * 0.56, 0, WS.TAU);
           ctx.fill();
         }
+        // and one astern, which no single bolt shape in the game has
+        ctx.beginPath();
+        ctx.arc(-r * 1.75, 0, r * 0.48, 0, WS.TAU);
+        ctx.fill();
       }
       drawBoltShape(ctx, b, r);
       ctx.restore();

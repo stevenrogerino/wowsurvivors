@@ -285,6 +285,21 @@ window.WS = window.WS || {};
       gemHigh: [0.75, 0.35, 1.00],
       arc: [0.96, 0.77, 0.42],
     },
+    /* What an ENEMY bolt paints with, where that has to differ from the
+     * school's own colour. A hostile bolt used COLORS[school] directly, which
+     * made it the identical value to your own weapon of that school, and put
+     * the pale-blue schools on top of the pale-blue pickups - a frost bolt and
+     * a lodestone measured 16 apart in dE00, chroma-weighted over the pixels
+     * actually painted, which is the colour a player would name. Both moves
+     * are the same move: away from the pale, desaturated palette the ground
+     * uses, into vivid, which is also what a threat should look like. A school
+     * not listed here is already far enough from everything and is left alone.
+     */
+    HOSTILE: {
+      frost: [0.16, 0.93, 1.00],   // vs lodestone: 16.1 -> 24.3
+      arcane: [0.15, 0.00, 0.80],  // vs hourglass: 13.7 -> 22.3
+      holy: [1.00, 0.94, 0.10],    // vs a coin: 16.9 -> 19.4
+    },
     QUALITY: {
       common: [0.91, 0.93, 0.96],
       uncommon: [0.24, 0.86, 0.48],

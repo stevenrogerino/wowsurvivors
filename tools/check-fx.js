@@ -255,6 +255,13 @@ const MAX_SPEED = 1200;
     const cv = document.querySelector('canvas');
     const g = cv.getContext('2d');
     const frame = (id, partner) => {
+      /* The same die rolls for both frames. Without this the two draws start
+         from wherever the RNG happened to be, so the pixel diff carries spread
+         and particle jitter as well as the discovery - which put `verdict`,
+         the pairing with the least to show because both weapons are holy, at
+         220 against a floor of 300 about one run in ten. The signal was always
+         there; the noise was the harness's. */
+      WS.setSeed(70707);
       pl.weapons.length = 0; pl.weaponLevels = {}; pl.combosActive = {};
       WS.Player.addWeapon(pl, id);
       if (partner) WS.Player.addWeapon(pl, partner);
@@ -285,11 +292,20 @@ const MAX_SPEED = 1200;
     return out;
   });
   for (const c of combos) {
-    /* 300, against a measured floor of about 500 for the two pairings that
-       combine weapons of the SAME school - where the partner's colour is the
-       weapon's own and only the pips carry the signal - and against 126 to
-       149 for the code that had no signal at all. */
-    if (c.changed < 300) {
+    /* 450.
+     
+       The floor was 300, and it was fitted to a measurement that moved. Once
+       both frames were seeded alike the two pairings that combine weapons of
+       the SAME school stopped bouncing and sat still at 210 (verdict, two
+       holy) and 253 (curdle, two holy) - under the old floor, which they had
+       been clearing on noise. Against 2245 to 26287 for every pairing whose
+       partner brings a different colour, that was not a weak signal, it was
+       no signal: adding a colour to the colour it already is does nothing,
+       and both of those had nothing else to say it. They now measure 571 and
+       7507 on the strength of shape - pips on the bolt, beads on the nova.
+       450 sits under the weaker of the two and far over what either scored
+       when the signal was missing. */
+    if (c.changed < 450) {
       fail.push(`the discovery ${c.id} changes ${c.changed} pixels of what its weapon `
         + 'looks like - it alters what the weapon does and nothing the player can see');
     }
