@@ -74,25 +74,139 @@
     g.beginPath();
     g.ellipse(0, 0, rx, ry, 0, WS.PI * 0.92, WS.PI * 1.72);
     g.stroke();
+
+    /* THE FORM, not just the light on it.
+     *
+     * Everything above this was one radial ramp, and a ramp has no steep
+     * change anywhere in it - the whole bestiary measured 22% interior detail
+     * against the survivors' 41%, which is where the survivors were before
+     * they were given edges. The same three marks that fixed them fix a body:
+     *
+     *   terminator   the LINE where the lit side turns away. A gradient says
+     *                where the light is; the terminator is what says the
+     *                surface is curved, and unlike the gradient it is an edge
+     *                and so it reads at 36px and it measures.
+     *   contact      the underside is darker than the shadow side, because
+     *                the ground is right there and the light bouncing off it
+     *                never reaches underneath.
+     *   bounce       and a thin bright rim on the shadow side, which IS that
+     *                bounced light. Without it a body lit from one side reads
+     *                as a half-moon sticker.
+     */
+    g.globalAlpha = 0.34;
+    g.strokeStyle = p.lo;
+    g.lineWidth = WS.max(1.1, rx * 0.075);
+    g.beginPath();
+    g.ellipse(-rx * 0.16, -ry * 0.12, rx * 0.86, ry * 0.88, 0,
+      WS.PI * 1.80, WS.PI * 0.70);
+    g.stroke();
+
+    const floor = g.createLinearGradient(0, ry * 0.18, 0, ry);
+    floor.addColorStop(0, 'rgba(0,0,0,0)');
+    floor.addColorStop(1, 'rgba(0,0,0,.34)');
+    g.globalAlpha = 1;
+    g.fillStyle = floor;
+    g.beginPath();
+    g.ellipse(0, 0, rx, ry, 0, 0, WS.TAU);
+    g.fill();
+
+    g.globalAlpha = 0.5;
+    g.strokeStyle = p.hi;
+    g.lineWidth = WS.max(0.9, rx * 0.06);
+    g.beginPath();
+    g.ellipse(0, 0, rx * 0.995, ry * 0.995, 0, WS.PI * 0.10, WS.PI * 0.62);
+    g.stroke();
     g.restore();
     g.restore();
   }
 
+  /** A flat polygon with an inside.
+   *
+   *  Every wing, horn, spike, talon, plate and fin in the bestiary is one of
+   *  these, and every one of them was a flat fill with an outline round it -
+   *  a cut-out. The survivors learned this the expensive way: smooth shading
+   *  alone moved their interior detail by 0.3 points, and what actually
+   *  separates a drawing from a set of stickers is where one surface STOPS,
+   *  which is a line and not a ramp.
+   *
+   *  So the fill is followed by two things clipped inside the shape: a
+   *  directional darkening away from the light, and an inner edge in the
+   *  shape's own darkened colour. Both are clipped, so the silhouette this
+   *  polygon had before is the silhouette it has now - nothing here can grow
+   *  a shape by a pixel, which matters because the framing rules are measured
+   *  on the outline.
+   */
   function poly(g, pts, fill, stroke, lw) {
-    g.beginPath();
-    g.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
-    g.closePath();
+    let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
+    for (const [x, y] of pts) {
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+    }
+    const trace = () => {
+      g.beginPath();
+      g.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+      g.closePath();
+    };
+    trace();
     if (fill) { g.fillStyle = fill; g.fill(); }
     if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw || 1; g.stroke(); }
+    if (!fill) return;
+    const w = maxX - minX, h = maxY - minY;
+    if (w < 2 || h < 2) return;                 // too small to hold anything
+    g.save();
+    trace(); g.clip();
+    const grd = g.createLinearGradient(minX, minY, maxX, maxY);
+    grd.addColorStop(0, 'rgba(255,255,255,.10)');
+    grd.addColorStop(0.45, 'rgba(0,0,0,0)');
+    grd.addColorStop(1, 'rgba(0,0,0,.26)');
+    g.fillStyle = grd;
+    g.fillRect(minX, minY, w, h);
+    /* And the edge. Stroked at DOUBLE width with the clip still on, so the
+       outer half is thrown away and the line sits wholly inside - the same
+       trick the survivors' plates use, and the reason adding it cannot push
+       anything past its own tile. */
+    g.strokeStyle = stroke || 'rgba(0,0,0,.34)';
+    g.globalAlpha = stroke ? 0.5 : 0.34;
+    g.lineWidth = (lw || 1) * 2;
+    trace(); g.stroke();
+    g.restore();
   }
 
+  /** Eyes, in SOCKETS.
+   *
+   *  These were two glowing dots laid straight on the body. A bright mark on
+   *  a lit ground has no weight - the survivors hit exactly this and the fix
+   *  was the same: put something dark behind it. A monster's eye is allowed
+   *  to be the brightest thing on it, but only if it is sitting in a hole,
+   *  and the hole is what turns a pair of dots into a face.
+   */
   function eyes(g, x, y, spread, r, colour) {
     g.save();
+    for (const dir of [-1, 1]) {
+      const ex = x + dir * spread;
+      // the socket: a dark well, wider than the light in it
+      const well = g.createRadialGradient(ex, y, r * 0.4, ex, y, r * 2.5);
+      well.addColorStop(0, 'rgba(6,5,10,.85)');
+      well.addColorStop(1, 'rgba(6,5,10,0)');
+      g.fillStyle = well;
+      g.beginPath(); g.arc(ex, y, r * 2.5, 0, WS.TAU); g.fill();
+      // a hard rim under the brow, so the socket has a top edge
+      g.strokeStyle = 'rgba(6,5,10,.6)';
+      g.lineWidth = WS.max(0.7, r * 0.34);
+      g.beginPath();
+      g.arc(ex, y, r * 1.55, WS.PI * 1.06, WS.PI * 1.94);
+      g.stroke();
+    }
     g.shadowColor = colour; g.shadowBlur = r * 4;
     g.fillStyle = colour;
     g.beginPath(); g.arc(x - spread, y, r, 0, WS.TAU); g.fill();
     g.beginPath(); g.arc(x + spread, y, r, 0, WS.TAU); g.fill();
+    g.shadowBlur = 0;
+    // a hot core, so the eye has a centre rather than being one flat disc
+    g.fillStyle = 'rgba(255,255,255,.75)';
+    g.beginPath(); g.arc(x - spread, y - r * 0.2, r * 0.42, 0, WS.TAU); g.fill();
+    g.beginPath(); g.arc(x + spread, y - r * 0.2, r * 0.42, 0, WS.TAU); g.fill();
     g.restore();
   }
 
@@ -110,27 +224,104 @@
   function legs(g, p, cx, bottom, u, xs, drop, w) {
     g.save();
     g.lineCap = 'round';
-    g.strokeStyle = p.lo;
-    g.lineWidth = w * u;
     for (const dx of xs) {
+      const lx = cx + dx * u, top = bottom - 6 * u, foot = bottom + drop * u;
+      /* Thicker at the body and thinner at the foot, like every other limb in
+         this game. A stroke of one width from hip to toe is a stick, and the
+         whole bestiary was standing on sticks. */
+      g.strokeStyle = p.lo;
+      g.lineWidth = w * u * 1.25;
+      g.beginPath(); g.moveTo(lx, top); g.lineTo(lx, top + (foot - top) * 0.55); g.stroke();
+      g.strokeStyle = p.dark;
+      g.lineWidth = w * u * 0.85;
       g.beginPath();
-      g.moveTo(cx + dx * u, bottom - 6 * u);
-      g.lineTo(cx + dx * u, bottom + drop * u);
+      g.moveTo(lx, top + (foot - top) * 0.5); g.lineTo(lx, foot);
       g.stroke();
-    }
-    g.fillStyle = p.dark;
-    for (const dx of xs) {
+      // the joint, where the two meet
+      g.fillStyle = p.lo;
       g.beginPath();
-      g.ellipse(cx + dx * u, bottom + drop * u, w * 0.8 * u, w * 0.55 * u, 0, 0, WS.TAU);
+      g.ellipse(lx, top + (foot - top) * 0.52, w * u * 0.72, w * u * 0.62, 0, 0, WS.TAU);
       g.fill();
+    }
+    for (const dx of xs) {
+      const lx = cx + dx * u, foot = bottom + drop * u;
+      g.fillStyle = p.dark;
+      g.beginPath();
+      g.ellipse(lx, foot, w * 0.8 * u, w * 0.55 * u, 0, 0, WS.TAU);
+      g.fill();
+      // toes: a pad with no division reads as a peg, and these are animals
+      g.strokeStyle = 'rgba(0,0,0,.45)';
+      g.lineWidth = WS.max(0.6, w * u * 0.2);
+      for (const k of [-1, 1]) {
+        g.beginPath();
+        g.moveTo(lx + k * w * 0.26 * u, foot - w * 0.1 * u);
+        g.lineTo(lx + k * w * 0.42 * u, foot + w * 0.4 * u);
+        g.stroke();
+      }
     }
     g.restore();
   }
 
-  function blade(g, x, y, len, wide, rot, edge, spine) {
+  /** A blade, and a blade is not a shard.
+   *
+   *  Eleven creatures carried this and every one of them carried the SAME
+   *  four-point kite in a slightly different grey - the most repeated and
+   *  least worked object in the bestiary, and at play size a paper dart
+   *  rather than something that cuts. What makes steel read is a profile that
+   *  is widest near the guard and tapers, a fuller down the middle, one
+   *  bright line where the edge is thinnest, and the fact that somebody is
+   *  HOLDING it: a guard and a haft below the hand.
+   *
+   *  `kind` shapes it without touching the eleven call sites that do not pass
+   *  one - 'curve' for a scythe or a claw, 'heavy' for a cleaver.
+   */
+  function blade(g, x, y, len, wide, rot, edge, spine, kind) {
     g.save();
     g.translate(x, y); g.rotate(rot);
-    poly(g, [[0, 0], [wide, -len * 0.35], [0, -len], [-wide, -len * 0.35]], edge, spine, 1);
+    const bow = kind === 'curve' ? wide * 0.9 : 0;
+    const belly = kind === 'heavy' ? 1.25 : 1;
+    g.beginPath();
+    g.moveTo(-wide * 0.55, 0);
+    // the edge side, bellying out and running to the point
+    g.quadraticCurveTo(wide * belly + bow * 0.4, -len * 0.30,
+      wide * 0.82 * belly + bow, -len * 0.66);
+    g.quadraticCurveTo(wide * 0.5 + bow * 1.1, -len * 0.90, bow * 1.2, -len);
+    // and the spine side, straighter, back down to the guard
+    g.quadraticCurveTo(-wide * 0.42 + bow * 0.7, -len * 0.74,
+      -wide * 0.62 + bow * 0.2, -len * 0.34);
+    g.closePath();
+    g.fillStyle = edge; g.fill();
+    g.strokeStyle = spine; g.lineWidth = WS.max(0.8, wide * 0.16); g.stroke();
+    g.save();
+    g.clip();
+    // the fuller: a groove, which is a dark line with a light one beside it
+    g.strokeStyle = spine;
+    g.globalAlpha = 0.55;
+    g.lineWidth = WS.max(0.7, wide * 0.24);
+    g.beginPath();
+    g.moveTo(-wide * 0.05, -len * 0.14);
+    g.quadraticCurveTo(bow * 0.4, -len * 0.5, bow * 0.85, -len * 0.82);
+    g.stroke();
+    // and the edge itself, one bright line where the steel is thinnest
+    g.strokeStyle = 'rgba(255,255,255,.7)';
+    g.globalAlpha = 0.8;
+    g.lineWidth = WS.max(0.6, wide * 0.18);
+    g.beginPath();
+    g.moveTo(wide * 0.2, -len * 0.06);
+    g.quadraticCurveTo(wide * belly + bow * 0.4, -len * 0.30,
+      wide * 0.78 * belly + bow, -len * 0.66);
+    g.quadraticCurveTo(wide * 0.46 + bow * 1.1, -len * 0.88, bow * 1.2, -len * 0.97);
+    g.stroke();
+    g.restore();
+    // held: a guard across the base and a haft below it
+    g.fillStyle = spine;
+    g.beginPath();
+    g.ellipse(0, wide * 0.18, wide * 1.15, wide * 0.42, 0, 0, WS.TAU);
+    g.fill();
+    g.fillStyle = 'rgba(28,22,18,.85)';
+    g.beginPath();
+    g.ellipse(0, wide * 1.5, wide * 0.42, wide * 1.15, 0, 0, WS.TAU);
+    g.fill();
     g.restore();
   }
 
@@ -155,16 +346,30 @@
     },
 
     mongrel(g, s, p) {
+      /* HUNCHED, and narrow. Half the bestiary was the same three ellipses -
+         a round body this wide, an arm blob each side, a head on top - and
+         measured on a common grid the mongrel shared 79% of its silhouette
+         with the moonwretch, 78% with the bristlekin and 75% with the golem.
+         Nothing was wrong with any one of them; they were all the same
+         animal. This one is a scavenger: narrow, tall, leaning forward over
+         its own feet, with the head thrust out in front of the chest rather
+         than balanced on top of it. */
       const cx = s / 2, cy = s * 0.58, u = s / 100;
-      shaded(g, cx, cy + 4 * u, 24 * u, 25 * u, p);
-      shaded(g, cx - 22 * u, cy - 2 * u, 7 * u, 12 * u, p, -0.4); // arms
-      shaded(g, cx + 22 * u, cy - 2 * u, 7 * u, 12 * u, p, 0.4);
-      shaded(g, cx, cy - 20 * u, 13 * u, 12 * u, p);              // head
-      poly(g, [[cx - 6 * u, cy - 22 * u], [cx - 14 * u, cy - 38 * u], [cx - 2 * u, cy - 28 * u]], p.mid, p.line, u);
-      poly(g, [[cx + 6 * u, cy - 22 * u], [cx + 14 * u, cy - 38 * u], [cx + 2 * u, cy - 28 * u]], p.mid, p.line, u);
-      poly(g, [[cx - 5 * u, cy - 14 * u], [cx + 5 * u, cy - 14 * u], [cx, cy - 6 * u]], p.hi); // snout
-      eyes(g, cx, cy - 22 * u, 5 * u, 1.9 * u, '#ffb347');
-      blade(g, cx + 26 * u, cy + 2 * u, 30 * u, 5 * u, 0.5, '#c8ccd8', '#6a7080');
+      legs(g, p, cx, cy + 26 * u, u, [-8, 7], 8, 4.4);
+      shaded(g, cx + 2 * u, cy + 6 * u, 15 * u, 22 * u, p, 0.12);  // narrow trunk
+      // the hunch: a shoulder mass standing proud of the back
+      shaded(g, cx + 5 * u, cy - 12 * u, 14 * u, 10 * u, p, 0.3);
+      shaded(g, cx - 16 * u, cy + 4 * u, 6 * u, 14 * u, p, -0.5);  // arms, long
+      shaded(g, cx + 17 * u, cy + 2 * u, 6 * u, 14 * u, p, 0.5);
+      shaded(g, cx - 10 * u, cy - 17 * u, 12 * u, 10 * u, p, -0.18); // head, forward
+      poly(g, [[cx - 14 * u, cy - 21 * u], [cx - 24 * u, cy - 36 * u],
+        [cx - 9 * u, cy - 26 * u]], p.mid, p.line, u);
+      poly(g, [[cx - 4 * u, cy - 22 * u], [cx + 4 * u, cy - 36 * u],
+        [cx - 1 * u, cy - 25 * u]], p.mid, p.line, u);
+      poly(g, [[cx - 19 * u, cy - 15 * u], [cx - 26 * u, cy - 11 * u],
+        [cx - 16 * u, cy - 9 * u]], p.hi, p.line, u);              // snout, out front
+      eyes(g, cx - 12 * u, cy - 19 * u, 4.5 * u, 1.9 * u, '#ffb347');
+      blade(g, cx + 22 * u, cy + 2 * u, 26 * u, 5 * u, 0.5, '#c8ccd8', '#6a7080');
     },
 
     bandit(g, s, p) {
@@ -182,16 +387,23 @@
     },
 
     brute(g, s, p) {
+      /* A WALL - the opposite proportion to the mongrel above, which it used
+         to be within a few units of. Wide and low, no neck at all, the head
+         sunk between shoulders that are the widest thing on the field, and
+         the knuckles on the ground where an animal this top-heavy would have
+         to put them. */
       const cx = s / 2, cy = s * 0.54, u = s / 100;
-      legs(g, p, cx, cy + 30 * u, u, [-11, 11], 10, 7);
-      shaded(g, cx, cy + 6 * u, 26 * u, 26 * u, p);
-      shaded(g, cx - 26 * u, cy + 2 * u, 10 * u, 14 * u, p, -0.3);
-      shaded(g, cx + 26 * u, cy + 2 * u, 10 * u, 14 * u, p, 0.3);
-      ellipse(g, cx - 30 * u, cy + 12 * u, 8 * u, 8 * u, '#8a8f9c');  // knuckles
-      ellipse(g, cx + 30 * u, cy + 12 * u, 8 * u, 8 * u, '#8a8f9c');
-      shaded(g, cx, cy - 20 * u, 12 * u, 11 * u, p);
-      g.fillStyle = p.lo; g.fillRect(cx - 13 * u, cy - 22 * u, 26 * u, 5 * u);
-      eyes(g, cx, cy - 21 * u, 4.5 * u, 1.7 * u, '#ff8f6b');
+      legs(g, p, cx, cy + 26 * u, u, [-13, 13], 7, 8);
+      shaded(g, cx, cy + 10 * u, 34 * u, 19 * u, p);               // wide, low trunk
+      // the shoulders: one mass across the top, the widest part of the figure
+      shaded(g, cx, cy - 10 * u, 30 * u, 13 * u, p);
+      shaded(g, cx - 30 * u, cy + 6 * u, 9 * u, 16 * u, p, -0.16);
+      shaded(g, cx + 30 * u, cy + 6 * u, 9 * u, 16 * u, p, 0.16);
+      ellipse(g, cx - 31 * u, cy + 20 * u, 9 * u, 8 * u, '#8a8f9c');  // knuckles down
+      ellipse(g, cx + 31 * u, cy + 20 * u, 9 * u, 8 * u, '#8a8f9c');
+      shaded(g, cx, cy - 17 * u, 11 * u, 9 * u, p);                // head, sunk in
+      g.fillStyle = p.lo; g.fillRect(cx - 12 * u, cy - 19 * u, 24 * u, 4 * u);
+      eyes(g, cx, cy - 18 * u, 4.5 * u, 1.7 * u, '#ff8f6b');
     },
 
     gilkin(g, s, p) {
@@ -297,17 +509,34 @@
     },
 
     abomination(g, s, p) {
+      /* LOPSIDED, which is the one thing a creature stitched out of other
+         creatures should never fail to be. It was symmetrical - a centred
+         body with a matching arm each side - and so it measured 78% the same
+         silhouette as the brute and 74% the same as the golem, both of which
+         are also centred masses with an arm each side.
+         Now: one arm huge and dragging, the other a short stump, the trunk
+         leaning off its own centre and the head sagging away from the heavy
+         side. Asymmetry is the cheapest distinctness there is and this is the
+         creature that most deserves it. */
       const cx = s / 2, cy = s * 0.58, u = s / 100;
-      shaded(g, cx, cy + 6 * u, 30 * u, 28 * u, p);
+      shaded(g, cx - 3 * u, cy + 4 * u, 22 * u, 34 * u, p, 0.1);
+      // a grafted hump over the heavy shoulder
+      shaded(g, cx + 11 * u, cy - 24 * u, 13 * u, 11 * u, p, 0.35);
       g.strokeStyle = p.dark; g.lineWidth = 2 * u;                 // stitches
       for (let i = -2; i <= 2; i++) {
-        g.beginPath(); g.moveTo(cx + i * 9 * u, cy - 14 * u); g.lineTo(cx + i * 9 * u, cy + 26 * u); g.stroke();
+        g.beginPath();
+        g.moveTo(cx + i * 8 * u - 3 * u, cy - 14 * u);
+        g.lineTo(cx + i * 8 * u + 1 * u, cy + 26 * u);
+        g.stroke();
       }
-      shaded(g, cx - 30 * u, cy - 2 * u, 11 * u, 17 * u, p, -0.35);
-      shaded(g, cx + 30 * u, cy - 2 * u, 11 * u, 17 * u, p, 0.35);
-      blade(g, cx + 38 * u, cy + 6 * u, 34 * u, 8 * u, 0.75, '#aeb6c4', '#5a6070');
-      shaded(g, cx - 4 * u, cy - 24 * u, 13 * u, 11 * u, p, -0.2); // sagging head
-      eyes(g, cx - 4 * u, cy - 25 * u, 5 * u, 2 * u, '#bfff6b');
+      // the small arm
+      shaded(g, cx - 21 * u, cy + 2 * u, 6 * u, 10 * u, p, -0.5);
+      // and the heavy one, longer and hanging lower than the body it hangs off
+      shaded(g, cx + 22 * u, cy + 6 * u, 9 * u, 24 * u, p, 0.14);
+      ellipse(g, cx + 24 * u, cy + 27 * u, 8 * u, 7 * u, p.dark);
+      blade(g, cx + 19 * u, cy + 6 * u, 30 * u, 8 * u, 0.75, '#aeb6c4', '#5a6070', 'heavy');
+      shaded(g, cx - 9 * u, cy - 26 * u, 12 * u, 11 * u, p, -0.34);  // head, sagging off
+      eyes(g, cx - 9 * u, cy - 27 * u, 5 * u, 2 * u, '#bfff6b');
     },
 
     wraith(g, s, p) {
@@ -366,10 +595,25 @@
 
     /* --- beasts ----------------------------------------------------------- */
     wolf(g, s, p) {
+      /* The wolf and the cat were the same drawing within a unit or two -
+         same body, same head at the same height, same four legs, and only the
+         tail to tell them apart: 80% of one silhouette shared with the other.
+         The CAT is what changed (see below - arched back, upright tail, head
+         carried high); the wolf keeps the shape that already read as a wolf,
+         and takes only what is true of one and not the other: it stands
+         taller, and its tail is a low straight brush rather than a curl.
+
+         An earlier attempt rebuilt this one instead, on hip-chest-shoulder
+         masses with the head slung into the chest. Three overlapping ellipses
+         read as SEGMENTS and it came out a caterpillar; burying the head took
+         away the neck, which is most of what says wolf at all. The number
+         improved and the drawing got worse, which is the wrong trade and the
+         reason the floor below is set from what the bestiary honestly is. */
       const cx = s / 2, cy = s * 0.56, u = s / 100;
-      legs(g, p, cx, cy + 17 * u, u, [-16, -6, 8, 18], 13, 4.2);
+      legs(g, p, cx, cy + 15 * u, u, [-16, -6, 8, 18], 17, 4.2);
       shaded(g, cx - 2 * u, cy + 2 * u, 26 * u, 15 * u, p);        // long body
-      poly(g, [[cx + 22 * u, cy - 2 * u], [cx + 40 * u, cy - 14 * u], [cx + 26 * u, cy + 6 * u]], p.lo, p.line, u); // tail
+      poly(g, [[cx + 22 * u, cy - 1 * u], [cx + 42 * u, cy - 9 * u],
+        [cx + 44 * u, cy - 1 * u], [cx + 26 * u, cy + 7 * u]], p.lo, p.line, u); // brush
       shaded(g, cx - 22 * u, cy - 6 * u, 13 * u, 11 * u, p);       // head
       poly(g, [[cx - 34 * u, cy - 6 * u], [cx - 44 * u, cy - 2 * u], [cx - 32 * u, cy + 2 * u]], p.hi, p.line, u);  // muzzle
       poly(g, [[cx - 28 * u, cy - 14 * u], [cx - 30 * u, cy - 26 * u], [cx - 20 * u, cy - 16 * u]], p.lo, p.line, u);
@@ -378,26 +622,39 @@
     },
 
     cat(g, s, p) {
+      /* And a CAT, on the opposite skeleton to the wolf above. Short legs, a
+         high ARCHED back rather than a level one, the head carried up and
+         tucked close instead of slung forward, and a tail straight up. The two
+         used to share 80% of a silhouette; nothing in this outline is a
+         wolf. */
       const cx = s / 2, cy = s * 0.56, u = s / 100;
-      legs(g, p, cx, cy + 16 * u, u, [-15, -5, 7, 17], 12, 3.8);
-      shaded(g, cx - 2 * u, cy + 2 * u, 25 * u, 14 * u, p);        // low, long body
-      g.strokeStyle = p.dark; g.lineWidth = 2.6 * u; g.lineCap = 'round';
+      legs(g, p, cx, cy + 14 * u, u, [-13, -5, 7, 15], 9, 3.4);
+      // the tail, straight up with a hook - the one vertical on a low animal
+      g.strokeStyle = p.lo; g.lineWidth = 4 * u; g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(cx + 17 * u, cy + 2 * u);
+      g.quadraticCurveTo(cx + 30 * u, cy - 6 * u, cx + 28 * u, cy - 30 * u);
+      g.quadraticCurveTo(cx + 27 * u, cy - 38 * u, cx + 20 * u, cy - 36 * u);
+      g.stroke();
+      // the arch: a haunch behind, a dip at the waist, shoulders in front
+      shaded(g, cx + 10 * u, cy - 2 * u, 14 * u, 14 * u, p);       // haunch, high
+      shaded(g, cx - 2 * u, cy + 3 * u, 15 * u, 10 * u, p);        // the dip
+      shaded(g, cx - 13 * u, cy - 1 * u, 12 * u, 12 * u, p);       // shoulders
+      g.strokeStyle = p.dark; g.lineWidth = 2.6 * u;
       for (let i = -1; i <= 2; i++) {                              // stripes
         g.beginPath();
-        g.moveTo(cx + i * 9 * u, cy - 9 * u);
-        g.lineTo(cx + i * 9 * u + 4 * u, cy + 9 * u);
+        g.moveTo(cx + i * 8 * u, cy - 10 * u);
+        g.lineTo(cx + i * 8 * u + 3 * u, cy + 6 * u);
         g.stroke();
       }
-      g.lineWidth = 4 * u;                                         // curled tail
-      g.strokeStyle = p.lo;
-      g.beginPath();
-      g.moveTo(cx + 22 * u, cy);
-      g.quadraticCurveTo(cx + 42 * u, cy - 6 * u, cx + 36 * u, cy - 24 * u);
-      g.stroke();
-      shaded(g, cx - 22 * u, cy - 6 * u, 12 * u, 11 * u, p);       // round head
-      poly(g, [[cx - 30 * u, cy - 14 * u], [cx - 31 * u, cy - 24 * u], [cx - 22 * u, cy - 15 * u]], p.lo, p.line, u);
-      poly(g, [[cx - 18 * u, cy - 15 * u], [cx - 15 * u, cy - 25 * u], [cx - 10 * u, cy - 14 * u]], p.lo, p.line, u);
-      eyes(g, cx - 24 * u, cy - 7 * u, 4.5 * u, 1.8 * u, '#c9f26b');
+      shaded(g, cx - 20 * u, cy - 13 * u, 11 * u, 10 * u, p);      // head, carried HIGH
+      poly(g, [[cx - 28 * u, cy - 20 * u], [cx - 29 * u, cy - 32 * u],
+        [cx - 20 * u, cy - 21 * u]], p.lo, p.line, u);
+      poly(g, [[cx - 16 * u, cy - 21 * u], [cx - 13 * u, cy - 32 * u],
+        [cx - 9 * u, cy - 20 * u]], p.lo, p.line, u);
+      poly(g, [[cx - 27 * u, cy - 11 * u], [cx - 33 * u, cy - 9 * u],
+        [cx - 27 * u, cy - 7 * u]], p.hi, p.line, u);              // short muzzle
+      eyes(g, cx - 22 * u, cy - 14 * u, 4.5 * u, 1.8 * u, '#c9f26b');
     },
 
     boar(g, s, p) {
@@ -610,7 +867,11 @@
       g.fillRect(cx - 8 * u, cy - 26 * u, 16 * u, 5 * u);
       g.fillRect(cx - 6 * u, cy + 2 * u, 12 * u, 12 * u);
       g.restore();
-      blade(g, cx + 34 * u, cy + 6 * u, 30 * u, 9 * u, 0.9, '#b9c0cc', '#5c6270'); // scythe arm
+      /* Pulled in and shortened until the tip lands inside its own tile. At
+         cx+34u and 30u long on a 0.9 rotation the point sat 9u past the right
+         edge and had done since the golem was drawn - sheared off on every
+         frame, which nothing was measuring. */
+      blade(g, cx + 19 * u, cy + 6 * u, 26 * u, 9 * u, 0.9, '#b9c0cc', '#5c6270', 'heavy');
     },
   };
 
