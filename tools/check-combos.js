@@ -240,6 +240,29 @@ const fail = [];
 
   await browser.close();
 
+  /* ---- a discovery may not make you weaker ------------------------------
+   *
+   * The harness asked whether a discovery CHANGES the loadout and was happy
+   * either way, so two of them went negative without a word: Radiant Gyre at
+   * -14% and Deadly Brew at -1%. Both were mine. Radiant Gyre opens the whirl
+   * with a pulse that knocks everything within 130px outward, and the blades
+   * circle at 85 - it shoved the targets out of the weapon it was opening,
+   * which cost nothing while the blades were barely connecting and cost
+   * everything once they hit what they sweep through. Deadly Brew was a ring
+   * weapon whose ring I had lifted 24px off its own owner.
+   *
+   * A discovery costs two weapons and a slot to find. It can be small, and
+   * some are defensive so damage is the wrong axis for them - but none of
+   * them may be a downgrade, and nothing was watching for that. */
+  for (const c of report) {
+    if (!c.off.dealt) continue;
+    const delta = c.on.dealt / c.off.dealt - 1;
+    if (delta < -0.02) {
+      fail.push(`the ${c.name} discovery makes the same loadout `
+        + `${(delta * -100).toFixed(0)}% WEAKER - it costs two weapons to find`);
+    }
+  }
+
   const table = report.map((c) => {
     const d = c.off.dealt ? ((c.on.dealt / c.off.dealt - 1) * 100).toFixed(0) : '0';
     return `${c.name}: ${d > 0 ? '+' : ''}${d}% damage`;

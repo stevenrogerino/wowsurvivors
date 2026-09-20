@@ -11144,6 +11144,12 @@ window.WS = window.WS || {};
       ax * speed, ay * speed, spec);
   }
 
+  /* Radiant Gyre's opening pulse: a share of the weapon's own damage, and one
+     re-used ledger so the two passes cannot strike the same creature twice.
+     Sized by measurement - see the discovery's note below. */
+  const NOVA_PULSE = 0.8;
+  const novaHits = new Map();
+
   /* Where a shot LEAVES the survivor.
    
      Everything used to spawn at player.x, player.y, and that point is not the
@@ -11219,8 +11225,17 @@ window.WS = window.WS || {};
     const offset = WS.random() * WS.TAU;
     for (let i = 0; i < count; i++) {
       const a = offset + (i / count) * WS.TAU;
+      /* A ring is CENTRED on the survivor, so it only takes the forward part
+         of the muzzle and not the lift.
+         
+         Pushing each knife out along its own heading is radial and keeps the
+         centre where it belongs. Raising them all to hand height does not -
+         it moves the whole ring 24px up the field, so the knives no longer
+         radiate from him and everything below him is that much further away.
+         Measured, that alone took the Deadly Brew discovery from +10% damage
+         to -1%: a ring weapon quietly aimed off its own owner. */
       const ax = WS.cos(a), ay = WS.sin(a);
-      WS.Projectile.launchBolt(muzzleX(player, ax), muzzleY(player, ay),
+      WS.Projectile.launchBolt(player.x + ax * MUZZLE_FWD, player.y + ay * MUZZLE_FWD,
         ax * speed, ay * speed, spec);
     }
     return true;
@@ -11353,9 +11368,27 @@ window.WS = window.WS || {};
     if (w.level >= cfg.projRankB) count++;
 
     if (w.mods.novaOnCast) {
-      // Radiant Gyre discovery: the whirl opens with a pulse of Light.
+      /* Radiant Gyre discovery: the whirl opens with a pulse of Light, and
+         the pulse still shoves - but only what is not already in the blades.
+       
+         It used to knock everything within 130px outward by 20, and the
+         blades circle at 85, so the pulse pushed your own targets out of your
+         own gyre. While the blades were barely connecting that cost little
+         and the discovery measured +1% damage. Once they hit what they sweep
+         through, the same shove cost more than the pulse was worth: -14%, a
+         thing you spend two weapons finding that makes you weaker.
+       
+         So it lands in two passes over one ledger. The inner pass covers the
+         ring the blades own and does not push; the outer pass takes the rest
+         and does. The shove still reads on screen - it is the crowd walking
+         in that gets it, which is where a shove is worth something anyway -
+         and it no longer empties the weapon it was meant to open. */
       const r = 130 * player.areaMultiplier;
-      WS.Enemy.damageArea(player.x, player.y, r, damageOf(player, w) * 0.8, null, 20, w.id);
+      const inner = areaOf(player, w, d.orbitRadius || 85);
+      const pulse = damageOf(player, w) * NOVA_PULSE;
+      novaHits.clear();
+      WS.Enemy.damageArea(player.x, player.y, inner, pulse, novaHits, null, w.id);
+      WS.Enemy.damageArea(player.x, player.y, r, pulse, novaHits, 20, w.id);
       WS.FX.flash(player.x, player.y, r, WS.CONST.COLORS.holy, 0.3);
     }
 
