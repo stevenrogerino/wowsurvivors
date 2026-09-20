@@ -111,28 +111,67 @@ function siegeScript() {
 /* ---------------------------------------------------------------- builds -- */
 /** A build is a list of [weaponId, rank]. Everything else about the survivor
  *  is held the same, so the list is the whole difference between two rows. */
-function buildTable(weapons, unions) {
+function buildTable(weapons, unions, combos, schools) {
   const builds = [];
+  const r8 = (ids) => ids.map((id) => [id, 8]);
+
+  /* Every weapon alone, at the rank you get it and at the rank you finish it.
+     The pair is what says whether a weapon is weak or only early. */
   for (const id of weapons) {
     builds.push({ name: id + ' r1', weapons: [[id, 1]], group: 'rank' });
     builds.push({ name: id + ' r8', weapons: [[id, 8]], group: 'weapon' });
   }
   for (const u of unions) builds.push({ name: u + ' r8', weapons: [[u, 8]], group: 'union' });
-  /* Six slots, the most a survivor can hold, in a few shapes a player would
-     actually arrive at: one school stacked, a spread, and the two pairings
-     that discover something. */
-  builds.push({ name: 'six: all holy', group: 'six',
-    weapons: [['dawnpulse', 8], ['hallowed_ring', 8], ['judgement_disc', 8],
-      ['seeking_motes', 8], ['moonbrand', 8], ['volley', 8]] });
-  builds.push({ name: 'six: spread', group: 'six',
-    weapons: [['cinderfall', 8], ['rimeshard', 8], ['arcweb', 8],
-      ['umbral_bolt', 8], ['blightfield', 8], ['knifestorm', 8]] });
-  builds.push({ name: 'six: melee-ish', group: 'six',
-    weapons: [['axe_gyre', 8], ['knifestorm', 8], ['reaving_arc', 8],
-      ['verdant_lance', 8], ['blightfield', 8], ['grave_tether', 8]] });
-  builds.push({ name: 'six: discoveries', group: 'six',
-    weapons: [['rimeshard', 8], ['cinderfall', 8], ['umbral_bolt', 8],
-      ['arcweb', 8], ['axe_gyre', 8], ['moonbrand', 8]] });
+
+  /* What is a SLOT worth? The same weapons, one more each time, so the curve
+     is about how many you carry rather than which ones. */
+  const ladder = ['umbral_bolt', 'seeking_motes', 'cinderfall',
+    'rimeshard', 'arcweb', 'moonbrand'];
+  for (let n = 1; n <= 6; n++) {
+    builds.push({ name: n + (n > 1 ? ' slots' : ' slot'), group: 'slots',
+      weapons: r8(ladder.slice(0, n)) });
+  }
+
+  /* One school, as far as it goes. A player who commits to a colour should be
+     able to find out whether that was a plan or just tidy. */
+  for (const sc of Object.keys(schools)) {
+    const list = schools[sc].slice(0, 6);
+    if (list.length < 3) continue;
+    builds.push({ name: 'all ' + sc, group: 'school', weapons: r8(list) });
+  }
+
+  /* Each discovery as the two weapons that make it. */
+  for (const c of combos) {
+    builds.push({ name: 'pair: ' + c.name, group: 'pair', weapons: r8(c.weapons) });
+  }
+
+  const sixes = {
+    'six: all holy': ['dawnpulse', 'hallowed_ring', 'judgement_disc',
+      'seeking_motes', 'moonbrand', 'volley'],
+    'six: spread': ['cinderfall', 'rimeshard', 'arcweb',
+      'umbral_bolt', 'blightfield', 'knifestorm'],
+    'six: melee-ish': ['axe_gyre', 'knifestorm', 'reaving_arc',
+      'verdant_lance', 'blightfield', 'grave_tether'],
+    'six: discoveries': ['rimeshard', 'cinderfall', 'umbral_bolt',
+      'arcweb', 'axe_gyre', 'moonbrand'],
+    'six: best clearers': ['seeking_motes', 'umbral_bolt', 'cinderfall',
+      'moonbrand', 'arcweb', 'hallowed_ring'],
+    'six: worst clearers': ['reaving_arc', 'judgement_disc', 'dawnpulse',
+      'axe_gyre', 'blightfield', 'grave_tether'],
+    'six: ground and orbit': ['blightfield', 'hallowed_ring', 'dawnpulse',
+      'reaving_arc', 'axe_gyre', 'grave_tether'],
+    'six: all bolts': ['seeking_motes', 'cinderfall', 'rimeshard',
+      'umbral_bolt', 'moonbrand', 'volley'],
+  };
+  for (const name of Object.keys(sixes)) {
+    builds.push({ name, group: 'six', weapons: r8(sixes[name]) });
+  }
+  /* And the same six with every one of them evolved: the difference between
+     a finished build and a finished build that got its pairings too. */
+  for (const name of Object.keys(sixes)) {
+    builds.push({ name: name.replace('six:', 'evolved:'), group: 'evolved',
+      weapons: r8(sixes[name]), evolved: true });
+  }
   return builds;
 }
 
@@ -175,7 +214,13 @@ const INSTALL = () => {
     for (const [id, rank] of build.weapons) {
       WS.Player.addWeapon(p, id);
       const w = WS.Player.getWeapon(p, id);
-      if (w) { w.level = rank; p.weaponLevels[id] = rank; }
+      if (w) {
+        w.level = rank; p.weaponLevels[id] = rank;
+        /* A build can declare itself already evolved, so the cost of getting
+           the pairings can be measured against the cost of only getting the
+           ranks. */
+        if (build.evolved) w.evolved = true;
+      }
     }
     WS.ComboSystem.check(p);
 
@@ -288,11 +333,22 @@ const INSTALL = () => {
   };
   const page = await fresh();
 
-  const roster = await page.evaluate(() => ({
-    weapons: WS.WeaponOrder.slice(),
-    unions: WS.Unions.map((u) => u.result),
-  }));
-  let builds = buildTable(roster.weapons, roster.unions);
+  const roster = await page.evaluate(() => {
+    const schools = {};
+    for (const id of WS.WeaponOrder) {
+      const sc = WS.Weapons[id].school;
+      (schools[sc] = schools[sc] || []).push(id);
+    }
+    return {
+      weapons: WS.WeaponOrder.slice(),
+      unions: WS.Unions.map((u) => u.result),
+      combos: WS.ComboOrder.map((id) => ({
+        name: WS.Combos[id].name, weapons: WS.Combos[id].weapons.slice(),
+      })),
+      schools,
+    };
+  });
+  let builds = buildTable(roster.weapons, roster.unions, roster.combos, roster.schools);
   /* --only <text> narrows the sweep to the builds whose name contains it, so
      tuning one weapon does not cost a full pass over forty-one. */
   const onlyAt = process.argv.indexOf('--only');
@@ -315,9 +371,12 @@ const INSTALL = () => {
     };
     const dummy = await once('dummy', [], DUMMY_SECONDS);
     const gaunt = await once('gauntlet', script, GAUNTLET_SECONDS);
-    /* Only the builds the gauntlet could not separate. A rank-1 single weapon
-       against the siege is a number nobody needs. */
-    const hard = (build.group === 'six' || build.group === 'union')
+    /* Only the builds the gauntlet cannot separate. It saturates at six
+       weapons - every one of them clears 259 to 271 of 282 - so anything
+       that size needs the harder scene to say anything at all. A rank-1
+       single weapon against the siege is a number nobody needs. */
+    const HARD = ['six', 'union', 'evolved', 'school'];
+    const hard = HARD.includes(build.group)
       ? await once('siege', siege, SIEGE_SECONDS) : null;
     results.push({
       name: build.name, group: build.group,
@@ -355,6 +414,10 @@ const INSTALL = () => {
     + ` the dummy field is 72 targets that cannot die, for ${DUMMY_SECONDS}s`);
   const by = (g) => results.filter((r) => r.group === g).sort((a, b) => b.dps - a.dps);
   show(by('weapon'), 'one weapon, rank 8');
+  show(by('slots'), 'what a slot is worth');
+  show(by('school'), 'one school, as far as it goes');
+  show(by('pair'), 'the two weapons behind each discovery');
+  show(by('evolved'), 'six slots, everything evolved');
   show(by('union'), 'unions, rank 8');
   show(by('six'), 'six slots');
   show(by('rank'), 'one weapon, rank 1');
