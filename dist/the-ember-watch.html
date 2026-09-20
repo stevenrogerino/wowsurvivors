@@ -5140,6 +5140,17 @@ window.WS = window.WS || {};
     edgeInside(g, r, 0.55, 0.7);
   }
 
+  /** For a shape filled by a raw path rather than by panel(): give it the same
+   *  material and the same edge. The weapons are all drawn this way - an axe
+   *  bit is a bezier, not a polygon - so none of them picked up the material
+   *  pass, and a hand-made steel crescent sat next to a pauldron that now had
+   *  a specular band and looked like a different game. Call it with the shape
+   *  still the current path. */
+  function finish(g, r, minX, minY, maxX, maxY) {
+    shadeInside(g, r, minX, minY, maxX, maxY);
+    edgeInside(g, r, 0.5, 0.65);
+  }
+
   /** An edge drawn INSIDE the shape it belongs to.
    *
    *  A plain stroke straddles the path, so half of every line lands outside
@@ -5198,6 +5209,29 @@ window.WS = window.WS || {};
     grd.addColorStop(1, flat ? r.deep : r.shade);
     g.strokeStyle = grd; g.lineWidth = w; g.lineCap = 'round';
     g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+  }
+
+  /** Bound leather where a hand actually closes on a haft.
+   *
+   *  Every weapon in the rig was a plain dowel from end to end, so there was
+   *  nothing to say which part of it is held - and the hand, drawn later,
+   *  landed on bare wood. A few turns of wrap put the grip where the grip is. */
+  function grip(g, x0, y0, x1, y1, w) {
+    limb(g, x0, y0, x1, y1, w, LEATHER);
+    const n = 4;
+    g.save();
+    g.strokeStyle = LEATHER.line;
+    g.globalAlpha = 0.6;
+    g.lineWidth = 0.7;
+    for (let i = 1; i < n; i++) {
+      const t = i / n;
+      const mx = x0 + (x1 - x0) * t, my = y0 + (y1 - y0) * t;
+      g.beginPath();
+      g.moveTo(mx - w * 0.52, my - 0.6);
+      g.lineTo(mx + w * 0.52, my + 0.6);
+      g.stroke();
+    }
+    g.restore();
   }
 
   function glow(g, x, y, rad, colour, alpha) {
@@ -5632,6 +5666,32 @@ window.WS = window.WS || {};
     // makes a walk cycle look wrong without anyone being able to say why.
     taper(g, cx - b.sh + 1, SHOULDER_Y + 1, cx - b.sh - 2.5 - w.swing * 3.5, WAIST_Y - 1,
       b.arm * 0.62, b.arm * 0.38, C.bodyRamp, true);
+    /* The far arm ended in nothing, which at 330px is an arm that stops. It
+       takes the same hand as the near one, one shade back so it stays behind
+       - or, where a survivor has lost it, a capped stump and a binding. */
+    {
+      const hx = cx - b.sh - 2.5 - w.swing * 3.5, hy = WAIST_Y - 1;
+      if (cfg.stump === 'far') {
+        // the cap, bound over: a flat end and a wrap, not a hand in shadow
+        blob(g, hx - 0.6, hy - 0.4, b.arm * 0.42, b.arm * 0.34, LEATHER);
+        g.save();
+        g.strokeStyle = LEATHER.line;
+        g.globalAlpha = 0.7;
+        g.lineWidth = 0.9;
+        for (let i = 0; i < 2; i++) {
+          g.beginPath();
+          g.moveTo(hx - b.arm * 0.44, hy - 3 + i * 2.6);
+          g.lineTo(hx + b.arm * 0.36, hy - 3.6 + i * 2.6);
+          g.stroke();
+        }
+        g.restore();
+      } else if (cfg.gauntlets) {
+        blob(g, hx - 0.8, hy + 0.4, b.arm * 0.44, b.arm * 0.5, ramp([0.26, 0.28, 0.33], 'metal'));
+      } else {
+        blob(g, hx - 0.8, hy + 0.4, b.arm * 0.40, b.arm * 0.45,
+          ramp(WS.shade([0.80, 0.62, 0.47], 0.72), 'skin'));
+      }
+    }
 
     if (cfg.robe) {
       // A bell from the waist to the floor, with the hem catching the light.
@@ -6003,6 +6063,52 @@ window.WS = window.WS || {};
       pts.push([cx - b.sh - flare, foot]);
     }
     panel(g, pts, C.cloakRamp);
+    /* FOLDS. Cloth pinned at the shoulders and loose at the hem does not hang
+       flat - it gathers into vertical channels that widen as they fall, and
+       that is most of what tells cloth from card. Drawn as pairs of soft
+       bands, clipped to the cloak so a fold cannot run off its own edge, and
+       leaning with the trail so they swing when the survivor does. */
+    g.save();
+    g.beginPath();
+    g.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+    g.closePath();
+    g.clip();
+    const drop = foot - (SHOULDER_Y - 4);
+    for (let i = -2; i <= 2; i++) {
+      if (!i) continue;
+      const topX = cx + i * b.sh * 0.42;
+      const botX = cx + i * (b.sh + flare) * 0.62 + trail * 0.55;
+      const wide = 1.1 + Math.abs(i) * 0.5;
+      // the shaded side of the channel
+      const shade = g.createLinearGradient(topX - wide, 0, topX + wide, 0);
+      shade.addColorStop(0, 'rgba(0,0,0,0)');
+      shade.addColorStop(0.5, 'rgba(0,0,0,.22)');
+      shade.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = shade;
+      g.beginPath();
+      g.moveTo(topX - wide, SHOULDER_Y - 4);
+      g.lineTo(topX + wide, SHOULDER_Y - 4);
+      g.lineTo(botX + wide * 2.1, foot + 2);
+      g.lineTo(botX - wide * 2.1, foot + 2);
+      g.closePath();
+      g.fill();
+      // and the lit crest just beside it, which is what makes it read as a
+      // ridge rather than as a stripe
+      const crest = g.createLinearGradient(topX + wide, 0, topX + wide * 3.2, 0);
+      crest.addColorStop(0, 'rgba(255,255,255,.085)');
+      crest.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = crest;
+      g.beginPath();
+      g.moveTo(topX + wide, SHOULDER_Y - 4);
+      g.lineTo(topX + wide * 3.2, SHOULDER_Y - 4);
+      g.lineTo(botX + wide * 5, foot + 2);
+      g.lineTo(botX + wide * 2.1, foot + 2);
+      g.closePath();
+      g.fill();
+    }
+    g.restore();
+    void drop;
     // The lining catches the light along the shoulder line only.
     g.fillStyle = 'rgba(255,255,255,.10)';
     g.beginPath();
@@ -6115,6 +6221,7 @@ window.WS = window.WS || {};
        * something a person is about to use. */
       const gx = 50 + b.sh + 3;
       limb(g, gx + 6, FOOT_Y - 4, gx - 2, 33, 3, WOOD);
+      grip(g, gx + 4.6, WAIST_Y - 6, gx + 2.2, WAIST_Y + 7, 3.4);
       /* The bit is a fan with a curved edge and a hollow back.
        *
        * Two flat slabs read as a mallet; a subtle crescent with a big white
@@ -6131,13 +6238,15 @@ window.WS = window.WS || {};
       g.bezierCurveTo(gx + 15, bit + 9, gx + 10, bit + 13, gx + 1, bit + 13);
       g.bezierCurveTo(gx + 6, bit + 6, gx + 6, bit - 2, gx + 1, bit - 9);
       g.closePath(); g.fill();
+      finish(g, STEEL, gx, bit - 9, gx + 17, bit + 13);
       // The back cheek, shorter and darker: an axe is not symmetrical.
-      lit(g, ramp([0.38, 0.42, 0.50]), gx - 8, bit - 6, gx + 1, bit + 10);
+      lit(g, ramp([0.38, 0.42, 0.50], 'metal'), gx - 8, bit - 6, gx + 1, bit + 10);
       g.beginPath();
       g.moveTo(gx + 1, bit - 7);
       g.bezierCurveTo(gx - 6, bit - 6, gx - 8, bit - 1, gx - 7, bit + 4);
       g.bezierCurveTo(gx - 4, bit + 6, gx - 1, bit + 8, gx + 1, bit + 11);
       g.closePath(); g.fill();
+      finish(g, ramp([0.38, 0.42, 0.50], 'metal'), gx - 8, bit - 7, gx + 1, bit + 11);
       // The edge itself: one bright line where the steel is thinnest.
       g.strokeStyle = 'rgba(255,255,255,.62)'; g.lineWidth = 1.1;
       g.beginPath();
@@ -6232,11 +6341,12 @@ window.WS = window.WS || {};
        * crescent or a blade at any size. */
       const gx = 50 + b.sh + 3, head = 26;
       limb(g, gx + 3, FOOT_Y - 6, gx - 1, head + 5, 3.2, WOOD);
+      grip(g, gx + 2.2, WAIST_Y - 7, gx + 1.2, WAIST_Y + 6, 3.6);
       // The head: a square face with a chamfer, and a spike behind it.
       panel(g, [[gx - 9, head - 1], [gx + 8, head - 4], [gx + 9, head + 8],
         [gx - 8, head + 11]], STEEL);
       panel(g, [[gx + 8, head - 3], [gx + 15, head + 1], [gx + 15, head + 5],
-        [gx + 8.5, head + 8]], ramp([0.44, 0.47, 0.55]));
+        [gx + 8.5, head + 8]], ramp([0.44, 0.47, 0.55], 'metal'));
       // Two bands of gold across the face - the same metal as his charge.
       g.fillStyle = GOLD.core;
       g.fillRect(gx - 8.5, head + 1, 16.5, 1.6);
@@ -6378,8 +6488,12 @@ window.WS = window.WS || {};
       scarf: true, sheaths: true, bracer: true },
     hunter: { build: 'normal', head: 'bare', weapon: 'bow', hoodDown: true, pelt: true,
       bracer: true, strap: true, bootknife: true, hair: ramp([0.30, 0.26, 0.18]) },
+    /* One hand. The other is gone, which is what "The Fallen Hero" is about,
+       and it is stated here rather than left to the drawing code to remember
+       - a survivor's anatomy is part of who they are. The off arm ends in a
+       capped stump, and no hand is drawn on it. */
     warrior: { build: 'heavy', head: 'helm', pauldrons: 2.1, weapon: 'axe',
-      helmHorns: true, sash: true },
+      helmHorns: true, sash: true, stump: 'far' },
     warlock: { build: 'normal', head: 'hood', robe: true, cloak: 'tattered',
       weapon: 'orb', chains: true, tome: true, wisp: true, hood: DARKCLOTH },
     /* The shaman used to be a robed slim silhouette with a long cloak, which
