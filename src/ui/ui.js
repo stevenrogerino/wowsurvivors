@@ -200,8 +200,26 @@
       const rank = el('div', 'rank', w.evolved ? 'MAX' : String(w.level));
       const flash = el('div', 'flash');
       slot.append(img, svg, rank, flash);
+
+      /* THE SLOT SAYS WHEN THIS ONE IS READY TO REACT.
+       *
+       * A weapon sitting at rank 8 with its paired passive already learned is
+       * one level-up away from evolving, and the strip that shows what you
+       * carry said nothing about it - the only hint was the card, if the card
+       * happened to come up. A weapon whose partner you now carry is the same
+       * story for discoveries. A pip on the slot means this one has somewhere
+       * to go, and the tooltip names it. */
+      const reacts = WS.LevelUp.reactionsFor
+        ? WS.LevelUp.reactionsFor(WS.Game.player, w.id, 'carried', w.level) : [];
+      const ready = reacts.filter((r) => r.ready);
+      if (ready.length) {
+        slot.classList.add('ready');
+        slot.append(el('div', 'slot-pip'));
+      }
       slot.title = `${w.evolved ? w.data.evolveName : w.data.name}`
-        + `\n${WS.template(w.data.description, w.data)}`;
+        + `\n${WS.template(w.data.description, w.data)}`
+        + (reacts.length ? '\n\n' + reacts.map((r) => (r.ready ? '\u25c6 ' : '\u25c7 ')
+          + r.text).join('\n') : '');
       wrap.append(slot);
       this.els.weaponSlots.set(w.id, { arc, circ, rank, slot, lastCd: 0 });
     }
@@ -602,7 +620,44 @@
 
     card.append(el('div', 'card-name', choice.name));
     if (choice.note) card.append(el('div', 'card-note', choice.note));
+
+    /* THE RANK, AS A ROW OF PIPS.
+     *
+     * "RANK 7 / 8" is a fact about a card and not a feeling about it, and a
+     * card taking a weapon to its last rank looked exactly like one taking a
+     * passive to its second. A filled row reads at a glance, carries how far
+     * along this thing is without being read, and gives the card something to
+     * escalate: past two thirds the card takes a gilt edge, and the one that
+     * finishes a track takes the full treatment. */
+    if (choice.maxRank > 1) {
+      const pips = el('div', 'card-pips');
+      const at = choice.rank || 1;
+      for (let i = 1; i <= choice.maxRank; i++) {
+        const pip = el('i', i <= at ? 'on' : null);
+        if (i === at) pip.classList.add('now');
+        pips.append(pip);
+      }
+      card.append(pips);
+      const k = at / choice.maxRank;
+      if (k >= 1) card.classList.add('crowning');
+      else if (k >= 0.66) card.classList.add('rising');
+    }
+    if (choice.type === 'evolve' || choice.type === 'union') card.classList.add('crowning');
+
     card.append(el('div', 'card-body', choice.description || ''));
+
+    /* What this will react with. See LevelUp.reactionsFor - the whole game is
+       built on things combining and the card used to say none of it. */
+    if (choice.reacts && choice.reacts.length) {
+      const row = el('div', 'card-reacts');
+      for (const r of choice.reacts) {
+        const tag = el('div', 'react' + (r.ready ? ' ready' : ''));
+        tag.append(el('i', 'react-mark'), el('span', null, r.text));
+        row.append(tag);
+      }
+      card.append(row);
+    }
+
     if (choice.detail && WS.Save.settings.levelUpTooltips) {
       card.append(el('div', 'card-detail', choice.detail));
     }

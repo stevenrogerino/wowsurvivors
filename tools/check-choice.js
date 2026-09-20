@@ -318,6 +318,107 @@ const note = [];
     note.push(`a run draws two blessings, at ${arc.at[0]}s and ${arc.at[1]}s, and no more`);
   }
 
+  /* ---- a card says what it is and what it will do -----------------------
+   * A card gave a name, a rank as text, and a sentence. Two things were
+   * missing and both are the game's own subject matter.
+   *
+   * Escalation: a card taking a weapon to its LAST rank looked exactly like
+   * one taking a passive to its second. Rank is a row of pips now, and a card
+   * that finishes a track - a final rank, an evolution, a union - is crowned.
+   *
+   * Reaction: this whole game is things combining. A weapon and a passive
+   * become an evolution, two weapons a discovery, two evolutions a union -
+   * and the card said none of it. A survivor holding Cinderfall and offered
+   * Rimeshard was being offered Frostfire with no way to know. */
+  const cards = await page.evaluate(async () => {
+    if (WS.Prologue && WS.Prologue.active) WS.Prologue.finish();
+    WS.Save.db.seenManual = true;
+    WS.Save.unlockAll();
+    WS.Game.startRun('thornhollow', 'shaman');
+    if (WS.Game.state === 'blessing') WS.Game.chooseBlessing(WS.Game.blessingChoices[0]);
+    const pl = WS.Game.player;
+    pl.weapons.length = 0; pl.weaponLevels = {}; pl.combosActive = {};
+    WS.Player.addWeapon(pl, 'cinderfall');
+    WS.Player.getWeapon(pl, 'cinderfall').level = 7; pl.weaponLevels.cinderfall = 7;
+    pl.upgradeLevels = { area: 1 };
+    const W = WS.Weapons;
+    const mine = [
+      // finishes a track: should be crowned, all pips lit
+      { type: 'weapon_rank', id: 'cinderfall', art: W.cinderfall.art, name: W.cinderfall.name,
+        description: 'x', note: 'Rank 7 > 8', rank: 8, maxRank: 8,
+        reacts: WS.LevelUp.reactionsFor(pl, 'cinderfall', 'weapon_rank', 8) },
+      // mid-track: plain
+      { type: 'new_weapon', id: 'knifestorm', art: W.knifestorm.art, name: W.knifestorm.name,
+        description: 'x', note: 'New', rank: 1, maxRank: 8,
+        reacts: WS.LevelUp.reactionsFor(pl, 'knifestorm', 'new_weapon', 1) },
+      // completes a discovery with what is already carried: a READY reaction
+      { type: 'new_weapon', id: 'rimeshard', art: W.rimeshard.art, name: W.rimeshard.name,
+        description: 'x', note: 'New', rank: 1, maxRank: 8,
+        reacts: WS.LevelUp.reactionsFor(pl, 'rimeshard', 'new_weapon', 1) },
+    ];
+    WS.UI.openLevelUp(mine);
+    /* The page's frame loop is live and the opening headstart's settle timer
+       re-deals a few frames after this runs, over anything set here. */
+    await new Promise((r) => setTimeout(r, 700));
+    WS.Game.settle = 0; WS.Game.pendingLevelUps = 0; WS.Game.leveling = false;
+    WS.UI.fillLevelChoices(mine);
+    await new Promise((r) => setTimeout(r, 200));
+    const els = [...document.querySelectorAll('#overlay .card')];
+    return els.map((c) => ({
+      name: (c.querySelector('.card-name') || {}).textContent,
+      crowning: c.classList.contains('crowning'),
+      pips: c.querySelectorAll('.card-pips i').length,
+      lit: c.querySelectorAll('.card-pips i.on').length,
+      reacts: c.querySelectorAll('.card-reacts .react').length,
+      ready: c.querySelectorAll('.card-reacts .react.ready').length,
+    }));
+  });
+  if (cards.length !== 3) {
+    fail.push(`the card probe rendered ${cards.length} cards, not three`);
+  } else {
+    const [last, mid, disc] = cards;
+    if (!last.crowning) fail.push('a card taking a weapon to its last rank is not crowned');
+    if (last.pips !== 8 || last.lit !== 8) {
+      fail.push(`the final-rank card shows ${last.lit}/${last.pips} pips lit, not 8 of 8`);
+    }
+    if (mid.crowning) fail.push('a mid-track card is crowned, so crowning says nothing');
+    if (mid.pips !== 8 || mid.lit !== 1) {
+      fail.push(`a rank-1 card shows ${mid.lit}/${mid.pips} pips lit, not 1 of 8`);
+    }
+    if (!disc.reacts) fail.push('a card that completes a discovery lists no reactions');
+    if (!disc.ready) {
+      fail.push('a card that completes a discovery with a weapon already carried does not '
+        + 'mark it as available - the player cannot tell it from one they cannot have yet');
+    }
+    if (mid.ready) {
+      fail.push('a card marks a reaction as available that the player has nothing for');
+    }
+    note.push(`a card carries its rank as ${last.pips} pips, crowns the one that finishes a `
+      + 'track, and names what it will react with');
+  }
+
+  /* ...and the strip says which weapon is ready to go somewhere. */
+  const strip = await page.evaluate(() => {
+    const pl = WS.Game.player;
+    pl.weapons.length = 0; pl.weaponLevels = {}; pl.combosActive = {};
+    WS.Player.addWeapon(pl, 'cinderfall');
+    WS.Player.addWeapon(pl, 'knifestorm');
+    WS.Player.getWeapon(pl, 'cinderfall').level = 8; pl.weaponLevels.cinderfall = 8;
+    WS.Player.getWeapon(pl, 'knifestorm').level = 3; pl.weaponLevels.knifestorm = 3;
+    pl.upgradeLevels = { area: 1 };
+    WS.UI.rebuildWeapons();
+    const s = [...document.querySelectorAll('.wslot')].slice(0, 2);
+    return s.map((x) => ({ pip: !!x.querySelector('.slot-pip'),
+      says: /Ready to evolve/.test(x.title || '') }));
+  });
+  if (!strip[0] || !strip[0].pip || !strip[0].says) {
+    fail.push('a weapon at its last rank with its paired passive learned shows nothing on '
+      + 'the HUD to say it is one level-up from evolving');
+  }
+  if (strip[1] && strip[1].pip) {
+    fail.push('a weapon with nowhere to go is marked ready on the HUD');
+  }
+
   await b.close();
 
   if (fail.length) {

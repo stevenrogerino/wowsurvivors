@@ -29,6 +29,71 @@
     },
   ];
 
+  /* ------------------------------------------------- what this will do --
+   * WHAT A CARD REACTS WITH, said on the card.
+   *
+   * Everything in this game is built around things combining - a weapon and
+   * a passive become an evolution, two weapons become a discovery, two
+   * evolutions become a union - and a card said none of it. It gave a name, a
+   * rank and a sentence, and the entire combination layer was something a
+   * player either read in the Codex afterwards or never found. A survivor
+   * holding Cinderfall, offered Rimeshard, was being offered Frostfire and
+   * had no way to know.
+   *
+   * So a card carries its reactions: what it completes NOW, and what it is
+   * waiting on. `ready` is the difference - a reaction the player can have by
+   * taking this card reads lit, one that needs something they do not have yet
+   * reads as a note. Both are worth showing; only one is a decision.
+   */
+  function reactionsFor(p, id, kind, level) {
+    const out = [];
+    const d = WS.Weapons[id];
+    if (!d) return out;
+    const lvl = level === undefined ? (p.weaponLevels[id] || 0) : level;
+
+    // A discovery, with something already carried.
+    for (const cid of WS.ComboOrder) {
+      const c = WS.Combos[cid];
+      if (c.weapons.indexOf(id) < 0) continue;
+      const other = c.weapons[0] === id ? c.weapons[1] : c.weapons[0];
+      if (p.combosActive[cid]) continue;
+      const held = !!WS.Player.getWeapon(p, other);
+      out.push({ kind: 'discovery', ready: held && kind === 'new_weapon',
+        text: held ? 'Discovery: ' + c.name
+          : c.name + ' - needs ' + (WS.Weapons[other] ? WS.Weapons[other].name : other) });
+    }
+
+    // The evolution this weapon is walking toward.
+    if (d.evolvePairing && WS.Upgrades[d.evolvePairing]) {
+      const passive = WS.Upgrades[d.evolvePairing].name;
+      const has = (p.upgradeLevels[d.evolvePairing] || 0) > 0;
+      const maxed = lvl >= WS.WEAPON_MAX_LEVEL;
+      if (kind !== 'evolve') {
+        out.push({ kind: 'evolve', ready: has && maxed,
+          text: has
+            ? (maxed ? 'Ready to evolve: ' + d.evolveName
+              : 'Evolves at rank ' + WS.WEAPON_MAX_LEVEL + ' - ' + d.evolveName)
+            : 'Evolves with ' + passive });
+      }
+    }
+
+    // And the union two evolutions can become.
+    for (const u of (WS.Unions || [])) {
+      if (u.from.indexOf(id) < 0) continue;
+      const other = u.from[0] === id ? u.from[1] : u.from[0];
+      const ow = WS.Player.getWeapon(p, other);
+      const res = WS.Weapons[u.result];
+      out.push({ kind: 'union', ready: !!(ow && ow.evolved),
+        text: (res ? res.name : 'Union') + ' - with '
+          + (WS.Weapons[other] ? WS.Weapons[other].name : other) + ' evolved' });
+    }
+    /* Two at most, and what is achievable first. A card that lists every
+       future it could have is a wall of text, not an aid. */
+    out.sort((a, b) => (b.ready ? 1 : 0) - (a.ready ? 1 : 0));
+    return out.slice(0, 2);
+  }
+  LevelUp.reactionsFor = reactionsFor;
+
   LevelUp.buildChoices = function (p) {
     const candidates = [];
 
@@ -42,11 +107,15 @@
           type: 'weapon_rank', id: w.id, art: d.art, school: d.school, weight: 3,
           name: d.name, description: WS.template(d.description, d),
           note: `Rank ${w.level}  >  ${w.level + 1}`,
+          rank: w.level + 1, maxRank: WS.WEAPON_MAX_LEVEL,
+          reacts: reactionsFor(p, w.id, 'weapon_rank', w.level + 1),
         });
       } else if (!w.evolved && d.evolvePairing && (p.upgradeLevels[d.evolvePairing] || 0) > 0) {
         candidates.push({
           type: 'evolve', id: w.id, art: d.art, school: d.school, weight: 6,
           name: d.evolveName, description: d.evolveDescription,
+          rank: WS.WEAPON_MAX_LEVEL, maxRank: WS.WEAPON_MAX_LEVEL,
+          reacts: reactionsFor(p, w.id, 'evolve', WS.WEAPON_MAX_LEVEL),
           note: 'EVOLUTION - ' + d.name + ' transformed',
         });
       }
@@ -77,6 +146,8 @@
         candidates.push({
           type: 'new_weapon', id, art: d.art, school: d.school, weight: 2,
           name: d.name, description: WS.template(d.description, d),
+          rank: 1, maxRank: WS.WEAPON_MAX_LEVEL,
+          reacts: reactionsFor(p, id, 'new_weapon', 1),
           note: 'New Weapon  -  pairs with ' + WS.Upgrades[d.evolvePairing].name,
         });
       }
@@ -92,6 +163,7 @@
           type: 'stat', id, art: up.art, quality: up.quality, weight: 2,
           name: up.name, description: WS.template(up.description, up),
           detail: WS.template(up.detail, up),
+          rank: rank + 1, maxRank: up.max,
           note: `Rank ${rank + 1} / ${up.max}`,
         });
       }

@@ -520,6 +520,80 @@ html, body {
   color: var(--ink-dim); font-weight: 600;
 }
 .card .card-body { font-size: var(--t-body); line-height: 1.5; color: var(--ink-dim); }
+
+/* ---- the rank, as a row of pips -------------------------------------------
+ * "RANK 7 / 8" is a fact about a card, not a feeling about it, and a card
+ * taking a weapon to its last rank looked exactly like one taking a passive
+ * to its second. A filled row reads without being read. */
+.card .card-pips {
+  display: flex; gap: 3px; align-items: center; margin: -2px 0 2px;
+}
+.card .card-pips i {
+  width: 12px; height: 3px; border-radius: 1px;
+  background: var(--rim-2, rgba(255,255,255,.12));
+  transition: background .18s var(--ease), box-shadow .18s var(--ease);
+}
+.card .card-pips i.on { background: color-mix(in srgb, var(--q, var(--arc)) 72%, #fff 10%); }
+.card .card-pips i.now {
+  box-shadow: 0 0 8px -1px var(--q, var(--arc));
+  background: color-mix(in srgb, var(--q, var(--arc)) 55%, #fff 45%);
+}
+
+/* ---- what this card will react with ---------------------------------------
+ * Everything in this game is built on things combining - a weapon and a
+ * passive become an evolution, two weapons a discovery, two evolutions a
+ * union - and the card said none of it. `ready` is the one the player can
+ * have by taking this card; the rest are what it is waiting on, which is
+ * worth knowing and is not a decision, so it is quieter. */
+.card .card-reacts { display: flex; flex-direction: column; gap: 4px; margin-top: 2px; }
+.card .react {
+  display: flex; align-items: center; gap: 6px;
+  font-size: var(--t-micro); line-height: 1.3; color: var(--ink-faint);
+  letter-spacing: .02em;
+}
+.card .react .react-mark {
+  width: 5px; height: 5px; flex: none; transform: rotate(45deg);
+  background: var(--ink-faint); opacity: .6;
+}
+.card .react.ready { color: color-mix(in srgb, var(--q, var(--arc)) 62%, #fff 38%); }
+.card .react.ready .react-mark {
+  background: var(--q, var(--arc)); opacity: 1;
+  box-shadow: 0 0 7px -1px var(--q, var(--arc));
+}
+
+/* ---- and the card escalates with the track it is on -----------------------
+ * Two thirds of the way up a weapon takes a gilt edge; the card that finishes
+ * a track - a last rank, an evolution, a union - gets the full treatment. The
+ * step is deliberately late: if every card glowed a little, none of them
+ * would be saying anything. */
+.card.rising {
+  border-color: color-mix(in srgb, var(--q, var(--arc)) 46%, var(--rim) 54%);
+  box-shadow: var(--bevel-deep), var(--lift-1), 0 0 34px -18px var(--q, var(--arc));
+}
+.card.crowning {
+  border-color: color-mix(in srgb, var(--q, var(--arc)) 72%, #fff 8%);
+  box-shadow: var(--bevel-deep), var(--lift-2), 0 0 52px -14px var(--q, var(--arc));
+}
+/* Rays behind the plate, only on the card that completes something. Drawn as
+   a conic gradient so it costs one layer and no elements.
+   ::after, not ::before - the plate's ::before is the pool of quality colour
+   that seats the tile, and taking it over would have quietly deleted that on
+   exactly the cards that most need it. Negative z-index puts the rays behind
+   the icon and still in front of the card. */
+.card.crowning .icon-plate::after {
+  content: ''; position: absolute; inset: -38%; z-index: -1;
+  background: conic-gradient(from 0deg,
+    color-mix(in srgb, var(--q, var(--arc)) 34%, transparent) 0deg 6deg,
+    transparent 6deg 30deg,
+    color-mix(in srgb, var(--q, var(--arc)) 26%, transparent) 30deg 34deg,
+    transparent 34deg 60deg);
+  opacity: .5; pointer-events: none;
+  animation: crown-turn 18s linear infinite;
+}
+@keyframes crown-turn { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .card.crowning .icon-plate::after { animation: none; }
+}
 /* The flavour note, hung off the foot of the card by margin-top:auto. Its
    rule is reserved three lines of room whatever the text runs to, because
    three cards side by side with the rule at three different heights reads as
@@ -1097,6 +1171,19 @@ body.hud-rail #hud-weapons {
   flex-direction: column-reverse; gap: 10px; align-items: center;
 }
 .wslot { position: relative; width: 54px; height: 54px; }
+
+/* A weapon with somewhere to go: rank 8 with its passive learned, or a
+   discovery whose other half you now carry. One pip on the slot, and the
+   tooltip names what it is waiting on. Small on purpose - this is a standing
+   condition, not an alarm, and the strip carries six of them. */
+.wslot .slot-pip {
+  position: absolute; top: -2px; right: -2px; width: 7px; height: 7px;
+  transform: rotate(45deg); background: var(--gold, #f5c56b);
+  box-shadow: 0 0 8px -1px var(--gold, #f5c56b);
+  animation: slot-breathe 2.6s var(--ease, ease-in-out) infinite;
+}
+@keyframes slot-breathe { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .wslot .slot-pip { animation: none; } }
 .wslot img { width: 54px; height: 54px; display: block; }
 /* The chamfered icon plate is the frame; the slot adds only a seat. */
 .wslot::before {
@@ -12715,6 +12802,71 @@ window.WS = window.WS || {};
     },
   ];
 
+  /* ------------------------------------------------- what this will do --
+   * WHAT A CARD REACTS WITH, said on the card.
+   *
+   * Everything in this game is built around things combining - a weapon and
+   * a passive become an evolution, two weapons become a discovery, two
+   * evolutions become a union - and a card said none of it. It gave a name, a
+   * rank and a sentence, and the entire combination layer was something a
+   * player either read in the Codex afterwards or never found. A survivor
+   * holding Cinderfall, offered Rimeshard, was being offered Frostfire and
+   * had no way to know.
+   *
+   * So a card carries its reactions: what it completes NOW, and what it is
+   * waiting on. `ready` is the difference - a reaction the player can have by
+   * taking this card reads lit, one that needs something they do not have yet
+   * reads as a note. Both are worth showing; only one is a decision.
+   */
+  function reactionsFor(p, id, kind, level) {
+    const out = [];
+    const d = WS.Weapons[id];
+    if (!d) return out;
+    const lvl = level === undefined ? (p.weaponLevels[id] || 0) : level;
+
+    // A discovery, with something already carried.
+    for (const cid of WS.ComboOrder) {
+      const c = WS.Combos[cid];
+      if (c.weapons.indexOf(id) < 0) continue;
+      const other = c.weapons[0] === id ? c.weapons[1] : c.weapons[0];
+      if (p.combosActive[cid]) continue;
+      const held = !!WS.Player.getWeapon(p, other);
+      out.push({ kind: 'discovery', ready: held && kind === 'new_weapon',
+        text: held ? 'Discovery: ' + c.name
+          : c.name + ' - needs ' + (WS.Weapons[other] ? WS.Weapons[other].name : other) });
+    }
+
+    // The evolution this weapon is walking toward.
+    if (d.evolvePairing && WS.Upgrades[d.evolvePairing]) {
+      const passive = WS.Upgrades[d.evolvePairing].name;
+      const has = (p.upgradeLevels[d.evolvePairing] || 0) > 0;
+      const maxed = lvl >= WS.WEAPON_MAX_LEVEL;
+      if (kind !== 'evolve') {
+        out.push({ kind: 'evolve', ready: has && maxed,
+          text: has
+            ? (maxed ? 'Ready to evolve: ' + d.evolveName
+              : 'Evolves at rank ' + WS.WEAPON_MAX_LEVEL + ' - ' + d.evolveName)
+            : 'Evolves with ' + passive });
+      }
+    }
+
+    // And the union two evolutions can become.
+    for (const u of (WS.Unions || [])) {
+      if (u.from.indexOf(id) < 0) continue;
+      const other = u.from[0] === id ? u.from[1] : u.from[0];
+      const ow = WS.Player.getWeapon(p, other);
+      const res = WS.Weapons[u.result];
+      out.push({ kind: 'union', ready: !!(ow && ow.evolved),
+        text: (res ? res.name : 'Union') + ' - with '
+          + (WS.Weapons[other] ? WS.Weapons[other].name : other) + ' evolved' });
+    }
+    /* Two at most, and what is achievable first. A card that lists every
+       future it could have is a wall of text, not an aid. */
+    out.sort((a, b) => (b.ready ? 1 : 0) - (a.ready ? 1 : 0));
+    return out.slice(0, 2);
+  }
+  LevelUp.reactionsFor = reactionsFor;
+
   LevelUp.buildChoices = function (p) {
     const candidates = [];
 
@@ -12728,11 +12880,15 @@ window.WS = window.WS || {};
           type: 'weapon_rank', id: w.id, art: d.art, school: d.school, weight: 3,
           name: d.name, description: WS.template(d.description, d),
           note: `Rank ${w.level}  >  ${w.level + 1}`,
+          rank: w.level + 1, maxRank: WS.WEAPON_MAX_LEVEL,
+          reacts: reactionsFor(p, w.id, 'weapon_rank', w.level + 1),
         });
       } else if (!w.evolved && d.evolvePairing && (p.upgradeLevels[d.evolvePairing] || 0) > 0) {
         candidates.push({
           type: 'evolve', id: w.id, art: d.art, school: d.school, weight: 6,
           name: d.evolveName, description: d.evolveDescription,
+          rank: WS.WEAPON_MAX_LEVEL, maxRank: WS.WEAPON_MAX_LEVEL,
+          reacts: reactionsFor(p, w.id, 'evolve', WS.WEAPON_MAX_LEVEL),
           note: 'EVOLUTION - ' + d.name + ' transformed',
         });
       }
@@ -12763,6 +12919,8 @@ window.WS = window.WS || {};
         candidates.push({
           type: 'new_weapon', id, art: d.art, school: d.school, weight: 2,
           name: d.name, description: WS.template(d.description, d),
+          rank: 1, maxRank: WS.WEAPON_MAX_LEVEL,
+          reacts: reactionsFor(p, id, 'new_weapon', 1),
           note: 'New Weapon  -  pairs with ' + WS.Upgrades[d.evolvePairing].name,
         });
       }
@@ -12778,6 +12936,7 @@ window.WS = window.WS || {};
           type: 'stat', id, art: up.art, quality: up.quality, weight: 2,
           name: up.name, description: WS.template(up.description, up),
           detail: WS.template(up.detail, up),
+          rank: rank + 1, maxRank: up.max,
           note: `Rank ${rank + 1} / ${up.max}`,
         });
       }
@@ -18838,8 +18997,26 @@ window.WS = window.WS || {};
       const rank = el('div', 'rank', w.evolved ? 'MAX' : String(w.level));
       const flash = el('div', 'flash');
       slot.append(img, svg, rank, flash);
+
+      /* THE SLOT SAYS WHEN THIS ONE IS READY TO REACT.
+       *
+       * A weapon sitting at rank 8 with its paired passive already learned is
+       * one level-up away from evolving, and the strip that shows what you
+       * carry said nothing about it - the only hint was the card, if the card
+       * happened to come up. A weapon whose partner you now carry is the same
+       * story for discoveries. A pip on the slot means this one has somewhere
+       * to go, and the tooltip names it. */
+      const reacts = WS.LevelUp.reactionsFor
+        ? WS.LevelUp.reactionsFor(WS.Game.player, w.id, 'carried', w.level) : [];
+      const ready = reacts.filter((r) => r.ready);
+      if (ready.length) {
+        slot.classList.add('ready');
+        slot.append(el('div', 'slot-pip'));
+      }
       slot.title = `${w.evolved ? w.data.evolveName : w.data.name}`
-        + `\n${WS.template(w.data.description, w.data)}`;
+        + `\n${WS.template(w.data.description, w.data)}`
+        + (reacts.length ? '\n\n' + reacts.map((r) => (r.ready ? '\u25c6 ' : '\u25c7 ')
+          + r.text).join('\n') : '');
       wrap.append(slot);
       this.els.weaponSlots.set(w.id, { arc, circ, rank, slot, lastCd: 0 });
     }
@@ -19240,7 +19417,44 @@ window.WS = window.WS || {};
 
     card.append(el('div', 'card-name', choice.name));
     if (choice.note) card.append(el('div', 'card-note', choice.note));
+
+    /* THE RANK, AS A ROW OF PIPS.
+     *
+     * "RANK 7 / 8" is a fact about a card and not a feeling about it, and a
+     * card taking a weapon to its last rank looked exactly like one taking a
+     * passive to its second. A filled row reads at a glance, carries how far
+     * along this thing is without being read, and gives the card something to
+     * escalate: past two thirds the card takes a gilt edge, and the one that
+     * finishes a track takes the full treatment. */
+    if (choice.maxRank > 1) {
+      const pips = el('div', 'card-pips');
+      const at = choice.rank || 1;
+      for (let i = 1; i <= choice.maxRank; i++) {
+        const pip = el('i', i <= at ? 'on' : null);
+        if (i === at) pip.classList.add('now');
+        pips.append(pip);
+      }
+      card.append(pips);
+      const k = at / choice.maxRank;
+      if (k >= 1) card.classList.add('crowning');
+      else if (k >= 0.66) card.classList.add('rising');
+    }
+    if (choice.type === 'evolve' || choice.type === 'union') card.classList.add('crowning');
+
     card.append(el('div', 'card-body', choice.description || ''));
+
+    /* What this will react with. See LevelUp.reactionsFor - the whole game is
+       built on things combining and the card used to say none of it. */
+    if (choice.reacts && choice.reacts.length) {
+      const row = el('div', 'card-reacts');
+      for (const r of choice.reacts) {
+        const tag = el('div', 'react' + (r.ready ? ' ready' : ''));
+        tag.append(el('i', 'react-mark'), el('span', null, r.text));
+        row.append(tag);
+      }
+      card.append(row);
+    }
+
     if (choice.detail && WS.Save.settings.levelUpTooltips) {
       card.append(el('div', 'card-detail', choice.detail));
     }
