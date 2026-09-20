@@ -1300,6 +1300,8 @@
     toggle('healNumbers', 'Floating healing numbers');
     toggle('showHealthBars', 'Health bars on trash mobs', 'Elites and bosses always keep theirs.');
     toggle('levelUpTooltips', 'Detailed level-up cards');
+    toggle('autoBreakingPoint', 'Take Breaking Point automatically',
+      'Once there are no upgrades left to offer, stop asking and keep playing.');
     choose('hudLayout', 'Arsenal and passives', 'Where your weapons and traits live.',
       [['strip', 'Along the foot'], ['rail', 'Up the edges']], () => UI.applyHudLayout());
     choose('quality', 'Graphics', 'Balanced drops trails, glows and ground detail for frames on a slower machine.',
@@ -1551,14 +1553,28 @@
       WS.Audio.play('ui');
       this.setBanishMode(!this.banishMode);
     });
+    /* Offered only on a draft that HAS a Breaking Point - that is, only once
+       the upgrade pool is spent and every later level-up will be this same
+       card. Before then there is a real choice here and nothing should take
+       it for you. */
+    const auto = el('button', 'btn small', 'Auto-pick');
+    auto.type = 'button';
+    auto.addEventListener('click', () => {
+      WS.Audio.play('ui');
+      WS.Save.settings.autoBreakingPoint = true;
+      WS.Save.save();
+      const bp = (WS.Game.levelChoices || []).find((c) => c.type === 'breaking_point');
+      if (bp) WS.Game.chooseLevelUp(bp);
+    });
+
     // Always present, so arming banish cannot shift the bar under the cursor.
     const hint = el('span', 'choice-hint', 'Pick a card to banish it from this run');
-    bar.append(reroll, banish, hint);
+    bar.append(reroll, banish, auto, hint);
 
     s.body.append(row);
     s.foot.append(el('div', 'spacer'), bar, el('div', 'spacer'));
     this._levelUI = {
-      row, bar, banish, reroll, hint,
+      row, bar, banish, reroll, auto, hint,
       title: s.head.querySelector('h1'), sub: s.head.querySelector('.sub'),
     };
     this.fillLevelChoices(choices);
@@ -1603,6 +1619,15 @@
   UI.fillLevelChoices = function (choices) {
     const ui = this._levelUI;
     if (!ui) return;
+    if (ui.auto) {
+      /* Offered on the same terms the auto-take uses, so the button never
+         appears on a draft it would not act on. */
+      const bp = choices.find((c) => c.type === 'breaking_point');
+      const spent = !!bp && choices.every((c) => c === bp || c.type === 'bread');
+      ui.auto.hidden = !spent;
+      ui.auto.title = 'Take Breaking Point now and every level after, '
+        + 'without stopping. Turn it off in Settings.';
+    }
     this._committing = false;
     ui.row.classList.remove('committing');
     ui.row.replaceChildren();

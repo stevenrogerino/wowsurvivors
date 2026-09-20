@@ -248,6 +248,27 @@
     this.timeScale = 1;
     this.state = 'levelup';
     this.levelChoices = WS.LevelUp.buildChoices(this.player);
+
+    /* Past the end of the upgrade pool there is nothing left to choose: the
+       draft is Breaking Point and two loaves, and it will be that every level
+       for the rest of the run. Taking it without stopping the game is what
+       the player was going to do anyway, twenty times over. Only ever armed
+       from the screen that offers it, so it cannot swallow a real choice. */
+    if (WS.Save.settings.autoBreakingPoint) {
+      const bp = this.levelChoices.find((c) => c.type === 'breaking_point');
+      /* Only when there is genuinely nothing else. Breaking Point appears as
+         soon as the pool cannot fill three slots, which is NOT the same as
+         the pool being empty - a draft of union / Breaking Point / bread is
+         real, and taking the Breaking Point off it would quietly throw away
+         a union. Auto-pick waits until every other card is a loaf. */
+      const nothingElse = bp && this.levelChoices.every(
+        (c) => c === bp || c.type === 'bread');
+      if (bp && nothingElse) {
+        this.state = 'playing';
+        this.chooseLevelUp(bp);
+        return;
+      }
+    }
     WS.Audio.play('level');
     /* Do NOT release held keys here. The browser only auto-repeats keydown for
      * the most recently pressed key, so wiping the direction state mid-hold

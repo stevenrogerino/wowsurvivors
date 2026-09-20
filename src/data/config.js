@@ -164,6 +164,9 @@
       healNumbers: true,
       showHealthBars: true,
       levelUpTooltips: true,
+      /* Once the upgrade pool is exhausted, every level-up is the same card.
+         Off by default and only ever offered once that has happened. */
+      autoBreakingPoint: false,
       /* Which cut of the prologue plays. Two exist while the author decides
          which one to keep; see src/render/cinematic.js. */
       cinematic: 2,

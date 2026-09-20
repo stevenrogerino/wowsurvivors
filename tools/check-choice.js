@@ -419,6 +419,45 @@ const note = [];
     fail.push('a weapon with nowhere to go is marked ready on the HUD');
   }
 
+  /* ---- auto-pick may never take a real choice off the table --------------
+   *
+   * Breaking Point shows up as soon as the pool cannot fill three slots, and
+   * that is NOT the same as the pool being empty: a draft of union / Breaking
+   * Point / bread happens, and an auto-pick keyed on "is Breaking Point here"
+   * would quietly bin a union - the most expensive thing in the game - on the
+   * one level-up that offered it. Found by drafting it rather than reasoning
+   * about it, which is why this runs both drafts and not just the easy one. */
+  const auto = await page.evaluate(() => {
+    const p = WS.Game.player;
+    const real = WS.LevelUp.buildChoices;
+    const out = {};
+    const run = (cards, label) => {
+      WS.LevelUp.buildChoices = () => cards.map((c) => JSON.parse(JSON.stringify(c)));
+      WS.Game.levelChoices = null; WS.Game.leveling = false; WS.Game.state = 'playing';
+      WS.Save.settings.autoBreakingPoint = true;
+      const before = p.limitBreaks;
+      WS.Game.pendingLevelUps = 1;
+      WS.Game.presentLevelUp();
+      out[label] = { state: WS.Game.state, gained: p.limitBreaks - before };
+      WS.Game.levelChoices = null; WS.Game.leveling = false;
+      WS.Game.state = 'playing'; WS.Game.pendingLevelUps = 0;
+    };
+    const BP = { type: 'breaking_point', id: 'breaking_point', name: 'Breaking Point' };
+    const BREAD = { type: 'bread', id: 'loaf', name: 'Bread', heal: 60 };
+    const UNION = { type: 'union', id: 'union_ruin', name: 'Ruin' };
+    run([BP, BREAD, BREAD], 'spent');
+    run([UNION, BP, BREAD], 'union');
+    WS.LevelUp.buildChoices = real;
+    WS.Save.settings.autoBreakingPoint = false;
+    return out;
+  });
+  if (auto.spent.gained !== 1 || auto.spent.state !== 'playing') {
+    fail.push('auto-pick did not take Breaking Point off a draft with nothing else on it');
+  }
+  if (auto.union.gained !== 0 || auto.union.state !== 'levelup') {
+    fail.push('auto-pick took Breaking Point off a draft that still offered a union');
+  }
+
   await b.close();
 
   if (fail.length) {
