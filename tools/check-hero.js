@@ -158,8 +158,8 @@ const MOTION = 0.04;             // fraction of the figure that must move per fr
     }
     WS.Game.quitToMenu ? WS.Game.quitToMenu() : 0;
 
-    const read = (id, size, pose) => {
-      const c = WS.Sprites.hero(id, WS.Characters[id].color, size, false, undefined, pose);
+    const read = (id, size, pose, rank) => {
+      const c = WS.Sprites.hero(id, WS.Characters[id].color, size, false, undefined, pose, rank);
       const w = c.width, h = c.height;
       const d = c.getContext('2d').getImageData(0, 0, w, h).data;
       const solid = new Uint8Array(w * h);
@@ -194,6 +194,81 @@ const MOTION = 0.04;             // fraction of the figure that must move per fr
 
     const big = {}, small = {};
     for (const id of ids) { big[id] = read(id, 140); small[id] = read(id, 34); }
+
+    /* ---- what a survivor EARNS, held to the same three rules -------------
+     *
+     * The rank ladder adds parts to the kit, and every rule this file exists
+     * to enforce applies to a survivor who has earned something just as much
+     * as to one who has not:
+     *
+     *   framed    A crown sits nearer the top of the tile than anything else
+     *             in the rig. If it is going to be cut by the canvas edge,
+     *             this is where that gets caught.
+     *   distinct  No two survivors may share a silhouette - and the danger
+     *             with a ladder is that everyone converges on the same
+     *             embellishments and arrives at the same figure. The ladder
+     *             is deliberately ONE set of parts for the whole cast, so
+     *             this is the check that says whether that was affordable.
+     *   earned    A rank that changes nothing is not a rank. Measured at the
+     *             78px the game actually draws, the first version of rank 3
+     *             moved NINE pixels on the mage, because it was drawn inside
+     *             a cloak the mage already wore. */
+    const MAXR = WS.Hero.maxRank;
+    const ranked = {};
+    for (const id of ids) {
+      ranked[id] = [];
+      for (let r = 0; r <= MAXR; r++) ranked[id].push(read(id, 140, undefined, r));
+    }
+
+    // framed, at every rank
+    const clipped = [];
+    for (const id of ids) {
+      for (let r = 1; r <= MAXR; r++) {
+        if (ranked[id][r].edge > 0) clipped.push(`${id} at rank ${r} (${ranked[id][r].edge}px)`);
+      }
+    }
+
+    // earned: each rank against the one below it, at play size
+    const grey2 = [0.55, 0.55, 0.58];
+    const steps = [];
+    for (const id of ids) {
+      for (let r = 1; r <= MAXR; r++) {
+        const a = WS.Sprites.hero(id, grey2, 78, false, undefined, null, r);
+        const b = WS.Sprites.hero(id, grey2, 78, false, undefined, null, r - 1);
+        const A = a.getContext('2d').getImageData(0, 0, a.width, a.height).data;
+        const B = b.getContext('2d').getImageData(0, 0, b.width, b.height).data;
+        let n = 0;
+        for (let k = 0; k < A.length; k += 4) {
+          const d = Math.abs(A[k] - B[k]) + Math.abs(A[k + 1] - B[k + 1])
+            + Math.abs(A[k + 2] - B[k + 2]) + Math.abs(A[k + 3] - B[k + 3]);
+          if (d > 60) n++;
+        }
+        steps.push({ id, r, n });
+      }
+    }
+
+    // distinct, with the whole cast raised to the top of the ladder
+    const flatTop = {};
+    for (const id of ids) {
+      const c = WS.Sprites.hero(id, grey2, 76, false, undefined, null, MAXR);
+      flatTop[id] = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    }
+    let sameTop = { pair: '', v: 2 };
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        const A = flatTop[ids[i]], B = flatTop[ids[j]];
+        let seen = 0, diff = 0;
+        for (let k = 0; k < A.length; k += 4) {
+          if (A[k + 3] < 60 && B[k + 3] < 60) continue;
+          seen++;
+          const d = Math.abs(A[k] - B[k]) + Math.abs(A[k + 1] - B[k + 1])
+            + Math.abs(A[k + 2] - B[k + 2]) + Math.abs(A[k + 3] - B[k + 3]);
+          if (d > 60) diff++;
+        }
+        const v = diff / Math.max(1, seen);
+        if (v < sameTop.v) sameTop = { pair: ids[i] + ' and ' + ids[j], v };
+      }
+    }
 
     /* THE POSES, held to the same frame rule as the walk.
      *
@@ -311,6 +386,7 @@ const MOTION = 0.04;             // fraction of the figure that must move per fr
       ground, posed,
       worst, same, gait,
       drift, drifted,
+      rank: { maxR: MAXR, clipped, steps, sameTop },
       cast: ids.map((id) => ({
         id,
         edge: big[id].edge,
@@ -463,6 +539,34 @@ const MOTION = 0.04;             // fraction of the figure that must move per fr
     }
   }
 
+  /* ---- the rank ladder -------------------------------------------------- */
+  const rk = report.rank;
+  for (const c of rk.clipped) {
+    fail.push(`${c} is cut by the edge of its own tile - a crown sits nearer the `
+      + 'top than anything else in the rig, and this is where that shows');
+  }
+  /* 120 changed pixels of a 78px tile, which is 2%. Under that a rank is a
+     rumour: rank 3 measured NINE on the mage when it was drawn inside a cloak
+     the mage already wore, and rank 2 measured eighteen on the rogue when the
+     mantle sat inside a sleeve. */
+  const thin = rk.steps.filter((x) => x.n < 120);
+  for (const x of thin.slice(0, 4)) {
+    fail.push(`${x.id} rank ${x.r} changes ${x.n} pixels of the survivor - `
+      + 'nothing a player would see for having earned it');
+  }
+  /* The ladder is one set of parts for the whole cast, so the question is
+     whether the cast is still ten people once every one of them has climbed
+     it. Held to DIFF - the SAME floor the base roster is held to, not a
+     slacker one invented for the occasion. (The first version of this line
+     compared against 0.55, which is not a floor at all: it confused the
+     fraction that DIFFERS with the share that matches, and would have failed
+     the shipped roster.) */
+  if (rk.sameTop.v < DIFF) {
+    fail.push(`at the top of the ladder ${rk.sameTop.pair} share `
+      + `${(1 - rk.sameTop.v).toFixed(2)} of a silhouette - the ranks are `
+      + 'turning the cast into one character');
+  }
+
   if (fail.length) {
     console.error('FAIL');
     for (const f of fail) console.error('  - ' + f);
@@ -471,7 +575,10 @@ const MOTION = 0.04;             // fraction of the figure that must move per fr
   const dim = report.cast.reduce((a, c) => (c.mean < a.mean ? c : a));
   console.log(`ok: ${report.cast.length} survivors, none touching the frame, all `
     + `planted at 0.86-0.88; the closest pair (${report.worst.pair}) share `
-    + `${report.worst.v.toFixed(2)} of a silhouette; the dimmest (${dim.id}, `
+    + `${report.worst.v.toFixed(2)} of a silhouette; every survivor climbs `
+    + `${rk.maxR} ranks with the thinnest step still moving `
+    + `${Math.min(...rk.steps.map((x) => x.n))} pixels and the closest pair at the `
+    + `top still ${(1 - rk.sameTop.v).toFixed(2)} apart; the dimmest (${dim.id}, `
     + `${dim.mean.toFixed(0)}) still clears the brightest ground `
     + `(${brightestMap}, ${brightest.toFixed(0)}) by ${(dim.mean - brightest).toFixed(0)}; `
     + `the most alike pair (${report.same.pair}) still differ across `

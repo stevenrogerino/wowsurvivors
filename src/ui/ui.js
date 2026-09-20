@@ -164,16 +164,25 @@
     document.body.classList.toggle('hud-rail', rail);
   };
 
+  /** The HUD portrait, which has to be repainted when the survivor earns
+   *  something - it is built once when the run opens and would otherwise show
+   *  the figure they started as for the rest of the run. */
+  UI.paintPortrait = function (p) {
+    this.els.portrait.innerHTML = '';
+    const img = new Image();
+    img.src = WS.Sprites.hero(p.characterId, p.character.color, 76,
+      false, undefined, null, WS.Player.rank(p)).toDataURL();
+    img.width = img.height = 76;
+    this.els.portrait.append(img);
+  };
+
   UI.enterGame = function () {
     this.closeOverlay();
     this.hud.classList.remove('hidden');
     const p = WS.Game.player;
     // The portrait shows the survivor's actual silhouette, not a glyph.
-    this.els.portrait.innerHTML = '';
-    const img = new Image();
-    img.src = WS.Sprites.hero(p.characterId, p.character.color, 76).toDataURL();
-    img.width = img.height = 76;
-    this.els.portrait.append(img);
+    this._portraitRank = WS.Player.rank(p);
+    this.paintPortrait(p);
     this.els.name.textContent = p.character.name;
     this._passiveSig = null;
     this.rebuildWeapons();
@@ -276,6 +285,11 @@
     else if (run.victorious) modeBits.push('Overtime');
     if (run.map.arena) modeBits.push('Eclipse Arena · Phase ' + WS.Arena.phase);
     e.mode.textContent = modeBits.join(' · ');
+
+    /* Cheap: a number compared once a frame, and a repaint only on the few
+       moments in a run when it actually changes. */
+    const rank = WS.Player.rank(p);
+    if (rank !== this._portraitRank) { this._portraitRank = rank; this.paintPortrait(p); }
 
     e.goldV.textContent = WS.formatNumber(run.gold);
     e.killV.textContent = WS.formatNumber(run.kills);

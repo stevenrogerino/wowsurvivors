@@ -887,9 +887,15 @@
     },
 
     /** @param {number} [frame] stride frame, or undefined for standing. */
-    hero(id, tint, size, demon, frame, pose) {
+    hero(id, tint, size, demon, frame, pose, rank) {
       size = WS.round(size);
-      const key = `h:${id}:${WS.hex(tint)}:${size}:${demon ? 1 : 0}:`
+      /* Rank is part of the key for the same reason `demon` is: it changes
+         what is drawn, so a survivor who earns something must not be served
+         the canvas they had before it. Each rank bakes its own frames, which
+         costs a few dozen more small canvases - the same as the demon form
+         has always cost. */
+      const r = rank ? WS.clamp(WS.floor(rank), 0, WS.Hero.maxRank) : 0;
+      const key = `h:${id}:${WS.hex(tint)}:${size}:${demon ? 1 : 0}:${r}:`
         + (pose ? `${pose.kind}${pose.frame}` : (frame === undefined ? 'x' : frame));
       let c = cache.get(key);
       if (c) return c;
@@ -910,12 +916,12 @@
            one who has not. */
         const n = WS.max(1, WS.Hero.poseFrames[pose.kind] || 1);
         WS.Hero.draw(c.getContext('2d'), res, id, tint, demon, undefined,
-          { kind: pose.kind, k: n === 1 ? 0 : pose.frame / (n - 1) });
+          { kind: pose.kind, k: n === 1 ? 0 : pose.frame / (n - 1) }, r);
         cache.set(key, c);
         return c;
       }
       WS.Hero.draw(c.getContext('2d'), res, id, tint, demon,
-        frame === undefined ? undefined : frame / WS.Hero.frames);
+        frame === undefined ? undefined : frame / WS.Hero.frames, null, r);
       c.displaySize = size;
       cache.set(key, c);
       return c;

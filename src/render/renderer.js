@@ -678,7 +678,8 @@
       p.lean = (p.lean || 0) * 0.86;
     }
     if (p.lean) ctx.rotate(p.facing < 0 ? -p.lean : p.lean);
-    const sprite = WS.Sprites.hero(p.characterId, p.character.color, size, demon, frame, pose);
+    const sprite = WS.Sprites.hero(p.characterId, p.character.color, size, demon, frame, pose,
+      WS.Player.rank(p));
     ctx.drawImage(sprite, -size / 2, -size * 0.66, size, size);
     ctx.restore();
     ctx.globalAlpha = 1;

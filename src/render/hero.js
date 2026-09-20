@@ -77,9 +77,10 @@
    */
   function stride(phase) {
     const a = phase * WS.TAU;
-    return { swing: WS.sin(a), lift: WS.max(0, -WS.cos(a * 2)) };
+    // carried through so the rank embers rise with the walk, not with wall time
+    return { swing: WS.sin(a), lift: WS.max(0, -WS.cos(a * 2)), phase };
   }
-  const STILL = { swing: 0, lift: 0 };
+  const STILL = { swing: 0, lift: 0, phase: 0 };
   /** How many baked frames one cycle is cut into. */
   const FRAMES = 8;
 
@@ -1395,6 +1396,56 @@
       hair: DARKCLOTH },
   };
 
+  /* --------------------------------------------------------------- rank --- */
+  /* WHAT A SURVIVOR EARNS.
+   *
+   * The rig is a kit of about thirty parts and a class is a row of them, so a
+   * survivor who grows is not a second drawing - it is more of the same row.
+   * This is the ladder they climb, and it is the SAME ladder for everyone.
+   *
+   * That last part is the whole design. The obvious way to do this is to hand
+   * each class more of its own signature - a bigger halo for the paladin, more
+   * chains for the graveblade - and it is wrong twice. It doubles the work per
+   * class, and worse, the parts a class does not own are the parts that say
+   * who the OTHER classes are: a mage who earns a halo is a priest, and the
+   * rule this file is built on is that no two survivors may share a
+   * silhouette. check-hero measures that, and it measures every tier now.
+   *
+   * So the ladder is ember - the thing the game is named for, that belongs to
+   * none of them and suits all of them. A survivor does not become another
+   * class as they rise. They catch light.
+   *
+   *   1  the hem takes light, and embers start lifting off them
+   *   2  the shoulders build - a mantle of ember-lit plate
+   *   3  the cloak lengthens and frays into sparks
+   *   4  a crown of embers, which is the one that reads across the room
+   */
+  const RANKS = [
+    {},
+    { emberHem: 1 },
+    { emberHem: 1, emberMantle: 1 },
+    { emberHem: 1, emberMantle: 1, emberTrain: 1 },
+    { emberHem: 1, emberMantle: 1.25, emberTrain: 1.2, emberCrown: 1 },
+  ];
+  const MAX_RANK = RANKS.length - 1;
+
+  /** The kit a survivor draws with at `rank`: their class, plus what they have
+   *  earned. Merged fresh rather than mutated, because CAST is the shipped
+   *  definition of a class and a run must never edit it. */
+  function kitFor(id, rank) {
+    const base = CAST[id] || CAST.mage;
+    const r = WS.clamp(WS.floor(rank || 0), 0, MAX_RANK);
+    if (!r) return base;
+    const out = Object.assign({}, base, RANKS[r]);
+    /* Pauldrons are a NUMBER in this rig, not a flag, so a class that already
+       has them grows its own rather than wearing a second pair over them. */
+    if (base.pauldrons && RANKS[r].emberMantle) {
+      out.pauldrons = base.pauldrons * (1 + 0.14 * r);
+      out.emberMantle = 0;
+    }
+    return out;
+  }
+
   /* -------------------------------------------------------------- paint --- */
   /** Everything the tint decides, resolved once so no drawing function has to
    *  think about colour theory in the middle of drawing a sleeve. */
@@ -1419,6 +1470,23 @@
     if (lum < FLOOR) garment = WS.mix(garment, [0.34, 0.36, 0.43], (FLOOR - lum) / FLOOR);
     return {
       accent: WS.hex(accent),
+      /* The rank ladder's own colour. Ember rather than the identity tint, so
+         a survivor who rises reads as the same person carrying fire and not as
+         a more saturated version of themselves - and so that a priest at
+         [1,1,1] gets a rank that is visible at all. Demons burn green, like
+         everything else about them. */
+      emberRgb: demon ? [0.62, 1, 0.30] : [1.00, 0.62, 0.22],
+      /* The METAL the rank is forged from carries a quarter of the survivor's
+         own colour; the LIGHT it throws does not.
+       
+         Pure ember for both made every raised survivor the same amount of
+         orange, and the two heavy builds could not afford it: warrior and
+         paladin already sit closest of any pair, and raising both dropped
+         them to 0.30 of their drawing differing - under the 0.35 the base
+         roster is held to. The ladder is still one ladder, and a warrior's
+         plate is still a warrior's. */
+      emberRamp: demon ? ramp([0.38, 0.58, 0.22])
+        : ramp(WS.mix([0.46, 0.30, 0.16], t, 0.25)),
       /* Pulled back from white. At 0.55 toward white every gem and orb in the
        * game came out the same pale lilac-white blob, which throws away the
        * one thing the accent is for - saying whose it is. */
@@ -1472,6 +1540,258 @@
   }
 
   /** The finished figure, minus its light. */
+  /* ------------------------------------------------------- ember parts --- */
+  /* All four are drawn INSIDE the figure, before the silhouette is stamped,
+     so the rim light and the cold bounce pick them up like any other part of
+     the body. Painted after the stamp they would sit on top of the figure as
+     stickers, which is exactly how the first version of the crown looked. */
+
+  /** Rank 1. The hem of whatever they wear takes light, and embers lift. */
+  function emberHem(g, cfg, C, b, w) {
+    const cx = 50;
+    const hemY = cfg.robe ? FOOT_Y - 4 : HIP_Y + 4;
+    const wide = b.hip * (cfg.robe ? 1.9 : 1.5);
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    const grd = g.createLinearGradient(0, hemY - 9, 0, hemY + 2);
+    grd.addColorStop(0, WS.rgb(C.emberRgb, 0));
+    grd.addColorStop(1, WS.rgb(C.emberRgb, 0.5));
+    g.fillStyle = grd;
+    g.beginPath();
+    g.ellipse(cx, hemY - 2, wide, 7, 0, 0, WS.TAU);
+    g.fill();
+    g.restore();
+    /* Three embers, on the stride's own phase so they rise with the walk and
+       hang when the survivor stands. Baked per frame like everything else. */
+    for (let i = 0; i < 3; i++) {
+      const k = ((w.phase || 0) + i / 3) % 1;
+      const ex = cx + (i - 1) * wide * 0.55 + WS.sin(k * WS.TAU + i) * 2;
+      const ey = hemY - 3 - k * 16;
+      glow(g, ex, ey, 2.4 * (1 - k * 0.5), WS.rgb(C.emberRgb, 1), 0.5 * (1 - k));
+    }
+  }
+
+  /** Rank 2. A mantle of ember-lit plate for the classes that own no
+   *  pauldrons; the ones that do simply grow theirs (see kitFor).
+   *
+   *  Measured at the 78px the game draws: the first version of this changed
+   *  18 pixels on the rogue, which is not a rank, it is a rumour. It is a
+   *  PANEL - opaque, so it enters the silhouette and takes the gold rim with
+   *  it - and it is sized off the shoulder rather than fixed, so a slim build
+   *  gets one that reads instead of one that hides under a sleeve. */
+  function emberMantle(g, cfg, C, b, k) {
+    if (!k) return;
+    const cx = 50;
+    /* Sized off the shoulder AND raised, because on a slim build the plate
+       sat inside the sleeve and changed 18 pixels. Sitting proud of the
+       shoulder line is what puts it in the silhouette. */
+    const sc = k * (1.25 + (11 - b.sh) * 0.09);
+    const rise = 2.2 * k;
+    for (const dir of [-1, 1]) {
+      const px = cx + dir * (b.sh + 2.2);
+      const sy = SHOULDER_Y - rise;
+      panel(g, [
+        [px - dir * 6.5 * sc, sy - 4.4 * sc],
+        [px + dir * 3.4 * sc, sy - 6.0 * sc],
+        [px + dir * 7.4 * sc, sy - 1.4 * sc],
+        [px + dir * 6.4 * sc, sy + 3.6 * sc],
+        [px - dir * 6.5 * sc, sy + 2.8 * sc],
+      ], C.emberRamp);
+      // a lit lip along the top edge, where the light already comes from
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      g.strokeStyle = WS.rgb(C.emberRgb, 0.85);
+      g.lineWidth = 1.1;
+      g.beginPath();
+      g.moveTo(px - dir * 6.2 * sc, sy - 4.2 * sc);
+      g.lineTo(px + dir * 3.2 * sc, sy - 5.8 * sc);
+      g.lineTo(px + dir * 7.0 * sc, sy - 1.3 * sc);
+      g.stroke();
+      g.restore();
+      glow(g, px + dir * 2 * sc, sy - 2.4 * sc, 5.5 * sc, WS.rgb(C.emberRgb, 1), 0.34);
+    }
+  }
+
+  /** Rank 3. The cloak carries further and frays into sparks behind.
+   *
+   *  It has to reach BEYOND whatever cloak the class already wears or it is
+   *  simply hidden by it - drawn inside the mage's long cloak the first
+   *  version changed nine pixels between rank 2 and rank 3. So it is wider
+   *  than any cloak in the rig and it pools past the feet, which is the part
+   *  that actually changes the outline. */
+  function emberTrain(g, cfg, C, b, w, k) {
+    if (!k) return;
+    const cx = 50;
+    /* The train takes its SHAPE from the cloak the class already wears.
+     
+       The distinctness check greys every survivor out, so anything the train
+       borrows from the identity colour is identical between two classes -
+       only the outline is left to tell them apart. Warrior and paladin wear
+       no cloak at all, so an identical new sheet of cloth on two heavy builds
+       cost them 0.166 of their difference and put them under the floor. A
+       class with no cloak gets a SPLIT train, two tails rather than one
+       sheet; a cut or short one gets a narrower, higher hem. Same ladder, and
+       the silhouette still belongs to whoever is wearing it. */
+    const style = cfg.cloak || 'none';
+    /* Each cloak style gets a DIFFERENT hem, not a smaller one.
+     
+       Shaman, ruinseeker and warlock all wear a tattered cloak, so an
+       identical train made the first two the closest pair at the top of the
+       ladder. Trimming it fixed that and immediately broke the third: at
+       0.9 of the drop, the warlock's rank 3 moved 56 pixels, which is not a
+       rank. So a tattered cloak keeps its length and takes a deeper, more
+       broken hem instead - the same amount of cloth, cut a different way. */
+    const wide = style === 'long' ? 2.8 : style === 'tattered' ? 2.4
+      : style === 'none' ? 1.9 : 2.1;
+    /* Nobody's train is SHORTER - shortening is how rank 3 stops being worth
+       anything, and it cost the warlock and then the rogue in turn. A cut or
+       short cloak is told apart by being cut on the SLANT, one side carried
+       further than the other, which is what "cut" already means. */
+    const drop = 1;
+    const frays = style === 'tattered' ? 5 : 3;
+    const notch = style === 'tattered' ? 11 : 5;
+    const slant = style === 'cut' || style === 'short' ? 9 : 0;
+    /* A cloakless class gets two tails - except one already wearing a tabard,
+       which is a single hanging panel, and gets a banner that continues it.
+       Warrior and paladin are the closest pair in the cast before any of this
+       (0.470 apart) and the only two who are heavy, cloakless and plated, so
+       they are the pair a shared ladder costs most; the tabard is the one
+       thing in their kits that already differs at grey. */
+    const split = style === 'none' && !cfg.tabard;
+    const banner = style === 'none' && cfg.tabard;
+    const top = SHOULDER_Y + 1;
+    const foot = FOOT_Y * drop + (FOOT_Y * (1 - drop)) * 0.35 + 5 * k;
+    const flare = b.hip * wide * k;
+    const sway = (w.swing || 0) * 1.6;
+    /* THEIR cloth, not a new orange one.
+     
+       Painted in ember the train read as an orange skirt worn over the
+       costume - on the paladin it fought the tabard and on the graveblade it
+       fought a maroon cloak. It is the class's own cloak ramp, carried
+       further, and the ember lives only at the frayed hem where cloth that
+       has been dragged through a fire would actually be alight. */
+    const grd = g.createLinearGradient(0, top, 0, foot);
+    grd.addColorStop(0, C.cloakRamp.deep);
+    grd.addColorStop(0.62, C.cloakRamp.shade);
+    grd.addColorStop(1, C.cloakRamp.core);
+    g.fillStyle = grd;
+    if (banner) {
+      // one panel, straight down, wider at the hem - a tabard carried on
+      const halfTop = b.hip * 0.62, halfFoot = flare * 0.66;
+      g.beginPath();
+      g.moveTo(cx - halfTop, top + 4);
+      g.lineTo(cx + halfTop, top + 4);
+      g.lineTo(cx + halfFoot + sway, foot);
+      g.lineTo(cx + halfFoot * 0.4 + sway, foot - 8);
+      g.lineTo(cx + sway * 0.5, foot + 1);
+      g.lineTo(cx - halfFoot * 0.4 + sway, foot - 8);
+      g.lineTo(cx - halfFoot + sway, foot);
+      g.closePath();
+      g.fill();
+    } else if (split) {
+      // two tails, parted down the middle - a heavy build's war-banner, not a
+      // robe, and a different outline from anything with a cloak on it
+      for (const dir of [-1, 1]) {
+        g.beginPath();
+        g.moveTo(cx + dir * b.sh * 0.25, top);
+        g.lineTo(cx + dir * b.sh * 0.95, top);
+        g.quadraticCurveTo(cx + dir * flare + sway, top + (foot - top) * 0.7,
+          cx + dir * flare * 0.85 + sway, foot);
+        g.lineTo(cx + dir * flare * 0.34 + sway, foot - 7);
+        g.lineTo(cx + dir * b.hip * 0.30 + sway * 0.5, foot - 2);
+        g.closePath();
+        g.fill();
+      }
+    } else {
+      g.beginPath();
+      g.moveTo(cx - b.sh * 0.9, top);
+      g.quadraticCurveTo(cx - flare + sway, top + (foot - top) * 0.75,
+        cx - flare * 0.8 + sway, foot + slant * 0.5);
+      // the hem: points of cloth rather than a clean curve, cut to the style
+      for (let i = 1; i <= frays * 2; i++) {
+        const u = -1 + (i / (frays * 2 + 1)) * 2;      // -1..1 across the hem
+        const deep = i % 2 ? notch : 0;
+        g.lineTo(cx + u * flare * 0.8 + sway, foot - deep + (deep ? 0 : 2) - u * slant * 0.5);
+      }
+      g.lineTo(cx + flare * 0.8 + sway, foot - slant * 0.5);
+      g.quadraticCurveTo(cx + flare + sway, top + (foot - top) * 0.75, cx + b.sh * 0.9, top);
+      g.closePath();
+      g.fill();
+    }
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    // the hem itself, alight along the line the cloth actually ends on
+    const hem = g.createLinearGradient(0, foot - 13, 0, foot + 2);
+    hem.addColorStop(0, WS.rgb(C.emberRgb, 0));
+    hem.addColorStop(1, WS.rgb(C.emberRgb, 0.55));
+    g.fillStyle = hem;
+    g.beginPath();
+    g.moveTo(cx - flare * 0.8 + sway, foot);
+    g.lineTo(cx - flare * 0.28 + sway, foot - 5);
+    g.lineTo(cx + sway * 0.5, foot + 2);
+    g.lineTo(cx + flare * 0.28 + sway, foot - 5);
+    g.lineTo(cx + flare * 0.8 + sway, foot);
+    g.lineTo(cx + flare * 0.6 + sway, foot - 13);
+    g.lineTo(cx - flare * 0.6 + sway, foot - 13);
+    g.closePath();
+    g.fill();
+    for (let i = 0; i < 5; i++) {
+      const t = ((w.phase || 0) * 0.5 + i / 5) % 1;
+      const sx = cx + (i % 2 ? 1 : -1) * flare * (0.5 + t * 0.6) + sway;
+      const sy = foot - 6 - t * 14;
+      glow(g, sx, sy, 2.2 * (1 - t * 0.4), WS.rgb(C.emberRgb, 1), 0.55 * (1 - t));
+    }
+    g.restore();
+  }
+
+  /** Rank 4. The crown - the one a player reads from across the field.
+   *
+   *  A ring of separate points rather than a solid band, because a solid band
+   *  at this size IS the priest's halo and that belongs to her. The points are
+   *  drawn opaque before they are lit, so the crown enters the silhouette and
+   *  earns the same gold rim the rest of the figure has. */
+  function emberCrown(g, cfg, C, k, b) {
+    if (!k) return;
+    const cx = 50;
+    /* Cut to the build, for the same reason the train is cut to the cloak: at
+       grey, the only thing telling two survivors apart is the outline, and an
+       identical crown on the two heavy builds is one more thing they share.
+       A broad frame carries few heavy points; a narrow one carries many fine
+       ones. */
+    const heavy = b ? b.sh >= 12 : false;
+    const slim = b ? b.sh <= 9.5 : false;
+    const pts = heavy ? 5 : slim ? 11 : 8;
+    const spread = heavy ? 1.14 : slim ? 0.9 : 1;
+    const stout = heavy ? 1.5 : slim ? 0.72 : 1;
+    /* CEIL is the one rule nothing may break: the sprite is a square canvas
+       and anything past its edge is cut with a flat line, which on a crown
+       reads instantly as a bug. */
+    const cy = CEIL + 5.5;
+    const rx = 13 * k * spread, ry = 3.8 * k * spread;
+    // the points, back ones first so the front overlaps them
+    for (const pass of [0, 1]) {
+      for (let i = 0; i < pts; i++) {
+        const a = (i / pts) * WS.TAU - WS.PI / 2;
+        const front = WS.sin(a) > 0;
+        if ((pass === 0) === front) continue;
+        const ex = cx + WS.cos(a) * rx;
+        const ey = cy + WS.sin(a) * ry;
+        const h = (front ? 5.2 : 3.4) * k * stout;
+        const halfW = 1.5 * k * stout;
+        panel(g, [[ex - halfW, ey + 1], [ex, ey - h], [ex + halfW, ey + 1]], C.emberRamp);
+        g.save();
+        g.globalCompositeOperation = 'lighter';
+        glow(g, ex, ey - h * 0.55, front ? 2.6 : 1.8, WS.rgb(C.emberRgb, 1),
+          front ? 0.9 : 0.45);
+        g.restore();
+      }
+    }
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    glow(g, cx, cy, 13 * k * spread, WS.rgb(C.emberRgb, 1), 0.22);
+    g.restore();
+  }
+
   function figure(g, cfg, C, w) {
     const b = BUILDS[cfg.build] || BUILDS.normal;
     /* THE FEET OWN THE FLOOR.
@@ -1496,11 +1816,15 @@
      * hem on the ground piles up; it does not carry on down. */
     const cloakLift = WS.max(lift, -2.2);
     g.save(); g.translate(0, -cloakLift);
+    emberTrain(g, cfg, C, b, w, cfg.emberTrain || 0);
     drawCloak(g, cfg, C, b, w);
     g.restore();
     drawBody(g, cfg, C, b, w, lift);
+    if (cfg.emberHem) { g.save(); g.translate(0, -cloakLift); emberHem(g, cfg, C, b, w); g.restore(); }
     g.save(); g.translate(0, -lift);
+    emberMantle(g, cfg, C, b, cfg.emberMantle || 0);
     drawHead(g, cfg, C);
+    emberCrown(g, cfg, C, cfg.emberCrown || 0, b);
     // Offhand first, so the main weapon lands in front of it.
     const off = WEAPONS[cfg.offhand];
     if (off) off(g, C, b);
@@ -1512,6 +1836,8 @@
   const Hero = {
     ids: Object.keys(CAST),
     frames: FRAMES,
+    maxRank: MAX_RANK,
+    kitFor,
 
     /** Draw survivor `id` into `g`, filling a `size`-square canvas.
      *
@@ -1525,8 +1851,8 @@
 
     /** @param {number} [phase] 0..1 through one stride; omit for standing.
      *  @param {{kind:string,k:number}} [pose] overrides the stride entirely. */
-    draw(g, size, id, tint, demon, phase, pose) {
-      const cfg = CAST[id] || CAST.mage;
+    draw(g, size, id, tint, demon, phase, pose, rank) {
+      const cfg = kitFor(id, rank);
       const posed = pose && POSES[pose.kind];
       const w = posed ? POSES[pose.kind](pose.k)
         : (phase === undefined ? STILL : stride(phase));
