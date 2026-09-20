@@ -2299,11 +2299,37 @@
   /* ------------------------------------------------------------- props ---- */
   const PROPS = {
     tree(g, s) {
+      /* Three flat ellipses and a brown rectangle. A canopy is a mass of
+         clumps catching light on their tops, and a trunk is round. */
       const u = s / 100, cx = s / 2, cy = s * 0.7;
-      g.fillStyle = '#2a1f14'; g.fillRect(cx - 5 * u, cy - 6 * u, 10 * u, 30 * u);
+      const bark = { hi: '#4a3722', mid: '#33251643'.slice(0, 7), lo: '#241a10',
+        dark: '#160f09', line: '#120c07', glow: '#fff' };
+      shaded(g, cx, cy + 6 * u, 6 * u, 16 * u, bark);
+      g.save();
+      g.strokeStyle = 'rgba(14,10,6,.5)'; g.lineWidth = 0.9 * u;
+      for (const dx of [-2.4, 0.6, 2.8]) {
+        g.beginPath();
+        g.moveTo(cx + dx * u, cy - 8 * u);
+        g.quadraticCurveTo(cx + dx * 1.4 * u, cy + 6 * u, cx + dx * u, cy + 20 * u);
+        g.stroke();
+      }
+      g.restore();
+      const leaf = [['#1e3419', '#16280f'], ['#26401f', '#1b3016'], ['#35552a', '#24401d']];
       for (let i = 0; i < 3; i++) {
-        ellipse(g, cx, cy - 18 * u - i * 14 * u, (32 - i * 7) * u, (18 - i * 3) * u,
-          i === 2 ? '#2f4a26' : i === 1 ? '#26401f' : '#1e3419');
+        const [fill, edge] = leaf[i];
+        const ry = (18 - i * 3) * u, rx = (32 - i * 7) * u;
+        const y = cy - 18 * u - i * 14 * u;
+        // the clump, as overlapping lobes rather than one oval
+        for (let k = -2; k <= 2; k++) {
+          ellipse(g, cx + k * rx * 0.34, y + Math.abs(k) * ry * 0.16,
+            rx * 0.44, ry * 0.78, k % 2 ? edge : fill);
+        }
+        ellipse(g, cx, y - ry * 0.22, rx * 0.72, ry * 0.6, fill);
+        // and the light on top of it
+        g.save();
+        g.globalAlpha = 0.24;
+        ellipse(g, cx - rx * 0.16, y - ry * 0.5, rx * 0.5, ry * 0.34, '#7fae5a');
+        g.restore();
       }
     },
     deadtree(g, s) {
@@ -2321,25 +2347,93 @@
       ellipse(g, s / 2, s * 0.58, 15 * u, 8 * u, '#5a452c');
     },
     rock(g, s) {
-      const u = s / 100;
-      poly(g, [[s / 2 - 24 * u, s * 0.7], [s / 2 - 14 * u, s * 0.42], [s / 2 + 10 * u, s * 0.38],
-      [s / 2 + 24 * u, s * 0.62], [s / 2 + 8 * u, s * 0.74]], '#3c4048', '#22252b', u);
+      /* A rock is FACETED. One flat polygon with an outline is a paper cut-out
+         of a rock, and these are the most common object on three of the five
+         maps. Three planes - a lit top, a turned side and a shadowed foot -
+         and a crack across the biggest of them. */
+      const u = s / 100, cx = s / 2;
+      const hull = [[cx - 24 * u, s * 0.7], [cx - 14 * u, s * 0.42], [cx + 10 * u, s * 0.38],
+        [cx + 24 * u, s * 0.62], [cx + 8 * u, s * 0.74]];
+      poly(g, hull, '#3c4048', '#22252b', u);
+      poly(g, [[cx - 14 * u, s * 0.42], [cx + 10 * u, s * 0.38], [cx + 6 * u, s * 0.53],
+        [cx - 10 * u, s * 0.56]], '#575d68', '#31353e', u * 0.8);
+      poly(g, [[cx + 10 * u, s * 0.38], [cx + 24 * u, s * 0.62], [cx + 12 * u, s * 0.66],
+        [cx + 6 * u, s * 0.53]], '#2f333b', '#1d2026', u * 0.8);
+      g.save();
+      g.strokeStyle = 'rgba(20,23,28,.6)'; g.lineWidth = 1.2 * u; g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(cx - 12 * u, s * 0.48);
+      g.lineTo(cx - 4 * u, s * 0.58);
+      g.lineTo(cx - 7 * u, s * 0.69);
+      g.stroke();
+      g.strokeStyle = 'rgba(190,200,215,.2)';
+      g.beginPath();
+      g.moveTo(cx - 10.6 * u, s * 0.48);
+      g.lineTo(cx - 2.6 * u, s * 0.58);
+      g.stroke();
+      g.restore();
     },
     flower(g, s) {
-      const u = s / 100;
-      g.strokeStyle = '#3f5a2c'; g.lineWidth = 2 * u;
-      g.beginPath(); g.moveTo(s / 2, s * 0.72); g.lineTo(s / 2, s * 0.5); g.stroke();
-      for (let i = 0; i < 5; i++) {
-        const a = (i / 5) * WS.TAU;
-        ellipse(g, s / 2 + WS.cos(a) * 7 * u, s * 0.48 + WS.sin(a) * 7 * u, 5 * u, 5 * u, '#c98fd6');
+      const u = s / 100, cx = s / 2;
+      g.strokeStyle = '#3f5a2c'; g.lineWidth = 2 * u; g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(cx, s * 0.74);
+      g.quadraticCurveTo(cx + 2 * u, s * 0.6, cx, s * 0.5);
+      g.stroke();
+      // leaves, which every flower has and this one did not
+      for (const dir of [-1, 1]) {
+        g.fillStyle = '#3f5a2c';
+        g.beginPath();
+        g.moveTo(cx, s * 0.66);
+        g.quadraticCurveTo(cx + dir * 11 * u, s * 0.6, cx + dir * 13 * u, s * 0.7);
+        g.quadraticCurveTo(cx + dir * 6 * u, s * 0.68, cx, s * 0.66);
+        g.closePath(); g.fill();
       }
-      ellipse(g, s / 2, s * 0.48, 4 * u, 4 * u, '#ffe27a');
+      // petals with a crease, and a shaded side
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * WS.TAU - 0.4;
+        const px = cx + WS.cos(a) * 7 * u, py = s * 0.48 + WS.sin(a) * 7 * u;
+        ellipse(g, px, py, 5.4 * u, 4.6 * u, '#b678c6', a);
+        ellipse(g, px - WS.cos(a) * 1.2 * u, py - WS.sin(a) * 1.2 * u,
+          4 * u, 3.2 * u, '#d9a6e6', a);
+        g.save();
+        g.strokeStyle = 'rgba(90,50,105,.4)'; g.lineWidth = 0.8 * u;
+        g.beginPath();
+        g.moveTo(cx + WS.cos(a) * 2.5 * u, s * 0.48 + WS.sin(a) * 2.5 * u);
+        g.lineTo(cx + WS.cos(a) * 10 * u, s * 0.48 + WS.sin(a) * 10 * u);
+        g.stroke();
+        g.restore();
+      }
+      ellipse(g, cx, s * 0.48, 4 * u, 4 * u, '#ffe27a');
+      ellipse(g, cx - 1.1 * u, s * 0.475, 2 * u, 1.8 * u, '#fff6cf');
     },
     mushroom(g, s) {
-      const u = s / 100;
-      g.fillStyle = '#c9c4b4'; g.fillRect(s / 2 - 4 * u, s * 0.52, 8 * u, 18 * u);
-      ellipse(g, s / 2, s * 0.52, 18 * u, 11 * u, '#6b4a7a');
-      ellipse(g, s / 2 - 6 * u, s * 0.5, 3 * u, 2 * u, '#d8cfe6');
+      const u = s / 100, cx = s / 2;
+      const stalk = { hi: '#e2ddcd', mid: '#c9c4b4', lo: '#948f80', dark: '#5e5a4e',
+        line: '#46423a', glow: '#fff' };
+      shaded(g, cx, s * 0.61, 4.4 * u, 10 * u, stalk);
+      // gills under the cap - the one part of a mushroom anybody can name
+      g.save();
+      g.strokeStyle = 'rgba(58,38,68,.75)'; g.lineWidth = 1 * u;
+      for (let i = -3; i <= 3; i++) {
+        g.beginPath();
+        g.moveTo(cx + i * 2.4 * u, s * 0.525);
+        g.lineTo(cx + i * 4.6 * u, s * 0.555);
+        g.stroke();
+      }
+      g.restore();
+      const cap = { hi: '#9a76a8', mid: '#6b4a7a', lo: '#472f52', dark: '#2c1c34',
+        line: '#1f1326', glow: '#fff' };
+      g.save();
+      g.beginPath();
+      g.ellipse(cx, s * 0.525, 18 * u, 11 * u, 0, WS.PI, WS.TAU);
+      g.closePath();
+      g.clip();
+      shaded(g, cx, s * 0.525, 18 * u, 11 * u, cap);
+      g.restore();
+      for (const [dx, dy, r] of [[-6, -2.5, 3], [4, -3.5, 2.2], [9, -1, 1.6]]) {
+        ellipse(g, cx + dx * u, s * 0.525 + dy * u, r * u, r * 0.8 * u, '#e6dced');
+      }
     },
     grave(g, s) {
       const u = s / 100;
@@ -2351,6 +2445,40 @@
       g.strokeStyle = '#2b2f36'; g.lineWidth = 2.5 * u;
       g.beginPath(); g.moveTo(s / 2, s * 0.44); g.lineTo(s / 2, s * 0.64); g.stroke();
       g.beginPath(); g.moveTo(s / 2 - 8 * u, s * 0.52); g.lineTo(s / 2 + 8 * u, s * 0.52); g.stroke();
+      /* Weathering. A headstone that has stood long enough to be in a field
+         full of monsters is chipped, streaked and half taken by moss. */
+      g.save();
+      g.beginPath();
+      g.moveTo(s / 2 - 16 * u, s * 0.74); g.lineTo(s / 2 - 16 * u, s * 0.46);
+      g.arc(s / 2, s * 0.46, 16 * u, WS.PI, 0);
+      g.lineTo(s / 2 + 16 * u, s * 0.74); g.closePath();
+      g.clip();
+      const face = g.createLinearGradient(s / 2 - 16 * u, 0, s / 2 + 16 * u, 0);
+      face.addColorStop(0, 'rgba(255,255,255,.14)');
+      face.addColorStop(0.5, 'rgba(255,255,255,0)');
+      face.addColorStop(1, 'rgba(0,0,0,.3)');
+      g.fillStyle = face;
+      g.fillRect(s / 2 - 16 * u, s * 0.3, 32 * u, s * 0.5);
+      g.fillStyle = 'rgba(70,92,54,.42)';                          // moss at the foot
+      g.beginPath();
+      g.moveTo(s / 2 - 16 * u, s * 0.74);
+      g.quadraticCurveTo(s / 2 - 4 * u, s * 0.63, s / 2 + 6 * u, s * 0.7);
+      g.quadraticCurveTo(s / 2 + 12 * u, s * 0.66, s / 2 + 16 * u, s * 0.72);
+      g.lineTo(s / 2 + 16 * u, s * 0.74);
+      g.closePath(); g.fill();
+      g.strokeStyle = 'rgba(20,23,28,.4)'; g.lineWidth = 0.9 * u;  // a crack
+      g.beginPath();
+      g.moveTo(s / 2 + 9 * u, s * 0.4);
+      g.lineTo(s / 2 + 6 * u, s * 0.56);
+      g.lineTo(s / 2 + 11 * u, s * 0.72);
+      g.stroke();
+      g.restore();
+      // and a chip out of the top edge
+      g.globalCompositeOperation = 'destination-out';
+      g.beginPath();
+      g.arc(s / 2 + 12 * u, s * 0.41, 4 * u, 0, WS.TAU);
+      g.fill();
+      g.globalCompositeOperation = 'source-over';
     },
     bone(g, s) {
       const u = s / 100;
@@ -2362,12 +2490,43 @@
       }
     },
     skull(g, s) {
-      const u = s / 100;
-      ellipse(g, s / 2, s * 0.56, 16 * u, 15 * u, '#9aa0ac');
-      g.fillStyle = '#20242c';
-      ellipse(g, s / 2 - 6 * u, s * 0.55, 4 * u, 5 * u, '#20242c');
-      ellipse(g, s / 2 + 6 * u, s * 0.55, 4 * u, 5 * u, '#20242c');
-      g.fillRect(s / 2 - 6 * u, s * 0.64, 12 * u, 6 * u);
+      /* Two black dots on a grey circle is an emoji. A skull is a cranium
+         with a brow over sunken sockets, a nasal cavity between them and a
+         jaw hinged below - and on two of the five maps these are scattered
+         everywhere the player looks. */
+      const u = s / 100, cx = s / 2, cy = s * 0.55;
+      const bone2 = { hi: '#d8dce4', mid: '#9aa0ac', lo: '#6b717c', dark: '#3f444d',
+        line: '#282c33', glow: '#fff' };
+      shaded(g, cx, cy, 16 * u, 14 * u, bone2);
+      // the jaw, set back and below
+      shaded(g, cx, cy + 12 * u, 10 * u, 6 * u, bone2);
+      g.save();
+      g.beginPath(); g.ellipse(cx, cy, 16 * u, 14 * u, 0, 0, WS.TAU); g.clip();
+      // sockets, with a brow shadow over them
+      for (const dir of [-1, 1]) {
+        const ex = cx + dir * 6.4 * u;
+        g.fillStyle = '#15181d';
+        g.beginPath(); g.ellipse(ex, cy - 0.6 * u, 4.4 * u, 5 * u, dir * 0.12, 0, WS.TAU); g.fill();
+        g.fillStyle = 'rgba(120,128,140,.35)';
+        g.beginPath(); g.ellipse(ex + dir * 1.2 * u, cy + 1.8 * u, 2 * u, 1.6 * u, 0, 0, WS.TAU); g.fill();
+      }
+      g.fillStyle = 'rgba(21,24,29,.9)';
+      g.beginPath();
+      g.moveTo(cx, cy + 2 * u);
+      g.lineTo(cx + 2.4 * u, cy + 7 * u);
+      g.lineTo(cx - 2.4 * u, cy + 7 * u);
+      g.closePath(); g.fill();
+      g.strokeStyle = 'rgba(40,44,51,.6)'; g.lineWidth = 1 * u;
+      g.beginPath();
+      g.moveTo(cx - 13 * u, cy - 5 * u);
+      g.quadraticCurveTo(cx, cy - 9 * u, cx + 13 * u, cy - 5 * u);
+      g.stroke();
+      g.restore();
+      // teeth
+      g.fillStyle = '#1d2027';
+      g.fillRect(cx - 6 * u, cy + 8.5 * u, 12 * u, 4 * u);
+      g.fillStyle = 'rgba(216,220,228,.85)';
+      for (let i = -2; i <= 2; i++) g.fillRect(cx + i * 2.4 * u - 0.5 * u, cy + 8.5 * u, 1.3 * u, 4 * u);
     },
     wheat(g, s) {
       const u = s / 100;
@@ -2399,11 +2558,51 @@
       g.restore();
     },
     cactus(g, s) {
-      const u = s / 100;
-      g.fillStyle = '#3d5a34';
-      g.fillRect(s / 2 - 6 * u, s * 0.36, 12 * u, 38 * u);
-      g.fillRect(s / 2 - 18 * u, s * 0.5, 8 * u, 16 * u);
-      g.fillRect(s / 2 + 10 * u, s * 0.46, 8 * u, 20 * u);
+      /* Three green rectangles. A cactus is a set of ROUNDED columns with
+         ribs down them and spines along the ribs - and on Ochre it is the
+         only living thing on the map, so it can afford the three marks. */
+      const u = s / 100, cx = s / 2;
+      const flesh = { hi: '#6f9a5e', mid: '#4d7040', lo: '#2f4a28', dark: '#1c2e18',
+        line: '#13200f', glow: '#fff' };
+      const arm = (x, y, w, h) => {
+        g.save();
+        g.beginPath();
+        g.moveTo(x - w, y + h);
+        g.lineTo(x - w, y + w);
+        g.quadraticCurveTo(x - w, y, x, y);
+        g.quadraticCurveTo(x + w, y, x + w, y + w);
+        g.lineTo(x + w, y + h);
+        g.closePath();
+        const grd = g.createLinearGradient(x - w, y, x + w, y);
+        grd.addColorStop(0, flesh.lo);
+        grd.addColorStop(0.4, flesh.mid);
+        grd.addColorStop(0.72, flesh.hi);
+        grd.addColorStop(1, flesh.lo);
+        g.fillStyle = grd; g.fill();
+        g.strokeStyle = flesh.line; g.lineWidth = 1.1 * u; g.stroke();
+        g.save(); g.clip();
+        g.strokeStyle = flesh.line; g.globalAlpha = 0.5; g.lineWidth = 0.9 * u;
+        for (const k of [-0.45, 0.1, 0.55]) {
+          g.beginPath();
+          g.moveTo(x + k * w, y - 2 * u); g.lineTo(x + k * w, y + h);
+          g.stroke();
+        }
+        g.restore();
+        g.strokeStyle = 'rgba(226,222,190,.65)'; g.lineWidth = 0.8 * u;
+        for (let i = 0; i < 5; i++) {
+          const sy = y + w + (h - w) * (i / 5);
+          for (const dir of [-1, 1]) {
+            g.beginPath();
+            g.moveTo(x + dir * w * 0.9, sy);
+            g.lineTo(x + dir * (w + 2.6 * u), sy - 1.6 * u);
+            g.stroke();
+          }
+        }
+        g.restore();
+      };
+      arm(cx, s * 0.36, 6 * u, 38 * u);
+      arm(cx - 14 * u, s * 0.5, 4 * u, 16 * u);
+      arm(cx + 14 * u, s * 0.46, 4 * u, 20 * u);
     },
     grass(g, s) {
       const u = s / 100;

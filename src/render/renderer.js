@@ -97,6 +97,13 @@
   const GROUND_SEED = {};
   let groundCanvas = null;
 
+  /* How far each kind leans, in radians. Stone does not sway; a stump does
+     not sway; everything with a stem does, and the lighter it is the more. */
+  const SWAY = {
+    wheat: 0.055, grass: 0.05, flower: 0.038, cactus: 0.008,
+    tree: 0.014, deadtree: 0.018, spire: 0.006,
+  };
+
   /* Radial, not a filled ellipse. A hard-edged ellipse at 8% alpha still has
    * an edge, and a few hundred of them read as scattered confetti rather than
    * as ground.
@@ -205,6 +212,76 @@
         rgb(WS.random() < 0.5 ? light : dark),
         WS.randRange(0.16, 0.38), 1, 0.92);
     }
+    /* 5b. PATHS. Everything above is noise, and noise at every scale is still
+     *     noise: the field had no structure larger than a blotch and nowhere
+     *     for the eye to go. Two or three worn tracks wandering across it give
+     *     it landmarks, a sense that somebody came this way before, and a
+     *     composition - and they are drawn DARKER than the ground rather than
+     *     lighter, because the survivors clear the brightest map by exactly
+     *     their margin and there is no headroom to spend on brightening
+     *     anything. Bare earth is darker than grass anyway. */
+    const worn = WS.shade(base, 0.62);
+    for (let t = 0; t < 3; t++) {
+      const y0 = WS.randRange(-40, H + 40);
+      const y1 = WS.randRange(-40, H + 40);
+      const bow = WS.randRange(-260, 260);
+      const wide = WS.randRange(42, 92);
+      for (let i = 0; i <= 60; i++) {
+        const u2 = i / 60, v = 1 - u2;
+        const px = v * v * -60 + 2 * v * u2 * (W * 0.5 + bow) + u2 * u2 * (W + 60);
+        const py = v * v * y0 + 2 * v * u2 * ((y0 + y1) * 0.5 + bow * 0.5) + u2 * u2 * y1;
+        const wob = 1 + 0.35 * WS.sin(u2 * 11 + t);
+        blob(g, px, py, wide * wob, rgb(worn), 0.085, WS.randRange(0.5, 0.8), 0.55);
+      }
+      // a lit lip along one side, so the track reads as WORN INTO the ground
+      // rather than as a stain laid on top of it
+      for (let i = 0; i <= 50; i++) {
+        const u2 = i / 50, v = 1 - u2;
+        const px = v * v * -60 + 2 * v * u2 * (W * 0.5 + bow) + u2 * u2 * (W + 60);
+        const py = v * v * y0 + 2 * v * u2 * ((y0 + y1) * 0.5 + bow * 0.5) + u2 * u2 * y1;
+        blob(g, px, py - wide * 0.52, wide * 0.42, rgb(light), 0.035,
+          WS.randRange(0.4, 0.7), 0.5);
+      }
+      // and the scuffed edge where the grass gives up
+      for (let i = 0; i < 90; i++) {
+        const u2 = WS.random(), v = 1 - u2;
+        const px = v * v * -60 + 2 * v * u2 * (W * 0.5 + bow) + u2 * u2 * (W + 60);
+        const py = v * v * y0 + 2 * v * u2 * ((y0 + y1) * 0.5 + bow * 0.5) + u2 * u2 * y1;
+        const off = (WS.random() < 0.5 ? -1 : 1) * WS.randRange(wide * 0.5, wide * 1.1);
+        blob(g, px + WS.randRange(-14, 14), py + off * 0.7, WS.randRange(4, 11),
+          rgb(WS.random() < 0.5 ? dark : alt), WS.randRange(0.12, 0.3),
+          WS.randRange(0.5, 1), 0.88);
+      }
+    }
+    /* 5c. TUFTS. Short strokes of the lighter ground colour, in clumps. They
+     *     are the only thing on the field with a DIRECTION - everything else
+     *     is a round blob - and that is most of why they read as growing out
+     *     of it rather than sitting on it. */
+    for (let c = 0; c < 44; c++) {
+      const cxp = WS.randRange(-30, W + 30), cyp = WS.randRange(-30, H + 30);
+      const n = WS.randInt(5, 14);
+      g.save();
+      g.lineCap = 'round';
+      for (let i = 0; i < n; i++) {
+        const tx = cxp + WS.randRange(-46, 46), ty = cyp + WS.randRange(-30, 30);
+        const len = WS.randRange(5, 13), lean = WS.randRange(-4, 4);
+        g.globalAlpha = WS.randRange(0.08, 0.2);
+        g.strokeStyle = WS.hex(dark);
+        g.lineWidth = WS.randRange(1, 2.1);
+        g.beginPath();
+        g.moveTo(tx, ty);
+        g.quadraticCurveTo(tx + lean * 0.5, ty - len * 0.6, tx + lean, ty - len);
+        g.stroke();
+        g.globalAlpha *= 0.7;
+        g.strokeStyle = WS.hex(light);
+        g.beginPath();
+        g.moveTo(tx + 1, ty);
+        g.quadraticCurveTo(tx + 1 + lean * 0.5, ty - len * 0.6, tx + 1 + lean, ty - len);
+        g.stroke();
+      }
+      g.restore();
+    }
+
     // 6. A little more light at the top than the bottom, so the field has a
     //    direction to it rather than being one even wash.
     const lift = g.createLinearGradient(0, 0, 0, H);
@@ -237,7 +314,11 @@
           const a = WS.random() * WS.TAU, d = WS.random() * gr.r;
           x = gr.x + WS.cos(a) * d; y = gr.y + WS.sin(a) * d * 0.7;
         }
+        /* A bone lying in the grass does not cast what a tree does. */
+        const FLAT = { bone: 0.1, skull: 0.16, stump: 0.18, flower: 0.12, wheat: 0.1 };
         this.props.push({ kind, x, y,
+          shadow: FLAT[kind] === undefined ? 0.32 : FLAT[kind],
+          phase: WS.random() * WS.TAU,
           size: WS.randRange(46, 96), alpha: WS.randRange(0.35, 0.7) });
       }
       this.props.sort((a, b) => a.y - b.y);
@@ -344,10 +425,53 @@
     const run = game.run;
 
     /* ---- props ----------------------------------------------------------- */
+    /* EVERY PROP CASTS. Nothing on the field did: the survivor has a shadow,
+       the creatures have one, the loot has one, and the rocks and trees they
+       are all standing between had nothing under them at all - so the field
+       read as a painted backdrop with cut-outs laid on it. A contact shadow
+       is the cheapest thing in this renderer and it is the difference between
+       a prop that is ON the ground and one that is IN FRONT of it. */
     for (const p of this.props) {
+      const sh = p.shadow === undefined ? 0.3 : p.shadow;
+      if (sh > 0) {
+        ctx.save();
+        ctx.globalAlpha = p.alpha * sh;
+        const r = p.size * 0.28;
+        const grd = ctx.createRadialGradient(p.x, p.y + p.size * 0.22, 0,
+          p.x, p.y + p.size * 0.22, r);
+        grd.addColorStop(0, 'rgba(0,0,0,.85)');
+        grd.addColorStop(0.55, 'rgba(0,0,0,.45)');
+        grd.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grd;
+        ctx.beginPath();
+        ctx.ellipse(p.x + p.size * 0.05, p.y + p.size * 0.22, r, r * 0.42, 0, 0, WS.TAU);
+        ctx.fill();
+        ctx.restore();
+      }
       ctx.globalAlpha = p.alpha;
       const sprite = WS.Sprites.prop(p.kind, p.size);
-      ctx.drawImage(sprite, p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+      /* WIND. Nothing on the field moved except the survivor and the things
+         trying to kill them - the world itself was a still photograph, which
+         is what made it read as a backdrop. Anything that grows leans, on its
+         own phase so the field does not breathe in unison, and it pivots at
+         the FOOT because that is where a stem is anchored.
+
+         Brightness is untouched by design: the ground's luminance is what the
+         survivors and the loot are measured against, and two harnesses in
+         this suite have already had to be de-flaked. A rotation moves pixels
+         without changing how many of them are lit. */
+      const sway = SWAY[p.kind];
+      if (sway) {
+        const foot = p.y + p.size * 0.22;
+        ctx.save();
+        ctx.translate(p.x, foot);
+        ctx.rotate(WS.sin(time * 0.9 + p.phase) * sway
+          + WS.sin(time * 2.3 + p.phase * 1.7) * sway * 0.35);
+        ctx.drawImage(sprite, -p.size / 2, -p.size * 0.72, p.size, p.size);
+        ctx.restore();
+      } else {
+        ctx.drawImage(sprite, p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+      }
     }
     ctx.globalAlpha = 1;
 
