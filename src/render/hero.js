@@ -510,6 +510,29 @@
       g.lineTo(cx + dir * 6.1, y - 2.7);
       g.stroke();
     }
+    if (!tight) {
+      /* A nose - one shadow down the shaded side and a line under the tip.
+         Without it everything between the brow and the lip is an unbroken
+         field of skin, and with a beard under it that gap is the widest flat
+         area on the whole figure. Drawn as shadow rather than as an outlined
+         shape, because a nose in this style is not an object on the face, it
+         is where the face turns away from the light. */
+      g.save();
+      g.fillStyle = 'rgba(38,24,16,.22)';
+      g.beginPath();
+      g.moveTo(cx + 0.5, y - 2.4);
+      g.quadraticCurveTo(cx + 2.0, y + 1.3, cx + 1.9, y + 3.3);
+      g.quadraticCurveTo(cx + 0.9, y + 4.3, cx - 0.9, y + 4.0);
+      g.quadraticCurveTo(cx + 0.2, y + 2.5, cx - 0.1, y - 2.4);
+      g.closePath(); g.fill();
+      g.strokeStyle = 'rgba(30,20,14,.34)';
+      g.lineWidth = 0.75;
+      g.beginPath();
+      g.moveTo(cx - 1.7, y + 3.6);
+      g.quadraticCurveTo(cx, y + 4.5, cx + 1.7, y + 3.5);
+      g.stroke();
+      g.restore();
+    }
   }
 
   function drawHead(g, cfg, C) {
@@ -625,6 +648,46 @@
       g.bezierCurveTo(cx + 9.5, HEAD_CY - 1, cx + 8, HEAD_CY + 3, cx, HEAD_CY + 3.5);
       g.bezierCurveTo(cx - 8, HEAD_CY + 3, cx - 9.5, HEAD_CY - 1, cx - 10, mantle - 2);
       g.closePath(); g.fill();
+      finish(g, hr, cx - 17, crown, cx + 15, mantle + 1);
+      /* THE OPENING HAS A LIP. Cloth gathered round a face turns back on
+         itself, and that turned edge catches light - without it the hood is
+         one flat shape with a hole cut in it, which is what this was. Drawn
+         just inside the opening so it reads as the near edge of the cowl. */
+      g.save();
+      g.strokeStyle = hr.key;
+      g.globalAlpha = 0.5;
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.moveTo(cx + 9, mantle - 2);
+      g.bezierCurveTo(cx + 9.5, HEAD_CY - 1, cx + 8, HEAD_CY + 3, cx, HEAD_CY + 3.5);
+      g.bezierCurveTo(cx - 8, HEAD_CY + 3, cx - 9.5, HEAD_CY - 1, cx - 10, mantle - 2);
+      g.stroke();
+      g.restore();
+      /* And folds down the cowl, gathering toward the mantle - the same thing
+         the cloaks got, for the same reason: cloth pinned at one end and loose
+         at the other does not hang flat. */
+      g.save();
+      g.beginPath();
+      g.moveTo(cx - 17, mantle);
+      g.bezierCurveTo(cx - 13.5, HEAD_CY + 2, cx - 11.5, crown + 3, cx - 1, crown);
+      g.bezierCurveTo(cx + 9, crown + 0.5, cx + 11, HEAD_CY + 2, cx + 15, mantle);
+      g.closePath();
+      g.clip();
+      for (const [ox, lean] of [[-12.5, -3], [12, 3.2]]) {
+        const fold = g.createLinearGradient(cx + ox - 2.2, 0, cx + ox + 2.2, 0);
+        fold.addColorStop(0, 'rgba(0,0,0,0)');
+        fold.addColorStop(0.5, 'rgba(0,0,0,.26)');
+        fold.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = fold;
+        g.beginPath();
+        g.moveTo(cx + ox - 2.2, crown + 4);
+        g.lineTo(cx + ox + 2.2, crown + 4);
+        g.lineTo(cx + ox + lean + 3.4, mantle + 2);
+        g.lineTo(cx + ox + lean - 3.4, mantle + 2);
+        g.closePath();
+        g.fill();
+      }
+      g.restore();
       g.save();
       g.beginPath();
       g.ellipse(cx, HEAD_CY + 1.5, 8.4, 8.4, 0, 0, WS.TAU);
@@ -722,40 +785,85 @@
       } else {
         eyes(g, cx, eyeY, C, false, false);
         if (cfg.beard) {
-          /* A beard is a jaw made of hair: it starts BELOW the eyes, covers
-             the mouth, and carries on past the chin. Measured from the eye
-             line rather than from a guess at where the jaw is - the first
-             version took HEAD_CY + HEAD_RY*0.38 for the jaw, which is 28, put
-             the moustache at 21, and drew the whole thing over the eyes. The
-             head came out a brown egg with horns. eyeY is 25 and the chin is
-             at 36; everything here is hung off those two. */
-          const lip = eyeY + 4.2;          // under the nose
-          const chin = HEAD_CY + HEAD_RY;  // where the face actually ends
-          const w = HEAD_RX * 0.94;
-          panel(g, [
-            [cx - w, lip + 0.5],
-            [cx - w - 1.2, chin - 2],
-            [cx - w * 0.72, chin + 4.5],
-            [cx - 3, chin + 6.5],
-            [cx + 3, chin + 6.5],
-            [cx + w * 0.72, chin + 4.5],
-            [cx + w + 1.2, chin - 2],
-            [cx + w, lip + 0.5],
-          ], cfg.beard);
-          // the moustache, over the lip and no higher
-          panel(g, [
-            [cx - w * 0.72, lip - 1.6], [cx + w * 0.72, lip - 1.6],
-            [cx + w * 0.58, lip + 1.8], [cx - w * 0.58, lip + 1.8],
-          ], cfg.beard);
-          // one parting down it, the same asymmetry the hair uses
+          /* A beard reads by its BOTTOM EDGE and by the fact that it is made
+             of strands. The first one was a rounded slab with a separate
+             darker bar laid across it for a moustache, which at any size read
+             as a scarf with a stripe on it. This one is cut into locks, the
+             moustache is two swept halves that meet the beard rather than a
+             rectangle sitting on it, and there are strands drawn down it.
+             
+             Everything hangs off eyeY (25) and the chin (36), both of which
+             are already in this file - an earlier version guessed at the jaw
+             and drew the whole thing over the eyes. */
+          const lip = eyeY + 5.4;
+          const chin = HEAD_CY + HEAD_RY;
+          const w = HEAD_RX * 0.92;
+          // the mass, cut into locks along the bottom
+          const locks = [
+            [cx - w, lip - 0.5],
+            [cx - w - 1.2, chin - 3.6],
+            [cx - w * 0.83, chin + 1.9],
+            [cx - w * 0.59, chin - 0.7],
+            [cx - w * 0.29, chin + 4.7],
+            [cx - w * 0.04, chin + 2.3],
+            [cx + w * 0.23, chin + 5.4],
+            [cx + w * 0.47, chin + 1.1],
+            [cx + w * 0.73, chin + 3.5],
+            [cx + w * 0.91, chin - 1.1],
+            [cx + w + 1.2, chin - 3.6],
+            [cx + w, lip - 0.5],
+          ];
+          panel(g, locks, cfg.beard);
+          /* The moustache is ONE mass across the lip with a notch at the
+             philtrum, not two quads. Two four-point panels, each with its own
+             outline and a gap between them, rendered as a pair of dark
+             rectangles pasted under the eyes - a hard horizontal top edge is
+             the one shape hair never has. */
+          const mw = w * 0.88;
+          const moustache = () => {
+            g.beginPath();
+            g.moveTo(cx - mw, lip - 4.2);
+            // the ends sweep DOWN into the beard rather than stopping in air
+            g.quadraticCurveTo(cx - mw * 0.94, lip + 3.4, cx - mw * 0.42, lip + 1.6);
+            g.quadraticCurveTo(cx - 1.6, lip + 0.6, cx, lip - 2.6);   // philtrum
+            g.quadraticCurveTo(cx + 1.6, lip + 0.6, cx + mw * 0.42, lip + 1.6);
+            g.quadraticCurveTo(cx + mw * 0.94, lip + 3.4, cx + mw, lip - 4.2);
+            g.quadraticCurveTo(cx + mw * 0.5, lip - 5.4, cx, lip - 4.4);
+            g.quadraticCurveTo(cx - mw * 0.5, lip - 5.4, cx - mw, lip - 4.2);
+            g.closePath();
+          };
           g.save();
+          lit(g, cfg.beard, cx, lip - 5.4, cx, lip + 3.4);
+          moustache();
+          g.fill();
+          /* Shaded but NOT outlined all round. The beard sits directly behind
+             it in the same ramp, so a closed edge turns the moustache into a
+             separate object pasted on the face; only the underside, where the
+             hair actually leaves the lip, gets a line. */
+          g.save();
+          moustache(); g.clip();
+          shadeInside(g, cfg.beard, cx - mw, lip - 5.4, cx + mw, lip + 3.4);
+          g.restore();
           g.strokeStyle = cfg.beard.line;
           g.globalAlpha = 0.5;
           g.lineWidth = 0.8;
           g.beginPath();
-          g.moveTo(cx + 1.1, lip + 2.5);
-          g.lineTo(cx + 0.2, chin + 5);
+          g.moveTo(cx - mw * 0.9, lip + 1.4);
+          g.quadraticCurveTo(cx - mw * 0.4, lip + 1.5, cx, lip - 2.3);
+          g.quadraticCurveTo(cx + mw * 0.4, lip + 1.5, cx + mw * 0.9, lip + 1.4);
           g.stroke();
+          g.restore();
+          // strands, fanning the way the hair falls
+          g.save();
+          g.strokeStyle = cfg.beard.line;
+          g.globalAlpha = 0.45;
+          g.lineWidth = 0.75;
+          for (let i = -2; i <= 2; i++) {
+            g.beginPath();
+            g.moveTo(cx + i * 2.6, lip + 1.5);
+            g.quadraticCurveTo(cx + i * 3.4, chin - 1, cx + i * 3.9, chin + 3.5);
+            g.stroke();
+          }
           g.restore();
         }
         if (cfg.browband) {
@@ -770,7 +878,7 @@
           g.beginPath();
           g.ellipse(cx, eyeY - 5.9, 2.1, 1.7, 0, 0, WS.TAU);
           g.fill();
-          if (cfg.helmHorns) sideHorns(g, cx);
+          if (cfg.helmHorns) sideHorns(g, cx, eyeY - 6);
         }
         if (cfg.warpaint) {
           /* One band of the survivor's own colour across the eyes, in the
@@ -826,27 +934,81 @@
 
   /** A pair of horns off the sides of the head.
    *
-   *  Heavy at the root and curling UP. The first pair left almost
-   *  horizontally at a constant thinness, which on a head reads as antennae -
-   *  two twigs, not two horns. Thickness at the base and a turn upward are
-   *  the whole difference.
+   *  Bone, not steel. Rooted AT the band and swept up and back, thick at the
+   *  root and tapering to a point, with growth rings across them.
    *
-   *  Lifted out of the helm branch so a browband can carry them too: horns
-   *  growing straight out of bare hair read as a costume, and a band of iron
-   *  is what mounts them on a man who will not wear a helm. */
-  function sideHorns(g, cx) {
+   *  The pair before this were a constant-thin grey curve struck out
+   *  sideways, mounted above the hair rather than on anything: at the size
+   *  the roster is drawn they read as bent wire, and in the same grey as the
+   *  pauldrons they read as part of the armour. A horn is a cone that grew -
+   *  it is widest where it leaves the skull and it is never the same colour
+   *  as a shoulder plate. */
+  const HORN = ramp([0.78, 0.72, 0.60], 'leather');
+  const HORN_DARK = ramp([0.52, 0.46, 0.37], 'leather');
+
+  function sideHorns(g, cx, rootY) {
+    const y0 = rootY === undefined ? HEAD_CY - 6 : rootY;
     for (const dir of [-1, 1]) {
-      lit(g, ramp([0.56, 0.53, 0.47]), cx + dir * 8, HEAD_CY - 4, cx + dir * 17, CEIL + 3);
+      /* The horn is a swept cone, so it is built from a centreline and a
+         half-width rather than from two hand-placed beziers. That guarantees
+         the thing actually comes to a point - the pair before these were two
+         curves that happened to end near each other and left a blunt cut at
+         the tip - and it gives the growth rings a tangent to sit across.
+
+         The first rings were struck vertically at even spacing along the
+         whole length. On a horn that bends from horizontal at the root to
+         vertical at the tip, a fixed direction is only right at one end, and
+         even spacing reads as a wrapped bandage. Real rings crowd the root
+         and fade out before the tip. */
+      const rx = cx + dir * (HEAD_RX - 1.8);        // on the band, not above it
+      const cxCtl = cx + dir * 16.5, cyCtl = y0 - 3.5;
+      const tipX = cx + dir * 17.5, tipY = CEIL + 3.5;
+      const rootY0 = y0 + 0.4;
+      const base = 4.6;
+      // centreline, as a quadratic from the root through the sweep
+      const P = (t) => {
+        const u = 1 - t;
+        return [u * u * rx + 2 * u * t * cxCtl + t * t * tipX,
+          u * u * rootY0 + 2 * u * t * cyCtl + t * t * tipY];
+      };
+      // half-width: full at the root, nothing at the tip, falling slowly at
+      // first so the horn stays heavy where it leaves the skull
+      const W = (t) => base * 0.5 * Math.pow(1 - t, 0.8);
+      const N = 16, pts = [];
+      for (let i = 0; i <= N; i++) {
+        const t = i / N;
+        const a = P(t), b = P(Math.min(1, t + 0.02)), c = P(Math.max(0, t - 0.02));
+        let dx = b[0] - c[0], dy = b[1] - c[1];
+        const len = Math.hypot(dx, dy) || 1;
+        pts.push({ t, x: a[0], y: a[1], nx: -dy / len, ny: dx / len, w: W(t) });
+      }
+      g.save();
+      lit(g, dir < 0 ? HORN_DARK : HORN, rx, rootY0 + base, tipX, tipY);
       g.beginPath();
-      g.moveTo(cx + dir * 7.5, HEAD_CY - 9);
-      g.bezierCurveTo(cx + dir * 15, HEAD_CY - 9, cx + dir * 17.5, HEAD_CY - 15,
-        cx + dir * 14.5, CEIL + 3);
-      g.bezierCurveTo(cx + dir * 14, HEAD_CY - 13, cx + dir * 12, HEAD_CY - 8,
-        cx + dir * 7, HEAD_CY - 1.5);
-      g.closePath(); g.fill();
-      finish(g, ramp([0.56, 0.53, 0.47], 'leather'),
-        cx + Math.min(dir * 7, dir * 17.5), CEIL + 3,
-        cx + Math.max(dir * 7, dir * 17.5), HEAD_CY - 1.5);
+      g.moveTo(pts[0].x + pts[0].nx * pts[0].w, pts[0].y + pts[0].ny * pts[0].w);
+      for (let i = 1; i <= N; i++) g.lineTo(pts[i].x + pts[i].nx * pts[i].w, pts[i].y + pts[i].ny * pts[i].w);
+      for (let i = N; i >= 0; i--) g.lineTo(pts[i].x - pts[i].nx * pts[i].w, pts[i].y - pts[i].ny * pts[i].w);
+      g.closePath();
+      g.fill();
+      finish(g, dir < 0 ? HORN_DARK : HORN,
+        Math.min(rx, tipX) - base, tipY, Math.max(rx, tipX) + base, rootY0 + base);
+      // growth rings: across the local tangent, crowded at the root, gone by
+      // two thirds of the way out
+      g.strokeStyle = HORN_DARK.line;
+      g.lineWidth = 0.7;
+      for (let i = 1; i <= 5; i++) {
+        const t = Math.pow(i / 6, 1.45) * 0.72;
+        const a = P(t), b = P(t + 0.02), c = P(t - 0.02);
+        let dx = b[0] - c[0], dy = b[1] - c[1];
+        const len = Math.hypot(dx, dy) || 1;
+        const nx = -dy / len, ny = dx / len, w = W(t) * 0.88;
+        g.globalAlpha = 0.55 * (1 - t / 0.9);
+        g.beginPath();
+        g.moveTo(a[0] + nx * w, a[1] + ny * w);
+        g.lineTo(a[0] - nx * w, a[1] - ny * w);
+        g.stroke();
+      }
+      g.restore();
     }
   }
 
@@ -931,9 +1093,46 @@
         // The boot tips onto its toe as the leg goes back, and lands flat as
         // it comes forward - two units of rotation and the foot has a roll.
         const tilt = -lead * 2.2;
+        const bootRamp = dir < 0 ? ramp([0.26, 0.19, 0.12], 'leather') : LEATHER;
         panel(g, [[fx - b.leg * 0.5, foot - 2], [fx + b.leg * 0.5, foot - 2],
           [fx + dir * b.leg * 0.95, foot + 4.5 + tilt], [fx - dir * b.leg * 0.45, foot + 4.5 - tilt]],
-          dir < 0 ? ramp([0.26, 0.19, 0.12]) : LEATHER);
+          bootRamp);
+        /* A boot is a shoe on a SOLE, with a cuff where the leg goes in. The
+           shape alone was one leather wedge, and the lowest thing in the tile
+           - the part the eye lands on where the figure meets the ground - had
+           the least drawn on it of anything in the rig. */
+        /* Inset from the boot's own bottom edge rather than coincident with
+           it. Sharing the edge exactly put a second fill's antialiasing on
+           the same boundary pixel, which lifted it over the framing check's
+           alpha floor and left the heavier survivors 1px against the bottom
+           of their tile in the going-down pose. The boot keeps the
+           silhouette; the sole is a band inside it. */
+        panel(g, [
+          [fx - dir * b.leg * 0.42, foot + 3.1 - tilt * 0.6],
+          [fx + dir * b.leg * 0.92, foot + 3.1 + tilt * 0.6],
+          [fx + dir * b.leg * 0.90, foot + 4.15 + tilt * 0.92],
+          [fx - dir * b.leg * 0.42, foot + 4.15 - tilt * 0.92],
+        ], ramp([0.17, 0.14, 0.12], 'leather'));
+        /* The heel, under the back of the foot only - and it stops AT the
+           sole, it does not hang below it. Built to project 0.9 below and
+           0.05 of a leg behind, it put three of the heavier survivors 1px
+           against their own tile edge once the going-down pose rotated the
+           figure: the foot is the furthest thing from the pivot, so anything
+           added there is multiplied by the fall. The sole is what meets the
+           ground, so the heel takes its depth upward instead. */
+        panel(g, [
+          [fx - dir * b.leg * 0.45, foot + 2.6 - tilt],
+          [fx - dir * b.leg * 0.05, foot + 2.6 - tilt * 0.5],
+          [fx - dir * b.leg * 0.10, foot + 4.5 - tilt * 0.5],
+          [fx - dir * b.leg * 0.45, foot + 4.5 - tilt],
+        ], ramp([0.13, 0.11, 0.10], 'leather'));
+        // and the cuff the leg goes into
+        panel(g, [
+          [fx - b.leg * 0.56, foot - 3.6],
+          [fx + b.leg * 0.56, foot - 3.6],
+          [fx + b.leg * 0.50, foot - 0.6],
+          [fx - b.leg * 0.50, foot - 0.6],
+        ], C.trimRamp);
       }
     }
 
@@ -999,8 +1198,21 @@
     // Belt, always: it divides the torso and gives the waist a reason to exist.
     panel(g, [[cx - b.waist - 0.5, WAIST_Y - 4], [cx + b.waist + 0.5, WAIST_Y - 4],
       [cx + b.waist + 0.5, WAIST_Y], [cx - b.waist - 0.5, WAIST_Y]], LEATHER);
-    g.fillStyle = GOLD.key;
-    g.fillRect(cx - 2.6, WAIST_Y - 3.6, 5.2, 3.2);
+    /* The buckle was a filled gold rectangle, which is a label rather than a
+       fastening. A buckle is a FRAME with the belt showing through it, a
+       tongue across the middle, and a tail of strap hanging past it - three
+       marks, and they land dead centre where the eye already is. */
+    {
+      const bw = 3.2, bh = 3.4, by = WAIST_Y - 3.7;
+      panel(g, [[cx - bw, by], [cx + bw, by], [cx + bw, by + bh], [cx - bw, by + bh]], GOLD);
+      g.fillStyle = LEATHER.shade;
+      g.fillRect(cx - bw + 0.9, by + 0.9, (bw - 0.9) * 2, bh - 1.8);
+      g.fillStyle = GOLD.key;
+      g.fillRect(cx - 0.45, by + 0.4, 0.9, bh - 0.8);      // the tongue
+      // the tail of the strap, threaded through and hanging
+      panel(g, [[cx + bw, WAIST_Y - 3.4], [cx + bw + 3.6, WAIST_Y - 3.2],
+        [cx + bw + 3.2, WAIST_Y + 2.6], [cx + bw - 0.2, WAIST_Y + 2.2]], LEATHER);
+    }
 
     if (cfg.strap) {
       // A strap across the chest, the other way from a sash - it is holding
