@@ -7818,6 +7818,10 @@ window.WS = window.WS || {};
     };
   }
 
+  /** Grey, for the parts of a creature that are not made of the creature -
+   *  knuckles, bone, stone. Built once rather than per-call. */
+  const STONE = palette([0.56, 0.58, 0.63]);
+
   /* ------------------------------------------------------------- helpers - */
   function ellipse(g, x, y, rx, ry, fill, rot) {
     g.save();
@@ -7973,16 +7977,20 @@ window.WS = window.WS || {};
     for (const dir of [-1, 1]) {
       const ex = x + dir * spread;
       // the socket: a dark well, wider than the light in it
-      const well = g.createRadialGradient(ex, y, r * 0.4, ex, y, r * 2.5);
-      well.addColorStop(0, 'rgba(6,5,10,.85)');
+      /* Tuned down from r*2.5 at .85, which at portrait size stopped being a
+         socket and became a pair of goggles - the skeleton in particular came
+         out wearing them. A socket is a shadow the eye sits in, not a ring
+         around it. */
+      const well = g.createRadialGradient(ex, y, r * 0.3, ex, y, r * 1.85);
+      well.addColorStop(0, 'rgba(6,5,10,.6)');
       well.addColorStop(1, 'rgba(6,5,10,0)');
       g.fillStyle = well;
-      g.beginPath(); g.arc(ex, y, r * 2.5, 0, WS.TAU); g.fill();
+      g.beginPath(); g.arc(ex, y, r * 1.85, 0, WS.TAU); g.fill();
       // a hard rim under the brow, so the socket has a top edge
-      g.strokeStyle = 'rgba(6,5,10,.6)';
-      g.lineWidth = WS.max(0.7, r * 0.34);
+      g.strokeStyle = 'rgba(6,5,10,.45)';
+      g.lineWidth = WS.max(0.6, r * 0.28);
       g.beginPath();
-      g.arc(ex, y, r * 1.55, WS.PI * 1.06, WS.PI * 1.94);
+      g.arc(ex, y, r * 1.35, WS.PI * 1.10, WS.PI * 1.90);
       g.stroke();
     }
     g.shadowColor = colour; g.shadowBlur = r * 4;
@@ -8186,8 +8194,9 @@ window.WS = window.WS || {};
       shaded(g, cx, cy - 10 * u, 30 * u, 13 * u, p);
       shaded(g, cx - 30 * u, cy + 6 * u, 9 * u, 16 * u, p, -0.16);
       shaded(g, cx + 30 * u, cy + 6 * u, 9 * u, 16 * u, p, 0.16);
-      ellipse(g, cx - 31 * u, cy + 20 * u, 9 * u, 8 * u, '#8a8f9c');  // knuckles down
-      ellipse(g, cx + 31 * u, cy + 20 * u, 9 * u, 8 * u, '#8a8f9c');
+      // knuckles on the ground - shaded like everything else, not flat discs
+      shaded(g, cx - 31 * u, cy + 20 * u, 9 * u, 8 * u, STONE);
+      shaded(g, cx + 31 * u, cy + 20 * u, 9 * u, 8 * u, STONE);
       shaded(g, cx, cy - 17 * u, 11 * u, 9 * u, p);                // head, sunk in
       g.fillStyle = p.lo; g.fillRect(cx - 12 * u, cy - 19 * u, 24 * u, 4 * u);
       eyes(g, cx, cy - 18 * u, 4.5 * u, 1.7 * u, '#ff8f6b');
@@ -8296,34 +8305,35 @@ window.WS = window.WS || {};
     },
 
     abomination(g, s, p) {
-      /* LOPSIDED, which is the one thing a creature stitched out of other
-         creatures should never fail to be. It was symmetrical - a centred
-         body with a matching arm each side - and so it measured 78% the same
-         silhouette as the brute and 74% the same as the golem, both of which
-         are also centred masses with an arm each side.
-         Now: one arm huge and dragging, the other a short stump, the trunk
-         leaning off its own centre and the head sagging away from the heavy
-         side. Asymmetry is the cheapest distinctness there is and this is the
-         creature that most deserves it. */
+      /* Its own shape, with ONE asymmetry rather than a rebuild.
+       *
+       * This is the second thing in this pass where the distinctness metric
+       * drove the drawing and the drawing lost. It measured 78% the same
+       * silhouette as the brute, so it was made lopsided, then tall and
+       * narrow to get further from the brute again - and a tall trunk
+       * swallowed its head, leaving an egg with eyes on top, and a hump the
+       * size of the head beside the head read as two heads. Every version
+       * scored better than this one and every version looked worse.
+       *
+       * So: the mass it always had, the sagging head it always had, and the
+       * near arm left bigger than the far one - which is true of a thing
+       * stitched together out of parts and costs the drawing nothing. The
+       * brute pair is reported honestly below instead of being engineered
+       * away. */
       const cx = s / 2, cy = s * 0.58, u = s / 100;
-      shaded(g, cx - 3 * u, cy + 4 * u, 22 * u, 34 * u, p, 0.1);
-      // a grafted hump over the heavy shoulder
-      shaded(g, cx + 11 * u, cy - 24 * u, 13 * u, 11 * u, p, 0.35);
+      shaded(g, cx, cy + 6 * u, 30 * u, 28 * u, p);
       g.strokeStyle = p.dark; g.lineWidth = 2 * u;                 // stitches
       for (let i = -2; i <= 2; i++) {
         g.beginPath();
-        g.moveTo(cx + i * 8 * u - 3 * u, cy - 14 * u);
-        g.lineTo(cx + i * 8 * u + 1 * u, cy + 26 * u);
+        g.moveTo(cx + i * 9 * u, cy - 14 * u);
+        g.lineTo(cx + i * 9 * u, cy + 26 * u);
         g.stroke();
       }
-      // the small arm
-      shaded(g, cx - 21 * u, cy + 2 * u, 6 * u, 10 * u, p, -0.5);
-      // and the heavy one, longer and hanging lower than the body it hangs off
-      shaded(g, cx + 22 * u, cy + 6 * u, 9 * u, 24 * u, p, 0.14);
-      ellipse(g, cx + 24 * u, cy + 27 * u, 8 * u, 7 * u, p.dark);
+      shaded(g, cx - 29 * u, cy - 1 * u, 8 * u, 14 * u, p, -0.35);  // the small arm
+      shaded(g, cx + 31 * u, cy + 1 * u, 12 * u, 19 * u, p, 0.32);  // and the heavy one
       blade(g, cx + 19 * u, cy + 6 * u, 30 * u, 8 * u, 0.75, '#aeb6c4', '#5a6070', 'heavy');
-      shaded(g, cx - 9 * u, cy - 26 * u, 12 * u, 11 * u, p, -0.34);  // head, sagging off
-      eyes(g, cx - 9 * u, cy - 27 * u, 5 * u, 2 * u, '#bfff6b');
+      shaded(g, cx - 4 * u, cy - 24 * u, 13 * u, 11 * u, p, -0.2); // sagging head
+      eyes(g, cx - 4 * u, cy - 25 * u, 5 * u, 2 * u, '#bfff6b');
     },
 
     wraith(g, s, p) {
