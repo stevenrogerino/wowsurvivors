@@ -715,6 +715,56 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       fail.push(`WS.${u} is a data table the tuning bench cannot reach`);
     }
 
+    /* ---- the Builds page has to actually run a build ---------------------
+     *
+     * It drives the same scenarios tools/sim.js does, from the same file, so
+     * the bench and the harness cannot drift apart - which they would within
+     * a week of being two copies. The thing worth guarding is that the page
+     * still gets an answer out of the game in the frame: a composer that
+     * silently produces nothing looks exactly like a composer nobody has
+     * filled in yet. */
+    const builds = await page.evaluate(async () => {
+      const nav = Array.from(document.querySelectorAll('nav button'))
+        .find((n) => n.textContent.includes('Builds'));
+      if (!nav) return { err: 'no Builds tab' };
+      nav.click();
+      await new Promise((r) => setTimeout(r, 400));
+      if (!window.WSSim) return { err: 'the shared scenario file did not load' };
+      const sels = document.querySelectorAll('#main select');
+      if (sels.length < 7) return { err: 'the composer has ' + sels.length + ' controls' };
+      const ids = ['seeking_motes', 'cinderfall', 'rimeshard'];
+      for (let i = 0; i < ids.length; i++) {
+        sels[i].value = ids[i];
+        sels[i].dispatchEvent(new Event('change'));
+      }
+      const go = Array.from(document.querySelectorAll('#main button'))
+        .find((n) => n.textContent === 'Run');
+      if (!go) return { err: 'no Run button' };
+      go.click();
+      for (let i = 0; i < 200; i++) {
+        await new Promise((r) => setTimeout(r, 100));
+        if (/damage a second/.test(document.querySelector('#main').textContent)) break;
+      }
+      const txt = document.querySelector('#main').textContent;
+      const kills = /kills(\d[\d,]*)/.exec(txt);
+      return {
+        ran: /damage a second/.test(txt),
+        kills: kills ? +kills[1].replace(/,/g, '') : -1,
+        scenarios: window.WSSim.SECONDS ? Object.keys(window.WSSim.SECONDS).length : 0,
+      };
+    });
+    if (builds.err) fail.push('the bench Builds page: ' + builds.err);
+    else {
+      if (!builds.ran) fail.push('the bench Builds page ran a build and produced no numbers');
+      if (builds.kills <= 0) {
+        fail.push('the bench ran three weapons through the gauntlet and killed '
+          + builds.kills + ' - the run did not happen');
+      }
+      if (builds.scenarios < 4) {
+        fail.push(`the bench offers ${builds.scenarios} scenarios; sim.js has four`);
+      }
+    }
+
     await browser.close();
   } finally {
     stop();

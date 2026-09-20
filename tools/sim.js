@@ -39,6 +39,10 @@
 const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
+/* One definition of every scenario, shared with the tuning bench. Two copies
+   of a scenario are two scenarios, and they drift. */
+const CORE = require('./sim-core.js');
+const CORE_PATH = path.join(__dirname, 'sim-core.js');
 
 /* ----------------------------------------------------------------- dice -- */
 /** The same generator in the harness as in the game, so the spawn script is
@@ -54,98 +58,13 @@ function rng(seed) {
 }
 
 /* ------------------------------------------------------------- scenario -- */
-const DUMMY_SECONDS = 45;
-const GAUNTLET_SECONDS = 90;
-const SIEGE_SECONDS = 90;
-const CRUCIBLE_SECONDS = 120;
+const DUMMY_SECONDS = CORE.SECONDS.dummy;
+const GAUNTLET_SECONDS = CORE.SECONDS.gauntlet;
+const SIEGE_SECONDS = CORE.SECONDS.siege;
+const CRUCIBLE_SECONDS = CORE.SECONDS.crucible;
 
-/** Who arrives, when, and where. Written once, replayed for every build.
- *  The mix walks from fodder to elites the way a real run's does, but on a
- *  clock that does not care how fast anything dies. */
-function gauntletScript() {
-  const r = rng(0x5EED17);
-  const out = [];
-  const early = ['lampling', 'boar', 'gilkin'];
-  const mid = ['ghoul', 'skeleton', 'bristlekin'];
-  for (let t = 2; t < GAUNTLET_SECONDS; t += 1.5) {
-    const wave = t < 30 ? early : t < 60 ? early.concat(mid) : mid;
-    const n = 2 + Math.floor(t / 14);
-    for (let i = 0; i < n; i++) {
-      const a = r() * Math.PI * 2;
-      const d = 430 + r() * 90;
-      out.push({
-        t,
-        id: wave[Math.floor(r() * wave.length) % wave.length],
-        x: 640 + Math.cos(a) * d,
-        y: 360 + Math.sin(a) * d,
-      });
-    }
-  }
-  return out;
-}
 
-/** The gauntlet saturates. Every six-weapon build cleared 259 to 271 of its
- *  282 arrivals, which is four builds measured as one - a scenario that cannot
- *  tell its subjects apart is not measuring them. The siege is the same idea
- *  with the pressure a late run actually applies: three times the arrivals,
- *  and the creatures a late run actually sends. */
-function siegeScript() {
-  const r = rng(0xBADCAFE);
-  const out = [];
-  const late = ['ghoul', 'skeleton', 'bristlekin', 'abomination', 'crypt_fiend', 'raptor'];
-  for (let t = 2; t < SIEGE_SECONDS; t += 0.8) {
-    const n = 4 + Math.floor(t / 8);
-    for (let i = 0; i < n; i++) {
-      const a = r() * Math.PI * 2;
-      const d = 430 + r() * 90;
-      out.push({
-        t,
-        id: late[Math.floor(r() * late.length) % late.length],
-        x: 640 + Math.cos(a) * d,
-        y: 360 + Math.sin(a) * d,
-      });
-    }
-  }
-  return out;
-}
 
-/** The siege saturates too.
- *
- *  Evolved six-weapon builds cleared 1400 to 1430 of its 1456 arrivals - 96 to
- *  98% - and I read the 2% spread between them as evolution flattening build
- *  identity. It was not. Their damage still spread 1.9x over the same set; the
- *  scenario had simply run out of creatures to hand them, so the number I was
- *  reading was the ceiling and not the build. A measurement pinned at its
- *  maximum cannot rank anything, and every conclusion drawn off one is about
- *  the harness.
- *
- *  The crucible is sized so a finished, fully evolved build still leaks. It
- *  sends elites among the fodder, arrives twice as often as the siege, and
- *  keeps accelerating for twice as long. */
-function crucibleScript() {
-  const r = rng(0xC0FFEE);
-  const out = [];
-  const fodder = ['ghoul', 'skeleton', 'bristlekin', 'abomination', 'crypt_fiend',
-    'raptor', 'pale_ghoul', 'geist'];
-  const elites = ['snarlpack_bonesnapper', 'kerchief_enforcer', 'bone_sentinel',
-    'karrash_battlelord', 'deathbound_vanguard', 'shadow_weaver'];
-  for (let t = 2; t < CRUCIBLE_SECONDS; t += 0.4) {
-    const n = 5 + Math.floor(t / 6);
-    for (let i = 0; i < n; i++) {
-      const a = r() * Math.PI * 2;
-      const d = 430 + r() * 90;
-      // one in seven is an elite, and the share does not change - the rate does
-      const pool = r() < 0.14 ? elites : fodder;
-      out.push({
-        t,
-        id: pool[Math.floor(r() * pool.length) % pool.length],
-        x: 640 + Math.cos(a) * d,
-        y: 360 + Math.sin(a) * d,
-      });
-    }
-  }
-  return out;
-}
 
 /* ---------------------------------------------------------------- builds -- */
 /** A build is a list of [weaponId, rank]. Everything else about the survivor
@@ -214,150 +133,6 @@ function buildTable(weapons, unions, combos, schools) {
   return builds;
 }
 
-/** Installed into every fresh page: the whole training ground. Each call
- *  sets the world up from scratch, and each measurement gets its own page,
- *  so one run cannot leak into the next. */
-const INSTALL = () => {
-  if (WS.Prologue && WS.Prologue.active) WS.Prologue.finish();
-  WS.Save.db.seenManual = true;
-  WS.Save.unlockAll();
-
-  /* The whole training ground, installed on the page once. Each call sets
-     the world up from scratch, so one run cannot leak into the next. */
-  window.__sim = function (build, scenario, script, seconds) {
-    const STEP = 1 / 60;
-
-    WS.setSeed(1234567);
-    WS.Game.startRun('thornhollow', 'mage');
-    if (WS.Game.blessingChoices) WS.Game.chooseBlessing(0);
-    const p = WS.Game.player;
-
-    /* Nothing arrives except what the script says, and nothing the player
-       does changes who arrives. */
-    WS.WaveManager.update = function () {};
-
-    /* The build under test is the build declared, at the ranks declared, for
-       the whole run - so the offer of a level-up is never made. Draining the
-       choice after the fact is not enough: presenting one sets the state to
-       'levelup', and Game.update returns early in any state but 'playing',
-       so the first gem picked up stops the simulation dead. That is what the
-       first version of this did, for every build, which is why every build
-       scored exactly the same nothing. */
-    WS.Game.openLevelUp = function () { this.pendingLevelUps = 0; };
-    WS.Game.presentLevelUp = function () { this.pendingLevelUps = 0; };
-    WS.Enemy.pool.releaseAll();
-    WS.Pickup.clear(); WS.XP.clear(); WS.Projectile.clear(); WS.FX.clear();
-
-    // the declared build, and only it
-    p.weapons.length = 0; p.weaponLevels = {}; p.combosActive = {};
-    for (const [id, rank] of build.weapons) {
-      WS.Player.addWeapon(p, id);
-      const w = WS.Player.getWeapon(p, id);
-      if (w) {
-        w.level = rank; p.weaponLevels[id] = rank;
-        /* A build can declare itself already evolved, so the cost of getting
-           the pairings can be measured against the cost of only getting the
-           ranks. */
-        if (build.evolved) w.evolved = true;
-      }
-    }
-    WS.ComboSystem.check(p);
-
-    p.x = 640; p.y = 360;
-    /* Immortal everywhere but the crucible.
-     
-       In the lighter scenarios a death would end the comparison early and the
-       rows would stop being about the build. The crucible is the one tier
-       meant to kill you, and it needs an UNCAPPED metric: its kill counts sit
-       at 95% of everything it sends, so ranking builds by what they cleared
-       is ranking them by the size of the script. How long a build lasts has
-       no ceiling, which is the whole reason to have a tier this hard. */
-    if (scenario !== 'crucible') { p.maxHealth = 1e9; p.health = 1e9; }
-
-    /* The four keys, set by the clock instead of by fingers. A slow circuit
-       around the middle of the field: enough movement that a weapon which
-       only works standing still is found out, not so much that the survivor
-       outruns the script. */
-    WS.Input.poll = function () {};
-    const drive = (t) => {
-      const leg = Math.floor(t / 4) % 4;
-      const k = WS.Input.keys;
-      k.up = leg === 0; k.right = leg === 1; k.down = leg === 2; k.left = leg === 3;
-    };
-
-    /* The dummies: a standing crowd at three ranges, none of which can die
-       or move.
-       
-       This began as ONE dummy at 160px, and that measured range rather than
-       throughput. Dawnpulse's nova reaches 150 and scored 2 damage a second
-       while killing 118 things in the gauntlet; the orbiters, the melee arcs
-       and the ground zones all read zero for the same reason, and arcweb,
-       which chains between targets, had nothing to chain to. A weapon cannot
-       be asked how hard it hits at a distance it was never built to hit at.
-       
-       Three rings, because the shape of a build's reach is part of what it
-       is: what works point-blank is not what works across the field. */
-    const dummies = [];
-    if (scenario === 'dummy') {
-      /* Rings every 60px out to 480, because three rings still left gaps and
-         a gap is a lie. Hallowed Ring measured 60 damage a second at rank 1
-         and 31 at rank 8 - a weapon getting worse as it levels - and the
-         reason was that its orbiters grow their radius with rank and at rank
-         8 were sweeping the empty band between one ring of dummies and the
-         next. The weapon was fine; the instrument had holes in it. */
-      const rings = [[6, 60], [6, 120], [8, 180], [8, 240],
-        [10, 300], [10, 360], [12, 420], [12, 480]];
-      for (const [n, dist] of rings) {
-        for (let i = 0; i < n; i++) {
-          const a = (i / n) * WS.TAU;
-          const d = WS.Enemy.spawn('lampling',
-            640 + WS.cos(a) * dist, 360 + WS.sin(a) * dist, 1, true);
-          if (d) { d.speed = 0; d.maxHealth = 1e12; d.health = 1e12; dummies.push(d); }
-        }
-      }
-    }
-
-    let next = 0, t = 0;
-    const seen = { leaked: 0 };
-    while (t < seconds) {
-      if (scenario !== 'dummy') {
-        while (next < script.length && script[next].t <= t) {
-          const s = script[next++];
-          WS.Enemy.spawn(s.id, s.x, s.y, 1, true);
-        }
-      }
-      /* The circuit is for the gauntlet, where where-you-stand is half of
-         what a build does. The dummy test is throughput, so the survivor
-         stands still and the ranges stay the ranges. */
-      if (scenario !== 'dummy') drive(t);
-      WS.Game.update(STEP);
-      if (!WS.Game.running) break;        // the crucible got them
-
-      for (const d of dummies) { d.health = 1e12; d.x = d._hx || (d._hx = d.x); d.y = d._hy || (d._hy = d.y); }
-      t += STEP;
-    }
-
-    const survived = t;
-    const run = WS.Game.run;
-    /* Anything still standing when the clock stops is something this build
-       could not get to - the gauntlet's real verdict. */
-    seen.leaked = WS.Enemy.pool.count;
-    const byWeapon = {};
-    for (const k in run.damageByWeapon) byWeapon[k] = run.damageByWeapon[k];
-    return {
-      damage: run.damageDone,
-      taken: run.damageTaken,
-      kills: run.kills || 0,
-      leaked: seen.leaked,
-      /* How long it lasted, and whether the clock or the horde stopped it.
-         This is the crucible's real answer - kills there are capped by the
-         size of the script, and time is not. */
-      survived: Math.round(survived * 10) / 10,
-      died: !WS.Game.running,
-      byWeapon,
-    };
-  };
-};
 
 /* ------------------------------------------------------------------ run -- */
 (async () => {
@@ -382,7 +157,14 @@ const INSTALL = () => {
     page.on('pageerror', (e) => errs.push(e.message));
     await page.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
     await page.waitForFunction(() => window.WS && window.WS.Game);
-    await page.evaluate(INSTALL);
+    await page.addScriptTag({ path: CORE_PATH });
+    await page.evaluate(() => {
+      if (WS.Prologue && WS.Prologue.active) WS.Prologue.finish();
+      WS.Save.db.seenManual = true;
+      WS.Save.unlockAll();
+      window.__sim = (build, scenario, script, seconds) =>
+        window.WSSim.runBuild(WS, build, scenario, script, seconds);
+    });
     return page;
   };
   const page = await fresh();
@@ -410,11 +192,11 @@ const INSTALL = () => {
     const needle = process.argv[onlyAt + 1];
     builds = builds.filter((b) => b.name.includes(needle));
   }
-  const script = gauntletScript();
+  const script = CORE.gauntletScript();
 
 
-  const siege = siegeScript();
-  const crucible = crucibleScript();
+  const siege = CORE.siegeScript();
+  const crucible = CORE.crucibleScript();
   const results = [];
   for (const build of builds) {
     const once = async (scenario, sc, secs) => {
@@ -438,6 +220,7 @@ const INSTALL = () => {
       ? await once('crucible', crucible, CRUCIBLE_SECONDS) : null;
     results.push({
       name: build.name, group: build.group,
+      build: build.weapons, evolved: !!build.evolved,
       dps: dummy.damage / DUMMY_SECONDS,
       kills: gaunt.kills,
       leaked: gaunt.leaked,
@@ -488,9 +271,21 @@ const INSTALL = () => {
   show(by('six'), 'six slots');
   show(by('rank'), 'one weapon, rank 1');
 
+  /* The tuning bench reads this, so it is written every time rather than only
+     when asked - a bench showing a table from three refactors ago is worse
+     than a bench showing none. The build list goes with each row so the bench
+     can load one back into its composer. */
+  const payload = { spawned, when: new Date().toISOString(), results };
+  /* Only a WHOLE sweep goes to the bench. A --only run is a couple of rows
+     about one weapon, and writing those over the stored table would leave the
+     bench showing a sweep that was never run. */
+  if (onlyAt < 0) {
+    fs.writeFileSync(path.join(__dirname, 'bench', 'sweep.json'),
+      JSON.stringify(payload, null, 1));
+  }
   if (process.argv.includes('--json')) {
     const out = process.argv[process.argv.indexOf('--json') + 1];
-    fs.writeFileSync(out, JSON.stringify({ spawned, results }, null, 1));
+    fs.writeFileSync(out, JSON.stringify(payload, null, 1));
     console.log('\nwrote ' + out);
   }
 })();

@@ -232,6 +232,7 @@ aside h2:first-child{margin-top:0}
   <aside>
     <h2>Live game</h2>
     <div id="frame-wrap"><iframe id="frame" src="/index.html" title="The Ember Watch"></iframe></div>
+  <script src="/tools/sim-core.js"></script>
     <div class="rowbtns">
       <select id="pick-map"></select>
       <select id="pick-char"></select>
@@ -1252,6 +1253,285 @@ function renderCharts(main) {
   }
 }
 
+
+/* ---- the training ground, in the bench --------------------------------- *
+ *
+ * The same scenarios tools/sim.js runs, against the game in the frame beside
+ * you. They come from tools/sim-core.js rather than being written again here,
+ * because two copies of a scenario are two scenarios and they drift apart the
+ * first time one of them is tuned.
+ *
+ * A run drives the game in the frame directly, which means it monkey-patches
+ * the wave director and the level-up gate and leaves a finished run sitting
+ * there. That is fine for a workbench and wrong for playing, so the panel
+ * says so and offers to reload the frame.
+ */
+const SCENARIOS = [
+  ['dummy', 'Dummy field', '72 targets that cannot die or move, at every range. Throughput.'],
+  ['gauntlet', 'Gauntlet', '282 arrivals over 90s. What gets past you, and what it costs.'],
+  ['siege', 'Siege', '1027 arrivals, the creatures a late run sends.'],
+  ['crucible', 'Crucible', 'Elites among the fodder, and the one scenario you can die in.'],
+];
+let sweep = null;          // the stored sweep, loaded once
+let benchBuild = [{ id: '', rank: 8 }, { id: '', rank: 8 }, { id: '', rank: 8 },
+  { id: '', rank: 8 }, { id: '', rank: 8 }, { id: '', rank: 8 }];
+let benchEvolved = false;
+let benchScenario = 'gauntlet';
+let benchBusy = false;
+let benchResult = null;
+let benchDirty = false;    // the frame has been used for a run
+
+function bEl(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+
+async function loadSweep() {
+  if (sweep !== null) return sweep;
+  try {
+    const r = await fetch('/tools/bench/sweep.json', { cache: 'no-store' });
+    sweep = r.ok ? await r.json() : { results: [] };
+  } catch (e) { sweep = { results: [] }; }
+  return sweep;
+}
+
+function runBenchBuild() {
+  if (benchBusy || !W || !window.WSSim) return;
+  const weapons = benchBuild.filter((b) => b.id).map((b) => [b.id, b.rank]);
+  if (!weapons.length) return;
+  benchBusy = true; benchResult = null; render();
+  /* Out of this frame's paint, so the button can show it is working before
+     the simulation blocks the thread for a few seconds. */
+  setTimeout(() => {
+    const t0 = performance.now();
+    let out = null, err = null;
+    try {
+      const script = window.WSSim.scriptFor(benchScenario);
+      out = window.WSSim.runBuild(W, { weapons, evolved: benchEvolved },
+        benchScenario, script, window.WSSim.SECONDS[benchScenario]);
+    } catch (e) { err = e && e.message ? e.message : String(e); }
+    benchBusy = false; benchDirty = true;
+    benchResult = { out, err, ms: Math.round(performance.now() - t0),
+      scenario: benchScenario, arrivals: window.WSSim.scriptFor(benchScenario).length };
+    render();
+  }, 30);
+}
+
+function renderBuilds(main) {
+  const head = bEl('div', 'head');
+  const h1 = bEl('h1', null, 'Builds');
+  const hint = bEl('p', 'hint', 'The same scenarios tools/sim.js runs, against the game in '
+    + 'the frame. Everything the build does not control is nailed down - written spawns, a '
+    + 'written movement circuit, no level-ups, one seed - so two rows differ by the build '
+    + 'and nothing else.');
+  hint.style.margin = '2px 0 0';
+  head.append(h1, hint);
+  main.append(head);
+
+  if (!W || !window.WSSim) {
+    main.append(bEl('p', 'hint', 'Waiting for the game in the frame...'));
+    return;
+  }
+
+  /* ---- compose a build ------------------------------------------------- */
+  const box = bEl('div', 'viz');
+  box.append(bEl('h2', null, 'Run your own'));
+  const ids = W.WeaponOrder.concat(W.Unions.map((u) => u.result));
+
+  const grid = bEl('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;margin:10px 0';
+  benchBuild.forEach((slot, i) => {
+    const row = bEl('div');
+    row.style.cssText = 'display:flex;gap:6px;align-items:center';
+    const sel = document.createElement('select');
+    sel.style.cssText = 'flex:1;min-width:0;background:#0d1219;color:inherit;'
+      + 'border:1px solid var(--line);padding:4px;font:inherit';
+    const none = document.createElement('option');
+    none.value = ''; none.textContent = '- empty -';
+    sel.append(none);
+    for (const id of ids) {
+      const o = document.createElement('option');
+      o.value = id;
+      o.textContent = (W.Weapons[id] && W.Weapons[id].name) || id;
+      sel.append(o);
+    }
+    sel.value = slot.id;
+    sel.onchange = () => { slot.id = sel.value; };
+    const rank = document.createElement('input');
+    rank.type = 'number'; rank.min = '1'; rank.max = String(W.WEAPON_MAX_LEVEL || 8);
+    rank.value = String(slot.rank);
+    rank.style.cssText = 'width:52px;background:#0d1219;color:inherit;'
+      + 'border:1px solid var(--line);padding:4px;font:inherit';
+    rank.onchange = () => { slot.rank = Math.max(1, Math.min(8, +rank.value || 1)); };
+    row.append(sel, rank);
+    grid.append(row);
+  });
+  box.append(grid);
+
+  const opts = bEl('div');
+  opts.style.cssText = 'display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:6px 0 10px';
+  const evo = document.createElement('label');
+  evo.style.cssText = 'display:flex;gap:6px;align-items:center;cursor:pointer';
+  const evoBox = document.createElement('input');
+  evoBox.type = 'checkbox'; evoBox.checked = benchEvolved;
+  evoBox.onchange = () => { benchEvolved = evoBox.checked; };
+  evo.append(evoBox, bEl('span', null, 'every weapon evolved'));
+  opts.append(evo);
+
+  const scen = document.createElement('select');
+  scen.style.cssText = 'background:#0d1219;color:inherit;border:1px solid var(--line);'
+    + 'padding:4px;font:inherit';
+  for (const [id, label] of SCENARIOS) {
+    const o = document.createElement('option');
+    o.value = id; o.textContent = label;
+    scen.append(o);
+  }
+  scen.value = benchScenario;
+  scen.onchange = () => { benchScenario = scen.value; render(); };
+  opts.append(scen);
+
+  const go = document.createElement('button');
+  go.textContent = benchBusy ? 'running...' : 'Run';
+  go.disabled = benchBusy;
+  go.style.cssText = 'background:#1a2233;color:var(--gold);border:1px solid var(--gold);'
+    + 'padding:5px 16px;font:inherit;cursor:pointer';
+  go.onclick = runBenchBuild;
+  opts.append(go);
+
+  const preset = document.createElement('button');
+  preset.textContent = 'fill from a sweep build';
+  preset.className = 'as-table';
+  preset.onclick = async () => {
+    const s = await loadSweep();
+    const named = s.results.filter((r) => r.build && r.build.length);
+    if (!named.length) return;
+    const pick = prompt('Which build?\n\n' + named.map((r) => r.name).join('\n'), named[0].name);
+    const found = named.find((r) => r.name === pick);
+    if (!found) return;
+    benchBuild = benchBuild.map((_, i) => found.build[i]
+      ? { id: found.build[i][0], rank: found.build[i][1] } : { id: '', rank: 8 });
+    benchEvolved = !!found.evolved;
+    render();
+  };
+  opts.append(preset);
+  box.append(opts);
+
+  const note = SCENARIOS.find((x) => x[0] === benchScenario);
+  box.append(bEl('p', 'hint', note ? note[2] : ''));
+
+  if (benchResult) {
+    const r = benchResult;
+    if (r.err) {
+      const e = bEl('p', 'hint', 'The run threw: ' + r.err);
+      e.style.color = '#ff8a6a';
+      box.append(e);
+    } else if (r.out) {
+      const secs = window.WSSim.SECONDS[r.scenario];
+      const t = document.createElement('table');
+      const rows = [
+        ['damage a second', Math.round(r.out.damage / secs)],
+        ['total damage', Math.round(r.out.damage)],
+        ['kills', r.out.kills],
+        ['still standing at the end', r.out.leaked],
+        ['damage taken', Math.round(r.out.taken)],
+      ];
+      if (r.scenario === 'crucible') {
+        rows.push(['lasted', r.out.died ? r.out.survived + 's of ' + secs + 's' : 'the full ' + secs + 's']);
+      }
+      if (r.arrivals) rows.push(['arrivals in this scenario', r.arrivals]);
+      rows.push(['measured in', r.ms + 'ms']);
+      for (const [k, v] of rows) {
+        const tr = document.createElement('tr');
+        tr.append(bEl('td', null, k), bEl('td', null, String(v)));
+        t.append(tr);
+      }
+      box.append(t);
+
+      const dmg = r.out.byWeapon || {};
+      const keys = Object.keys(dmg).sort((a, b) => dmg[b] - dmg[a]);
+      if (keys.length) {
+        box.append(bEl('h2', null, 'where the damage came from'));
+        const t2 = document.createElement('table');
+        const total = keys.reduce((n, k) => n + dmg[k], 0) || 1;
+        for (const k of keys.slice(0, 12)) {
+          const tr = document.createElement('tr');
+          const name = (W.Weapons[k] && W.Weapons[k].name) || k;
+          tr.append(bEl('td', null, name), bEl('td', null, Math.round(dmg[k]).toLocaleString()),
+            bEl('td', null, Math.round(dmg[k] / total * 100) + '%'));
+          t2.append(tr);
+        }
+        box.append(t2);
+      }
+    }
+  }
+
+  if (benchDirty) {
+    const warn = bEl('p', 'hint');
+    warn.append(document.createTextNode('The frame has been driven by a test run, so it is no '
+      + 'longer a clean game. '));
+    const a = document.createElement('button');
+    a.className = 'as-table';
+    a.textContent = 'reload it';
+    a.onclick = () => { benchDirty = false; frame.src = frame.src; };
+    warn.append(a);
+    box.append(warn);
+  }
+  main.append(box);
+
+  /* ---- the stored sweep ------------------------------------------------ */
+  const store = bEl('div', 'viz');
+  store.append(bEl('h2', null, 'The last full sweep'));
+  store.append(bEl('p', 'hint', 'Written by tools/sim.js. Every build there runs on its own '
+    + 'fresh page, because builds sharing one page leaked into each other - the same build '
+    + 'measured three times gave 1544, 1565 and 1563.'));
+  main.append(store);
+  loadSweep().then((s) => {
+    if (!s.results || !s.results.length) {
+      store.append(bEl('p', 'hint', 'No sweep on file yet. Run: node tools/sim.js'));
+      return;
+    }
+    const groups = {};
+    for (const r of s.results) (groups[r.group] = groups[r.group] || []).push(r);
+    const LABEL = { weapon: 'One weapon, rank 8', rank: 'One weapon, rank 1',
+      union: 'Unions', slots: 'What a slot is worth', school: 'One school',
+      pair: 'Each discovery’s two weapons', six: 'Six slots', evolved: 'Six slots, evolved' };
+    for (const g of ['slots', 'weapon', 'rank', 'union', 'school', 'pair', 'six', 'evolved']) {
+      const rows = groups[g];
+      if (!rows) continue;
+      store.append(bEl('h2', null, LABEL[g] || g));
+      const t = document.createElement('table');
+      const hasHard = rows.some((r) => r.siege);
+      const hasCru = rows.some((r) => r.crucible);
+      const hr = document.createElement('tr');
+      const cols = ['build', 'dps', 'kills', 'left', 'taken'];
+      if (hasHard) cols.push('siege kills', 'siege taken');
+      if (hasCru) cols.push('crucible');
+      for (const c of cols) hr.append(bEl('th', null, c));
+      t.append(hr);
+      const sorted = rows.slice().sort((a, b) =>
+        (b.siege ? b.siege.kills : b.kills) - (a.siege ? a.siege.kills : a.kills));
+      for (const r of sorted) {
+        const tr = document.createElement('tr');
+        tr.append(bEl('td', null, r.name), bEl('td', null, Math.round(r.dps).toLocaleString()),
+          bEl('td', null, String(r.kills)), bEl('td', null, String(r.leaked)),
+          bEl('td', null, String(Math.round(r.taken))));
+        if (hasHard) {
+          tr.append(bEl('td', null, r.siege ? String(r.siege.kills) : ''),
+            bEl('td', null, r.siege ? String(Math.round(r.siege.taken)) : ''));
+        }
+        if (hasCru) {
+          tr.append(bEl('td', null, r.crucible
+            ? (r.crucible.died ? r.crucible.survived + 's' : 'held') : ''));
+        }
+        t.append(tr);
+      }
+      store.append(t);
+    }
+  });
+}
+
 /* ---- rendering a section ----------------------------------------------- */
 function buildNav() {
   const nav = $('#nav');
@@ -1266,6 +1546,7 @@ function buildNav() {
     return b;
   };
   add('#charts', 'Projections');
+  add('#builds', 'Builds');
   nav.append(document.createElement('hr'));
   for (const t of TABLES) add(t.root, t.label);
   markCounts();
@@ -1280,6 +1561,12 @@ function render() {
 
   const onlyChanged = $('#only').checked;
   const q = query.trim().toLowerCase();
+
+  if (!q && section === '#builds') {
+    renderBuilds(main);
+    markCounts();
+    return;
+  }
 
   if (!q && section === '#charts') {
     const head = document.createElement('div');
