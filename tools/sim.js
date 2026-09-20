@@ -57,6 +57,7 @@ function rng(seed) {
 const DUMMY_SECONDS = 45;
 const GAUNTLET_SECONDS = 90;
 const SIEGE_SECONDS = 90;
+const CRUCIBLE_SECONDS = 120;
 
 /** Who arrives, when, and where. Written once, replayed for every build.
  *  The mix walks from fodder to elites the way a real run's does, but on a
@@ -100,6 +101,44 @@ function siegeScript() {
       out.push({
         t,
         id: late[Math.floor(r() * late.length) % late.length],
+        x: 640 + Math.cos(a) * d,
+        y: 360 + Math.sin(a) * d,
+      });
+    }
+  }
+  return out;
+}
+
+/** The siege saturates too.
+ *
+ *  Evolved six-weapon builds cleared 1400 to 1430 of its 1456 arrivals - 96 to
+ *  98% - and I read the 2% spread between them as evolution flattening build
+ *  identity. It was not. Their damage still spread 1.9x over the same set; the
+ *  scenario had simply run out of creatures to hand them, so the number I was
+ *  reading was the ceiling and not the build. A measurement pinned at its
+ *  maximum cannot rank anything, and every conclusion drawn off one is about
+ *  the harness.
+ *
+ *  The crucible is sized so a finished, fully evolved build still leaks. It
+ *  sends elites among the fodder, arrives twice as often as the siege, and
+ *  keeps accelerating for twice as long. */
+function crucibleScript() {
+  const r = rng(0xC0FFEE);
+  const out = [];
+  const fodder = ['ghoul', 'skeleton', 'bristlekin', 'abomination', 'crypt_fiend',
+    'raptor', 'pale_ghoul', 'geist'];
+  const elites = ['snarlpack_bonesnapper', 'kerchief_enforcer', 'bone_sentinel',
+    'karrash_battlelord', 'deathbound_vanguard', 'shadow_weaver'];
+  for (let t = 2; t < CRUCIBLE_SECONDS; t += 0.4) {
+    const n = 5 + Math.floor(t / 6);
+    for (let i = 0; i < n; i++) {
+      const a = r() * Math.PI * 2;
+      const d = 430 + r() * 90;
+      // one in seven is an elite, and the share does not change - the rate does
+      const pool = r() < 0.14 ? elites : fodder;
+      out.push({
+        t,
+        id: pool[Math.floor(r() * pool.length) % pool.length],
         x: 640 + Math.cos(a) * d,
         y: 360 + Math.sin(a) * d,
       });
@@ -225,7 +264,15 @@ const INSTALL = () => {
     WS.ComboSystem.check(p);
 
     p.x = 640; p.y = 360;
-    p.maxHealth = 1e9; p.health = 1e9;   // deaths would end the comparison early
+    /* Immortal everywhere but the crucible.
+     
+       In the lighter scenarios a death would end the comparison early and the
+       rows would stop being about the build. The crucible is the one tier
+       meant to kill you, and it needs an UNCAPPED metric: its kill counts sit
+       at 95% of everything it sends, so ranking builds by what they cleared
+       is ranking them by the size of the script. How long a build lasts has
+       no ceiling, which is the whole reason to have a tier this hard. */
+    if (scenario !== 'crucible') { p.maxHealth = 1e9; p.health = 1e9; }
 
     /* The four keys, set by the clock instead of by fingers. A slow circuit
        around the middle of the field: enough movement that a weapon which
@@ -284,11 +331,13 @@ const INSTALL = () => {
          stands still and the ranges stay the ranges. */
       if (scenario !== 'dummy') drive(t);
       WS.Game.update(STEP);
+      if (!WS.Game.running) break;        // the crucible got them
 
       for (const d of dummies) { d.health = 1e12; d.x = d._hx || (d._hx = d.x); d.y = d._hy || (d._hy = d.y); }
       t += STEP;
     }
 
+    const survived = t;
     const run = WS.Game.run;
     /* Anything still standing when the clock stops is something this build
        could not get to - the gauntlet's real verdict. */
@@ -300,6 +349,11 @@ const INSTALL = () => {
       taken: run.damageTaken,
       kills: run.kills || 0,
       leaked: seen.leaked,
+      /* How long it lasted, and whether the clock or the horde stopped it.
+         This is the crucible's real answer - kills there are capped by the
+         size of the script, and time is not. */
+      survived: Math.round(survived * 10) / 10,
+      died: !WS.Game.running,
       byWeapon,
     };
   };
@@ -360,6 +414,7 @@ const INSTALL = () => {
 
 
   const siege = siegeScript();
+  const crucible = crucibleScript();
   const results = [];
   for (const build of builds) {
     const once = async (scenario, sc, secs) => {
@@ -378,6 +433,9 @@ const INSTALL = () => {
     const HARD = ['six', 'union', 'evolved', 'school'];
     const hard = HARD.includes(build.group)
       ? await once('siege', siege, SIEGE_SECONDS) : null;
+    /* Only the builds the siege cannot separate either. */
+    const worst = (build.group === 'evolved' || build.group === 'six')
+      ? await once('crucible', crucible, CRUCIBLE_SECONDS) : null;
     results.push({
       name: build.name, group: build.group,
       dps: dummy.damage / DUMMY_SECONDS,
@@ -385,6 +443,8 @@ const INSTALL = () => {
       leaked: gaunt.leaked,
       taken: gaunt.taken,
       siege: hard && { kills: hard.kills, leaked: hard.leaked, taken: hard.taken },
+      crucible: worst && { kills: worst.kills, leaked: worst.leaked, taken: worst.taken,
+        survived: worst.survived, died: worst.died },
       byWeapon: gaunt.byWeapon,
     });
     process.stderr.write('.');
@@ -397,20 +457,26 @@ const INSTALL = () => {
   const show = (rows, title) => {
     if (!rows.length) return;
     const hard = rows.some((r) => r.siege);
+    const worst = rows.some((r) => r.crucible);
     console.log('\n' + title);
     console.log('  ' + 'build'.padEnd(26) + 'dps'.padStart(9) + 'kills'.padStart(8)
       + 'left'.padStart(7) + 'taken'.padStart(9)
-      + (hard ? 'siege:kills'.padStart(13) + 'left'.padStart(7) + 'taken'.padStart(9) : ''));
+      + (hard ? 'siege:kills'.padStart(13) + 'left'.padStart(7) + 'taken'.padStart(9) : '')
+      + (worst ? 'crucible'.padStart(12) + 'kills'.padStart(9) + 'taken'.padStart(9) : ''));
     for (const r of rows) {
       console.log('  ' + r.name.padEnd(26) + r.dps.toFixed(0).padStart(9)
         + String(r.kills).padStart(8) + String(r.leaked).padStart(7)
         + r.taken.toFixed(0).padStart(9)
         + (r.siege ? String(r.siege.kills).padStart(13) + String(r.siege.leaked).padStart(7)
-          + r.siege.taken.toFixed(0).padStart(9) : ''));
+          + r.siege.taken.toFixed(0).padStart(9) : '')
+        + (r.crucible ? (r.crucible.died ? (r.crucible.survived + 's').padStart(12)
+          : 'held'.padStart(12)) + String(r.crucible.kills).padStart(9)
+          + r.crucible.taken.toFixed(0).padStart(9) : ''));
     }
   };
   console.log(`the gauntlet sends ${spawned} creatures over ${GAUNTLET_SECONDS}s,`
-    + ` the siege ${siege.length} over ${SIEGE_SECONDS}s;`
+    + ` the siege ${siege.length} over ${SIEGE_SECONDS}s,`
+    + ` the crucible ${crucible.length} with elites over ${CRUCIBLE_SECONDS}s;`
     + ` the dummy field is 72 targets that cannot die, for ${DUMMY_SECONDS}s`);
   const by = (g) => results.filter((r) => r.group === g).sort((a, b) => b.dps - a.dps);
   show(by('weapon'), 'one weapon, rank 8');
