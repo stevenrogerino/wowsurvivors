@@ -406,6 +406,56 @@ const fail = [];
   }
   if (!casters.length) fail.push('no casters found to check');
 
+  /* ---- a projectile you bought has to be a projectile you can see --------
+   *
+   * With three extra projectiles bought and one creature on the field,
+   * Cinderfall, Rimeshard, Umbral Bolt, Moonbrand and Grave Tether each
+   * launched SIX bolts 0 pixels and 0 degrees apart. One bolt on screen, six
+   * lots of damage: five of the sixteen weapons, where the single most
+   * legible upgrade in the game showed you nothing whatsoever. Volley already
+   * fanned and Knifestorm already ringed; this is the group that had no
+   * answer to "where did my extra shot go". */
+  const stacked = await page.evaluate(() => {
+    WS.setSeed(3);
+    WS.Game.startRun('thornhollow', 'mage');
+    if (WS.Game.blessingChoices) WS.Game.chooseBlessing(0);
+    WS.Game.openLevelUp = function () { this.pendingLevelUps = 0; };
+    WS.Input.poll = function () {};
+    const p = WS.Game.player;
+    p.x = 400; p.y = 360; p.maxHealth = 1e9; p.health = 1e9;
+    p.projectileBonus = 3;
+    const bad = [];
+    for (const id of WS.WeaponOrder) {
+      p.weapons.length = 0; p.weaponLevels = {}; p.combosActive = {};
+      WS.Player.addWeapon(p, id);
+      const w = WS.Player.getWeapon(p, id);
+      if (!w) continue;
+      w.level = 8; p.weaponLevels[id] = 8;
+      WS.Enemy.pool.releaseAll();
+      WS.Projectile.clear();
+      const e = WS.Enemy.spawn('lampling', 900, 360, 1, true);
+      if (e) { e.maxHealth = 1e9; e.health = 1e9; e.speed = 0; }
+      w.cooldown = 0;
+      WS.Weapon.fire(p, w);
+      const bolts = WS.Projectile.bolts.active.slice();
+      if (bolts.length < 2) continue;      // nothing launched together
+      let gap = 0, ang = 0;
+      for (let i = 0; i < bolts.length; i++) {
+        for (let j = i + 1; j < bolts.length; j++) {
+          gap = Math.max(gap, Math.hypot(bolts[i].x - bolts[j].x, bolts[i].y - bolts[j].y));
+          ang = Math.max(ang, Math.abs(Math.atan2(bolts[i].vy, bolts[i].vx)
+            - Math.atan2(bolts[j].vy, bolts[j].vx)));
+        }
+      }
+      // a degree of separation, or a couple of pixels, is enough to be seen
+      if (ang * 180 / Math.PI < 1 && gap < 3) {
+        bad.push(`${WS.Weapons[id].name} launches ${bolts.length} bolts on top of each other`);
+      }
+    }
+    return bad;
+  });
+  for (const b of stacked) fail.push(b);
+
   await browser.close();
   if (fail.length) {
     console.error('FAIL');

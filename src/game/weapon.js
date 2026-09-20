@@ -172,14 +172,26 @@
     o.blend = w.mods.blend || null;
   }
 
-  function fireAimedShot(player, w, target) {
+  function fireAimedShot(player, w, target, fan) {
     const d = w.data;
     fillSpec(player, w);
     const speed = speedOf(player, w);
     const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
     if (spec.homing) spec.homingTarget = target;
-    WS.Projectile.launchBolt(muzzleX(player, dx), muzzleY(player, dy),
-      dx * speed, dy * speed, spec);
+    /* A fan, when several shots leave at once at the same mark. Measured with
+       three extra projectiles bought and one creature on the field, Cinderfall,
+       Rimeshard, Umbral Bolt, Moonbrand and Grave Tether each launched SIX
+       bolts 0 pixels and 0 degrees apart - one bolt on screen, six lots of
+       damage. Five of sixteen weapons, where buying a projectile showed you
+       nothing at all. Volley already fans and Knifestorm already rings; this
+       is the group that had no answer. */
+    let ax = dx, ay = dy;
+    if (fan) {
+      const c = WS.cos(fan), sn = WS.sin(fan);
+      ax = dx * c - dy * sn; ay = dx * sn + dy * c;
+    }
+    WS.Projectile.launchBolt(muzzleX(player, ax), muzzleY(player, ay),
+      ax * speed, ay * speed, spec);
   }
 
   /* Where a shot LEAVES the survivor.
@@ -211,9 +223,13 @@
       w.burstShots = count - 1;
       w.burstTimer = 0.09;
     } else {
+      /* Narrow on purpose. Wide enough that you can count them and see the
+         weapon got stronger, tight enough that it is still the same weapon
+         and still hits what you aimed at. */
+      const arc = d.fan || 0.085;
       for (let i = 0; i < count; i++) {
         const t = i === 0 ? target : (WS.Enemy.findNearest(player.x, player.y, d.range || 560) || target);
-        fireAimedShot(player, w, t);
+        fireAimedShot(player, w, t, count > 1 ? (i - (count - 1) / 2) * arc : 0);
       }
     }
     return true;
