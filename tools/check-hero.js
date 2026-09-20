@@ -109,6 +109,14 @@ const ANCHOR = [0.855, 0.885];   // where the feet land, as a fraction of the bo
 const IOU = 0.84;                // two survivors may not share more shape than this
 const DIFF = 0.35;               // and must differ across this much of their drawing
 const MARGIN = 18;               // luminance a survivor must clear the ground by
+/* How much DRAWING is inside the outline: the share of interior pixels where
+ * the local gradient is steep, silhouette edges excluded because those are
+ * free. The cast sat at 41% while the horde it fights was brought to 40, and
+ * the survivors are the most-looked-at thing in the game - so they were taken
+ * to 50 and the number is held here. A mean can be carried by the good ones,
+ * so the flattest single survivor has a floor too. */
+const DETAIL_FLOOR = 50;         // cast average, %
+const THINNEST = 44;             // the flattest single survivor, %
 const RANGE = 120;               // luminance a survivor must span, to have form
 const FILL = [0.10, 0.42];       // how much of the box the figure fills at 34px
 /* px a foot may travel over the stride, at a 120px sprite. Set from BOTH
@@ -398,6 +406,55 @@ const MOTION = 0.04;             // fraction of the figure that must move per fr
     };
   });
 
+  /* ------------------------------------------ how much is inside the line --
+   *
+   * The share of interior pixels where the local gradient is steep, silhouette
+   * edges excluded because those are free. Measured in its own pass rather
+   * than folded into `read`, because it wants the whole figure at a size where
+   * a rivet is more than one pixel.
+   *
+   * The cast sat at 41% while the horde it fights was being brought to 40, and
+   * these are the most-looked-at drawings in the game - so they were taken to
+   * 50 and the number is held here rather than left to drift. */
+  const drawn = await page.evaluate(() => {
+    const S = 220;
+    return WS.Hero.ids.map((id) => {
+      const sp = WS.Sprites.hero(id, WS.Characters[id].color, S, false, undefined, null, 0);
+      const cv = document.createElement('canvas');
+      cv.width = S; cv.height = S;
+      const g = cv.getContext('2d');
+      g.drawImage(sp, 0, 0, S, S);
+      const d = g.getImageData(0, 0, S, S).data;
+      const L = new Float32Array(S * S), A = new Uint8Array(S * S);
+      for (let i = 0; i < S * S; i++) {
+        L[i] = 0.2126 * d[i * 4] + 0.7152 * d[i * 4 + 1] + 0.0722 * d[i * 4 + 2];
+        A[i] = d[i * 4 + 3];
+      }
+      let inside = 0, steep = 0;
+      for (let y = 1; y < S - 1; y++) {
+        for (let x = 1; x < S - 1; x++) {
+          const i = y * S + x;
+          if (A[i] < 200) continue;
+          if (A[i - 1] < 200 || A[i + 1] < 200 || A[i - S] < 200 || A[i + S] < 200) continue;
+          inside++;
+          const m = Math.max(Math.abs(L[i + 1] - L[i - 1]), Math.abs(L[i + S] - L[i - S]));
+          if (m > 14) steep++;
+        }
+      }
+      return { id, v: +((100 * steep) / Math.max(1, inside)).toFixed(1) };
+    });
+  });
+  const drawnAvg = drawn.reduce((n, r) => n + r.v, 0) / drawn.length;
+  const flattest = drawn.reduce((a, r) => (r.v < a.v ? r : a));
+  if (drawnAvg < DETAIL_FLOOR) {
+    fail.push(`the cast averages ${drawnAvg.toFixed(1)}% interior detail, below the floor `
+      + `of ${DETAIL_FLOOR} - a strong outline with nothing inside it is a cut-out`);
+  }
+  if (flattest.v < THINNEST) {
+    fail.push(`${flattest.id} is drawn at ${flattest.v}% interior detail, below the floor `
+      + `of ${THINNEST} - the average can be carried by the good ones`);
+  }
+
   const brightest = Math.max(...Object.values(report.ground));
   const brightestMap = Object.keys(report.ground)
     .find((k) => report.ground[k] === brightest);
@@ -573,7 +630,7 @@ const MOTION = 0.04;             // fraction of the figure that must move per fr
     process.exit(1);
   }
   const dim = report.cast.reduce((a, c) => (c.mean < a.mean ? c : a));
-  console.log(`ok: ${report.cast.length} survivors, none touching the frame, all `
+  console.log(`ok: ${report.cast.length} survivors averaging ${drawnAvg.toFixed(1)}% interior detail (thinnest ${flattest.id}, ${flattest.v}%), none touching the frame, all `
     + `planted at 0.86-0.88; the closest pair (${report.worst.pair}) share `
     + `${report.worst.v.toFixed(2)} of a silhouette; every survivor climbs `
     + `${rk.maxR} ranks with the thinnest step still moving `

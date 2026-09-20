@@ -64,8 +64,21 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
 /* Floors. Each is set below where the bestiary measures today and above where
  * it measured before the pass, so the rule has room to breathe and still
  * fails the thing it was written about. */
-const DETAIL_FLOOR = 27;         // bestiary average, %
-const WORST_FLOOR = 17;          // the flattest single creature, %
+/* The three groups carry their own floors, set at the targets they were
+ * brought to rather than a little under wherever they happened to land. The
+ * bestiary began this arc at 22.1% against a cast at 41.0%; it is a deliberate
+ * number now and not an accident, so it is guarded as one.
+ *
+ *   creatures  40%   the common horde, measured without regalia
+ *   bosses     45%   they are the event, so they carry more than the mob does
+ *
+ * WORST_FLOOR keeps the average honest. A mean can be carried by the good
+ * ones, and the whole reason this file exists is that nobody was looking at
+ * the bad ones. */
+const DETAIL_FLOOR = 34;         // all 26 arts together, %
+const WORST_FLOOR = 26;          // the flattest single one, %
+const MOB_FLOOR = 40;            // the common creatures, averaged
+const BOSS_FLOOR = 45;           // the bosses, drawn in their regalia
 const MARGIN = 14;               // luminance a creature must clear the ground by
 
 /* APART is set from what the bestiary HONESTLY IS, and it is worth saying why
@@ -258,6 +271,64 @@ const fail = [];
     }
   }
 
+  /* ----------------------------------------- the two groups, separately --
+   *
+   * The all-arts average hides the split: a boss and the mob it borrows from
+   * share a drawing, so lifting one lifts the other and the combined number
+   * cannot say whether a BOSS is worth walking toward. Measured apart, with
+   * the bosses drawn in the regalia they actually wear. */
+  const split = await page.evaluate(() => {
+    const S = 220;
+    const score = (sp) => {
+      const cv = document.createElement('canvas');
+      cv.width = S; cv.height = S;
+      const g = cv.getContext('2d');
+      g.drawImage(sp, 0, 0, S, S);
+      const d = g.getImageData(0, 0, S, S).data;
+      const L = new Float32Array(S * S), A = new Uint8Array(S * S);
+      for (let i = 0; i < S * S; i++) {
+        L[i] = 0.2126 * d[i * 4] + 0.7152 * d[i * 4 + 1] + 0.0722 * d[i * 4 + 2];
+        A[i] = d[i * 4 + 3];
+      }
+      let inside = 0, steep = 0;
+      for (let y = 1; y < S - 1; y++) {
+        for (let x = 1; x < S - 1; x++) {
+          const i = y * S + x;
+          if (A[i] < 200) continue;
+          if (A[i - 1] < 200 || A[i + 1] < 200 || A[i - S] < 200 || A[i + S] < 200) continue;
+          inside++;
+          const m = Math.max(Math.abs(L[i + 1] - L[i - 1]), Math.abs(L[i + S] - L[i - S]));
+          if (m > 14) steep++;
+        }
+      }
+      return (100 * steep) / Math.max(1, inside);
+    };
+    const mobs = [], seen = {};
+    for (const id of Object.keys(WS.Enemies)) {
+      const t = WS.Enemies[id];
+      if (!t.art || seen[t.art]) continue;
+      seen[t.art] = 1;
+      mobs.push({ id: t.art, v: +score(WS.Sprites.creature(t.art, t.tint, S)).toFixed(1) });
+    }
+    const bosses = [];
+    for (const id of Object.keys(WS.Bosses)) {
+      const t = WS.Bosses[id];
+      if (!t.art) continue;
+      bosses.push({ id: t.name || id,
+        v: +score(WS.Sprites.creature(t.art, t.tint, S, t.bossKit)).toFixed(1) });
+    }
+    const mean = (a) => a.reduce((n, r) => n + r.v, 0) / Math.max(1, a.length);
+    return { mobs, bosses, mobAvg: +mean(mobs).toFixed(1), bossAvg: +mean(bosses).toFixed(1) };
+  });
+  if (split.mobAvg < MOB_FLOOR) {
+    fail.push(`the common creatures average ${split.mobAvg}% interior detail, below the `
+      + `floor of ${MOB_FLOOR}`);
+  }
+  if (split.bossAvg < BOSS_FLOOR) {
+    fail.push(`the bosses average ${split.bossAvg}% interior detail, below the floor of `
+      + `${BOSS_FLOOR} - a boss is the event of a map and has to be worth walking toward`);
+  }
+
   const { rows, close, brightest } = report;
   const avg = rows.reduce((n, r) => n + r.detail, 0) / rows.length;
   const worst = rows.reduce((a, r) => (r.detail < a.detail ? r : a));
@@ -303,5 +374,7 @@ const fail = [];
     + `(${close.pair}) still differ across ${(close.v * 100).toFixed(0)}% of their drawing; `
     + `and the ${regal.length} bosses that borrow a mob's art are told from it by their `
     + `regalia alone, the closest at `
-    + `${(100 * Math.min.apply(null, regal.map((r) => r.share))).toFixed(0)}%`);
+    + `${(100 * Math.min.apply(null, regal.map((r) => r.share))).toFixed(0)}%; the `
+    + `${split.mobs.length} common creatures average ${split.mobAvg}% and the `
+    + `${split.bosses.length} bosses ${split.bossAvg}%`);
 })();

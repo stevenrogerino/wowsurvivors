@@ -71,7 +71,10 @@
        halfway mark, which leaves most of a good run spent looking earned.
        Weapons and skills get their own visual upgrades separately; this ladder
        is the survivor themselves. */
-    heroRankAt: [6, 15, 28, 45],
+    /* Six tiers now, not four. The last two are past where most runs end -
+       they are for the runs that go long, and the ladder should not stop
+       rewarding a player before the run does. */
+    heroRankAt: [6, 15, 28, 45, 62, 80],
     /* Dark Bargain's price, which was two numbers written into the middle of
        waves.js and enemy.js. The upgrade's own tooltip quotes them, so they
        had to be somewhere a tooltip could reach. */

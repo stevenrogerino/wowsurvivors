@@ -432,6 +432,77 @@
     return pts;
   }
 
+  /** RIVETS along an edge.
+   *
+   *  A plate is held on by something. At the size the cast is drawn a rivet is
+   *  two pixels - a dark seat and a lit dome - and four of them along the lip
+   *  of a pauldron do more for "this is armour" than any amount of gradient
+   *  inside it, because they are HARD marks and a gradient is not.
+   */
+  function rivets(g, r, x0, y0, x1, y1, n) {
+    const dx = x1 - x0, dy = y1 - y0;
+    g.save();
+    for (let i = 0; i < n; i++) {
+      const t = (i + 0.5) / n;
+      const x = x0 + dx * t, y = y0 + dy * t;
+      g.fillStyle = r.line;
+      g.globalAlpha = 0.55;
+      g.beginPath(); g.ellipse(x, y + 0.35, 1.05, 0.95, 0, 0, WS.TAU); g.fill();
+      g.globalAlpha = 0.85;
+      g.fillStyle = r.key;
+      g.beginPath(); g.ellipse(x - 0.15, y - 0.2, 0.62, 0.55, 0, 0, WS.TAU); g.fill();
+    }
+    g.restore();
+  }
+
+  /** LAMES: the overlapping strips a piece of plate is actually built from.
+   *
+   *  Clipped to the shape they are laid in, so nothing grows. Each strip gets
+   *  a dark leading edge and a lit one just under it, which is what an
+   *  overlap looks like from the front. */
+  function lames(g, r, pts, n, horizontal) {
+    let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
+    for (const [x, y] of pts) {
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+    }
+    g.save();
+    g.beginPath();
+    g.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+    g.closePath();
+    g.clip();
+    g.lineCap = 'butt';
+    for (let i = 1; i <= n; i++) {
+      const t = i / (n + 1);
+      g.strokeStyle = r.line;
+      g.globalAlpha = 0.5;
+      g.lineWidth = 0.9;
+      g.beginPath();
+      if (horizontal) {
+        const y = minY + (maxY - minY) * t;
+        g.moveTo(minX - 2, y); g.lineTo(maxX + 2, y + (maxY - minY) * 0.06);
+      } else {
+        const x = minX + (maxX - minX) * t;
+        g.moveTo(x, minY - 2); g.lineTo(x + (maxX - minX) * 0.06, maxY + 2);
+      }
+      g.stroke();
+      g.strokeStyle = r.key;
+      g.globalAlpha = 0.34;
+      g.lineWidth = 0.8;
+      g.beginPath();
+      if (horizontal) {
+        const y = minY + (maxY - minY) * t + 1.1;
+        g.moveTo(minX - 2, y); g.lineTo(maxX + 2, y + (maxY - minY) * 0.06);
+      } else {
+        const x = minX + (maxX - minX) * t + 1.1;
+        g.moveTo(x, minY - 2); g.lineTo(x + (maxX - minX) * 0.06, maxY + 2);
+      }
+      g.stroke();
+    }
+    g.restore();
+  }
+
   function grip(g, hx0, hy0, hx1, hy1, t0, t1, w) {
     const x0 = hx0 + (hx1 - hx0) * t0, y0 = hy0 + (hy1 - hy0) * t0;
     const x1 = hx0 + (hx1 - hx0) * t1, y1 = hy0 + (hy1 - hy0) * t1;
@@ -1130,9 +1201,26 @@
       const drag = w.swing * 4;
       panel(g, [[cx - b.waist, WAIST_Y - 4 - lift], [cx + b.waist, WAIST_Y - 4 - lift],
         [cx + b.hip + 8 + drag, FOOT_Y], [cx - b.hip - 8 + drag, FOOT_Y]], C.robeRamp);
-      panel(g, [[cx - b.hip - 8 + drag, FOOT_Y], [cx + b.hip + 8 + drag, FOOT_Y],
-        [cx + b.hip + 6.5 + drag, FOOT_Y - 4.5], [cx - b.hip - 6.5 + drag, FOOT_Y - 4.5]],
-        C.trimRamp);
+      const hemPts = [[cx - b.hip - 8 + drag, FOOT_Y], [cx + b.hip + 8 + drag, FOOT_Y],
+        [cx + b.hip + 6.5 + drag, FOOT_Y - 4.5], [cx - b.hip - 6.5 + drag, FOOT_Y - 4.5]];
+      panel(g, hemPts, C.trimRamp);
+      /* The hem band carried the eye along the bottom of every robed survivor
+         and was one flat strip. Braid on a hem is a repeat - so it is drawn
+         as one, in the two marks everything else here is made of. */
+      g.save();
+      g.beginPath();
+      g.moveTo(hemPts[0][0], hemPts[0][1]);
+      for (let i = 1; i < hemPts.length; i++) g.lineTo(hemPts[i][0], hemPts[i][1]);
+      g.closePath(); g.clip();
+      const hw = (b.hip + 8) * 2;
+      for (let i = 0; i <= 11; i++) {
+        const x = cx - b.hip - 8 + drag + (hw * i) / 11;
+        g.strokeStyle = C.trimRamp.line; g.globalAlpha = 0.5; g.lineWidth = 0.9;
+        g.beginPath(); g.moveTo(x, FOOT_Y - 4.5); g.lineTo(x - 0.8, FOOT_Y); g.stroke();
+        g.strokeStyle = C.trimRamp.key; g.globalAlpha = 0.3;
+        g.beginPath(); g.moveTo(x + 1.1, FOOT_Y - 4.5); g.lineTo(x + 0.3, FOOT_Y); g.stroke();
+      }
+      g.restore();
       g.fillStyle = 'rgba(0,0,0,.30)';
       g.beginPath(); g.moveTo(cx - b.hip - 8 + drag, FOOT_Y);
       g.lineTo(cx + b.hip + 8 + drag, FOOT_Y); g.lineTo(cx + b.hip + 6 + drag, FOOT_Y - 1.5);
@@ -1208,6 +1296,24 @@
           const kx = hx + (fx - hx) * kt;
           const ky = (HIP_Y - 4 - lift) + (foot - (HIP_Y - 4 - lift)) * kt;
           const kw = b.leg * 0.53;
+          if (cfg.pauldrons) {
+            // A poleyn: the one plate on a leg that is a shape rather than a
+            // strip, and it lands exactly where the limb bends.
+            const kp = [[kx - kw * 1.05, ky - 3.4], [kx + kw * 1.05, ky - 3.4],
+              [kx + kw * 0.9, ky + 3.2], [kx - kw * 0.9, ky + 3.2]];
+            panel(g, kp, C.plateRamp);
+            g.save();
+            g.beginPath();
+            g.moveTo(kp[0][0], kp[0][1]);
+            for (let q = 1; q < kp.length; q++) g.lineTo(kp[q][0], kp[q][1]);
+            g.closePath(); g.clip();
+            g.fillStyle = 'rgba(255,255,255,.2)';
+            g.beginPath();
+            g.ellipse(kx - kw * 0.2, ky - 0.8, kw * 0.6, 1.6, 0, 0, WS.TAU);
+            g.fill();
+            g.restore();
+            rivets(g, C.plateRamp, kx - kw * 0.8, ky + 2.2, kx + kw * 0.8, ky + 2.2, 2);
+          }
           g.save();
           /* Light ON TOP of the cap and shadow under it, at low opacity. At
              full strength this was a dark ring round the leg and read as a
@@ -1254,6 +1360,21 @@
           [fx + dir * b.leg * 0.90, foot + 4.15 + tilt * 0.92],
           [fx - dir * b.leg * 0.42, foot + 4.15 - tilt * 0.92],
         ], ramp([0.17, 0.14, 0.12], 'leather'));
+        // A strap over the instep. Two hard lines where the boot closes, which
+        // is the one place on a leg the eye already goes.
+        g.save();
+        g.strokeStyle = ramp([0.22, 0.16, 0.10], 'leather').line;
+        g.globalAlpha = 0.7; g.lineWidth = 1.1; g.lineCap = 'round';
+        for (const k of [0, 1]) {
+          g.beginPath();
+          g.moveTo(fx - b.leg * 0.46, foot - 0.6 + k * 1.9);
+          g.lineTo(fx + b.leg * (0.5 + k * 0.1), foot + 0.1 + k * 1.9 + tilt * 0.3);
+          g.stroke();
+        }
+        g.globalAlpha = 0.9;
+        g.fillStyle = GOLD.shade;
+        g.fillRect(fx - b.leg * 0.12, foot - 1.2, 1.6, 1.4);
+        g.restore();
         /* The heel, under the back of the foot only - and it stops AT the
            sole, it does not hang below it. Built to project 0.9 below and
            0.05 of a leg behind, it put three of the heavier survivors 1px
@@ -1268,19 +1389,125 @@
           [fx - dir * b.leg * 0.45, foot + 4.5 - tilt],
         ], ramp([0.13, 0.11, 0.10], 'leather'));
         // and the cuff the leg goes into
-        panel(g, [
+        const cuffPts = [
           [fx - b.leg * 0.56, foot - 3.6],
           [fx + b.leg * 0.56, foot - 3.6],
           [fx + b.leg * 0.50, foot - 0.6],
           [fx - b.leg * 0.50, foot - 0.6],
-        ], C.trimRamp);
+        ];
+        panel(g, cuffPts, C.trimRamp);
+        rivets(g, C.trimRamp, fx - b.leg * 0.42, foot - 2.1,
+          fx + b.leg * 0.42, foot - 2.1, 3);
+        if (cfg.pauldrons) {
+          /* Greaves, on anyone in plate. Overlapping strips up the shin, which
+             is how a leg in armour is built and how it stops being a column. */
+          const gv = [[fx - b.leg * 0.5, foot - 15], [fx + b.leg * 0.5, foot - 15],
+            [fx + b.leg * 0.54, foot - 3.4], [fx - b.leg * 0.54, foot - 3.4]];
+          panel(g, gv, C.plateRamp);
+          lames(g, C.plateRamp, gv, 3, true);
+          rivets(g, C.plateRamp, fx - b.leg * 0.4, foot - 13.4,
+            fx + b.leg * 0.4, foot - 13.4, 2);
+        }
       }
     }
 
     // Torso: shoulders down to waist, tapered. One shape, so the outline is one
     // shape, which is the whole point of the silhouette rule.
-    panel(g, [[cx - b.sh, SHOULDER_Y - 2], [cx + b.sh, SHOULDER_Y - 2],
-      [cx + b.waist, WAIST_Y], [cx - b.waist, WAIST_Y]], C.bodyRamp);
+    const torso = [[cx - b.sh, SHOULDER_Y - 2], [cx + b.sh, SHOULDER_Y - 2],
+      [cx + b.waist, WAIST_Y], [cx - b.waist, WAIST_Y]];
+    panel(g, torso, C.bodyRamp);
+    /* A COLLAR. The garment ran straight into the neck with no edge on it -
+       and the neckline is the one part of a costume everybody looks at,
+       because it is next to the face. */
+    panel(g, [[cx - b.sh * 0.58, SHOULDER_Y - 2.6], [cx + b.sh * 0.58, SHOULDER_Y - 2.6],
+      [cx + b.sh * 0.48, SHOULDER_Y + 2.4], [cx - b.sh * 0.48, SHOULDER_Y + 2.4]],
+      C.trimRamp);
+    g.save();
+    g.strokeStyle = C.trimRamp.line; g.globalAlpha = 0.5; g.lineWidth = 0.8;
+    g.beginPath();
+    g.moveTo(cx - b.sh * 0.5, SHOULDER_Y + 0.4);
+    g.lineTo(cx + b.sh * 0.5, SHOULDER_Y + 0.4);
+    g.stroke();
+    g.restore();
+    if (!cfg.pauldrons) {
+      /* A GAMBESON on everyone who is not in plate.
+       *
+       * Cloth is not a flat field either. Padded armour is quilted, and the
+       * quilting is a grid of seams with the padding standing proud between
+       * them - a dark stitch line with a lit roll beside it, which is the
+       * same two marks a fold is made of and the same two the lames are.
+       * Kept to the chest so the belt and the sash still read, and clipped to
+       * the torso so the silhouette is untouched. */
+      g.save();
+      g.beginPath();
+      g.moveTo(torso[0][0], torso[0][1]);
+      for (let i = 1; i < torso.length; i++) g.lineTo(torso[i][0], torso[i][1]);
+      g.closePath(); g.clip();
+      const top = SHOULDER_Y + 1, bot = WAIST_Y - 3;
+      for (let i = 1; i <= 3; i++) {
+        const y = top + (bot - top) * (i / 4);
+        g.strokeStyle = C.bodyRamp.line; g.globalAlpha = 0.42; g.lineWidth = 0.85;
+        g.beginPath();
+        g.moveTo(cx - b.sh, y - 0.6); g.quadraticCurveTo(cx, y + 1, cx + b.sh, y - 0.6);
+        g.stroke();
+        g.strokeStyle = C.bodyRamp.key; g.globalAlpha = 0.26; g.lineWidth = 0.8;
+        g.beginPath();
+        g.moveTo(cx - b.sh, y + 0.9); g.quadraticCurveTo(cx, y + 2.5, cx + b.sh, y + 0.9);
+        g.stroke();
+      }
+      for (const dx of [-3.4, 3.4]) {
+        g.strokeStyle = C.bodyRamp.line; g.globalAlpha = 0.34; g.lineWidth = 0.8;
+        g.beginPath();
+        g.moveTo(cx + dx, top); g.lineTo(cx + dx * 1.25, bot);
+        g.stroke();
+      }
+      g.restore();
+      // and a seam where the sleeve is set into the shoulder
+      for (const dir of [-1, 1]) {
+        g.save();
+        g.strokeStyle = C.bodyRamp.line; g.globalAlpha = 0.4; g.lineWidth = 0.9;
+        g.beginPath();
+        g.moveTo(cx + dir * (b.sh - 2.4), SHOULDER_Y - 1.4);
+        g.quadraticCurveTo(cx + dir * (b.sh - 0.6), SHOULDER_Y + 3.5,
+          cx + dir * (b.sh - 2.8), SHOULDER_Y + 7.5);
+        g.stroke();
+        g.restore();
+      }
+    }
+    if (cfg.pauldrons) {
+      /* A CUIRASS on anyone wearing plate on their shoulders. The torso is the
+         largest single field on the figure and on the three heavies it was
+         one flat trapezoid - which is why they were the flattest survivors in
+         the cast by a wide margin while wearing the most armour of anyone.
+         A breastplate is a raised centre with a rolled edge, a belly lame at
+         the bottom, and rivets where the straps go. */
+      const cw = b.sh * 0.78, bw = b.waist * 0.82;
+      const chest = [[cx - cw, SHOULDER_Y + 1], [cx + cw, SHOULDER_Y + 1],
+        [cx + bw, WAIST_Y - 2.5], [cx - bw, WAIST_Y - 2.5]];
+      panel(g, chest, C.plateRamp);
+      lames(g, C.plateRamp, chest, 2, true);
+      g.save();
+      g.beginPath();
+      g.moveTo(chest[0][0], chest[0][1]);
+      for (let i = 1; i < chest.length; i++) g.lineTo(chest[i][0], chest[i][1]);
+      g.closePath(); g.clip();
+      // the keel down the middle, which is what makes a breastplate a dome
+      g.strokeStyle = C.plateRamp.key;
+      g.globalAlpha = 0.34; g.lineWidth = 1.2;
+      g.beginPath();
+      g.moveTo(cx - 0.6, SHOULDER_Y + 1); g.lineTo(cx - 0.6, WAIST_Y - 2.5);
+      g.stroke();
+      g.strokeStyle = C.plateRamp.line;
+      g.globalAlpha = 0.4;
+      g.beginPath();
+      g.moveTo(cx + 0.8, SHOULDER_Y + 1); g.lineTo(cx + 0.8, WAIST_Y - 2.5);
+      g.stroke();
+      g.restore();
+      rivets(g, C.plateRamp, cx - cw + 1.2, SHOULDER_Y + 3.2,
+        cx - bw + 1, WAIST_Y - 4.5, 3);
+      rivets(g, C.plateRamp, cx + cw - 1.2, SHOULDER_Y + 3.2,
+        cx + bw - 1, WAIST_Y - 4.5, 3);
+    }
 
     if (cfg.tabard) {
       // A band of the survivor's own colour down the chest: the single
@@ -1353,6 +1580,18 @@
       // the tail of the strap, threaded through and hanging
       panel(g, [[cx + bw, WAIST_Y - 3.4], [cx + bw + 3.6, WAIST_Y - 3.2],
         [cx + bw + 3.2, WAIST_Y + 2.6], [cx + bw - 0.2, WAIST_Y + 2.2]], LEATHER);
+      /* A POUCH, on the far hip. Everybody in this game carries potions and
+         nobody had anywhere to put them - and a belt with one thing on it is
+         a belt, while a belt with two is kit. */
+      const qx = cx - b.waist * 0.62;
+      panel(g, [[qx - 3.2, WAIST_Y - 2.6], [qx + 3.2, WAIST_Y - 2.6],
+        [qx + 2.8, WAIST_Y + 4.4], [qx - 2.8, WAIST_Y + 4.4]],
+        ramp([0.34, 0.25, 0.16], 'leather'));
+      panel(g, [[qx - 3.4, WAIST_Y - 3.2], [qx + 3.4, WAIST_Y - 3.2],
+        [qx + 3, WAIST_Y - 0.4], [qx - 3, WAIST_Y - 0.4]],
+        ramp([0.42, 0.31, 0.20], 'leather'));
+      g.fillStyle = GOLD.core;
+      g.beginPath(); g.ellipse(qx, WAIST_Y - 0.6, 1.1, 0.9, 0, 0, WS.TAU); g.fill();
     }
 
     if (cfg.strap) {
@@ -1446,9 +1685,20 @@
       const k = cfg.pauldrons;
       for (const dir of [-1, 1]) {
         const px = cx + dir * (b.sh + 0.5);
-        panel(g, [[px - dir * 5 * k, SHOULDER_Y - 3.4 * k], [px + dir * 2.4 * k, SHOULDER_Y - 3.1 * k],
-          [px + dir * 4.4 * k, SHOULDER_Y - 0.6 * k], [px + dir * 4 * k, SHOULDER_Y + 2.6 * k],
-          [px - dir * 5 * k, SHOULDER_Y + 2.2 * k]], dir < 0 ? ramp([0.40, 0.44, 0.52]) : C.plateRamp);
+        const shape = [[px - dir * 5 * k, SHOULDER_Y - 3.4 * k],
+          [px + dir * 2.4 * k, SHOULDER_Y - 3.1 * k],
+          [px + dir * 4.4 * k, SHOULDER_Y - 0.6 * k],
+          [px + dir * 4 * k, SHOULDER_Y + 2.6 * k],
+          [px - dir * 5 * k, SHOULDER_Y + 2.2 * k]];
+        const pr = dir < 0 ? ramp([0.40, 0.44, 0.52], 'metal') : C.plateRamp;
+        panel(g, shape, pr);
+        /* A pauldron is not one piece of steel. Two lames across it and a row
+           of rivets along the lip is what tells plate from a painted shape,
+           and both are hard marks - the thing this rig keeps proving is that
+           a gradient inside an outline measures and reads as nothing. */
+        lames(g, pr, shape, 2, true);
+        rivets(g, pr, px - dir * 4.2 * k, SHOULDER_Y + 1.9 * k,
+          px + dir * 3.2 * k, SHOULDER_Y + 2.2 * k, k > 2 ? 4 : 3);
         if (dir > 0) {
           g.fillStyle = 'rgba(255,255,255,.22)';
           g.beginPath();
@@ -1553,6 +1803,33 @@
     // Near arm, over the torso, with a hand.
     taper(g, cx + b.sh - 1, SHOULDER_Y + 1, cx + b.sh + 2 + w.swing * 3.5, WAIST_Y - 2,
       b.arm * 0.68, b.arm * 0.4, C.bodyRamp);
+    /* A VAMBRACE on the working forearm, for everyone.
+     *
+     * The arms were the last bare run of colour on the figure: one tapered
+     * shape from shoulder to wrist with nothing between the two. Everybody
+     * who swings something wears something on that arm - plate for the ones
+     * already in plate, bound leather for the rest - and it lands right next
+     * to the hand, which is where the eye is already going. */
+    {
+      const vr = cfg.pauldrons ? C.plateRamp : LEATHER;
+      const vv = [[cx + b.sh - 1.8, WAIST_Y - 13], [cx + b.sh + 3.4, WAIST_Y - 13.4],
+        [cx + b.sh + 3.8, WAIST_Y - 5.4], [cx + b.sh - 1.4, WAIST_Y - 5]];
+      panel(g, vv, vr);
+      if (cfg.pauldrons) {
+        lames(g, vr, vv, 2, true);
+        rivets(g, vr, cx + b.sh - 0.6, WAIST_Y - 6.4, cx + b.sh + 2.8, WAIST_Y - 6.6, 2);
+      } else {
+        g.save();
+        g.strokeStyle = vr.line; g.globalAlpha = 0.55; g.lineWidth = 0.8;
+        for (const k of [0, 1, 2]) {
+          g.beginPath();
+          g.moveTo(cx + b.sh - 1.6, WAIST_Y - 11.4 + k * 2.4);
+          g.lineTo(cx + b.sh + 3.5, WAIST_Y - 11.7 + k * 2.4);
+          g.stroke();
+        }
+        g.restore();
+      }
+    }
     if (cfg.bracer) {
       // A wide cuff on the working arm. One hard edge on a soft limb, and it
       // lands exactly where the eye already is - at the hands.
@@ -1635,10 +1912,10 @@
     g.closePath();
     g.clip();
     const drop = foot - (SHOULDER_Y - 4);
-    for (let i = -2; i <= 2; i++) {
+    for (let i = -3; i <= 3; i++) {
       if (!i) continue;
-      const topX = cx + i * b.sh * 0.42;
-      const botX = cx + i * (b.sh + flare) * 0.62 + trail * 0.55;
+      const topX = cx + i * b.sh * 0.30;
+      const botX = cx + i * (b.sh + flare) * 0.44 + trail * 0.55;
       const wide = 1.1 + Math.abs(i) * 0.5;
       // the shaded side of the channel
       const shade = g.createLinearGradient(topX - wide, 0, topX + wide, 0);
@@ -1677,6 +1954,22 @@
       g.lineTo(botX + wide * 2.1, foot + 2);
       g.stroke();
     }
+    /* A BAND ALONG THE HEM. The cloak is the largest single field on the two
+       survivors who wear a big one, and after the folds it was still the flat
+       part of them. A hem is a doubled edge of cloth - heavier, darker, and
+       stitched - so it is three marks and all of them are lines. */
+    g.strokeStyle = 'rgba(0,0,0,.30)';
+    g.lineWidth = 2.2;
+    g.beginPath();
+    g.moveTo(pts[pts.length - 1][0], pts[pts.length - 1][1] - 2.4);
+    for (let i = pts.length - 2; i >= 2; i--) g.lineTo(pts[i][0], pts[i][1] - 2.4);
+    g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,.14)';
+    g.lineWidth = 1;
+    g.beginPath();
+    g.moveTo(pts[pts.length - 1][0], pts[pts.length - 1][1] - 4.2);
+    for (let i = pts.length - 2; i >= 2; i--) g.lineTo(pts[i][0], pts[i][1] - 4.2);
+    g.stroke();
     g.restore();
     void drop;
     // The lining catches the light along the shoulder line only.
@@ -2336,6 +2629,20 @@
     { emberHem: 1, emberMantle: 1 },
     { emberHem: 1, emberMantle: 1, emberTrain: 1 },
     { emberHem: 1, emberMantle: 1.25, emberTrain: 1.2, emberCrown: 1 },
+    /* Two more tiers past the crown. Everything below rank 4 is CLOTH the
+       survivor is given; these two are what the ember does to the person
+       wearing it - a set of burning pinions off the shoulders, and then the
+       brand, which is the ember itself showing through the chest. They are
+       additive, so nothing the earlier ranks established is taken away. */
+    /* The CROWN does not grow past rank 4. It already sits nearer the top of
+       the tile than anything else in the rig - that is what its own rule in
+       check-hero.js is about - and scaling it 1.15 and 1.3 put every survivor
+       2px and then 11px through the top of their own frame. The two new
+       tiers carry their progression in the pieces that have room to grow. */
+    { emberHem: 1, emberMantle: 1.25, emberTrain: 1.2, emberCrown: 1,
+      emberWings: 1 },
+    { emberHem: 1, emberMantle: 1.25, emberTrain: 1.2, emberCrown: 1,
+      emberWings: 1.08, emberBrand: 1 },
   ];
   const MAX_RANK = RANKS.length - 1;
 
@@ -2694,6 +3001,119 @@
    *  at this size IS the priest's halo and that belongs to her. The points are
    *  drawn opaque before they are lit, so the crown enters the silhouette and
    *  earns the same gold rim the rest of the figure has. */
+  /** EMBER WINGS: pinions of held light off the shoulders.
+   *
+   *  The first four ranks are all garment - a hem, a mantle, a train, a crown
+   *  - and they are all the same material. By the fifth the survivor has been
+   *  carrying the ember long enough that it is coming out of them, so this is
+   *  the first thing on the ladder that is not cloth. Drawn behind the body
+   *  and in the survivor's own accent so it cannot be mistaken for armour. */
+  function emberWings(g, cfg, C, b) {
+    const k = cfg.emberWings;
+    if (!k) return;
+    /* EVERY SET IS THE CLASS'S OWN.
+     *
+     * Built identically for all ten, these pushed the cast TOGETHER: the same
+     * big shape of light on every pair of shoulders took shaman and
+     * ruinseeker - already the closest pair in the roster - from 0.44 apart
+     * at rank 0 to 0.33 at the top, and check-hero failed with "the ranks are
+     * turning the cast into one character". A reward that makes everyone look
+     * the same is not a reward. The count, the sweep and the rake come off
+     * the class id, so no two sets of pinions are cut alike.
+     *
+     * They are also shorter than the first attempt, which put the priest and
+     * the rogue 2px through the top of their own tile at rank 6. */
+    const seed = String(cfg.weapon) + String(cfg.head) + String(cfg.cloak);
+    let h = 0;
+    for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+    h = Math.abs(h);
+    const n = 3 + (h % 3);                       // three to five pinions
+    const rake = 0.18 + ((h >> 3) % 5) * 0.055;  // how far back they sweep
+    const base = 20 + ((h >> 6) % 4) * 2.5;
+
+    /* Drawn as SOLID pinions first and lit afterwards.
+     *
+     * The first version was nothing but additive light, and additive light on
+     * a pale figure adds nothing: the priest's whole rank-5 step came to 96
+     * changed pixels and check-hero rejected it as "nothing a player would
+     * see for having earned it". It is the same fault the eyes had before
+     * they were given sockets. A pinion is a thing with an edge; the glow
+     * goes on top of it. */
+    for (const dir of [-1, 1]) {
+      for (let i = 0; i < n; i++) {
+        const spread = rake + i * (0.86 / n);
+        const len = (base + i * 3.8) * k;
+        const x0 = 50 + dir * (b.sh - 1.5), y0 = SHOULDER_Y + 1 + i * 2.4;
+        const x1 = x0 + dir * WS.cos(spread) * len;
+        const y1 = y0 - WS.sin(spread) * len * 0.58;   // out more than up: a pinion that rises is a pinion through the top of the tile
+        const mx = x0 + dir * len * 0.5, my = y0 - len * 0.62;
+        const wide = 4.6 - i * 0.5;
+        g.save();
+        lit(g, C.emberRamp, x0, y0 + wide, x1, y1);
+        g.beginPath();
+        g.moveTo(x0, y0 + wide * 0.5);
+        g.quadraticCurveTo(mx + dir * wide * 0.4, my + wide * 0.6, x1, y1);
+        g.quadraticCurveTo(mx - dir * wide * 0.5, my - wide * 0.7, x0, y0 - wide * 0.5);
+        g.closePath();
+        g.fill();
+        finish(g, C.emberRamp, WS.min(x0, x1) - wide, WS.min(y0, y1) - wide,
+          WS.max(x0, x1) + wide, WS.max(y0, y1) + wide);
+        g.restore();
+      }
+    }
+    // and then the light off them
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    for (const dir of [-1, 1]) {
+      for (let i = 0; i < n; i++) {
+        const spread = rake + i * (0.86 / n);
+        const len = (base + i * 3.8) * k;
+        const x0 = 50 + dir * (b.sh - 1.5), y0 = SHOULDER_Y + 1 + i * 2.4;
+        const x1 = x0 + dir * WS.cos(spread) * len;
+        const y1 = y0 - WS.sin(spread) * len * 0.58;   // out more than up: a pinion that rises is a pinion through the top of the tile
+        const grd = g.createLinearGradient(x0, y0, x1, y1);
+        grd.addColorStop(0, WS.rgb(C.emberRgb, 0.30 * k));
+        grd.addColorStop(0.6, WS.rgb(C.emberRgb, 0.18 * k));
+        grd.addColorStop(1, WS.rgb(C.emberRgb, 0));
+        g.strokeStyle = grd;
+        g.lineWidth = 2.2 - i * 0.28;
+        g.lineCap = 'round';
+        g.beginPath();
+        g.moveTo(x0, y0);
+        g.quadraticCurveTo(x0 + dir * len * 0.5, y0 - len * 0.62, x1, y1);
+        g.stroke();
+      }
+    }
+    g.restore();
+  }
+
+  /** EMBER BRAND: the light itself, through the chest. The last rank, and the
+   *  only one that changes the survivor rather than what they are wearing. */
+  function emberBrand(g, cfg, C, b, k) {
+    if (!k) return;
+    const y = (SHOULDER_Y + WAIST_Y) * 0.5 - 1;
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    const halo = g.createRadialGradient(50, y, 0.5, 50, y, 13 * k);
+    halo.addColorStop(0, WS.rgb(C.emberRgb, 0.55 * k));
+    halo.addColorStop(0.5, WS.rgb(C.emberRgb, 0.2 * k));
+    halo.addColorStop(1, WS.rgb(C.emberRgb, 0));
+    g.fillStyle = halo;
+    g.beginPath(); g.arc(50, y, 13 * k, 0, WS.TAU); g.fill();
+    g.strokeStyle = WS.rgb(C.emberRgb, 0.85 * k);
+    g.lineWidth = 1.3;
+    g.lineJoin = 'round';
+    g.beginPath();
+    for (let i = 0; i < 3; i++) {
+      const a = -WS.PI / 2 + i * (WS.TAU / 3);
+      const px = 50 + WS.cos(a) * 4.6 * k, py = y + WS.sin(a) * 4.6 * k;
+      if (i) g.lineTo(px, py); else g.moveTo(px, py);
+    }
+    g.closePath(); g.stroke();
+    g.beginPath(); g.arc(50, y, 1.9 * k, 0, WS.TAU); g.stroke();
+    g.restore();
+  }
+
   function emberCrown(g, cfg, C, k, b) {
     if (!k) return;
     const cx = 50;
@@ -2771,7 +3191,17 @@
     emberTrain(g, cfg, C, b, w, cfg.emberTrain || 0);
     drawCloak(g, cfg, C, b, w);
     g.restore();
+    if (cfg.emberWings) {
+      g.save(); g.translate(0, -lift);
+      emberWings(g, cfg, C, b);
+      g.restore();
+    }
     drawBody(g, cfg, C, b, w, lift);
+    if (cfg.emberBrand) {
+      g.save(); g.translate(0, -lift);
+      emberBrand(g, cfg, C, b, cfg.emberBrand);
+      g.restore();
+    }
     if (cfg.emberHem) { g.save(); g.translate(0, -cloakLift); emberHem(g, cfg, C, b, w); g.restore(); }
     g.save(); g.translate(0, -lift);
     emberMantle(g, cfg, C, b, cfg.emberMantle || 0);

@@ -158,6 +158,14 @@
         }
         poly(g, [[x - wr, y - 1 * u], [x + wr, y - 1 * u],
           [x + wr * 0.92, y + 4 * u], [x - wr * 0.92, y + 4 * u]], gold.hi, gold.line, u);
+        // stones set in the band - a crown without them is a paper hat
+        for (let i = -1; i <= 1; i++) {
+          const sx = x + i * wr * 0.52;
+          g.fillStyle = gold.line;
+          g.beginPath(); g.ellipse(sx, y + 1.9 * u, 1.9 * u, 1.7 * u, 0, 0, WS.TAU); g.fill();
+          g.fillStyle = i ? '#7fd8ff' : '#ff8f6b';
+          g.beginPath(); g.ellipse(sx, y + 1.6 * u, 1.2 * u, 1.1 * u, 0, 0, WS.TAU); g.fill();
+        }
         g.save();
         g.globalCompositeOperation = 'lighter';
         const cg = g.createRadialGradient(x, y - 4 * u, 1, x, y - 4 * u, 14 * u);
@@ -199,14 +207,14 @@
           g.closePath(); g.fill();
           // growth rings, crowded at the root
           g.save();
-          g.strokeStyle = bone.line; g.lineWidth = 0.8 * u;
-          for (let i = 1; i <= 4; i++) {
-            const t = Math.pow(i / 5, 1.4) * 0.7;
+          g.strokeStyle = bone.line; g.lineWidth = 1.1 * u;
+          for (let i = 1; i <= 7; i++) {
+            const t = Math.pow(i / 8, 1.3) * 0.82;
             const a = P(t), n1 = P(t + 0.02), n0 = P(t - 0.02);
             const ddx = n1[0] - n0[0], ddy = n1[1] - n0[1];
             const L = Math.hypot(ddx, ddy) || 1;
             const nx = -ddy / L, ny = ddx / L, w = W(t) * 0.9;
-            g.globalAlpha = 0.5 * (1 - t);
+            g.globalAlpha = 0.62 * (1 - t * 0.7);
             g.beginPath();
             g.moveTo(a[0] + nx * w, a[1] + ny * w);
             g.lineTo(a[0] - nx * w, a[1] - ny * w);
@@ -230,6 +238,10 @@
           g.lineTo(x1, y1);
           g.lineTo(x0 - nx / L * w, y0 - ny / L * w);
           g.closePath(); g.fill();
+          // a spine down each tuft, so the mane is hair and not a paper fan
+          g.strokeStyle = p.line; g.globalAlpha = 0.45; g.lineWidth = 0.7 * u;
+          g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+          g.globalAlpha = 1;
         }
 
       } else if (mark === 'pauldrons') {
@@ -603,6 +615,28 @@
       g.beginPath();
       g.ellipse(lx, top + (foot - top) * 0.52, w * u * 0.72, w * u * 0.62, 0, 0, WS.TAU);
       g.fill();
+      /* And bands down the shank. Nine creatures take their legs from here,
+         and a limb that is one colour from joint to toe is the same bare
+         column the bodies used to be - the last unworked surface left on the
+         bestiary, repeated four times per animal. */
+      g.save();
+      g.strokeStyle = p.line;
+      g.globalAlpha = 0.4;
+      g.lineWidth = WS.max(0.7, w * u * 0.18);
+      for (const t of [0.66, 0.8]) {
+        const by = top + (foot - top) * t;
+        g.beginPath();
+        g.moveTo(lx - w * u * 0.42, by);
+        g.lineTo(lx + w * u * 0.42, by + w * u * 0.16);
+        g.stroke();
+      }
+      g.globalAlpha = 0.26;
+      g.strokeStyle = p.hi;
+      g.beginPath();
+      g.moveTo(lx - w * u * 0.3, top + (foot - top) * 0.3);
+      g.lineTo(lx - w * u * 0.22, top + (foot - top) * 0.62);
+      g.stroke();
+      g.restore();
     }
     for (const dx of xs) {
       const lx = cx + dx * u, foot = bottom + drop * u;
@@ -662,16 +696,16 @@
     g.ellipse(cx, cy, rx, ry, rot || 0, 0, WS.TAU);
     g.clip();
     g.lineCap = 'round';
-    const a0 = alpha === undefined ? 0.26 : alpha;
-    for (let row = 0; row < 2; row++) {
+    const a0 = alpha === undefined ? 0.4 : alpha;
+    for (let row = 0; row < 3; row++) {
       for (let i = 0; i < n; i++) {
         const t = (i + (row ? 0.5 : 0)) / n;
         const x = cx - rx * 0.78 + rx * 1.56 * t;
-        const y = cy - ry * 0.5 + row * ry * 0.5 + Math.sin(t * 7.1 + row) * ry * 0.1;
+        const y = cy - ry * 0.55 + row * ry * 0.42 + Math.sin(t * 7.1 + row) * ry * 0.1;
         // every tuft its own length and its own tilt
         const len = ry * (0.16 + 0.12 * Math.abs(Math.sin(t * 11 + row * 2)));
         const tilt = lean + 0.5 * Math.sin(t * 9.3 + row * 1.7);
-        g.globalAlpha = a0 * (row ? 0.8 : 1);
+        g.globalAlpha = a0 * (row === 1 ? 0.85 : row === 2 ? 0.7 : 1);
         g.strokeStyle = p.line;
         g.lineWidth = Math.max(0.7, rx * 0.035);
         g.beginPath();
@@ -752,6 +786,7 @@
 
     /* --- humanoid frames -------------------------------------------------- */
     lampling(g, s, p) {
+      // (the frame goes on after the body, below)
       const cx = s / 2, cy = s * 0.60, u = s / 100;
       shaded(g, cx, cy, 20 * u, 22 * u, p);                       // hunched body
       poly(g, [[cx - 4 * u, cy - 20 * u], [cx, cy - 46 * u], [cx + 4 * u, cy - 20 * u]], p.glow, p.line, u); // candle
@@ -763,6 +798,37 @@
       poly(g, [[cx - 11 * u, cy - 18 * u], [cx - 16 * u, cy - 30 * u], [cx - 6 * u, cy - 22 * u]], p.lo, p.line, u);
       poly(g, [[cx + 11 * u, cy - 18 * u], [cx + 16 * u, cy - 30 * u], [cx + 6 * u, cy - 22 * u]], p.lo, p.line, u);
       eyes(g, cx, cy - 14 * u, 4.5 * u, 1.7 * u, '#ffd36b');
+      /* A LAMPLING IS A LAMP, and it was a smooth egg with a flame on top.
+         Panes in a frame, a collar where the glass meets the housing and a
+         foot under it - all of which are hard lines, and none of which touch
+         the outline. */
+      {
+        const cx2 = s / 2, cy2 = s * 0.56, u2 = s / 100;
+        g.save();
+        g.beginPath(); g.ellipse(cx2, cy2, 24 * u2, 27 * u2, 0, 0, WS.TAU); g.clip();
+        g.strokeStyle = p.line; g.globalAlpha = 0.45; g.lineWidth = 1.6 * u2;
+        for (const dx of [-11, 0, 11]) {
+          g.beginPath();
+          g.moveTo(cx2 + dx * u2, cy2 - 30 * u2);
+          g.quadraticCurveTo(cx2 + dx * 1.2 * u2, cy2, cx2 + dx * u2, cy2 + 30 * u2);
+          g.stroke();
+        }
+        g.globalAlpha = 0.28; g.strokeStyle = p.hi; g.lineWidth = 1.1 * u2;
+        for (const dx of [-11, 0, 11]) {
+          g.beginPath();
+          g.moveTo(cx2 + (dx + 2) * u2, cy2 - 30 * u2);
+          g.quadraticCurveTo(cx2 + (dx + 2) * 1.2 * u2, cy2, cx2 + (dx + 2) * u2, cy2 + 30 * u2);
+          g.stroke();
+        }
+        g.globalAlpha = 0.4; g.strokeStyle = p.line; g.lineWidth = 2 * u2;
+        for (const dy of [-13, 13]) {
+          g.beginPath();
+          g.moveTo(cx2 - 26 * u2, cy2 + dy * u2);
+          g.quadraticCurveTo(cx2, cy2 + (dy + 3) * u2, cx2 + 26 * u2, cy2 + dy * u2);
+          g.stroke();
+        }
+        g.restore();
+      }
     },
 
     mongrel(g, s, p) {
@@ -800,7 +866,26 @@
       // over the body.
       shaded(g, cx, cy + 12 * u, 19 * u, 12 * u,
         { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow });
-      shaded(g, cx, cy - 20 * u, 11 * u, 11 * u, { hi: '#d6c2a8', mid: '#b89b7c', lo: '#7a6350', line: '#4a3b2f', glow: '#fff' });
+      /* Buttons and a lapel. The bandit is a person in a coat and the coat
+         had no fastenings on it at all - and a row of buttons is the cheapest
+         hard-edged thing a garment can carry. */
+      g.save();
+      g.beginPath(); g.ellipse(cx, cy + 4 * u, 18 * u, 24 * u, 0, 0, WS.TAU); g.clip();
+      g.strokeStyle = p.line; g.globalAlpha = 0.5; g.lineWidth = 1.2 * u;
+      g.beginPath();
+      g.moveTo(cx - 8 * u, cy - 16 * u);
+      g.quadraticCurveTo(cx - 2 * u, cy - 8 * u, cx - 3 * u, cy + 18 * u);
+      g.stroke();
+      g.globalAlpha = 1;
+      for (let i = 0; i < 4; i++) {
+        const by = cy + (-10 + i * 7) * u;
+        g.fillStyle = p.line;
+        g.beginPath(); g.ellipse(cx + 1 * u, by + 0.6 * u, 1.9 * u, 1.7 * u, 0, 0, WS.TAU); g.fill();
+        g.fillStyle = p.hi;
+        g.beginPath(); g.ellipse(cx + 0.7 * u, by, 1.3 * u, 1.2 * u, 0, 0, WS.TAU); g.fill();
+      }
+      g.restore();
+      shaded(g, cx, cy - 20 * u, 11 * u, 11 * u, { hi: '#d6c2a8', mid: '#b89b7c', lo: '#7a6350', dark: '#5e4b3c', line: '#4a3b2f', glow: '#fff' });
       g.fillStyle = p.mid;                                        // red bandana
       g.beginPath(); g.ellipse(cx, cy - 18 * u, 11.5 * u, 5 * u, 0, WS.PI, WS.TAU); g.fill();
       g.fillStyle = p.lo;
@@ -822,7 +907,13 @@
       legs(g, p, cx, cy + 24 * u, u, [-13, 13], 8, 8);
       shaded(g, cx - 30 * u, cy + 4 * u, 9 * u, 17 * u, p, -0.16);
       shaded(g, cx + 30 * u, cy + 4 * u, 9 * u, 17 * u, p, 0.16);
+      // the arms carry the same coat the body does - they were the last bare
+      // masses on him and they are a fifth of his area
+      for (const dir of [-1, 1]) {
+        pelt(g, p, cx + dir * 30 * u, cy + 4 * u, 9 * u, 17 * u, dir * 0.16, 3, 0.3, 0.3);
+      }
       shaded(g, cx, cy + 2 * u, 31 * u, 25 * u, p);               // the one mass
+      pelt(g, p, cx, cy + 2 * u, 31 * u, 25 * u, 0, 8, 0.4, 0.2);
       /* The shoulders, as a light on the same form rather than a shape on top
          of it: a highlight across the top of the mass, clipped inside it. */
       g.save();
@@ -876,6 +967,18 @@
       shaded(g, cx + 31 * u, cy + 19 * u, 9 * u, 8 * u, STONE);
       shaded(g, cx, cy - 16 * u, 11 * u, 9 * u, p);               // head, sunk in
       g.fillStyle = p.lo; g.fillRect(cx - 12 * u, cy - 18 * u, 24 * u, 4 * u);
+      g.save();
+      g.strokeStyle = p.line; g.globalAlpha = 0.5; g.lineWidth = 1.2 * u;
+      g.beginPath();                                               // the jaw
+      g.moveTo(cx - 8 * u, cy - 11 * u);
+      g.quadraticCurveTo(cx, cy - 8 * u, cx + 8 * u, cy - 11 * u);
+      g.stroke();
+      g.globalAlpha = 0.3; g.strokeStyle = p.hi;
+      g.beginPath();
+      g.moveTo(cx - 8 * u, cy - 12.4 * u);
+      g.quadraticCurveTo(cx, cy - 9.4 * u, cx + 8 * u, cy - 12.4 * u);
+      g.stroke();
+      g.restore();
       eyes(g, cx, cy - 17 * u, 4.5 * u, 1.7 * u, '#ff8f6b');
     },
 
@@ -1152,8 +1255,36 @@
         g.stroke();
       }
       shaded(g, cx, cy - 16 * u, 11 * u, 10 * u, p);
+      /* Wrappings. A geist is a bound thing and this was a smooth pale ball -
+         the cloth it is wound in is the whole of what it wears. */
+      g.save();
+      g.beginPath(); g.ellipse(cx, cy, 15 * u, 14 * u, 0, 0, WS.TAU); g.clip();
+      g.lineCap = 'round';
+      for (let i = 0; i < 5; i++) {
+        const y = cy + (-10 + i * 5.5) * u;
+        g.strokeStyle = p.line; g.globalAlpha = 0.4; g.lineWidth = 1.4 * u;
+        g.beginPath();
+        g.moveTo(cx - 17 * u, y);
+        g.quadraticCurveTo(cx, y + 2.6 * u, cx + 17 * u, y - 1 * u);
+        g.stroke();
+        g.strokeStyle = p.hi; g.globalAlpha = 0.24; g.lineWidth = 1.1 * u;
+        g.beginPath();
+        g.moveTo(cx - 17 * u, y + 1.8 * u);
+        g.quadraticCurveTo(cx, y + 4.4 * u, cx + 17 * u, y + 0.8 * u);
+        g.stroke();
+      }
+      g.restore();
       g.fillStyle = '#141a20';                                     // stitched mask
       g.fillRect(cx - 11 * u, cy - 19 * u, 22 * u, 6 * u);
+      g.save();                                                    // and its stitches
+      g.strokeStyle = 'rgba(214,222,232,.7)'; g.lineWidth = 0.9 * u;
+      for (let i = -3; i <= 3; i++) {
+        g.beginPath();
+        g.moveTo(cx + i * 3 * u - 1.2 * u, cy - 19 * u);
+        g.lineTo(cx + i * 3 * u + 1.2 * u, cy - 13 * u);
+        g.stroke();
+      }
+      g.restore();
       eyes(g, cx, cy - 16 * u, 4.5 * u, 1.8 * u, '#9ff5ff');
     },
 
@@ -1519,6 +1650,7 @@
          head at the body's own centre height, as this did, just made two
          spheres of the same size in a row. */
       shaded(g, cx + 3 * u, cy - 1 * u, 23 * u, 18 * u, p);         // humped body
+      pelt(g, p, cx + 3 * u, cy - 1 * u, 23 * u, 18 * u, 0, 8, 0.55, 0.3);
       /* Hide. A boar is a slab of muscle under a thick coat and this was one
          smooth egg - second flattest in the bestiary at 22.6%. A shoulder
          mass lit from above, two creases behind it where the hide folds, and
@@ -1556,6 +1688,7 @@
         g.stroke();
       }
       shaded(g, cx - 21 * u, cy + 6 * u, 13 * u, 12 * u, p);        // low head
+      pelt(g, p, cx - 21 * u, cy + 6 * u, 13 * u, 12 * u, 0, 4, 0.35, 0.28);
       poly(g, [[cx - 30 * u, cy + 7 * u], [cx - 41 * u, cy + 11 * u], [cx - 29 * u, cy + 15 * u]],
         p.hi, p.line, u);                                          // snout
       /* Tusks. They have to grow out of the snout and curl only a little: an
@@ -1600,9 +1733,9 @@
       // and a bristled hide under them
       g.save();
       g.beginPath(); g.ellipse(cx, cy + 4 * u, 22 * u, 24 * u, 0, 0, WS.TAU); g.clip();
-      g.strokeStyle = p.line; g.globalAlpha = 0.3; g.lineWidth = 0.9 * u;
-      for (let i = 0; i < 9; i++) {
-        const a = WS.PI * (0.1 + i * 0.09);
+      g.strokeStyle = p.line; g.globalAlpha = 0.42; g.lineWidth = 1.1 * u;
+      for (let i = 0; i < 15; i++) {
+        const a = WS.PI * (0.08 + i * 0.056);
         g.beginPath();
         g.moveTo(cx - WS.cos(a) * 20 * u, cy - WS.sin(a) * 20 * u);
         g.lineTo(cx - WS.cos(a) * 9 * u, cy - WS.sin(a) * 9 * u + 4 * u);
@@ -1675,6 +1808,7 @@
         g.beginPath(); g.ellipse(cx + fx * u, cy + 34 * u, 5 * u, 2.4 * u, 0, 0, WS.TAU); g.fill();
       }
       shaded(g, cx, cy, 20 * u, 17 * u, p);
+      pelt(g, p, cx, cy, 20 * u, 17 * u, 0, 7, 0.4, 0.26);
       // plumage: three overlapping coverts down the flank
       g.save();
       g.beginPath(); g.ellipse(cx, cy, 20 * u, 17 * u, 0, 0, WS.TAU); g.clip();
@@ -1767,6 +1901,18 @@
           g.moveTo(kx, ky);
           g.quadraticCurveTo(kx + dir * 5 * u, fy - 9 * u, fx, fy);
           g.stroke();
+          // bands down the leg, which is where a spider's pattern actually is
+          g.strokeStyle = p.dark;
+          g.lineWidth = 3.6 * u;
+          for (let q = 1; q <= 2; q++) {
+            const t = q / 3;
+            const bx = cx + dir * 6 * u + (kx - cx - dir * 6 * u) * t;
+            const by = cy + (ky - cy) * t;
+            g.beginPath();
+            g.moveTo(bx - dir * 1.4 * u, by - 1 * u);
+            g.lineTo(bx + dir * 1.4 * u, by + 1 * u);
+            g.stroke();
+          }
           // the joint, and hairs off the upper segment
           g.fillStyle = p.lo;
           g.beginPath(); g.ellipse(kx, ky, 2.2 * u, 2 * u, 0, 0, WS.TAU); g.fill();
@@ -1794,14 +1940,14 @@
       g.beginPath(); g.ellipse(cx + 4 * u, cy + 4 * u, 18 * u, 16 * u, 0, 0, WS.TAU); g.clip();
       for (let i = 0; i < 4; i++) {
         const y = cy + (-7 + i * 5.5) * u, w = (11 - i * 1.6) * u;
-        g.fillStyle = 'rgba(255,240,220,.30)';
+        g.fillStyle = 'rgba(255,240,220,.46)';
         g.beginPath();
         g.moveTo(cx + 5 * u - w, y);
         g.lineTo(cx + 5 * u, y + 4.2 * u);
         g.lineTo(cx + 5 * u + w, y);
         g.lineTo(cx + 5 * u, y + 1.6 * u);
         g.closePath(); g.fill();
-        g.strokeStyle = p.line; g.globalAlpha = 0.5; g.lineWidth = 1 * u;
+        g.strokeStyle = p.line; g.globalAlpha = 0.72; g.lineWidth = 1.4 * u;
         g.beginPath();
         g.moveTo(cx + 5 * u - w, y);
         g.lineTo(cx + 5 * u, y + 4.2 * u);
@@ -1818,7 +1964,22 @@
       // and plates on the cephalothorax
       g.save();
       g.beginPath(); g.ellipse(cx - 14 * u, cy - 4 * u, 11 * u, 10 * u, 0, 0, WS.TAU); g.clip();
-      g.strokeStyle = p.line; g.globalAlpha = 0.45; g.lineWidth = 1 * u;
+      g.fillStyle = 'rgba(255,240,220,.28)';
+      g.beginPath();
+      g.moveTo(cx - 20 * u, cy - 9 * u);
+      g.lineTo(cx - 8 * u, cy - 6 * u);
+      g.lineTo(cx - 20 * u, cy - 2 * u);
+      g.closePath(); g.fill();
+      g.strokeStyle = p.line; g.globalAlpha = 0.5; g.lineWidth = 0.9 * u;
+      g.lineCap = 'round';
+      for (let i = 0; i < 7; i++) {                                // bristles
+        const a = WS.PI * (1.05 + i * 0.13);
+        g.beginPath();
+        g.moveTo(cx - 14 * u + WS.cos(a) * 9 * u, cy - 4 * u + WS.sin(a) * 8 * u);
+        g.lineTo(cx - 14 * u + WS.cos(a) * 13 * u, cy - 4 * u + WS.sin(a) * 12 * u);
+        g.stroke();
+      }
+      g.strokeStyle = p.line; g.globalAlpha = 0.6; g.lineWidth = 1.3 * u;
       for (const dy of [-3, 1, 5]) {
         g.beginPath();
         g.moveTo(cx - 25 * u, cy + dy * u);
@@ -1843,12 +2004,42 @@
     moonwretch(g, s, p) {
       const cx = s / 2, cy = s * 0.56, u = s / 100;
       shaded(g, cx, cy + 6 * u, 22 * u, 26 * u, p);
-      pelt(g, p, cx, cy + 6 * u, 22 * u, 26 * u, 0, 6, 0.35, 0.24);
+      pelt(g, p, cx, cy + 6 * u, 22 * u, 26 * u, 0, 6, 0.35, 0.3);
+      // the pale bib every furred predator carries down its front
+      g.save();
+      g.beginPath(); g.ellipse(cx, cy + 6 * u, 22 * u, 26 * u, 0, 0, WS.TAU); g.clip();
+      g.fillStyle = 'rgba(255,248,232,.17)';
+      g.beginPath();
+      g.moveTo(cx - 9 * u, cy - 12 * u);
+      g.quadraticCurveTo(cx, cy + 6 * u, cx - 3 * u, cy + 30 * u);
+      g.quadraticCurveTo(cx + 5 * u, cy + 8 * u, cx + 9 * u, cy - 12 * u);
+      g.closePath(); g.fill();
+      g.strokeStyle = p.line; g.globalAlpha = 0.34; g.lineWidth = 1.1 * u;
+      g.beginPath();
+      g.moveTo(cx - 9 * u, cy - 12 * u);
+      g.quadraticCurveTo(cx, cy + 6 * u, cx - 3 * u, cy + 30 * u);
+      g.stroke();
+      g.restore();
       shaded(g, cx - 24 * u, cy + 4 * u, 9 * u, 16 * u, p, -0.5);
       shaded(g, cx + 24 * u, cy + 4 * u, 9 * u, 16 * u, p, 0.5);
       for (const dir of [-1, 1]) {
+        pelt(g, p, cx + dir * 24 * u, cy + 4 * u, 9 * u, 16 * u, dir * 0.5, 3, 0.3, 0.3);
+      }
+      for (const dir of [-1, 1]) {
         poly(g, [[cx + dir * 30 * u, cy + 16 * u], [cx + dir * 40 * u, cy + 24 * u], [cx + dir * 28 * u, cy + 24 * u]], '#e9edf5', '#8a90a0', u);
       }
+      // veins in the ears, which are the moonwretch's biggest single shapes
+      g.save();
+      g.strokeStyle = p.line; g.globalAlpha = 0.4; g.lineWidth = 1.1 * u;
+      for (const dir of [-1, 1]) {
+        for (let i = 0; i < 3; i++) {
+          g.beginPath();
+          g.moveTo(cx + dir * 24 * u, cy + (2 - i * 5) * u);
+          g.lineTo(cx + dir * (30 + i * 2) * u, cy + (-4 - i * 5) * u);
+          g.stroke();
+        }
+      }
+      g.restore();
       shaded(g, cx, cy - 22 * u, 13 * u, 12 * u, p);
       poly(g, [[cx - 8 * u, cy - 24 * u], [cx - 16 * u, cy - 42 * u], [cx - 2 * u, cy - 30 * u]], p.lo, p.line, u);
       poly(g, [[cx + 8 * u, cy - 24 * u], [cx + 16 * u, cy - 42 * u], [cx + 2 * u, cy - 30 * u]], p.lo, p.line, u);
@@ -1888,6 +2079,7 @@
       legs(g, p, cx, cy + 18 * u, u, [-14, -4, 12, 22], 14, 4);
       poly(g, [[cx + 28 * u, cy + 4 * u], [cx + 44 * u, cy - 6 * u], [cx + 30 * u, cy + 12 * u]], p.lo, p.line, u);
       shaded(g, cx - 12 * u, cy - 14 * u, 13 * u, 16 * u, p);      // humanoid torso
+      pelt(g, p, cx - 12 * u, cy - 14 * u, 13 * u, 16 * u, 0, 4, 0.3, 0.3);
       shaded(g, cx - 12 * u, cy - 32 * u, 10 * u, 9 * u, p);
       eyes(g, cx - 12 * u, cy - 33 * u, 4 * u, 1.6 * u, '#ffd98f');
       /* A SPEAR, not a scratch. This was one 3u white stroke of constant width
@@ -1935,6 +2127,31 @@
         // The Arclight bevel, in stone: a lit top edge and a dark foot.
         g.fillStyle = 'rgba(255,244,224,.16)'; g.fillRect(x, y, w, 2 * u);
         g.fillStyle = 'rgba(0,0,0,.32)'; g.fillRect(x, y + h - 2 * u, w, 2 * u);
+        /* PINS AND A CRACK. A golem is cut stone held together, and every
+           block on it was a smooth panel with a bevel - the one creature in
+           the game made entirely of hard edges had no hard edges inside it. */
+        g.save();
+        g.beginPath(); g.rect(x, y, w, h); g.clip();
+        g.strokeStyle = 'rgba(0,0,0,.34)'; g.lineWidth = 1.1 * u;
+        g.beginPath();
+        g.moveTo(x + w * 0.22, y);
+        g.lineTo(x + w * 0.38, y + h * 0.45);
+        g.lineTo(x + w * 0.3, y + h);
+        g.stroke();
+        g.strokeStyle = 'rgba(255,244,224,.14)';
+        g.beginPath();
+        g.moveTo(x + w * 0.22 + 1.2 * u, y);
+        g.lineTo(x + w * 0.38 + 1.2 * u, y + h * 0.45);
+        g.lineTo(x + w * 0.3 + 1.2 * u, y + h);
+        g.stroke();
+        g.restore();
+        for (const [px2, py2] of [[x + 3 * u, y + 3 * u], [x + w - 3 * u, y + 3 * u],
+          [x + 3 * u, y + h - 3 * u], [x + w - 3 * u, y + h - 3 * u]]) {
+          g.fillStyle = 'rgba(0,0,0,.4)';
+          g.beginPath(); g.arc(px2, py2 + 0.5 * u, 1.5 * u, 0, WS.TAU); g.fill();
+          g.fillStyle = 'rgba(255,244,224,.35)';
+          g.beginPath(); g.arc(px2 - 0.2 * u, py2 - 0.3 * u, 1 * u, 0, WS.TAU); g.fill();
+        }
       };
 
       // Squat legs, angular to match, with a foot slab each.
