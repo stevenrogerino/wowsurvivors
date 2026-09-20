@@ -47,6 +47,7 @@
  * Set CHROME to point at an existing Chromium binary. */
 const { chromium } = require('playwright');
 const path = require('path');
+const fs = require('fs');
 
 const DIST = 150;        // colour distance an item must put between it and the floor
 const GEM_PX = 12;       // pixels of a gem that must clearly not be ground
@@ -181,6 +182,107 @@ const LOUDER = 2.0;      // how much more presence a run-changing pickup needs
     }
   }
 
+  /* --------------------------------------------------- and does it DROP? --
+   *
+   * Visibility is worth nothing if the thing never appears. Both loot pools
+   * saturate in a late run and neither had any way to release anything - a
+   * gem leaves only when it is collected, and `pickup.life` was incremented
+   * every frame and never read by anything.
+   *
+   * Standing still in the middle for three minutes, as reported: the 260 gem
+   * slots filled by t=60 and from then on every kill folded its value into a
+   * RANDOM gem somewhere on the field - 13,518 of them, while the last new
+   * gem to appear anywhere had done so a minute earlier. The 48 pickup slots
+   * filled by t=120, and from then on Pickup.spawn returned null, which every
+   * caller treats as "no drop": 164 potions, chests and crates destroyed
+   * outright.
+   *
+   * So this measures the only thing that matters to the player holding the
+   * controller - when something dies, does loot appear WHERE IT DIED - and it
+   * runs long enough to get past both caps, because before the caps every
+   * version of this code passes. */
+  const sim = fs.readFileSync(path.resolve(__dirname, 'sim-core.js'), 'utf8');
+  await page.evaluate(sim);
+  const drops = await page.evaluate(() => {
+    const WS = window.WS, STEP = 1 / 60;
+    WS.setSeed(4242);
+    WS.Game.startRun('thornhollow', 'mage');
+    if (WS.Game.blessingChoices) WS.Game.chooseBlessing(0);
+    const p = WS.Game.player;
+    WS.WaveManager.update = function () {};
+    WS.Game.openLevelUp = function () { this.pendingLevelUps = 0; };
+    WS.Game.presentLevelUp = function () { this.pendingLevelUps = 0; };
+    WS.Enemy.pool.releaseAll(); WS.Pickup.clear(); WS.XP.clear();
+    WS.Projectile.clear(); WS.FX.clear();
+    WS.Input.poll = function () {};
+    p.weapons.length = 0; p.weaponLevels = {}; p.combosActive = {};
+    for (const id of Object.keys(WS.Weapons).slice(0, 6)) {
+      WS.Player.addWeapon(p, id);
+      const w = WS.Player.getWeapon(p, id);
+      if (w) { w.level = 8; p.weaponLevels[id] = 8; }
+    }
+    p.damageMultiplier *= 4;
+    p.maxHealth = 1e9; p.health = 1e9;
+    p.x = 640; p.y = 360;
+
+    let hit = 0, miss = 0, lost = 0, landed = 0, xpIn = 0;
+    const origGem = WS.XP.spawnGem;
+    WS.XP.spawnGem = function (x, y, v) {
+      const r = origGem.apply(this, arguments);
+      if (v > 0) {
+        xpIn += v;
+        let near = false;
+        for (let i = 0; i < this.pool.count; i++) {
+          const g = this.pool.active[i];
+          const dx = g.x - x, dy = g.y - y;
+          if (dx * dx + dy * dy < 40 * 40) { near = true; break; }
+        }
+        if (near) hit++; else miss++;
+      }
+      return r;
+    };
+    const origPick = WS.Pickup.spawn;
+    WS.Pickup.spawn = function () {
+      const r = origPick.apply(this, arguments);
+      if (r) landed++; else lost++;
+      return r;
+    };
+
+    const script = window.WSSim.siegeScript();
+    let next = 0, t = 0;
+    while (t < 180) {
+      while (next < script.length && script[next].t <= t) {
+        const s = script[next++];
+        WS.Enemy.spawn(s.id, s.x, s.y, 1, true);
+      }
+      if (next >= script.length) next = 0;      // keep the pressure up past 90s
+      WS.Game.update(STEP);
+      if (!WS.Game.running) break;
+      t += STEP;
+    }
+    let onField = 0;
+    for (let i = 0; i < WS.XP.pool.count; i++) onField += WS.XP.pool.active[i].value;
+    return { hit, miss, lost, landed, xpIn, onField, seconds: t,
+      gems: WS.XP.pool.count, picks: WS.Pickup.pool.count,
+      maxGems: WS.CONST.MAX_GEMS, maxPicks: WS.CONST.MAX_PICKUPS };
+  });
+
+  // The measurement is only worth anything if it got past the caps.
+  if (drops.gems < drops.maxGems || drops.picks < drops.maxPicks) {
+    fail.push(`the drop run never saturated (${drops.gems}/${drops.maxGems} gems, `
+      + `${drops.picks}/${drops.maxPicks} pickups) - it cannot have tested what `
+      + 'happens at the cap');
+  }
+  if (drops.miss > 0) {
+    fail.push(`${drops.miss} of ${drops.hit + drops.miss} kills left no gem within 40px of `
+      + 'the corpse - with the field at its cap the drop has to appear where the enemy '
+      + 'died, not fold into something off-screen');
+  }
+  if (drops.lost > 0) {
+    fail.push(`${drops.lost} pickups were destroyed because the field was full - `
+      + 'a potion or a chest that never spawns is a lost drop, not a full field');
+  }
+
   await browser.close();
   if (fail.length) {
     console.error('FAIL');
@@ -195,5 +297,9 @@ const LOUDER = 2.0;      // how much more presence a run-changing pickup needs
   console.log(`ok: ${rows.length} readings across ${new Set(rows.map((r) => r.map)).size} maps; `
     + `the least visible gem (${worstGem.label} on ${worstGem.map}) still stands `
     + `${worstGem.dist} off its ground, and the quietest run-changing pickup `
-    + `(${quietest.label} on ${quietest.map}) covers ${quietest.px}px`);
+    + `(${quietest.label} on ${quietest.map}) covers ${quietest.px}px; and over `
+    + `${Math.round(drops.seconds)}s of standing still with both fields at their cap `
+    + `(${drops.gems}/${drops.maxGems} gems, ${drops.picks}/${drops.maxPicks} pickups) `
+    + `all ${drops.hit} kills left a gem at the corpse and all ${drops.landed} pickups `
+    + 'reached the ground');
 })();

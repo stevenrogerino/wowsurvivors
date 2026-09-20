@@ -352,6 +352,13 @@
     if (p.metaTimer > 0) {
       const total = WS.Config.metaDuration + WS.Config.metaDurationPerRank * p.soulRending;
       want.push({ key: 'meta', cls: 'meta', label: 'Ruinform', pct: p.metaTimer / total });
+    } else if (p.felLock > 0) {
+      /* The recovery is a real part of the cycle for everyone but the
+         Ruinseeker, so it gets the bar rather than leaving a full one
+         sitting there doing nothing and looking broken. */
+      const span = WS.max(0.001, WS.Player.ruinRecovery(p));
+      want.push({ key: 'felwait', cls: 'fel waiting', label: 'Receding',
+        pct: 1 - p.felLock / span });
     } else if (p.felAttuned > 0) {
       want.push({ key: 'fel', cls: 'fel', label: 'Ruin', pct: p.fel / WS.Config.felToMeta });
     }

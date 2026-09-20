@@ -27,16 +27,38 @@
 
   Pickup.clear = function () { if (this.pool) this.pool.releaseAll(); };
 
-  /** Coins are the only expendable pickup; everything else is preserved when
-   *  the field fills up. Returns the pickup, or null if there was no room. */
+  /** Makes room for a new drop and returns it.
+   *
+   *  This used to give up and return null once the field held MAX_PICKUPS
+   *  things that were not coins, and every caller drops what it is handed, so
+   *  the item was simply destroyed. Standing still in a late run reaches that
+   *  state in about two minutes, and 164 pickups were annihilated in the
+   *  minute after it - potions, chests, the lot. "No items" was not an
+   *  exaggeration.
+   *
+   *  Nothing is thrown away now. Coins go first because they are the one
+   *  expendable kind; after that the FURTHEST pickup from the survivor is
+   *  recycled, because with the field at its cap that one is off-screen and
+   *  was never going to be walked to. What is in front of the player is what
+   *  survives. */
   Pickup.spawn = function (kind, x, y, value) {
     if (this.pool.count >= WS.CONST.MAX_PICKUPS) {
       let coin = -1;
       for (let i = 0; i < this.pool.count; i++) {
         if (this.pool.active[i].kind === 'coin') { coin = i; break; }
       }
-      if (coin < 0) return null;
-      this.pool.releaseAt(coin);
+      if (coin >= 0) this.pool.releaseAt(coin);
+      else {
+        const player = WS.Game.player;
+        let worst = 0, worstD = -1;
+        for (let i = 0; i < this.pool.count; i++) {
+          const q = this.pool.active[i];
+          const dx = q.x - player.x, dy = q.y - player.y;
+          const d = dx * dx + dy * dy;
+          if (d > worstD) { worstD = d; worst = i; }
+        }
+        this.pool.releaseAt(worst);
+      }
     }
     const p = this.pool.acquire();
     if (!p) return null;

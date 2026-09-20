@@ -1067,6 +1067,9 @@ html, body {
 }
 .meter .meter-fill { height: 100%; width: 0%; border-radius: 2px; transition: width .15s linear; }
 .meter.fel .meter-fill { background: linear-gradient(90deg, #5aa832, var(--fel)); }
+/* Receding: the ruin draining back out, drawn cold and dim so it reads as a
+   wait rather than as progress toward anything. */
+.meter.fel.waiting .meter-fill { background: linear-gradient(90deg, #2b3a24, #4a6b38); opacity: .72; }
 .meter.meta .meter-fill { background: linear-gradient(90deg, var(--fel), #eaffd8); }
 .meter .meter-label {
   font-size: 9px; letter-spacing: .16em; text-transform: uppercase;
@@ -2180,7 +2183,28 @@ window.WS = window.WS || {};
     felPerOverkill: 1.00,
     felPerRank: 0.25,
     felToMeta: 3500,
+    /* What fraction of the normal fel rate is gathered WHILE the form is up.
+       This is NOT what caps uptime and it never was: overkill in a real late
+       run measures about 4000 a second against a 3500 bar, so any rate above
+       a rounding error refills the bar inside one form. Scaling it by rank
+       was tried and moved the measured uptime by 0.0 points at every rank on
+       every class. It stays where it was; the recovery window below is the
+       thing that actually decides. */
     metaFelRate: 0.35,
+    /* After the ruin recedes, no fel can be gathered for this long. It is the
+       only thing that actually caps Ruinform uptime, because it does not
+       care how much overkill is coming: the ceiling is
+       duration / (duration + recovery), whatever the throughput.
+
+       Ruin Hunger buys the window down. For the Ruinseeker it reaches ZERO at
+       max rank, which is what "born to it" means - the form becomes a state
+       instead of a cycle. For anyone holding the Ruinous Pact it bottoms out
+       at metaRecoveryFloor and never reaches zero, so max Ruin Hunger off
+       the class gets close to permanent and cannot be permanent. */
+    metaRecovery: 4.0,
+    metaRecoveryBorn: 2.5,
+    metaRecoveryPerRank: 0.5,
+    metaRecoveryFloor: 1.5,
     metaDuration: 8.0,
     metaDamageMult: 2.20,
     metaCooldownMult: 0.60,
@@ -3062,10 +3086,21 @@ window.WS = window.WS || {};
       name: 'Nerosus', title: 'The Spineless One', className: 'Ruinseeker',
       art: 'ruinseeker', color: [0.64, 0.19, 0.79], weapon: 'verdant_lance',
       description: 'Burned out both eyes to see the ruin clearly. Says it was worth it. Has not blinked since.',
-      perk: 'Fel-attuned from the first swing - overkill damage always feeds Ruinform.',
+      perk: 'Born to the ruin: overkill always feeds Ruinform, it gathers '
+        + '{perkFel%}% faster, and the form can be held without pause - no one '
+        + 'else recovers from it quickly enough to do that.',
       maxHealth: 120, moveSpeed: 235, armor: 0, pickupRadius: 60, healthRegen: 0,
-      perkDodge: 0.05,
-      apply: (p, c) => { p.felAttuned += 1; p.dodgeChance += c.perkDodge; },
+      perkDodge: 0.05, perkFel: 0.35,
+      /* ruinborn is what the Ruinous Pact CANNOT grant. The perk used to set
+         felAttuned and nothing else - the same flag the pact sets - and the
+         pact also carried +30% fel gain, so a paladin running it charged the
+         meter faster than the class whose identity it is, and held the form
+         permanently from two ranks of Ruin Hunger. */
+      apply: (p, c) => {
+        p.felAttuned += 1; p.ruinborn += 1;
+        p.felBonus += c.perkFel;
+        p.dodgeChance += c.perkDodge;
+      },
       unlockHint: 'Waste enough killing. Take the ruinform again and again, and the glaives will find you.',
     },
   };
@@ -12645,6 +12680,7 @@ window.WS = window.WS || {};
       curdled: 0, curdleOverheal: 0, curdleShare: 0,
       curdlePool: 0, curdleTimer: 0, curdleDealt: 0,
       felAttuned: 0, fel: 0, felBonus: 0, soulRending: 0, metaTimer: 0,
+      ruinborn: 0, felLock: 0,
       metamorphoses: 0,
       summonDamage: 0, summonHaste: 0,
       lifesteal: 0, lifestealCarry: 0,
@@ -12796,9 +12832,18 @@ window.WS = window.WS || {};
       }
     }
 
-    // Passive regeneration. With Curdled Light running it keeps ticking at full
-    // health, because that overflow is exactly the fuel.
-    if (p.healthRegen > 0 && (p.health < p.maxHealth || p.curdled > 0)) {
+    /* Passive regeneration, which ticks at full health too.
+     *
+     * OVERHEAL IS THE PART OF A HEAL THAT WOULD BE WASTED, not a thing that
+     * only happens to the wounded. The gate here used to be
+     * `p.health < p.maxHealth || p.curdled > 0`, so a survivor at full health
+     * without Curdled Light did not regenerate at all - which is invisible
+     * while nothing reads it, and wrong the moment anything does. It made the
+     * Overhealing meter read zero for the one player who is overhealing the
+     * most, and it means a heal trigger has to ask whether you are hurt
+     * before it fires. Anything that WOULD heal now heals; applyHeal splits
+     * it into the part that lands and the part that is wasted. */
+    if (p.healthRegen > 0) {
       p.regenCarry += p.healthRegen * p.healingMult * dt;
       if (p.regenCarry >= 1) {
         const whole = WS.floor(p.regenCarry);
@@ -12808,14 +12853,21 @@ window.WS = window.WS || {};
     }
 
     // Ruinform.
+    if (p.felLock > 0) p.felLock = WS.max(0, p.felLock - dt);
     if (p.metaTimer > 0) {
       p.metaTimer -= dt;
       if (p.metaTimer <= 0) {
         p.metaTimer = 0;
-        if (p.fel >= WS.Config.felToMeta) {
+        /* Only the ruinborn chains straight back in. For everyone else the
+           ruin has to be gathered again from nothing, and it cannot even
+           begin for metaRecovery seconds - which is the whole of what stops
+           a Ruinous Pact on any class from holding the form permanently. */
+        const wait = Player.ruinRecovery(p);
+        if (wait <= 0 && p.fel >= WS.Config.felToMeta) {
           p.fel = 0;
           Player.metamorphose(p);
         } else {
+          p.felLock = wait;
           WS.FX.flash(p.x, p.y, 110, [0.45, 0.85, 0.30], 0.4);
           WS.FX.notice(p.x, p.y, 'The ruin recedes', '#9fe66b');
         }
@@ -12958,7 +13010,8 @@ window.WS = window.WS || {};
 
   Player.lifesteal = function (p, amount) {
     if (amount <= 0) return;
-    if (p.health >= p.maxHealth && p.curdled <= 0) return;
+    // No full-health gate, for the same reason regen has none: the heal is
+    // what triggers, and whether it lands or is wasted is applyHeal's answer.
     p.lifestealCarry += amount;
     const whole = WS.floor(p.lifestealCarry);
     if (whole >= 1) {
@@ -12976,11 +13029,28 @@ window.WS = window.WS || {};
   };
 
   /* ----------------------------------------------------------------- fel - */
+  /** How long the ruin takes to answer again once the form ends.
+   *
+   *  Ruin Hunger shortens it for everyone, but only the ruinborn can close it
+   *  completely: at max rank the Ruinseeker's window is zero and the form
+   *  chains straight back, while a Ruinous Pact on any other class bottoms
+   *  out at the floor. That gap is the whole of the difference between the
+   *  class and the blessing, and it is a hard one - it holds at any level of
+   *  overkill, which is not true of any rate or multiplier. */
+  Player.ruinRecovery = function (p) {
+    const cfg = WS.Config;
+    const step = cfg.metaRecoveryPerRank * p.soulRending;
+    if (p.ruinborn > 0) return WS.max(0, cfg.metaRecoveryBorn - step);
+    return WS.max(cfg.metaRecoveryFloor, cfg.metaRecovery - step);
+  };
+
   Player.gainFel = function (p, amount) {
     if (amount <= 0 || p.felAttuned <= 0) return;
+    if (p.felLock > 0) return;              // the ruin is still receding
     const cfg = WS.Config;
     let rate = cfg.felPerOverkill + cfg.felPerRank * p.soulRending + p.felBonus;
-    // Charging during the form is throttled, or 100% uptime would be trivial.
+    // Charging during the form is throttled, though the recovery window after
+    // it is what actually decides uptime - see Config.metaRecovery.
     if (p.metaTimer > 0) rate *= cfg.metaFelRate;
     const need = cfg.felToMeta;
     p.fel = WS.min(need, p.fel + amount * rate);
@@ -13131,13 +13201,36 @@ window.WS = window.WS || {};
       }
     }
 
-    // The field is full and nothing was close enough: fold into a random gem
-    // rather than dropping the experience on the floor.
+    /* The field is full and nothing was close enough.
+     *
+     * This used to fold the value into a RANDOM gem on the field, which
+     * conserved the experience and looked exactly like a bug: standing still
+     * in a late run fills the 260 slots in about a minute, and from then on
+     * every single kill fed a gem somewhere off-screen while nothing dropped
+     * where the enemy actually died. Measured over three minutes of standing
+     * in the middle: 260 gems ever appeared and 13,518 kills folded into one
+     * of them. The player's report was "things that die aren't dropping gems
+     * anymore", and they were right.
+     *
+     * So recycle the FURTHEST gem from the survivor instead. It carries its
+     * value to the new drop, which conserves the experience exactly as before
+     * while keeping the field where the fighting is - and a gem appears at
+     * the kill every time, which is the part that has to be true. */
     if (this.pool.count >= WS.CONST.MAX_GEMS) {
-      const gem = this.pool.active[WS.randInt(0, this.pool.count - 1)];
+      const player = WS.Game.player;
+      let worst = 0, worstD = -1;
+      for (let i = 0; i < this.pool.count; i++) {
+        const g = this.pool.active[i];
+        const dx = g.x - player.x, dy = g.y - player.y;
+        const d = dx * dx + dy * dy;
+        if (d > worstD) { worstD = d; worst = i; }
+      }
+      const gem = this.pool.active[worst];
       gem.value += value;
-      style(gem);
+      gem.x = gx; gem.y = gy;
+      gem.spin = WS.random() * WS.TAU;
       gem.pop = 0.18;
+      style(gem);
       return;
     }
     const gem = this.pool.acquire();
@@ -13222,16 +13315,38 @@ window.WS = window.WS || {};
 
   Pickup.clear = function () { if (this.pool) this.pool.releaseAll(); };
 
-  /** Coins are the only expendable pickup; everything else is preserved when
-   *  the field fills up. Returns the pickup, or null if there was no room. */
+  /** Makes room for a new drop and returns it.
+   *
+   *  This used to give up and return null once the field held MAX_PICKUPS
+   *  things that were not coins, and every caller drops what it is handed, so
+   *  the item was simply destroyed. Standing still in a late run reaches that
+   *  state in about two minutes, and 164 pickups were annihilated in the
+   *  minute after it - potions, chests, the lot. "No items" was not an
+   *  exaggeration.
+   *
+   *  Nothing is thrown away now. Coins go first because they are the one
+   *  expendable kind; after that the FURTHEST pickup from the survivor is
+   *  recycled, because with the field at its cap that one is off-screen and
+   *  was never going to be walked to. What is in front of the player is what
+   *  survives. */
   Pickup.spawn = function (kind, x, y, value) {
     if (this.pool.count >= WS.CONST.MAX_PICKUPS) {
       let coin = -1;
       for (let i = 0; i < this.pool.count; i++) {
         if (this.pool.active[i].kind === 'coin') { coin = i; break; }
       }
-      if (coin < 0) return null;
-      this.pool.releaseAt(coin);
+      if (coin >= 0) this.pool.releaseAt(coin);
+      else {
+        const player = WS.Game.player;
+        let worst = 0, worstD = -1;
+        for (let i = 0; i < this.pool.count; i++) {
+          const q = this.pool.active[i];
+          const dx = q.x - player.x, dy = q.y - player.y;
+          const d = dx * dx + dy * dy;
+          if (d > worstD) { worstD = d; worst = i; }
+        }
+        this.pool.releaseAt(worst);
+      }
     }
     const p = this.pool.acquire();
     if (!p) return null;
@@ -20438,6 +20553,13 @@ window.WS = window.WS || {};
     if (p.metaTimer > 0) {
       const total = WS.Config.metaDuration + WS.Config.metaDurationPerRank * p.soulRending;
       want.push({ key: 'meta', cls: 'meta', label: 'Ruinform', pct: p.metaTimer / total });
+    } else if (p.felLock > 0) {
+      /* The recovery is a real part of the cycle for everyone but the
+         Ruinseeker, so it gets the bar rather than leaving a full one
+         sitting there doing nothing and looking broken. */
+      const span = WS.max(0.001, WS.Player.ruinRecovery(p));
+      want.push({ key: 'felwait', cls: 'fel waiting', label: 'Receding',
+        pct: 1 - p.felLock / span });
     } else if (p.felAttuned > 0) {
       want.push({ key: 'fel', cls: 'fel', label: 'Ruin', pct: p.fel / WS.Config.felToMeta });
     }

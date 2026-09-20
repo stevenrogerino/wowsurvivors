@@ -99,10 +99,21 @@
       name: 'Nerosus', title: 'The Spineless One', className: 'Ruinseeker',
       art: 'ruinseeker', color: [0.64, 0.19, 0.79], weapon: 'verdant_lance',
       description: 'Burned out both eyes to see the ruin clearly. Says it was worth it. Has not blinked since.',
-      perk: 'Fel-attuned from the first swing - overkill damage always feeds Ruinform.',
+      perk: 'Born to the ruin: overkill always feeds Ruinform, it gathers '
+        + '{perkFel%}% faster, and the form can be held without pause - no one '
+        + 'else recovers from it quickly enough to do that.',
       maxHealth: 120, moveSpeed: 235, armor: 0, pickupRadius: 60, healthRegen: 0,
-      perkDodge: 0.05,
-      apply: (p, c) => { p.felAttuned += 1; p.dodgeChance += c.perkDodge; },
+      perkDodge: 0.05, perkFel: 0.35,
+      /* ruinborn is what the Ruinous Pact CANNOT grant. The perk used to set
+         felAttuned and nothing else - the same flag the pact sets - and the
+         pact also carried +30% fel gain, so a paladin running it charged the
+         meter faster than the class whose identity it is, and held the form
+         permanently from two ranks of Ruin Hunger. */
+      apply: (p, c) => {
+        p.felAttuned += 1; p.ruinborn += 1;
+        p.felBonus += c.perkFel;
+        p.dodgeChance += c.perkDodge;
+      },
       unlockHint: 'Waste enough killing. Take the ruinform again and again, and the glaives will find you.',
     },
   };

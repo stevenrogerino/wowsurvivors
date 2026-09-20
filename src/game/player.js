@@ -70,6 +70,7 @@
       curdled: 0, curdleOverheal: 0, curdleShare: 0,
       curdlePool: 0, curdleTimer: 0, curdleDealt: 0,
       felAttuned: 0, fel: 0, felBonus: 0, soulRending: 0, metaTimer: 0,
+      ruinborn: 0, felLock: 0,
       metamorphoses: 0,
       summonDamage: 0, summonHaste: 0,
       lifesteal: 0, lifestealCarry: 0,
@@ -221,9 +222,18 @@
       }
     }
 
-    // Passive regeneration. With Curdled Light running it keeps ticking at full
-    // health, because that overflow is exactly the fuel.
-    if (p.healthRegen > 0 && (p.health < p.maxHealth || p.curdled > 0)) {
+    /* Passive regeneration, which ticks at full health too.
+     *
+     * OVERHEAL IS THE PART OF A HEAL THAT WOULD BE WASTED, not a thing that
+     * only happens to the wounded. The gate here used to be
+     * `p.health < p.maxHealth || p.curdled > 0`, so a survivor at full health
+     * without Curdled Light did not regenerate at all - which is invisible
+     * while nothing reads it, and wrong the moment anything does. It made the
+     * Overhealing meter read zero for the one player who is overhealing the
+     * most, and it means a heal trigger has to ask whether you are hurt
+     * before it fires. Anything that WOULD heal now heals; applyHeal splits
+     * it into the part that lands and the part that is wasted. */
+    if (p.healthRegen > 0) {
       p.regenCarry += p.healthRegen * p.healingMult * dt;
       if (p.regenCarry >= 1) {
         const whole = WS.floor(p.regenCarry);
@@ -233,14 +243,21 @@
     }
 
     // Ruinform.
+    if (p.felLock > 0) p.felLock = WS.max(0, p.felLock - dt);
     if (p.metaTimer > 0) {
       p.metaTimer -= dt;
       if (p.metaTimer <= 0) {
         p.metaTimer = 0;
-        if (p.fel >= WS.Config.felToMeta) {
+        /* Only the ruinborn chains straight back in. For everyone else the
+           ruin has to be gathered again from nothing, and it cannot even
+           begin for metaRecovery seconds - which is the whole of what stops
+           a Ruinous Pact on any class from holding the form permanently. */
+        const wait = Player.ruinRecovery(p);
+        if (wait <= 0 && p.fel >= WS.Config.felToMeta) {
           p.fel = 0;
           Player.metamorphose(p);
         } else {
+          p.felLock = wait;
           WS.FX.flash(p.x, p.y, 110, [0.45, 0.85, 0.30], 0.4);
           WS.FX.notice(p.x, p.y, 'The ruin recedes', '#9fe66b');
         }
@@ -383,7 +400,8 @@
 
   Player.lifesteal = function (p, amount) {
     if (amount <= 0) return;
-    if (p.health >= p.maxHealth && p.curdled <= 0) return;
+    // No full-health gate, for the same reason regen has none: the heal is
+    // what triggers, and whether it lands or is wasted is applyHeal's answer.
     p.lifestealCarry += amount;
     const whole = WS.floor(p.lifestealCarry);
     if (whole >= 1) {
@@ -401,11 +419,28 @@
   };
 
   /* ----------------------------------------------------------------- fel - */
+  /** How long the ruin takes to answer again once the form ends.
+   *
+   *  Ruin Hunger shortens it for everyone, but only the ruinborn can close it
+   *  completely: at max rank the Ruinseeker's window is zero and the form
+   *  chains straight back, while a Ruinous Pact on any other class bottoms
+   *  out at the floor. That gap is the whole of the difference between the
+   *  class and the blessing, and it is a hard one - it holds at any level of
+   *  overkill, which is not true of any rate or multiplier. */
+  Player.ruinRecovery = function (p) {
+    const cfg = WS.Config;
+    const step = cfg.metaRecoveryPerRank * p.soulRending;
+    if (p.ruinborn > 0) return WS.max(0, cfg.metaRecoveryBorn - step);
+    return WS.max(cfg.metaRecoveryFloor, cfg.metaRecovery - step);
+  };
+
   Player.gainFel = function (p, amount) {
     if (amount <= 0 || p.felAttuned <= 0) return;
+    if (p.felLock > 0) return;              // the ruin is still receding
     const cfg = WS.Config;
     let rate = cfg.felPerOverkill + cfg.felPerRank * p.soulRending + p.felBonus;
-    // Charging during the form is throttled, or 100% uptime would be trivial.
+    // Charging during the form is throttled, though the recovery window after
+    // it is what actually decides uptime - see Config.metaRecovery.
     if (p.metaTimer > 0) rate *= cfg.metaFelRate;
     const need = cfg.felToMeta;
     p.fel = WS.min(need, p.fel + amount * rate);

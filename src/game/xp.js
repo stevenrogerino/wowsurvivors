@@ -54,13 +54,36 @@
       }
     }
 
-    // The field is full and nothing was close enough: fold into a random gem
-    // rather than dropping the experience on the floor.
+    /* The field is full and nothing was close enough.
+     *
+     * This used to fold the value into a RANDOM gem on the field, which
+     * conserved the experience and looked exactly like a bug: standing still
+     * in a late run fills the 260 slots in about a minute, and from then on
+     * every single kill fed a gem somewhere off-screen while nothing dropped
+     * where the enemy actually died. Measured over three minutes of standing
+     * in the middle: 260 gems ever appeared and 13,518 kills folded into one
+     * of them. The player's report was "things that die aren't dropping gems
+     * anymore", and they were right.
+     *
+     * So recycle the FURTHEST gem from the survivor instead. It carries its
+     * value to the new drop, which conserves the experience exactly as before
+     * while keeping the field where the fighting is - and a gem appears at
+     * the kill every time, which is the part that has to be true. */
     if (this.pool.count >= WS.CONST.MAX_GEMS) {
-      const gem = this.pool.active[WS.randInt(0, this.pool.count - 1)];
+      const player = WS.Game.player;
+      let worst = 0, worstD = -1;
+      for (let i = 0; i < this.pool.count; i++) {
+        const g = this.pool.active[i];
+        const dx = g.x - player.x, dy = g.y - player.y;
+        const d = dx * dx + dy * dy;
+        if (d > worstD) { worstD = d; worst = i; }
+      }
+      const gem = this.pool.active[worst];
       gem.value += value;
-      style(gem);
+      gem.x = gx; gem.y = gy;
+      gem.spin = WS.random() * WS.TAU;
       gem.pop = 0.18;
+      style(gem);
       return;
     }
     const gem = this.pool.acquire();

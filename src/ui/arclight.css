@@ -1013,6 +1013,9 @@ html, body {
 }
 .meter .meter-fill { height: 100%; width: 0%; border-radius: 2px; transition: width .15s linear; }
 .meter.fel .meter-fill { background: linear-gradient(90deg, #5aa832, var(--fel)); }
+/* Receding: the ruin draining back out, drawn cold and dim so it reads as a
+   wait rather than as progress toward anything. */
+.meter.fel.waiting .meter-fill { background: linear-gradient(90deg, #2b3a24, #4a6b38); opacity: .72; }
 .meter.meta .meter-fill { background: linear-gradient(90deg, var(--fel), #eaffd8); }
 .meter .meter-label {
   font-size: 9px; letter-spacing: .16em; text-transform: uppercase;

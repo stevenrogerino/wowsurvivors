@@ -125,7 +125,28 @@
     felPerOverkill: 1.00,
     felPerRank: 0.25,
     felToMeta: 3500,
+    /* What fraction of the normal fel rate is gathered WHILE the form is up.
+       This is NOT what caps uptime and it never was: overkill in a real late
+       run measures about 4000 a second against a 3500 bar, so any rate above
+       a rounding error refills the bar inside one form. Scaling it by rank
+       was tried and moved the measured uptime by 0.0 points at every rank on
+       every class. It stays where it was; the recovery window below is the
+       thing that actually decides. */
     metaFelRate: 0.35,
+    /* After the ruin recedes, no fel can be gathered for this long. It is the
+       only thing that actually caps Ruinform uptime, because it does not
+       care how much overkill is coming: the ceiling is
+       duration / (duration + recovery), whatever the throughput.
+
+       Ruin Hunger buys the window down. For the Ruinseeker it reaches ZERO at
+       max rank, which is what "born to it" means - the form becomes a state
+       instead of a cycle. For anyone holding the Ruinous Pact it bottoms out
+       at metaRecoveryFloor and never reaches zero, so max Ruin Hunger off
+       the class gets close to permanent and cannot be permanent. */
+    metaRecovery: 4.0,
+    metaRecoveryBorn: 2.5,
+    metaRecoveryPerRank: 0.5,
+    metaRecoveryFloor: 1.5,
     metaDuration: 8.0,
     metaDamageMult: 2.20,
     metaCooldownMult: 0.60,
