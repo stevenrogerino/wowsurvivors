@@ -105,7 +105,13 @@
     e.finalBoss = false;
     e.bob = WS.random() * WS.TAU;      // idle animation offset, so a crowd breathes
     e.facing = 1;
-    e.spriteSize = template.radius * (isBoss ? 3.4 : 3.0);
+    /* spriteScale lets a creature be drawn bigger than its radius without
+       being EASIER TO HIT. radius drives the hitbox, how close it has to get
+       to touch you and how much of a crowd it displaces, so growing it to
+       make something look heftier quietly changes the fight. The art already
+       overhangs the hitbox threefold; a little more on one creature is a
+       drawing decision, not a balance one. */
+    e.spriteSize = template.radius * (isBoss ? 3.4 : 3.0) * (template.spriteScale || 1);
     return e;
   };
 

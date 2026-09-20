@@ -101,11 +101,21 @@ const fail = [];
 
     /* One entry per ART, not per enemy: a dozen enemies share an art with a
        different tint, and measuring those as separate creatures would report
-       twelve passes for one drawing. */
+       twelve passes for one drawing.
+       
+       BOSSES ARE INCLUDED, and they were not at first. This file iterated
+       WS.Enemies only, so the four arts used by nothing but a boss - wraith,
+       lich, reaper, sovereign - were never measured by anything. They were
+       the four weakest drawings in the game when they were finally looked at:
+       the Pale Wraith was a teardrop with two dots on it and Death Itself
+       carried a scythe made out of a stroked circle. A rule that skips the
+       bosses is a rule that guards the trash mobs. */
     const byArt = {};
-    for (const id of Object.keys(WS.Enemies)) {
-      const t = WS.Enemies[id];
-      if (t.art && !byArt[t.art]) byArt[t.art] = { tint: t.tint, id };
+    for (const src of [WS.Enemies, WS.Bosses]) {
+      for (const id of Object.keys(src)) {
+        const t = src[id];
+        if (t.art && !byArt[t.art]) byArt[t.art] = { tint: t.tint, id };
+      }
     }
     const arts = Object.keys(byArt);
 

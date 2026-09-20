@@ -81,7 +81,9 @@
     },
     bruiser: {
       name: 'Kerchief Bruiser', family: 'kerchief', art: 'brute', tint: [0.90, 0.45, 0.35],
-      health: 80, speed: 78, damage: 16, xp: 10, radius: 17,
+      // A brute is the wall of its family and was drawn the same size as the
+      // shambler. Visual only - the hitbox is the radius and it has not moved.
+      health: 80, speed: 78, damage: 16, xp: 10, radius: 17, spriteScale: 1.2,
     },
     /* ------------------------------------------------------ Mourneholt ---- */
     ghoul: {
@@ -169,6 +171,7 @@
     kerchief_enforcer: {
       name: 'Kerchief Enforcer', family: 'kerchief', elite: true, art: 'brute',
       tint: [1.00, 0.45, 0.30], health: 480, speed: 72, damage: 26, xp: 44, radius: 28,
+      spriteScale: 1.2,
       lunge: { range: 300, cooldown: 5.0, windup: 0.55, time: 0.45 },
     },
     bone_sentinel: {

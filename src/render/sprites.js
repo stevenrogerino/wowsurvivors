@@ -396,15 +396,20 @@
     g.quadraticCurveTo(wide * 0.46 + bow * 1.1, -len * 0.88, bow * 1.2, -len * 0.97);
     g.stroke();
     g.restore();
-    // held: a guard across the base and a haft below it
-    g.fillStyle = spine;
-    g.beginPath();
-    g.ellipse(0, wide * 0.18, wide * 1.15, wide * 0.42, 0, 0, WS.TAU);
-    g.fill();
-    g.fillStyle = 'rgba(28,22,18,.85)';
-    g.beginPath();
-    g.ellipse(0, wide * 1.5, wide * 0.42, wide * 1.15, 0, 0, WS.TAU);
-    g.fill();
+    /* Held: a guard across the base and a haft below it - but only if
+       somebody is holding it. A scythe head is socketed onto a pole and a
+       sun's corona is not held by anyone, and on both of those the guard and
+       grip showed up as a dark blob floating where the hand would have been. */
+    if (kind !== 'curve' && kind !== 'ray') {
+      g.fillStyle = spine;
+      g.beginPath();
+      g.ellipse(0, wide * 0.18, wide * 1.15, wide * 0.42, 0, 0, WS.TAU);
+      g.fill();
+      g.fillStyle = 'rgba(28,22,18,.85)';
+      g.beginPath();
+      g.ellipse(0, wide * 1.5, wide * 0.42, wide * 1.15, 0, 0, WS.TAU);
+      g.fill();
+    }
     g.restore();
   }
 
@@ -509,6 +514,41 @@
       }
       shaded(g, cx, cy + 2 * u, 17 * u, 20 * u, p);
       shaded(g, cx, cy - 22 * u, 15 * u, 13 * u, p);
+      /* A PALE BELLY AND GILLS. The gilkin was two smooth green masses with a
+         mouth on it - the kind of shape that has a perfect outline and
+         nothing whatever inside it. Every amphibian is darker on top than
+         underneath, and that one change does more for the read than any
+         amount of shading, because it says which way up the animal is. */
+      g.save();
+      g.beginPath(); g.ellipse(cx, cy + 2 * u, 17 * u, 20 * u, 0, 0, WS.TAU); g.clip();
+      const bel = g.createLinearGradient(0, cy + 2 * u, 0, cy + 22 * u);
+      bel.addColorStop(0, 'rgba(255,255,255,0)');
+      bel.addColorStop(1, 'rgba(255,255,255,.26)');
+      g.fillStyle = bel;
+      g.beginPath(); g.ellipse(cx, cy + 10 * u, 11 * u, 14 * u, 0, 0, WS.TAU); g.fill();
+      // and the plates across it, which is what a belly like that is made of
+      g.strokeStyle = p.line; g.globalAlpha = 0.34; g.lineWidth = 1 * u;
+      for (let i = 0; i < 4; i++) {
+        const y = cy + (2 + i * 5) * u;
+        g.beginPath();
+        g.moveTo(cx - 10 * u, y);
+        g.quadraticCurveTo(cx, y + 2.4 * u, cx + 10 * u, y);
+        g.stroke();
+      }
+      g.restore();
+      // gill slits, on the side of the neck where they belong
+      g.save();
+      g.strokeStyle = p.line; g.globalAlpha = 0.6; g.lineWidth = 1.4 * u;
+      g.lineCap = 'round';
+      for (const dir of [-1, 1]) {
+        for (let i = 0; i < 3; i++) {
+          g.beginPath();
+          g.moveTo(cx + dir * (11 + i * 2.8) * u, cy - 8 * u);
+          g.lineTo(cx + dir * (12 + i * 2.8) * u, cy - 1 * u);
+          g.stroke();
+        }
+      }
+      g.restore();
       g.fillStyle = p.dark;                                        // wide gormless mouth
       g.beginPath(); g.ellipse(cx, cy - 16 * u, 9 * u, 4.5 * u, 0, 0, WS.PI); g.fill();
       eyes(g, cx, cy - 26 * u, 7 * u, 3 * u, '#e8ffd8');
@@ -525,7 +565,56 @@
         // vanished into it; the cuff is what makes the arm a separate mass.
         shaded(g, cx + dir * 24 * u, cy + 2 * u, 5 * u, 4 * u, p);
       }
-      poly(g, [[cx - 22 * u, cy + 26 * u], [cx - 12 * u, cy - 22 * u], [cx + 12 * u, cy - 22 * u], [cx + 22 * u, cy + 26 * u]], p.mid, p.line, u);
+      const robe = [[cx - 22 * u, cy + 26 * u], [cx - 12 * u, cy - 22 * u],
+        [cx + 12 * u, cy - 22 * u], [cx + 22 * u, cy + 26 * u]];
+      poly(g, robe, p.mid, p.line, u);
+      /* FOLDS, and a cord at the waist. The necromancer measured the flattest
+         thing in the bestiary at 19% - a plain trapezoid of one colour, which
+         is a traffic cone however good the hood on top of it is. Cloth hanging
+         from a cord gathers, and a gather is a shaded side with a LIT CREST
+         beside it and a hard line where the surface turns. The survivors'
+         robes were fixed the same way, and there the gradients alone measured
+         nothing until the terminator went in. */
+      g.save();
+      g.beginPath();
+      g.moveTo(robe[0][0], robe[0][1]);
+      for (let i = 1; i < robe.length; i++) g.lineTo(robe[i][0], robe[i][1]);
+      g.closePath(); g.clip();
+      for (const k of [-0.68, -0.26, 0.18, 0.62]) {
+        const topX = cx + k * 11 * u, botX = cx + k * 21 * u;
+        const w0 = 1.4 * u, w1 = (2.6 + 1.4 * Math.abs(k)) * u;
+        const grd = g.createLinearGradient(botX - w1, 0, botX + w1, 0);
+        grd.addColorStop(0, 'rgba(0,0,0,.30)');
+        grd.addColorStop(0.5, 'rgba(0,0,0,.03)');
+        grd.addColorStop(0.72, 'rgba(255,255,255,.20)');
+        grd.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = grd;
+        g.beginPath();
+        g.moveTo(topX - w0, cy - 22 * u); g.lineTo(topX + w0, cy - 22 * u);
+        g.lineTo(botX + w1, cy + 26 * u); g.lineTo(botX - w1, cy + 26 * u);
+        g.closePath(); g.fill();
+        g.strokeStyle = 'rgba(0,0,0,.28)'; g.lineWidth = 0.9 * u;
+        g.beginPath();
+        g.moveTo(topX - w0, cy - 22 * u); g.lineTo(botX - w1, cy + 26 * u);
+        g.stroke();
+      }
+      // the cord, knotted at the waist
+      g.strokeStyle = p.dark; g.globalAlpha = 0.55; g.lineWidth = 1.4 * u;
+      g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(cx - 14 * u, cy - 3 * u);
+      g.quadraticCurveTo(cx, cy + 1 * u, cx + 14 * u, cy - 3 * u);
+      g.stroke();
+      g.strokeStyle = p.hi; g.globalAlpha = 0.22;
+      g.beginPath();
+      g.moveTo(cx - 14 * u, cy - 4.2 * u);
+      g.quadraticCurveTo(cx, cy - 0.2 * u, cx + 14 * u, cy - 4.2 * u);
+      g.stroke();
+      g.strokeStyle = p.dark; g.globalAlpha = 0.45; g.lineWidth = 1 * u;
+      g.beginPath();
+      g.moveTo(cx + 3 * u, cy + 0.4 * u); g.lineTo(cx + 5 * u, cy + 9 * u);
+      g.stroke();
+      g.restore();
       /* A hem, so the robe has a foot instead of dissolving into the ground.
          It was a flat disc of the darkest tone, which on the one creature in
          the bestiary with no interior structure at all was the largest
@@ -545,9 +634,53 @@
     lich(g, s, p) {
       CREATURES.necromancer(g, s, p);
       const cx = s / 2, cy = s * 0.58, u = s / 100;
-      poly(g, [[cx - 14 * u, cy - 34 * u], [cx - 10 * u, cy - 50 * u], [cx - 4 * u, cy - 36 * u],
-      [cx, cy - 54 * u], [cx + 4 * u, cy - 36 * u], [cx + 10 * u, cy - 50 * u],
-      [cx + 14 * u, cy - 34 * u]], '#9fd8ff', '#5aa0d0', u);       // ice crown
+      /* A crown of ICE, which means it is lit from inside and its facets do
+         not agree with each other. Flat pale-blue triangles with one outline
+         read as cut paper - the same fault as everything else in here before
+         it was fixed, and on a boss. Rime on the hem to match, because a lich
+         that freezes things should be freezing the ground it stands on. */
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      const cold = g.createRadialGradient(cx, cy - 40 * u, 2 * u, cx, cy - 40 * u, 20 * u);
+      cold.addColorStop(0, 'rgba(150,215,255,.30)');
+      cold.addColorStop(1, 'rgba(150,215,255,0)');
+      g.fillStyle = cold;
+      g.beginPath(); g.arc(cx, cy - 40 * u, 20 * u, 0, WS.TAU); g.fill();
+      g.restore();
+      const spikes = [[-14, -34, -10, -47, -4, -36], [-4, -36, 0, -52, 4, -36],
+        [4, -36, 10, -47, 14, -34]];
+      for (const [x0, y0, x1, y1, x2, y2] of spikes) {
+        // each spike in two facets, one lit and one turned away
+        poly(g, [[cx + x0 * u, cy + y0 * u], [cx + x1 * u, cy + y1 * u],
+          [cx + (x1 + x2) / 2 * u, cy + (y1 + y2) / 2 * u]], '#cfeaff', '#6fb0da', u * 0.8);
+        poly(g, [[cx + (x1 + x2) / 2 * u, cy + (y1 + y2) / 2 * u],
+          [cx + x1 * u, cy + y1 * u], [cx + x2 * u, cy + y2 * u]], '#7fb8dd', '#4d8cb4', u * 0.8);
+      }
+      // the band the spikes stand on
+      poly(g, [[cx - 15 * u, cy - 31 * u], [cx + 15 * u, cy - 31 * u],
+        [cx + 14 * u, cy - 35 * u], [cx - 14 * u, cy - 35 * u]], '#a9d6f0', '#5e9cc4', u * 0.8);
+      /* A HIGH COLLAR, flared behind the hood. lich() draws necromancer() and
+         adds to it, so the two shared 88% of a silhouette - a boss that is a
+         trash mob in a hat. The collar is the cheapest thing that changes the
+         OUTLINE rather than the surface, which is the only kind of change
+         that separates two shapes. */
+      for (const dir of [-1, 1]) {
+        poly(g, [[cx + dir * 6 * u, cy - 28 * u], [cx + dir * 26 * u, cy - 40 * u],
+          [cx + dir * 30 * u, cy - 20 * u], [cx + dir * 9 * u, cy - 16 * u]],
+          '#8fc4e2', '#4d8cb4', u);
+        poly(g, [[cx + dir * 9 * u, cy - 24 * u], [cx + dir * 24 * u, cy - 33 * u],
+          [cx + dir * 26 * u, cy - 23 * u], [cx + dir * 11 * u, cy - 18 * u]],
+          '#c4e6f8', '#6fb0da', u * 0.8);
+      }
+      // rime along the hem
+      g.save();
+      g.globalAlpha = 0.7;
+      for (let i = -5; i <= 5; i++) {
+        const x = cx + i * 4 * u;
+        poly(g, [[x - 1.6 * u, cy + 27 * u], [x, cy + (20 - Math.abs(i) * 0.9) * u],
+          [x + 1.6 * u, cy + 27 * u]], 'rgba(200,236,255,.8)', 'rgba(120,180,215,.8)', u * 0.6);
+      }
+      g.restore();
     },
 
     warlock(g, s, p) { CREATURES.necromancer(g, s, p); },
@@ -575,8 +708,52 @@
     ghoul(g, s, p) {
       const cx = s / 2, cy = s * 0.60, u = s / 100;
       shaded(g, cx + 3 * u, cy + 4 * u, 21 * u, 22 * u, p, 0.18);  // lopsided
-      shaded(g, cx - 24 * u, cy + 6 * u, 8 * u, 15 * u, p, -0.6);  // dragging arm
-      poly(g, [[cx - 32 * u, cy + 16 * u], [cx - 26 * u, cy + 26 * u], [cx - 22 * u, cy + 14 * u]], p.hi, p.line, u);
+      /* THE DRAGGING ARM, as a limb rather than an ellipse.
+         A rotated oval beside the body traces its own pointed outline and
+         reads as a leaf stuck to the ghoul's side - which is what this was.
+         An arm is wide at the shoulder and narrow at the wrist, it comes OUT
+         of the mass rather than sitting next to it, and there is a hand on
+         the end of it. */
+      poly(g, [
+        [cx - 9 * u, cy - 6 * u], [cx - 16 * u, cy - 4 * u],
+        [cx - 21 * u, cy + 16 * u], [cx - 16 * u, cy + 18 * u],
+        [cx - 13 * u, cy + 2 * u],
+      ], p.lo, p.line, u);
+      shaded(g, cx - 19 * u, cy + 18 * u, 4.5 * u, 4 * u, p);
+      for (const k of [-1, 0, 1]) {
+        poly(g, [
+          [cx + (-20 + k * 2.6) * u, cy + 20 * u],
+          [cx + (-20.5 + k * 3.4) * u, cy + 27 * u],
+          [cx + (-18.4 + k * 2.6) * u, cy + 20 * u],
+        ], p.hi, p.line, u * 0.8);
+      }
+      /* RIBS. A rotting thing should be coming apart, and the ghoul was as
+         smooth and whole as an apple. Four bones showing through the hide and
+         a hollow where the belly has gone - two marks, and it stops being a
+         green pebble and starts being a corpse that is still walking. */
+      g.save();
+      g.beginPath(); g.ellipse(cx + 3 * u, cy + 4 * u, 21 * u, 22 * u, 0.18, 0, WS.TAU); g.clip();
+      const hollow = g.createRadialGradient(cx + 4 * u, cy + 12 * u, 1 * u,
+        cx + 4 * u, cy + 12 * u, 13 * u);
+      hollow.addColorStop(0, 'rgba(18,10,8,.62)');
+      hollow.addColorStop(1, 'rgba(18,10,8,0)');
+      g.fillStyle = hollow;
+      g.beginPath(); g.ellipse(cx + 4 * u, cy + 12 * u, 13 * u, 11 * u, 0, 0, WS.TAU); g.fill();
+      g.lineCap = 'round';
+      for (let i = 0; i < 4; i++) {
+        const y = cy + (-8 + i * 5) * u, w = (13 - i * 1.2) * u;
+        g.strokeStyle = 'rgba(20,14,10,.5)'; g.lineWidth = 2.6 * u;
+        g.beginPath();
+        g.moveTo(cx + 3 * u - w, y);
+        g.quadraticCurveTo(cx + 3 * u, y + 4 * u, cx + 3 * u + w, y);
+        g.stroke();
+        g.strokeStyle = 'rgba(232,226,204,.5)'; g.lineWidth = 1.5 * u;
+        g.beginPath();
+        g.moveTo(cx + 3 * u - w, y - 0.8 * u);
+        g.quadraticCurveTo(cx + 3 * u, y + 3.2 * u, cx + 3 * u + w, y - 0.8 * u);
+        g.stroke();
+      }
+      g.restore();
       shaded(g, cx - 2 * u, cy - 18 * u, 12 * u, 11 * u, p, -0.25);
       g.fillStyle = '#2a1414';                                     // hanging jaw
       g.beginPath(); g.ellipse(cx - 2 * u, cy - 10 * u, 6 * u, 5 * u, 0, 0, WS.TAU); g.fill();
@@ -632,57 +809,213 @@
     },
 
     wraith(g, s, p) {
+      /* A shroud with something in it, rather than a teardrop with two dots.
+         The shape was right - it fades out at the hem, which is the whole
+         idea - and it had nothing else at all: no folds, no hands, no light
+         in the hood. This is a boss. */
       const cx = s / 2, cy = s * 0.58, u = s / 100;
+      const shroud = () => {
+        g.beginPath();
+        g.moveTo(cx - 20 * u, cy + 30 * u);
+        g.quadraticCurveTo(cx - 24 * u, cy - 22 * u, cx, cy - 36 * u);
+        g.quadraticCurveTo(cx + 24 * u, cy - 22 * u, cx + 20 * u, cy + 30 * u);
+        g.quadraticCurveTo(cx, cy + 18 * u, cx - 20 * u, cy + 30 * u);
+      };
       g.save();
       const grd = g.createLinearGradient(0, cy - 34 * u, 0, cy + 30 * u);
       grd.addColorStop(0, p.hi); grd.addColorStop(0.6, p.mid); grd.addColorStop(1, 'rgba(0,0,0,0)');
       g.fillStyle = grd;
-      g.beginPath();
-      g.moveTo(cx - 20 * u, cy + 30 * u);
-      g.quadraticCurveTo(cx - 24 * u, cy - 22 * u, cx, cy - 36 * u);
-      g.quadraticCurveTo(cx + 24 * u, cy - 22 * u, cx + 20 * u, cy + 30 * u);
-      g.quadraticCurveTo(cx, cy + 18 * u, cx - 20 * u, cy + 30 * u);
+      shroud();
       g.fill();
+      // folds down the cloth, gathering toward the hood
+      g.save();
+      shroud(); g.clip();
+      for (const k of [-0.62, -0.2, 0.24, 0.66]) {
+        const tx = cx + k * 8 * u, bx = cx + k * 19 * u;
+        const w = (2 + 1.4 * Math.abs(k)) * u;
+        const fg = g.createLinearGradient(bx - w, 0, bx + w, 0);
+        fg.addColorStop(0, 'rgba(0,0,0,.26)');
+        fg.addColorStop(0.55, 'rgba(0,0,0,0)');
+        fg.addColorStop(0.78, 'rgba(255,255,255,.16)');
+        fg.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = fg;
+        g.beginPath();
+        g.moveTo(tx - u, cy - 30 * u); g.lineTo(tx + u, cy - 30 * u);
+        g.lineTo(bx + w, cy + 30 * u); g.lineTo(bx - w, cy + 30 * u);
+        g.closePath(); g.fill();
+        g.strokeStyle = 'rgba(0,0,0,.24)'; g.lineWidth = 0.9 * u;
+        g.beginPath();
+        g.moveTo(tx - u, cy - 30 * u); g.lineTo(bx - w, cy + 30 * u);
+        g.stroke();
+      }
       g.restore();
+      g.restore();
+      // bone hands, out of the sleeves
+      for (const dir of [-1, 1]) {
+        g.save();
+        g.globalAlpha = 0.9;
+        poly(g, [[cx + dir * 13 * u, cy - 4 * u], [cx + dir * 22 * u, cy + 2 * u],
+          [cx + dir * 20 * u, cy + 9 * u], [cx + dir * 12 * u, cy + 4 * u]],
+          'rgba(222,228,238,.85)', 'rgba(120,132,150,.9)', u);
+        for (let k = 0; k < 3; k++) {
+          poly(g, [
+            [cx + dir * (20 + k * 1.2) * u, cy + (2 + k * 2.2) * u],
+            [cx + dir * (27 + k * 0.6) * u, cy + (5 + k * 2.6) * u],
+            [cx + dir * (20 + k * 1.2) * u, cy + (5 + k * 2.2) * u],
+          ], 'rgba(232,238,248,.9)', 'rgba(120,132,150,.8)', u * 0.7);
+        }
+        g.restore();
+      }
+      // the hood, and the cold inside it
       g.fillStyle = 'rgba(6,8,14,.85)';
       g.beginPath(); g.ellipse(cx, cy - 20 * u, 9 * u, 11 * u, 0, 0, WS.TAU); g.fill();
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      const halo = g.createRadialGradient(cx, cy - 20 * u, 1 * u, cx, cy - 20 * u, 13 * u);
+      halo.addColorStop(0, 'rgba(150,200,255,.30)');
+      halo.addColorStop(1, 'rgba(150,200,255,0)');
+      g.fillStyle = halo;
+      g.beginPath(); g.arc(cx, cy - 20 * u, 13 * u, 0, WS.TAU); g.fill();
+      g.restore();
       eyes(g, cx, cy - 21 * u, 4 * u, 2.2 * u, '#cfe6ff');
     },
 
     reaper(g, s, p) {
+      /* Death Itself, and its scythe was two strokes and a circle.
+         A constant-width line from hip to head with a second line curling off
+         the top is not a scythe, it is a diagram of one - and the "aura" was
+         a plain stroked circle sitting on top of the art like a compass mark.
+         A scythe is a HAFT somebody holds and a BLADE that sweeps, and an
+         aura is light, which means it has no edge at all. */
       const cx = s / 2, cy = s * 0.56, u = s / 100;
-      CREATURES.wraith(g, s, p);
-      g.save();                                                    // the scythe
-      g.strokeStyle = '#d8e4f2'; g.lineWidth = 3.5 * u; g.lineCap = 'round';
-      g.beginPath(); g.moveTo(cx + 26 * u, cy + 34 * u); g.lineTo(cx + 34 * u, cy - 40 * u); g.stroke();
-      g.beginPath();
-      g.moveTo(cx + 34 * u, cy - 40 * u);
-      g.quadraticCurveTo(cx - 4 * u, cy - 52 * u, cx - 12 * u, cy - 24 * u);
-      g.lineWidth = 5 * u; g.strokeStyle = '#eef6ff'; g.stroke();
+      // the aura first, behind everything
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      const aur = g.createRadialGradient(cx, cy, 20 * u, cx, cy, 48 * u);
+      aur.addColorStop(0, 'rgba(120,190,255,0)');
+      aur.addColorStop(0.55, 'rgba(120,190,255,.07)');
+      aur.addColorStop(0.8, 'rgba(180,225,255,.12)');
+      aur.addColorStop(0.93, 'rgba(150,205,255,.05)');
+      aur.addColorStop(1, 'rgba(120,190,255,0)');
+      g.fillStyle = aur;
+      g.beginPath(); g.arc(cx, cy, 48 * u, 0, WS.TAU); g.fill();
       g.restore();
-      g.save(); g.globalAlpha = 0.5; g.strokeStyle = '#9fd8ff'; g.lineWidth = 2 * u;
-      g.beginPath(); g.arc(cx, cy, 44 * u, 0, WS.TAU); g.stroke();
+      CREATURES.wraith(g, s, p);
+      // the haft: bone, tapering, bound where the hand closes on it
+      const bx = cx + 25 * u, by = cy + 33 * u, tx = cx + 33 * u, ty = cy - 38 * u;
+      g.save();
+      g.lineCap = 'round';
+      const haft = g.createLinearGradient(bx, by, tx, ty);
+      haft.addColorStop(0, '#8d94a4');
+      haft.addColorStop(0.45, '#dfe5f0');
+      haft.addColorStop(1, '#9aa2b2');
+      g.strokeStyle = haft; g.lineWidth = 3.2 * u;
+      g.beginPath(); g.moveTo(bx, by); g.lineTo(tx, ty); g.stroke();
+      const dx = tx - bx, dy = ty - by, len = Math.hypot(dx, dy) || 1;
+      const nx = -dy / len * 1.8 * u, ny = dx / len * 1.8 * u;
+      g.strokeStyle = 'rgba(40,50,66,.8)'; g.lineWidth = 0.9 * u;
+      for (const t of [0.44, 0.50, 0.56, 0.62]) {
+        const mx = bx + dx * t, my = by + dy * t;
+        g.beginPath(); g.moveTo(mx - nx, my - ny); g.lineTo(mx + nx, my + ny); g.stroke();
+      }
+      g.restore();
+      // and the blade, sweeping back over the hood
+      blade(g, tx, ty, 40 * u, 7 * u, -1.72, '#eef6ff', '#6d7a8e', 'curve');
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      g.strokeStyle = 'rgba(170,220,255,.5)'; g.lineWidth = 1.4 * u;
+      g.beginPath();
+      g.moveTo(tx, ty);
+      g.quadraticCurveTo(cx + 2 * u, cy - 54 * u, cx - 10 * u, cy - 30 * u);
+      g.stroke();
       g.restore();
     },
 
     sovereign(g, s, p) {
+      /* Aethelgard: a black sun. The idea was right and the execution was a
+         flat disc with eight identical spikes stuck round it at even spacing -
+         which is a compass rose. A corona is not regular, a star's limb is
+         darker than its middle, and the thing that makes an eclipse an
+         eclipse is the ring of light escaping round the edge. */
       const cx = s / 2, cy = s * 0.55, u = s / 100;
-      g.save();                                                    // eclipse disc
-      const grd = g.createRadialGradient(cx, cy, 6 * u, cx, cy, 46 * u);
-      grd.addColorStop(0, '#1a1030'); grd.addColorStop(0.7, '#2a1a4a'); grd.addColorStop(1, '#0d0820');
-      g.fillStyle = grd;
-      g.beginPath(); g.arc(cx, cy, 44 * u, 0, WS.TAU); g.fill();
-      g.shadowColor = '#ffe6ae'; g.shadowBlur = 26 * u;
-      g.strokeStyle = '#ffe6ae'; g.lineWidth = 3 * u;
-      g.beginPath(); g.arc(cx, cy, 44 * u, 0, WS.TAU); g.stroke();
-      g.restore();
-      for (let i = 0; i < 8; i++) {                                // corona spears
-        const a = (i / 8) * WS.TAU + 0.2;
-        blade(g, cx + WS.cos(a) * 44 * u, cy + WS.sin(a) * 44 * u, 22 * u, 4 * u, a + WS.PI / 2, '#ffd98f', '#a97c2f');
+      /* R was 44u with 22u spears on top of it, reaching 66u from the centre
+         of a canvas that is 50u to the edge - so Aethelgard has been drawn
+         with its corona sheared off since the day it was made, and nothing
+         was measuring the bosses. Sized to fit, and the loss of presence is
+         bought back with spriteScale on the boss rather than by drawing
+         outside the frame. */
+      const R = 30 * u;
+      // the corona, behind: long and short spears at uneven angles
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * WS.TAU + 0.18 + (i % 3) * 0.05;
+        const long = i % 3 === 0;
+        blade(g, cx + WS.cos(a) * R * 0.96, cy + WS.sin(a) * R * 0.96,
+          (long ? 14 : 9) * u, (long ? 3.4 : 2.4) * u, a + WS.PI / 2,
+          '#ffd98f', '#a97c2f', 'ray');
       }
-      g.fillStyle = '#0a0714';
-      g.beginPath(); g.ellipse(cx, cy - 4 * u, 13 * u, 16 * u, 0, 0, WS.TAU); g.fill();
-      eyes(g, cx, cy - 6 * u, 5 * u, 2.6 * u, '#fff3d0');
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      const flare = g.createRadialGradient(cx, cy, R * 0.82, cx, cy, R * 1.42);
+      flare.addColorStop(0, 'rgba(255,214,140,.30)');
+      flare.addColorStop(0.35, 'rgba(255,190,110,.13)');
+      flare.addColorStop(1, 'rgba(255,190,110,0)');
+      g.fillStyle = flare;
+      g.beginPath(); g.arc(cx, cy, R * 1.42, 0, WS.TAU); g.fill();
+      g.restore();
+      // the disc, dark and limb-darkened
+      g.save();
+      const grd = g.createRadialGradient(cx - R * 0.2, cy - R * 0.24, 4 * u, cx, cy, R);
+      grd.addColorStop(0, '#2c1d४a'.replace('४', '4'));
+      grd.addColorStop(0.62, '#221545');
+      grd.addColorStop(1, '#0b0718');
+      g.fillStyle = grd;
+      g.beginPath(); g.arc(cx, cy, R, 0, WS.TAU); g.fill();
+      g.restore();
+      // the ring of light escaping round the edge - brightest at one side,
+      // because a light behind a disc is never centred on it
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      const ring = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+      ring.addColorStop(0, 'rgba(255,246,214,.95)');
+      ring.addColorStop(0.5, 'rgba(255,214,140,.55)');
+      ring.addColorStop(1, 'rgba(255,196,110,.28)');
+      g.strokeStyle = ring;
+      g.lineWidth = 2.6 * u;
+      g.beginPath(); g.arc(cx, cy, R - 1.2 * u, 0, WS.TAU); g.stroke();
+      g.lineWidth = 6 * u;
+      g.globalAlpha = 0.28;
+      g.beginPath(); g.arc(cx, cy, R - 2.4 * u, 0, WS.TAU); g.stroke();
+      g.restore();
+      // and the face inside it
+      g.fillStyle = '#07040f';
+      g.beginPath(); g.ellipse(cx, cy - 2 * u, 10 * u, 12 * u, 0, 0, WS.TAU); g.fill();
+      g.save();
+      g.globalAlpha = 0.5;
+      g.strokeStyle = '#ffe6ae'; g.lineWidth = 1 * u;
+      g.beginPath(); g.ellipse(cx, cy - 2 * u, 10 * u, 12 * u, 0, 0, WS.TAU); g.stroke();
+      g.restore();
+      /* A SEAM OF LIGHT, and nothing else.
+         The first attempt put a crown of short strokes above the eyes and a
+         curve below them, meaning to read as radiance and a mouth. They read
+         as eyelashes and a grin: the last boss in the game came out smiling.
+         What is left is one crack of light down the middle of the void, which
+         says there is something burning behind the face without giving it an
+         expression. */
+      g.save();
+      g.beginPath(); g.ellipse(cx, cy - 2 * u, 10 * u, 12 * u, 0, 0, WS.TAU); g.clip();
+      g.globalCompositeOperation = 'lighter';
+      const seam = g.createLinearGradient(cx, cy - 20 * u, cx, cy + 14 * u);
+      seam.addColorStop(0, 'rgba(255,240,200,0)');
+      seam.addColorStop(0.35, 'rgba(255,232,180,.55)');
+      seam.addColorStop(1, 'rgba(255,214,140,0)');
+      g.strokeStyle = seam;
+      g.lineWidth = 1.3 * u;
+      g.beginPath();
+      g.moveTo(cx - 0.6 * u, cy - 20 * u);
+      g.quadraticCurveTo(cx + 1.4 * u, cy - 6 * u, cx - 0.4 * u, cy + 14 * u);
+      g.stroke();
+      g.restore();
+      eyes(g, cx, cy - 4 * u, 3.8 * u, 2.1 * u, '#fff3d0');
     },
 
     /* --- beasts ----------------------------------------------------------- */

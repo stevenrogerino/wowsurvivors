@@ -150,7 +150,11 @@
     aethelgard: {
       name: 'Aethelgard, the Eclipse Sovereign', family: 'celestial', art: 'sovereign',
       tint: [0.95, 0.90, 1.00],
+      /* spriteScale, not radius: the corona is drawn inside its own tile now
+         (it never was), so the sprite lost reach. This buys the presence back
+         without moving the hitbox on the final fight in the game. */
       health: 300000, speed: 0, damage: 34, xp: 0, radius: 62, gold: 0,
+      spriteScale: 1.35,
       interval: 99, arena: true, stationary: true, school: 'holy',
       patterns: [{ type: 'charge' }],
       yell: 'Witness the eclipse of all things.',
