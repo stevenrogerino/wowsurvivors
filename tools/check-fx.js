@@ -211,7 +211,15 @@ const MAX_SPEED = 1200;
       }
       return add / 1000;
     };
+    /* SEEDED PER SHOT.
+       This measured 1.49x for arcweb on one run and passed on the next three.
+       Weapons jitter their spread and their spark positions off WS.random(),
+       and a chaining weapon's reach depends on where the chain happens to
+       land - so a single unseeded frame decides a rule with a hard threshold,
+       and a harness that fails one run in four gets ignored. Same seed before
+       every shot, so rank 1 and rank 8 are compared under identical dice. */
     const shot = (id, level, evolved, partner) => {
+      WS.setSeed(0xF1E1D);
       pl.weapons.length = 0; pl.weaponLevels = {}; pl.combosActive = {};
       WS.Player.addWeapon(pl, id);
       if (partner) WS.Player.addWeapon(pl, partner);

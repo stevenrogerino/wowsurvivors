@@ -358,6 +358,60 @@
    *  `kind` shapes it without touching the eleven call sites that do not pass
    *  one - 'curve' for a scythe or a claw, 'heavy' for a cleaver.
    */
+  /** A COAT on a mass, clipped inside it.
+   *
+   *  Half the bestiary is a furred or feathered animal drawn as one smooth
+   *  ellipse - a perfect outline with nothing happening under it. Fur is not
+   *  a texture at this size, it is a small number of TUFTS that break the
+   *  surface: a dark stroke with a light one beside it, laid along the way
+   *  the coat lies. The same shape serves a wolf's hackles, a boar's hide and
+   *  a bird's coverts; only the direction and the count change.
+   *
+   *  Clipped, always, so nothing here can alter the silhouette the animal was
+   *  built with.
+   */
+  function pelt(g, p, cx, cy, rx, ry, rot, n, lean, alpha) {
+    /* TUFTS, in two staggered rows.
+     *
+     * The first version struck one long stroke per tuft at even spacing and a
+     * constant angle, and a row of evenly spaced parallel lines down a body is
+     * not fur - it is corrugation. The wolf came out ribbed like a radiator.
+     * Fur at this size is a small number of SHORT marks that disagree with
+     * each other: varied in length, varied in angle, and staggered so no two
+     * rows line up. */
+    g.save();
+    g.beginPath();
+    g.ellipse(cx, cy, rx, ry, rot || 0, 0, WS.TAU);
+    g.clip();
+    g.lineCap = 'round';
+    const a0 = alpha === undefined ? 0.26 : alpha;
+    for (let row = 0; row < 2; row++) {
+      for (let i = 0; i < n; i++) {
+        const t = (i + (row ? 0.5 : 0)) / n;
+        const x = cx - rx * 0.78 + rx * 1.56 * t;
+        const y = cy - ry * 0.5 + row * ry * 0.5 + Math.sin(t * 7.1 + row) * ry * 0.1;
+        // every tuft its own length and its own tilt
+        const len = ry * (0.16 + 0.12 * Math.abs(Math.sin(t * 11 + row * 2)));
+        const tilt = lean + 0.5 * Math.sin(t * 9.3 + row * 1.7);
+        g.globalAlpha = a0 * (row ? 0.8 : 1);
+        g.strokeStyle = p.line;
+        g.lineWidth = Math.max(0.7, rx * 0.035);
+        g.beginPath();
+        g.moveTo(x, y);
+        g.quadraticCurveTo(x + tilt * len * 0.4, y + len * 0.7, x + tilt * len, y + len);
+        g.stroke();
+        g.globalAlpha = a0 * 0.55;
+        g.strokeStyle = p.hi;
+        g.beginPath();
+        g.moveTo(x + rx * 0.035, y);
+        g.quadraticCurveTo(x + rx * 0.035 + tilt * len * 0.4, y + len * 0.7,
+          x + rx * 0.035 + tilt * len, y + len);
+        g.stroke();
+      }
+    }
+    g.restore();
+  }
+
   function blade(g, x, y, len, wide, rot, edge, spine, kind) {
     g.save();
     g.translate(x, y); g.rotate(rot);
@@ -478,24 +532,40 @@
     },
 
     brute(g, s, p) {
-      /* A WALL - the opposite proportion to the mongrel above, which it used
-         to be within a few units of. Wide and low, no neck at all, the head
-         sunk between shoulders that are the widest thing on the field, and
-         the knuckles on the ground where an animal this top-heavy would have
-         to put them. */
+      /* ONE round mass, wide.
+       *
+       * Separating the shoulders from the trunk gave each of them its own
+       * shaded edge, and two stacked domes with a seam between them read as a
+       * cooking pot with a lid on it - which is what this had become. Wide is
+       * what tells a brute from a mongrel; ROUND is what made it likeable,
+       * and roundness is one continuous surface or it is nothing. The
+       * shoulders are a swell in the same body now, not a second body. */
       const cx = s / 2, cy = s * 0.54, u = s / 100;
-      legs(g, p, cx, cy + 26 * u, u, [-13, 13], 7, 8);
-      shaded(g, cx, cy + 10 * u, 34 * u, 19 * u, p);               // wide, low trunk
-      // the shoulders: one mass across the top, the widest part of the figure
-      shaded(g, cx, cy - 10 * u, 30 * u, 13 * u, p);
-      shaded(g, cx - 30 * u, cy + 6 * u, 9 * u, 16 * u, p, -0.16);
-      shaded(g, cx + 30 * u, cy + 6 * u, 9 * u, 16 * u, p, 0.16);
-      // knuckles on the ground - shaded like everything else, not flat discs
-      shaded(g, cx - 31 * u, cy + 20 * u, 9 * u, 8 * u, STONE);
-      shaded(g, cx + 31 * u, cy + 20 * u, 9 * u, 8 * u, STONE);
-      shaded(g, cx, cy - 17 * u, 11 * u, 9 * u, p);                // head, sunk in
-      g.fillStyle = p.lo; g.fillRect(cx - 12 * u, cy - 19 * u, 24 * u, 4 * u);
-      eyes(g, cx, cy - 18 * u, 4.5 * u, 1.7 * u, '#ff8f6b');
+      legs(g, p, cx, cy + 24 * u, u, [-13, 13], 8, 8);
+      shaded(g, cx - 30 * u, cy + 4 * u, 9 * u, 17 * u, p, -0.16);
+      shaded(g, cx + 30 * u, cy + 4 * u, 9 * u, 17 * u, p, 0.16);
+      shaded(g, cx, cy + 2 * u, 31 * u, 25 * u, p);               // the one mass
+      /* The shoulders, as a light on the same form rather than a shape on top
+         of it: a highlight across the top of the mass, clipped inside it. */
+      g.save();
+      g.beginPath(); g.ellipse(cx, cy + 2 * u, 31 * u, 25 * u, 0, 0, WS.TAU); g.clip();
+      const yoke = g.createRadialGradient(cx, cy - 14 * u, 2 * u, cx, cy - 8 * u, 30 * u);
+      yoke.addColorStop(0, 'rgba(255,255,255,.16)');
+      yoke.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = yoke;
+      g.beginPath(); g.ellipse(cx, cy - 12 * u, 26 * u, 13 * u, 0, 0, WS.TAU); g.fill();
+      // and a fold under them, which is where a neckless thing creases
+      g.strokeStyle = p.line; g.globalAlpha = 0.28; g.lineWidth = 1.4 * u;
+      g.beginPath();
+      g.moveTo(cx - 22 * u, cy - 2 * u);
+      g.quadraticCurveTo(cx, cy + 4 * u, cx + 22 * u, cy - 2 * u);
+      g.stroke();
+      g.restore();
+      shaded(g, cx - 31 * u, cy + 19 * u, 9 * u, 8 * u, STONE);   // knuckles down
+      shaded(g, cx + 31 * u, cy + 19 * u, 9 * u, 8 * u, STONE);
+      shaded(g, cx, cy - 16 * u, 11 * u, 9 * u, p);               // head, sunk in
+      g.fillStyle = p.lo; g.fillRect(cx - 12 * u, cy - 18 * u, 24 * u, 4 * u);
+      eyes(g, cx, cy - 17 * u, 4.5 * u, 1.7 * u, '#ff8f6b');
     },
 
     gilkin(g, s, p) {
@@ -794,13 +864,34 @@
        * away. */
       const cx = s / 2, cy = s * 0.58, u = s / 100;
       shaded(g, cx, cy + 6 * u, 30 * u, 28 * u, p);
-      g.strokeStyle = p.dark; g.lineWidth = 2 * u;                 // stitches
-      for (let i = -2; i <= 2; i++) {
+      /* STITCHES, not bars. Five hard full-length lines at even spacing read
+         as a cage laid over the creature; a seam is a thread that crosses a
+         join, so it is short, it is crossed, and it only runs where two
+         pieces meet. */
+      g.save();
+      g.beginPath(); g.ellipse(cx, cy + 6 * u, 30 * u, 28 * u, 0, 0, WS.TAU); g.clip();
+      g.strokeStyle = p.dark; g.globalAlpha = 0.55; g.lineCap = 'round';
+      for (const [sx, sy, ex, ey] of [[-16, -10, -13, 20], [2, -14, 6, 16],
+        [17, -6, 13, 22]]) {
+        g.lineWidth = 1.4 * u;
         g.beginPath();
-        g.moveTo(cx + i * 9 * u, cy - 14 * u);
-        g.lineTo(cx + i * 9 * u, cy + 26 * u);
+        g.moveTo(cx + sx * u, cy + sy * u);
+        g.quadraticCurveTo(cx + (sx + ex) / 2 * u + 2 * u, cy + (sy + ey) / 2 * u,
+          cx + ex * u, cy + ey * u);
         g.stroke();
+        g.lineWidth = 1.1 * u;
+        const n = 6;
+        for (let k = 1; k < n; k++) {
+          const t = k / n;
+          const mx = cx + (sx + (ex - sx) * t) * u + 2 * u * (1 - Math.abs(t - 0.5) * 2);
+          const my = cy + (sy + (ey - sy) * t) * u;
+          g.beginPath();
+          g.moveTo(mx - 2.6 * u, my - 1.6 * u);
+          g.lineTo(mx + 2.6 * u, my + 1.6 * u);
+          g.stroke();
+        }
       }
+      g.restore();
       shaded(g, cx - 29 * u, cy - 1 * u, 8 * u, 14 * u, p, -0.35);  // the small arm
       shaded(g, cx + 31 * u, cy + 1 * u, 12 * u, 19 * u, p, 0.32);  // and the heavy one
       blade(g, cx + 19 * u, cy + 6 * u, 30 * u, 8 * u, 0.75, '#aeb6c4', '#5a6070', 'heavy');
@@ -1037,8 +1128,35 @@
       const cx = s / 2, cy = s * 0.56, u = s / 100;
       legs(g, p, cx, cy + 15 * u, u, [-16, -6, 8, 18], 17, 4.2);
       shaded(g, cx - 2 * u, cy + 2 * u, 26 * u, 15 * u, p);        // long body
-      poly(g, [[cx + 22 * u, cy - 1 * u], [cx + 42 * u, cy - 9 * u],
-        [cx + 44 * u, cy - 1 * u], [cx + 26 * u, cy + 7 * u]], p.lo, p.line, u); // brush
+      pelt(g, p, cx - 2 * u, cy + 2 * u, 26 * u, 15 * u, 0, 7, 0.5, 0.3);
+      /* THE BRUSH. Four points made a plank; a wolf's tail is thick at the
+         root, fuller in the middle and ragged at the tip, and it is the one
+         part of the animal that is pure fur. */
+      poly(g, [[cx + 21 * u, cy - 3 * u], [cx + 31 * u, cy - 10 * u],
+        [cx + 41 * u, cy - 9 * u], [cx + 45 * u, cy - 2 * u],
+        [cx + 40 * u, cy + 3 * u], [cx + 30 * u, cy + 4 * u],
+        [cx + 24 * u, cy + 7 * u]], p.lo, p.line, u);
+      g.save();
+      g.beginPath();
+      g.moveTo(cx + 21 * u, cy - 3 * u);
+      g.lineTo(cx + 31 * u, cy - 10 * u); g.lineTo(cx + 41 * u, cy - 9 * u);
+      g.lineTo(cx + 45 * u, cy - 2 * u); g.lineTo(cx + 40 * u, cy + 3 * u);
+      g.lineTo(cx + 30 * u, cy + 4 * u); g.lineTo(cx + 24 * u, cy + 7 * u);
+      g.closePath(); g.clip();
+      g.lineCap = 'round';
+      for (let i = 0; i < 6; i++) {
+        const t = i / 5;
+        const x = cx + (23 + t * 20) * u, y = cy + (-7 + t * 3) * u;
+        g.globalAlpha = 0.34; g.strokeStyle = p.line; g.lineWidth = 1.1 * u;
+        g.beginPath();
+        g.moveTo(x, y); g.quadraticCurveTo(x + 5 * u, y + 4 * u, x + 8 * u, y + 9 * u);
+        g.stroke();
+        g.globalAlpha = 0.24; g.strokeStyle = p.hi;
+        g.beginPath();
+        g.moveTo(x + 1.4 * u, y); g.quadraticCurveTo(x + 6.4 * u, y + 4 * u, x + 9.4 * u, y + 9 * u);
+        g.stroke();
+      }
+      g.restore();
       shaded(g, cx - 22 * u, cy - 6 * u, 13 * u, 11 * u, p);       // head
       poly(g, [[cx - 34 * u, cy - 6 * u], [cx - 44 * u, cy - 2 * u], [cx - 32 * u, cy + 2 * u]], p.hi, p.line, u);  // muzzle
       poly(g, [[cx - 28 * u, cy - 14 * u], [cx - 30 * u, cy - 26 * u], [cx - 20 * u, cy - 16 * u]], p.lo, p.line, u);
@@ -1090,6 +1208,33 @@
          head at the body's own centre height, as this did, just made two
          spheres of the same size in a row. */
       shaded(g, cx + 3 * u, cy - 1 * u, 23 * u, 18 * u, p);         // humped body
+      /* Hide. A boar is a slab of muscle under a thick coat and this was one
+         smooth egg - second flattest in the bestiary at 22.6%. A shoulder
+         mass lit from above, two creases behind it where the hide folds, and
+         a lighter belly. All of it clipped inside the body, so the fat round
+         silhouette that makes it a boar is untouched. */
+      g.save();
+      g.beginPath(); g.ellipse(cx + 3 * u, cy - 1 * u, 23 * u, 18 * u, 0, 0, WS.TAU); g.clip();
+      const shoulder = g.createRadialGradient(cx - 6 * u, cy - 10 * u, 2 * u,
+        cx - 4 * u, cy - 4 * u, 22 * u);
+      shoulder.addColorStop(0, 'rgba(255,255,255,.17)');
+      shoulder.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = shoulder;
+      g.beginPath(); g.ellipse(cx - 5 * u, cy - 6 * u, 16 * u, 14 * u, 0, 0, WS.TAU); g.fill();
+      g.strokeStyle = p.line; g.globalAlpha = 0.3; g.lineWidth = 1.5 * u;
+      for (const dx of [2, 9]) {
+        g.beginPath();
+        g.moveTo(cx + dx * u, cy - 18 * u);
+        g.quadraticCurveTo(cx + (dx + 4) * u, cy - 2 * u, cx + (dx + 1) * u, cy + 16 * u);
+        g.stroke();
+      }
+      const belly = g.createLinearGradient(0, cy + 4 * u, 0, cy + 17 * u);
+      belly.addColorStop(0, 'rgba(255,240,220,0)');
+      belly.addColorStop(1, 'rgba(255,240,220,.16)');
+      g.globalAlpha = 1;
+      g.fillStyle = belly;
+      g.beginPath(); g.ellipse(cx + 3 * u, cy + 10 * u, 20 * u, 9 * u, 0, 0, WS.TAU); g.fill();
+      g.restore();
       g.strokeStyle = p.dark; g.lineWidth = 2.6 * u; g.lineCap = 'round';
       for (let i = -3; i <= 3; i++) {                               // bristles, over the hump
         const a = WS.PI * (0.62 + i * 0.055);
@@ -1118,14 +1263,41 @@
     bristlekin(g, s, p) {
       const cx = s / 2, cy = s * 0.58, u = s / 100;
       shaded(g, cx, cy + 4 * u, 22 * u, 24 * u, p);
-      g.strokeStyle = p.hi; g.lineWidth = 3.4 * u; g.lineCap = 'round';
-      for (let i = 0; i < 7; i++) {                                // quills
-        const a = WS.PI * (0.15 + i * 0.1);
+      /* QUILLS THAT TAPER, and short ones between the long. Seven strokes of
+         one width at even spacing read as a comb - which is what this was -
+         and a creature covered in spines should not have its spines all the
+         same length. */
+      for (let i = 0; i < 13; i++) {
+        const a = WS.PI * (0.13 + i * 0.054);
+        const long = i % 2 === 0;
+        const r0 = 19 * u, r1 = (long ? 36 : 28) * u;
+        const x0 = cx - WS.cos(a) * r0, y0 = cy - WS.sin(a) * r0;
+        const x1 = cx - WS.cos(a) * r1, y1 = cy - WS.sin(a) * r1;
+        const w = (long ? 3.2 : 2.2) * u;
+        const nx = -(y1 - y0), ny = x1 - x0;
+        const L = Math.hypot(nx, ny) || 1;
+        g.fillStyle = long ? p.hi : p.mid;
+        g.beginPath();
+        g.moveTo(x0 + nx / L * w, y0 + ny / L * w);
+        g.lineTo(x1, y1);
+        g.lineTo(x0 - nx / L * w, y0 - ny / L * w);
+        g.closePath(); g.fill();
+        g.strokeStyle = p.line; g.globalAlpha = 0.4; g.lineWidth = 0.7 * u;
+        g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+        g.globalAlpha = 1;
+      }
+      // and a bristled hide under them
+      g.save();
+      g.beginPath(); g.ellipse(cx, cy + 4 * u, 22 * u, 24 * u, 0, 0, WS.TAU); g.clip();
+      g.strokeStyle = p.line; g.globalAlpha = 0.3; g.lineWidth = 0.9 * u;
+      for (let i = 0; i < 9; i++) {
+        const a = WS.PI * (0.1 + i * 0.09);
         g.beginPath();
         g.moveTo(cx - WS.cos(a) * 20 * u, cy - WS.sin(a) * 20 * u);
-        g.lineTo(cx - WS.cos(a) * 36 * u, cy - WS.sin(a) * 36 * u);
+        g.lineTo(cx - WS.cos(a) * 9 * u, cy - WS.sin(a) * 9 * u + 4 * u);
         g.stroke();
       }
+      g.restore();
       shaded(g, cx, cy - 20 * u, 13 * u, 11 * u, p);
       poly(g, [[cx - 6 * u, cy - 14 * u], [cx + 6 * u, cy - 14 * u], [cx, cy - 6 * u]], p.hi);
       eyes(g, cx, cy - 22 * u, 5 * u, 1.8 * u, '#ffcf6b');
@@ -1135,10 +1307,36 @@
     raptor(g, s, p) {
       const cx = s / 2, cy = s * 0.58, u = s / 100;
       shaded(g, cx + 2 * u, cy, 20 * u, 14 * u, p, -0.15);
+      /* Scale banding, not fur: a raptor is a reptile and the bands run
+         ACROSS it. Same job as the pelt on the furred ones - break a smooth
+         mass - done in the surface the animal actually has. */
+      g.save();
+      g.beginPath(); g.ellipse(cx + 2 * u, cy, 20 * u, 14 * u, -0.15, 0, WS.TAU); g.clip();
+      for (let i = 0; i < 5; i++) {
+        const x = cx + (-12 + i * 7) * u;
+        g.globalAlpha = 0.26; g.strokeStyle = p.line; g.lineWidth = 2.4 * u;
+        g.beginPath();
+        g.moveTo(x, cy - 14 * u);
+        g.quadraticCurveTo(x + 3 * u, cy, x - 1 * u, cy + 14 * u);
+        g.stroke();
+        g.globalAlpha = 0.18; g.strokeStyle = p.hi; g.lineWidth = 1.6 * u;
+        g.beginPath();
+        g.moveTo(x + 2 * u, cy - 14 * u);
+        g.quadraticCurveTo(x + 5 * u, cy, x + 1 * u, cy + 14 * u);
+        g.stroke();
+      }
+      g.restore();
       g.strokeStyle = p.lo; g.lineWidth = 5 * u; g.lineCap = 'round';
       g.beginPath(); g.moveTo(cx + 16 * u, cy - 2 * u); g.quadraticCurveTo(cx + 40 * u, cy - 8 * u, cx + 44 * u, cy - 24 * u); g.stroke();
       g.strokeStyle = p.dark; g.lineWidth = 4 * u;                 // raised legs
       g.beginPath(); g.moveTo(cx, cy + 8 * u); g.lineTo(cx - 6 * u, cy + 22 * u); g.lineTo(cx + 4 * u, cy + 26 * u); g.stroke();
+      g.fillStyle = p.dark;
+      g.beginPath(); g.ellipse(cx + 4 * u, cy + 27 * u, 5 * u, 2.4 * u, 0, 0, WS.TAU); g.fill();
+      g.strokeStyle = p.hi; g.lineWidth = 1.4 * u;                 // the killing claw
+      g.beginPath();
+      g.moveTo(cx + 1 * u, cy + 22 * u);
+      g.quadraticCurveTo(cx + 6 * u, cy + 19 * u, cx + 7 * u, cy + 14 * u);
+      g.stroke();
       shaded(g, cx - 20 * u, cy - 14 * u, 12 * u, 9 * u, p, -0.3);
       poly(g, [[cx - 30 * u, cy - 14 * u], [cx - 42 * u, cy - 10 * u], [cx - 28 * u, cy - 6 * u]], p.hi, p.line, u);
       poly(g, [[cx - 20 * u, cy - 22 * u], [cx - 12 * u, cy - 34 * u], [cx - 10 * u, cy - 20 * u]], p.lo, p.line, u); // crest
@@ -1147,10 +1345,35 @@
 
     strider(g, s, p) {
       const cx = s / 2, cy = s * 0.55, u = s / 100;
-      g.strokeStyle = p.dark; g.lineWidth = 4 * u; g.lineCap = 'round';
-      g.beginPath(); g.moveTo(cx - 6 * u, cy + 10 * u); g.lineTo(cx - 10 * u, cy + 32 * u); g.stroke();
-      g.beginPath(); g.moveTo(cx + 6 * u, cy + 10 * u); g.lineTo(cx + 12 * u, cy + 32 * u); g.stroke();
+      /* Legs with a backward knee, which is what a running bird has, and a
+         foot to stand on. Two straight strokes with round caps were neither. */
+      for (const [hx, kx, fx] of [[-6, -13, -9], [6, 13, 11]]) {
+        g.strokeStyle = p.lo; g.lineWidth = 5 * u; g.lineCap = 'round';
+        g.beginPath();
+        g.moveTo(cx + hx * u, cy + 10 * u);
+        g.quadraticCurveTo(cx + kx * u, cy + 16 * u, cx + kx * u, cy + 22 * u);
+        g.stroke();
+        g.strokeStyle = p.dark; g.lineWidth = 3 * u;
+        g.beginPath();
+        g.moveTo(cx + kx * u, cy + 22 * u);
+        g.quadraticCurveTo(cx + kx * u, cy + 28 * u, cx + fx * u, cy + 33 * u);
+        g.stroke();
+        g.fillStyle = p.lo;
+        g.beginPath(); g.ellipse(cx + kx * u, cy + 21 * u, 3 * u, 2.6 * u, 0, 0, WS.TAU); g.fill();
+        g.fillStyle = p.dark;
+        g.beginPath(); g.ellipse(cx + fx * u, cy + 34 * u, 5 * u, 2.4 * u, 0, 0, WS.TAU); g.fill();
+      }
       shaded(g, cx, cy, 20 * u, 17 * u, p);
+      // plumage: three overlapping coverts down the flank
+      g.save();
+      g.beginPath(); g.ellipse(cx, cy, 20 * u, 17 * u, 0, 0, WS.TAU); g.clip();
+      g.strokeStyle = p.line; g.globalAlpha = 0.32; g.lineWidth = 1.3 * u;
+      for (let i = 0; i < 3; i++) {
+        g.beginPath();
+        g.arc(cx + (10 - i * 7) * u, cy - 6 * u, (14 + i * 3) * u, 0.15, 1.5);
+        g.stroke();
+      }
+      g.restore();
       g.strokeStyle = p.lo; g.lineWidth = 5 * u;                   // long neck
       g.beginPath(); g.moveTo(cx - 8 * u, cy - 10 * u); g.quadraticCurveTo(cx - 22 * u, cy - 30 * u, cx - 14 * u, cy - 40 * u); g.stroke();
       shaded(g, cx - 14 * u, cy - 42 * u, 9 * u, 8 * u, p);
@@ -1165,6 +1388,35 @@
         [cx + dir * 40 * u, cy - 2 * u], [cx + dir * 14 * u, cy + 8 * u]], p.lo, p.line, u);
         poly(g, [[cx + dir * 8 * u, cy - 4 * u], [cx + dir * 38 * u, cy - 10 * u],
         [cx + dir * 20 * u, cy + 10 * u]], p.dark, p.line, u * 0.8);
+        /* PRIMARIES. The wings were two flat slabs, and a wing is made of
+           separate feathers - at the trailing edge especially, where they
+           part. Five splits along the back of each wing is the whole of what
+           tells a wing from a cape. */
+        g.save();
+        g.beginPath();
+        g.moveTo(cx + dir * 5 * u, cy - 8 * u);
+        g.lineTo(cx + dir * 46 * u, cy - 26 * u);
+        g.lineTo(cx + dir * 40 * u, cy - 2 * u);
+        g.lineTo(cx + dir * 14 * u, cy + 8 * u);
+        g.closePath(); g.clip();
+        g.strokeStyle = p.line; g.globalAlpha = 0.45; g.lineWidth = 1.1 * u;
+        for (let i = 1; i <= 5; i++) {
+          const t = i / 6;
+          g.beginPath();
+          g.moveTo(cx + dir * (10 + t * 30) * u, cy + (-9 - t * 14) * u);
+          g.lineTo(cx + dir * (14 + t * 26) * u, cy + (8 - t * 8) * u);
+          g.stroke();
+        }
+        g.globalAlpha = 0.22;
+        g.strokeStyle = p.hi;
+        for (let i = 1; i <= 5; i++) {
+          const t = i / 6;
+          g.beginPath();
+          g.moveTo(cx + dir * (11 + t * 30) * u, cy + (-9 - t * 14) * u);
+          g.lineTo(cx + dir * (15 + t * 26) * u, cy + (8 - t * 8) * u);
+          g.stroke();
+        }
+        g.restore();
       }
       legs(g, p, cx, cy + 16 * u, u, [-6, 6], 9, 3.4);
       shaded(g, cx, cy + 2 * u, 14 * u, 16 * u, p);
@@ -1182,19 +1434,71 @@
 
     spider(g, s, p) {
       const cx = s / 2, cy = s * 0.58, u = s / 100;
-      g.strokeStyle = p.lo; g.lineWidth = 3 * u; g.lineCap = 'round';
+      /* Legs in two segments with a KNEE, which is the whole shape of a
+         spider's leg - up from the body, then down to the ground - and a
+         taper, because the flattest creature in the bestiary at 19% was eight
+         constant-width strokes and two smooth spheres. */
+      g.lineCap = 'round';
       for (let i = 0; i < 4; i++) {
         for (const dir of [-1, 1]) {
           const a = -0.55 + i * 0.38;
+          const kx = cx + dir * (24 + i * 3) * u;
+          const ky = cy + WS.sin(a) * 24 * u - 15 * u;
+          const fx = cx + dir * (34 - i * 2) * u;
+          const fy = cy + WS.sin(a) * 34 * u + 8 * u;
+          g.strokeStyle = p.lo; g.lineWidth = 3.4 * u;
           g.beginPath();
           g.moveTo(cx + dir * 6 * u, cy);
-          g.quadraticCurveTo(cx + dir * (26 + i * 3) * u, cy + WS.sin(a) * 26 * u - 12 * u,
-            cx + dir * (34 - i * 2) * u, cy + WS.sin(a) * 34 * u + 8 * u);
+          g.quadraticCurveTo(cx + dir * 16 * u, ky + 3 * u, kx, ky);
           g.stroke();
+          g.strokeStyle = p.dark; g.lineWidth = 2.2 * u;
+          g.beginPath();
+          g.moveTo(kx, ky);
+          g.quadraticCurveTo(kx + dir * 5 * u, fy - 9 * u, fx, fy);
+          g.stroke();
+          // the joint, and hairs off the upper segment
+          g.fillStyle = p.lo;
+          g.beginPath(); g.ellipse(kx, ky, 2.2 * u, 2 * u, 0, 0, WS.TAU); g.fill();
+          g.strokeStyle = p.dark; g.lineWidth = 0.8 * u;
+          for (let h = 1; h <= 3; h++) {
+            const t = h / 4;
+            const hx = cx + dir * 6 * u + (kx - cx - dir * 6 * u) * t;
+            const hy = cy + (ky - cy) * t;
+            g.beginPath();
+            g.moveTo(hx, hy); g.lineTo(hx + dir * 1.5 * u, hy - 4 * u);
+            g.stroke();
+          }
         }
       }
       shaded(g, cx + 4 * u, cy + 4 * u, 18 * u, 16 * u, p);        // abdomen
+      /* The abdomen is BANDED. A spider's is the one part of it that is
+         patterned, and this one was a bare sphere. */
+      g.save();
+      g.beginPath(); g.ellipse(cx + 4 * u, cy + 4 * u, 18 * u, 16 * u, 0, 0, WS.TAU); g.clip();
+      g.globalAlpha = 0.34;
+      g.fillStyle = p.dark;
+      for (let i = 0; i < 3; i++) {
+        g.beginPath();
+        g.ellipse(cx + (6 + i * 3) * u, cy + 4 * u, (13 - i * 3.6) * u, (15 - i * 3) * u,
+          0, 0, WS.TAU);
+        g.fill();
+      }
+      g.globalAlpha = 0.26;
+      g.fillStyle = p.hi;
+      for (let i = 0; i < 3; i++) {
+        g.beginPath();
+        g.ellipse(cx + (6 + i * 3) * u, cy + 2.4 * u, (13 - i * 3.6) * u, (14 - i * 3) * u,
+          0, 0, WS.TAU);
+        g.fill();
+      }
+      g.restore();
       shaded(g, cx - 14 * u, cy - 4 * u, 11 * u, 10 * u, p);       // cephalothorax
+      // fangs, under the head end
+      for (const dir of [-1, 1]) {
+        poly(g, [[cx + (-17 + dir * 3) * u, cy + 2 * u],
+          [cx + (-18 + dir * 5) * u, cy + 10 * u],
+          [cx + (-13 + dir * 4) * u, cy + 3 * u]], p.dark, p.line, u * 0.8);
+      }
       g.save(); g.shadowColor = '#ff6b6b'; g.shadowBlur = 8 * u; g.fillStyle = '#ff8a8a';
       for (const [ox, oy] of [[-4, -3], [0, -5], [-6, 1], [1, 0]]) {
         g.beginPath(); g.arc(cx - 16 * u + ox * u, cy - 5 * u + oy * u, 1.5 * u, 0, WS.TAU); g.fill();
@@ -1205,6 +1509,7 @@
     moonwretch(g, s, p) {
       const cx = s / 2, cy = s * 0.56, u = s / 100;
       shaded(g, cx, cy + 6 * u, 22 * u, 26 * u, p);
+      pelt(g, p, cx, cy + 6 * u, 22 * u, 26 * u, 0, 6, 0.35, 0.24);
       shaded(g, cx - 24 * u, cy + 4 * u, 9 * u, 16 * u, p, -0.5);
       shaded(g, cx + 24 * u, cy + 4 * u, 9 * u, 16 * u, p, 0.5);
       for (const dir of [-1, 1]) {
@@ -1242,6 +1547,7 @@
     karrash(g, s, p) {
       const cx = s / 2, cy = s * 0.60, u = s / 100;
       shaded(g, cx + 4 * u, cy + 8 * u, 26 * u, 15 * u, p);        // horse barrel
+      pelt(g, p, cx + 4 * u, cy + 8 * u, 26 * u, 15 * u, 0, 7, 0.45, 0.22);
       // Four legs with feet on them, like every other quadruped here. These
       // were four bare round-capped strokes - the only limbs in the bestiary
       // that did not stand on anything.
