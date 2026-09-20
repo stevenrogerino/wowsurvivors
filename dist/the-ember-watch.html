@@ -3586,12 +3586,14 @@ window.WS = window.WS || {};
   WS.Bosses = {
     /* ------------------------------------------------------ Thornhollow ---- */
     grimtunnel: {
+      bossKit: ['crown', 'trophies'],
       name: 'Foreman Grimtunnel', family: 'lampling', art: 'lampling', tint: [1.00, 0.90, 0.55],
       health: 1900, speed: 55, damage: 30, xp: 160, radius: 40, gold: 35, interval: 4.0,
       patterns: [{ type: 'summon', id: 'lampling', count: 7 }, { type: 'charge' }],
       yell: 'Mine! My light! MINE!',
     },
     murkgill: {
+      bossKit: ['crown', 'spines'],
       name: 'Murk-Gill the Ancient', family: 'gilkin', art: 'gilkin', tint: [0.30, 0.95, 0.85],
       health: 2900, speed: 58, damage: 34, xp: 220, radius: 44, gold: 40,
       interval: 3.6, school: 'frost',
@@ -3599,12 +3601,14 @@ window.WS = window.WS || {};
       yell: 'Blorp! Blorp-blorp-BLORRRP!',
     },
     gnarlfang: {
+      bossKit: ['mane', 'trophies'],
       name: 'Gnarlfang the Ravager', family: 'mongrel', art: 'mongrel', tint: [0.95, 0.55, 0.20],
       health: 4200, speed: 60, damage: 40, xp: 300, radius: 48, gold: 50, interval: 3.4,
       patterns: [{ type: 'summon', id: 'mongrel', count: 6 }, { type: 'charge' }],
       yell: 'This forest belongs to the Snarlpack!',
     },
     redcowl: {
+      bossKit: ['plumehat', 'pauldrons'],
       name: 'Captain Redcowl', family: 'kerchief', art: 'bandit', tint: [0.95, 0.25, 0.20],
       health: 5600, speed: 70, damage: 44, xp: 360, radius: 46, gold: 55,
       interval: 3.2, school: 'physical',
@@ -3612,6 +3616,7 @@ window.WS = window.WS || {};
       yell: 'The Kerchiefs send their regards!',
     },
     fenroth: {
+      bossKit: ['horns', 'mane'],
       name: 'Fenroth, Terror of the Vale', family: 'beast', art: 'moonwretch', tint: [0.85, 0.20, 0.20],
       health: 9000, speed: 66, damage: 52, xp: 700, radius: 54, gold: 100,
       interval: 3.0, school: 'shadow',
@@ -3620,6 +3625,7 @@ window.WS = window.WS || {};
     },
     /* ------------------------------------------------------ Dustreach ---- */
     harvestking: {
+      bossKit: ['crown', 'brand'],
       name: 'The Harvest King', family: 'mechanical', art: 'golem', tint: [1.00, 0.80, 0.30],
       health: 4800, speed: 48, damage: 42, xp: 320, radius: 50, gold: 50,
       interval: 3.8, school: 'fire',
@@ -3627,6 +3633,7 @@ window.WS = window.WS || {};
       yell: 'CROPS. REQUIRE. BLOOD.',
     },
     masked_admiral: {
+      bossKit: ['pauldrons', 'banner'],
       name: 'The Masked Admiral', family: 'kerchief', art: 'bandit', tint: [0.90, 0.20, 0.25],
       health: 11000, speed: 72, damage: 55, xp: 800, radius: 52, gold: 110,
       interval: 2.9, school: 'physical',
@@ -3635,12 +3642,14 @@ window.WS = window.WS || {};
     },
     /* ------------------------------------------------------ Mourneholt ---- */
     barkfang: {
+      bossKit: ['horns', 'spines'],
       name: 'Old Barkfang', family: 'moonwretch', art: 'moonwretch', tint: [0.70, 0.62, 0.80],
       health: 5200, speed: 74, damage: 42, xp: 330, radius: 46, gold: 50, interval: 3.4,
       patterns: [{ type: 'charge' }, { type: 'summon', id: 'moonwretch', count: 5 }],
       yell: 'The hunt is joined!',
     },
     silkfang: {
+      bossKit: ['crown', 'spines'],
       name: 'Matriarch Silkfang', family: 'beast', art: 'spider', tint: [0.70, 0.40, 0.90],
       health: 6400, speed: 60, damage: 46, xp: 380, radius: 48, gold: 55,
       interval: 3.5, school: 'nature',
@@ -3648,6 +3657,7 @@ window.WS = window.WS || {};
       yell: '*a chittering shriek echoes from the dark*',
     },
     mordecai: {
+      bossKit: ['spines', 'trophies'],
       name: 'Mordecai the Unburied', family: 'undead', art: 'necromancer', tint: [0.75, 0.90, 0.80],
       health: 7800, speed: 56, damage: 48, xp: 420, radius: 50, gold: 60,
       interval: 3.3, school: 'shadow',
@@ -3655,6 +3665,7 @@ window.WS = window.WS || {};
       yell: 'Death is a door. I walked back through it.',
     },
     palewraith: {
+      bossKit: ['crown', 'brand'],
       name: 'The Pale Wraith', family: 'undead', art: 'wraith', tint: [0.80, 0.85, 1.00],
       health: 13500, speed: 62, damage: 58, xp: 900, radius: 52, gold: 120,
       interval: 2.8, school: 'shadow',
@@ -3663,12 +3674,14 @@ window.WS = window.WS || {};
     },
     /* --------------------------------------------------- Ochre Plains ---- */
     thornmane: {
+      bossKit: ['banner', 'mane'],
       name: 'Warlord Bristlegore', family: 'bristlekin', art: 'bristlekin', tint: [0.95, 0.45, 0.25],
       health: 6800, speed: 62, damage: 48, xp: 400, radius: 48, gold: 55, interval: 3.4,
       patterns: [{ type: 'summon', id: 'bristlekin', count: 6 }, { type: 'charge' }],
       yell: 'Thornhide! Take back the land!',
     },
     shriekfeather: {
+      bossKit: ['crown', 'plumehat'],
       name: 'Windmatron Shriekfeather', family: 'shrikewing', art: 'shrikewing', tint: [0.60, 0.85, 1.00],
       health: 7600, speed: 68, damage: 50, xp: 440, radius: 46, gold: 60,
       interval: 3.2, school: 'nature',
@@ -3676,12 +3689,14 @@ window.WS = window.WS || {};
       yell: 'The wind will strip your bones!',
     },
     kazrok: {
+      bossKit: ['banner', 'pauldrons'],
       name: 'Warlord Kazrok of the Karrash', family: 'karrash', art: 'karrash', tint: [1.00, 0.55, 0.15],
       health: 9200, speed: 76, damage: 54, xp: 500, radius: 52, gold: 70, interval: 3.0,
       patterns: [{ type: 'charge' }, { type: 'volley', bolts: 7 }, { type: 'summon', id: 'karrash', count: 5 }],
       yell: 'The Karrash own these plains! Die, two-legs!',
     },
     stormhide: {
+      bossKit: ['pauldrons', 'brand'],
       name: 'Stormhide the Colossus', family: 'beast', art: 'strider', tint: [0.40, 0.70, 1.00],
       health: 16000, speed: 52, damage: 62, xp: 1000, radius: 58, gold: 130,
       interval: 3.0, school: 'nature',
@@ -3690,6 +3705,7 @@ window.WS = window.WS || {};
     },
     /* ----------------------------------------------------- Pale Wastes ---- */
     boneweaver: {
+      bossKit: ['spines', 'crown'],
       name: 'Ossuar the Boneweaver', family: 'undead', art: 'necromancer', tint: [0.80, 0.55, 1.00],
       health: 8800, speed: 58, damage: 52, xp: 480, radius: 50, gold: 65,
       interval: 3.2, school: 'shadow',
@@ -3697,6 +3713,7 @@ window.WS = window.WS || {};
       yell: 'Your bones will serve the Pale!',
     },
     gorestitch: {
+      bossKit: ['trophies', 'spines'],
       name: 'Gorestitch the Amalgam', family: 'undead', art: 'abomination', tint: [0.75, 0.95, 0.55],
       health: 12000, speed: 44, damage: 60, xp: 560, radius: 58, gold: 75,
       interval: 3.6, school: 'shadow',
@@ -3704,6 +3721,7 @@ window.WS = window.WS || {};
       yell: 'Fresh meat for the pile!',
     },
     marrowfrost: {
+      bossKit: ['pauldrons', 'trophies'],
       name: 'Marrowfrost, the Pale Lord', family: 'undead', art: 'lich', tint: [0.55, 0.85, 1.00],
       health: 22000, speed: 56, damage: 70, xp: 1400, radius: 60, gold: 200,
       interval: 2.7, school: 'frost',
@@ -3718,6 +3736,7 @@ window.WS = window.WS || {};
     // Not on any schedule: at 30:00 Death itself arrives, and again every
     // minute after. Technically killable, in the proud Survivors tradition.
     death_itself: {
+      bossKit: ['brand'],
       name: 'Death Itself', family: 'death', art: 'reaper', tint: [0.80, 0.90, 1.00],
       health: 5000000, speed: 265, damage: 600, xp: 5000, radius: 46, gold: 999,
       interval: 60, patterns: [{ type: 'charge' }],
@@ -7859,6 +7878,284 @@ window.WS = window.WS || {};
     return out;
   }
 
+  /** Where a creature actually IS inside its canvas.
+   *
+   *  Read off the drawn pixels rather than assumed, because every art function
+   *  puts its animal somewhere different - a strider's head is at the top of
+   *  the frame and a spider's is halfway down the left. Boss regalia has to
+   *  sit on the creature it is given, so it asks the drawing where the head
+   *  and the shoulders are instead of being told. */
+  function bounds(src, res) {
+    const c = make(res, res);
+    const g = c.getContext('2d');
+    g.drawImage(src, 0, 0);
+    const d = g.getImageData(0, 0, res, res).data;
+    let top = res, bottom = 0, left = res, right = 0, headTop = res, headX = res / 2;
+    const band = [Math.floor(res * 0.34), Math.ceil(res * 0.66)];
+    for (let y = 0; y < res; y++) {
+      for (let x = 0; x < res; x++) {
+        if (d[(y * res + x) * 4 + 3] < 170) continue;
+        if (y < top) top = y;
+        if (y > bottom) bottom = y;
+        if (x < left) left = x;
+        if (x > right) right = x;
+        if (x >= band[0] && x <= band[1] && y < headTop) { headTop = y; headX = x; }
+      }
+    }
+    if (top > bottom) return null;            // nothing was drawn
+    if (headTop === res) { headTop = top; headX = (left + right) / 2; }
+
+    /* PER-ROW EXTENTS, because a bounding box is not a body.
+     *
+     * Hung off the box alone, a crown sat on the topmost pixel in the middle
+     * third - which on the lampling is the tip of its flame and on the gilkin
+     * the top of a head fin, so the crown floated in the air above the animal.
+     * Pauldrons went on at 0.46 of the box width and ended up outside
+     * anything on the narrow ones. Both want to know how wide the creature
+     * actually is AT A GIVEN HEIGHT, so that is what this returns. */
+    const rows = new Int32Array(res * 2);
+    for (let y = 0; y < res; y++) {
+      let l = -1, r = -1;
+      for (let x = 0; x < res; x++) {
+        if (d[(y * res + x) * 4 + 3] < 170) continue;
+        if (l < 0) l = x;
+        r = x;
+      }
+      rows[y * 2] = l; rows[y * 2 + 1] = r;
+    }
+    const width = (y) => {
+      const yy = Math.max(0, Math.min(res - 1, Math.round(y)));
+      return rows[yy * 2] < 0 ? 0 : rows[yy * 2 + 1] - rows[yy * 2];
+    };
+    const mid = (y) => {
+      const yy = Math.max(0, Math.min(res - 1, Math.round(y)));
+      return rows[yy * 2] < 0 ? (left + right) / 2 : (rows[yy * 2] + rows[yy * 2 + 1]) / 2;
+    };
+    // the crown line: the first row down from the top that is actually a HEAD
+    // rather than the tip of a horn, a fin or a flame
+    const full = right - left;
+    let crownY = top;
+    for (let y = top; y <= bottom; y++) {
+      if (width(y) >= full * 0.26) { crownY = y; break; }
+    }
+    return { top, bottom, left, right, headTop, headX, crownY,
+      w: full, h: bottom - top, cx: (left + right) / 2, width, mid };
+  }
+
+  /** REGALIA.
+   *
+   *  Sixteen of the twenty bosses were a common creature in a different
+   *  colour: Captain Redcowl and the Masked Admiral were both the bandit,
+   *  Mordecai and Ossuar were both the necromancer, and a boss that is a
+   *  trash mob with the saturation turned up is not an event. Rather than
+   *  twenty more art functions, each boss declares a KIT - a crown, a mane,
+   *  pauldrons, a banner - and it is hung on the creature where the creature
+   *  actually is.
+   */
+  function regalia(g, res, p, kit, b) {
+    const u = res / 100;
+    const gold = { hi: '#ffe9b0', mid: '#e8b860', lo: '#a97c2f', dark: '#5e4416',
+      line: '#3e2d0e', glow: '#fff6d8' };
+    const bone = { hi: '#f2ede0', mid: '#d8d0bd', lo: '#9a9280', dark: '#5e594c',
+      line: '#3d392f', glow: '#fff' };
+    const iron = { hi: '#cfd6e2', mid: '#9aa2b2', lo: '#5f6878', dark: '#333a46',
+      line: '#1e232c', glow: '#fff' };
+
+    for (const mark of kit) {
+      if (mark === 'crown') {
+        const y = b.crownY + 1 * u, x = b.mid(b.crownY), wr = WS.max(b.width(b.crownY) * 0.5, b.w * 0.14);
+        for (let i = -2; i <= 2; i++) {
+          const h = (i === 0 ? 15 : Math.abs(i) === 1 ? 11 : 7) * u;
+          poly(g, [[x + (i * 0.42 - 0.2) * wr, y], [x + i * 0.42 * wr, y - h],
+            [x + (i * 0.42 + 0.2) * wr, y]], gold.mid, gold.line, u * 0.9);
+        }
+        poly(g, [[x - wr, y - 1 * u], [x + wr, y - 1 * u],
+          [x + wr * 0.92, y + 4 * u], [x - wr * 0.92, y + 4 * u]], gold.hi, gold.line, u);
+        g.save();
+        g.globalCompositeOperation = 'lighter';
+        const cg = g.createRadialGradient(x, y - 4 * u, 1, x, y - 4 * u, 14 * u);
+        cg.addColorStop(0, 'rgba(255,225,150,.34)');
+        cg.addColorStop(1, 'rgba(255,225,150,0)');
+        g.fillStyle = cg;
+        g.beginPath(); g.arc(x, y - 4 * u, 14 * u, 0, WS.TAU); g.fill();
+        g.restore();
+
+      } else if (mark === 'horns') {
+        const y = b.crownY + 4 * u, x = b.mid(b.crownY), r = WS.max(b.width(b.crownY), b.w * 0.34) * 0.62;
+        for (const dir of [-1, 1]) {
+          // a swept cone, walked as a centreline with a half-width so the
+          // taper actually reaches a point
+          const P = (t) => {
+            const uu = 1 - t;
+            return [uu * uu * (x + dir * r * 0.32) + 2 * uu * t * (x + dir * r * 1.15)
+              + t * t * (x + dir * r * 1.05),
+            uu * uu * y + 2 * uu * t * (y - r * 0.25) + t * t * (y - r * 0.95)];
+          };
+          const W = (t) => r * 0.15 * Math.pow(1 - t, 0.75);
+          const N = 14, pts = [];
+          for (let i = 0; i <= N; i++) {
+            const t = i / N;
+            const a = P(t), n1 = P(Math.min(1, t + 0.02)), n0 = P(Math.max(0, t - 0.02));
+            const ddx = n1[0] - n0[0], ddy = n1[1] - n0[1];
+            const L = Math.hypot(ddx, ddy) || 1;
+            pts.push({ x: a[0], y: a[1], nx: -ddy / L, ny: ddx / L, w: W(t) });
+          }
+          const grd = g.createLinearGradient(x, y, x + dir * r, y - r);
+          grd.addColorStop(0, bone.lo);
+          grd.addColorStop(0.45, bone.mid);
+          grd.addColorStop(1, bone.hi);
+          g.fillStyle = grd;
+          g.beginPath();
+          g.moveTo(pts[0].x + pts[0].nx * pts[0].w, pts[0].y + pts[0].ny * pts[0].w);
+          for (let i = 1; i <= N; i++) g.lineTo(pts[i].x + pts[i].nx * pts[i].w, pts[i].y + pts[i].ny * pts[i].w);
+          for (let i = N; i >= 0; i--) g.lineTo(pts[i].x - pts[i].nx * pts[i].w, pts[i].y - pts[i].ny * pts[i].w);
+          g.closePath(); g.fill();
+          // growth rings, crowded at the root
+          g.save();
+          g.strokeStyle = bone.line; g.lineWidth = 0.8 * u;
+          for (let i = 1; i <= 4; i++) {
+            const t = Math.pow(i / 5, 1.4) * 0.7;
+            const a = P(t), n1 = P(t + 0.02), n0 = P(t - 0.02);
+            const ddx = n1[0] - n0[0], ddy = n1[1] - n0[1];
+            const L = Math.hypot(ddx, ddy) || 1;
+            const nx = -ddy / L, ny = ddx / L, w = W(t) * 0.9;
+            g.globalAlpha = 0.5 * (1 - t);
+            g.beginPath();
+            g.moveTo(a[0] + nx * w, a[1] + ny * w);
+            g.lineTo(a[0] - nx * w, a[1] - ny * w);
+            g.stroke();
+          }
+          g.restore();
+        }
+
+      } else if (mark === 'mane') {
+        const y = b.top + b.h * 0.30, x = b.mid(y), wr = WS.max(b.width(y), b.w * 0.4) * 0.56;
+        for (let i = 0; i < 15; i++) {
+          const a = WS.PI * (1.04 + i * 0.062);
+          const len = (i % 2 ? 0.78 : 1) * b.h * 0.19;
+          const x0 = x + WS.cos(a) * wr * 0.62, y0 = y + WS.sin(a) * wr * 0.4;
+          const x1 = x + WS.cos(a) * (wr * 0.62 + len), y1 = y + WS.sin(a) * (wr * 0.4 + len);
+          const nx = -(y1 - y0), ny = x1 - x0, L = Math.hypot(nx, ny) || 1;
+          const w = u * (i % 2 ? 2 : 3);
+          g.fillStyle = i % 2 ? p.mid : p.lo;
+          g.beginPath();
+          g.moveTo(x0 + nx / L * w, y0 + ny / L * w);
+          g.lineTo(x1, y1);
+          g.lineTo(x0 - nx / L * w, y0 - ny / L * w);
+          g.closePath(); g.fill();
+        }
+
+      } else if (mark === 'pauldrons') {
+        /* On the EDGE of the body at shoulder height, with no floor under the
+           width. Keeping a `max(..., 0.18 of the box)` fallback pushed the
+           plates outside anything narrow - the lich and the strider wore them
+           hovering in the air beside themselves. If the creature is thin
+           there, the pauldrons are close in, which is what a pauldron does. */
+        const y = b.top + b.h * 0.40;
+        const wr = b.width(y) * 0.46;
+        for (const dir of [-1, 1]) {
+          const x = b.mid(y) + dir * wr;
+          poly(g, [[x - dir * 9 * u, y - 7 * u], [x + dir * 9 * u, y - 2 * u],
+            [x + dir * 8 * u, y + 8 * u], [x - dir * 9 * u, y + 6 * u]],
+            iron.mid, iron.line, u);
+          poly(g, [[x - dir * 7 * u, y - 4 * u], [x + dir * 7 * u, y],
+            [x + dir * 6 * u, y + 3 * u], [x - dir * 7 * u, y + 1 * u]],
+            iron.hi, iron.line, u * 0.8);
+          for (let i = 0; i < 3; i++) {
+            poly(g, [[x + dir * (3 + i * 3) * u, y + 7 * u],
+              [x + dir * (5 + i * 3) * u, y + 14 * u],
+              [x + dir * (6 + i * 3) * u, y + 7 * u]], iron.lo, iron.line, u * 0.7);
+          }
+        }
+
+      } else if (mark === 'banner') {
+        const x = b.cx + b.w * 0.40, y0 = b.top - b.h * 0.22, y1 = b.bottom - b.h * 0.1;
+        g.strokeStyle = '#6d5233'; g.lineWidth = 2.6 * u; g.lineCap = 'round';
+        g.beginPath(); g.moveTo(x, y0); g.lineTo(x - 3 * u, y1); g.stroke();
+        poly(g, [[x, y0 + 3 * u], [x + b.w * 0.24, y0 + 7 * u],
+          [x + b.w * 0.19, y0 + b.h * 0.24], [x - 1 * u, y0 + b.h * 0.3]],
+          p.mid, p.line, u);
+        poly(g, [[x + b.w * 0.05, y0 + b.h * 0.13], [x + b.w * 0.17, y0 + b.h * 0.15],
+          [x + b.w * 0.12, y0 + b.h * 0.22]], gold.mid, gold.line, u * 0.8);
+        poly(g, [[x - 4 * u, y0 - 4 * u], [x + 4 * u, y0 - 4 * u], [x, y0 - 12 * u]],
+          gold.hi, gold.line, u * 0.8);
+
+      } else if (mark === 'trophies') {
+        // Hung ON the body: the cord starts inside the silhouette, so the
+        // skull below it reads as carried rather than as falling past.
+        const y = b.top + b.h * 0.56;
+        const half = b.width(y) * 0.5;
+        for (let i = -2; i <= 2; i++) {
+          if (!i) continue;
+          const x = b.mid(y) + i * half * 0.46, drop = (5 + Math.abs(i) * 3) * u;
+          g.strokeStyle = bone.dark; g.lineWidth = 1 * u;
+          g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + drop); g.stroke();
+          shaded(g, x, y + drop + 4 * u, 4.4 * u, 4 * u, bone);
+          g.fillStyle = bone.line;
+          g.beginPath(); g.arc(x - 1.6 * u, y + drop + 3.6 * u, 1.1 * u, 0, WS.TAU); g.fill();
+          g.beginPath(); g.arc(x + 1.6 * u, y + drop + 3.6 * u, 1.1 * u, 0, WS.TAU); g.fill();
+        }
+
+      } else if (mark === 'brand') {
+        const y = b.top + b.h * 0.52, x = b.mid(y), r = WS.max(b.width(y) * 0.22, b.w * 0.1);
+        g.save();
+        g.globalCompositeOperation = 'lighter';
+        const gl = g.createRadialGradient(x, y, 1, x, y, r * 2.2);
+        gl.addColorStop(0, WS.rgb([1, 0.86, 0.5], 0.5));
+        gl.addColorStop(1, WS.rgb([1, 0.86, 0.5], 0));
+        g.fillStyle = gl;
+        g.beginPath(); g.arc(x, y, r * 2.2, 0, WS.TAU); g.fill();
+        g.strokeStyle = '#ffe9b0'; g.lineWidth = 1.8 * u; g.lineJoin = 'round';
+        g.beginPath();
+        for (let i = 0; i < 3; i++) {
+          const a = -WS.PI / 2 + i * (WS.TAU / 3);
+          const bx = x + WS.cos(a) * r, by = y + WS.sin(a) * r;
+          if (i) g.lineTo(bx, by); else g.moveTo(bx, by);
+        }
+        g.closePath(); g.stroke();
+        g.beginPath(); g.arc(x, y, r * 0.42, 0, WS.TAU); g.stroke();
+        g.restore();
+
+      } else if (mark === 'plumehat') {
+        // A wide brim and a feather: a captain, not a private.
+        const y = b.crownY + 3 * u, x = b.mid(b.crownY), wr = WS.max(b.width(b.crownY) * 0.68, b.w * 0.2);
+        poly(g, [[x - wr, y], [x - wr * 0.5, y - 9 * u], [x + wr * 0.5, y - 9 * u],
+          [x + wr, y], [x + wr * 0.6, y + 4 * u], [x - wr * 0.6, y + 4 * u]],
+          p.lo, p.line, u);
+        poly(g, [[x - wr * 0.46, y - 8 * u], [x - wr * 0.3, y - 17 * u],
+          [x + wr * 0.3, y - 17 * u], [x + wr * 0.46, y - 8 * u]], p.mid, p.line, u);
+        poly(g, [[x - wr * 0.5, y - 8 * u], [x + wr * 0.5, y - 8 * u],
+          [x + wr * 0.5, y - 5 * u], [x - wr * 0.5, y - 5 * u]], gold.mid, gold.line, u * 0.8);
+        // the plume, sweeping back off the band
+        g.save();
+        g.strokeStyle = bone.hi; g.lineWidth = 2.6 * u; g.lineCap = 'round';
+        g.beginPath();
+        g.moveTo(x + wr * 0.4, y - 7 * u);
+        g.quadraticCurveTo(x + wr * 1.5, y - 22 * u, x + wr * 1.9, y - 8 * u);
+        g.stroke();
+        g.strokeStyle = bone.lo; g.lineWidth = 1 * u;
+        for (let i = 1; i <= 4; i++) {
+          const t = i / 5;
+          const px = x + wr * (0.4 + t * 1.2), py = y - (7 + Math.sin(t * 3) * 12) * u;
+          g.beginPath();
+          g.moveTo(px, py); g.lineTo(px + 3 * u, py + 5 * u);
+          g.stroke();
+        }
+        g.restore();
+
+      } else if (mark === 'spines') {
+        const y = b.top + b.h * 0.38, x = b.mid(y);
+        for (let i = 0; i < 9; i++) {
+          const a = WS.PI * (1.08 + i * 0.105);
+          const r0 = WS.max(b.width(y) * 0.48, b.w * 0.2), len = b.h * (i % 2 ? 0.1 : 0.17);
+          const x0 = x + WS.cos(a) * r0, y0 = y + WS.sin(a) * r0 * 0.7;
+          poly(g, [[x0 - 2.4 * u, y0], [x0 + WS.cos(a) * len, y0 + WS.sin(a) * len],
+            [x0 + 2.4 * u, y0]], bone.mid, bone.line, u * 0.8);
+        }
+      }
+    }
+  }
+
   /** Five-stop palette derived from a single tint, so every creature is lit
    *  consistently no matter what colour it was given. */
   function palette(tint) {
@@ -8354,6 +8651,39 @@ window.WS = window.WS || {};
       g.moveTo(cx - 22 * u, cy - 2 * u);
       g.quadraticCurveTo(cx, cy + 4 * u, cx + 22 * u, cy - 2 * u);
       g.stroke();
+      /* HIDE, on the one mass - the brute is deliberately one continuous
+         surface, so everything here has to be marks ON it rather than shapes
+         cutting it up. Old scars across the shoulder, a pale chest, and the
+         creases where a fat thing folds at the sides. */
+      g.globalAlpha = 0.3;
+      g.lineWidth = 1.2 * u;
+      for (const [x0, y0, x1, y1] of [[-18, -14, -6, -6], [-14, -17, -3, -10],
+        [12, -12, 20, -3]]) {
+        g.beginPath();
+        g.moveTo(cx + x0 * u, cy + y0 * u);
+        g.quadraticCurveTo(cx + (x0 + x1) / 2 * u, cy + (y0 + y1) / 2 * u - 2 * u,
+          cx + x1 * u, cy + y1 * u);
+        g.stroke();
+      }
+      /* The side folds were struck as arcs centred outside the body, which
+         drew two big circles ON him rather than creases IN him. A fold on a
+         round animal is a short comma that follows the surface, not a ring. */
+      g.globalAlpha = 0.2;
+      for (const dir of [-1, 1]) {
+        for (const dy of [2, 10]) {
+          g.beginPath();
+          g.moveTo(cx + dir * 24 * u, cy + (dy - 4) * u);
+          g.quadraticCurveTo(cx + dir * 20 * u, cy + dy * u,
+            cx + dir * 23 * u, cy + (dy + 5) * u);
+          g.stroke();
+        }
+      }
+      const chest = g.createRadialGradient(cx, cy + 14 * u, 2 * u, cx, cy + 14 * u, 24 * u);
+      chest.addColorStop(0, 'rgba(255,238,214,.16)');
+      chest.addColorStop(1, 'rgba(255,238,214,0)');
+      g.globalAlpha = 1;
+      g.fillStyle = chest;
+      g.beginPath(); g.ellipse(cx, cy + 14 * u, 19 * u, 12 * u, 0, 0, WS.TAU); g.fill();
       g.restore();
       shaded(g, cx - 31 * u, cy + 19 * u, 9 * u, 8 * u, STONE);   // knuckles down
       shaded(g, cx + 31 * u, cy + 19 * u, 9 * u, 8 * u, STONE);
@@ -9267,23 +9597,46 @@ window.WS = window.WS || {};
       shaded(g, cx + 4 * u, cy + 4 * u, 18 * u, 16 * u, p);        // abdomen
       /* The abdomen is BANDED. A spider's is the one part of it that is
          patterned, and this one was a bare sphere. */
+      /* A MARKING, with edges.
+         The first pass banded the abdomen with soft concentric ellipses and
+         moved the number by nothing - a ramp inside a ramp, which is the
+         lesson this project keeps relearning. What a spider actually carries
+         is a hard-edged mark: chevrons down the back, pale against the shell,
+         with the chitin plates seamed between them. */
       g.save();
       g.beginPath(); g.ellipse(cx + 4 * u, cy + 4 * u, 18 * u, 16 * u, 0, 0, WS.TAU); g.clip();
-      g.globalAlpha = 0.34;
-      g.fillStyle = p.dark;
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 4; i++) {
+        const y = cy + (-7 + i * 5.5) * u, w = (11 - i * 1.6) * u;
+        g.fillStyle = 'rgba(255,240,220,.30)';
         g.beginPath();
-        g.ellipse(cx + (6 + i * 3) * u, cy + 4 * u, (13 - i * 3.6) * u, (15 - i * 3) * u,
-          0, 0, WS.TAU);
-        g.fill();
+        g.moveTo(cx + 5 * u - w, y);
+        g.lineTo(cx + 5 * u, y + 4.2 * u);
+        g.lineTo(cx + 5 * u + w, y);
+        g.lineTo(cx + 5 * u, y + 1.6 * u);
+        g.closePath(); g.fill();
+        g.strokeStyle = p.line; g.globalAlpha = 0.5; g.lineWidth = 1 * u;
+        g.beginPath();
+        g.moveTo(cx + 5 * u - w, y);
+        g.lineTo(cx + 5 * u, y + 4.2 * u);
+        g.lineTo(cx + 5 * u + w, y);
+        g.stroke();
+        g.globalAlpha = 1;
       }
-      g.globalAlpha = 0.26;
-      g.fillStyle = p.hi;
-      for (let i = 0; i < 3; i++) {
+      // the seam down the middle of the shell
+      g.strokeStyle = p.line; g.globalAlpha = 0.4; g.lineWidth = 1.2 * u;
+      g.beginPath();
+      g.moveTo(cx + 5 * u, cy - 11 * u); g.lineTo(cx + 5 * u, cy + 18 * u);
+      g.stroke();
+      g.restore();
+      // and plates on the cephalothorax
+      g.save();
+      g.beginPath(); g.ellipse(cx - 14 * u, cy - 4 * u, 11 * u, 10 * u, 0, 0, WS.TAU); g.clip();
+      g.strokeStyle = p.line; g.globalAlpha = 0.45; g.lineWidth = 1 * u;
+      for (const dy of [-3, 1, 5]) {
         g.beginPath();
-        g.ellipse(cx + (6 + i * 3) * u, cy + 2.4 * u, (13 - i * 3.6) * u, (14 - i * 3) * u,
-          0, 0, WS.TAU);
-        g.fill();
+        g.moveTo(cx - 25 * u, cy + dy * u);
+        g.quadraticCurveTo(cx - 14 * u, cy + (dy + 3) * u, cx - 3 * u, cy + dy * u);
+        g.stroke();
       }
       g.restore();
       shaded(g, cx - 14 * u, cy - 4 * u, 11 * u, 10 * u, p);       // cephalothorax
@@ -9678,16 +10031,25 @@ window.WS = window.WS || {};
   /* -------------------------------------------------------------- API ----- */
   WS.Sprites = {
     /** Cached creature sprite. `size` is the full canvas edge in world units. */
-    creature(art, tint, size) {
+    creature(art, tint, size, kit) {
       size = WS.round(size);
-      const key = `c:${art}:${WS.hex(tint)}:${size}`;
+      const marks = (kit && kit.length) ? kit : null;
+      const key = `c:${art}:${WS.hex(tint)}:${size}:${marks ? marks.join('') : ''}`;
       let c = cache.get(key);
       if (c) return c;
       const res = size * SS;
       const body = make(res, res);
+      const p = palette(tint);
       const draw = CREATURES[art] || CREATURES.lampling;
-      draw(body.getContext('2d'), res, palette(tint));
-      c = outline(body, res, palette(tint));
+      draw(body.getContext('2d'), res, p);
+      /* The regalia goes on before the outline, so a crown gets the same one
+         line round it that the creature does and the two read as one object
+         rather than as a sticker on a sprite. */
+      if (marks) {
+        const b = bounds(body, res);
+        if (b) regalia(body.getContext('2d'), res, p, marks, b);
+      }
+      c = outline(body, res, p);
       c.displaySize = size;
       cache.set(key, c);
       return c;
@@ -12153,6 +12515,7 @@ window.WS = window.WS || {};
     c.x = enemy.x; c.y = enemy.y;
     c.art = enemy.template.art;
     c.tint = enemy.template.tint;
+    c.kit = enemy.template.bossKit;   // a boss dies in the crown it wore
     c.size = enemy.spriteSize;
     c.facing = enemy.facing;
     c.life = enemy.boss ? 0.9 : 0.42;
@@ -20013,7 +20376,7 @@ window.WS = window.WS || {};
       ctx.globalAlpha = (1 - t) * 0.85;
       ctx.translate(c.x, c.y + c.size * 0.18 * t);
       ctx.scale(c.facing < 0 ? -(1 + t * 0.3) : (1 + t * 0.3), 1 - t * 0.55);
-      const sprite = WS.Sprites.creature(c.art, c.tint, c.size);
+      const sprite = WS.Sprites.creature(c.art, c.tint, c.size, c.kit);
       ctx.drawImage(sprite, -c.size / 2, -c.size * 0.62, c.size, c.size);
       ctx.restore();
       if (c.boss) {
@@ -20057,7 +20420,7 @@ window.WS = window.WS || {};
        chilled; the art and the tint come from a template that never moves. */
     const chill = e.chilled ? 1 : 0;
     if (e._sprChill !== chill || e._sprSize !== size) {
-      e._spr = WS.Sprites.creature(t.art, e.chilled ? CHILLED : t.tint, size);
+      e._spr = WS.Sprites.creature(t.art, e.chilled ? CHILLED : t.tint, size, t.bossKit);
       e._sprChill = chill; e._sprSize = size;
     }
     const sprite = e._spr;
@@ -21568,7 +21931,7 @@ window.WS = window.WS || {};
 
     ctx.save();
     ctx.beginPath(); ctx.arc(0, 0, S * 0.47, 0, WS.TAU); ctx.clip();
-    ctx.drawImage(WS.Sprites.creature(b.art, b.tint || [0.8, 0.3, 0.3], S),
+    ctx.drawImage(WS.Sprites.creature(b.art, b.tint || [0.8, 0.3, 0.3], S, b.bossKit),
       -S / 2, -S / 2 + 3, S, S);
     ctx.restore();
 
@@ -22876,14 +23239,14 @@ window.WS = window.WS || {};
       const plate = el('div', 'beast-plate');
       if (known) {
         const img = new Image();
-        img.src = WS.Sprites.creature(t.art, t.tint, 52).toDataURL();
+        img.src = WS.Sprites.creature(t.art, t.tint, 52, t.bossKit).toDataURL();
         img.width = img.height = 52;
         plate.append(img);
       } else {
         // The silhouette is still the real creature, just unlit: the shape is
         // a hint, which is what a compendium entry you have not earned is for.
         const img = new Image();
-        img.src = WS.Sprites.creature(t.art, [0.16, 0.17, 0.21], 52).toDataURL();
+        img.src = WS.Sprites.creature(t.art, [0.16, 0.17, 0.21], 52, t.bossKit).toDataURL();
         img.width = img.height = 52;
         plate.append(img, el('span', 'q', '?'));
       }

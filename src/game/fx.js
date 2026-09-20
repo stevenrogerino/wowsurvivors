@@ -182,6 +182,7 @@
     c.x = enemy.x; c.y = enemy.y;
     c.art = enemy.template.art;
     c.tint = enemy.template.tint;
+    c.kit = enemy.template.bossKit;   // a boss dies in the crown it wore
     c.size = enemy.spriteSize;
     c.facing = enemy.facing;
     c.life = enemy.boss ? 0.9 : 0.42;

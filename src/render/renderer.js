@@ -456,7 +456,7 @@
       ctx.globalAlpha = (1 - t) * 0.85;
       ctx.translate(c.x, c.y + c.size * 0.18 * t);
       ctx.scale(c.facing < 0 ? -(1 + t * 0.3) : (1 + t * 0.3), 1 - t * 0.55);
-      const sprite = WS.Sprites.creature(c.art, c.tint, c.size);
+      const sprite = WS.Sprites.creature(c.art, c.tint, c.size, c.kit);
       ctx.drawImage(sprite, -c.size / 2, -c.size * 0.62, c.size, c.size);
       ctx.restore();
       if (c.boss) {
@@ -500,7 +500,7 @@
        chilled; the art and the tint come from a template that never moves. */
     const chill = e.chilled ? 1 : 0;
     if (e._sprChill !== chill || e._sprSize !== size) {
-      e._spr = WS.Sprites.creature(t.art, e.chilled ? CHILLED : t.tint, size);
+      e._spr = WS.Sprites.creature(t.art, e.chilled ? CHILLED : t.tint, size, t.bossKit);
       e._sprChill = chill; e._sprSize = size;
     }
     const sprite = e._spr;
@@ -2011,7 +2011,7 @@
 
     ctx.save();
     ctx.beginPath(); ctx.arc(0, 0, S * 0.47, 0, WS.TAU); ctx.clip();
-    ctx.drawImage(WS.Sprites.creature(b.art, b.tint || [0.8, 0.3, 0.3], S),
+    ctx.drawImage(WS.Sprites.creature(b.art, b.tint || [0.8, 0.3, 0.3], S, b.bossKit),
       -S / 2, -S / 2 + 3, S, S);
     ctx.restore();
 

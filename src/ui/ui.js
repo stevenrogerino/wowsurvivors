@@ -1239,14 +1239,14 @@
       const plate = el('div', 'beast-plate');
       if (known) {
         const img = new Image();
-        img.src = WS.Sprites.creature(t.art, t.tint, 52).toDataURL();
+        img.src = WS.Sprites.creature(t.art, t.tint, 52, t.bossKit).toDataURL();
         img.width = img.height = 52;
         plate.append(img);
       } else {
         // The silhouette is still the real creature, just unlit: the shape is
         // a hint, which is what a compendium entry you have not earned is for.
         const img = new Image();
-        img.src = WS.Sprites.creature(t.art, [0.16, 0.17, 0.21], 52).toDataURL();
+        img.src = WS.Sprites.creature(t.art, [0.16, 0.17, 0.21], 52, t.bossKit).toDataURL();
         img.width = img.height = 52;
         plate.append(img, el('span', 'q', '?'));
       }

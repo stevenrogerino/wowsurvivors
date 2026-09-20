@@ -202,6 +202,62 @@ const fail = [];
     return { rows, close, brightest: { map: brightest.map, v: +brightest.v.toFixed(1) } };
   }, { APART });
 
+  /* ------------------------------------------- a boss is not a trash mob --
+   *
+   * Sixteen of the twenty bosses reuse a common creature's art. Captain
+   * Redcowl and the Masked Admiral were both the bandit; Mordecai the
+   * Unburied and Ossuar the Boneweaver were both the necromancer. Drawn at
+   * boss scale in a different tint, a boss was a lampling with the saturation
+   * turned up - which is not an event, and nothing in the suite noticed
+   * because nothing ever compared the two.
+   *
+   * Each boss carries a KIT of regalia now, hung on the creature where the
+   * creature actually is. This measures that the kit does work: the boss and
+   * the mob it borrows from, drawn at the SAME tint and the SAME size so
+   * colour cannot carry it, have to differ across a real share of the
+   * drawing. */
+  const regal = await page.evaluate(() => {
+    const S = 200;
+    const mobArt = {};
+    for (const id of Object.keys(WS.Enemies)) {
+      const t = WS.Enemies[id];
+      if (t.art && !mobArt[t.art]) mobArt[t.art] = t;
+    }
+    const px = (sp) => {
+      const cv = document.createElement('canvas');
+      cv.width = S; cv.height = S;
+      const g = cv.getContext('2d');
+      g.drawImage(sp, 0, 0, S, S);
+      return g.getImageData(0, 0, S, S).data;
+    };
+    const out = [];
+    for (const id of Object.keys(WS.Bosses)) {
+      const b = WS.Bosses[id];
+      if (!b.art || !mobArt[b.art]) continue;        // its art is its own
+      const tint = [0.8, 0.8, 0.8];                  // the same colour for both
+      const a = px(WS.Sprites.creature(b.art, tint, S, b.bossKit));
+      const m = px(WS.Sprites.creature(b.art, tint, S));
+      let diff = 0, lit = 0;
+      for (let i = 0; i < a.length; i += 4) {
+        if (a[i + 3] > 40 || m[i + 3] > 40) lit++;
+        if (Math.abs(a[i] - m[i]) + Math.abs(a[i + 1] - m[i + 1])
+          + Math.abs(a[i + 2] - m[i + 2]) + Math.abs(a[i + 3] - m[i + 3]) > 40) diff++;
+      }
+      out.push({ id, name: b.name, art: b.art,
+        kit: (b.bossKit || []).join('+') || 'none',
+        share: +(diff / Math.max(1, lit)).toFixed(3) });
+    }
+    return out;
+  });
+  const BOSS_APART = 0.12;
+  for (const r of regal) {
+    if (r.share < BOSS_APART) {
+      fail.push(`${r.name} draws ${(100 * (1 - r.share)).toFixed(0)}% the same picture as `
+        + `the ${r.art} it borrows its art from (kit: ${r.kit}) - at boss scale in a new `
+        + 'tint that is a trash mob with the saturation turned up, not an event');
+    }
+  }
+
   const { rows, close, brightest } = report;
   const avg = rows.reduce((n, r) => n + r.detail, 0) / rows.length;
   const worst = rows.reduce((a, r) => (r.detail < a.detail ? r : a));
@@ -244,5 +300,8 @@ const fail = [];
     + `${worst.detail}%; the dimmest (${dimmest.art}, ${dimmest.mean}) still clears the `
     + `brightest ground (${brightest.map}, ${brightest.v}) by `
     + `${(dimmest.mean - brightest.v).toFixed(0)}; and the most alike pair `
-    + `(${close.pair}) still differ across ${(close.v * 100).toFixed(0)}% of their drawing`);
+    + `(${close.pair}) still differ across ${(close.v * 100).toFixed(0)}% of their drawing; `
+    + `and the ${regal.length} bosses that borrow a mob's art are told from it by their `
+    + `regalia alone, the closest at `
+    + `${(100 * Math.min.apply(null, regal.map((r) => r.share))).toFixed(0)}%`);
 })();
