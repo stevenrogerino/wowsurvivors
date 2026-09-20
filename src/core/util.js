@@ -89,12 +89,49 @@ window.WS = window.WS || {};
       : n >= 1e4 ? (n / 1e3).toFixed(1) + 'k'
         : String(n);
   };
-  WS.rgb = (c, a) => a === undefined
-    ? `rgb(${(c[0] * 255) | 0},${(c[1] * 255) | 0},${(c[2] * 255) | 0})`
-    : `rgba(${(c[0] * 255) | 0},${(c[1] * 255) | 0},${(c[2] * 255) | 0},${a})`;
+  /* rgb() and hex() are called some eight hundred times a frame between them
+   * - a sprite cache key here, a fillStyle there - and each call builds a
+   * string. That is cheap in TIME and expensive in GARBAGE: measured at
+   * minute 23 the renderer allocated 36KB per drawn frame, which is 2MB a
+   * second at sixty, which is a collection every second or two, which is
+   * exactly the p95 and the 110ms stalls. None of it showed up in a profile
+   * by phase, because the cost is not in the phase that allocates - it is in
+   * the pause that follows.
+   *
+   * So both memoise. Colours in this game come from a fixed table and from
+   * sprite tints that never change, so the cache is small and stable, and
+   * alpha is quantised to a hundredth - finer than the eye and far finer than
+   * the 8-bit channel it ends up in. */
+  const rgbCache = new Map();
+  WS.rgb = function (c, a) {
+    const r = (c[0] * 255) | 0, g = (c[1] * 255) | 0, b = (c[2] * 255) | 0;
+    if (a === undefined) {
+      const k = r * 65536 + g * 256 + b;
+      let v = rgbCache.get(k);
+      if (v === undefined) { v = `rgb(${r},${g},${b})`; rgbCache.set(k, v); }
+      return v;
+    }
+    const q = a < 0 ? 0 : a > 1 ? 1 : Math.round(a * 100) / 100;
+    const k = (r * 65536 + g * 256 + b) * 128 + (q * 100);
+    let v = rgbCache.get(k);
+    if (v === undefined) { v = `rgba(${r},${g},${b},${q})`; rgbCache.set(k, v); }
+    return v;
+  };
+  const hexCache = new Map();
+  function hexByte(v) {
+    const n = v < 0 ? 0 : v > 255 ? 255 : v;
+    return n < 16 ? '0' + n.toString(16) : n.toString(16);
+  }
   WS.hex = function (c) {
-    const h = (v) => WS.clamp(WS.round(v * 255), 0, 255).toString(16).padStart(2, '0');
-    return '#' + h(c[0]) + h(c[1]) + h(c[2]);
+    const r = WS.round(c[0] * 255), g = WS.round(c[1] * 255), b = WS.round(c[2] * 255);
+    const k = ((r < 0 ? 0 : r > 255 ? 255 : r) * 65536)
+      + ((g < 0 ? 0 : g > 255 ? 255 : g) * 256) + (b < 0 ? 0 : b > 255 ? 255 : b);
+    let v = hexCache.get(k);
+    if (v === undefined) {
+      v = '#' + hexByte(r) + hexByte(g) + hexByte(b);
+      hexCache.set(k, v);
+    }
+    return v;
   };
   WS.shade = (c, k) => [WS.clamp(c[0] * k, 0, 1), WS.clamp(c[1] * k, 0, 1), WS.clamp(c[2] * k, 0, 1)];
   WS.mix = (a, b, t) => [WS.lerp(a[0], b[0], t), WS.lerp(a[1], b[1], t), WS.lerp(a[2], b[2], t)];

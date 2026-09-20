@@ -455,6 +455,10 @@
   };
 
   /* ------------------------------------------------------------ entities - */
+  /** The tint a chilled creature takes. A constant, so it is not a fresh
+   *  array on every frame of every frozen enemy on the field. */
+  const CHILLED = [0.55, 0.8, 1.0];
+
   R.drawEnemy = function (ctx, e, time) {
     const t = e.template;
     const size = e.spriteSize;
@@ -473,7 +477,15 @@
       ctx.restore();
     }
 
-    const sprite = WS.Sprites.creature(t.art, e.chilled ? [0.55, 0.8, 1.0] : t.tint, size);
+    /* Held on the creature, for the same reason as the gem above. The only
+       things that can change its sprite are the size and whether it is
+       chilled; the art and the tint come from a template that never moves. */
+    const chill = e.chilled ? 1 : 0;
+    if (e._sprChill !== chill || e._sprSize !== size) {
+      e._spr = WS.Sprites.creature(t.art, e.chilled ? CHILLED : t.tint, size);
+      e._sprChill = chill; e._sprSize = size;
+    }
+    const sprite = e._spr;
     ctx.save();
     ctx.translate(e.x, e.y + bob);
     // Bracing for a charge: the body compresses, then springs.
@@ -1080,7 +1092,15 @@
        * The floor here used to be 0.26, which is where the vanishing happened;
        * loot the player has not walked to yet is still loot. */
       ctx.globalAlpha = pulled ? 1 : 0.78 + near * 0.22;
-      const art = gemSprite(g.tier, g.colour);
+      /* Held on the gem. gemSprite builds its cache key out of the tier and
+         WS.hex(colour), and with 260 gems on the field that was 260 key
+         strings a frame for a sprite that had been cached since the first
+         one. The lookup was never the cost - the garbage was. */
+      if (g._artTier !== g.tier) {
+        g._art = gemSprite(g.tier, g.colour);
+        g._artTier = g.tier;
+      }
+      const art = g._art;
       /* The stone is GEM_R of the sprite's width, so blitting at five times
        * `s` puts it back at exactly the radius the rest of the game means by
        * `s`. Getting this wrong is silent and looks like a taste decision:
