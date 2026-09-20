@@ -1,9 +1,17 @@
 {
  "spawned": 282,
+ "when": "2026-09-20T07:52:04.481Z",
  "results": [
   {
    "name": "seeking_motes r1",
    "group": "rank",
+   "build": [
+    [
+     "seeking_motes",
+     1
+    ]
+   ],
+   "evolved": false,
    "dps": 73.74033333333298,
    "kills": 109,
    "leaked": 173,
@@ -17,6 +25,13 @@
   {
    "name": "seeking_motes r8",
    "group": "weapon",
+   "build": [
+    [
+     "seeking_motes",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 295.6553600000024,
    "kills": 235,
    "leaked": 47,
@@ -30,6 +45,13 @@
   {
    "name": "cinderfall r1",
    "group": "rank",
+   "build": [
+    [
+     "cinderfall",
+     1
+    ]
+   ],
+   "evolved": false,
    "dps": 0,
    "kills": 41,
    "leaked": 241,
@@ -43,6 +65,13 @@
   {
    "name": "cinderfall r8",
    "group": "weapon",
+   "build": [
+    [
+     "cinderfall",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 808.5158293333312,
    "kills": 190,
    "leaked": 92,
@@ -56,6 +85,13 @@
   {
    "name": "rimeshard r1",
    "group": "rank",
+   "build": [
+    [
+     "rimeshard",
+     1
+    ]
+   ],
+   "evolved": false,
    "dps": 0,
    "kills": 41,
    "leaked": 241,
@@ -69,6 +105,13 @@
   {
    "name": "rimeshard r8",
    "group": "weapon",
+   "build": [
+    [
+     "rimeshard",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 205.68426666666616,
    "kills": 193,
    "leaked": 89,
@@ -82,6 +125,13 @@
   {
    "name": "arcweb r1",
    "group": "rank",
+   "build": [
+    [
+     "arcweb",
+     1
+    ]
+   ],
+   "evolved": false,
    "dps": 87.83380666666659,
    "kills": 99,
    "leaked": 183,
@@ -95,6 +145,13 @@
   {
    "name": "arcweb r8",
    "group": "weapon",
+   "build": [
+    [
+     "arcweb",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 296.09070399999985,
    "kills": 204,
    "leaked": 78,
@@ -108,6 +165,13 @@
   {
    "name": "dawnpulse r1",
    "group": "rank",
+   "build": [
+    [
+     "dawnpulse",
+     1
+    ]
+   ],
+   "evolved": false,
    "dps": 183.36499999999918,
    "kills": 43,
    "leaked": 239,
@@ -121,6 +185,13 @@
   {
    "name": "dawnpulse r8",
    "group": "weapon",
+   "build": [
+    [
+     "dawnpulse",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 738.191999999997,
    "kills": 115,
    "leaked": 167,
@@ -134,6 +205,13 @@
   {
    "name": "hallowed_ring r1",
    "group": "rank",
+   "build": [
+    [
+     "hallowed_ring",
+     1
+    ]
+   ],
+   "evolved": false,
    "dps": 348.45922222223135,
    "kills": 100,
    "leaked": 182,
@@ -147,6 +225,13 @@
   {
    "name": "hallowed_ring r8",
    "group": "weapon",
+   "build": [
+    [
+     "hallowed_ring",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 1126.7522933333394,
    "kills": 196,
    "leaked": 86,
@@ -160,6 +245,13 @@
   {
    "name": "umbral_bolt r1",
    "group": "rank",
+   "build": [
+    [
+     "umbral_bolt",
+     1
+    ]
+   ],
+   "evolved": false,
    "dps": 0,
    "kills": 74,
    "leaked": 208,
@@ -173,6 +265,13 @@
   {
    "name": "umbral_bolt r8",
    "group": "weapon",
+   "build": [
+    [
+     "umbral_bolt",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 442.9152000000014,
    "kills": 232,
    "leaked": 50,
@@ -186,6 +285,13 @@
   {
    "name": "knifestorm r1",
    "group": "rank",
+   "build": [
+    [
+     "knifestorm",
+     1
+    ]
+   ],
+   "evolved": false,
    "dps": 152.84359999999944,
    "kills": 67,
    "leaked": 215,
@@ -199,6 +305,13 @@
   {
    "name": "knifestorm r8",
    "group": "weapon",
+   "build": [
+    [
+     "knifestorm",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 475.28208000000035,
    "kills": 166,
    "leaked": 116,
@@ -212,6 +325,13 @@
   {
    "name": "axe_gyre r1",
    "group": "rank",
+   "build": [
+    [
+     "axe_gyre",
+     1
+    ]
+   ],
+   "evolved": false,
    "dps": 131.43129999999945,
    "kills": 25,
    "leaked": 257,
@@ -225,6 +345,13 @@
   {
    "name": "axe_gyre r8",
    "group": "weapon",
+   "build": [
+    [
+     "axe_gyre",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 694.0266666666515,
    "kills": 164,
    "leaked": 118,
@@ -238,6 +365,13 @@
   {
    "name": "volley r1",
    "group": "rank",
+   "build": [
+    [
+     "volley",
+     1
+    ]
+   ],
+   "evolved": false,
    "dps": 29.049222222222244,
    "kills": 72,
    "leaked": 210,
@@ -251,6 +385,13 @@
   {
    "name": "volley r8",
    "group": "weapon",
+   "build": [
+    [
+     "volley",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 212.37216000000092,
    "kills": 184,
    "leaked": 98,
@@ -264,6 +405,13 @@
   {
    "name": "moonbrand r1",
    "group": "rank",
+   "build": [
+    [
+     "moonbrand",
+     1
+    ]
+   ],
+   "evolved": false,
    "dps": 51.92581333333333,
    "kills": 42,
    "leaked": 240,
@@ -277,6 +425,13 @@
   {
    "name": "moonbrand r8",
    "group": "weapon",
+   "build": [
+    [
+     "moonbrand",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 581.6195840000041,
    "kills": 207,
    "leaked": 75,
@@ -290,6 +445,13 @@
   {
    "name": "judgement_disc r1",
    "group": "rank",
+   "build": [
+    [
+     "judgement_disc",
+     1
+    ]
+   ],
+   "evolved": false,
    "dps": 54.023666666666614,
    "kills": 70,
    "leaked": 212,
@@ -303,6 +465,13 @@
   {
    "name": "judgement_disc r8",
    "group": "weapon",
+   "build": [
+    [
+     "judgement_disc",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 129.65680000000012,
    "kills": 111,
    "leaked": 171,
@@ -316,6 +485,13 @@
   {
    "name": "reaving_arc r1",
    "group": "rank",
+   "build": [
+    [
+     "reaving_arc",
+     1
+    ]
+   ],
+   "evolved": false,
    "dps": 218.53953333333277,
    "kills": 39,
    "leaked": 243,
@@ -329,6 +505,13 @@
   {
    "name": "reaving_arc r8",
    "group": "weapon",
+   "build": [
+    [
+     "reaving_arc",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 524.4948800000028,
    "kills": 97,
    "leaked": 185,
@@ -342,6 +525,13 @@
   {
    "name": "verdant_lance r1",
    "group": "rank",
+   "build": [
+    [
+     "verdant_lance",
+     1
+    ]
+   ],
+   "evolved": false,
    "dps": 161.0720222222216,
    "kills": 111,
    "leaked": 171,
@@ -355,6 +545,13 @@
   {
    "name": "verdant_lance r8",
    "group": "weapon",
+   "build": [
+    [
+     "verdant_lance",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 435.15472000000165,
    "kills": 177,
    "leaked": 105,
@@ -368,6 +565,13 @@
   {
    "name": "grave_tether r1",
    "group": "rank",
+   "build": [
+    [
+     "grave_tether",
+     1
+    ]
+   ],
+   "evolved": false,
    "dps": 0,
    "kills": 44,
    "leaked": 238,
@@ -381,6 +585,13 @@
   {
    "name": "grave_tether r8",
    "group": "weapon",
+   "build": [
+    [
+     "grave_tether",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 279.1249066666672,
    "kills": 171,
    "leaked": 111,
@@ -394,6 +605,13 @@
   {
    "name": "blightfield r1",
    "group": "rank",
+   "build": [
+    [
+     "blightfield",
+     1
+    ]
+   ],
+   "evolved": false,
    "dps": 470.59740000001347,
    "kills": 55,
    "leaked": 227,
@@ -407,6 +625,13 @@
   {
    "name": "blightfield r8",
    "group": "weapon",
+   "build": [
+    [
+     "blightfield",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 1544.0515999999748,
    "kills": 126,
    "leaked": 156,
@@ -420,6 +645,13 @@
   {
    "name": "union_firmament r8",
    "group": "union",
+   "build": [
+    [
+     "union_firmament",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 2683.359466666659,
    "kills": 260,
    "leaked": 22,
@@ -437,6 +669,13 @@
   {
    "name": "union_ruin r8",
    "group": "union",
+   "build": [
+    [
+     "union_ruin",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 4441.619242666594,
    "kills": 270,
    "leaked": 12,
@@ -454,6 +693,13 @@
   {
    "name": "union_steel r8",
    "group": "union",
+   "build": [
+    [
+     "union_steel",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 1994.821919999983,
    "kills": 261,
    "leaked": 21,
@@ -471,6 +717,13 @@
   {
    "name": "union_sanctuary r8",
    "group": "union",
+   "build": [
+    [
+     "union_sanctuary",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 1178.646559999996,
    "kills": 205,
    "leaked": 77,
@@ -488,6 +741,13 @@
   {
    "name": "union_stormcall r8",
    "group": "union",
+   "build": [
+    [
+     "union_stormcall",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 2573.780227200022,
    "kills": 213,
    "leaked": 69,
@@ -505,6 +765,13 @@
   {
    "name": "1 slot",
    "group": "slots",
+   "build": [
+    [
+     "umbral_bolt",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 442.9152000000014,
    "kills": 232,
    "leaked": 50,
@@ -518,6 +785,17 @@
   {
    "name": "2 slots",
    "group": "slots",
+   "build": [
+    [
+     "umbral_bolt",
+     8
+    ],
+    [
+     "seeking_motes",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 740.0217066666602,
    "kills": 265,
    "leaked": 17,
@@ -532,6 +810,21 @@
   {
    "name": "3 slots",
    "group": "slots",
+   "build": [
+    [
+     "umbral_bolt",
+     8
+    ],
+    [
+     "seeking_motes",
+     8
+    ],
+    [
+     "cinderfall",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 2047.731989333314,
    "kills": 266,
    "leaked": 16,
@@ -547,6 +840,25 @@
   {
    "name": "4 slots",
    "group": "slots",
+   "build": [
+    [
+     "umbral_bolt",
+     8
+    ],
+    [
+     "seeking_motes",
+     8
+    ],
+    [
+     "cinderfall",
+     8
+    ],
+    [
+     "rimeshard",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 2341.0339679999424,
    "kills": 272,
    "leaked": 10,
@@ -563,6 +875,29 @@
   {
    "name": "5 slots",
    "group": "slots",
+   "build": [
+    [
+     "umbral_bolt",
+     8
+    ],
+    [
+     "seeking_motes",
+     8
+    ],
+    [
+     "cinderfall",
+     8
+    ],
+    [
+     "rimeshard",
+     8
+    ],
+    [
+     "arcweb",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 2652.000818133283,
    "kills": 271,
    "leaked": 11,
@@ -580,6 +915,33 @@
   {
    "name": "6 slots",
    "group": "slots",
+   "build": [
+    [
+     "umbral_bolt",
+     8
+    ],
+    [
+     "seeking_motes",
+     8
+    ],
+    [
+     "cinderfall",
+     8
+    ],
+    [
+     "rimeshard",
+     8
+    ],
+    [
+     "arcweb",
+     8
+    ],
+    [
+     "moonbrand",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 3220.9007861332752,
    "kills": 271,
    "leaked": 11,
@@ -598,6 +960,21 @@
   {
    "name": "all holy",
    "group": "school",
+   "build": [
+    [
+     "dawnpulse",
+     8
+    ],
+    [
+     "hallowed_ring",
+     8
+    ],
+    [
+     "judgement_disc",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 2040.2491199999724,
    "kills": 240,
    "leaked": 42,
@@ -617,6 +994,25 @@
   {
    "name": "all shadow",
    "group": "school",
+   "build": [
+    [
+     "umbral_bolt",
+     8
+    ],
+    [
+     "reaving_arc",
+     8
+    ],
+    [
+     "grave_tether",
+     8
+    ],
+    [
+     "blightfield",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 2802.1957599999805,
    "kills": 268,
    "leaked": 14,
@@ -637,6 +1033,21 @@
   {
    "name": "all physical",
    "group": "school",
+   "build": [
+    [
+     "knifestorm",
+     8
+    ],
+    [
+     "axe_gyre",
+     8
+    ],
+    [
+     "volley",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 1383.132053333354,
    "kills": 247,
    "leaked": 35,
@@ -656,6 +1067,17 @@
   {
    "name": "pair: Frostfire Bolt",
    "group": "pair",
+   "build": [
+    [
+     "rimeshard",
+     8
+    ],
+    [
+     "cinderfall",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 1125.2393151999865,
    "kills": 239,
    "leaked": 43,
@@ -670,6 +1092,17 @@
   {
    "name": "pair: Shadowflame",
    "group": "pair",
+   "build": [
+    [
+     "umbral_bolt",
+     8
+    ],
+    [
+     "cinderfall",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 1739.3696319999947,
    "kills": 254,
    "leaked": 28,
@@ -684,6 +1117,17 @@
   {
    "name": "pair: Deadly Brew",
    "group": "pair",
+   "build": [
+    [
+     "knifestorm",
+     8
+    ],
+    [
+     "rimeshard",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 739.075306666663,
    "kills": 242,
    "leaked": 40,
@@ -698,6 +1142,17 @@
   {
    "name": "pair: Tempest Pact",
    "group": "pair",
+   "build": [
+    [
+     "axe_gyre",
+     8
+    ],
+    [
+     "arcweb",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 1198.444932533341,
    "kills": 247,
    "leaked": 35,
@@ -712,6 +1167,17 @@
   {
    "name": "pair: Radiant Gyre",
    "group": "pair",
+   "build": [
+    [
+     "axe_gyre",
+     8
+    ],
+    [
+     "dawnpulse",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 1630.9374293333394,
    "kills": 183,
    "leaked": 99,
@@ -726,6 +1192,17 @@
   {
    "name": "pair: Truestrike",
    "group": "pair",
+   "build": [
+    [
+     "volley",
+     8
+    ],
+    [
+     "seeking_motes",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 645.6656266666604,
    "kills": 263,
    "leaked": 19,
@@ -740,6 +1217,17 @@
   {
    "name": "pair: Celestial Alignment",
    "group": "pair",
+   "build": [
+    [
+     "moonbrand",
+     8
+    ],
+    [
+     "dawnpulse",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 1525.7103680000046,
    "kills": 252,
    "leaked": 30,
@@ -754,6 +1242,17 @@
   {
    "name": "pair: Verdict",
    "group": "pair",
+   "build": [
+    [
+     "judgement_disc",
+     8
+    ],
+    [
+     "hallowed_ring",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 1305.1171466666801,
    "kills": 222,
    "leaked": 60,
@@ -768,6 +1267,17 @@
   {
    "name": "pair: Curdle",
    "group": "pair",
+   "build": [
+    [
+     "dawnpulse",
+     8
+    ],
+    [
+     "hallowed_ring",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 1860.4962133333204,
    "kills": 219,
    "leaked": 63,
@@ -782,6 +1292,33 @@
   {
    "name": "six: all holy",
    "group": "six",
+   "build": [
+    [
+     "dawnpulse",
+     8
+    ],
+    [
+     "hallowed_ring",
+     8
+    ],
+    [
+     "judgement_disc",
+     8
+    ],
+    [
+     "seeking_motes",
+     8
+    ],
+    [
+     "moonbrand",
+     8
+    ],
+    [
+     "volley",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 3478.139877333312,
    "kills": 270,
    "leaked": 12,
@@ -810,6 +1347,33 @@
   {
    "name": "six: spread",
    "group": "six",
+   "build": [
+    [
+     "cinderfall",
+     8
+    ],
+    [
+     "rimeshard",
+     8
+    ],
+    [
+     "arcweb",
+     8
+    ],
+    [
+     "umbral_bolt",
+     8
+    ],
+    [
+     "blightfield",
+     8
+    ],
+    [
+     "knifestorm",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 4389.890280533471,
    "kills": 270,
    "leaked": 12,
@@ -838,6 +1402,33 @@
   {
    "name": "six: melee-ish",
    "group": "six",
+   "build": [
+    [
+     "axe_gyre",
+     8
+    ],
+    [
+     "knifestorm",
+     8
+    ],
+    [
+     "reaving_arc",
+     8
+    ],
+    [
+     "verdant_lance",
+     8
+    ],
+    [
+     "blightfield",
+     8
+    ],
+    [
+     "grave_tether",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 3997.27813333346,
    "kills": 264,
    "leaked": 18,
@@ -866,6 +1457,33 @@
   {
    "name": "six: discoveries",
    "group": "six",
+   "build": [
+    [
+     "rimeshard",
+     8
+    ],
+    [
+     "cinderfall",
+     8
+    ],
+    [
+     "umbral_bolt",
+     8
+    ],
+    [
+     "arcweb",
+     8
+    ],
+    [
+     "axe_gyre",
+     8
+    ],
+    [
+     "moonbrand",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 3845.6061134399542,
    "kills": 271,
    "leaked": 11,
@@ -894,6 +1512,33 @@
   {
    "name": "six: best clearers",
    "group": "six",
+   "build": [
+    [
+     "seeking_motes",
+     8
+    ],
+    [
+     "umbral_bolt",
+     8
+    ],
+    [
+     "cinderfall",
+     8
+    ],
+    [
+     "moonbrand",
+     8
+    ],
+    [
+     "arcweb",
+     8
+    ],
+    [
+     "hallowed_ring",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 4037.3802560000518,
    "kills": 269,
    "leaked": 13,
@@ -922,6 +1567,33 @@
   {
    "name": "six: worst clearers",
    "group": "six",
+   "build": [
+    [
+     "reaving_arc",
+     8
+    ],
+    [
+     "judgement_disc",
+     8
+    ],
+    [
+     "dawnpulse",
+     8
+    ],
+    [
+     "axe_gyre",
+     8
+    ],
+    [
+     "blightfield",
+     8
+    ],
+    [
+     "grave_tether",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 4143.825018666865,
    "kills": 258,
    "leaked": 24,
@@ -950,6 +1622,33 @@
   {
    "name": "six: ground and orbit",
    "group": "six",
+   "build": [
+    [
+     "blightfield",
+     8
+    ],
+    [
+     "hallowed_ring",
+     8
+    ],
+    [
+     "dawnpulse",
+     8
+    ],
+    [
+     "reaving_arc",
+     8
+    ],
+    [
+     "axe_gyre",
+     8
+    ],
+    [
+     "grave_tether",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 5134.478682667054,
    "kills": 263,
    "leaked": 19,
@@ -978,6 +1677,33 @@
   {
    "name": "six: all bolts",
    "group": "six",
+   "build": [
+    [
+     "seeking_motes",
+     8
+    ],
+    [
+     "cinderfall",
+     8
+    ],
+    [
+     "rimeshard",
+     8
+    ],
+    [
+     "umbral_bolt",
+     8
+    ],
+    [
+     "moonbrand",
+     8
+    ],
+    [
+     "volley",
+     8
+    ]
+   ],
+   "evolved": false,
    "dps": 3278.2690303999175,
    "kills": 271,
    "leaked": 11,
@@ -1006,6 +1732,33 @@
   {
    "name": "evolved: all holy",
    "group": "evolved",
+   "build": [
+    [
+     "dawnpulse",
+     8
+    ],
+    [
+     "hallowed_ring",
+     8
+    ],
+    [
+     "judgement_disc",
+     8
+    ],
+    [
+     "seeking_motes",
+     8
+    ],
+    [
+     "moonbrand",
+     8
+    ],
+    [
+     "volley",
+     8
+    ]
+   ],
+   "evolved": true,
    "dps": 12606.663160000682,
    "kills": 274,
    "leaked": 8,
@@ -1034,6 +1787,33 @@
   {
    "name": "evolved: spread",
    "group": "evolved",
+   "build": [
+    [
+     "cinderfall",
+     8
+    ],
+    [
+     "rimeshard",
+     8
+    ],
+    [
+     "arcweb",
+     8
+    ],
+    [
+     "umbral_bolt",
+     8
+    ],
+    [
+     "blightfield",
+     8
+    ],
+    [
+     "knifestorm",
+     8
+    ]
+   ],
+   "evolved": true,
    "dps": 17538.0393551995,
    "kills": 278,
    "leaked": 4,
@@ -1062,6 +1842,33 @@
   {
    "name": "evolved: melee-ish",
    "group": "evolved",
+   "build": [
+    [
+     "axe_gyre",
+     8
+    ],
+    [
+     "knifestorm",
+     8
+    ],
+    [
+     "reaving_arc",
+     8
+    ],
+    [
+     "verdant_lance",
+     8
+    ],
+    [
+     "blightfield",
+     8
+    ],
+    [
+     "grave_tether",
+     8
+    ]
+   ],
+   "evolved": true,
    "dps": 16166.830680001543,
    "kills": 271,
    "leaked": 11,
@@ -1090,6 +1897,33 @@
   {
    "name": "evolved: discoveries",
    "group": "evolved",
+   "build": [
+    [
+     "rimeshard",
+     8
+    ],
+    [
+     "cinderfall",
+     8
+    ],
+    [
+     "umbral_bolt",
+     8
+    ],
+    [
+     "arcweb",
+     8
+    ],
+    [
+     "axe_gyre",
+     8
+    ],
+    [
+     "moonbrand",
+     8
+    ]
+   ],
+   "evolved": true,
    "dps": 23992.798626163643,
    "kills": 274,
    "leaked": 8,
@@ -1118,6 +1952,33 @@
   {
    "name": "evolved: best clearers",
    "group": "evolved",
+   "build": [
+    [
+     "seeking_motes",
+     8
+    ],
+    [
+     "umbral_bolt",
+     8
+    ],
+    [
+     "cinderfall",
+     8
+    ],
+    [
+     "moonbrand",
+     8
+    ],
+    [
+     "arcweb",
+     8
+    ],
+    [
+     "hallowed_ring",
+     8
+    ]
+   ],
+   "evolved": true,
    "dps": 18771.626328000602,
    "kills": 282,
    "leaked": 0,
@@ -1146,6 +2007,33 @@
   {
    "name": "evolved: worst clearers",
    "group": "evolved",
+   "build": [
+    [
+     "reaving_arc",
+     8
+    ],
+    [
+     "judgement_disc",
+     8
+    ],
+    [
+     "dawnpulse",
+     8
+    ],
+    [
+     "axe_gyre",
+     8
+    ],
+    [
+     "blightfield",
+     8
+    ],
+    [
+     "grave_tether",
+     8
+    ]
+   ],
+   "evolved": true,
    "dps": 16803.417176001614,
    "kills": 272,
    "leaked": 10,
@@ -1174,6 +2062,33 @@
   {
    "name": "evolved: ground and orbit",
    "group": "evolved",
+   "build": [
+    [
+     "blightfield",
+     8
+    ],
+    [
+     "hallowed_ring",
+     8
+    ],
+    [
+     "dawnpulse",
+     8
+    ],
+    [
+     "reaving_arc",
+     8
+    ],
+    [
+     "axe_gyre",
+     8
+    ],
+    [
+     "grave_tether",
+     8
+    ]
+   ],
+   "evolved": true,
    "dps": 18800.747056003176,
    "kills": 274,
    "leaked": 8,
@@ -1202,6 +2117,33 @@
   {
    "name": "evolved: all bolts",
    "group": "evolved",
+   "build": [
+    [
+     "seeking_motes",
+     8
+    ],
+    [
+     "cinderfall",
+     8
+    ],
+    [
+     "rimeshard",
+     8
+    ],
+    [
+     "umbral_bolt",
+     8
+    ],
+    [
+     "moonbrand",
+     8
+    ],
+    [
+     "volley",
+     8
+    ]
+   ],
+   "evolved": true,
    "dps": 18363.375867199982,
    "kills": 273,
    "leaked": 9,
