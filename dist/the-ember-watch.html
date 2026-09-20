@@ -17354,6 +17354,24 @@ window.WS = window.WS || {};
     /* ---- effects --------------------------------------------------------- */
     this.drawFlashes(ctx);
     this.drawParticles(ctx);
+
+    /* The survivor, asserted again over his own light.
+     
+       Everything above this composites with 'lighter', which does not paint
+       over him - it adds to him, and adding to something already bright is
+       how a figure turns into white. Measured as the share of his silhouette
+       pushed past near-white, a bare survivor is at 0%, three weapons at rank
+       8 put him at 20%, and six evolved ones at 34%: a third of him gone,
+       with every pixel of him technically still there. That is the endgame
+       you cannot find yourself in.
+     
+       Scaling the effects down would cost the spectacle that is the reward
+       for getting there. Re-stamping him costs one more draw of one sprite
+       and nothing else: he is opaque, so wherever he is, he is. His own
+       bolts now pass behind him rather than over him, which is the right way
+       round anyway - they come from him. */
+    this.drawPlayer(ctx, player, time);
+
     this.drawTexts(ctx);
 
     ctx.restore();

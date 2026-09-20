@@ -273,6 +273,12 @@ const MAX_SPEED = 1200;
       if (e) { e.maxHealth = 1e9; e.health = 1e9; e.speed = 0; }
       WS.Renderer.draw(5);
       w.cooldown = 0; WS.Weapon.fire(pl, w);
+      /* Let what was fired travel before looking at it. Sampled on the launch
+         frame, every bolt is still inside the survivor - who is drawn over
+         his own light so he stays findable - and a discovery's marks are
+         measured through him. A player never sees that frame either; what
+         they see is the bolt on its way. */
+      for (let t = 0; t < 8; t++) WS.Projectile.update(1 / 60);
       WS.Renderer.draw(5);
       return g.getImageData(0, 0, cv.width, cv.height).data;
     };
@@ -303,12 +309,80 @@ const MAX_SPEED = 1200;
        no signal: adding a colour to the colour it already is does nothing,
        and both of those had nothing else to say it. They now measure 571 and
        7507 on the strength of shape - pips on the bolt, beads on the nova.
-       450 sits under the weaker of the two and far over what either scored
-       when the signal was missing. */
-    if (c.changed < 450) {
+       Sampling in flight rather than at launch costs some of that and adds
+       spread: across five seeds verdict now runs 415 to 566, because where a
+       bolt has got to depends on the roll that aimed it. So the floor sits
+       under the WHOLE of that spread rather than inside it - 350, against a
+       worst observed 415 with the marks and 210 when they were missing. A
+       bar between the good runs and the bad runs of the same build is a
+       coin toss wearing a number. */
+    if (c.changed < 350) {
       fail.push(`the discovery ${c.id} changes ${c.changed} pixels of what its weapon `
         + 'looks like - it alters what the weapon does and nothing the player can see');
     }
+  }
+
+  /* ---- and you have to be able to find yourself -------------------------
+   *
+   * Everything in the air composites with 'lighter'. That does not paint over
+   * the survivor, it ADDS to him, and adding to something already bright is
+   * how a figure becomes a white smear with every one of its pixels still
+   * technically present. So this does not ask whether he was overwritten -
+   * nothing ever overwrites him - it asks how much of him has been pushed
+   * past near-white. A bare survivor measured 0%, three weapons at rank 8 put
+   * him at 20%, and six evolved ones at 34%: a third of the character gone at
+   * exactly the point in a run where you most need to see where you are. */
+  const wash = await page.evaluate(() => {
+    WS.setSeed(4242);
+    WS.Game.startRun('thornhollow', 'mage');
+    if (WS.Game.blessingChoices) WS.Game.chooseBlessing(0);
+    WS.Game.openLevelUp = function () { this.pendingLevelUps = 0; };
+    WS.Game.presentLevelUp = function () { this.pendingLevelUps = 0; };
+    WS.Input.poll = function () {};
+    const p = WS.Game.player;
+    p.x = 640; p.y = 360; p.maxHealth = 1e9; p.health = 1e9;
+    p.weapons.length = 0; p.weaponLevels = {}; p.combosActive = {};
+    for (const id of ['seeking_motes', 'cinderfall', 'rimeshard',
+      'arcweb', 'axe_gyre', 'moonbrand']) {
+      WS.Player.addWeapon(p, id);
+      const w = WS.Player.getWeapon(p, id);
+      if (w) { w.level = 8; p.weaponLevels[id] = 8; w.evolved = true; }
+    }
+    WS.ComboSystem.check(p);
+    WS.Enemy.pool.releaseAll();
+    for (let ring = 0; ring < 3; ring++) {
+      for (let i = 0; i < 14; i++) {
+        const a = (i / 14) * WS.TAU + ring;
+        const e = WS.Enemy.spawn('lampling',
+          640 + WS.cos(a) * (90 + ring * 70), 360 + WS.sin(a) * (90 + ring * 70), 1, true);
+        if (e) { e.maxHealth = 1e9; e.health = 1e9; e.speed = 0; }
+      }
+    }
+    for (let i = 0; i < 300; i++) {
+      WS.Game.update(1 / 60);
+      for (const e of WS.Enemy.pool.active) e.health = 1e9;
+    }
+    WS.Renderer.draw(6);
+    const d = WS.Renderer.canvas.getContext('2d').getImageData(0, 0, 1280, 720).data;
+    const cx = Math.round(p.x), cy = Math.round(p.y);
+    let n = 0, washed = 0;
+    for (let y = cy - 34; y < cy + 30; y++) {
+      for (let x = cx - 26; x < cx + 26; x++) {
+        const i = (y * 1280 + x) * 4;
+        n++;
+        if (Math.min(d[i], d[i + 1], d[i + 2]) / 255 > 0.80) washed++;
+      }
+    }
+    return washed / n;
+  });
+  /* 40%, measured in THIS scene: 66% with the survivor left under his own
+     light, 23% with him asserted over it. The first figures I set this from
+     were 34% and 7%, taken in a standalone probe - a different page with a
+     different history, and so a different amount of light in the air. A
+     threshold is only meaningful against numbers from the scene it guards. */
+  if (wash > 0.40) {
+    fail.push(`${(wash * 100).toFixed(0)}% of the survivor is washed white at six `
+      + 'evolved weapons - you cannot see where you are standing');
   }
 
   console.log(fail.length ? fail.join('\n')
@@ -316,7 +390,8 @@ const MAX_SPEED = 1200;
       ` ${worst.boltSamples} seeking-bolt samples, slowest ${(worst.slowestBolt * 100).toFixed(0)}% of launch speed;` +
       ` ${text.pct}% of floating combat text overlaps another number, busiest frames ${text.worst}%;` +
       ` every weapon grows between ${flat}x and ${big}x in presence from rank 1 to rank 8,` +
-      ` and all ${combos.length} discoveries repaint the weapons they combine`);
+      ` and all ${combos.length} discoveries repaint the weapons they combine;` +
+      ` ${(wash * 100).toFixed(0)}% of the survivor washes white under six evolved weapons`);
   await b.close();
   process.exitCode = fail.length ? 1 : 0;
 })();
