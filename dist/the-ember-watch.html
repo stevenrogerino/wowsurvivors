@@ -11113,8 +11113,26 @@ window.WS = window.WS || {};
     const speed = speedOf(player, w);
     const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
     if (spec.homing) spec.homingTarget = target;
-    WS.Projectile.launchBolt(player.x, player.y, dx * speed, dy * speed, spec);
+    WS.Projectile.launchBolt(muzzleX(player, dx), muzzleY(player, dy),
+      dx * speed, dy * speed, spec);
   }
+
+  /* Where a shot LEAVES the survivor.
+   
+     Everything used to spawn at player.x, player.y, and that point is not the
+     middle of the figure: measured off the drawn sprite, the survivor stands
+     51 pixels above it and only 21 below, so it sits around his feet. Bolts
+     and beams therefore left from the floor and appeared to grow out of his
+     shins. Lifted to roughly where his hands are, and pushed a little the way
+     he is shooting, they leave from him instead of from under him.
+   
+     This moves the ORIGIN of things that travel, and nothing else. Novas,
+     ground zones and auras still key off player.x/y, because their damage
+     does, and a ring of light that erupts from the ground is correct where it
+     is - lifting it would put the light and the damage in different places. */
+  const MUZZLE_UP = 24, MUZZLE_FWD = 12;
+  function muzzleX(player, dx) { return player.x + dx * MUZZLE_FWD; }
+  function muzzleY(player, dy) { return player.y - MUZZLE_UP + dy * MUZZLE_FWD; }
 
   Weapon.behaviors.aimed = function (player, w) {
     const d = w.data;
@@ -11156,8 +11174,9 @@ window.WS = window.WS || {};
     for (let i = 0; i < count; i++) {
       const a = (i - (count - 1) / 2) * spread;
       const c = WS.cos(a), s = WS.sin(a);
-      WS.Projectile.launchBolt(player.x, player.y,
-        (dx * c - dy * s) * speed, (dx * s + dy * c) * speed, spec);
+      const ax = dx * c - dy * s, ay = dx * s + dy * c;
+      WS.Projectile.launchBolt(muzzleX(player, ax), muzzleY(player, ay),
+        ax * speed, ay * speed, spec);
     }
     return true;
   };
@@ -11169,7 +11188,9 @@ window.WS = window.WS || {};
     const offset = WS.random() * WS.TAU;
     for (let i = 0; i < count; i++) {
       const a = offset + (i / count) * WS.TAU;
-      WS.Projectile.launchBolt(player.x, player.y, WS.cos(a) * speed, WS.sin(a) * speed, spec);
+      const ax = WS.cos(a), ay = WS.sin(a);
+      WS.Projectile.launchBolt(muzzleX(player, ax), muzzleY(player, ay),
+        ax * speed, ay * speed, spec);
     }
     return true;
   };
@@ -11262,7 +11283,9 @@ window.WS = window.WS || {};
     const first = WS.Enemy.findNearest(player.x, player.y, range * 1.6);
     if (!first) { w.cooldown = RETRY_COOLDOWN; return false; }
     const chains = chainCount(player, w);
-    Weapon.chainFrom(player.x, player.y, damageOf(player, w), chains, range, w.id,
+    const [cdx, cdy] = WS.normalize(first.x - player.x, first.y - player.y);
+    Weapon.chainFrom(muzzleX(player, cdx), muzzleY(player, cdy),
+      damageOf(player, w), chains, range, w.id,
       schoolColour(w), w);
     WS.Audio.play('cast');
     return true;
@@ -11372,12 +11395,17 @@ window.WS = window.WS || {};
     const range = areaOf(player, w, d.range || 620);
     let width = areaOf(player, w, d.beamWidth || 26);
     if (player.metaTimer > 0) width *= (d.metaWidthMult || 1.8);
-    const x2 = player.x + dx * range, y2 = player.y + dy * range;
+    /* From the hands, and the damage line with it. Moving only the drawing
+       would put the beam you see and the beam that hits on two different
+       lines - they converge by the far end, but they disagree exactly where
+       the player is looking. */
+    const mx = muzzleX(player, dx), my = muzzleY(player, dy);
+    const x2 = mx + dx * range, y2 = my + dy * range;
     const damage = damageOf(player, w);
-    WS.Enemy.damageLine(player.x, player.y, x2, y2, width * 0.5, damage, w.id);
-    WS.Projectile.spawnBeam(player.x, player.y, x2, y2, width, schoolColour(w), 0.22);
+    WS.Enemy.damageLine(mx, my, x2, y2, width * 0.5, damage, w.id);
+    WS.Projectile.spawnBeam(mx, my, x2, y2, width, schoolColour(w), 0.22);
     mark(WS.Projectile.beams, w);
-    WS.FX.flash(player.x, player.y, width, schoolColour(w), 0.2);
+    WS.FX.flash(mx, my, width, schoolColour(w), 0.2);
     WS.Audio.play('cast');
     return true;
   };
