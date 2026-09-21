@@ -615,9 +615,33 @@
       return { per: strikes * each,
         why: `${strikes} strikes x ${each.toFixed(1)} in r=${Math.round(splash)}` };
     },
-    /* Blades circling the survivor. Each carries HALF the weapon's damage and
-       may re-hit every 0.18s for the whole spin, which is why an orbit reads
-       as weak on a single-target chart and is not. */
+    /* Blades circling the survivor, each carrying HALF the weapon's damage
+       and keeping its OWN re-hit ledger (see Projectile.update) - a second
+       blade is a second set of hits, not a second contender for the same
+       one.
+
+       This used to model a bug that no longer exists: hitBy was ONE ledger
+       shared by every blade, cleared once per REHIT window, so however many
+       blades swept a target it took at most one hit per window - and the
+       model matched that by capping a single target at one hit per tick
+       NO MATTER HOW MANY BLADES swept it. Once every blade got its own
+       ledger the model did not follow. Measured against one stationary
+       target for its whole duration: evolving Axe Gyre into Gyrestorm takes
+       it from 5 blades to 9 and the real hit count from 16 to 35 - and the
+       model predicted 12.5 for BOTH, unable to see blade count do anything
+       to a single enemy, which is exactly the case a rank track matters
+       most for.
+
+       A blade only meets a lone target once per full turn around the
+       survivor, not once every REHIT window - REHIT bounds how SOON a
+       blade may re-strike, it does not mean it strikes that often. So this
+       counts turns, not ticks: orbitSpeed in rad/s over the weapon's actual
+       duration is how many times each blade sweeps the whole ring, and
+       every blade sweeps on its own. Checked against six real
+       configurations spanning 3 to 9 blades and three orbit speeds, turns x
+       blades x inCircle predicts within 2-25% of the measured hit count
+       every time - the old model was not close on any of them, and wrong by
+       nearly 3x on the one that should have moved the most. */
     orbit: (p, w, crowd) => {
       const cfg = WS.Config;
       let blades = (w.data.projectiles || 2) + p.projectileBonus;
@@ -625,14 +649,11 @@
       if (w.level >= cfg.projRankA) blades++;
       if (w.level >= cfg.projRankB) blades++;
       const size = areaOf(p, w, w.data.radius || 20);
-      const ticks = Math.max(1, Math.round(durationOf(p, w, w.data.duration || 3.2) / 0.18));
-      /* hitBy is cleared once per tick and shared by every blade, so within a
-         tick each enemy takes at most ONE hit however many blades sweep it.
-         Without that cap a four-bladed gyre read as four hundred single-target
-         dps, which is four times the best weapon in the game. */
-      const perTick = clamp1(blades * inCircle(size, crowd), crowd);
-      return { per: 0.5 * ticks * perTick, halved: true,
-        why: `${blades} blades x ${ticks} sweeps, ${perTick.toFixed(1)} hit(s) a sweep, `
+      const speed = (w.data.orbitSpeed || 4.2) * (w.evolved ? cfg.evolveOrbitSpeed : 1);
+      const turns = durationOf(p, w, w.data.duration || 3.2) * speed / WS.TAU;
+      const perTurn = inCircle(size, crowd);
+      return { per: 0.5 * blades * turns * perTurn, halved: true,
+        why: `${blades} blades x ${turns.toFixed(1)} turns, ${perTurn.toFixed(1)} hit(s) a turn each, `
           + 'at half damage' };
     },
   };
