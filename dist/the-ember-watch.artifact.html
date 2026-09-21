@@ -9099,11 +9099,18 @@ window.WS = window.WS || {};
       const cx = s / 2, cy = s * 0.58, u = s / 100;
       legs(g, p, cx, cy + 26 * u, u, [-8, 7], 8, 4.4);
       shaded(g, cx + 2 * u, cy + 6 * u, 15 * u, 22 * u, p, 0.12);  // narrow trunk
+      /* Mangy fur down the trunk - every mass on this one was a plain
+         gradient fill and nothing else, which measured 36.1% interior
+         detail against a 41% average. A scavenger is unkempt; the coat
+         should look like it, not like the boar's or the brute's. */
+      pelt(g, p, cx + 2 * u, cy + 6 * u, 15 * u, 22 * u, 0.12, 5, 0.5, 0.36);
       // the hunch: a shoulder mass standing proud of the back
       shaded(g, cx + 5 * u, cy - 12 * u, 14 * u, 10 * u, p, 0.3);
+      pelt(g, p, cx + 5 * u, cy - 12 * u, 14 * u, 10 * u, 0.3, 4, 0.4, 0.32);
       shaded(g, cx - 16 * u, cy + 4 * u, 6 * u, 14 * u, p, -0.5);  // arms, long
       shaded(g, cx + 17 * u, cy + 2 * u, 6 * u, 14 * u, p, 0.5);
       shaded(g, cx - 10 * u, cy - 17 * u, 12 * u, 10 * u, p, -0.18); // head, forward
+      pelt(g, p, cx - 10 * u, cy - 17 * u, 12 * u, 10 * u, -0.18, 4, 0.4, 0.3);
       poly(g, [[cx - 14 * u, cy - 21 * u], [cx - 24 * u, cy - 36 * u],
         [cx - 9 * u, cy - 26 * u]], p.mid, p.line, u);
       poly(g, [[cx - 4 * u, cy - 22 * u], [cx + 4 * u, cy - 36 * u],
@@ -9132,6 +9139,27 @@ window.WS = window.WS || {};
       g.moveTo(cx - 8 * u, cy - 16 * u);
       g.quadraticCurveTo(cx - 2 * u, cy - 8 * u, cx - 3 * u, cy + 18 * u);
       g.stroke();
+      /* The lapel was one fold on one side of a symmetric coat, and the
+         skirt below the buttons - the widest, lowest part of the mass - had
+         nothing on it at all. Measured at 36.2% interior detail against a
+         41% average: a matching fold on the near side, a belt at the waist,
+         and a couple of the same creases the skirt would actually gather
+         into when a coat this heavy is cinched. */
+      g.beginPath();
+      g.moveTo(cx + 9 * u, cy - 15 * u);
+      g.quadraticCurveTo(cx + 5 * u, cy - 6 * u, cx + 6 * u, cy + 17 * u);
+      g.stroke();
+      g.lineWidth = 1.6 * u;
+      g.beginPath();
+      g.moveTo(cx - 16 * u, cy + 8 * u); g.lineTo(cx + 16 * u, cy + 8 * u);
+      g.stroke();
+      g.lineWidth = 1 * u; g.globalAlpha = 0.34;
+      for (const dx of [-9, 9]) {
+        g.beginPath();
+        g.moveTo(cx + dx * u, cy + 9 * u);
+        g.quadraticCurveTo(cx + dx * 1.2 * u, cy + 16 * u, cx + dx * 0.7 * u, cy + 23 * u);
+        g.stroke();
+      }
       g.globalAlpha = 1;
       for (let i = 0; i < 4; i++) {
         const by = cy + (-10 + i * 7) * u;
@@ -9169,7 +9197,7 @@ window.WS = window.WS || {};
         pelt(g, p, cx + dir * 30 * u, cy + 4 * u, 9 * u, 17 * u, dir * 0.16, 3, 0.3, 0.3);
       }
       shaded(g, cx, cy + 2 * u, 31 * u, 25 * u, p);               // the one mass
-      pelt(g, p, cx, cy + 2 * u, 31 * u, 25 * u, 0, 8, 0.4, 0.2);
+      pelt(g, p, cx, cy + 2 * u, 31 * u, 25 * u, 0, 8, 0.4, 0.34);
       /* The shoulders, as a light on the same form rather than a shape on top
          of it: a highlight across the top of the mass, clipped inside it. */
       g.save();
@@ -9188,11 +9216,19 @@ window.WS = window.WS || {};
       /* HIDE, on the one mass - the brute is deliberately one continuous
          surface, so everything here has to be marks ON it rather than shapes
          cutting it up. Old scars across the shoulder, a pale chest, and the
-         creases where a fat thing folds at the sides. */
-      g.globalAlpha = 0.3;
+         creases where a fat thing folds at the sides.
+
+         Measured against the bestiary's own interior-detail metric, brute
+         came out at 32.8% against an average of 41% - every mark here was
+         real but faint, 0.2 to 0.3 alpha on a body that is otherwise one
+         smooth gradient, and the belly below the shoulder scars had nothing
+         on it at all. Strengthened rather than redrawn, and given two more
+         scars low on the gut, where a brute actually takes most of its
+         hits. */
+      g.globalAlpha = 0.5;
       g.lineWidth = 1.2 * u;
       for (const [x0, y0, x1, y1] of [[-18, -14, -6, -6], [-14, -17, -3, -10],
-        [12, -12, 20, -3]]) {
+        [12, -12, 20, -3], [-16, 12, -4, 18], [6, 16, 18, 10]]) {
         g.beginPath();
         g.moveTo(cx + x0 * u, cy + y0 * u);
         g.quadraticCurveTo(cx + (x0 + x1) / 2 * u, cy + (y0 + y1) / 2 * u - 2 * u,
@@ -9202,7 +9238,7 @@ window.WS = window.WS || {};
       /* The side folds were struck as arcs centred outside the body, which
          drew two big circles ON him rather than creases IN him. A fold on a
          round animal is a short comma that follows the surface, not a ring. */
-      g.globalAlpha = 0.2;
+      g.globalAlpha = 0.32;
       for (const dir of [-1, 1]) {
         for (const dy of [2, 10]) {
           g.beginPath();
@@ -9274,6 +9310,17 @@ window.WS = window.WS || {};
         g.moveTo(cx - 10 * u, y);
         g.quadraticCurveTo(cx, y + 2.4 * u, cx + 10 * u, y);
         g.stroke();
+      }
+      g.restore();
+      /* The dorsal mass - head and back - carried the whole outline and none
+         of the texture; every mark on a gilkin lived on the pale belly, so
+         the darker two-thirds of the animal stayed a flat green pebble.
+         Mottling, the way a real amphibian's back actually varies. */
+      g.save();
+      g.beginPath(); g.ellipse(cx, cy + 2 * u, 17 * u, 20 * u, 0, 0, WS.TAU); g.clip();
+      g.fillStyle = p.dark; g.globalAlpha = 0.3;
+      for (const [dx, dy, r] of [[-9, -8, 3.2], [8, -3, 2.6], [-4, 8, 3], [10, 14, 2.4]]) {
+        g.beginPath(); g.ellipse(cx + dx * u, cy + dy * u, r * u, r * 0.7 * u, 0, 0, WS.TAU); g.fill();
       }
       g.restore();
       // gill slits, on the side of the neck where they belong
@@ -9437,7 +9484,16 @@ window.WS = window.WS || {};
       g.beginPath(); g.moveTo(cx - 14 * u, cy - 4 * u); g.lineTo(cx - 22 * u, cy + 14 * u); g.stroke();
       g.beginPath(); g.moveTo(cx + 14 * u, cy - 4 * u); g.lineTo(cx + 22 * u, cy + 14 * u); g.stroke();
       shaded(g, cx, cy - 20 * u, 11 * u, 11 * u, p);               // skull
+      /* Almost the whole rig here is bone-thin strokes, which the interior-
+         detail metric barely sees - it wants luminance change between
+         neighbouring FILLED pixels, and a 4px-wide rib gives it almost none
+         to work with. The skull is the one real mass, so the nasal cavity
+         and a hairline crack go here rather than on more bones. */
       g.fillStyle = '#101018';
+      g.beginPath(); g.moveTo(cx, cy - 16 * u); g.lineTo(cx - 2 * u, cy - 12 * u);
+      g.lineTo(cx + 2 * u, cy - 12 * u); g.closePath(); g.fill();
+      g.strokeStyle = 'rgba(255,255,255,.22)'; g.lineWidth = 0.9 * u; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(cx - 7 * u, cy - 27 * u); g.quadraticCurveTo(cx - 3 * u, cy - 22 * u, cx - 5 * u, cy - 16 * u); g.stroke();
       g.beginPath(); g.ellipse(cx - 4 * u, cy - 21 * u, 3 * u, 3.6 * u, 0, 0, WS.TAU); g.fill();
       g.beginPath(); g.ellipse(cx + 4 * u, cy - 21 * u, 3 * u, 3.6 * u, 0, 0, WS.TAU); g.fill();
       eyes(g, cx, cy - 21 * u, 4 * u, 1.5 * u, '#8fe6ff');
@@ -9569,8 +9625,12 @@ window.WS = window.WS || {};
       g.save();
       g.beginPath(); g.ellipse(cx, cy + 6 * u, 30 * u, 28 * u, 0, 0, WS.TAU); g.clip();
       g.strokeStyle = p.dark; g.globalAlpha = 0.55; g.lineCap = 'round';
+      /* Measured at 33.8% interior detail against a 41% average, and the
+         three stitches - real as they are - left the outer third of the
+         mass on either side bare: a seam close to each rim, at -27 and +27,
+         costs nothing the first three did not already pay for. */
       for (const [sx, sy, ex, ey] of [[-16, -10, -13, 20], [2, -14, 6, 16],
-        [17, -6, 13, 22]]) {
+        [17, -6, 13, 22], [-27, -2, -24, 18], [26, -8, 24, 16]]) {
         g.lineWidth = 1.4 * u;
         g.beginPath();
         g.moveTo(cx + sx * u, cy + sy * u);
@@ -9594,6 +9654,14 @@ window.WS = window.WS || {};
       shaded(g, cx + 31 * u, cy + 1 * u, 12 * u, 19 * u, p, 0.32);  // and the heavy one
       blade(g, cx + 19 * u, cy + 6 * u, 30 * u, 8 * u, 0.75, '#aeb6c4', '#5a6070', 'heavy');
       shaded(g, cx - 4 * u, cy - 24 * u, 13 * u, 11 * u, p, -0.2); // sagging head
+      // the head is stitched on too - it's a part like any other
+      g.strokeStyle = p.dark; g.globalAlpha = 0.5; g.lineCap = 'round'; g.lineWidth = 1.2 * u;
+      g.beginPath(); g.moveTo(cx - 12 * u, cy - 30 * u); g.lineTo(cx - 8 * u, cy - 18 * u); g.stroke();
+      for (const t of [0.25, 0.5, 0.75]) {
+        const mx = cx - 12 * u + 4 * t * u, my = cy - 30 * u + 12 * t * u;
+        g.beginPath(); g.moveTo(mx - 2 * u, my - 1.3 * u); g.lineTo(mx + 2 * u, my + 1.3 * u); g.stroke();
+      }
+      g.globalAlpha = 1;
       eyes(g, cx - 4 * u, cy - 25 * u, 5 * u, 2 * u, '#bfff6b');
     },
 
@@ -9616,23 +9684,28 @@ window.WS = window.WS || {};
       g.fillStyle = grd;
       shroud();
       g.fill();
-      // folds down the cloth, gathering toward the hood
+      /* folds down the cloth, gathering toward the hood.
+         Measured at 34.1% interior detail against a 41% average - every one
+         of these four was real cloth, not a flat fill, but 0.16 to 0.26
+         alpha on top of the shroud's own soft gradient left the fold nearly
+         as smooth as the fabric around it. Darkened, and a fifth fold added
+         where the widest gap between the first four left the hem bare. */
       g.save();
       shroud(); g.clip();
-      for (const k of [-0.62, -0.2, 0.24, 0.66]) {
+      for (const k of [-0.62, -0.32, -0.04, 0.24, 0.66]) {
         const tx = cx + k * 8 * u, bx = cx + k * 19 * u;
         const w = (2 + 1.4 * Math.abs(k)) * u;
         const fg = g.createLinearGradient(bx - w, 0, bx + w, 0);
-        fg.addColorStop(0, 'rgba(0,0,0,.26)');
+        fg.addColorStop(0, 'rgba(0,0,0,.42)');
         fg.addColorStop(0.55, 'rgba(0,0,0,0)');
-        fg.addColorStop(0.78, 'rgba(255,255,255,.16)');
+        fg.addColorStop(0.78, 'rgba(255,255,255,.28)');
         fg.addColorStop(1, 'rgba(255,255,255,0)');
         g.fillStyle = fg;
         g.beginPath();
         g.moveTo(tx - u, cy - 30 * u); g.lineTo(tx + u, cy - 30 * u);
         g.lineTo(bx + w, cy + 30 * u); g.lineTo(bx - w, cy + 30 * u);
         g.closePath(); g.fill();
-        g.strokeStyle = 'rgba(0,0,0,.24)'; g.lineWidth = 0.9 * u;
+        g.strokeStyle = 'rgba(0,0,0,.4)'; g.lineWidth = 0.9 * u;
         g.beginPath();
         g.moveTo(tx - u, cy - 30 * u); g.lineTo(bx - w, cy + 30 * u);
         g.stroke();
@@ -9878,7 +9951,7 @@ window.WS = window.WS || {};
       const cx = s / 2, cy = s * 0.56, u = s / 100;
       legs(g, p, cx, cy + 15 * u, u, [-16, -6, 8, 18], 17, 4.2);
       shaded(g, cx - 2 * u, cy + 2 * u, 26 * u, 15 * u, p);        // long body
-      pelt(g, p, cx - 2 * u, cy + 2 * u, 26 * u, 15 * u, 0, 7, 0.5, 0.3);
+      pelt(g, p, cx - 2 * u, cy + 2 * u, 26 * u, 15 * u, 0, 7, 0.5, 0.44);
       /* THE BRUSH. Four points made a plank; a wolf's tail is thick at the
          root, fuller in the middle and ragged at the tip, and it is the one
          part of the animal that is pure fur. */
@@ -9908,6 +9981,7 @@ window.WS = window.WS || {};
       }
       g.restore();
       shaded(g, cx - 22 * u, cy - 6 * u, 13 * u, 11 * u, p);       // head
+      pelt(g, p, cx - 22 * u, cy - 6 * u, 13 * u, 11 * u, 0, 4, 0.4, 0.3);
       poly(g, [[cx - 34 * u, cy - 6 * u], [cx - 44 * u, cy - 2 * u], [cx - 32 * u, cy + 2 * u]], p.hi, p.line, u);  // muzzle
       poly(g, [[cx - 28 * u, cy - 14 * u], [cx - 30 * u, cy - 26 * u], [cx - 20 * u, cy - 16 * u]], p.lo, p.line, u);
       poly(g, [[cx - 16 * u, cy - 14 * u], [cx - 14 * u, cy - 26 * u], [cx - 8 * u, cy - 15 * u]], p.lo, p.line, u);
@@ -9958,7 +10032,7 @@ window.WS = window.WS || {};
          head at the body's own centre height, as this did, just made two
          spheres of the same size in a row. */
       shaded(g, cx + 3 * u, cy - 1 * u, 23 * u, 18 * u, p);         // humped body
-      pelt(g, p, cx + 3 * u, cy - 1 * u, 23 * u, 18 * u, 0, 8, 0.55, 0.3);
+      pelt(g, p, cx + 3 * u, cy - 1 * u, 23 * u, 18 * u, 0, 8, 0.55, 0.42);
       /* Hide. A boar is a slab of muscle under a thick coat and this was one
          smooth egg - second flattest in the bestiary at 22.6%. A shoulder
          mass lit from above, two creases behind it where the hide folds, and
@@ -9972,8 +10046,8 @@ window.WS = window.WS || {};
       shoulder.addColorStop(1, 'rgba(255,255,255,0)');
       g.fillStyle = shoulder;
       g.beginPath(); g.ellipse(cx - 5 * u, cy - 6 * u, 16 * u, 14 * u, 0, 0, WS.TAU); g.fill();
-      g.strokeStyle = p.line; g.globalAlpha = 0.3; g.lineWidth = 1.5 * u;
-      for (const dx of [2, 9]) {
+      g.strokeStyle = p.line; g.globalAlpha = 0.44; g.lineWidth = 1.5 * u;
+      for (const dx of [-12, 2, 9]) {
         g.beginPath();
         g.moveTo(cx + dx * u, cy - 18 * u);
         g.quadraticCurveTo(cx + (dx + 4) * u, cy - 2 * u, cx + (dx + 1) * u, cy + 16 * u);
@@ -9996,7 +10070,7 @@ window.WS = window.WS || {};
         g.stroke();
       }
       shaded(g, cx - 21 * u, cy + 6 * u, 13 * u, 12 * u, p);        // low head
-      pelt(g, p, cx - 21 * u, cy + 6 * u, 13 * u, 12 * u, 0, 4, 0.35, 0.28);
+      pelt(g, p, cx - 21 * u, cy + 6 * u, 13 * u, 12 * u, 0, 4, 0.35, 0.4);
       poly(g, [[cx - 30 * u, cy + 7 * u], [cx - 41 * u, cy + 11 * u], [cx - 29 * u, cy + 15 * u]],
         p.hi, p.line, u);                                          // snout
       /* Tusks. They have to grow out of the snout and curl only a little: an
@@ -10041,7 +10115,7 @@ window.WS = window.WS || {};
       // and a bristled hide under them
       g.save();
       g.beginPath(); g.ellipse(cx, cy + 4 * u, 22 * u, 24 * u, 0, 0, WS.TAU); g.clip();
-      g.strokeStyle = p.line; g.globalAlpha = 0.42; g.lineWidth = 1.1 * u;
+      g.strokeStyle = p.line; g.globalAlpha = 0.54; g.lineWidth = 1.1 * u;
       for (let i = 0; i < 15; i++) {
         const a = WS.PI * (0.08 + i * 0.056);
         g.beginPath();
@@ -10051,6 +10125,18 @@ window.WS = window.WS || {};
       }
       g.restore();
       shaded(g, cx, cy - 20 * u, 13 * u, 11 * u, p);
+      // the head bristles too - it's not a bald patch on a spined animal
+      g.save();
+      g.beginPath(); g.ellipse(cx, cy - 20 * u, 13 * u, 11 * u, 0, 0, WS.TAU); g.clip();
+      g.strokeStyle = p.line; g.globalAlpha = 0.4; g.lineWidth = 0.9 * u;
+      for (let i = 0; i < 6; i++) {
+        const a = WS.PI * (0.15 + i * 0.12);
+        g.beginPath();
+        g.moveTo(cx - WS.cos(a) * 11 * u, cy - 20 * u - WS.sin(a) * 9 * u);
+        g.lineTo(cx - WS.cos(a) * 5 * u, cy - 20 * u - WS.sin(a) * 4 * u);
+        g.stroke();
+      }
+      g.restore();
       poly(g, [[cx - 6 * u, cy - 14 * u], [cx + 6 * u, cy - 14 * u], [cx, cy - 6 * u]], p.hi);
       eyes(g, cx, cy - 22 * u, 5 * u, 1.8 * u, '#ffcf6b');
       blade(g, cx + 24 * u, cy + 4 * u, 28 * u, 6 * u, 0.55, '#cdd3de', '#6b7280');
@@ -10066,12 +10152,12 @@ window.WS = window.WS || {};
       g.beginPath(); g.ellipse(cx + 2 * u, cy, 20 * u, 14 * u, -0.15, 0, WS.TAU); g.clip();
       for (let i = 0; i < 5; i++) {
         const x = cx + (-12 + i * 7) * u;
-        g.globalAlpha = 0.26; g.strokeStyle = p.line; g.lineWidth = 2.4 * u;
+        g.globalAlpha = 0.4; g.strokeStyle = p.line; g.lineWidth = 2.4 * u;
         g.beginPath();
         g.moveTo(x, cy - 14 * u);
         g.quadraticCurveTo(x + 3 * u, cy, x - 1 * u, cy + 14 * u);
         g.stroke();
-        g.globalAlpha = 0.18; g.strokeStyle = p.hi; g.lineWidth = 1.6 * u;
+        g.globalAlpha = 0.28; g.strokeStyle = p.hi; g.lineWidth = 1.6 * u;
         g.beginPath();
         g.moveTo(x + 2 * u, cy - 14 * u);
         g.quadraticCurveTo(x + 5 * u, cy, x + 1 * u, cy + 14 * u);
@@ -10116,11 +10202,14 @@ window.WS = window.WS || {};
         g.beginPath(); g.ellipse(cx + fx * u, cy + 34 * u, 5 * u, 2.4 * u, 0, 0, WS.TAU); g.fill();
       }
       shaded(g, cx, cy, 20 * u, 17 * u, p);
-      pelt(g, p, cx, cy, 20 * u, 17 * u, 0, 7, 0.4, 0.26);
+      /* Measured at 36.6% interior detail against a 41% average - the
+         plainest body in the bestiary before this, one soft ring of down
+         and three faint coverts on top of it. Both strengthened. */
+      pelt(g, p, cx, cy, 20 * u, 17 * u, 0, 7, 0.4, 0.4);
       // plumage: three overlapping coverts down the flank
       g.save();
       g.beginPath(); g.ellipse(cx, cy, 20 * u, 17 * u, 0, 0, WS.TAU); g.clip();
-      g.strokeStyle = p.line; g.globalAlpha = 0.32; g.lineWidth = 1.3 * u;
+      g.strokeStyle = p.line; g.globalAlpha = 0.48; g.lineWidth = 1.3 * u;
       for (let i = 0; i < 3; i++) {
         g.beginPath();
         g.arc(cx + (10 - i * 7) * u, cy - 6 * u, (14 + i * 3) * u, 0.15, 1.5);
@@ -10212,8 +10301,8 @@ window.WS = window.WS || {};
           // bands down the leg, which is where a spider's pattern actually is
           g.strokeStyle = p.dark;
           g.lineWidth = 3.6 * u;
-          for (let q = 1; q <= 2; q++) {
-            const t = q / 3;
+          for (let q = 1; q <= 3; q++) {
+            const t = q / 4;
             const bx = cx + dir * 6 * u + (kx - cx - dir * 6 * u) * t;
             const by = cy + (ky - cy) * t;
             g.beginPath();
@@ -10269,6 +10358,12 @@ window.WS = window.WS || {};
       g.moveTo(cx + 5 * u, cy - 11 * u); g.lineTo(cx + 5 * u, cy + 18 * u);
       g.stroke();
       g.restore();
+      /* The cephalothorax's own base fill used to be painted AFTER the
+         plates, bristles and veins below rather than before them - every
+         mark in this block was there in the code and invisible on screen,
+         opaque-overwritten by shaded() the instant it ran. Moved ahead of
+         the detail it was erasing. */
+      shaded(g, cx - 14 * u, cy - 4 * u, 11 * u, 10 * u, p);
       // and plates on the cephalothorax
       g.save();
       g.beginPath(); g.ellipse(cx - 14 * u, cy - 4 * u, 11 * u, 10 * u, 0, 0, WS.TAU); g.clip();
@@ -10295,7 +10390,6 @@ window.WS = window.WS || {};
         g.stroke();
       }
       g.restore();
-      shaded(g, cx - 14 * u, cy - 4 * u, 11 * u, 10 * u, p);       // cephalothorax
       // fangs, under the head end
       for (const dir of [-1, 1]) {
         poly(g, [[cx + (-17 + dir * 3) * u, cy + 2 * u],
@@ -10312,7 +10406,7 @@ window.WS = window.WS || {};
     moonwretch(g, s, p) {
       const cx = s / 2, cy = s * 0.56, u = s / 100;
       shaded(g, cx, cy + 6 * u, 22 * u, 26 * u, p);
-      pelt(g, p, cx, cy + 6 * u, 22 * u, 26 * u, 0, 6, 0.35, 0.3);
+      pelt(g, p, cx, cy + 6 * u, 22 * u, 26 * u, 0, 6, 0.35, 0.44);
       // the pale bib every furred predator carries down its front
       g.save();
       g.beginPath(); g.ellipse(cx, cy + 6 * u, 22 * u, 26 * u, 0, 0, WS.TAU); g.clip();
@@ -10349,6 +10443,7 @@ window.WS = window.WS || {};
       }
       g.restore();
       shaded(g, cx, cy - 22 * u, 13 * u, 12 * u, p);
+      pelt(g, p, cx, cy - 22 * u, 13 * u, 12 * u, 0, 4, 0.4, 0.3);
       poly(g, [[cx - 8 * u, cy - 24 * u], [cx - 16 * u, cy - 42 * u], [cx - 2 * u, cy - 30 * u]], p.lo, p.line, u);
       poly(g, [[cx + 8 * u, cy - 24 * u], [cx + 16 * u, cy - 42 * u], [cx + 2 * u, cy - 30 * u]], p.lo, p.line, u);
       poly(g, [[cx - 7 * u, cy - 16 * u], [cx + 7 * u, cy - 16 * u], [cx, cy - 6 * u]], p.hi);
@@ -10380,15 +10475,18 @@ window.WS = window.WS || {};
     karrash(g, s, p) {
       const cx = s / 2, cy = s * 0.60, u = s / 100;
       shaded(g, cx + 4 * u, cy + 8 * u, 26 * u, 15 * u, p);        // horse barrel
-      pelt(g, p, cx + 4 * u, cy + 8 * u, 26 * u, 15 * u, 0, 7, 0.45, 0.22);
+      /* Measured at 37.9% interior detail against a 41% average - the
+         barrel's coat was the faintest pelt call in the bestiary. */
+      pelt(g, p, cx + 4 * u, cy + 8 * u, 26 * u, 15 * u, 0, 7, 0.45, 0.4);
       // Four legs with feet on them, like every other quadruped here. These
       // were four bare round-capped strokes - the only limbs in the bestiary
       // that did not stand on anything.
       legs(g, p, cx, cy + 18 * u, u, [-14, -4, 12, 22], 14, 4);
       poly(g, [[cx + 28 * u, cy + 4 * u], [cx + 44 * u, cy - 6 * u], [cx + 30 * u, cy + 12 * u]], p.lo, p.line, u);
       shaded(g, cx - 12 * u, cy - 14 * u, 13 * u, 16 * u, p);      // humanoid torso
-      pelt(g, p, cx - 12 * u, cy - 14 * u, 13 * u, 16 * u, 0, 4, 0.3, 0.3);
+      pelt(g, p, cx - 12 * u, cy - 14 * u, 13 * u, 16 * u, 0, 4, 0.3, 0.42);
       shaded(g, cx - 12 * u, cy - 32 * u, 10 * u, 9 * u, p);
+      pelt(g, p, cx - 12 * u, cy - 32 * u, 10 * u, 9 * u, 0, 4, 0.4, 0.3);
       eyes(g, cx - 12 * u, cy - 33 * u, 4 * u, 1.6 * u, '#ffd98f');
       /* A SPEAR, not a scratch. This was one 3u white stroke of constant width
          from hip to point with a flat triangle stuck on the end - no haft, no
@@ -10440,13 +10538,13 @@ window.WS = window.WS || {};
            the game made entirely of hard edges had no hard edges inside it. */
         g.save();
         g.beginPath(); g.rect(x, y, w, h); g.clip();
-        g.strokeStyle = 'rgba(0,0,0,.34)'; g.lineWidth = 1.1 * u;
+        g.strokeStyle = 'rgba(0,0,0,.48)'; g.lineWidth = 1.1 * u;
         g.beginPath();
         g.moveTo(x + w * 0.22, y);
         g.lineTo(x + w * 0.38, y + h * 0.45);
         g.lineTo(x + w * 0.3, y + h);
         g.stroke();
-        g.strokeStyle = 'rgba(255,244,224,.14)';
+        g.strokeStyle = 'rgba(255,244,224,.22)';
         g.beginPath();
         g.moveTo(x + w * 0.22 + 1.2 * u, y);
         g.lineTo(x + w * 0.38 + 1.2 * u, y + h * 0.45);
