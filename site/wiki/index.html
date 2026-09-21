@@ -1,0 +1,574 @@
+<title>Ember Watch Codex</title>
+<meta name="description" content="A companion guide to The Ember Watch: every survivor and how to earn them, the bestiary of every battlefield, all twenty bosses, and the lore of the vigil.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --void:#06070b; --obsidian:#0b0d12; --obsidian-2:#13141c; --obsidian-3:#1d1c26; --obsidian-4:#2b2733;
+    --ink:#e9edf6; --ink-dim:#8b93a7; --ink-faint:#5c6376;
+    --arc:#f5c56b; --arc-hot:#ffe6ae; --arc-deep:#b98c3c;
+    --arcane:#8f7bff; --frost:#59bfff; --fel:#8cf24a; --blood:#e2483d; --holy:#ffdf7a; --umbra:#b34ff2;
+    --rim: rgba(255,240,214,.08); --rim-lit: rgba(255,240,214,.18);
+    --ui: 'Archivo', 'Segoe UI', system-ui, sans-serif;
+    --fig: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{background:var(--void);}
+  body{
+    margin:0; padding:0 18px; font-family:var(--ui); color:var(--ink);
+    background:
+      radial-gradient(90% 60% at 50% 0%, rgba(245,197,107,.05), transparent 55%),
+      var(--void);
+    line-height:1.55;
+  }
+  h1,h2,h3,h4{font-family:var(--ui); font-weight:800; letter-spacing:-.01em; text-wrap:balance; margin:0;}
+  p{margin:0; color:var(--ink-dim);}
+  a{color:var(--arc);}
+  img{max-width:100%; display:block;}
+  ::selection{background:rgba(245,197,107,.28); color:#fff;}
+
+  .wrap{max-width:1180px; margin:0 auto;}
+
+  /* ---------------- nav ---------------- */
+  nav.top{
+    position:sticky; top:0; z-index:50; padding-block:12px;
+    background:linear-gradient(var(--void) 78%, transparent);
+    backdrop-filter: blur(6px);
+  }
+  nav.top .bar{
+    display:flex; align-items:center; gap:22px; flex-wrap:wrap;
+    border:1px solid var(--rim); background:rgba(11,13,18,.82);
+    border-radius:12px; padding:10px 16px;
+  }
+  nav.top .mark{font-weight:800; font-size:14px; letter-spacing:.08em; color:var(--arc-hot); white-space:nowrap;}
+  nav.top .mark b{color:var(--ink); font-weight:800;}
+  nav.top .links{display:flex; gap:4px; flex-wrap:wrap; margin-left:auto;}
+  nav.top .links a{
+    font-size:12px; font-weight:700; letter-spacing:.04em; color:var(--ink-dim); text-decoration:none;
+    padding:7px 10px; border-radius:8px;
+  }
+  nav.top .links a:hover{color:var(--ink); background:var(--obsidian-3);}
+
+  /* ---------------- hero ---------------- */
+  .hero{
+    position:relative; padding:74px 8px 58px; text-align:center; overflow:hidden;
+    border-bottom:1px solid var(--rim);
+  }
+  .hero .embers{position:absolute; inset:0; pointer-events:none; overflow:hidden;}
+  .hero .embers i{
+    position:absolute; bottom:-10px; width:3px; height:3px; border-radius:50%;
+    background:var(--arc-hot); box-shadow:0 0 8px 2px rgba(245,197,107,.7);
+    animation:rise linear infinite;
+  }
+  @keyframes rise{ to{ transform:translateY(-520px) translateX(var(--dx,0)); opacity:0; } }
+  @media (prefers-reduced-motion: reduce){ .hero .embers i{ animation:none; opacity:0; } }
+  .hero .eyebrow{
+    font-family:var(--fig); font-size:12px; letter-spacing:.32em; text-transform:uppercase;
+    color:var(--arc); margin-bottom:18px;
+  }
+  .hero h1{
+    font-size:clamp(40px,7vw,74px); line-height:.98; margin:0 auto;
+    background:linear-gradient(180deg, #fff 0%, var(--arc-hot) 55%, var(--arc-deep) 100%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .hero .sub{
+    font-family:var(--fig); font-size:15px; color:var(--ink-dim); margin-top:16px; letter-spacing:.02em;
+  }
+  .hero .lede{max-width:560px; margin:26px auto 0; font-size:15.5px; color:var(--ink);}
+  .hero .lede b{color:var(--arc-hot);}
+
+  /* ---------------- section chrome ---------------- */
+  section{padding:64px 4px; border-bottom:1px solid var(--rim);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{
+    font-family:var(--fig); font-size:11px; letter-spacing:.28em; text-transform:uppercase;
+    color:var(--arc); margin-bottom:10px;
+  }
+  .stitle{font-size:clamp(26px,3.6vw,38px); max-width:700px;}
+  .sdesc{max-width:640px; margin-top:14px; font-size:15px;}
+
+  /* ---------------- vigil / lore ---------------- */
+  .vigil-grid{display:grid; grid-template-columns:1.1fr .9fr; gap:40px; margin-top:40px;}
+  @media (max-width:820px){ .vigil-grid{grid-template-columns:1fr;} }
+  .lore-lines{display:flex; flex-direction:column; gap:2px; font-size:17px;}
+  .lore-lines p{
+    color:var(--ink); padding:10px 0 10px 18px; border-left:2px solid var(--obsidian-3); position:relative;
+  }
+  .lore-lines p::before{
+    content:''; position:absolute; left:-2px; top:14px; width:6px; height:6px; border-radius:50%;
+    background:var(--arc); box-shadow:0 0 6px 1px rgba(245,197,107,.6);
+  }
+  .loop-list{display:flex; flex-direction:column; gap:16px;}
+  .loop-item{
+    border:1px solid var(--rim); background:var(--obsidian-2); border-radius:12px; padding:16px 18px;
+  }
+  .loop-item h4{font-size:14.5px; color:var(--arc-hot); margin-bottom:6px;}
+  .loop-item p{font-size:13.5px;}
+
+  /* ---------------- ember progression ---------------- */
+  .ember-panel{
+    margin-top:40px; display:grid; grid-template-columns:auto 1fr; gap:32px; align-items:center;
+    border:1px solid var(--rim); background:var(--obsidian-2); border-radius:16px; padding:26px;
+  }
+  @media (max-width:760px){ .ember-panel{grid-template-columns:1fr;} }
+  .ember-panel img{border-radius:10px; border:1px solid var(--rim);}
+  .tier-list{list-style:none; margin:0; padding:0; counter-reset:tier; display:flex; flex-direction:column; gap:10px;}
+  .tier-list li{
+    counter-increment:tier; display:flex; gap:12px; align-items:baseline; font-size:14px; color:var(--ink-dim);
+  }
+  .tier-list li::before{
+    content:counter(tier); font-family:var(--fig); font-weight:700; font-size:12px; color:var(--void);
+    background:var(--arc); width:20px; height:20px; border-radius:50%; display:inline-flex;
+    align-items:center; justify-content:center; flex:none;
+  }
+  .tier-list b{color:var(--ink); font-weight:700;}
+
+  /* ---------------- grids: shared card look ---------------- */
+  .grid{display:grid; gap:16px; margin-top:36px;}
+  .grid.g-survivors{grid-template-columns:repeat(auto-fill,minmax(250px,1fr));}
+  .grid.g-crit{grid-template-columns:repeat(auto-fill,minmax(290px,1fr));}
+  .grid.g-beast{grid-template-columns:repeat(auto-fill,minmax(148px,1fr));}
+  .grid.g-maps{grid-template-columns:repeat(auto-fill,minmax(320px,1fr));}
+
+  .card{
+    border:1px solid var(--rim); background:var(--obsidian-2); border-radius:14px; overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  .card .art{width:100%; aspect-ratio:1/1; background:var(--obsidian-3); display:block;}
+  .card .body{padding:14px 16px 16px; display:flex; flex-direction:column; gap:6px; flex:1;}
+  .card .name{font-size:15.5px; font-weight:800; line-height:1.25;}
+  .card .title{font-size:12px; color:var(--ink-faint); font-style:italic;}
+  .card .tags{display:flex; gap:6px; flex-wrap:wrap; margin:2px 0 2px;}
+  .tag{
+    font-family:var(--fig); font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+    padding:3px 8px; border-radius:100px; border:1px solid var(--rim-lit); color:var(--ink-dim);
+    background:rgba(255,255,255,.03); white-space:nowrap;
+  }
+  .tag.arc{color:var(--arc-hot); border-color:rgba(245,197,107,.4);}
+  .tag.school-physical{color:#e6cc99; border-color:rgba(230,204,153,.4);}
+  .tag.school-arcane{color:var(--arcane); border-color:rgba(143,123,255,.4);}
+  .tag.school-fire{color:#ff8a4a; border-color:rgba(255,138,74,.4);}
+  .tag.school-frost{color:var(--frost); border-color:rgba(89,191,255,.4);}
+  .tag.school-nature{color:var(--fel); border-color:rgba(140,242,74,.4);}
+  .tag.school-holy{color:var(--holy); border-color:rgba(255,223,122,.4);}
+  .tag.school-shadow{color:var(--umbra); border-color:rgba(179,79,242,.4);}
+  .card .weapon{font-family:var(--fig); font-size:12px; color:var(--ink-dim);}
+  .card .weapon b{color:var(--ink);}
+  .card .perk{font-size:12.5px; color:var(--ink-dim); flex:1;}
+  .card .unlock{
+    margin-top:auto; padding-top:10px; border-top:1px dashed var(--rim); font-size:11.5px;
+    color:var(--arc); display:flex; gap:6px;
+  }
+  .card .unlock .ico{flex:none;}
+  .card .unlock.free{color:var(--fel);}
+
+  /* small beast tiles */
+  .beast{
+    border:1px solid var(--rim); background:var(--obsidian-2); border-radius:12px; overflow:hidden; text-align:center;
+  }
+  .beast .art{width:100%; aspect-ratio:1/1; background:var(--obsidian-3);}
+  .beast .nm{font-size:11.5px; font-weight:700; padding:8px 8px 2px; line-height:1.25;}
+  .beast .fm{font-family:var(--fig); font-size:9.5px; color:var(--ink-faint); padding:0 8px 9px; text-transform:uppercase; letter-spacing:.03em;}
+  .beast .note{font-size:10px; color:var(--ink-faint); padding:0 8px 9px;}
+  .beast.elite{border-color:rgba(245,197,107,.4); box-shadow:0 0 0 1px rgba(245,197,107,.12) inset;}
+  .beast.elite .nm{color:var(--arc-hot);}
+
+  .region{margin-top:44px;}
+  .region:first-child{margin-top:36px;}
+  .region h3{font-size:17px; color:var(--arc-hot); display:flex; align-items:center; gap:10px;}
+  .region h3::after{content:''; height:1px; flex:1; background:var(--rim);}
+  .region .rsub{font-size:12.5px; color:var(--ink-faint); margin-top:4px;}
+
+  /* boss cards */
+  .boss-card{
+    border:1px solid var(--rim); background:var(--obsidian-2); border-radius:14px; padding:16px; display:flex; gap:14px;
+  }
+  .boss-card .art{width:88px; height:88px; flex:none; border-radius:10px; background:var(--obsidian-3);}
+  .boss-card .b{display:flex; flex-direction:column; gap:5px; min-width:0;}
+  .boss-card .name{font-size:14.5px; font-weight:800;}
+  .boss-card .hp{font-family:var(--fig); font-size:11px; color:var(--ink-faint);}
+  .boss-card .yell{font-size:12px; font-style:italic; color:var(--ink-dim);}
+  .boss-card .where{font-size:10.5px; color:var(--arc); font-family:var(--fig);}
+
+  /* maps */
+  .map-card{border:1px solid var(--rim); background:var(--obsidian-2); border-radius:14px; padding:20px;}
+  .map-card h4{font-size:16.5px; margin-bottom:2px;}
+  .map-card .sub{font-size:12px; font-style:italic; color:var(--ink-faint); margin-bottom:10px;}
+  .map-card p{font-size:13px;}
+  .map-card .meta{display:flex; gap:14px; margin-top:12px; font-family:var(--fig); font-size:11px; color:var(--ink-dim);}
+  .map-card .meta b{color:var(--arc);}
+  .map-card .unlock{margin-top:12px; font-size:11.5px; color:var(--arc); border-top:1px dashed var(--rim); padding-top:10px;}
+
+  footer{padding:40px 4px 70px; text-align:center;}
+  footer p{font-size:12px; color:var(--ink-faint);}
+</style>
+
+<nav class="top"><div class="bar wrap">
+  <span class="mark"><b>THE EMBER WATCH</b> — Codex</span>
+  <div class="links">
+    <a href="#vigil">The Vigil</a>
+    <a href="#ember">The Ember</a>
+    <a href="#survivors">Survivors</a>
+    <a href="#bestiary">Bestiary</a>
+    <a href="#bosses">Bosses</a>
+    <a href="#battlefields">Battlefields</a>
+  </div>
+</div></nav>
+
+<header class="hero">
+  <div class="embers" id="embers"></div>
+  <div class="eyebrow">A companion codex</div>
+  <h1>The Ember&nbsp;Watch</h1>
+  <div class="sub">Thirty minutes until dawn</div>
+  <p class="lede">Ten survivors, five battlefields, twenty bosses, and the light
+    that holds the dark back. <b>You only move</b> — everything you carry
+    fights on its own. This is the guide to everyone you can become, everything
+    that hunts you, and how it all fits together.</p>
+</header>
+
+<main class="wrap">
+
+  <!-- ============================================================ VIGIL -->
+  <section id="vigil">
+    <div class="kicker">Chapter One</div>
+    <h2 class="stitle">The vigil, in the game's own words</h2>
+    <p class="sdesc">The prologue never explains what ember <em>does</em> — you
+      already feel that, gem by gem — it explains what ember <em>is</em>.
+      Alongside it, the loop that repeats for thirty minutes straight.</p>
+
+    <div class="vigil-grid">
+      <div class="lore-lines">
+        <p>Every night, the dark comes up out of the ground.</p>
+        <p>It has taken every watch before this one.</p>
+        <p>What holds it back is ember — and ember will not burn on its own.</p>
+        <p>It sleeps in the stones the dead leave behind.</p>
+        <p>Break the stone. Take the light out of it. While you carry it, you burn.</p>
+        <p>They can smell a light from a long way off.</p>
+        <p>You will not kill your way out of this. Nobody ever has.</p>
+        <p>You will out-burn it, and you will keep moving.</p>
+        <p><b style="color:var(--arc-hot)">Hold until the light comes back.</b></p>
+      </div>
+      <div class="loop-list">
+        <div class="loop-item"><h4>Your weapons fire themselves</h4>
+          <p>You never press an attack button. Everything you carry swings, casts and reloads on its own timer, at whatever is nearest. Your whole job is where you stand.</p></div>
+        <div class="loop-item"><h4>Walk over the gems</h4>
+          <p>Everything you kill drops experience. Level up and choose: a new weapon, a rank on one you carry, or a passive.</p></div>
+        <div class="loop-item"><h4>Six weapons, and no more</h4>
+          <p>Rank one to 8 and learn its paired passive to evolve it into something far stronger.</p></div>
+        <div class="loop-item"><h4>Two evolved weapons can become one</h4>
+          <p>Some pairs merge into a single greater weapon and hand the slot back.</p></div>
+        <div class="loop-item"><h4>Thirty minutes is the win</h4>
+          <p>Bosses arrive on a schedule and the horde never stops thickening. Survive to 30:00 and the battlefield is yours — though Death itself turns up at exactly that moment.</p></div>
+        <div class="loop-item"><h4>Gold outlives the run</h4>
+          <p>Keep every coin whether you win, die, or walk away. Spend it with the Trainer on lessons that apply to every run after.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ EMBER -->
+  <section id="ember">
+    <div class="kicker">Chapter Two</div>
+    <h2 class="stitle">What the ember does to you</h2>
+    <p class="sdesc">Every survivor climbs the <em>same</em> six-tier ladder —
+      nobody earns a second class's signature, they just catch more light. It
+      is why any two survivors, at any two ranks, never look like the same
+      person: the ladder is shared, but the class underneath it never is.</p>
+
+    <div class="ember-panel">
+      <img src="img/char_ruinseeker.png" width="454" height="228" alt="Nerosus the Ruinseeker, unranked beside fully ranked">
+      <ol class="tier-list">
+        <li><b>The hem takes light</b> — embers start lifting off the survivor's own clothing.</li>
+        <li><b>The shoulders build</b> — a mantle of ember-lit plate grows in.</li>
+        <li><b>The cloak lengthens</b> — and frays into sparks at its edge.</li>
+        <li><b>A crown of embers</b> — the tier that reads clearly from across the field.</li>
+        <li><b>Burning pinions</b> — off the shoulders. Past the crown, the ember stops being cloth it was given and starts being something it does to the person wearing it.</li>
+        <li><b>The brand</b> — the ember itself, showing straight through the chest.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ======================================================= SURVIVORS -->
+  <section id="survivors">
+    <div class="kicker">Chapter Three</div>
+    <h2 class="stitle">Ten survivors</h2>
+    <p class="sdesc">Two are waiting for you from the first run. The other
+      eight are earned — five by a single feat, three by living through
+      something the game only half-warns you about.</p>
+    <div class="grid g-survivors" id="survivors-grid"></div>
+  </section>
+
+  <!-- ======================================================== BESTIARY -->
+  <section id="bestiary">
+    <div class="kicker">Chapter Four</div>
+    <h2 class="stitle">The bestiary</h2>
+    <p class="sdesc">Every rank-and-file horde, by the ground it walks. Gold-rimmed
+      tiles are elites — bigger, named, and guaranteed to drop a chest.</p>
+    <div id="bestiary-regions"></div>
+  </section>
+
+  <!-- =========================================================== BOSSES -->
+  <section id="bosses">
+    <div class="kicker">Chapter Five</div>
+    <h2 class="stitle">Twenty bosses</h2>
+    <p class="sdesc">Each announces itself, then cycles attack patterns on a
+      timer — a volley, a full ring, a charge, or a summon of its own kind.
+      Two are not on any map's schedule at all.</p>
+    <div class="grid g-crit" id="bosses-grid"></div>
+  </section>
+
+  <!-- ===================================================== BATTLEFIELDS -->
+  <section id="battlefields">
+    <div class="kicker">Chapter Six</div>
+    <h2 class="stitle">Six battlefields</h2>
+    <p class="sdesc">Each is a complete thirty-minute campaign with its own
+      horde, its own five bosses on a schedule, and its own reason the
+      difficulty and the gold both climb together.</p>
+    <div class="grid g-maps" id="maps-grid"></div>
+  </section>
+
+</main>
+
+<footer><p>Unofficial companion codex, generated from The Ember Watch's own data files. Every number here is pulled from the game, not guessed.</p></footer>
+
+<script>
+(function(){
+  // ---- ambient embers, hero only ----
+  var wrap = document.getElementById('embers');
+  if (wrap) {
+    for (var i=0;i<22;i++){
+      var s = document.createElement('i');
+      var x = Math.random()*100;
+      s.style.left = x+'%';
+      s.style.setProperty('--dx', (Math.random()*60-30)+'px');
+      s.style.animationDuration = (7+Math.random()*7)+'s';
+      s.style.animationDelay = (Math.random()*10)+'s';
+      s.style.opacity = (0.35+Math.random()*0.5).toFixed(2);
+      wrap.appendChild(s);
+    }
+  }
+
+  function el(html){ var d=document.createElement('div'); d.innerHTML=html.trim(); return d.firstElementChild; }
+  function schoolTag(s){ return s ? '<span class="tag school-'+s+'">'+s+'</span>' : ''; }
+
+  // ================================================================ DATA
+  var SURVIVORS = [
+    { id:'mage', name:'Baron Zul', title:'Apprentice of the Low Cloister', cls:'Mage',
+      weapon:'Seeking Motes', school:'arcane',
+      perk:'Weapon cooldowns reduced 8%.',
+      unlock:null },
+    { id:'priest', name:'Chid', title:'The Fool', cls:'Priest',
+      weapon:'Dawnpulse', school:'holy',
+      perk:'Regenerates 1 health per second.',
+      unlock:null },
+    { id:'rogue', name:'Dr. Rav McBreathless', title:'Kerchief Defector', cls:'Rogue',
+      weapon:'Knifestorm', school:'physical',
+      perk:'+10% move speed, +5% critical strike chance.',
+      unlock:'Survive 8 minutes in a single run.' },
+    { id:'hunter', name:'Maeca Barefoot', title:'Ranger of the Ashford Garrison', cls:'Hunter',
+      weapon:'Volley', school:'physical',
+      perk:'+30 pickup radius, +5% move speed.',
+      unlock:'Reach level 20 in a single run.' },
+    { id:'warrior', name:'AAAAAAAAA', title:'The Fallen Hero', cls:'Warrior',
+      weapon:'Axe Gyre', school:'physical',
+      perk:'+2 armor, +25 maximum health.',
+      unlock:'Slay 2 bosses in a single run.' },
+    { id:'warlock', name:"Nim B'ladin", title:'Exile of the Gloaming Grove', cls:'Warlock',
+      weapon:'Umbral Bolt', school:'shadow',
+      perk:'+10% weapon damage.',
+      unlock:'Slay 750 enemies across all runs.' },
+    { id:'shaman', name:'Vonnra Hydrocheck', title:'Far Seer of the Waystation', cls:'Shaman',
+      weapon:'Arcweb', school:'nature',
+      perk:'+15% luck, +8% effect area.',
+      unlock:'Bank 500 gold across all runs.' },
+    { id:'paladin', name:'Professor Keegan', title:'Knight of the Argent Vigil (Probationary)', cls:'Paladin',
+      weapon:'Judgement Disc', school:'holy',
+      perk:'+1 armor, +20% healing received.',
+      unlock:'A weathered coffin appears somewhere on the battlefield mid-run. Reach it and claim what climbs out.' },
+    { id:'graveblade', name:'DZ', title:'Who Could Not Stay Buried', cls:'Graveblade',
+      weapon:'Reaving Arc', school:'shadow',
+      perk:'Curdled Light is innate — overheal erupts as shadow, and 20% of healing that lands lashes out with it.',
+      unlock:'Overheal 4,000 points of curdled Light in one run. A graveblade breaks the ground where it fell — walk it down.' },
+    { id:'ruinseeker', name:'Nerosus', title:'The Spineless One', cls:'Ruinseeker',
+      weapon:'Verdant Lance', school:'nature',
+      perk:'Overkill always feeds Ruinform, which gathers 35% faster and can be held without pause.',
+      unlock:'Enter Ruinform 3 times, across as many runs as it takes. The twin glaives spawn on the field — claim them.' },
+  ];
+
+  var BESTIARY = {
+    'Thornhollow — the quiet woods': {
+      sub:'Gentle hills, hungry lamplings, and a mongrel problem the town watch keeps ignoring.',
+      list:[
+        {id:'lampling', name:'Lampling Tunneler', family:'lampling'},
+        {id:'boar', name:'Thicket Tusker', family:'beast'},
+        {id:'wolf', name:'Longtooth Wolf', family:'beast'},
+        {id:'gilkin', name:'Gilkin Forager', family:'gilkin'},
+        {id:'gilkin_tidecaller', name:'Gilkin Tidecaller', family:'gilkin', note:'casts frost bolts'},
+        {id:'mongrel', name:'Snarlpack Mongrel', family:'mongrel'},
+        {id:'kerchief', name:'Kerchief Footpad', family:'kerchief'},
+      ],
+      elites:[{id:'snarlpack_bonesnapper', name:'Snarlpack Bonesnapper', family:'mongrel'}],
+    },
+    'The Dustreach — a lawless frontier': {
+      sub:'The harvest reapers never stopped working. The Kerchiefs never stopped taking.',
+      list:[
+        {id:'kerchief_pillager', name:'Kerchief Pillager', family:'kerchief', note:'casts fire bolts'},
+        {id:'harvest_reaper', name:'Harvest Reaper', family:'mechanical', note:'bursts on death'},
+        {id:'fleshripper', name:'Young Fleshripper', family:'beast', note:'orbits at range'},
+        {id:'coyote', name:'Coyote Packrunner', family:'beast'},
+        {id:'bruiser', name:'Kerchief Bruiser', family:'kerchief'},
+      ],
+      elites:[{id:'kerchief_enforcer', name:'Kerchief Enforcer', family:'kerchief', note:'lunges'}],
+    },
+    'Mourneholt — where the sun is a rumor': {
+      sub:'The dead of Gallowmere do not rest, and something worse pads between the blackened trees.',
+      list:[
+        {id:'ghoul', name:'Rotting Shambler', family:'undead'},
+        {id:'skeleton', name:'Skeletal Warrior', family:'undead'},
+        {id:'skeletal_mage', name:'Skeletal Frostweaver', family:'undead', note:'casts slowing frost bolts'},
+        {id:'moonwretch', name:'Blackfang Moonwretch', family:'moonwretch'},
+        {id:'spider', name:'Venomweb Creeper', family:'beast', note:'leaves a venom trail'},
+      ],
+      elites:[{id:'bone_sentinel', name:'Bone Sentinel', family:'undead'}],
+    },
+    'The Ochre Plains — red earth, white sun': {
+      sub:'Everything on this savannah is hungry, armed, or both.',
+      list:[
+        {id:'longstrider', name:'Greater Longstrider', family:'beast'},
+        {id:'raptor', name:'Sunhide Raptor', family:'beast'},
+        {id:'bristlekin', name:'Thornhide Battleguard', family:'bristlekin'},
+        {id:'shrikewing', name:'Shrikewing Windcaller', family:'shrikewing', note:'casts nature bolts, orbits'},
+        {id:'karrash', name:'Karrash Outrunner', family:'karrash'},
+        {id:'lion', name:'Savannah Prowler', family:'beast'},
+      ],
+      elites:[{id:'karrash_battlelord', name:'Karrash Battlelord', family:'karrash', note:'lunges'}],
+    },
+    'The Pale Wastes — under a sky that never thaws': {
+      sub:'The Pale does not sleep, does not tire, and does not care how many you have already slain.',
+      list:[
+        {id:'pale_ghoul', name:'Palewaste Ghoul', family:'undead'},
+        {id:'crypt_fiend', name:'Crypt Skitterer', family:'undead'},
+        {id:'necromancer', name:'Cult Necromancer', family:'undead', note:'casts shadow bolts'},
+        {id:'abomination', name:'Stitched Horror', family:'undead', note:'splits into shamblers on death'},
+        {id:'geist', name:'Hungering Geist', family:'undead', note:'bursts on death'},
+      ],
+      elites:[{id:'deathbound_vanguard', name:'Deathbound Vanguard', family:'undead'}],
+    },
+    'Eclipse Arena — a bounded duel': {
+      sub:'No horde, no timer. One channeler, dragging you toward the chasm.',
+      list:[],
+      elites:[{id:'shadow_weaver', name:'Shadow-Weaver', family:'void', note:'stationary, channels'}],
+    },
+  };
+
+  var BOSSES = [
+    { id:'grimtunnel', name:'Foreman Grimtunnel', family:'lampling', hp:1900, yell:'Mine! My light! MINE!', maps:['Thornhollow'] },
+    { id:'murkgill', name:'Murk-Gill the Ancient', family:'gilkin', hp:2900, yell:'Blorp! Blorp-blorp-BLORRRP!', maps:['Thornhollow','Dustreach'], school:'frost' },
+    { id:'gnarlfang', name:'Gnarlfang the Ravager', family:'mongrel', hp:4200, yell:'This forest belongs to the Snarlpack!', maps:['Thornhollow','Dustreach'] },
+    { id:'redcowl', name:'Captain Redcowl', family:'kerchief', hp:5600, yell:'The Kerchiefs send their regards!', maps:['Thornhollow','Dustreach'], school:'physical' },
+    { id:'fenroth', name:'Fenroth, Terror of the Vale', family:'beast', hp:9000, yell:'The vale runs red tonight!', maps:['Thornhollow'], school:'shadow' },
+    { id:'harvestking', name:'The Harvest King', family:'mechanical', hp:4800, yell:'CROPS. REQUIRE. BLOOD.', maps:['Dustreach','Mourneholt'], school:'fire' },
+    { id:'masked_admiral', name:'The Masked Admiral', family:'kerchief', hp:11000, yell:"You'll never take me alive, lapdog!", maps:['Dustreach'], school:'physical' },
+    { id:'barkfang', name:'Old Barkfang', family:'moonwretch', hp:5200, yell:'The hunt is joined!', maps:['Mourneholt'] },
+    { id:'silkfang', name:'Matriarch Silkfang', family:'beast', hp:6400, yell:'*a chittering shriek echoes from the dark*', maps:['Mourneholt','Ochre Plains'], school:'nature' },
+    { id:'mordecai', name:'Mordecai the Unburied', family:'undead', hp:7800, yell:'Death is a door. I walked back through it.', maps:['Mourneholt','Pale Wastes'], school:'shadow' },
+    { id:'palewraith', name:'The Pale Wraith', family:'undead', hp:13500, yell:'The candles gutter. The dark remains.', maps:['Mourneholt'], school:'shadow' },
+    { id:'thornmane', name:'Warlord Bristlegore', family:'bristlekin', hp:6800, yell:'Thornhide! Take back the land!', maps:['Ochre Plains'] },
+    { id:'shriekfeather', name:'Windmatron Shriekfeather', family:'shrikewing', hp:7600, yell:'The wind will strip your bones!', maps:['Ochre Plains'], school:'nature' },
+    { id:'kazrok', name:'Warlord Kazrok of the Karrash', family:'karrash', hp:9200, yell:'The Karrash own these plains! Die, two-legs!', maps:['Ochre Plains'] },
+    { id:'stormhide', name:'Stormhide the Colossus', family:'beast', hp:16000, yell:'*thunder rolls across the savannah*', maps:['Ochre Plains'], school:'nature' },
+    { id:'boneweaver', name:'Ossuar the Boneweaver', family:'undead', hp:8800, yell:'Your bones will serve the Pale!', maps:['Pale Wastes'], school:'shadow' },
+    { id:'gorestitch', name:'Gorestitch the Amalgam', family:'undead', hp:12000, yell:'Fresh meat for the pile!', maps:['Pale Wastes'], school:'shadow' },
+    { id:'marrowfrost', name:'Marrowfrost, the Pale Lord', family:'undead', hp:22000, yell:'Your warmth offends me, little one.', maps:['Pale Wastes'], school:'frost' },
+    { id:'death_itself', name:'Death Itself', family:'death', hp:5000000, yell:'Rest now. You have fought enough.', maps:['Every battlefield, from 30:00'] },
+    { id:'aethelgard', name:'Aethelgard, the Eclipse Sovereign', family:'celestial', hp:300000, yell:'Witness the eclipse of all things.', maps:['Eclipse Arena'], school:'holy' },
+  ];
+
+  var MAPS = [
+    { id:'thornhollow', name:'Thornhollow', sub:'The quiet woods beyond the last inn',
+      desc:'Gentle hills, hungry lamplings, and a mongrel problem the town watch keeps ignoring.',
+      difficulty:'1.0×', gold:'1.0×', bosses:'Grimtunnel · Murk-Gill · Gnarlfang · Redcowl · Fenroth', unlock:'Open from the start.' },
+    { id:'dustreach', name:'The Dustreach', sub:'A wind-scoured, lawless frontier',
+      desc:'The harvest reapers never stopped working. The Kerchiefs never stopped taking.',
+      difficulty:'1.25×', gold:'1.25×', bosses:'Murk-Gill · Harvest King · Gnarlfang · Redcowl · Masked Admiral', unlock:'Survive 10 minutes in Thornhollow.' },
+    { id:'mourneholt', name:'Mourneholt', sub:'Where the sun is only a rumor',
+      desc:'The dead of Gallowmere do not rest, and something worse pads between the blackened trees.',
+      difficulty:'1.5×', gold:'1.5×', bosses:'Barkfang · Silkfang · Mordecai · Harvest King · Pale Wraith', unlock:'Survive 10 minutes in the Dustreach.' },
+    { id:'ochre', name:'The Ochre Plains', sub:'Red earth, white sun, no mercy',
+      desc:'Everything on this savannah is hungry, armed, or both. The waystation sends its regards.',
+      difficulty:'1.8×', gold:'1.8×', bosses:'Bristlegore · Shriekfeather · Kazrok · Silkfang · Stormhide', unlock:'Survive 10 minutes in Mourneholt.' },
+    { id:'palewastes', name:'The Pale Wastes', sub:'Under a sky that never thaws',
+      desc:'The Pale does not sleep, does not tire, and does not care how many you have already slain.',
+      difficulty:'2.2×', gold:'2.2×', bosses:'Boneweaver · Gorestitch · Mordecai · Boneweaver · Marrowfrost', unlock:'Survive 10 minutes in the Ochre Plains.' },
+    { id:'boss_arena', name:'Eclipse Arena', sub:'A duel with Aethelgard',
+      desc:'No horde, no timer. A bounded arena and one scripted boss. You arrive with a ready-made kit — survive the telegraphs and break the eclipse.',
+      difficulty:'—', gold:'1.0×', bosses:'Aethelgard, the Eclipse Sovereign', unlock:'Defeat any final boss to open the arena gate.' },
+  ];
+
+  // ================================================================ BUILD
+  var sg = document.getElementById('survivors-grid');
+  SURVIVORS.forEach(function(s){
+    sg.appendChild(el(
+      '<div class="card">'
+      + '<img class="art" src="img/portrait_'+s.id+'.png" alt="'+s.name+', the '+s.cls+'">'
+      + '<div class="body">'
+        + '<div class="name">'+s.name+'</div>'
+        + '<div class="title">'+s.title+'</div>'
+        + '<div class="tags"><span class="tag arc">'+s.cls+'</span>'+schoolTag(s.school)+'</div>'
+        + '<div class="weapon">Weapon: <b>'+s.weapon+'</b></div>'
+        + '<div class="perk">'+s.perk+'</div>'
+        + '<div class="unlock'+(s.unlock?'':' free')+'"><span class="ico">'+(s.unlock?'&#9670;':'&#10003;')+'</span>'
+          + '<span>'+(s.unlock||'Available from the very first run.')+'</span></div>'
+      + '</div></div>'
+    ));
+  });
+
+  var bregions = document.getElementById('bestiary-regions');
+  Object.keys(BESTIARY).forEach(function(region){
+    var r = BESTIARY[region];
+    var tiles = r.list.map(function(m){
+      return '<div class="beast"><img class="art" src="img/enemy_'+m.id+'.png" alt="'+m.name+'">'
+        + '<div class="nm">'+m.name+'</div><div class="fm">'+m.family+'</div>'
+        + (m.note ? '<div class="note">'+m.note+'</div>' : '')
+        + '</div>';
+    }).join('');
+    var elites = r.elites.map(function(m){
+      return '<div class="beast elite"><img class="art" src="img/elite_'+m.id+'.png" alt="'+m.name+'">'
+        + '<div class="nm">'+m.name+'</div><div class="fm">Elite · '+m.family+'</div>'
+        + (m.note ? '<div class="note">'+m.note+'</div>' : '')
+        + '</div>';
+    }).join('');
+    bregions.appendChild(el(
+      '<div class="region"><h3>'+region+'</h3><div class="rsub">'+r.sub+'</div>'
+      + '<div class="grid g-beast">'+tiles+elites+'</div></div>'
+    ));
+  });
+
+  var bg = document.getElementById('bosses-grid');
+  BOSSES.forEach(function(b){
+    bg.appendChild(el(
+      '<div class="boss-card">'
+      + '<img class="art" src="img/boss_'+b.id+'.png" alt="'+b.name+'">'
+      + '<div class="b">'
+        + '<div class="name">'+b.name+'</div>'
+        + '<div class="tags">'+schoolTag(b.school)+'<span class="tag">'+b.family+'</span></div>'
+        + '<div class="hp">'+b.hp.toLocaleString()+' HP</div>'
+        + '<div class="yell">&ldquo;'+b.yell+'&rdquo;</div>'
+        + '<div class="where">'+b.maps.join(' &middot; ')+'</div>'
+      + '</div></div>'
+    ));
+  });
+
+  var mg = document.getElementById('maps-grid');
+  MAPS.forEach(function(m){
+    mg.appendChild(el(
+      '<div class="map-card"><h4>'+m.name+'</h4><div class="sub">'+m.sub+'</div>'
+      + '<p>'+m.desc+'</p>'
+      + '<div class="meta"><span>Difficulty <b>'+m.difficulty+'</b></span><span>Gold <b>'+m.gold+'</b></span></div>'
+      + '<div class="meta" style="margin-top:2px">Bosses: '+m.bosses+'</div>'
+      + '<div class="unlock">&#9670; '+m.unlock+'</div>'
+      + '</div>'
+    ));
+  });
+})();
+</script>
