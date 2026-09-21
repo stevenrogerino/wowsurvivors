@@ -17,7 +17,7 @@
     held: { up: false, down: false, left: false, right: false },
     pressed: new Set(),
     onKey: null,        // set by the UI for menu navigation / hotkeys
-    touchVector: null,
+    chaseTarget: null,
     gamepadIndex: null,
   };
 
@@ -65,15 +65,32 @@
     this.pressed.clear();
   };
 
-  /** Virtual stick for touch devices; the UI feeds it a unit vector. */
-  Input.setTouchVector = function (v) { this.touchVector = v; };
+  /** A world-space point to walk toward, fed by mouse drag and touch alike.
+   *
+   *  This used to be a fixed vector, latched once from the drag at the
+   *  moment the pointer moved and never revisited: point the mouse somewhere
+   *  close and hold still, and the survivor walked that original heading
+   *  forever, sailing straight past the spot the player was aiming at. A
+   *  target is re-aimed at from wherever the survivor actually is, every
+   *  tick, so it is chased rather than launched toward - it closes in, and
+   *  it stops when it arrives instead of orbiting or overshooting. */
+  Input.setChaseTarget = function (pt) { this.chaseTarget = pt; };
 
   /** Folds gamepad + touch into the same boolean directions the sim reads. */
   Input.poll = function () {
-    const t = this.touchVector;
-    if (t) {
-      this.keys.left = t.x < -0.3; this.keys.right = t.x > 0.3;
-      this.keys.up = t.y < -0.3; this.keys.down = t.y > 0.3;
+    const target = this.chaseTarget;
+    const p = WS.Game && WS.Game.player;
+    if (target && p) {
+      const [nx, ny, len] = WS.normalize(target.x - p.x, target.y - p.y);
+      // Closer than this and re-aiming only makes the survivor twitch in
+      // place, chasing a point it has effectively already reached.
+      const ARRIVED = 10;
+      if (len < ARRIVED) {
+        this.keys.up = this.keys.down = this.keys.left = this.keys.right = false;
+      } else {
+        this.keys.left = nx < -0.3; this.keys.right = nx > 0.3;
+        this.keys.up = ny < -0.3; this.keys.down = ny > 0.3;
+      }
       return;
     }
     /* No stick: the keyboard is in charge again. Resolving from `held` every

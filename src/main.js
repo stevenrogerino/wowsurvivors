@@ -71,18 +71,29 @@
   WS.faultCount = () => faults.count;
 
   /* ---------------------------------------------------------- steering --- */
-  /** A floating stick: press anywhere on the field and drag to steer.
+  /** Press and hold anywhere on the field, and the survivor walks to wherever
+   *  the pointer currently is - not the spot it started at. Drag, and it
+   *  keeps closing in on wherever the pointer goes next, the way a leashed
+   *  point in front of the character would.
    *
    *  One path for touch, mouse and pen, because they are the same gesture and
    *  Pointer Events already unify them. Sharing it is what gives the game
    *  one-handed play on a desktop - hold the mouse and steer - rather than a
    *  second implementation that drifts from the first.
    *
+   *  This used to hand the simulation a fixed vector, latched once from the
+   *  drag and never revisited - so a click near the survivor and a still
+   *  mouse sent it in that one heading forever, past wherever the player
+   *  had actually aimed. Input.chaseTarget is a world point instead, and
+   *  Input re-aims at it from the survivor's current position every tick,
+   *  which is what makes it read as being chased down rather than launched.
+   *
    *  Two details keep it from fighting the keyboard. It only takes over once
-   *  the drag passes ENGAGE, so a stray click cannot latch a zero vector and
-   *  stop a player who is holding WASD; and on release it hands control back
-   *  rather than calling releaseAll(), which would wipe keys that are still
-   *  physically down. Input resolves from `held` every tick for exactly that.
+   *  the drag passes ENGAGE, so a stray click cannot latch a target on top of
+   *  the survivor and stop a player who is holding WASD; and on release it
+   *  hands control back rather than calling releaseAll(), which would wipe
+   *  keys that are still physically down. Input resolves from `held` every
+   *  tick for exactly that.
    */
   const ENGAGE = 14;          // px of drag before the stick takes the wheel
 
@@ -91,12 +102,16 @@
     const nub = stick.querySelector('.nub');
     let id = null, ox = 0, oy = 0, engaged = false;
 
-    const place = (dx, dy) => {
+    const place = (dx, dy, sx, sy) => {
+      // The nub stays a clamped, cosmetic reading of the drag - it is the
+      // chase target underneath, not the nub's position, that now drives
+      // the survivor, so nothing here has to reach past a 52px circle.
       const len = Math.hypot(dx, dy) || 1;
       const clamped = Math.min(len, 52);
       nub.style.left = (40 + dx / len * clamped) + 'px';
       nub.style.top = (40 + dy / len * clamped) + 'px';
-      WS.Input.setTouchVector({ x: dx / Math.max(len, 40), y: dy / Math.max(len, 40) });
+      const [wx, wy] = WS.Renderer.toWorld(sx, sy);
+      WS.Input.setChaseTarget({ x: wx, y: wy });
     };
 
     stage.addEventListener('pointerdown', (e) => {
@@ -120,7 +135,7 @@
         if (Math.hypot(dx, dy) < ENGAGE) return;
         engaged = true;
       }
-      place(dx, dy);
+      place(dx, dy, e.clientX, e.clientY);
     });
 
     const end = (e) => {
@@ -130,7 +145,7 @@
       stick.classList.remove('active');
       nub.style.left = '40px'; nub.style.top = '40px';
       // Hand back to the keyboard. NOT releaseAll: those keys may still be down.
-      WS.Input.setTouchVector(null);
+      WS.Input.setChaseTarget(null);
     };
     stage.addEventListener('pointerup', end);
     stage.addEventListener('pointercancel', end);

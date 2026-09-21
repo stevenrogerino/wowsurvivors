@@ -195,6 +195,9 @@ tools/         the single-file bundler, and the guard rails:
                               reachability walk that drives the real navigator
                               from every control on all eleven screens
                check-steer.js mouse and touch steering, and its hand-back
+               check-chase.js the pointer is chased, not launched at: holding
+                              it still lets the survivor arrive and stop, and
+                              a moving pointer keeps being followed
                check-hud.js   HUD inside the screen and off the middle of the
                               field, the arena read with no colour at all, and
                               a phone held upright told to turn
