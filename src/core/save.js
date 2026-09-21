@@ -14,7 +14,7 @@
    * change; the drawer they are kept in does not. */
   const KEY = 'emberwatch.save.v1';
   const LEGACY_KEY = 'wowsurvivors2.save.v1';
-  const SCHEMA = 2;
+  const SCHEMA = 3;
 
   /* The rename, carried across a save.
    *
@@ -100,6 +100,26 @@
     }
     if (s.warglaivesClaimed !== undefined && s.glaivesClaimed === undefined) {
       s.glaivesClaimed = s.warglaivesClaimed;
+    }
+    /* grave_robber, the_light_curdles and you_are_prepared used to pay gold
+       instead of unlocking paladin, graveblade and ruinseeker - the coffin,
+       the graveblade and the twin glaives all spawned and claimed exactly as
+       advertised, but the achievement behind each one was wired to the wrong
+       reward type. A save that earned one of them before the fix has it
+       marked done forever - Achievements.check() only ever looks at
+       achievements it has not seen pass yet - so the character would stay
+       locked even after the data file was corrected. Read the reward straight
+       off the (now correct) table, so this repairs exactly what the table
+       says it should and carries no list of its own to drift out of sync
+       with it. */
+    if (db.achievements && db.unlocks && db.unlocks.characters) {
+      for (const id of ['grave_robber', 'the_light_curdles', 'you_are_prepared']) {
+        if (!db.achievements[id]) continue;
+        const a = WS.Achievements && WS.Achievements[id];
+        if (a && a.reward && a.reward.type === 'character') {
+          db.unlocks.characters[a.reward.id] = true;
+        }
+      }
     }
     return db;
   }

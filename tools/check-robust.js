@@ -194,7 +194,7 @@ const SAVES = {
       achievementsRenamed: db.achievements.bane_of_the_masses === true
         && db.achievements.blorp === true && db.achievements.first_blood === true,
       statsRenamed: s.gravebladesClaimed === 2 && s.glaivesClaimed === 1,
-      schemaBumped: db.schema === 2,
+      schemaBumped: db.schema === 3,
       // The old entry is left alone: a migration that destroys its only source
       // has no way back if it turns out to be wrong.
       legacyPreserved: localStorage.getItem(LEGACY) !== null,

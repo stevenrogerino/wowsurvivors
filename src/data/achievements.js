@@ -91,6 +91,32 @@
       reward: { type: 'character', id: 'shaman' },
       test: (db) => db.statistics.totalGold >= 500,
     },
+    /* These three were filed under "challenge" with a gold reward instead of
+       here, which is why paladin, graveblade and ruinseeker could never
+       actually be unlocked - the coffin, the graveblade and the twin glaives
+       all spawn and can be claimed exactly as advertised, `db.statistics`
+       genuinely counts the claim, but the achievement that was supposed to
+       flip `unlocks.characters[id]` was paying gold instead. A beta tester
+       reported it directly: took Ruinform "again and again" as the codex
+       entry says to, claimed the glaives, and Ruinseeker never unlocked. */
+    grave_robber: {
+      name: 'Grave Robber', art: 'grave',
+      description: 'Open a weathered coffin found on the battlefield.',
+      reward: { type: 'character', id: 'paladin' },
+      test: (db) => (db.statistics.coffinsOpened || 0) > 0,
+    },
+    the_light_curdles: {
+      name: 'The Light Curdles', art: 'desecrate',
+      description: 'Claim a graveblade drawn out by your own curdled Light.',
+      reward: { type: 'character', id: 'graveblade' },
+      test: (db) => (db.statistics.gravebladesClaimed || 0) > 0,
+    },
+    you_are_prepared: {
+      name: 'You Were Warned', art: 'soulrend',
+      description: 'Claim the twin glaives after giving yourself to the fel.',
+      reward: { type: 'character', id: 'ruinseeker' },
+      test: (db) => (db.statistics.glaivesClaimed || 0) > 0,
+    },
 
     /* ------------------------------------------------------- challenge --- */
     forbidden_knowledge: {
@@ -123,24 +149,6 @@
       reward: { type: 'gold', amount: 250 },
       test: (db) => db.statistics.unions >= 1,
     },
-    grave_robber: {
-      name: 'Grave Robber', art: 'grave',
-      description: 'Open a weathered coffin found on the battlefield.',
-      reward: { type: 'gold', amount: 200 },
-      test: (db) => (db.statistics.coffinsOpened || 0) > 0,
-    },
-    the_light_curdles: {
-      name: 'The Light Curdles', art: 'desecrate',
-      description: 'Claim a graveblade drawn out by your own curdled Light.',
-      reward: { type: 'gold', amount: 400 },
-      test: (db) => (db.statistics.gravebladesClaimed || 0) > 0,
-    },
-    you_are_prepared: {
-      name: 'You Were Warned', art: 'soulrend',
-      description: 'Claim the twin glaives after giving yourself to the fel.',
-      reward: { type: 'gold', amount: 400 },
-      test: (db) => (db.statistics.glaivesClaimed || 0) > 0,
-    },
     survivor_of_the_long_dark: {
       name: 'Survivor of the Long Dark', art: 'sun',
       description: 'Achieve Victory on any battlefield.',
@@ -159,9 +167,9 @@
     'first_blood', 'take_his_candle', 'snarlbane', 'unmasked', 'the_long_dark_ends',
     'beyond_the_forest', 'into_the_dark', 'across_the_sea', 'the_frozen_north',
     'nightfall_survivor', 'giant_slayer', 'seasoned_veteran', 'bane_of_the_masses',
-    'fortune_seeker', 'forbidden_knowledge', 'lights_favor', 'walking_armory',
-    'blorp', 'master_craftsman', 'grave_robber', 'the_light_curdles',
-    'you_are_prepared', 'survivor_of_the_long_dark', 'eclipse_broken',
+    'fortune_seeker', 'grave_robber', 'the_light_curdles', 'you_are_prepared',
+    'forbidden_knowledge', 'lights_favor', 'walking_armory',
+    'blorp', 'master_craftsman', 'survivor_of_the_long_dark', 'eclipse_broken',
   ];
 
 })(window.WS);
