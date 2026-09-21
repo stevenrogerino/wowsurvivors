@@ -243,6 +243,11 @@ tools/         the single-file bundler, and the guard rails:
                               compared against itself at every plausible
                               period, every column checked for a seam, and the
                               ground still has to have grain
+               check-voices.js nothing may repeat itself: every sound a player
+                              hears often measured against itself played
+                              again, the weather bed autocorrelated for a
+                              period at every lag under ten seconds, and every
+                              zone's harmony made to go somewhere in four bars
 ```
 
 Every guard carries the bug it was written for in its header, and every one of
@@ -267,7 +272,13 @@ build it was supposed to reject.
 - **Sound is code.** `src/audio/audio.js` synthesises each effect from
   oscillators and filtered noise (throttled per kit, so a maxed build does not
   stack forty voices), and schedules a generative score per zone whose
-  arpeggio density follows how dangerous the run has become.
+  arpeggio density follows how dangerous the run has become. Nothing in it
+  plays twice the same way: every voice draws its pitch and its articulation
+  per play, the melody picks a new phrase each bar from a table of shapes that
+  vary rest density and octave period, and the harmony moves through four
+  centres built out of the zone's own scale. The weather is two layers of one
+  long noise buffer at irrational rates, breathing, so it has no period an ear
+  can find.
 - **Persistence** is one versioned `localStorage` record merged onto defaults,
   so an older save keeps its gold.
 - **Feel is engineered, not incidental**: hit-stop on heavy kills, bodies that

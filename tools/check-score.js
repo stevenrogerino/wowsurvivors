@@ -19,6 +19,18 @@
  *             a duck never released, means every run after the first boss is
  *             quieter than the first.
  *
+ *             Measured against a CONTROL, and it has to be. This started as
+ *             a fixed threshold on how far the spectrum after a boss sat
+ *             from the spectrum before it, and it fired at 3.08dB on a build
+ *             whose boss layer was provably gone - because the weather bed's
+ *             cutoff is a slow random walk (drift 0.35) and fifty seconds of
+ *             it moves the top four bands several dB all by itself. Running
+ *             the same stretch of time with NO boss in it measured 2.81
+ *             against the boss run's 1.36: the fixed number was policing the
+ *             wind. So the control is now measured in the same run on the
+ *             same zone, and what has to hold is that a boss leaves the
+ *             score no further from itself than time alone does.
+ *
  *   cues      The cinematics had one sound between them: the menu loop. Every
  *             beat of both scripts now has a cue, and every cue has to make a
  *             noise - a table entry that builds a silent graph is worse than
@@ -70,6 +82,12 @@ const PLACES = 3;
 const BOSS = 3.5;
 /* A cue has to be at least this far above the quiet before it. */
 const AUDIBLE = 12;
+/* How much further from itself a boss is allowed to leave the score than the
+ * same stretch of time does on its own. A boss layer left at full is worth
+ * about 4.5dB - that is the `arrives` figure, measured - so this has to sit
+ * below that and above the spread between two controls, which measured 1.4.
+ * Two is the only interesting number between them. */
+const SETTLE = 2;
 
 const fail = [];
 
@@ -163,7 +181,14 @@ const fail = [];
     /* ---- places: no two of them sound the same --------------------------- */
     /* A bar is sixteen steps and the slowest zone's is seventeen seconds, so
        a shorter window can miss a zone's rhythm entirely and report two
-       places as identical when only the sampling was. */
+       places as identical when only the sampling was.
+       THIRTY, not eighteen. The melody now picks a new phrase every bar and
+       the weather breathes, so an eighteen-second listen catches one or two
+       phrases and little else: the same pair measured 2.58 and 4.24 on two
+       runs of one unchanged build. That spread is a quarter of the floor this
+       rule enforces, which makes it a coin toss rather than a guard. Thirty
+       seconds roughly halves it, at eighty-four seconds added to a harness
+       that already runs for minutes - a slow guard beats a flaky one. */
     const keys = ['forest', 'plains', 'cursed', 'savannah', 'glacier', 'eclipse', 'menu'];
     const specs = {};
     for (const k of keys) {
@@ -171,7 +196,7 @@ const fail = [];
       WS.Audio.playMusic(k);
       if (WS.Audio._music) { WS.Audio._music.intensity = 0; WS.Audio._music.want = 0; }
       await sleep(900);
-      specs[k] = await bands(18000);
+      specs[k] = await bands(30000);
     }
     const alike = [];
     for (let i = 0; i < keys.length; i++) {
@@ -204,10 +229,24 @@ const fail = [];
     if (WS.Audio._music) { WS.Audio._music.intensity = 0; WS.Audio._music.want = 0; }
     await sleep(7000);
     const after = await bands(12000);
+    /* The same stretch of time, on the same zone, with no boss in it. Every
+       sleep and every listening window below matches the run above leg for
+       leg, so the only difference between the two numbers is the boss. */
+    WS.Audio.stopMusic();
+    WS.Audio.playMusic('forest');
+    if (WS.Audio._music) { WS.Audio._music.intensity = 0; WS.Audio._music.want = 0; }
+    await sleep(900);
+    const c0 = await bands(16000);
+    await bands(16000); await sleep(2600);
+    await bands(16000); await sleep(2600);
+    await sleep(7000);
+    const c1 = await bands(12000);
+
     const boss = {
       arrives: dist(calm, onBoss),
       death: dist(onBoss, onDeath),
       leaves: dist(calm, after),
+      drift: dist(c0, c1),
       cleared: WS.Audio.boss(),
       restored: WS.Audio._music ? +WS.Audio._music.zone.gain.value.toFixed(2) : -1,
       duckedTo, layered,
@@ -260,8 +299,10 @@ const fail = [];
   if (report.boss.death < 1) {
     fail.push(`Death sounds the same as any other boss (${report.boss.death}dB apart)`);
   }
-  if (report.boss.leaves > 3) {
-    fail.push(`the score did not come back after the boss (${report.boss.leaves}dB from where it started)`);
+  if (report.boss.leaves - report.boss.drift > SETTLE) {
+    fail.push('the score did not come back after the boss ('
+      + `${report.boss.leaves}dB from where it started, against ${report.boss.drift}dB `
+      + 'for the same stretch of time with no boss in it)');
   }
   if (report.boss.cleared !== null) fail.push('the boss layer was never cleared');
   if (!report.boss.layered) fail.push('a boss put no layer into the score at all');

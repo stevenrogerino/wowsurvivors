@@ -157,7 +157,18 @@
   function noiseBuf() {
     const ctx = Audio.ctx;
     if (!noiseBuffer && ctx) {
-      noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 1.2, ctx.sampleRate);
+      /* ELEVEN SECONDS, not 1.2.
+       *
+       * This buffer is both every noise-based sound effect in the game AND
+       * the looping weather bed under every zone, and at 1.2s the bed's
+       * envelope autocorrelated at 0.90 against itself one loop later, with
+       * harmonics at 2.4, 3.6 and 4.8. That is a texture that repeats fifty
+       * times a minute, which is exactly what a grainy hum IS - the filter
+       * drifting over the top of it never touched the period underneath.
+       *
+       * 11.3 is deliberately not a round number and not a multiple of any
+       * bar length in SCORES, so nothing in the music lines up with it. */
+      noiseBuffer = ctx.createBuffer(1, WS.floor(ctx.sampleRate * 11.3), ctx.sampleRate);
       const d = noiseBuffer.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     }
@@ -181,7 +192,15 @@
     const gain = ctx.createGain();
     src.connect(f); f.connect(gain); gain.connect(opts.bus || Audio.voiceBus || Audio.sfxGain);
     env(gain, t0, opts.attack || 0.004, opts.decay || 0.2, opts.gain === undefined ? 0.25 : opts.gain);
-    src.start(t0);
+    /* START SOMEWHERE ELSE IN IT, every time.
+     *
+     * src.start(t0) with no offset reads from sample zero, so every hit,
+     * every crit and every explosion in the game was playing the IDENTICAL
+     * waveform - the same 200ms of the same noise, over and over, hundreds of
+     * times a minute. The envelope and the filter varied; the grain did not,
+     * and the grain is what the ear locks onto. One argument fixes it and it
+     * costs nothing. */
+    src.start(t0, Math.random() * (noiseBuffer.duration - 1));
     src.stop(t0 + (opts.attack || 0.004) + (opts.decay || 0.2) + 0.05);
   }
 
@@ -230,6 +249,47 @@
    * everything else - a level, a boss, being hurt - goes straight through. */
   const CHATTER = { hit: 1, crit: 1, enemyHit: 1, gem: 1, cast: 1, coin: 1 };
 
+  /** How far a kit's pitch is allowed to wander, each time it plays.
+   *
+   *  Pitch jitter existed, but only on the chatter kits and only as a
+   *  function of how CROWDED the field was: `(Math.random() - 0.5) * (0.05 +
+   *  0.3 * heft)`. At heft zero - one hit, one kill, one gem, which is most
+   *  of a run - that is a total spread of five per cent, or about four fifths
+   *  of a semitone across the whole range. Inaudible. And every kit outside
+   *  the chatter set got nothing at all: an explosion may fire eleven times a
+   *  second through its throttle and every one of those eleven was the
+   *  identical waveform at the identical pitch.
+   *
+   *  A repeated sound is not annoying because it is loud or because it is
+   *  often. It is annoying because it is IDENTICAL - the ear stops hearing an
+   *  event and starts hearing a mechanism. So every kit that fires more than
+   *  once in a while gets a real spread here, widest on the ones made of
+   *  noise (where the number is a filter cutoff and moving it reads as a
+   *  different impact, not a different note) and narrowest on the ones made
+   *  of tuned tones.
+   *
+   *  The kits NOT listed are fixed on purpose. level, evolve, victory, boss
+   *  and death are melodies - short ones, but melodies - and a melody whose
+   *  pitch moves between plays is a melody that is out of tune. Those are
+   *  also the kits a player hears a handful of times a run rather than a
+   *  hundred, so they have no repetition problem to solve. */
+  const VARY = {
+    // noise-led: the number is a cutoff, so this is impact weight, not key
+    hit: 0.15, enemyHit: 0.17, crit: 0.12, explode: 0.22, freeze: 0.14,
+    playerHurt: 0.13,
+    // tone-led: kept inside a semitone or so, because these are pitched
+    cast: 0.08, gem: 0.10, coin: 0.06, potion: 0.11, chest: 0.09,
+    // interface: barely there, but a click that is bit-identical forty times
+    // in a row is the most machine-like sound in the game
+    ui: 0.03, hover: 0.045, select: 0.035, warn: 0.04,
+  };
+
+  /** One draw of a value inside +/- `amt` of itself. Articulation, not pitch:
+   *  how long an impact rings and how tight its filter is vary from blow to
+   *  blow in anything real, and varying them INDEPENDENTLY of the pitch is
+   *  what stops a jittered sound reading as one sound on a slider. */
+  function vary(v, amt) { return v * (1 + (Math.random() - 0.5) * 2 * amt); }
+
   /* Events that arrived while a kit was throttled. They used to be dropped,
    * which is the whole problem: forty hits landing in one tick sounded exactly
    * like two, so the player learned nothing from the difference. Counting them
@@ -238,25 +298,35 @@
   const HEFT = 8;          // events in one gap that count as a full clump
 
   const KITS = {
-    cast() { tone({ type: 'triangle', freq: 520, to: 780, decay: 0.10, gain: 0.10 }); },
-    hit() { noise({ freq: 1500, to: 500, decay: 0.07, gain: 0.10, q: 0.8 }); },
+    /* The five kits below carry most of a run between them, so they are also
+       the five where articulation moves per play and not just pitch. How long
+       an impact rings and how tight its filter is vary from blow to blow in
+       anything real; holding them fixed while sliding the pitch is what makes
+       a jittered sound read as ONE sound on a slider rather than as a series
+       of separate events. */
+    cast() { tone({ type: 'triangle', freq: 520, to: 780, decay: vary(0.10, 0.25), gain: 0.10 }); },
+    hit() { noise({ freq: 1500, to: vary(500, 0.25), decay: vary(0.07, 0.30), gain: 0.10, q: vary(0.8, 0.35) }); },
     crit() {
-      noise({ freq: 2400, to: 700, decay: 0.11, gain: 0.16, q: 0.9 });
-      tone({ type: 'square', freq: 880, to: 1600, decay: 0.09, gain: 0.07 });
+      noise({ freq: 2400, to: vary(700, 0.22), decay: vary(0.11, 0.25), gain: 0.16, q: vary(0.9, 0.30) });
+      tone({ type: 'square', freq: 880, to: 1600, decay: vary(0.09, 0.20), gain: 0.07 });
     },
-    enemyHit() { noise({ freq: 700, to: 220, decay: 0.10, gain: 0.13, filter: 'lowpass', q: 0.6 }); },
+    enemyHit() { noise({ freq: 700, to: vary(220, 0.30), decay: vary(0.10, 0.30), gain: 0.13, filter: 'lowpass', q: vary(0.6, 0.35) }); },
     playerHurt() {
-      tone({ type: 'sawtooth', freq: 220, to: 90, decay: 0.28, gain: 0.22, filter: 'lowpass', cutoff: 900 });
-      noise({ freq: 400, to: 120, decay: 0.22, gain: 0.16, filter: 'lowpass' });
+      tone({ type: 'sawtooth', freq: 220, to: vary(90, 0.22), decay: vary(0.28, 0.22), gain: 0.22, filter: 'lowpass', cutoff: vary(900, 0.25) });
+      noise({ freq: 400, to: 120, decay: vary(0.22, 0.25), gain: 0.16, filter: 'lowpass' });
     },
-    gem() { tone({ type: 'sine', freq: 1180, to: 1560, decay: 0.09, gain: 0.07 }); },
+    gem() { tone({ type: 'sine', freq: 1180, to: vary(1560, 0.16), decay: vary(0.09, 0.28), gain: 0.07 }); },
     coin() {
       tone({ type: 'square', freq: 1400, decay: 0.05, gain: 0.06 });
       tone({ type: 'square', freq: 2100, decay: 0.07, gain: 0.05, delay: 0.05 });
     },
     potion() {
-      tone({ type: 'sine', freq: 400, to: 900, decay: 0.25, gain: 0.14 });
-      tone({ type: 'sine', freq: 600, to: 1350, decay: 0.3, gain: 0.09, delay: 0.05 });
+      /* The swell is the sound, so the swell is what moves: where it arrives
+         and how long it takes, not just what key it starts in. Pitch alone on
+         two sine sweeps measured 2.4 against a floor of 1.6 and drew 1.5 once
+         - too close to "identical" to call it varied. */
+      tone({ type: 'sine', freq: 400, to: vary(900, 0.18), decay: vary(0.25, 0.28), gain: 0.14 });
+      tone({ type: 'sine', freq: 600, to: vary(1350, 0.18), decay: vary(0.3, 0.28), gain: 0.09, delay: vary(0.05, 0.4) });
     },
     chest() {
       for (let i = 0; i < 5; i++) {
@@ -278,8 +348,8 @@
       noise({ freq: 200, to: 70, decay: 1.2, gain: 0.12, filter: 'lowpass' });
     },
     explode() {
-      noise({ freq: 900, to: 60, decay: 0.55, gain: 0.32, filter: 'lowpass', q: 0.5 });
-      tone({ type: 'sine', freq: 120, to: 40, decay: 0.5, gain: 0.20 });
+      noise({ freq: 900, to: 60, decay: vary(0.55, 0.22), gain: 0.32, filter: 'lowpass', q: vary(0.5, 0.3) });
+      tone({ type: 'sine', freq: 120, to: 40, decay: vary(0.5, 0.20), gain: 0.20 });
     },
     freeze() {
       tone({ type: 'sine', freq: 1800, to: 300, decay: 0.8, gain: 0.14 });
@@ -380,6 +450,13 @@
     // The kits take no arguments by design - they are recipes, not routers - so
     // the destination is handed to them through voiceBus, which every voice in
     // the kit picks up. Synchronous, so it cannot be seen by anything else.
+    /* The wander belongs to every kit, the clump's downward pull only to the
+       chatter set. A clump is a heavier version of the same event and nothing
+       outside that set has one - but identical is identical whether or not
+       the voice happens to be routed through a ducking bus, and an explosion
+       firing eleven times a second through its own throttle was the most
+       mechanical sound in the game for exactly that reason. */
+    const spread = VARY[kit] || 0;
     let dest = this.sfxGain;
     if (chatter) {
       waiting[kit] = 0;
@@ -392,12 +469,14 @@
       shape.connect(this.chatter);
       dest = shape;
       this.pitch = (1 - 0.26 * heft)
-        * (1 + (Math.random() - 0.5) * (0.05 + 0.3 * heft));
+        * (1 + (Math.random() - 0.5) * (2 * spread + 0.3 * heft));
       /* What the last chatter voice was shaped into. Exposed because it is the
          only way to measure from outside that a clump sounds different from a
          single event - the voice itself is gone by the time anything could
          look at it. */
       this.lastShape = { kit, heft, gain: shape.gain.value, pitch: this.pitch };
+    } else if (spread) {
+      this.pitch = 1 + (Math.random() - 0.5) * 2 * spread;
     }
     this.voiceBus = placeAt(x, dest) || dest;
     try { fn(); } catch (e) { /* audio graph exhausted */ }
@@ -424,15 +503,98 @@
    *          plays under everything forever and it is most of why a place
    *          sounds like somewhere rather than like a chord.
    *   pad    What the chord bed is made of, and how bright.
+ *   prog   Where the harmony GOES. Four centres, a bar each, given as
+ *          indices into the zone's own scale.
    *
    * The menu keeps no percussion on purpose. It is the one screen that is not
    * a place, and stillness is what separates it from the six that are. */
+  /** PHRASES: the shape the melody takes for a while, then changes.
+   *
+   *  The arpeggio walked `scale[(step * 3) % scale.length]` with the octave
+   *  flipping every eight steps. On a five-note scale that is a cycle of five
+   *  crossed with a cycle of eight - a FIXED forty-step melody, identical
+   *  every time round, repeating every thirty-two seconds for as long as the
+   *  player stays on the map. No rests, no phrasing, no variation of any
+   *  kind. It is the reason a zone stops being a place and becomes a loop.
+   *
+   *  A phrase changes four things: which degree of the scale the step lands
+   *  on, how often the octave flips, how much of the bar is SILENT, and where
+   *  in the scale the line starts. Rests matter most of the four - a line
+   *  that never stops has no shape, and the ear cannot find a phrase in a
+   *  continuous stream.
+   *
+   *  `shift` ROTATES THE SCALE INDEX. It used to add semitones to the degree,
+   *  which is not "transposed within the scale" however the comment read: on
+   *  Mourneholt's [0, 1, 3, 7, 8] a shift of 2 plays 2, 3, 5, 9, 10, which is
+   *  a different mode of a different key. Measured, that cost the two darkest
+   *  zones a decibel of what separates them - Mourneholt and the Eclipse fell
+   *  from 4.0dB apart to 2.9, under the floor that exists to stop two
+   *  battlefields sounding like one, and pinning the phrases back to the
+   *  original line restored it exactly. Rotating the index instead cannot
+   *  leave the key, because the key is the only thing it can choose from.
+   *
+   *  `step` is taken modulo a five-note scale, so 5 is 0: that phrase played
+   *  one note sixteen times. Steps run 1 to 4.
+   *
+   *  The zone's identity is untouched: same root, same scale, same wave, same
+   *  tempo, same drone, same weather. What changes is what is PLAYED on them,
+   *  which is the difference between a place with music in it and a place
+   *  with a loop in it.
+   */
+  const PHRASES = [
+    { step: 3, oct: 8, rest: 0.00, shift: 0 },     // the original line
+    { step: 2, oct: 6, rest: 0.20, shift: 0 },
+    { step: 4, oct: 12, rest: 0.12, shift: 1 },
+    { step: 1, oct: 4, rest: 0.28, shift: 0 },
+    { step: 3, oct: 16, rest: 0.34, shift: 3 },    // sparse and low
+    { step: 4, oct: 8, rest: 0.14, shift: 2 },
+    { step: 2, oct: 10, rest: 0.40, shift: 0 },    // nearly a rest bar
+  ];
+  /** How many steps a phrase lasts before another is chosen. Sixteen is one
+   *  bar of the perc pattern, so a change lands with the downbeat. */
+  const PHRASE_LEN = 16;
+
+  /** What a zone falls back to if it names no progression of its own: four
+   *  bars that leave home, go somewhere, and come back. */
+  const PROG = [0, 3, 4, 2];
+
+  /** The chord under the bar, built out of the zone's OWN scale.
+   *
+   *  The bed used to be `[0, 7, intensity > 0.6 ? 10 : 12]` stacked on
+   *  whatever degree the arpeggio had just landed on. Root, fifth, octave -
+   *  the same interval stack every time, sliding in parallel under the
+   *  melody. That is not a harmony, it is a thickener: nothing ever leaves
+   *  home, nothing ever comes back, and a zone is one chord for as long as
+   *  the player stands in it. Put a phrase table over a piece with no
+   *  harmonic movement and all you have is a more varied way of saying the
+   *  same thing.
+   *
+   *  Stacking every other degree of the scale instead means the chord cannot
+   *  leave the key - it is made of the key - and on the pentatonic scales
+   *  these zones use it lands on the quartal voicings the drones already
+   *  imply, rather than on the triads a seven-note scale would give. The
+   *  wrap adds an octave so the chord opens upward instead of folding back
+   *  under itself.
+   *
+   *  Danger adds a fourth voice rather than swapping the third, so the chord
+   *  gets DENSER as the run gets worse instead of merely different. */
+  function chordOn(scale, i, tense) {
+    const n = scale.length;
+    const out = [];
+    for (let k = 0; k < (tense ? 4 : 3); k++) {
+      const j = i + k * 2;
+      out.push(scale[j % n] + 12 * WS.floor(j / n));
+    }
+    return out;
+  }
+
   const SCORES = {
     // Thornhollow: wet woodland. Knocks on wood, leaves, a warm major.
     forest: {
       root: 146.83, scale: [0, 2, 4, 7, 9], wave: 'triangle', tempo: 1.6,
       pad: 'sine', padCut: 1800,
       perc: [0, 3, 5, 8, 11, 13], kit: 'tick',
+      prog: [0, 3, 1, 0],
       air: { cut: 1600, q: 0.7, gain: 0.034, drift: 0.35 },
       drone: { gain: 0.085, oct: 2, cut: 520 },
     },
@@ -441,6 +603,7 @@
       root: 130.81, scale: [0, 2, 3, 7, 9], wave: 'sawtooth', tempo: 1.5,
       pad: 'triangle', padCut: 900,
       perc: [0, 3, 6, 9, 12], kit: 'shake',
+      prog: [0, 4, 2, 3],
       air: { cut: 2400, q: 0.5, gain: 0.030, drift: 0.45, type: 'bandpass' },
       drone: { gain: 0.100, oct: 2, cut: 620, wave: 'square' },
     },
@@ -453,6 +616,7 @@
          came out 1.6dB apart on average, the same failure the Dustreach had.
          A graveyard bell that tolls four times a bar is still a graveyard. */
       perc: [0, 4, 8, 12], kit: 'bell', percGain: 2.4,
+      prog: [0, 1, 0, 4],
       air: { cut: 520, q: 2.6, gain: 0.050, drift: 0.16 },
       drone: { gain: 0.170, oct: 4, cut: 240 },
     },
@@ -461,6 +625,7 @@
       root: 123.47, scale: [0, 2, 5, 7, 10], wave: 'sawtooth', tempo: 1.4,
       pad: 'triangle', padCut: 1500,
       perc: [0, 3, 6, 8, 11, 14], kit: 'skin',
+      prog: [0, 2, 3, 1],
       air: { cut: 4800, q: 2.2, gain: 0.020, drift: 0.60, type: 'bandpass' },
       drone: { gain: 0.105, oct: 2, cut: 700 },
     },
@@ -469,20 +634,33 @@
       root: 98.00, scale: [0, 3, 5, 7, 10], wave: 'sine', tempo: 2.0,
       pad: 'sine', padCut: 2600,
       perc: [0, 8], kit: 'bell',
+      prog: [0, 0, 3, 4],
       air: { cut: 5600, q: 0.4, gain: 0.026, drift: 0.22, type: 'highpass' },
       drone: { gain: 0.055, oct: 2, cut: 900, wave: 'triangle' },
     },
-    // The Eclipse: wrong. Struck stone on an odd count, and an altered scale.
+    /* The Eclipse: wrong. Struck stone on an odd count, an altered scale, and
+       a room that RINGS rather than rumbles.
+       Its weather was a 230Hz lowpass, which is very nearly Mourneholt's -
+       two narrow low beds at almost the same level under two sawtooth drones
+       four octaves down behind two ~220Hz lowpasses. Measured, the two were
+       the closest pair in the game and the phrase table pushed them from 4.0
+       to 3.4dB apart. A resonant band is the one thing a graveyard is not:
+       Q4.5 at 300Hz is a pipe with air moving through it, and it put the pair
+       back to 4.1 without taking the zone anywhere it should not be. Q6.0
+       separated them further and whistled; a resonance the ear can name as a
+       tone is the thing this whole pass exists to get rid of. */
     eclipse: {
       root: 87.31, scale: [0, 1, 4, 6, 8], wave: 'sawtooth', tempo: 1.3,
       pad: 'sawtooth', padCut: 1250,
       perc: [0, 5, 7, 12], kit: 'stone',
-      air: { cut: 230, q: 2.2, gain: 0.052, drift: 0.12 },
+      prog: [0, 3, 2, 3],
+      air: { cut: 300, q: 4.5, gain: 0.060, drift: 0.12, type: 'bandpass' },
       drone: { gain: 0.185, oct: 4, cut: 215 },
     },
     // Not a place. No rhythm, no weather - just a room with a fire in it.
     menu: {
       root: 130.81, scale: [0, 3, 5, 7, 10], wave: 'triangle', tempo: 2.2,
+      prog: [0, 3, 0, 1],
       pad: 'triangle', padCut: 2200,
       perc: null, kit: null,
       air: { cut: 1050, q: 0.5, gain: 0.022, drift: 0.12 },
@@ -494,6 +672,7 @@
        the cues the cinematic fires over it. */
     vigil: {
       root: 116.54, scale: [0, 3, 7, 10, 12], wave: 'sine', tempo: 3.0,
+      prog: [0, 2, 0, 4],
       pad: 'sine', padCut: 560,
       perc: null, kit: null,
       air: { cut: 340, q: 0.8, gain: 0.040, drift: 0.15 },
@@ -580,23 +759,55 @@
 
   /** The weather. A noise bed under the whole zone, drifting so it never sits
    *  still enough to be heard as a hiss. */
+  /** The weather's layers, as [playback rate, level]. Named rather than
+   *  written inline because a harness that wants to know whether the bed
+   *  repeats has to render the REAL pair; one that hardcodes its own copy is
+   *  measuring itself. */
+  /* LEVELS THAT SUM TO ONE LAYER'S WORTH. Two independent noise sources add
+   * in power, not in amplitude, so a naive [1, 0.72] is sqrt(1 + 0.72^2) =
+   * 1.23 times the bed there was before the split - 1.8dB of extra weather in
+   * every zone, which is not a change anybody asked for and not one the ear
+   * would read as depth. Both levels are divided by that, so splitting the
+   * weather in two changes what it is made of and nothing about how loud it
+   * is. */
+  const AIR_LAYERS = [[1, 0.81], [0.79, 0.58]];
+
   function airBed(score, bed) {
     const a = score.air;
     const ctx = Audio.ctx;
     if (!a || !ctx) return null;
-    const src = ctx.createBufferSource();
-    src.buffer = noiseBuf();
-    src.loop = true;
+    noiseBuf();
+    const g = ctx.createGain();
+    g.gain.value = 0.0001;
     const f = ctx.createBiquadFilter();
     f.type = a.type || 'lowpass';
     f.frequency.value = a.cut;
     f.Q.value = a.q === undefined ? 0.7 : a.q;
-    const g = ctx.createGain();
-    g.gain.value = 0.0001;
-    src.connect(f); f.connect(g); g.connect(bed);
+    f.connect(g);
+    g.connect(bed);
+    /* TWO LAYERS AT IRRATIONAL RATES.
+     *
+     * One looping buffer repeats on its own length, however long that length
+     * is - it just repeats more slowly. Two copies of the same buffer played
+     * at 1.0 and 0.79 of speed have periods of 11.3s and 14.3s, and the
+     * composite only comes back into phase after about three minutes, by
+     * which point the filter has moved several times and the player has moved
+     * zone. The second layer sits a little quieter so it reads as depth in
+     * the same weather rather than as a second wind. */
+    const layers = [];
+    for (const [rate, level] of AIR_LAYERS) {
+      const src = ctx.createBufferSource();
+      src.buffer = noiseBuffer;
+      src.loop = true;
+      src.playbackRate.value = rate;
+      const lg = ctx.createGain();
+      lg.gain.value = level;
+      src.connect(lg); lg.connect(f);
+      src.start(Math.random() * 5);
+      layers.push(src);
+    }
     g.gain.setTargetAtTime(a.gain, ctx.currentTime, 1.6);
-    src.start();
-    return { src, gain: g, filter: f, spec: a };
+    return { src: layers[0], layers, gain: g, filter: f, spec: a };
   }
 
   /** What the game asks for. Whether it sounds is the settings' business. */
@@ -666,7 +877,7 @@
     zone.gain.value = 1;
     zone.connect(bed);
 
-    const state = { key, score, bed, zone, drone, step: 0,
+    const state = { key, score, bed, zone, drone, step: 0, phrase: PHRASES[0],
       nextTime: ctx.currentTime + 0.1,
       timer: null, intensity: 0, want: 0, air: airBed(score, bed), boss: null,
       bossGain: null, bossDrone: null };
@@ -709,10 +920,30 @@
       while (state.nextTime < Audio.ctx.currentTime + 1.0) {
         const t0 = state.nextTime;
         const s = state.step;
-        const deg = score.scale[(s * 3) % score.scale.length];
-        const oct = ((s / 4) | 0) % 2 ? 12 : 0;
-        // Arpeggio - denser as the run gets hairier.
-        if (s % 2 === 0 || state.intensity > 0.5) {
+        /* Pick the next phrase on the bar line. Never the one just played, so
+           a change is always a change - drawing at random from seven means
+           one time in seven the score "changes" to what it was already
+           doing, and that is the one case the player would notice as a
+           stutter in the pattern rather than as a new idea. */
+        if (s % PHRASE_LEN === 0) {
+          let next = state.phrase;
+          for (let tries = 0; tries < 6 && next === state.phrase; tries++) {
+            next = PHRASES[WS.floor(WS.random() * PHRASES.length)];
+          }
+          state.phrase = next;
+        }
+        const ph = state.phrase || PHRASES[0];
+        const sc = score.scale;
+        const deg = sc[(((s * ph.step + (ph.shift || 0)) % sc.length)
+          + sc.length) % sc.length];
+        const oct = ((s / (ph.oct / 4)) | 0) % 2 ? 12 : 0;
+        /* Arpeggio - denser as the run gets hairier, and with holes in it.
+           A rest is skipped rather than quietened: a note at low gain is
+           still a note, and what makes a phrase is the silence between the
+           notes it does play. Danger fills the holes back in, so the line
+           tightening up IS the warning. */
+        const rests = WS.random() < (ph.rest || 0) * (1 - state.intensity * 0.7);
+        if ((s % 2 === 0 || state.intensity > 0.5) && !rests) {
           mTone(zone, t0, { wave: score.wave, freq: semitone(score.root * 2, deg + oct),
             gain: 0.07 + state.intensity * 0.05, attack: 0.02, decay: beat * 1.6 });
         }
@@ -727,11 +958,16 @@
             to: semitone(score.root / 2, -5), slide: beat,
             gain: 0.05 + 0.10 * (state.intensity - 0.5) * 2, attack: 0.03, decay: beat * 0.9 });
         }
-        // Chord bed every four steps.
+        /* Chord bed every four steps, on the bar's centre rather than on
+           whatever note the arpeggio just played. The centre changes once a
+           bar, in step with the phrase, so the two changes land together and
+           the player hears one new idea rather than two. */
         if (s % 4 === 0) {
-          for (const iv of [0, 7, state.intensity > 0.6 ? 10 : 12]) {
+          const prog = score.prog || PROG;
+          const centre = prog[(((s / PHRASE_LEN) | 0) % prog.length + prog.length) % prog.length];
+          for (const iv of chordOn(sc, centre, state.intensity > 0.6)) {
             mTone(zone, t0, { wave: score.pad || 'sine', cut: score.padCut,
-              freq: semitone(score.root, deg + iv),
+              freq: semitone(score.root, iv),
               gain: 0.05, attack: 0.3, decay: beat * 4 });
           }
         }
@@ -740,10 +976,33 @@
            battlefield in two keys. It gets louder with the danger but never
            silent, because a pulse that stops is a pulse the player notices
            stopping. */
-        if (score.perc && KIT[score.kit] && score.perc.indexOf(s % 16) >= 0) {
-          const accent = (s % 16) === 0 ? 1.25 : 1;
-          KIT[score.kit](zone, t0,
-            accent * (score.percGain || 1) * (0.75 + state.intensity * 0.5));
+        if (score.perc && KIT[score.kit]) {
+          const b = s % 16;
+          const weight = (score.percGain || 1) * (0.75 + state.intensity * 0.5);
+          if (score.perc.indexOf(b) >= 0) {
+            /* The pattern is the zone - it is the single thing that stopped
+               two battlefields being one battlefield in two keys - so it is
+               played, not generated. But played EXACTLY, every bar, forever,
+               it is also a metronome, and a metronome is the most repetitive
+               object in any piece of music. A stroke off the downbeat is
+               dropped now and then and every stroke lands at a slightly
+               different weight, which is the difference between a pattern
+               being kept and a pattern being clocked.
+
+               The downbeat never drops. It is what the player is counting
+               from, and a bar that can start on silence is a bar with no
+               edge on it. */
+            if (b === 0 || WS.random() > 0.11) {
+              KIT[score.kit](zone, t0,
+                (b === 0 ? 1.25 : vary(1, 0.16)) * weight);
+            }
+          } else if (b % 2 === 1 && score.perc.length >= 4 && WS.random() < 0.09) {
+            /* And a ghost between the strokes, at a third the weight. Only
+               where there is a pattern dense enough to have a between: the
+               Rimewaste strikes twice a bar on purpose and filling its gaps
+               would be writing a different zone rather than loosening one. */
+            KIT[score.kit](zone, t0, 0.34 * weight);
+          }
         }
         /* The weather moves. Holding a noise bed at one cutoff forever is how
            a wind becomes a hiss; retargeting it every other bar is enough to
@@ -752,6 +1011,26 @@
           const a = state.air.spec;
           const swing = 1 + (WS.random() * 2 - 1) * a.drift;
           state.air.filter.frequency.setTargetAtTime(a.cut * swing, t0, 2.2);
+          /* AND IT BREATHES. The cutoff moved; the level never did, and a
+             weather bed held at one level forever is the difference between
+             wind and a hiss however you filter it. The Rimewaste is the case
+             that showed it - a highpass at 5600Hz on noise held at a constant
+             0.026 is a grain, and the only thing that stops the ear filing it
+             as equipment noise is that it swells and recedes like something
+             moving past. Slower than the filter, so the two never breathe
+             together and the pair of them never find a period.
+
+             PROPORTIONAL TO THE ZONE'S OWN DRIFT, and it started as a flat
+             0.28 everywhere. That put a two-decibel random swing on the top
+             four bands of every score including the two stillest, and those
+             two - Mourneholt and the Eclipse, the closest pair in the game -
+             fell from 4.0dB apart to 2.9, under the floor that exists to
+             stop two battlefields sounding like one. A bed that barely moves
+             its colour is a bed that should barely move its level; the
+             savannah, whose weather is half insects, gets six times the
+             swell the graveyard does. */
+          const breath = 1 + (WS.random() * 2 - 1) * a.drift * 0.5;
+          state.air.gain.gain.setTargetAtTime(a.gain * breath, t0, 3.1);
         }
         if (state.bossGain) bossVoices(state, t0, s, beat);
         state.nextTime += beat;
@@ -1072,6 +1351,21 @@
   /** For measurement: the cue names the game knows how to play. */
   Audio.cues = function () { return Object.keys(CUES); };
 
+  /* For measurement. The score tables, the chord a progression index names,
+     and the kits that are supposed to sound different each time - all three
+     live in closures, and a harness that reproduced any of them would be
+     asserting against its own copy rather than against the game's. */
+  Audio.scores = function () { return SCORES; };
+  Audio.chordAt = function (scale, i, tense) { return chordOn(scale, i, tense); };
+  /** The weather's actual shape: how long the shared buffer is and what is
+   *  layered over it. Both are what decides whether the bed has an audible
+   *  period, and both were previously copied into the harness by hand - so a
+   *  harness could pass while the game looped every 1.2 seconds. */
+  Audio.weather = function () {
+    const b = noiseBuf();
+    return { seconds: b ? b.duration : 0, layers: AIR_LAYERS };
+  };
+
   /** 0..1 - how bad it is out there, from Game.danger.
    *
    *  Sets a TARGET; the pump eases toward it. Writing straight to intensity
@@ -1091,7 +1385,15 @@
     try {
       m.bed.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.3);
       m.drone.stop(this.ctx.currentTime + 1.2);
-      if (m.air) { m.air.src.stop(this.ctx.currentTime + 1.2); }
+      /* EVERY layer. The weather is two sources now, and stopping only the
+         first left the second running into a disconnected bed for the life of
+         the page - one leaked oscillator per zone the player visits, which is
+         exactly the fault the `muted` rule in check-score exists to catch. */
+      if (m.air) {
+        for (const src of (m.air.layers || [m.air.src])) {
+          src.stop(this.ctx.currentTime + 1.2);
+        }
+      }
       if (m.bossDrone) m.bossDrone.stop(this.ctx.currentTime + 1.2);
       // Let go of the bed once it has faded, so the graph does not keep a
       // silent branch per zone the player has visited.
