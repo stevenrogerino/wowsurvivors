@@ -20052,14 +20052,18 @@ window.WS = window.WS || {};
 
   /** Bake the cast's sprites before the piece needs them. Ten survivors is ten
    *  full runs of the hero rig, and doing that in the frame the sun comes up
-   *  drops the frame the sun comes up. */
+   *  drops the frame the sun comes up. Two runs each, now - the bare rig the
+   *  roster stands in, and the fully-earned one it flashes into just before
+   *  the piece ends - baked here for the same reason the first one is. */
   function warmCast() {
     if (!cast) return;
     for (const c of cast) {
       const ch = (WS.Characters || {})[c.id];
       if (!ch) continue;
-      const sprite = WS.Sprites.hero(ch.art || c.id, ch.color, WS.round(c.size));
+      const size = WS.round(c.size);
+      const sprite = WS.Sprites.hero(ch.art || c.id, ch.color, size);
       flood(sprite, 'rgba(6,8,13,0.94)');
+      WS.Sprites.hero(ch.art || c.id, ch.color, size, false, undefined, null, WS.Hero.maxRank);
     }
   }
 
@@ -20211,6 +20215,33 @@ window.WS = window.WS || {};
         ctx.drawImage(flood(sprite, 'rgba(14,11,16,0.82)'), c.x - size / 2, top, size, size);
         ctx.globalAlpha = a * 0.88;
         ctx.drawImage(sprite, c.x - size / 2, top, size, size);
+
+        /* A FLASH into what they become, right as the light is already taking
+           them. The crest only ever showed the bare rank-0 rig - the sprite it
+           was baked with never carried a rank - so ten survivors the player has
+           actually built out arrived looking exactly as new as the ones they
+           have not unlocked yet. One beat of the fully-earned kit here says
+           what is waiting for them in the game itself.
+           A sine over the same window `out` fades on: zero at the window's own
+           start and end, so the flash never outlives the figure it belongs to,
+           and independent of `a`'s own decay so the pulse reads as light
+           arriving rather than as the same fade dimmed twice. */
+        const flash = WS.sin(WS.PI * WS.clamp((p - 0.78) / 0.22, 0, 1));
+        if (flash > 0.01) {
+          const maxed = WS.Sprites.hero(ch.art || c.id, ch.color, size, false, undefined, null, WS.Hero.maxRank);
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          const cy = top + size * 0.5;
+          const burst = ctx.createRadialGradient(c.x, cy, 0, c.x, cy, size * 0.85);
+          burst.addColorStop(0, `rgba(255,250,235,${(0.42 * flash).toFixed(3)})`);
+          burst.addColorStop(0.5, `rgba(${rgb},${(0.30 * flash).toFixed(3)})`);
+          burst.addColorStop(1, `rgba(${rgb},0)`);
+          ctx.fillStyle = burst;
+          ctx.beginPath(); ctx.arc(c.x, cy, size * 0.85, 0, WS.TAU); ctx.fill();
+          ctx.restore();
+          ctx.globalAlpha = flash * 0.95;
+          ctx.drawImage(maxed, c.x - size / 2, top, size, size);
+        }
       } else {
         /* Still to be earned: the shape and the colour, not the person. Drawn
            in full they would be a promise the save cannot keep. */
@@ -22931,7 +22962,7 @@ window.WS = window.WS || {};
         ctx.quadraticCurveTo(-r * 0.15, -r * 0.25, r * 0.75, r * 0.25);
         ctx.closePath();
         break;
-      case 'bolt':                       // a jagged shadow bolt, four turns
+      case 'bolt':                       // a jagged dark bolt, four turns
         ctx.beginPath();
         ctx.moveTo(r * 1.9, 0); ctx.lineTo(r * 0.3, -r * 0.5);
         ctx.lineTo(-r * 0.5, -r * 0.15); ctx.lineTo(-r * 1.6, -r * 0.6);

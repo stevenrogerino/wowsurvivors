@@ -1450,7 +1450,7 @@
         ctx.quadraticCurveTo(-r * 0.15, -r * 0.25, r * 0.75, r * 0.25);
         ctx.closePath();
         break;
-      case 'bolt':                       // a jagged shadow bolt, four turns
+      case 'bolt':                       // a jagged dark bolt, four turns
         ctx.beginPath();
         ctx.moveTo(r * 1.9, 0); ctx.lineTo(r * 0.3, -r * 0.5);
         ctx.lineTo(-r * 0.5, -r * 0.15); ctx.lineTo(-r * 1.6, -r * 0.6);
