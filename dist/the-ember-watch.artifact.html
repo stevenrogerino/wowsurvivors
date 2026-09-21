@@ -22857,9 +22857,16 @@ window.WS = window.WS || {};
   function boltPath(ctx, b, r) {
     switch (b.art) {
       case 'dagger':
+        /* Blade, guard-notch and grip as ONE path, not a diamond with a
+           square dropped beside it. The old shape closed straight from the
+           blade's back corner - a single point - to a grip rect that only
+           grazed that point, so the two read as a gem next to an unrelated
+           chip rather than one weapon. A shared boundary fixes it. */
         ctx.beginPath();
-        ctx.moveTo(r * 1.9, 0); ctx.lineTo(0, -r * 0.5);
-        ctx.lineTo(-r * 1.0, 0); ctx.lineTo(0, r * 0.5);
+        ctx.moveTo(r * 1.9, 0);
+        ctx.lineTo(r * 0.32, -r * 0.42); ctx.lineTo(r * 0.14, -r * 0.16);
+        ctx.lineTo(-r * 0.95, -r * 0.20); ctx.lineTo(-r * 0.95, r * 0.20);
+        ctx.lineTo(r * 0.14, r * 0.16); ctx.lineTo(r * 0.32, r * 0.42);
         ctx.closePath();
         break;
       case 'arrow':
@@ -22952,8 +22959,22 @@ window.WS = window.WS || {};
     // all of them.
     ctx.fill('evenodd');
     if (b.art === 'dagger') {
-      ctx.fillStyle = 'rgba(60,44,30,.95)';
-      ctx.fillRect(-r * 1.5, -r * 0.28, r * 0.6, r * 0.56);
+      /* The grip, darkened IN PLACE rather than painted as a separate rect
+         beside the blade - source-over, because the blade fill above just
+         painted this same region white, and 'lighter' cannot darken white:
+         it can only add to it. */
+      ctx.save();
+      boltPath(ctx, b, r); ctx.clip('evenodd');
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = '#7a5a38';
+      ctx.fillRect(-r * 0.95, -r * 0.20, r * 0.85, r * 0.40);
+      ctx.strokeStyle = 'rgba(30,18,8,.6)';
+      ctx.lineWidth = WS.max(1, r * 0.08);
+      for (const t of [-0.6, -0.2, 0.2, 0.6]) {
+        const x = -r * 0.95 + (t + 1) / 2 * r * 0.85;
+        ctx.beginPath(); ctx.moveTo(x, -r * 0.20); ctx.lineTo(x, r * 0.20); ctx.stroke();
+      }
+      ctx.restore();
     } else if (b.art === 'shield') {
       ctx.strokeStyle = WS.rgb(b.colour, 1);
       ctx.lineWidth = WS.max(1.5, r * 0.28);
@@ -23256,28 +23277,46 @@ window.WS = window.WS || {};
         }
         /* AN AXE. It was a diamond - the same diamond every orbiting
            weapon in the game drew, whatever it was called. Axe Gyre gets a
-           haft and a crescent head, so the thing whirling around the
-           survivor is the thing the card names. The shape is the blade's
-           own size and touches no hitbox; `bladeArt` says which to draw and
-           anything that does not name one keeps the diamond it had. */
+           haft and a wedge head, so the thing whirling around the survivor
+           is the thing the card names. The shape is the blade's own size
+           and touches no hitbox; `bladeArt` says which to draw and anything
+           that does not name one keeps the diamond it had. */
         const S = o.size;
         ctx.fillStyle = 'rgba(255,255,255,.95)';
         if (o.art === 'axe' || o.art === 'sword') {
-          /* SOLID, with a flat inner edge. Built with a concave inside -
-             which is what a crescent is - the head read as a quarter moon
-             on a stick however the edge line was drawn, because the dark
-             line was not making the crescent, the PATH was. An axe bit is a
-             convex outer edge and a straight back. */
+          /* A first attempt built the head from two curves bulging away
+             from a straight back - which is a circle with a flat side, and
+             at speed it read as a coin. An axe head is a WEDGE: a concave
+             notch at the eye where the haft passes through, straight
+             diagonals flaring out to sharp toe and heel corners, and only
+             the bit itself - between those corners - genuinely convex. */
           const head = () => {
             ctx.beginPath();
-            ctx.moveTo(S * 0.06, -S * 0.86);
-            ctx.quadraticCurveTo(S * 1.18, -S * 0.58, S * 1.06, 0);
-            ctx.quadraticCurveTo(S * 1.18, S * 0.58, S * 0.06, S * 0.86);
+            ctx.moveTo(S * 0.22, -S * 0.28);
+            ctx.quadraticCurveTo(S * 0.05, 0, S * 0.22, S * 0.28);
+            ctx.lineTo(S * 0.62, S * 0.52);
+            ctx.quadraticCurveTo(S * 1.18, S * 0.28, S * 1.24, 0);
+            ctx.quadraticCurveTo(S * 1.18, -S * 0.28, S * 0.62, -S * 0.52);
             ctx.closePath();
           };
-          // the haft, running across the blade's travel, and a butt on it
-          ctx.fillRect(-S * 0.46, -S * 0.13, S * 0.62, S * 0.26);
+          const haft = () => {
+            ctx.beginPath();
+            ctx.rect(-S * 0.95, -S * 0.085, S * 1.00, S * 0.17);
+          };
+          haft(); ctx.fill();
           head(); ctx.fill();
+          /* The haft is wood, not steel, and painting it the same white as
+             the head is why the two read as one pale blob with a nub on
+             it. Recoloured in place, source-over: this region is already
+             white from the fill above, and 'lighter' cannot darken white -
+             it can only add to it, which is the same fault the dagger's
+             grip had. */
+          ctx.save();
+          haft(); ctx.clip();
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.fillStyle = '#8b6a44';
+          haft(); ctx.fill();
+          ctx.restore();
           /* THE ONE DARK LINE IN THE WEAPON, and the reason it reads as a
              blade rather than a blob: a white shape on a bright halo has no
              boundary until something takes light AWAY, and this pass
@@ -23292,16 +23331,16 @@ window.WS = window.WS || {};
           ctx.save();
           head(); ctx.clip();
           ctx.globalCompositeOperation = 'source-over';
-          /* Just inside the cutting edge, and thin. Run through the middle
-             of the head at a sixth of its width - which is where this
-             started - it does not separate an edge from a body, it cuts the
-             bit in half and the axe reads as a crescent moon. */
+          /* A bevel PARALLELING the cutting edge, not through the middle of
+             the head - a line through the middle does not separate an edge
+             from a body, it cuts the bit in half and the axe reads as a
+             crescent moon regardless of how the silhouette is built. */
           ctx.strokeStyle = 'rgba(8,10,16,.68)';
           ctx.lineWidth = WS.max(1, S * 0.09);
           ctx.beginPath();
-          ctx.moveTo(S * 0.22, -S * 0.70);
-          ctx.quadraticCurveTo(S * 0.92, -S * 0.47, S * 0.82, 0);
-          ctx.quadraticCurveTo(S * 0.92, S * 0.47, S * 0.22, S * 0.70);
+          ctx.moveTo(S * 0.68, -S * 0.46);
+          ctx.quadraticCurveTo(S * 1.06, -S * 0.24, S * 1.10, 0);
+          ctx.quadraticCurveTo(S * 1.06, S * 0.24, S * 0.68, S * 0.46);
           ctx.stroke();
           ctx.restore();
         } else {
