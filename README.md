@@ -251,6 +251,11 @@ tools/         the single-file bundler, and the guard rails:
                               again, the weather bed autocorrelated for a
                               period at every lag under ten seconds, and every
                               zone's harmony made to go somewhere in four bars
+               check-fatigue.js a real siege on one chatter kit, driven
+                              through real time, has to climb to real
+                              fatigue without resetting itself mid-fight and
+                              actually end up quieter and slower than it
+                              started
 ```
 
 Every guard carries the bug it was written for in its header, and every one of

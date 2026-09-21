@@ -297,6 +297,43 @@
   const waiting = Object.create(null);
   const HEFT = 8;          // events in one gap that count as a full clump
 
+  /* The clump above solves a BURST: forty hits in one tick reads as one heavy
+   * voice instead of forty identical ones. It says nothing about a SIEGE -
+   * ten straight minutes of a Storm of Steel build against a packed field
+   * throttles to the same clumped voice, at the same rate, at the same gain,
+   * for the whole ten minutes, because heft only ever measures the last
+   * instant. A sound stops being information and starts being a machine
+   * hum well before ten minutes; it is the SAME sound, however heavy each
+   * one is shaped, and a hum does not announce itself by getting louder.
+   *
+   * So a second, much slower clock: how long a kit has gone WITHOUT the
+   * break that already resets its backlog above - the same "lately, not
+   * ever" signal, read on a longer fuse. FATIGUE_GRACE is how long that is
+   * allowed to run before anything gives, because a fifteen-second push
+   * against a wave is not what needs relieving. Past it, the gap between
+   * voices widens further and each voice sits a little lower, both easing
+   * back toward the quiet a burst already gets on release - not silence,
+   * and not a lower ceiling on how loud a real clump may read, just a
+   * longer fight costing a bit less to listen to than its first few seconds
+   * did.
+   *
+   * FATIGUE_GAP has a ceiling of its own: the widening it adds stacks with
+   * heft's, and if the combined gap ever reached the "lately, not ever"
+   * reset's OWN threshold, the mechanism would trip itself - the widened
+   * silence between voices would look like the break that is supposed to
+   * mean the siege ended. Measured hammering one kit for forty straight
+   * seconds with no real gap in the calls: at 0.8 the reset fired anyway,
+   * every fifteen-odd seconds, and fatigue sawed between 0 and 0.4 instead
+   * of climbing. Worst case is heft at its own ceiling and fatigue at 1,
+   * which widens the gap by 1.9 x (1 + FATIGUE_GAP); at 0.45 that tops out
+   * at 2.76x against the reset's 3x, with headroom to spare. */
+  const sustainStart = Object.create(null);
+  const lastGap = Object.create(null);    // the widened gap actually used, last fire
+  const FATIGUE_GRACE = 5;      // seconds at full clump before fatigue starts
+  const FATIGUE_WINDOW = 25;    // seconds more to reach full fatigue
+  const FATIGUE_GAP = 0.45;     // the gap widens by up to this much more
+  const FATIGUE_GAIN = 0.22;    // and the voice gives back up to this much gain
+
   const KITS = {
     /* The five kits below carry most of a run between them, so they are also
        the five where articulation moves per play and not just pitch. How long
@@ -400,25 +437,56 @@
      * been happening has to be a count of what has been happening RECENTLY;
      * a long enough silence means the backlog is about a moment that has
      * passed. */
-    if (chatter && gap && waiting[kit]
-        && t - (lastPlayed[kit] || 0) > gap * 3) {
+    /* The threshold itself has to be AT LEAST as wide as the gap fatigue was
+       using, not the bare unwidened one - fatigue widens the true spacing
+       between voices well past the base gap on purpose, and comparing that
+       widened spacing against a fixed 3x of the NARROW gap means the siege's
+       own throttling eventually looks like the silence that is supposed to
+       mean it ended. Measured hammering one kit with no real gap in the
+       calls at all: fatigue climbed for fifteen-odd seconds and then reset
+       itself, every time, once its own widening crossed the fixed line. */
+    const resetAt = WS.max(gap, lastGap[kit] || 0) * 3;
+    if (chatter && gap && (waiting[kit] || sustainStart[kit])
+        && t - (lastPlayed[kit] || 0) > resetAt) {
       waiting[kit] = 0;
+      sustainStart[kit] = null;   // the streak broke; fatigue breaks with it
     }
     /* How much has been happening in this kit lately, 0 to 1. Everything below
        reads the run's density through this one number. */
     const heft = chatter ? WS.min(1, (waiting[kit] || 0) / HEFT) : 0;
+    /* And how long this kit has gone WITHOUT the break that resets it above -
+     * see FATIGUE above.
+     *
+     * This used to be gated on heft alone: fatigue only ran while heft sat at
+     * its ceiling. But heft is `waiting[kit] / HEFT`, and waiting is zeroed
+     * the instant a voice actually fires - so heft is a sawtooth, 0 again for
+     * every call right after each voice and only climbing back toward 1 as
+     * the next backlog builds. Gating on it meant fatigue was wiped by the
+     * very voices it was supposed to be building from: hammering `hit` for
+     * forty seconds measured fatigue at 0 the entire time. The signal that
+     * actually means "this is a siege, not a lull" is the one already right
+     * above - no break wide enough to be a break - so fatigue rides the same
+     * clock the backlog does, and only that reset above can stop it. */
+    let fatigue = 0;
+    if (chatter && gap) {
+      if (!sustainStart[kit]) sustainStart[kit] = t;
+      fatigue = WS.clamp((t - sustainStart[kit] - FATIGUE_GRACE) / FATIGUE_WINDOW, 0, 1);
+    }
     if (gap) {
       /* The gap WIDENS as it gets busy, and the voice gets heavier to match.
        * A fixed gap is a rate limit: it caps how often, never how loud, so a
        * crowded field is the same twenty-two ticks a second as a quiet one and
        * the player cannot hear the difference between killing three things and
        * three hundred. Spacing the clumps out and making each one bigger says
-       * more with fewer voices - which is the whole trade. */
-      if (lastPlayed[kit] && t - lastPlayed[kit] < gap * (1 + 0.9 * heft)) {
+       * more with fewer voices - which is the whole trade. Fatigue widens it
+       * FURTHER, on top of that, once the siege has run long enough to earn it. */
+      const widened = gap * (1 + 0.9 * heft) * (1 + FATIGUE_GAP * fatigue);
+      if (lastPlayed[kit] && t - lastPlayed[kit] < widened) {
         if (chatter) waiting[kit] = (waiting[kit] || 0) + 1;   // remembered, not lost
         return;
       }
       lastPlayed[kit] = t;
+      lastGap[kit] = widened;
     }
     const d = DUCK[kit];
     if (d && this.duck) {
@@ -465,7 +533,7 @@
          hears the difference between three kills and thirty without hearing
          thirty sounds. */
       const shape = this.ctx.createGain();
-      shape.gain.value = 1 + 1.1 * heft;
+      shape.gain.value = (1 + 1.1 * heft) * (1 - FATIGUE_GAIN * fatigue);
       shape.connect(this.chatter);
       dest = shape;
       this.pitch = (1 - 0.26 * heft)
@@ -474,7 +542,7 @@
          only way to measure from outside that a clump sounds different from a
          single event - the voice itself is gone by the time anything could
          look at it. */
-      this.lastShape = { kit, heft, gain: shape.gain.value, pitch: this.pitch };
+      this.lastShape = { kit, heft, fatigue, gain: shape.gain.value, pitch: this.pitch };
     } else if (spread) {
       this.pitch = 1 + (Math.random() - 0.5) * 2 * spread;
     }
@@ -574,6 +642,33 @@
   /** What a zone falls back to if it names no progression of its own: four
    *  bars that leave home, go somewhere, and come back. */
   const PROG = [0, 3, 4, 2];
+
+  /** How many bars a progression holds before another is chosen. Four times
+   *  PHRASE_BARS, so the harmony under a zone changes shape on a slower clock
+   *  than the melody riding on it - the melody finds a new idea every bar,
+   *  the ground under it every four.
+   *
+   *  A zone's `prog` was a single fixed loop: four bars, in that order,
+   *  forever, for as long as the player stood on the battlefield. The phrase
+   *  table already solved this for the melody and never touched what the
+   *  melody was accompanied BY - a session spent entirely on one map still
+   *  heard the same four-chord cycle a few hundred times over, which is the
+   *  same problem PHRASES exists to fix, one layer down.
+   *
+   *  Built by ROTATING THE SCALE INDEX, the same fix PHRASES' `shift` uses
+   *  and for the same reason: a progression is a sequence of indices into
+   *  the zone's own scale, and rotating the index cannot leave the key,
+   *  because the key is the only thing it can choose from. Adding an
+   *  interval instead would risk exactly the bug `shift` used to have -
+   *  landing on a different mode of a different key rather than a variation
+   *  in the one the zone was written in. */
+  const PROG_LEN = PHRASE_LEN * 4;   // four phrase-cycles: the slower clock
+  function progsFor(score) {
+    const base = score.prog || PROG;
+    const n = score.scale.length;
+    const rotate = (by) => base.map((i) => ((i + by) % n + n) % n);
+    return [base, rotate(2), rotate(-2), rotate(1)];
+  }
 
   /** The chord under the bar, built out of the zone's OWN scale.
    *
@@ -684,18 +779,26 @@
        two narrow low beds at almost the same level under two sawtooth drones
        four octaves down behind two ~220Hz lowpasses. Measured, the two were
        the closest pair in the game and the phrase table pushed them from 4.0
-       to 3.4dB apart. A resonant band is the one thing a graveyard is not:
-       Q4.5 at 300Hz is a pipe with air moving through it, and it put the pair
-       back to 4.1 without taking the zone anywhere it should not be. Q6.0
-       separated them further and whistled; a resonance the ear can name as a
-       tone is the thing this whole pass exists to get rid of. */
+       to 3.4dB apart. A resonant band is the one thing a graveyard is not, so
+       this went to a bandpass at 300Hz - but Q4.5 was chosen by comparing it
+       to Q6.0 ("Q6.0 separated them further and whistled"), which asks
+       whether one whistles MORE than the other and never whether either one
+       whistles at all. Measured properly - the average spectrum over many
+       windows, which is what separates a real resonance from a single
+       frame's noise - Q4.5 stands 13.6dB proud of its own neighbourhood. The
+       other seven zones, resonant or not, sit at 1.1 to 2.0dB. That is not a
+       pipe with air moving through it, it is a sustained pitch under the
+       whole zone, forever, which is what a listener means by "a buzz that
+       will not stop." Q1.2 still reads as more coloured than a plain band -
+       4.7dB, more than double the other zones' ceiling - so the room still
+       rings; it no longer hums a note while it does it. */
     eclipse: {
       root: 87.31, scale: [0, 1, 4, 6, 8], wave: 'sawtooth', tempo: 1.3,
       leadCut: 10,
       pad: 'sawtooth', padCut: 1250,
       perc: [0, 5, 7, 12], kit: 'stone',
       prog: [0, 3, 2, 3],
-      air: { cut: 300, q: 4.5, gain: 0.060, drift: 0.12, gust: 0.40, type: 'bandpass' },
+      air: { cut: 300, q: 1.2, gain: 0.060, drift: 0.12, gust: 0.40, type: 'bandpass' },
       /* An octave UP on Mourneholt, and a square rather than a saw. These
          two were the closest pair in the game before any of this and they
          stayed closest through four separate fixes - because their ground
@@ -926,7 +1029,9 @@
     zone.gain.value = 1;
     zone.connect(bed);
 
+    const progSet = progsFor(score);
     const state = { key, score, bed, zone, drone, step: 0, phrase: PHRASES[0],
+      progSet, prog: progSet[0],
       nextTime: ctx.currentTime + 0.1,
       timer: null, intensity: 0, want: 0, air: airBed(score, bed), boss: null,
       bossGain: null, bossDrone: null };
@@ -981,6 +1086,17 @@
           }
           state.phrase = next;
         }
+        /* And the progression underneath it, on its own slower bar line - see
+           progsFor. Same "never the one just played" rule as the phrase, for
+           the same reason: one time in four picking the loop already playing
+           would read as the harmony stuttering rather than turning a corner. */
+        if (s % PROG_LEN === 0) {
+          let next = state.prog;
+          for (let tries = 0; tries < 4 && next === state.prog; tries++) {
+            next = state.progSet[WS.floor(WS.random() * state.progSet.length)];
+          }
+          state.prog = next;
+        }
         const ph = state.phrase || PHRASES[0];
         const sc = score.scale;
         const deg = sc[(((s * ph.step + (ph.shift || 0)) % sc.length)
@@ -1033,7 +1149,7 @@
            bar, in step with the phrase, so the two changes land together and
            the player hears one new idea rather than two. */
         if (s % 4 === 0) {
-          const prog = score.prog || PROG;
+          const prog = state.prog;
           const centre = prog[(((s / PHRASE_LEN) | 0) % prog.length + prog.length) % prog.length];
           for (const iv of chordOn(sc, centre, state.intensity > 0.6)) {
             mTone(zone, t0, { wave: score.pad || 'sine', cut: score.padCut,
