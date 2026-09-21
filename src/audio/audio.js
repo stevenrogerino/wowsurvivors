@@ -501,10 +501,27 @@
    *          makes Ambergrass walk and Mourneholt toll.
    *   air    A filtered noise bed - wind, insects, the sound of a room. It
    *          plays under everything forever and it is most of why a place
-   *          sounds like somewhere rather than like a chord.
+   *          sounds like somewhere rather than like a chord. `drift` is how
+   *          far its colour wanders and `gust` how far its LEVEL does - a
+   *          bed that never lets up is a hiss whatever is in it.
    *   pad    What the chord bed is made of, and how bright.
- *   prog   Where the harmony GOES. Four centres, a bar each, given as
- *          indices into the zone's own scale.
+   *   leadCut How many harmonics the melody keeps, as a multiple of the
+   *          note. Six by default.
+   *          IT IS ALSO A ZONE'S VOICE, which one flat value forgot. Three
+   *          scores lead on a sawtooth, and filtering all three to six
+   *          harmonics made all three duller IN THE SAME WAY - the Dustreach
+   *          and Ambergrass fell to 2.5dB apart and Mourneholt and the
+   *          Eclipse to 2.54, under the floor that keeps two battlefields
+   *          from sounding like one. The rasp was carrying more of what
+   *          separated them than anything else in the top of the mix. So the
+   *          Dustreach, whose whole character is a sawing wind, keeps
+   *          thirteen and Ambergrass, whose top end is insects, keeps three.
+   *          Mourneholt leads on a SINE - no harmonics, nothing to filter,
+   *          brightness fixed - so the Eclipse's sawtooth is the only axis
+   *          those two can be told apart on, and darkening it to four put
+   *          them 1.87dB apart. It keeps ten.
+   *   prog   Where the harmony GOES. Four centres, a bar each, given as
+   *          indices into the zone's own scale.
    *
    * The menu keeps no percussion on purpose. It is the one screen that is not
    * a place, and stillness is what separates it from the six that are. */
@@ -592,19 +609,21 @@
     // Thornhollow: wet woodland. Knocks on wood, leaves, a warm major.
     forest: {
       root: 146.83, scale: [0, 2, 4, 7, 9], wave: 'triangle', tempo: 1.6,
+      leadCut: 8,
       pad: 'sine', padCut: 1800,
       perc: [0, 3, 5, 8, 11, 13], kit: 'tick',
       prog: [0, 3, 1, 0],
-      air: { cut: 1600, q: 0.7, gain: 0.034, drift: 0.35 },
+      air: { cut: 1600, q: 0.7, gain: 0.034, drift: 0.35, gust: 0.55 },
       drone: { gain: 0.085, oct: 2, cut: 520 },
     },
     // The Dustreach: dry, wide, hot. A rattle and a sawing wind.
     plains: {
       root: 130.81, scale: [0, 2, 3, 7, 9], wave: 'sawtooth', tempo: 1.5,
+      leadCut: 13,
       pad: 'triangle', padCut: 900,
       perc: [0, 3, 6, 9, 12], kit: 'shake',
       prog: [0, 4, 2, 3],
-      air: { cut: 2400, q: 0.5, gain: 0.030, drift: 0.45, type: 'bandpass' },
+      air: { cut: 2400, q: 1.1, gain: 0.030, drift: 0.45, gust: 0.75, type: 'bandpass' },
       drone: { gain: 0.100, oct: 2, cut: 620, wave: 'square' },
     },
     // Mourneholt: a graveyard. A bell, a long moan, a flattened second.
@@ -617,25 +636,46 @@
          A graveyard bell that tolls four times a bar is still a graveyard. */
       perc: [0, 4, 8, 12], kit: 'bell', percGain: 2.4,
       prog: [0, 1, 0, 4],
-      air: { cut: 520, q: 2.6, gain: 0.050, drift: 0.16 },
+      air: { cut: 520, q: 2.6, gain: 0.050, drift: 0.16, gust: 0.45 },
       drone: { gain: 0.170, oct: 4, cut: 240 },
     },
     // Ambergrass: it walks. Drums on the off-beat and a field full of insects.
     savannah: {
       root: 123.47, scale: [0, 2, 5, 7, 10], wave: 'sawtooth', tempo: 1.4,
+      leadCut: 3,
       pad: 'triangle', padCut: 1500,
       perc: [0, 3, 6, 8, 11, 14], kit: 'skin',
       prog: [0, 2, 3, 1],
-      air: { cut: 4800, q: 2.2, gain: 0.020, drift: 0.60, type: 'bandpass' },
+      air: { cut: 4800, q: 2.8, gain: 0.020, drift: 0.60, gust: 0.70, type: 'bandpass' },
       drone: { gain: 0.105, oct: 2, cut: 700 },
     },
-    // The Rimewaste: almost nothing, very far apart, very bright.
+    /* The Rimewaste: almost nothing, very far apart, very bright.
+       Its weather was a HIGHPASS at 5600Hz, the only one in the game, which
+       on white noise passes everything from there to Nyquist - about
+       seventeen kilohertz of undifferentiated treble at a fixed level. That
+       is not what cold sounds like, it is what a tape machine sounds like,
+       and no amount of de-periodising the buffer underneath was ever going
+       to change it: the loop got fixed and the hiss was still a hiss.
+       A bandpass has a top as well as a bottom, so what comes out is air
+       moving rather than the whole top of the spectrum at once. Measured as
+       the share of the bed's energy above 5kHz: the highpass read 0.474, a
+       wide band at 2600 read 0.382, and this reads 0.282 - against 0.093 for
+       Thornhollow's lowpass, which is earth rather than air. Narrower still
+       sounded like a different zone; the Rimewaste is supposed to be the
+       bright one.
+       And it GUSTS, which matters more here than anywhere else. The other
+       reason this zone hisses is that there is nothing else in it - two
+       percussion strokes a bar, the thinnest drone in the game, a sparse
+       line - so its weather plays alone and uninterrupted for minutes at a
+       time. At 0.92 the bed drops to under a tenth of itself and swells
+       back, which means the wind actually stops. Nothing else does that. */
     glacier: {
       root: 98.00, scale: [0, 3, 5, 7, 10], wave: 'sine', tempo: 2.0,
+      leadCut: 11,
       pad: 'sine', padCut: 2600,
       perc: [0, 8], kit: 'bell',
       prog: [0, 0, 3, 4],
-      air: { cut: 5600, q: 0.4, gain: 0.026, drift: 0.22, type: 'highpass' },
+      air: { cut: 1500, q: 2.0, gain: 0.030, drift: 0.55, gust: 0.92, type: 'bandpass' },
       drone: { gain: 0.055, oct: 2, cut: 900, wave: 'triangle' },
     },
     /* The Eclipse: wrong. Struck stone on an odd count, an altered scale, and
@@ -651,11 +691,20 @@
        tone is the thing this whole pass exists to get rid of. */
     eclipse: {
       root: 87.31, scale: [0, 1, 4, 6, 8], wave: 'sawtooth', tempo: 1.3,
+      leadCut: 10,
       pad: 'sawtooth', padCut: 1250,
       perc: [0, 5, 7, 12], kit: 'stone',
       prog: [0, 3, 2, 3],
-      air: { cut: 300, q: 4.5, gain: 0.060, drift: 0.12, type: 'bandpass' },
-      drone: { gain: 0.185, oct: 4, cut: 215 },
+      air: { cut: 300, q: 4.5, gain: 0.060, drift: 0.12, gust: 0.40, type: 'bandpass' },
+      /* An octave UP on Mourneholt, and a square rather than a saw. These
+         two were the closest pair in the game before any of this and they
+         stayed closest through four separate fixes - because their ground
+         was the same ground: two sawtooth drones four octaves down at 0.170
+         and 0.185 behind lowpasses at 240 and 215. Nothing above a drone can
+         separate two zones that share one. Mourneholt keeps the sub-bass,
+         which is what a grave is; the Eclipse sits an octave above it on odd
+         harmonics, which is what a wrong room is. */
+      drone: { gain: 0.170, oct: 2, cut: 300, wave: 'square' },
     },
     // Not a place. No rhythm, no weather - just a room with a fire in it.
     menu: {
@@ -663,7 +712,7 @@
       prog: [0, 3, 0, 1],
       pad: 'triangle', padCut: 2200,
       perc: null, kit: null,
-      air: { cut: 1050, q: 0.5, gain: 0.022, drift: 0.12 },
+      air: { cut: 1050, q: 0.5, gain: 0.022, drift: 0.12, gust: 0.62 },
       drone: { gain: 0.090, oct: 2, cut: 560, wave: 'triangle' },
     },
     /* The prologue's own piece. It is not the menu loop, which is what it used
@@ -675,7 +724,7 @@
       prog: [0, 2, 0, 4],
       pad: 'sine', padCut: 560,
       perc: null, kit: null,
-      air: { cut: 340, q: 0.8, gain: 0.040, drift: 0.15 },
+      air: { cut: 340, q: 0.8, gain: 0.040, drift: 0.15, gust: 0.55 },
       quiet: 0.66,
       drone: { gain: 0.130, oct: 2, cut: 300 },
     },
@@ -944,7 +993,28 @@
            tightening up IS the warning. */
         const rests = WS.random() < (ph.rest || 0) * (1 - state.intensity * 0.7);
         if ((s % 2 === 0 || state.intensity > 0.5) && !rests) {
-          mTone(zone, t0, { wave: score.wave, freq: semitone(score.root * 2, deg + oct),
+          /* THROUGH A FILTER, and for most of this game's life it was not.
+           *
+           * mTone only filters when it is handed a cut, and this call - the
+           * loudest and most continuous voice in the score - was the one
+           * call in the file that handed it none. Every other voice passes
+           * one: the chord bed has padCut, the drone has its own, all nine
+           * boss voices name theirs. So in the three zones whose lead is a
+           * sawtooth, the melody was a RAW sawtooth, harmonics running
+           * unattenuated to Nyquist, with a decay of 1.6 beats so the notes
+           * overlap and never stop. That is a hiss that happens to be
+           * pitched, and it is why the Dustreach measured a quarter of its
+           * energy above 5kHz WITH THE WEATHER BED SILENCED - the control
+           * that found this was aimed at the wind and cleared it.
+           *
+           * The cutoff tracks the note rather than sitting at a fixed
+           * frequency, because a fixed one makes low notes buzz and high
+           * notes dull. Six harmonics is still audibly a sawtooth - the
+           * character of a saw lives in its first few - and it puts the last
+           * of the energy below 4kHz for every note any zone plays. */
+          const f = semitone(score.root * 2, deg + oct);
+          mTone(zone, t0, { wave: score.wave, freq: f,
+            cut: WS.max(900, f * (score.leadCut || 6)),
             gain: 0.07 + state.intensity * 0.05, attack: 0.02, decay: beat * 1.6 });
         }
         /* A pulse under the bed once things are actually bad. Intensity used
@@ -1020,17 +1090,28 @@
              moving past. Slower than the filter, so the two never breathe
              together and the pair of them never find a period.
 
-             PROPORTIONAL TO THE ZONE'S OWN DRIFT, and it started as a flat
-             0.28 everywhere. That put a two-decibel random swing on the top
-             four bands of every score including the two stillest, and those
-             two - Mourneholt and the Eclipse, the closest pair in the game -
+             THE ZONE SAYS HOW MUCH, and this went wrong twice before it
+             said so. A flat 0.28 everywhere put a two-decibel random swing
+             on the top four bands of every score including the two stillest,
+             and Mourneholt and the Eclipse - the closest pair in the game -
              fell from 4.0dB apart to 2.9, under the floor that exists to
-             stop two battlefields sounding like one. A bed that barely moves
-             its colour is a bed that should barely move its level; the
-             savannah, whose weather is half insects, gets six times the
-             swell the graveyard does. */
-          const breath = 1 + (WS.random() * 2 - 1) * a.drift * 0.5;
-          state.air.gain.gain.setTargetAtTime(a.gain * breath, t0, 3.1);
+             stop two battlefields sounding like one. Tying it to the zone's
+             cutoff drift instead fixed that and broke something worse: the
+             Rimewaste, whose whole complaint was that its wind never lets
+             up, has a drift of 0.22 and so got the SMALLEST swell in the
+             game. Half a metric is not a design. `gust` is its own number
+             now, and falls back to the drift-derived one only for the zones
+             that have no opinion. */
+          /* EVERY zone names one. The drift-derived fallback below is what
+             the six zones that did not name one were getting, and it came to
+             0.06 for the Eclipse and the menu and 0.08 for Mourneholt: a bed
+             that swings by six per cent does not swing. Measured over
+             forty-two seconds, the quietest half-second of those zones sat
+             at 0.74 to 0.80 of the loudest - which is to say the weather
+             never let up anywhere, in any zone, at all. */
+          const gust = a.gust === undefined ? a.drift * 0.5 : a.gust;
+          const breath = 1 + (WS.random() * 2 - 1) * gust;
+          state.air.gain.gain.setTargetAtTime(a.gain * WS.max(0.02, breath), t0, 3.1);
         }
         if (state.bossGain) bossVoices(state, t0, s, beat);
         state.nextTime += beat;

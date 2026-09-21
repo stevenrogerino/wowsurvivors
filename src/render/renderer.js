@@ -1111,6 +1111,40 @@
         ctx.lineTo(z.x + ca * R * 0.97, z.y + sa * R * 0.97);
         ctx.stroke();
       }
+
+      /* 5. AND SOMETHING INSIDE IT.
+       *
+       * Everything above lives on the rim. Measured across the whole
+       * arsenal, the two ground fields came last and second-last for
+       * structure - 12% and 14% of their lit pixels carried an edge against
+       * 55% for a whirl of blades - and they are the two BIGGEST things in
+       * the game, forty-odd thousand pixels each. A hairline around a
+       * smooth wash is a circle drawn on the grass with a puddle in it,
+       * and the puddle is almost all of what the player sees.
+       *
+       * Two inner rings and a set of spokes turning against the
+       * graduations. Same language as the rim, applied to the ninety per
+       * cent of the effect that had none - and all of it inside the radius
+       * that damages, so the field still says exactly where it reaches. */
+      if (!this.lite) {
+        ctx.globalAlpha = 0.34 * fade;
+        ctx.lineWidth = 1.5;
+        for (const k of [0.40, 0.66]) {
+          ctx.beginPath(); ctx.arc(z.x, z.y, R * k * breathe, 0, WS.TAU); ctx.stroke();
+        }
+        ctx.globalAlpha = 0.30 * fade;
+        ctx.lineWidth = 1.5;
+        for (let n = 0; n < 8; n++) {
+          // against the graduations, so the field reads as two things
+          // turning rather than one thing spinning
+          const a = -spin * 0.62 + (n / 8) * WS.TAU;
+          const ca = WS.cos(a), sa = WS.sin(a);
+          ctx.beginPath();
+          ctx.moveTo(z.x + ca * R * 0.18, z.y + sa * R * 0.18);
+          ctx.lineTo(z.x + ca * R * 0.78, z.y + sa * R * 0.78);
+          ctx.stroke();
+        }
+      }
       ctx.globalAlpha = 1;
     }
     ctx.restore();
@@ -1344,40 +1378,54 @@
 
   /** Steel keeps a silhouette; magic stays a streak of light. Drawn in the
    *  bolt's local space, already rotated to its heading. */
-  function drawBoltShape(ctx, b, r) {
-    ctx.fillStyle = 'rgba(255,255,255,.92)';
+  /* The bolt's silhouette as a PATH, separate from filling it, so the same
+   * outline can be filled and then edged from the inside. A bright shape on
+   * its own bright glow has no boundary until something darkens one, and
+   * nothing in a 'lighter' pass can - so the edge is painted in source-over,
+   * clipped to this path. Splitting it out is the whole reason it exists. */
+  function boltPath(ctx, b, r) {
     switch (b.art) {
       case 'dagger':
         ctx.beginPath();
         ctx.moveTo(r * 1.9, 0); ctx.lineTo(0, -r * 0.5);
         ctx.lineTo(-r * 1.0, 0); ctx.lineTo(0, r * 0.5);
-        ctx.closePath(); ctx.fill();
-        ctx.fillStyle = 'rgba(60,44,30,.95)';
-        ctx.fillRect(-r * 1.5, -r * 0.28, r * 0.6, r * 0.56);
+        ctx.closePath();
         break;
       case 'arrow':
-        ctx.fillRect(-r * 1.6, -r * 0.16, r * 3.0, r * 0.32);
         ctx.beginPath();
-        ctx.moveTo(r * 1.9, 0); ctx.lineTo(r * 0.7, -r * 0.55); ctx.lineTo(r * 0.7, r * 0.55);
-        ctx.closePath(); ctx.fill();
+        ctx.moveTo(r * 1.9, 0);
+        ctx.lineTo(r * 0.7, -r * 0.55); ctx.lineTo(r * 0.7, -r * 0.16);
+        ctx.lineTo(-r * 1.6, -r * 0.16); ctx.lineTo(-r * 1.6, r * 0.16);
+        ctx.lineTo(r * 0.7, r * 0.16); ctx.lineTo(r * 0.7, r * 0.55);
+        ctx.closePath();
         break;
       case 'axe':
       case 'sword':
         ctx.beginPath();
         ctx.moveTo(r * 1.7, 0); ctx.lineTo(0, -r * 0.75);
         ctx.lineTo(-r * 1.2, 0); ctx.lineTo(0, r * 0.75);
-        ctx.closePath(); ctx.fill();
+        ctx.closePath();
         break;
       case 'shield':
-        ctx.beginPath(); ctx.arc(0, 0, r * 1.1, 0, WS.TAU); ctx.fill();
-        ctx.strokeStyle = WS.rgb(b.colour, 1);
-        ctx.lineWidth = WS.max(1.5, r * 0.28);
-        ctx.beginPath(); ctx.arc(0, 0, r * 0.7, 0, WS.TAU); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, 0, r * 1.1, 0, WS.TAU);
         break;
       default:
         ctx.beginPath();
         ctx.ellipse(0, 0, r * 1.2, r * 0.55, 0, 0, WS.TAU);
-        ctx.fill();
+    }
+  }
+
+  function drawBoltShape(ctx, b, r) {
+    ctx.fillStyle = 'rgba(255,255,255,.92)';
+    boltPath(ctx, b, r);
+    ctx.fill();
+    if (b.art === 'dagger') {
+      ctx.fillStyle = 'rgba(60,44,30,.95)';
+      ctx.fillRect(-r * 1.5, -r * 0.28, r * 0.6, r * 0.56);
+    } else if (b.art === 'shield') {
+      ctx.strokeStyle = WS.rgb(b.colour, 1);
+      ctx.lineWidth = WS.max(1.5, r * 0.28);
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.7, 0, WS.TAU); ctx.stroke();
     }
   }
 
@@ -1454,14 +1502,26 @@
         if (rank >= WS.Config.projRankA) {
           const far = r * (rank >= WS.Config.projRankB ? 5.2 : 4.2) * (b.evolved ? 1.2 : 1);
           const ring = ctx.createRadialGradient(0, 0, r * 1.6, 0, 0, far);
-          ring.addColorStop(0, WS.rgb(c, 0.20));
+          ring.addColorStop(0, WS.rgb(c, 0.20 / WS.sqrt(heft)));
           ring.addColorStop(1, WS.rgb(c, 0));
           ctx.fillStyle = ring;
           ctx.beginPath(); ctx.arc(0, 0, far, 0, WS.TAU); ctx.fill();
         }
-        const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 2.4);
-        grd.addColorStop(0, WS.rgb(c, 0.95));
-        grd.addColorStop(0.4, WS.rgb(c, 0.45));
+        /* HOLLOW IN THE MIDDLE, and it was not.
+         *
+         * This started at 0.95 alpha dead centre, under a near-white bolt
+         * shape, in a 'lighter' pass - so for any weapon whose school
+         * colour is pale the glow saturated all three channels exactly
+         * where the shape is, and the shape stopped existing. It is the
+         * same fault that turned Axe Gyre's blades into white blobs, and it
+         * applies to every bolt in the game.
+         *
+         * A glow belongs AROUND a thing. Starting the gradient at the
+         * bolt's own radius puts the light where light goes and leaves the
+         * shape somewhere to be read against it. */
+        const grd = ctx.createRadialGradient(0, 0, r * 0.85, 0, 0, r * 2.4);
+        grd.addColorStop(0, WS.rgb(c, 0.55));
+        grd.addColorStop(0.35, WS.rgb(c, 0.42));
         grd.addColorStop(1, WS.rgb(c, 0));
         ctx.fillStyle = grd;
         ctx.beginPath(); ctx.arc(0, 0, r * 2.4, 0, WS.TAU); ctx.fill();
@@ -1511,6 +1571,21 @@
         ctx.fill();
       }
       drawBoltShape(ctx, b, r);
+      /* A dark edge under the shape, inside it. Same reasoning as the axe:
+         nothing in a 'lighter' pass can darken, so the boundary between a
+         white shape and its own glow has to be painted rather than
+         composited - clipped to the shape so the silhouette never grows. */
+      if (!this.lite && r > 4) {
+        ctx.save();
+        boltPath(ctx, b, r);
+        ctx.clip();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.strokeStyle = 'rgba(6,8,14,.55)';
+        ctx.lineWidth = WS.max(1, r * 0.34);
+        boltPath(ctx, b, r);
+        ctx.stroke();
+        ctx.restore();
+      }
       ctx.restore();
     }
     /* Hostile bolts, which must not be mistaken for something worth walking
@@ -1606,15 +1681,33 @@
           ctx.fillStyle = WS.rgb(o.colour, 0.5);
           ctx.beginPath(); ctx.arc(0, 0, o.size * 0.7, 0, WS.TAU); ctx.fill();
         } else {
-          /* Rank buys the blade a corona. The orbit's radius and the blade's
-             size are both damage geometry and stay where they are; what grows
-             is the light around them, so a maxed whirl reads as heavier
-             without occupying more of the field than it hits. */
-          const far = o.size * (1 + 0.14 * ((o.rank || 1) - 1) + (o.evolved ? 0.7 : 0));
-          const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, far);
-          grd.addColorStop(0, WS.rgb(o.colour, 0.9));
-          grd.addColorStop(o.size / far * 0.8, WS.rgb(o.colour, 0.35));
-          grd.addColorStop(1, WS.rgb(o.colour, 0));
+          /* THE CORONA IS A HALO, NOT A DISC, AND IT IS NEVER WHITE.
+           *
+           * Rank bought the blade a filled radial gradient starting at 0.9
+           * alpha in the middle, in a 'lighter' pass, under a near-white
+           * blade. The physical school's colour is a pale cream - 0.90,
+           * 0.80, 0.60 - so by rank 8 the middle of that gradient had
+           * saturated all three channels and the blade drawn on top of it
+           * added nothing to anything. Three featureless white blobs
+           * orbiting the survivor, and the weapon was at its most powerful.
+           *
+           * Stormcall, which the same code draws, never had the problem:
+           * its colour is cyan, so its white blade always had somewhere to
+           * be. That is the whole fix. The corona is deepened away from
+           * white so a pale school cannot blow it out, and it is hollow in
+           * the middle so the blade sits IN a halo rather than on a lamp.
+           * Its total light is held roughly constant as it widens, because
+           * a wash that grows is a wash that erases. */
+          const rank = o.rank || 1;
+          const grow = 1 + 0.14 * (rank - 1) + (o.evolved ? 0.7 : 0);
+          const far = o.size * grow;
+          const veil = 1 / WS.sqrt(grow);
+          const deep = [o.colour[0] * 0.78, o.colour[1] * 0.60, o.colour[2] * 0.40];
+          const inner = o.size * 0.52;
+          const grd = ctx.createRadialGradient(0, 0, inner, 0, 0, far);
+          grd.addColorStop(0, WS.rgb(deep, 0.30 * veil));
+          grd.addColorStop(0.30, WS.rgb(deep, 0.62 * veil));
+          grd.addColorStop(1, WS.rgb(deep, 0));
           ctx.fillStyle = grd;
           ctx.beginPath(); ctx.arc(0, 0, far, 0, WS.TAU); ctx.fill();
         }
@@ -1629,50 +1722,267 @@
           ctx.lineWidth = WS.max(1, o.size * 0.13);
           ctx.beginPath(); ctx.arc(0, 0, o.size * 1.05, 0, WS.TAU); ctx.stroke();
         }
-        ctx.fillStyle = 'rgba(255,255,255,.9)';
-        ctx.beginPath();
-        ctx.moveTo(0, -o.size * 0.7); ctx.lineTo(o.size * 0.28, 0);
-        ctx.lineTo(0, o.size * 0.7); ctx.lineTo(-o.size * 0.28, 0);
-        ctx.closePath(); ctx.fill();
+        /* AN AXE. It was a diamond - the same diamond every orbiting
+           weapon in the game drew, whatever it was called. Axe Gyre gets a
+           haft and a crescent head, so the thing whirling around the
+           survivor is the thing the card names. The shape is the blade's
+           own size and touches no hitbox; `bladeArt` says which to draw and
+           anything that does not name one keeps the diamond it had. */
+        const S = o.size;
+        ctx.fillStyle = 'rgba(255,255,255,.95)';
+        if (o.art === 'axe' || o.art === 'sword') {
+          /* SOLID, with a flat inner edge. Built with a concave inside -
+             which is what a crescent is - the head read as a quarter moon
+             on a stick however the edge line was drawn, because the dark
+             line was not making the crescent, the PATH was. An axe bit is a
+             convex outer edge and a straight back. */
+          const head = () => {
+            ctx.beginPath();
+            ctx.moveTo(S * 0.06, -S * 0.86);
+            ctx.quadraticCurveTo(S * 1.18, -S * 0.58, S * 1.06, 0);
+            ctx.quadraticCurveTo(S * 1.18, S * 0.58, S * 0.06, S * 0.86);
+            ctx.closePath();
+          };
+          // the haft, running across the blade's travel, and a butt on it
+          ctx.fillRect(-S * 0.46, -S * 0.13, S * 0.62, S * 0.26);
+          head(); ctx.fill();
+          /* THE ONE DARK LINE IN THE WEAPON, and the reason it reads as a
+             blade rather than a blob: a white shape on a bright halo has no
+             boundary until something takes light AWAY, and this pass
+             composites with 'lighter', where nothing can.
+             The first attempt cut it with destination-out, which does take
+             light away - from EVERYTHING, including the grass. It punched a
+             black gash through the field and erased the halo behind the
+             blade with it. Clipping to the head and painting the line over
+             it in source-over is the same trick the survivors' armour uses:
+             the dark stays inside the shape it belongs to, so the
+             silhouette never grows and the ground is never touched. */
+          ctx.save();
+          head(); ctx.clip();
+          ctx.globalCompositeOperation = 'source-over';
+          /* Just inside the cutting edge, and thin. Run through the middle
+             of the head at a sixth of its width - which is where this
+             started - it does not separate an edge from a body, it cuts the
+             bit in half and the axe reads as a crescent moon. */
+          ctx.strokeStyle = 'rgba(8,10,16,.68)';
+          ctx.lineWidth = WS.max(1, S * 0.09);
+          ctx.beginPath();
+          ctx.moveTo(S * 0.22, -S * 0.70);
+          ctx.quadraticCurveTo(S * 0.92, -S * 0.47, S * 0.82, 0);
+          ctx.quadraticCurveTo(S * 0.92, S * 0.47, S * 0.22, S * 0.70);
+          ctx.stroke();
+          ctx.restore();
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(0, -S * 0.7); ctx.lineTo(S * 0.28, 0);
+          ctx.lineTo(0, S * 0.7); ctx.lineTo(-S * 0.28, 0);
+          ctx.closePath(); ctx.fill();
+        }
         ctx.restore();
       }
     }
     ctx.restore();
   };
 
+  /* A LANCE, NOT A STRIPE.
+   *
+   * This drew three straight strokes of constant width with round caps, one
+   * over another, from the muzzle to the far end. Correct to the pixel, and
+   * on screen a flat-ended green ruler that happened to start near the
+   * survivor: measured against every other weapon in the game it came third
+   * from last for structure - 17.7% of its lit pixels carried an edge,
+   * against 75% for Arcweb - and it had 37,000 lit pixels to be
+   * structureless in. Nothing about it said the light was coming OUT of
+   * anybody.
+   *
+   * Four things it now has, and one rule they all obey.
+   *
+   *   muzzle    A burst at the hand, with spikes swept BACK along the shaft.
+   *             A beam that begins at full width begins nowhere; a beam that
+   *             erupts has a source.
+   *   core      A hot white shaft that narrows to a point. Constant width
+   *             reads as a painted line, because nothing in the world is the
+   *             same size near and far.
+   *   tip       A spearhead, so the far end arrives somewhere instead of
+   *             stopping.
+   *   grain     Thin lances inside the shaft, more of them with rank. This
+   *             is what rank buys: structure rather than radius, so a maxed
+   *             lance is BUSIER without being fatter.
+   *
+   * THE RULE. damageLine clamps t to [0, 1], so what a beam hits is a
+   * capsule: full half-width along the shaft and a hemisphere of the same
+   * half-width past each end. Every solid part below is inside that capsule,
+   * which is why the muzzle burst and the spearhead may reach half a width
+   * beyond the endpoints and no further. Only the bloom, which is light and
+   * hits nothing, goes wider. A beam that looked longer than it struck would
+   * be the worst kind of art fix. */
   R.drawBeams = function (ctx) {
     const beams = WS.Projectile.beams;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.lineCap = 'round';
     for (let i = 0; i < beams.count; i++) {
       const b = beams.active[i];
       const fade = WS.clamp(b.life / b.maxLife, 0, 1);
-      // Three passes - bloom, body, core - so a beam reads as light with a hot
-      // centre rather than a coloured stick laid on the ground.
-      /* Only the BLOOM grows with rank. A beam's width is the width it damages
-         along - damageLine is handed half of it - so widening the beam itself
-         with rank would quietly retune the weapon. The light around it can do
-         what it likes. */
+      const dx = b.x2 - b.x1, dy = b.y2 - b.y1;
+      const len = WS.sqrt(dx * dx + dy * dy);
+      if (len < 1) continue;
+      const hw = WS.max(1.5, b.width * 0.5);
       const br = b.rank || 1;
-      const bloom = 2.2 * (1 + 0.16 * (br - 1) + (b.evolved ? 0.8 : 0));
-      ctx.globalAlpha = fade * 0.5;
-      ctx.strokeStyle = WS.rgb(b.colour, 0.35);
-      ctx.lineWidth = b.width * bloom;
-      ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2); ctx.stroke();
-      ctx.globalAlpha = fade;
-      ctx.strokeStyle = WS.rgb(b.colour, 0.6);
-      ctx.lineWidth = b.width;
-      ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2); ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,255,255,.95)';
-      ctx.lineWidth = WS.max(1.5, b.width * 0.22);
-      ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2); ctx.stroke();
-      if (b.blend) {
-        ctx.strokeStyle = WS.rgb(b.blend, 0.75);
-        ctx.lineWidth = WS.max(1, b.width * 0.5);
-        ctx.globalAlpha = fade * 0.55;
-        ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2); ctx.stroke();
+      const grand = 1 + 0.15 * (br - 1) + (b.evolved ? 0.7 : 0);
+      /* RANK BUYS STRUCTURE, NOT VEIL.
+       *
+       * Rank used to scale the bloom and nothing else, and a bloom is a
+       * soft wash in a 'lighter' pass: laid over the rim and the core at
+       * ever-greater width it dissolves exactly the edges that make the
+       * weapon a drawing. Photographed side by side, a rank 1 lance read
+       * SHARPER than a rank 8 one - the weapon got less legible as it got
+       * stronger, which is the same fault that turned Axe Gyre's blades
+       * into three white blobs.
+       *
+       * So the bloom's total light is held roughly constant as it widens -
+       * wider and correspondingly thinner - and rank is spent instead on
+       * the parts that have edges: the rim, the grain, the muzzle. */
+      const veil = 1 / WS.sqrt(grand);
+      const col = b.colour;
+
+      ctx.save();
+      ctx.translate(b.x1, b.y1);
+      ctx.rotate(WS.atan2(dy, dx));
+
+      /* The bloom: light, so it may be as wide as it likes. Widest at the
+         muzzle and closing along the shaft, which is what gives the whole
+         thing a direction even before the core is drawn. */
+      if (!this.lite) {
+        const bw0 = hw * 2.8 * grand, bw1 = hw * 1.15 * grand;
+        const bg = ctx.createLinearGradient(0, 0, len, 0);
+        bg.addColorStop(0, WS.rgb(col, 0.34 * fade * veil));
+        bg.addColorStop(0.35, WS.rgb(col, 0.20 * fade * veil));
+        bg.addColorStop(1, WS.rgb(col, 0.05 * fade * veil));
+        ctx.fillStyle = bg;
+        ctx.beginPath();
+        ctx.moveTo(0, -bw0);
+        ctx.lineTo(len, -bw1);
+        ctx.lineTo(len + hw * 0.5, 0);
+        ctx.lineTo(len, bw1);
+        ctx.lineTo(0, bw0);
+        ctx.closePath();
+        ctx.fill();
       }
+
+      /* The body, at exactly the half-width that damages, closing to the
+         spearhead at the honest end of the capsule. */
+      ctx.globalAlpha = fade;
+      const body = () => {
+        ctx.beginPath();
+        ctx.moveTo(-hw * 0.35, -hw);
+        ctx.lineTo(len - hw * 1.8, -hw);
+        ctx.lineTo(len + hw * 0.5, 0);
+        ctx.lineTo(len - hw * 1.8, hw);
+        ctx.lineTo(-hw * 0.35, hw);
+        ctx.closePath();
+      };
+      ctx.fillStyle = WS.rgb(col, 0.55);
+      body(); ctx.fill();
+      /* AN EDGE ON IT. The body was a flat fill and the bloom around it
+         another, and the whole thing measured 17.7% structure because a fill
+         beside a fill is not a boundary - it is one slightly brighter
+         region. The rim is a single bright line down each side of exactly
+         the width that damages, which is the one line in this weapon that
+         says where it stops. Everything this game has learned about
+         drawing says the same thing: a gradient reads as nothing and an
+         edge reads as a shape. */
+      ctx.save();
+      body(); ctx.clip();
+      ctx.strokeStyle = WS.rgb(col, 0.95);
+      // and the edge thickens with rank, where the bloom no longer does
+      ctx.lineWidth = WS.max(1.5, hw * 0.34 * (0.85 + 0.30 * grand));
+      body(); ctx.stroke();
+      ctx.restore();
+
+      /* Grain: thin lances inside the shaft. They start at staggered points
+         so the eye reads travel along the beam rather than a hatched
+         pattern, and they live inside the body, so this is structure the
+         weapon already had rather than reach it did not. */
+      if (!this.lite) {
+        const lines = 2 + WS.min(4, WS.floor((br - 1) * 0.6) + (b.evolved ? 2 : 0));
+        let h = (b.seed || 1) >>> 0;
+        for (let n = 0; n < lines; n++) {
+          h = (h * 1664525 + 1013904223) >>> 0;
+          const off = ((h >>> 8) % 1000) / 1000;
+          h = (h * 1664525 + 1013904223) >>> 0;
+          const at = ((h >>> 8) % 1000) / 1000;
+          const y = (off * 2 - 1) * hw * 0.62;
+          const x0 = at * len * 0.55;
+          const x1 = WS.min(len - hw * 1.6, x0 + len * (0.28 + off * 0.3));
+          if (x1 <= x0) continue;
+          const lg = ctx.createLinearGradient(x0, 0, x1, 0);
+          lg.addColorStop(0, WS.rgb(col, 0));
+          lg.addColorStop(0.4, 'rgba(255,255,255,' + (0.30 * fade).toFixed(3) + ')');
+          lg.addColorStop(1, WS.rgb(col, 0));
+          ctx.fillStyle = lg;
+          ctx.fillRect(x0, y - hw * 0.10, x1 - x0, hw * 0.20);
+        }
+      }
+
+      /* The core: hot, white, and narrowing to the point. */
+      ctx.fillStyle = 'rgba(255,255,255,.95)';
+      ctx.beginPath();
+      ctx.moveTo(-hw * 0.2, -hw * 0.66);
+      ctx.lineTo(len - hw * 2.2, -hw * 0.2);
+      ctx.lineTo(len + hw * 0.46, 0);
+      ctx.lineTo(len - hw * 2.2, hw * 0.2);
+      ctx.lineTo(-hw * 0.2, hw * 0.66);
+      ctx.closePath();
+      ctx.fill();
+
+      /* The muzzle. A disc inside the capsule's own cap, a bloom around it,
+         and spikes swept back down the shaft - the sweep is the whole
+         trick, because a symmetrical star reads as a lamp sitting there and
+         a swept one reads as something leaving. */
+      if (!this.lite) {
+        const mg = ctx.createRadialGradient(0, 0, 0, 0, 0, hw * 3.2 * grand);
+        mg.addColorStop(0, WS.rgb(col, 0.75 * fade * veil));
+        mg.addColorStop(0.45, WS.rgb(col, 0.28 * fade * veil));
+        mg.addColorStop(1, WS.rgb(col, 0));
+        ctx.fillStyle = mg;
+        ctx.beginPath(); ctx.arc(0, 0, hw * 3.2 * grand, 0, WS.TAU); ctx.fill();
+        /* Spikes swept BACK down the shaft. The sweep is the whole trick:
+           a symmetrical star at the hand reads as a lamp somebody is
+           holding, and a swept one reads as something leaving. */
+        ctx.fillStyle = WS.rgb(col, 0.85 * fade);
+        for (const side of [-1, 1]) {
+          for (const k of [0.6, 1.0, 1.45]) {
+            ctx.beginPath();
+            ctx.moveTo(-hw * 0.5, side * hw * 0.2);
+            ctx.lineTo(hw * 2.4 * k, side * hw * 2.6 * grand * (1.25 - k * 0.45));
+            ctx.lineTo(hw * 4.6 * k, side * hw * 0.34);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+        /* The ring the shot leaves through, edge-on. A beam with a collar
+           has somewhere it came from; one without just starts. */
+        ctx.strokeStyle = 'rgba(255,255,255,' + (0.7 * fade).toFixed(3) + ')';
+        ctx.lineWidth = WS.max(1.5, hw * 0.22);
+        ctx.beginPath();
+        ctx.ellipse(hw * 0.35, 0, hw * 0.44, hw * 1.5 * grand, 0, 0, WS.TAU);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(255,255,255,.95)';
+      ctx.beginPath(); ctx.arc(0, 0, hw * 0.92, 0, WS.TAU); ctx.fill();
+
+      /* A discovery's colour, along the shaft rather than over the core -
+         see the note in drawBolts about painting onto white. */
+      if (b.blend) {
+        ctx.strokeStyle = WS.rgb(b.blend, 0.7 * fade);
+        ctx.lineWidth = WS.max(1, hw * 0.5);
+        ctx.beginPath();
+        ctx.moveTo(0, -hw * 0.78); ctx.lineTo(len - hw * 2, -hw * 0.5);
+        ctx.moveTo(0, hw * 0.78); ctx.lineTo(len - hw * 2, hw * 0.5);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
     }
     ctx.restore();
   };

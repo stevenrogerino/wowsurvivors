@@ -170,6 +170,11 @@
     o.rank = w.level;
     o.evolved = !!w.evolved;
     o.blend = w.mods.blend || null;
+    /* And WHAT IT IS. Bolts already carried their art through the spec;
+       orbits and beams did not, so every orbiting weapon in the game drew
+       the same diamond whatever the card called it - an Axe Gyre with no
+       axe in it. This is the same one field, stamped the same way. */
+    o.art = w.data.art || null;
   }
 
   function fireAimedShot(player, w, target, fan) {
