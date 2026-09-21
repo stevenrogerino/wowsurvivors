@@ -1434,7 +1434,10 @@ input[type=range]::-moz-range-thumb {
 }
 
 /* -- tabs -------------------------------------------------------------- */
-.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--rim); flex-wrap: wrap; }
+/* flex: none - a direct child of .overlay-inner now, alongside .overlay-head
+   and .overlay-foot, so navigation stays put when the pane beneath it
+   scrolls, and never surrenders its own height to a cramped window. */
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--rim); flex-wrap: wrap; flex: none; }
 .tab {
   appearance: none; background: none; border: none; cursor: pointer; font-family: inherit;
   padding: 11px 16px; color: var(--ink-dim);

@@ -749,7 +749,17 @@
       b.addEventListener('click', () => { UI.tab = id; WS.Audio.play('ui'); render(); });
       tabs.append(b);
     }
-    s.body.append(tabs, panes);
+    /* The tab strip used to scroll away with the pane beneath it - both were
+       children of the same scrolling .overlay-body. On a short viewport (a
+       phone in landscape, or a browser window that is not maximised) that
+       body has little room to begin with, and losing part of it to a tab
+       strip the player has already used to get here left almost nothing on
+       screen: the roster's detail card reduced to a sliver, the picker row
+       scrolled out of sight below it with no hint that was where it went.
+       Navigation belongs with the header, not the content - it should still
+       be there after you have scrolled. */
+    s.inner.insertBefore(tabs, s.body);
+    s.body.append(panes);
     render();
 
     const begin = el('button', 'btn primary', 'Begin Run');
@@ -1973,7 +1983,8 @@
       b.addEventListener('click', () => { view = id; WS.Audio.play('ui'); render(); });
       tabs.append(b);
     }
-    s.body.append(tabs, pane);
+    s.inner.insertBefore(tabs, s.body);
+    s.body.append(pane);
     render();
 
     const resume = el('button', 'btn primary', 'Resume');
