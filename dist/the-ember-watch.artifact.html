@@ -9754,7 +9754,7 @@ window.WS = window.WS || {};
       // the disc, dark and limb-darkened
       g.save();
       const grd = g.createRadialGradient(cx - R * 0.2, cy - R * 0.24, 4 * u, cx, cy, R);
-      grd.addColorStop(0, '#2c1d४a'.replace('४', '4'));
+      grd.addColorStop(0, '#2c1d4a');
       grd.addColorStop(0.62, '#221545');
       grd.addColorStop(1, '#0b0718');
       g.fillStyle = grd;
@@ -9774,6 +9774,58 @@ window.WS = window.WS || {};
       g.lineWidth = 6 * u;
       g.globalAlpha = 0.28;
       g.beginPath(); g.arc(cx, cy, R - 2.4 * u, 0, WS.TAU); g.stroke();
+      g.restore();
+      /* FISSURES: light escaping through the crust, not just at the rim.
+         The disc between the face and the ring was a smooth radial fill and
+         nothing else - the last boss in the game measured 29% interior
+         detail against a bestiary averaging 41%, because a gradient reads as
+         nothing and this whole file exists on the premise that an EDGE is
+         what separates a drawing from a blob. Four cracks, uneven in length,
+         angle and curve - a shattered thing does not break symmetrically,
+         which is the same argument the corona already makes with its spears. */
+      g.save();
+      g.beginPath(); g.arc(cx, cy, R, 0, WS.TAU); g.clip();
+      const fissures = [
+        { a: 0.85, len: 0.86, bow: 2.5 },
+        { a: 2.55, len: 0.62, bow: -1.8 },
+        { a: 3.95, len: 0.95, bow: 2.2 },
+        { a: 5.35, len: 0.70, bow: -2.6 },
+      ];
+      for (const f of fissures) {
+        /* Starting past the face, not at it - anchored right against the
+           eyes the first attempt read as antennae sprouting off an insect,
+           which is a worse silhouette than the blank disc it replaced. */
+        const x1 = cx + WS.cos(f.a) * 13 * u, y1 = cy - 2 * u + WS.sin(f.a) * 13 * u;
+        const x2 = cx + WS.cos(f.a) * R * f.len, y2 = cy - 2 * u + WS.sin(f.a) * R * f.len;
+        const mx = (x1 + x2) / 2 + WS.cos(f.a + WS.PI / 2) * f.bow * u;
+        const my = (y1 + y2) / 2 + WS.sin(f.a + WS.PI / 2) * f.bow * u;
+        /* A groove first, in the disc's own darkest tone - a fissure has
+           depth before it has light in it, and a bright line laid straight
+           onto the gradient fill was one soft edge, not two. Thin, though:
+           wide enough to darken and no wider, because a groove bold enough
+           to read on its own stops being the setting for the light and
+           becomes the drawing. */
+        g.globalCompositeOperation = 'source-over';
+        g.strokeStyle = 'rgba(5,3,12,.55)';
+        g.lineWidth = 1.7 * u;
+        g.beginPath();
+        g.moveTo(x1, y1);
+        g.quadraticCurveTo(mx, my, x2, y2);
+        g.stroke();
+        // And the light escaping through it, narrower than the groove so the
+        // dark lip on either side of it stays an edge and not a blend.
+        g.globalCompositeOperation = 'lighter';
+        const glow = g.createLinearGradient(x1, y1, x2, y2);
+        glow.addColorStop(0, 'rgba(255,236,195,.9)');
+        glow.addColorStop(0.55, 'rgba(255,205,135,.5)');
+        glow.addColorStop(1, 'rgba(255,190,110,0)');
+        g.strokeStyle = glow;
+        g.lineWidth = 0.9 * u;
+        g.beginPath();
+        g.moveTo(x1, y1);
+        g.quadraticCurveTo(mx, my, x2, y2);
+        g.stroke();
+      }
       g.restore();
       // and the face inside it
       g.fillStyle = '#07040f';
