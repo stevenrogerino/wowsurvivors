@@ -1409,6 +1409,63 @@
       case 'shield':
         ctx.beginPath(); ctx.arc(0, 0, r * 1.1, 0, WS.TAU);
         break;
+      /* Seven weapons - Seeking Motes, Cinderfall, Rimeshard, Grave Tether,
+         Umbral Bolt, Moonbrand and Ruin Unbound - fell through to the plain
+         ellipse below and were told apart only by colour and glow. Rank
+         already scales `r`, so each of these grows exactly as the steel
+         shapes do; nothing about rank had to change to give them a shape. */
+      case 'missile':                                    // a faceted mote
+        ctx.beginPath();
+        ctx.moveTo(r * 1.6, 0); ctx.lineTo(r * 0.15, -r * 0.85);
+        ctx.lineTo(-r * 0.9, 0); ctx.lineTo(r * 0.15, r * 0.85);
+        ctx.closePath();
+        break;
+      case 'ember':                                       // an irregular coal
+        ctx.beginPath();
+        ctx.moveTo(r * 1.5, 0); ctx.lineTo(r * 0.7, -r * 0.95);
+        ctx.lineTo(-r * 0.55, -r * 0.8); ctx.lineTo(-r * 1.35, -r * 0.15);
+        ctx.lineTo(-r * 0.85, r * 0.9); ctx.lineTo(r * 0.5, r * 0.75);
+        ctx.closePath();
+        break;
+      case 'shard':                                  // a long hexagonal spike
+        ctx.beginPath();
+        ctx.moveTo(r * 2.1, 0); ctx.lineTo(r * 0.5, -r * 0.5);
+        ctx.lineTo(-r * 1.1, -r * 0.34); ctx.lineTo(-r * 1.5, 0);
+        ctx.lineTo(-r * 1.1, r * 0.34); ctx.lineTo(r * 0.5, r * 0.5);
+        ctx.closePath();
+        break;
+      case 'coil':                        // a curled talon dragging backward
+        ctx.beginPath();
+        ctx.moveTo(r * 1.5, -r * 0.1);
+        ctx.quadraticCurveTo(r * 0.2, -r * 1.25, -r * 1.15, -r * 0.55);
+        ctx.quadraticCurveTo(-r * 1.95, -r * 0.15, -r * 1.5, r * 0.5);
+        ctx.quadraticCurveTo(-r * 1.2, r * 0.15, -r * 0.75, r * 0.05);
+        ctx.quadraticCurveTo(-r * 0.15, -r * 0.25, r * 0.75, r * 0.25);
+        ctx.closePath();
+        break;
+      case 'bolt':                       // a jagged shadow bolt, four turns
+        ctx.beginPath();
+        ctx.moveTo(r * 1.9, 0); ctx.lineTo(r * 0.3, -r * 0.5);
+        ctx.lineTo(-r * 0.5, -r * 0.15); ctx.lineTo(-r * 1.6, -r * 0.6);
+        ctx.lineTo(-r * 0.9, r * 0.02); ctx.lineTo(-r * 1.5, r * 0.55);
+        ctx.lineTo(-r * 0.1, r * 0.12); ctx.lineTo(r * 0.5, r * 0.55);
+        ctx.closePath();
+        break;
+      case 'moon':             // a crescent, cut from the disc with evenodd
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 1.05, 0.6, -0.6, true);
+        ctx.arc(r * 0.55, 0, r * 0.92, -2.5, 2.5, false);
+        break;
+      case 'chaos':                     // an asymmetric fused shard-star
+        ctx.beginPath();
+        ctx.moveTo(r * 2.0, 0); ctx.lineTo(r * 0.5, -r * 0.4);
+        ctx.lineTo(r * 0.7, -r * 1.1); ctx.lineTo(-r * 0.2, -r * 0.5);
+        ctx.lineTo(-r * 1.0, -r * 0.9); ctx.lineTo(-r * 0.9, -r * 0.05);
+        ctx.lineTo(-r * 1.6, r * 0.25); ctx.lineTo(-r * 0.7, r * 0.35);
+        ctx.lineTo(-r * 0.85, r * 1.0); ctx.lineTo(r * 0.1, r * 0.4);
+        ctx.lineTo(r * 0.5, r * 0.75);
+        ctx.closePath();
+        break;
       default:
         ctx.beginPath();
         ctx.ellipse(0, 0, r * 1.2, r * 0.55, 0, 0, WS.TAU);
@@ -1418,7 +1475,11 @@
   function drawBoltShape(ctx, b, r) {
     ctx.fillStyle = 'rgba(255,255,255,.92)';
     boltPath(ctx, b, r);
-    ctx.fill();
+    // evenodd rather than the default nonzero: only the moon crescent's two
+    // opposed arcs need it (it is carved out of a disc), but it agrees with
+    // nonzero on every shape that does not self-overlap, so one rule serves
+    // all of them.
+    ctx.fill('evenodd');
     if (b.art === 'dagger') {
       ctx.fillStyle = 'rgba(60,44,30,.95)';
       ctx.fillRect(-r * 1.5, -r * 0.28, r * 0.6, r * 0.56);
@@ -1578,7 +1639,7 @@
       if (!this.lite && r > 4) {
         ctx.save();
         boltPath(ctx, b, r);
-        ctx.clip();
+        ctx.clip('evenodd');
         ctx.globalCompositeOperation = 'source-over';
         ctx.strokeStyle = 'rgba(6,8,14,.55)';
         ctx.lineWidth = WS.max(1, r * 0.34);
@@ -2023,6 +2084,30 @@
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = WS.max(1, f.radius * 0.045 * (1 - e) + 0.6);
         ctx.beginPath(); ctx.arc(f.x, f.y, r, 0, WS.TAU); ctx.stroke();
+      }
+
+      /* RAYS THROUGH THE RING, for the one caller that asks for them.
+       *
+       * A nova used to BE this ring and nothing else - the same shape as
+       * every hit-impact in the game, just bigger. A burst has a direction
+       * to every point on its rim; a ring has none. Rays bursting out
+       * through it, growing with the same radius, give a nova a shape of
+       * its own and something concrete for rank to add to: more rays past
+       * the milestones where other weapons gain a projectile. */
+      if (f.spikes > 0 && !this.lite) {
+        ctx.globalAlpha = (1 - t) * 0.85;
+        ctx.strokeStyle = WS.rgb(f.colour, 1);
+        ctx.lineWidth = WS.max(1, f.radius * 0.03 * (1 - e) + 0.8);
+        ctx.lineCap = 'round';
+        const seed = ((f.x * 12.9898 + f.y * 78.233) % WS.TAU + WS.TAU) % WS.TAU;
+        for (let n = 0; n < f.spikes; n++) {
+          const a = seed + (n / f.spikes) * WS.TAU;
+          const ca = WS.cos(a), sa = WS.sin(a);
+          ctx.beginPath();
+          ctx.moveTo(f.x + ca * r * 0.45, f.y + sa * r * 0.45);
+          ctx.lineTo(f.x + ca * r * 1.16, f.y + sa * r * 1.16);
+          ctx.stroke();
+        }
       }
     }
     ctx.globalAlpha = 1;

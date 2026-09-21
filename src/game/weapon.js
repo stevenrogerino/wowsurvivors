@@ -310,7 +310,15 @@
        touch damageArea. */
     const grow = 1 + 0.06 * (w.level - 1) + (w.evolved ? 0.35 : 0);
     const hold = (d.expandTime || 0.35) * (1 + 0.10 * (w.level - 1));
-    WS.FX.flash(player.x, player.y, radius, colour, hold);
+    /* Rays on the main ring only - the inner ones are echoes of it, not a
+       second burst - and their count climbs at the same milestones the
+       rings above already read rank off of, so a rank-8 nova visibly
+       throws more spokes than a rank-1 one, not just a wider ring. */
+    let spikes = 7;
+    if (w.level >= (d.projRankA || WS.Config.projRankA)) spikes += 3;
+    if (w.level >= (d.projRankB || WS.Config.projRankB)) spikes += 3;
+    if (w.evolved) spikes += 3;
+    WS.FX.flash(player.x, player.y, radius, colour, hold, spikes);
     WS.FX.flash(player.x, player.y, radius * 0.6, colour, hold * 0.7);
     if (w.level >= (d.projRankA || WS.Config.projRankA)) {
       WS.FX.flash(player.x, player.y, radius * 1.22 * grow, colour, hold * 1.25);
