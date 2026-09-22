@@ -16,7 +16,7 @@
     coffin: { art: 'coffin', tint: [0.85, 0.85, 0.95], size: 30, noMagnet: true },
     graveblade: { art: 'graveblade', tint: [0.85, 0.20, 0.25], size: 30, noMagnet: true },
     twinglaive: { art: 'twinglaive', tint: [0.55, 1.0, 0.25], size: 30, noMagnet: true },
-    merchant: { art: 'merchant', tint: [0.95, 0.85, 0.45], size: 30, noMagnet: true },
+    merchant: { art: 'beans', tint: [0.90, 0.52, 0.22], size: 46, noMagnet: true },
   };
 
   /* HOW EXPENDABLE EACH KIND IS when the field is full and something has to
@@ -213,16 +213,16 @@
       WS.Audio.play('evolve');
 
     } else if (kind === 'merchant') {
-      // The Egg Merchant sells run-only eggs; "Buy All" spends every coin.
+      // Beans sells run-only eggs; "Buy All" spends every coin.
       const cost = WS.Config.eggVendorCost;
       const affordable = WS.floor(run.gold / cost);
       if (affordable <= 0) {
-        WS.Game.toast('Egg Merchant', `You cannot afford an egg (${cost}g each).`);
-        return false;   // leave the merchant standing
+        WS.Game.toast('Beans', `You cannot afford an egg (${cost}g each).`);
+        return false;   // leave her standing
       }
       run.gold -= affordable * cost;
       WS.Player.grantRunEggs(p, affordable);
-      WS.Game.toast('Egg Merchant', `Bought ${affordable} curious egg${affordable === 1 ? '' : 's'}.`);
+      WS.Game.toast('Beans', `Bought ${affordable} curious egg${affordable === 1 ? '' : 's'}.`);
       WS.Audio.play('chest');
     }
     return true;

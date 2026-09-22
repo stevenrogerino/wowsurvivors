@@ -1345,8 +1345,27 @@
         ctx.restore();
       }
 
-      const icon = WS.Icons.glyph(p.type.art, p.type.tint, size);
-      ctx.drawImage(icon, p.x - size / 2, y - size / 2, size, size);
+      if (p.kind === 'merchant') {
+        // Beans is drawn through the creature rig, not the flat icon system -
+        // the only pickup that is, because she is a character standing on
+        // the field rather than an object lying on it. Her own canvas is
+        // centred lower than the icon field (the cloak and staff reach well
+        // above her head), so the blit offset is tuned to her, not shared.
+        const spr = WS.Sprites.creature('beans', p.type.tint, size);
+        ctx.drawImage(spr, p.x - size * 0.50, y - size * 0.60, size, size);
+      } else if (p.kind === 'cache') {
+        // A parachute is never quite still - a small, slow sway says the
+        // crate only just landed, rather than having always sat here.
+        const icon = WS.Icons.glyph(p.type.art, p.type.tint, size);
+        ctx.save();
+        ctx.translate(p.x, y - size * 0.06);
+        ctx.rotate(WS.sin(time * 0.8 + p.bob) * 0.05);
+        ctx.drawImage(icon, -size / 2, -size / 2, size, size);
+        ctx.restore();
+      } else {
+        const icon = WS.Icons.glyph(p.type.art, p.type.tint, size);
+        ctx.drawImage(icon, p.x - size / 2, y - size / 2, size, size);
+      }
 
       if (callout) {
         // And a hard ring around it. The halo says "something is glowing

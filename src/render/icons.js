@@ -724,13 +724,59 @@
       circle(g, 50, 52, 32, col, 2.5);
     },
     cache(g, c) {
+      /* A crate that FELL, not one that was always sitting in the grass: a
+         canopy still open above it, rigging still taut to the corners, and
+         a scuff of impact dust under the base. The old glyph was a plain
+         brown box - correct for "container," silent on "supply drop." */
+      const col = c || '#f5c56b';
+      // impact dust: two flattened smudges, so the crate reads as landed
+      g.fillStyle = 'rgba(20,16,10,.30)';
+      g.beginPath(); g.ellipse(32, 90, 13, 3.4, 0, 0, WS.TAU); g.fill();
+      g.beginPath(); g.ellipse(70, 88, 10, 3, 0, 0, WS.TAU); g.fill();
+
+      // the canopy: a dome with a scalloped hem, cut from a plain half-circle
+      // by subtracting bites along the bottom edge rather than drawing each
+      // gore by hand - five bites, unevenly spaced, so it reads as fabric
+      // rather than a gear.
+      g.save();
+      g.beginPath(); g.arc(50, 40, 33, WS.PI, 0); g.closePath();
+      g.fillStyle = col; g.fill();
+      g.globalCompositeOperation = 'destination-out';
+      const bites = [[19, 9], [35, 7], [50, 8.5], [65, 7], [81, 9]];
+      for (const [bx, br] of bites) { g.beginPath(); g.arc(bx, 40, br, 0, WS.TAU); g.fill(); }
+      g.globalCompositeOperation = 'source-over';
+      // three panel seams, so the dome isn't one flat fill
+      line(g, '#00000030', HAIR - 1.5);
+      for (const sx of [33, 50, 67]) {
+        g.beginPath(); g.moveTo(sx, 40); g.quadraticCurveTo(50 + (sx - 50) * 0.5, 15, 50, 8); g.stroke();
+      }
+      g.restore();
+
+      // rigging: four lines from the hem down to the crate's corners
+      line(g, '#c9bfa8', HAIR - 2);
+      for (const [rx, cx2] of [[22, 27], [40, 30], [60, 70], [78, 73]]) {
+        g.beginPath(); g.moveTo(rx, 46); g.lineTo(cx2, 62); g.stroke();
+      }
+
+      // the crate itself, landed - a touch smaller than before, room made
+      // for the canopy above rather than the two competing for the frame.
       g.fillStyle = '#7a5f3a';
-      g.beginPath(); g.roundRect(20, 26, 60, 58, 3); g.fill();
+      g.beginPath(); g.roundRect(24, 60, 52, 30, 3); g.fill();
       line(g, '#4a3a24', HAIR);
-      g.strokeRect(20, 26, 60, 58);
-      g.beginPath(); g.moveTo(20, 26); g.lineTo(80, 84); g.stroke();
-      g.beginPath(); g.moveTo(80, 26); g.lineTo(20, 84); g.stroke();
-      g.fillStyle = c || '#f5c56b'; g.fillRect(20, 20, 60, 8);
+      g.strokeRect(24, 60, 52, 30);
+      g.beginPath(); g.moveTo(24, 60); g.lineTo(76, 90); g.stroke();
+      g.beginPath(); g.moveTo(76, 60); g.lineTo(24, 90); g.stroke();
+      // caution banding along the lid, in place of the old plain strip
+      g.save();
+      g.beginPath(); g.rect(24, 54, 52, 8); g.clip();
+      for (let i = -1; i < 8; i++) {
+        g.fillStyle = i % 2 === 0 ? col : '#2b2016';
+        g.beginPath();
+        g.moveTo(24 + i * 9, 54); g.lineTo(24 + i * 9 + 6, 54);
+        g.lineTo(24 + i * 9 - 4, 62); g.lineTo(24 + i * 9 - 10, 62);
+        g.closePath(); g.fill();
+      }
+      g.restore();
     },
     coffin(g, c) {
       shape(g, [[50, 12], [74, 36], [64, 88], [36, 88], [26, 36]], '#5a5f6b');
@@ -752,14 +798,9 @@
       g.fillStyle = '#2b2f36';
       g.beginPath(); g.roundRect(44, 40, 12, 24, 3); g.fill();
     },
-    merchant(g, c) {
-      g.fillStyle = '#7a5f3a';
-      g.beginPath(); g.roundRect(20, 46, 60, 38, 2); g.fill();
-      shape(g, [[12, 46], [50, 22], [88, 46]], c || '#f5c56b');
-      g.fillStyle = '#e8dfc8';
-      g.beginPath(); g.ellipse(50, 66, 13, 16, 0, 0, WS.TAU); g.fill();
-      line(g, '#b6a680', 2.5); g.stroke();
-    },
+    /* merchant glyph removed - Beans is drawn through the creature rig now
+       (src/render/sprites.js, CREATURES.beans), not the flat icon system;
+       see the kind === 'merchant' branch in R.drawPickups. */
 
     /* ---- fallback -------------------------------------------------------- */
     rune(g, c) {

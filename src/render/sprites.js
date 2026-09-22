@@ -1768,6 +1768,121 @@
       eyes(g, cx - 22 * u, cy - 14 * u, 4.5 * u, 1.8 * u, '#c9f26b');
     },
 
+    beans(g, s, p) {
+      /* Beans: the cat druid who runs the egg stall. A sitting pose rather
+         than the prowling cat's arched-and-running one, because a merchant
+         has to read as WAITING rather than about to move - haunches down,
+         tail curled round to the front paws, staff planted and idle. The
+         druid identity is a cloak and a leaf-topped staff laid over the same
+         cat skeleton above, not a second body: robe and satchel are flat
+         polys on top of a creature that is still unmistakably a cat first. */
+      const cx = s / 2, cy = s * 0.60, u = s / 100;
+      const robe = palette([0.36, 0.56, 0.30]);   // druid green, independent of fur tint
+      const wood = palette([0.42, 0.30, 0.20]);   // staff
+
+      // the tail, curled round in front rather than up - a sitting curl, not
+      // a hunting hook - drawn first so the body sits in front of its base
+      g.strokeStyle = p.lo; g.lineWidth = 4.4 * u; g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(cx + 20 * u, cy + 8 * u);
+      g.quadraticCurveTo(cx + 30 * u, cy + 18 * u, cx + 22 * u, cy + 26 * u);
+      g.quadraticCurveTo(cx + 14 * u, cy + 33 * u, cx + 2 * u, cy + 28 * u);
+      g.stroke();
+
+      // haunches: the seat. Wide and low, the mass a sitting cat rests on.
+      shaded(g, cx + 6 * u, cy + 9 * u, 20 * u, 17 * u, p);
+      // chest, up and forward of the haunches, narrower and carried high
+      shaded(g, cx - 6 * u, cy - 8 * u, 15 * u, 18 * u, p);
+      // a pale chest patch, so the silhouette isn't one flat colour front-on
+      g.save();
+      g.beginPath(); g.ellipse(cx - 6 * u, cy - 8 * u, 15 * u, 18 * u, 0, 0, WS.TAU); g.clip();
+      g.globalAlpha = 0.55;
+      g.fillStyle = p.hi;
+      g.beginPath(); g.ellipse(cx - 7 * u, cy - 1 * u, 8 * u, 12 * u, 0, 0, WS.TAU); g.fill();
+      g.restore();
+      // stripes over the haunch, the same tabby marks as the wild cat
+      g.strokeStyle = p.dark; g.lineWidth = 2.4 * u;
+      for (let i = 0; i < 3; i++) {
+        g.beginPath();
+        g.moveTo(cx + (2 + i * 8) * u, cy - 2 * u);
+        g.lineTo(cx + (5 + i * 8) * u, cy + 14 * u);
+        g.stroke();
+      }
+      // front paws, together, the way a sitting cat holds them
+      shaded(g, cx - 11 * u, cy + 15 * u, 6 * u, 7 * u, p);
+      shaded(g, cx - 2 * u, cy + 16 * u, 6 * u, 7 * u, p);
+      g.save();
+      g.globalAlpha = 0.7; g.fillStyle = p.hi;
+      g.beginPath(); g.ellipse(cx - 11 * u, cy + 17 * u, 3.6 * u, 3 * u, 0, 0, WS.TAU); g.fill();
+      g.beginPath(); g.ellipse(cx - 2 * u, cy + 18 * u, 3.6 * u, 3 * u, 0, 0, WS.TAU); g.fill();
+      g.restore();
+
+      // the druid cloak: draped over the back and one shoulder, NOT the
+      // face - the eyes stay the focal point, the same rule the hood-cast
+      // survivors follow. A low hood-peak behind the head reads as
+      // "druid" without ever competing with the cat's own head shape.
+      poly(g, [
+        [cx + 20 * u, cy - 2 * u], [cx + 10 * u, cy - 24 * u], [cx - 4 * u, cy - 30 * u],
+        [cx - 16 * u, cy - 23 * u], [cx - 21 * u, cy - 6 * u], [cx - 15 * u, cy + 6 * u],
+        [cx - 4 * u, cy - 2 * u], [cx + 8 * u, cy + 4 * u],
+      ], robe.mid, robe.line, u * 1.1);
+      g.save();
+      g.globalAlpha = 0.4; g.strokeStyle = robe.hi; g.lineWidth = u * 1.3;
+      g.beginPath();
+      g.moveTo(cx + 16 * u, cy - 6 * u);
+      g.quadraticCurveTo(cx, cy - 26 * u, cx - 13 * u, cy - 20 * u);
+      g.stroke();
+      g.restore();
+      // a small leaf clasp where the cloak crosses the chest
+      poly(g, [[cx - 3 * u, cy - 3 * u], [cx + 2 * u, cy - 8 * u], [cx + 6 * u, cy - 2 * u],
+        [cx + 1 * u, cy + 2 * u]], robe.hi, robe.line, u * 0.7);
+
+      // head, carried high and clear of the cloak
+      shaded(g, cx - 20 * u, cy - 17 * u, 11 * u, 10 * u, p);
+      poly(g, [[cx - 28 * u, cy - 24 * u], [cx - 29 * u, cy - 36 * u],
+        [cx - 20 * u, cy - 25 * u]], p.lo, p.line, u);
+      poly(g, [[cx - 16 * u, cy - 25 * u], [cx - 13 * u, cy - 36 * u],
+        [cx - 9 * u, cy - 24 * u]], p.lo, p.line, u);
+      // a soft hood-peak, low behind the ears rather than over them
+      poly(g, [[cx - 24 * u, cy - 27 * u], [cx - 19 * u, cy - 39 * u], [cx - 12 * u, cy - 28 * u]],
+        robe.mid, robe.line, u * 0.9);
+      poly(g, [[cx - 27 * u, cy - 15 * u], [cx - 33 * u, cy - 13 * u],
+        [cx - 27 * u, cy - 11 * u]], p.hi, p.line, u);      // muzzle
+      eyes(g, cx - 22 * u, cy - 18 * u, 4.5 * u, 1.9 * u, '#a8f26a');
+
+      // the staff: planted beside the stall, a gnarled length of wood
+      // topped with a leaf-wrapped glow - the "shop sign" a passer-by
+      // actually reads before they ever look at the crate of eggs.
+      g.save();
+      g.strokeStyle = wood.dark; g.lineWidth = 3 * u; g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(cx + 26 * u, cy + 24 * u);
+      g.quadraticCurveTo(cx + 22 * u, cy - 4 * u, cx + 27 * u, cy - 30 * u);
+      g.stroke();
+      g.strokeStyle = wood.lo; g.lineWidth = 1.1 * u; g.globalAlpha = 0.6;
+      g.beginPath();
+      g.moveTo(cx + 25 * u, cy + 18 * u);
+      g.quadraticCurveTo(cx + 21 * u, cy - 4 * u, cx + 26 * u, cy - 26 * u);
+      g.stroke();
+      g.restore();
+      const orb = g.createRadialGradient(cx + 27 * u, cy - 32 * u, 0.5 * u, cx + 27 * u, cy - 32 * u, 8 * u);
+      orb.addColorStop(0, '#eafccb'); orb.addColorStop(0.5, '#a8e06a'); orb.addColorStop(1, 'rgba(168,224,106,0)');
+      g.fillStyle = orb;
+      g.beginPath(); g.arc(cx + 27 * u, cy - 32 * u, 8 * u, 0, WS.TAU); g.fill();
+      poly(g, [[cx + 27 * u, cy - 32 * u], [cx + 20 * u, cy - 36 * u], [cx + 24 * u, cy - 27 * u]],
+        robe.hi, robe.line, u * 0.6);
+      poly(g, [[cx + 27 * u, cy - 32 * u], [cx + 34 * u, cy - 35 * u], [cx + 31 * u, cy - 26 * u]],
+        robe.mid, robe.line, u * 0.6);
+
+      // the stall: a small crate of eggs, so the field silhouette still
+      // reads as "merchant" from further off than the staff glow carries
+      poly(g, [[cx - 4 * u, cy + 22 * u], [cx + 16 * u, cy + 20 * u],
+        [cx + 18 * u, cy + 34 * u], [cx - 2 * u, cy + 36 * u]], wood.mid, wood.line, u * 0.9);
+      const eggC = palette([0.94, 0.88, 0.72]);
+      shaded(g, cx + 3 * u, cy + 19 * u, 4.6 * u, 5.6 * u, eggC);
+      shaded(g, cx + 11 * u, cy + 18 * u, 4.2 * u, 5.2 * u, eggC);
+    },
+
     boar(g, s, p) {
       const cx = s / 2, cy = s * 0.55, u = s / 100;
       // Stubby trotters: short, but they still have to clear the barrel.

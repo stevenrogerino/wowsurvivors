@@ -10298,6 +10298,121 @@ window.WS = window.WS || {};
       eyes(g, cx - 22 * u, cy - 14 * u, 4.5 * u, 1.8 * u, '#c9f26b');
     },
 
+    beans(g, s, p) {
+      /* Beans: the cat druid who runs the egg stall. A sitting pose rather
+         than the prowling cat's arched-and-running one, because a merchant
+         has to read as WAITING rather than about to move - haunches down,
+         tail curled round to the front paws, staff planted and idle. The
+         druid identity is a cloak and a leaf-topped staff laid over the same
+         cat skeleton above, not a second body: robe and satchel are flat
+         polys on top of a creature that is still unmistakably a cat first. */
+      const cx = s / 2, cy = s * 0.60, u = s / 100;
+      const robe = palette([0.36, 0.56, 0.30]);   // druid green, independent of fur tint
+      const wood = palette([0.42, 0.30, 0.20]);   // staff
+
+      // the tail, curled round in front rather than up - a sitting curl, not
+      // a hunting hook - drawn first so the body sits in front of its base
+      g.strokeStyle = p.lo; g.lineWidth = 4.4 * u; g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(cx + 20 * u, cy + 8 * u);
+      g.quadraticCurveTo(cx + 30 * u, cy + 18 * u, cx + 22 * u, cy + 26 * u);
+      g.quadraticCurveTo(cx + 14 * u, cy + 33 * u, cx + 2 * u, cy + 28 * u);
+      g.stroke();
+
+      // haunches: the seat. Wide and low, the mass a sitting cat rests on.
+      shaded(g, cx + 6 * u, cy + 9 * u, 20 * u, 17 * u, p);
+      // chest, up and forward of the haunches, narrower and carried high
+      shaded(g, cx - 6 * u, cy - 8 * u, 15 * u, 18 * u, p);
+      // a pale chest patch, so the silhouette isn't one flat colour front-on
+      g.save();
+      g.beginPath(); g.ellipse(cx - 6 * u, cy - 8 * u, 15 * u, 18 * u, 0, 0, WS.TAU); g.clip();
+      g.globalAlpha = 0.55;
+      g.fillStyle = p.hi;
+      g.beginPath(); g.ellipse(cx - 7 * u, cy - 1 * u, 8 * u, 12 * u, 0, 0, WS.TAU); g.fill();
+      g.restore();
+      // stripes over the haunch, the same tabby marks as the wild cat
+      g.strokeStyle = p.dark; g.lineWidth = 2.4 * u;
+      for (let i = 0; i < 3; i++) {
+        g.beginPath();
+        g.moveTo(cx + (2 + i * 8) * u, cy - 2 * u);
+        g.lineTo(cx + (5 + i * 8) * u, cy + 14 * u);
+        g.stroke();
+      }
+      // front paws, together, the way a sitting cat holds them
+      shaded(g, cx - 11 * u, cy + 15 * u, 6 * u, 7 * u, p);
+      shaded(g, cx - 2 * u, cy + 16 * u, 6 * u, 7 * u, p);
+      g.save();
+      g.globalAlpha = 0.7; g.fillStyle = p.hi;
+      g.beginPath(); g.ellipse(cx - 11 * u, cy + 17 * u, 3.6 * u, 3 * u, 0, 0, WS.TAU); g.fill();
+      g.beginPath(); g.ellipse(cx - 2 * u, cy + 18 * u, 3.6 * u, 3 * u, 0, 0, WS.TAU); g.fill();
+      g.restore();
+
+      // the druid cloak: draped over the back and one shoulder, NOT the
+      // face - the eyes stay the focal point, the same rule the hood-cast
+      // survivors follow. A low hood-peak behind the head reads as
+      // "druid" without ever competing with the cat's own head shape.
+      poly(g, [
+        [cx + 20 * u, cy - 2 * u], [cx + 10 * u, cy - 24 * u], [cx - 4 * u, cy - 30 * u],
+        [cx - 16 * u, cy - 23 * u], [cx - 21 * u, cy - 6 * u], [cx - 15 * u, cy + 6 * u],
+        [cx - 4 * u, cy - 2 * u], [cx + 8 * u, cy + 4 * u],
+      ], robe.mid, robe.line, u * 1.1);
+      g.save();
+      g.globalAlpha = 0.4; g.strokeStyle = robe.hi; g.lineWidth = u * 1.3;
+      g.beginPath();
+      g.moveTo(cx + 16 * u, cy - 6 * u);
+      g.quadraticCurveTo(cx, cy - 26 * u, cx - 13 * u, cy - 20 * u);
+      g.stroke();
+      g.restore();
+      // a small leaf clasp where the cloak crosses the chest
+      poly(g, [[cx - 3 * u, cy - 3 * u], [cx + 2 * u, cy - 8 * u], [cx + 6 * u, cy - 2 * u],
+        [cx + 1 * u, cy + 2 * u]], robe.hi, robe.line, u * 0.7);
+
+      // head, carried high and clear of the cloak
+      shaded(g, cx - 20 * u, cy - 17 * u, 11 * u, 10 * u, p);
+      poly(g, [[cx - 28 * u, cy - 24 * u], [cx - 29 * u, cy - 36 * u],
+        [cx - 20 * u, cy - 25 * u]], p.lo, p.line, u);
+      poly(g, [[cx - 16 * u, cy - 25 * u], [cx - 13 * u, cy - 36 * u],
+        [cx - 9 * u, cy - 24 * u]], p.lo, p.line, u);
+      // a soft hood-peak, low behind the ears rather than over them
+      poly(g, [[cx - 24 * u, cy - 27 * u], [cx - 19 * u, cy - 39 * u], [cx - 12 * u, cy - 28 * u]],
+        robe.mid, robe.line, u * 0.9);
+      poly(g, [[cx - 27 * u, cy - 15 * u], [cx - 33 * u, cy - 13 * u],
+        [cx - 27 * u, cy - 11 * u]], p.hi, p.line, u);      // muzzle
+      eyes(g, cx - 22 * u, cy - 18 * u, 4.5 * u, 1.9 * u, '#a8f26a');
+
+      // the staff: planted beside the stall, a gnarled length of wood
+      // topped with a leaf-wrapped glow - the "shop sign" a passer-by
+      // actually reads before they ever look at the crate of eggs.
+      g.save();
+      g.strokeStyle = wood.dark; g.lineWidth = 3 * u; g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(cx + 26 * u, cy + 24 * u);
+      g.quadraticCurveTo(cx + 22 * u, cy - 4 * u, cx + 27 * u, cy - 30 * u);
+      g.stroke();
+      g.strokeStyle = wood.lo; g.lineWidth = 1.1 * u; g.globalAlpha = 0.6;
+      g.beginPath();
+      g.moveTo(cx + 25 * u, cy + 18 * u);
+      g.quadraticCurveTo(cx + 21 * u, cy - 4 * u, cx + 26 * u, cy - 26 * u);
+      g.stroke();
+      g.restore();
+      const orb = g.createRadialGradient(cx + 27 * u, cy - 32 * u, 0.5 * u, cx + 27 * u, cy - 32 * u, 8 * u);
+      orb.addColorStop(0, '#eafccb'); orb.addColorStop(0.5, '#a8e06a'); orb.addColorStop(1, 'rgba(168,224,106,0)');
+      g.fillStyle = orb;
+      g.beginPath(); g.arc(cx + 27 * u, cy - 32 * u, 8 * u, 0, WS.TAU); g.fill();
+      poly(g, [[cx + 27 * u, cy - 32 * u], [cx + 20 * u, cy - 36 * u], [cx + 24 * u, cy - 27 * u]],
+        robe.hi, robe.line, u * 0.6);
+      poly(g, [[cx + 27 * u, cy - 32 * u], [cx + 34 * u, cy - 35 * u], [cx + 31 * u, cy - 26 * u]],
+        robe.mid, robe.line, u * 0.6);
+
+      // the stall: a small crate of eggs, so the field silhouette still
+      // reads as "merchant" from further off than the staff glow carries
+      poly(g, [[cx - 4 * u, cy + 22 * u], [cx + 16 * u, cy + 20 * u],
+        [cx + 18 * u, cy + 34 * u], [cx - 2 * u, cy + 36 * u]], wood.mid, wood.line, u * 0.9);
+      const eggC = palette([0.94, 0.88, 0.72]);
+      shaded(g, cx + 3 * u, cy + 19 * u, 4.6 * u, 5.6 * u, eggC);
+      shaded(g, cx + 11 * u, cy + 18 * u, 4.2 * u, 5.2 * u, eggC);
+    },
+
     boar(g, s, p) {
       const cx = s / 2, cy = s * 0.55, u = s / 100;
       // Stubby trotters: short, but they still have to clear the barrel.
@@ -12287,13 +12402,59 @@ window.WS = window.WS || {};
       circle(g, 50, 52, 32, col, 2.5);
     },
     cache(g, c) {
+      /* A crate that FELL, not one that was always sitting in the grass: a
+         canopy still open above it, rigging still taut to the corners, and
+         a scuff of impact dust under the base. The old glyph was a plain
+         brown box - correct for "container," silent on "supply drop." */
+      const col = c || '#f5c56b';
+      // impact dust: two flattened smudges, so the crate reads as landed
+      g.fillStyle = 'rgba(20,16,10,.30)';
+      g.beginPath(); g.ellipse(32, 90, 13, 3.4, 0, 0, WS.TAU); g.fill();
+      g.beginPath(); g.ellipse(70, 88, 10, 3, 0, 0, WS.TAU); g.fill();
+
+      // the canopy: a dome with a scalloped hem, cut from a plain half-circle
+      // by subtracting bites along the bottom edge rather than drawing each
+      // gore by hand - five bites, unevenly spaced, so it reads as fabric
+      // rather than a gear.
+      g.save();
+      g.beginPath(); g.arc(50, 40, 33, WS.PI, 0); g.closePath();
+      g.fillStyle = col; g.fill();
+      g.globalCompositeOperation = 'destination-out';
+      const bites = [[19, 9], [35, 7], [50, 8.5], [65, 7], [81, 9]];
+      for (const [bx, br] of bites) { g.beginPath(); g.arc(bx, 40, br, 0, WS.TAU); g.fill(); }
+      g.globalCompositeOperation = 'source-over';
+      // three panel seams, so the dome isn't one flat fill
+      line(g, '#00000030', HAIR - 1.5);
+      for (const sx of [33, 50, 67]) {
+        g.beginPath(); g.moveTo(sx, 40); g.quadraticCurveTo(50 + (sx - 50) * 0.5, 15, 50, 8); g.stroke();
+      }
+      g.restore();
+
+      // rigging: four lines from the hem down to the crate's corners
+      line(g, '#c9bfa8', HAIR - 2);
+      for (const [rx, cx2] of [[22, 27], [40, 30], [60, 70], [78, 73]]) {
+        g.beginPath(); g.moveTo(rx, 46); g.lineTo(cx2, 62); g.stroke();
+      }
+
+      // the crate itself, landed - a touch smaller than before, room made
+      // for the canopy above rather than the two competing for the frame.
       g.fillStyle = '#7a5f3a';
-      g.beginPath(); g.roundRect(20, 26, 60, 58, 3); g.fill();
+      g.beginPath(); g.roundRect(24, 60, 52, 30, 3); g.fill();
       line(g, '#4a3a24', HAIR);
-      g.strokeRect(20, 26, 60, 58);
-      g.beginPath(); g.moveTo(20, 26); g.lineTo(80, 84); g.stroke();
-      g.beginPath(); g.moveTo(80, 26); g.lineTo(20, 84); g.stroke();
-      g.fillStyle = c || '#f5c56b'; g.fillRect(20, 20, 60, 8);
+      g.strokeRect(24, 60, 52, 30);
+      g.beginPath(); g.moveTo(24, 60); g.lineTo(76, 90); g.stroke();
+      g.beginPath(); g.moveTo(76, 60); g.lineTo(24, 90); g.stroke();
+      // caution banding along the lid, in place of the old plain strip
+      g.save();
+      g.beginPath(); g.rect(24, 54, 52, 8); g.clip();
+      for (let i = -1; i < 8; i++) {
+        g.fillStyle = i % 2 === 0 ? col : '#2b2016';
+        g.beginPath();
+        g.moveTo(24 + i * 9, 54); g.lineTo(24 + i * 9 + 6, 54);
+        g.lineTo(24 + i * 9 - 4, 62); g.lineTo(24 + i * 9 - 10, 62);
+        g.closePath(); g.fill();
+      }
+      g.restore();
     },
     coffin(g, c) {
       shape(g, [[50, 12], [74, 36], [64, 88], [36, 88], [26, 36]], '#5a5f6b');
@@ -12315,14 +12476,9 @@ window.WS = window.WS || {};
       g.fillStyle = '#2b2f36';
       g.beginPath(); g.roundRect(44, 40, 12, 24, 3); g.fill();
     },
-    merchant(g, c) {
-      g.fillStyle = '#7a5f3a';
-      g.beginPath(); g.roundRect(20, 46, 60, 38, 2); g.fill();
-      shape(g, [[12, 46], [50, 22], [88, 46]], c || '#f5c56b');
-      g.fillStyle = '#e8dfc8';
-      g.beginPath(); g.ellipse(50, 66, 13, 16, 0, 0, WS.TAU); g.fill();
-      line(g, '#b6a680', 2.5); g.stroke();
-    },
+    /* merchant glyph removed - Beans is drawn through the creature rig now
+       (src/render/sprites.js, CREATURES.beans), not the flat icon system;
+       see the kind === 'merchant' branch in R.drawPickups. */
 
     /* ---- fallback -------------------------------------------------------- */
     rune(g, c) {
@@ -16898,7 +17054,7 @@ window.WS = window.WS || {};
     coffin: { art: 'coffin', tint: [0.85, 0.85, 0.95], size: 30, noMagnet: true },
     graveblade: { art: 'graveblade', tint: [0.85, 0.20, 0.25], size: 30, noMagnet: true },
     twinglaive: { art: 'twinglaive', tint: [0.55, 1.0, 0.25], size: 30, noMagnet: true },
-    merchant: { art: 'merchant', tint: [0.95, 0.85, 0.45], size: 30, noMagnet: true },
+    merchant: { art: 'beans', tint: [0.90, 0.52, 0.22], size: 46, noMagnet: true },
   };
 
   /* HOW EXPENDABLE EACH KIND IS when the field is full and something has to
@@ -17095,16 +17251,16 @@ window.WS = window.WS || {};
       WS.Audio.play('evolve');
 
     } else if (kind === 'merchant') {
-      // The Egg Merchant sells run-only eggs; "Buy All" spends every coin.
+      // Beans sells run-only eggs; "Buy All" spends every coin.
       const cost = WS.Config.eggVendorCost;
       const affordable = WS.floor(run.gold / cost);
       if (affordable <= 0) {
-        WS.Game.toast('Egg Merchant', `You cannot afford an egg (${cost}g each).`);
-        return false;   // leave the merchant standing
+        WS.Game.toast('Beans', `You cannot afford an egg (${cost}g each).`);
+        return false;   // leave her standing
       }
       run.gold -= affordable * cost;
       WS.Player.grantRunEggs(p, affordable);
-      WS.Game.toast('Egg Merchant', `Bought ${affordable} curious egg${affordable === 1 ? '' : 's'}.`);
+      WS.Game.toast('Beans', `Bought ${affordable} curious egg${affordable === 1 ? '' : 's'}.`);
       WS.Audio.play('chest');
     }
     return true;
@@ -17596,7 +17752,7 @@ window.WS = window.WS || {};
         WS.clamp(player.y + WS.sin(a) * 320, 60, WS.CONST.WORLD_HEIGHT - 60));
     }
 
-    /* ---- the egg merchant ------------------------------------------------ */
+    /* ---- Beans, the egg merchant ------------------------------------------ */
     this.merchantTimer -= dt;
     if (this.merchantTimer <= 0) {
       this.merchantTimer = WS.Config.eggVendorInterval;
@@ -17604,7 +17760,7 @@ window.WS = window.WS || {};
       if (WS.Pickup.spawn('merchant',
         WS.clamp(player.x + WS.cos(a) * 400, 80, WS.CONST.WORLD_WIDTH - 80),
         WS.clamp(player.y + WS.sin(a) * 400, 80, WS.CONST.WORLD_HEIGHT - 80))) {
-        WS.Game.toast('An egg merchant sets up shop', 'Walk to the crate to spend your coin.');
+        WS.Game.toast('Beans sets up shop', 'The cat druid is selling eggs - walk over to spend your coin.');
       }
     }
 
@@ -23121,8 +23277,27 @@ window.WS = window.WS || {};
         ctx.restore();
       }
 
-      const icon = WS.Icons.glyph(p.type.art, p.type.tint, size);
-      ctx.drawImage(icon, p.x - size / 2, y - size / 2, size, size);
+      if (p.kind === 'merchant') {
+        // Beans is drawn through the creature rig, not the flat icon system -
+        // the only pickup that is, because she is a character standing on
+        // the field rather than an object lying on it. Her own canvas is
+        // centred lower than the icon field (the cloak and staff reach well
+        // above her head), so the blit offset is tuned to her, not shared.
+        const spr = WS.Sprites.creature('beans', p.type.tint, size);
+        ctx.drawImage(spr, p.x - size * 0.50, y - size * 0.60, size, size);
+      } else if (p.kind === 'cache') {
+        // A parachute is never quite still - a small, slow sway says the
+        // crate only just landed, rather than having always sat here.
+        const icon = WS.Icons.glyph(p.type.art, p.type.tint, size);
+        ctx.save();
+        ctx.translate(p.x, y - size * 0.06);
+        ctx.rotate(WS.sin(time * 0.8 + p.bob) * 0.05);
+        ctx.drawImage(icon, -size / 2, -size / 2, size, size);
+        ctx.restore();
+      } else {
+        const icon = WS.Icons.glyph(p.type.art, p.type.tint, size);
+        ctx.drawImage(icon, p.x - size / 2, y - size / 2, size, size);
+      }
 
       if (callout) {
         // And a hard ring around it. The halo says "something is glowing

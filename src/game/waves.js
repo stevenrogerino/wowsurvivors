@@ -127,7 +127,7 @@
         WS.clamp(player.y + WS.sin(a) * 320, 60, WS.CONST.WORLD_HEIGHT - 60));
     }
 
-    /* ---- the egg merchant ------------------------------------------------ */
+    /* ---- Beans, the egg merchant ------------------------------------------ */
     this.merchantTimer -= dt;
     if (this.merchantTimer <= 0) {
       this.merchantTimer = WS.Config.eggVendorInterval;
@@ -135,7 +135,7 @@
       if (WS.Pickup.spawn('merchant',
         WS.clamp(player.x + WS.cos(a) * 400, 80, WS.CONST.WORLD_WIDTH - 80),
         WS.clamp(player.y + WS.sin(a) * 400, 80, WS.CONST.WORLD_HEIGHT - 80))) {
-        WS.Game.toast('An egg merchant sets up shop', 'Walk to the crate to spend your coin.');
+        WS.Game.toast('Beans sets up shop', 'The cat druid is selling eggs - walk over to spend your coin.');
       }
     }
 
