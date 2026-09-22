@@ -23882,7 +23882,14 @@ window.WS = window.WS || {};
            * Its total light is held roughly constant as it widens, because
            * a wash that grows is a wash that erases. */
           const rank = o.rank || 1;
-          const grow = 1 + 0.14 * (rank - 1) + (o.evolved ? 0.7 : 0);
+          /* Toned down from 0.14/0.7: correct for one blade alone, but Axe
+             Gyre orbits up to nine of these at rank 8 evolved, spaced about
+             95px apart round a 136px radius - and the old growth put a
+             172px-wide corona on each one, so neighbouring blades' haloes
+             overlapped into one solid ring and the sharper head shape above
+             was fighting its own glow for a silhouette. Sized instead to
+             roughly meet its neighbour rather than swallow it. */
+          const grow = 1 + 0.05 * (rank - 1) + (o.evolved ? 0.25 : 0);
           const far = o.size * grow;
           const veil = 1 / WS.sqrt(grow);
           const deep = [o.colour[0] * 0.78, o.colour[1] * 0.60, o.colour[2] * 0.40];
@@ -23914,19 +23921,25 @@ window.WS = window.WS || {};
         const S = o.size;
         ctx.fillStyle = 'rgba(255,255,255,.95)';
         if (o.art === 'axe' || o.art === 'sword') {
-          /* A first attempt built the head from two curves bulging away
-             from a straight back - which is a circle with a flat side, and
-             at speed it read as a coin. An axe head is a WEDGE: a concave
-             notch at the eye where the haft passes through, straight
-             diagonals flaring out to sharp toe and heel corners, and only
-             the bit itself - between those corners - genuinely convex. */
+          /* A second pass on this shape: the wedge above was correct in
+             principle - concave eye, straight diagonals, sharp corners -
+             but the corners it flared to sat so close to the cutting edge's
+             own curve that at the size this actually draws at (20-32px,
+             not the sketch it was checked at) the toe and heel folded back
+             into the bit and the whole head anti-aliased into a round white
+             nub on a stick. A wider flare, taken further back down the
+             haft before it turns, keeps those corners a real distance from
+             the curve between them, so the silhouette survives getting
+             small the same way the chest emblem's spiral had to learn to. */
           const head = () => {
             ctx.beginPath();
-            ctx.moveTo(S * 0.22, -S * 0.28);
-            ctx.quadraticCurveTo(S * 0.05, 0, S * 0.22, S * 0.28);
-            ctx.lineTo(S * 0.62, S * 0.52);
-            ctx.quadraticCurveTo(S * 1.18, S * 0.28, S * 1.24, 0);
-            ctx.quadraticCurveTo(S * 1.18, -S * 0.28, S * 0.62, -S * 0.52);
+            ctx.moveTo(S * 0.20, -S * 0.18);
+            ctx.quadraticCurveTo(S * 0.04, 0, S * 0.20, S * 0.18);
+            ctx.lineTo(S * 0.40, S * 0.24);
+            ctx.quadraticCurveTo(S * 0.62, S * 0.80, S * 1.06, S * 0.62);
+            ctx.quadraticCurveTo(S * 0.92, S * 0.20, S * 1.00, 0);
+            ctx.quadraticCurveTo(S * 0.92, -S * 0.20, S * 1.06, -S * 0.62);
+            ctx.quadraticCurveTo(S * 0.62, -S * 0.80, S * 0.40, -S * 0.24);
             ctx.closePath();
           };
           const haft = () => {
@@ -23968,9 +23981,9 @@ window.WS = window.WS || {};
           ctx.strokeStyle = 'rgba(8,10,16,.68)';
           ctx.lineWidth = WS.max(1, S * 0.09);
           ctx.beginPath();
-          ctx.moveTo(S * 0.68, -S * 0.46);
-          ctx.quadraticCurveTo(S * 1.06, -S * 0.24, S * 1.10, 0);
-          ctx.quadraticCurveTo(S * 1.06, S * 0.24, S * 0.68, S * 0.46);
+          ctx.moveTo(S * 0.50, -S * 0.60);
+          ctx.quadraticCurveTo(S * 0.94, -S * 0.66, S * 0.98, 0);
+          ctx.quadraticCurveTo(S * 0.94, S * 0.66, S * 0.50, S * 0.60);
           ctx.stroke();
           ctx.restore();
         } else {
