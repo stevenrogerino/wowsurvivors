@@ -120,7 +120,15 @@
     curdleShare: 0.25,
     curdlePerRank: 0.15,
     curdleCoefficient: 1.00,
-    curdleRadius: 110,
+    /* Measured with tools/curdled-sim.js against a real, moving, killable
+     * crowd (gauntlet): 110->140 is +43% total damage for the shared
+     * curdleShare=0.25 baseline and +48% for Graveblade's 0.45 - coverage,
+     * not overkill, since the burst applies its damage to every target in
+     * range rather than dividing it. curdleInterval was tested alongside it
+     * and measured within 2% either way (noise), so it's left alone; the
+     * pool's remainder already carries between ticks (see player.js), which
+     * is why a faster tick neither gains nor loses total output. */
+    curdleRadius: 140,
     curdleInterval: 0.50,
     gravebladeThreshold: 4000,
 

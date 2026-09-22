@@ -139,7 +139,7 @@
 
   p.x = 640; p.y = 360;
   /* Immortal everywhere but the crucible.
-   
+
      In the lighter scenarios a death would end the comparison early and the
      rows would stop being about the build. The crucible is the one tier
      meant to kill you, and it needs an UNCAPPED metric: its kill counts sit
@@ -147,6 +147,24 @@
      is ranking them by the size of the script. How long a build lasts has
      no ceiling, which is the whole reason to have a tier this hard. */
   if (scenario !== 'crucible') { p.maxHealth = 1e9; p.health = 1e9; }
+
+  /* Curdled Light: an optional, deterministic healing-income rig, no combat
+     or RNG required to exercise it. A build that declares `curdled` turns
+     the system on directly (skipping the 1e9-health override above, which
+     would make every point of regen land as overheal and never test the
+     curdleShare/landed-heal channel at all) and starts the survivor with
+     enormous headroom below a huge max health, so every tick of regen LANDS
+     for the whole run - the wasted/overheal channel is identical for
+     everyone (curdleOverheal never varies by class), so this isolates the
+     one lever that does: curdleShare. */
+  if (build.curdled) {
+    const c = build.curdled;
+    p.curdled = 1;
+    p.curdleOverheal = c.overheal != null ? c.overheal : WS.Config.curdleOverheal;
+    p.curdleShare = c.share != null ? c.share : WS.Config.curdleShare;
+    p.healthRegen = c.regen || 0;
+    p.maxHealth = 1e6; p.health = 5e5;
+  }
 
   /* The four keys, set by the clock instead of by fingers. A slow circuit
      around the middle of the field: enough movement that a weapon which
