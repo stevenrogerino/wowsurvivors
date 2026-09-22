@@ -11,7 +11,7 @@
     chest: { art: 'chest', tint: [0.9, 0.70, 0.30], size: 22 },
     bomb: { art: 'bomb', tint: [1.0, 0.50, 0.30], size: 19 },
     stone: { art: 'stone', tint: [0.5, 0.90, 1.0], size: 18 },
-    cache: { art: 'cache', tint: [1.0, 0.90, 0.60], size: 24 },
+    cache: { art: 'cache', tint: [1.0, 0.90, 0.60], size: 28 },
     hourglass: { art: 'hourglass', tint: [0.6, 0.85, 1.0], size: 20 },
     coffin: { art: 'coffin', tint: [0.85, 0.85, 0.95], size: 30, noMagnet: true },
     graveblade: { art: 'graveblade', tint: [0.85, 0.20, 0.25], size: 30, noMagnet: true },

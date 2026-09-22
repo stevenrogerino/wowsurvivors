@@ -10350,14 +10350,12 @@ window.WS = window.WS || {};
       for (const [bx2, by2, br2] of [[20, 6.5, 1.6], [22.6, 8, 1.4], [18.3, 8.6, 1.3]]) {
         shaded(g, cx + bx2 * u, cy + by2 * u, br2 * u, br2 * 0.78 * u, beanC);
       }
-      // front paws, together, the way a sitting cat holds them
-      shaded(g, cx - 11 * u, cy + 15 * u, 6 * u, 7 * u, p);
-      shaded(g, cx - 2 * u, cy + 16 * u, 6 * u, 7 * u, p);
-      g.save();
-      g.globalAlpha = 0.7; g.fillStyle = p.hi;
-      g.beginPath(); g.ellipse(cx - 11 * u, cy + 17 * u, 3.6 * u, 3 * u, 0, 0, WS.TAU); g.fill();
-      g.beginPath(); g.ellipse(cx - 2 * u, cy + 18 * u, 3.6 * u, 3 * u, 0, 0, WS.TAU); g.fill();
-      g.restore();
+      /* Front paws were here, but they sat in exactly the footprint the
+         crate of eggs is drawn in a few lines down - the crate is drawn
+         AFTER the body, so it always won, and the paws underneath it just
+         muddled the edge between orange fur and brown crate into one messy
+         patch. The crate reads as her forepaws' resting place now, the way
+         a real cat drapes a paw over whatever it's sitting behind. */
 
       // the druid cloak: draped over the back and one shoulder, NOT the
       // face - the eyes stay the focal point, the same rule the hood-cast
@@ -17070,7 +17068,7 @@ window.WS = window.WS || {};
     chest: { art: 'chest', tint: [0.9, 0.70, 0.30], size: 22 },
     bomb: { art: 'bomb', tint: [1.0, 0.50, 0.30], size: 19 },
     stone: { art: 'stone', tint: [0.5, 0.90, 1.0], size: 18 },
-    cache: { art: 'cache', tint: [1.0, 0.90, 0.60], size: 24 },
+    cache: { art: 'cache', tint: [1.0, 0.90, 0.60], size: 28 },
     hourglass: { art: 'hourglass', tint: [0.6, 0.85, 1.0], size: 20 },
     coffin: { art: 'coffin', tint: [0.85, 0.85, 0.95], size: 30, noMagnet: true },
     graveblade: { art: 'graveblade', tint: [0.85, 0.20, 0.25], size: 30, noMagnet: true },

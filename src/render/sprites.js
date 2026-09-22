@@ -1820,14 +1820,12 @@
       for (const [bx2, by2, br2] of [[20, 6.5, 1.6], [22.6, 8, 1.4], [18.3, 8.6, 1.3]]) {
         shaded(g, cx + bx2 * u, cy + by2 * u, br2 * u, br2 * 0.78 * u, beanC);
       }
-      // front paws, together, the way a sitting cat holds them
-      shaded(g, cx - 11 * u, cy + 15 * u, 6 * u, 7 * u, p);
-      shaded(g, cx - 2 * u, cy + 16 * u, 6 * u, 7 * u, p);
-      g.save();
-      g.globalAlpha = 0.7; g.fillStyle = p.hi;
-      g.beginPath(); g.ellipse(cx - 11 * u, cy + 17 * u, 3.6 * u, 3 * u, 0, 0, WS.TAU); g.fill();
-      g.beginPath(); g.ellipse(cx - 2 * u, cy + 18 * u, 3.6 * u, 3 * u, 0, 0, WS.TAU); g.fill();
-      g.restore();
+      /* Front paws were here, but they sat in exactly the footprint the
+         crate of eggs is drawn in a few lines down - the crate is drawn
+         AFTER the body, so it always won, and the paws underneath it just
+         muddled the edge between orange fur and brown crate into one messy
+         patch. The crate reads as her forepaws' resting place now, the way
+         a real cat drapes a paw over whatever it's sitting behind. */
 
       // the druid cloak: draped over the back and one shoulder, NOT the
       // face - the eyes stay the focal point, the same rule the hood-cast
