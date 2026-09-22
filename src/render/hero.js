@@ -1019,6 +1019,46 @@
           }
           g.restore();
         }
+        if (cfg.mustache) {
+          /* A COMICALLY LARGE CURLY MOUSTACHE - Vonnra's own mark, drawn
+             nowhere else in the cast. This is not trying to read as facial
+             hair at a glance the way the warrior's beard does; it is trying
+             to read as a comically large curly moustache, well past the
+             width of the skull it is attached to, with a tip that winds
+             through a turn and a half rather than just rounding off.
+             Anchored off eyeY for the same reason the beard is - guessing
+             at the jaw draws the whole thing over the eyes. */
+          const lip = eyeY + 5.4;
+          for (const dir of [-1, 1]) {
+            const top = [
+              [cx + dir * 1, lip - 1.4], [cx + dir * 5, lip - 1.0], [cx + dir * 9, lip - 1.8],
+              [cx + dir * 12.5, lip - 3.4], [cx + dir * 15, lip - 5.4],
+            ];
+            const bottom = [
+              [cx + dir * 15.4, lip - 4.2], [cx + dir * 12.5, lip - 0.4], [cx + dir * 8.5, lip + 1.8],
+              [cx + dir * 4, lip + 2.4], [cx + dir * 1, lip + 1.4],
+            ];
+            panel(g, top.concat(bottom), cfg.hair);
+            // the curl: wound enough to read as a spiral, not a blob
+            g.save();
+            g.translate(cx + dir * 15.2, lip - 5.0);
+            g.scale(dir, 1);
+            g.strokeStyle = cfg.hair.core;
+            g.lineWidth = 1.5;
+            g.lineCap = 'round';
+            g.beginPath();
+            const turns = 1.6, steps = 24;
+            for (let i = 0; i <= steps; i++) {
+              const t = i / steps;
+              const a = t * turns * WS.TAU + WS.PI * 0.35;
+              const r = 4.6 * (1 - t * 0.86) + 0.4;
+              const x = WS.cos(a) * r, y = WS.sin(a) * r * 0.92;
+              if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
+            }
+            g.stroke();
+            g.restore();
+          }
+        }
         if (cfg.browband) {
           /* A band of iron across the brow. It is what a man who will not wear
              a helm wears instead, and it gives the horns something to be
@@ -2559,16 +2599,18 @@
      * each and no two lines repeat; that is the test, and it is the same test
      * the silhouette rule applies to the outline. */
     mage: { build: 'slim', head: 'bare', robe: true, cloak: 'long', weapon: 'staff',
-      sash: true, sleeves: true, hair: DARKCLOTH },
+      sash: true, sleeves: true, hair: DARKCLOTH, brand: 'mage', crownPoints: 11 },
     /* No tabard: the stole sits exactly where one goes and the two together
      * made the whole front of her one pale slab. Two bands with the robe
      * showing between them is the reading; three overlapping ones is a bib. */
     priest: { build: 'slim', head: 'bare', robe: true, cloak: 'short', halo: true,
-      weapon: 'censer', stole: true, hair: ramp([0.55, 0.46, 0.33]) },
+      weapon: 'censer', stole: true, hair: ramp([0.55, 0.46, 0.33]),
+      brand: 'priest', crownPoints: 13 },
     rogue: { build: 'slim', head: 'hood', cloak: 'cut', weapon: 'daggers',
-      scarf: true, sheaths: true, bracer: true },
+      scarf: true, sheaths: true, bracer: true, brand: 'rogue', crownPoints: 9 },
     hunter: { build: 'normal', head: 'bare', weapon: 'bow', hoodDown: true, pelt: true,
-      bracer: true, strap: true, bootknife: true, hair: ramp([0.30, 0.26, 0.18]) },
+      bracer: true, strap: true, bootknife: true, hair: ramp([0.30, 0.26, 0.18]),
+      brand: 'hunter' },
     /* One hand. The other is gone, which is what "The Fallen Hero" is about,
        and it is stated here rather than left to the drawing code to remember
        - a survivor's anatomy is part of who they are. The off arm ends in a
@@ -2580,23 +2622,30 @@
        with the rest of the armoury. */
     warrior: { build: 'heavy', head: 'bare', pauldrons: 2.1, weapon: 'axe',
       helmHorns: true, browband: true, sash: true, stump: 'far',
-      beard: ramp([0.46, 0.34, 0.21]), hair: ramp([0.40, 0.29, 0.18]) },
+      beard: ramp([0.46, 0.34, 0.21]), hair: ramp([0.40, 0.29, 0.18]),
+      brand: 'warrior' },
     warlock: { build: 'normal', head: 'hood', robe: true, cloak: 'tattered',
-      weapon: 'orb', chains: true, tome: true, wisp: true, hood: DARKCLOTH },
+      weapon: 'orb', chains: true, tome: true, wisp: true, hood: DARKCLOTH,
+      brand: 'warlock', crownPoints: 10 },
     /* The shaman used to be a robed slim silhouette with a long cloak, which
      * put him inside 83% of the mage's outline and 81% of the warlock's -
      * three survivors sharing one shape. Legs and a ragged hem take him out of
-     * that cluster without touching anything else about him. */
+     * that cluster without touching anything else about him.
+     * The moustache is Vonnra's own mark in the same sense the crown is
+     * graveblade's - it is drawn nowhere else in the cast. */
     shaman: { build: 'normal', head: 'bare', cloak: 'tattered', weapon: 'totem',
-      mantle: true, warpaint: true, armwraps: true, hair: ramp([0.22, 0.24, 0.30]) },
+      mantle: true, warpaint: true, armwraps: true, hair: ramp([0.22, 0.24, 0.30]),
+      mustache: true, brand: 'shaman', crownPoints: 7 },
     paladin: { build: 'heavy', head: 'helm', pauldrons: 2.4, halo: true, tabard: true,
-      weapon: 'hammer', offhand: 'shield', device: true },
+      weapon: 'hammer', offhand: 'shield', device: true,
+      brand: 'paladin', crownPoints: 6 },
     graveblade: { build: 'heavy', head: 'undead', undead: true, pauldrons: 1.7,
       cloak: 'tattered', weapon: 'greatsword', chains: true, crown: true,
-      gauntlets: true, eyeColour: [0.32, 0.72, 1.0] },
+      gauntlets: true, eyeColour: [0.32, 0.72, 1.0],
+      brand: 'graveblade', crownPoints: 4 },
     ruinseeker: { build: 'normal', head: 'bare', horns: true, cloak: 'tattered',
       weapon: 'glaives', blindfold: true, sigils: true, bracer: true, legwraps: true,
-      hair: DARKCLOTH },
+      hair: DARKCLOTH, brand: 'ruinseeker' },
   };
 
   /* --------------------------------------------------------------- rank --- */
@@ -2606,17 +2655,29 @@
    * survivor who grows is not a second drawing - it is more of the same row.
    * This is the ladder they climb, and it is the SAME ladder for everyone.
    *
-   * That last part is the whole design. The obvious way to do this is to hand
-   * each class more of its own signature - a bigger halo for the paladin, more
-   * chains for the graveblade - and it is wrong twice. It doubles the work per
-   * class, and worse, the parts a class does not own are the parts that say
-   * who the OTHER classes are: a mage who earns a halo is a priest, and the
-   * rule this file is built on is that no two survivors may share a
-   * silhouette. check-hero measures that, and it measures every tier now.
+   * That last part is still the whole design. The obvious way to do this is
+   * to hand each class more of its own EQUIPMENT - a bigger halo for the
+   * paladin, more chains for the graveblade - and it is wrong twice. It
+   * doubles the work per class, and worse, the parts a class does not own
+   * are the parts that say who the OTHER classes are: a mage who earns a
+   * halo is a priest, and the rule this file is built on is that no two
+   * survivors may share a silhouette. check-hero measures that, and it
+   * measures every tier now.
    *
    * So the ladder is ember - the thing the game is named for, that belongs to
    * none of them and suits all of them. A survivor does not become another
    * class as they rise. They catch light.
+   *
+   * What DOES vary by class within that shared ladder is the shape the
+   * light takes, not the equipment carrying it: how many points the crown
+   * has (CAST.crownPoints, falling back to a count keyed off build so an
+   * unset class still reads as a crown) and what the rank-6 brand burns as
+   * on the chest (CAST.brand - a mage's spark, a warrior's axe, a
+   * paladin's shield...). Both are drawn in the one universal ember colour
+   * and both are silhouette-safe by construction: a crown is still a ring
+   * of points from any distance and a brand is still a small mark on the
+   * chest, so nothing here can be mistaken for another class's own gear
+   * the way a borrowed halo could be.
    *
    *   1  the hem takes light, and embers start lifting off them
    *   2  the shoulders build - a mantle of ember-lit plate
@@ -3087,6 +3148,107 @@
     g.restore();
   }
 
+  /* WHAT THE LIGHT BURNS AS. Ten survivors reaching rank 6 all carried the
+   * exact same triangle-and-dot on the chest, in the one universal ember
+   * colour that is the whole point of this ladder - which meant the ONE
+   * rank meant to show what the ember does to a person, specifically,
+   * showed the same mark on all ten of them. The colour staying universal
+   * is correct and stays; the glyph drawn in it did not have to, any more
+   * than a crown's point count did. Each is a small stroked shape keyed to
+   * what the survivor already is - a mage's spark, a shaman's lightning,
+   * a paladin's shield - drawn at CAST's own `brand` id and falling back to
+   * the original triangle for any class that does not name one. */
+  const BRANDS = {
+    default(g) {
+      g.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const a = -WS.PI / 2 + i * (WS.TAU / 3);
+        const px = WS.cos(a) * 4.6, py = WS.sin(a) * 4.6;
+        if (i) g.lineTo(px, py); else g.moveTo(px, py);
+      }
+      g.closePath(); g.stroke();
+      g.beginPath(); g.arc(0, 0, 1.9, 0, WS.TAU); g.stroke();
+    },
+    mage(g) {                                          // a faceted sparkle
+      g.beginPath();
+      g.moveTo(0, -5.2); g.lineTo(1.4, -1.2); g.lineTo(5.2, 0);
+      g.lineTo(1.4, 1.2); g.lineTo(0, 5.2); g.lineTo(-1.4, 1.2);
+      g.lineTo(-5.2, 0); g.lineTo(-1.4, -1.2); g.closePath();
+      g.stroke();
+    },
+    priest(g) {                                        // a sunburst
+      g.beginPath(); g.arc(0, 0, 1.8, 0, WS.TAU); g.stroke();
+      for (let i = 0; i < 8; i++) {
+        const a = i / 8 * WS.TAU;
+        g.beginPath();
+        g.moveTo(WS.cos(a) * 2.6, WS.sin(a) * 2.6);
+        g.lineTo(WS.cos(a) * 5.4, WS.sin(a) * 5.4);
+        g.stroke();
+      }
+    },
+    rogue(g) {                                          // crossed blades
+      for (const s of [-1, 1]) {
+        g.beginPath();
+        g.moveTo(s * -4.4, -4.4); g.lineTo(s * 4.4, 4.4);
+        g.stroke();
+        g.beginPath(); g.arc(s * -4.4, -4.4, 0.9, 0, WS.TAU); g.stroke();
+      }
+    },
+    hunter(g) {                                         // an arrowhead
+      g.beginPath();
+      g.moveTo(0, -5.2); g.lineTo(4, 1.4); g.lineTo(1.3, 1.4);
+      g.lineTo(1.3, 5.2); g.lineTo(-1.3, 5.2); g.lineTo(-1.3, 1.4);
+      g.lineTo(-4, 1.4); g.closePath();
+      g.stroke();
+    },
+    warrior(g) {                                        // an axe on its haft
+      g.beginPath(); g.moveTo(0, -5.2); g.lineTo(0, 5.2); g.stroke();
+      g.beginPath();
+      g.moveTo(0.4, -3.8);
+      g.quadraticCurveTo(4.6, -3.4, 4.6, -0.2);
+      g.quadraticCurveTo(4.6, 2.4, 0.4, 2.2);
+      g.closePath(); g.stroke();
+    },
+    warlock(g) {                                        // a lidded eye
+      g.beginPath();
+      g.moveTo(-5.2, 0); g.quadraticCurveTo(0, -3.6, 5.2, 0);
+      g.quadraticCurveTo(0, 3.6, -5.2, 0); g.closePath(); g.stroke();
+      g.beginPath(); g.ellipse(0, 0, 0.9, 1.9, 0, 0, WS.TAU); g.fill();
+    },
+    shaman(g) {                                         // a lightning bolt
+      g.beginPath();
+      g.moveTo(1.6, -5.4); g.lineTo(-2.4, 0.4); g.lineTo(0.6, 0.4);
+      g.lineTo(-1.6, 5.4); g.lineTo(3.2, -1.0); g.lineTo(0.4, -1.0);
+      g.closePath();
+      g.stroke();
+    },
+    paladin(g) {                                        // a heraldic shield
+      g.beginPath();
+      g.moveTo(0, -5.4); g.lineTo(3.6, -3.8); g.lineTo(3.6, 1.2);
+      g.quadraticCurveTo(3.6, 4.4, 0, 5.6);
+      g.quadraticCurveTo(-3.6, 4.4, -3.6, 1.2); g.lineTo(-3.6, -3.8);
+      g.closePath(); g.stroke();
+    },
+    graveblade(g) {                                     // a jagged crack
+      g.beginPath();
+      g.moveTo(-1.6, -5.4); g.lineTo(0.6, -1.8); g.lineTo(-0.8, -0.6);
+      g.lineTo(1.6, 5.4);
+      g.stroke();
+      g.beginPath(); g.moveTo(-2.6, -1.4); g.lineTo(-0.4, -0.6); g.stroke();
+      g.beginPath(); g.moveTo(2.2, 1.6); g.lineTo(0.2, 1.0); g.stroke();
+    },
+    ruinseeker(g) {                                     // a vertical rift
+      g.beginPath();
+      g.moveTo(0, -5.6);
+      g.quadraticCurveTo(1.6, -1.8, 0.5, 0); g.quadraticCurveTo(1.6, 1.8, 0, 5.6);
+      g.quadraticCurveTo(-1.6, 1.8, -0.5, 0); g.quadraticCurveTo(-1.6, -1.8, 0, -5.6);
+      g.closePath(); g.stroke();
+      for (const s of [-1, 1]) {
+        g.beginPath(); g.moveTo(s * 2.2, -1.2); g.lineTo(s * 3.6, -2.2); g.stroke();
+      }
+    },
+  };
+
   /** EMBER BRAND: the light itself, through the chest. The last rank, and the
    *  only one that changes the survivor rather than what they are wearing. */
   function emberBrand(g, cfg, C, b, k) {
@@ -3101,16 +3263,15 @@
     g.fillStyle = halo;
     g.beginPath(); g.arc(50, y, 13 * k, 0, WS.TAU); g.fill();
     g.strokeStyle = WS.rgb(C.emberRgb, 0.85 * k);
-    g.lineWidth = 1.3;
+    g.fillStyle = WS.rgb(C.emberRgb, 0.85 * k);
+    g.lineWidth = 1.3 / k;
     g.lineJoin = 'round';
-    g.beginPath();
-    for (let i = 0; i < 3; i++) {
-      const a = -WS.PI / 2 + i * (WS.TAU / 3);
-      const px = 50 + WS.cos(a) * 4.6 * k, py = y + WS.sin(a) * 4.6 * k;
-      if (i) g.lineTo(px, py); else g.moveTo(px, py);
-    }
-    g.closePath(); g.stroke();
-    g.beginPath(); g.arc(50, y, 1.9 * k, 0, WS.TAU); g.stroke();
+    g.lineCap = 'round';
+    g.save();
+    g.translate(50, y);
+    g.scale(k, k);
+    (BRANDS[cfg.brand] || BRANDS.default)(g);
+    g.restore();
     g.restore();
   }
 
@@ -3124,7 +3285,11 @@
        ones. */
     const heavy = b ? b.sh >= 12 : false;
     const slim = b ? b.sh <= 9.5 : false;
-    const pts = heavy ? 5 : slim ? 11 : 8;
+    /* The build sets a default so a class that names no crownPoints still
+       gets a sane count; CAST overrides it so classes sharing a build do
+       not also share a crown - mage, priest and rogue are all slim and
+       used to wear the exact same eleven-point circlet. */
+    const pts = cfg.crownPoints || (heavy ? 5 : slim ? 11 : 8);
     /* A circlet cannot close through a pair of horns, so a horned survivor
        wears theirs parted - open at the sides, and set lower where there is
        still skull to sit on. It is the one thing shaman and ruinseeker do not
