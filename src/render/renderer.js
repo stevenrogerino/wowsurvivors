@@ -1391,6 +1391,37 @@
         ctx.beginPath(); ctx.arc(p.x, p.y, size * 0.9 + 6 * WS.sin(time * 2), 0, WS.TAU); ctx.stroke();
         ctx.restore();
       }
+
+      if (p.kind === 'merchant') {
+        /* She IS named Beans - so she throws some. Three, thrown one after
+         * another from around her paw in a looping arc that empties and
+         * restarts, rather than orbiting her forever: a real toss reads as
+         * a toss because it lands and stops, even if the next one is a
+         * third of a second behind it. */
+        const originX = p.x - size * 0.065, originY = y + size * 0.165;
+        for (let i = 0; i < 3; i++) {
+          const t = (time * 0.6 + i * 0.333) % 1;
+          if (t > 0.82) continue;            // a beat of rest between throws
+          const tt = t / 0.82;
+          const dir = i % 2 === 0 ? -1 : 1;
+          const bx = originX + dir * tt * size * 0.42;
+          const by = originY - WS.sin(tt * WS.PI) * size * 0.32 + tt * size * 0.1;
+          ctx.save();
+          ctx.globalAlpha = tt < 0.85 ? 1 : (1 - tt) / 0.15;   // settles rather than pops
+          ctx.translate(bx, by);
+          ctx.rotate(tt * 5 * dir);
+          // a warm, light bean with a dark rim - the pad it flies over is
+          // nearly this same brown, so the fill alone all but vanished
+          ctx.fillStyle = '#e0a850';
+          ctx.strokeStyle = '#5c3a1a';
+          ctx.lineWidth = WS.max(0.8, size * 0.012);
+          ctx.beginPath(); ctx.ellipse(0, 0, size * 0.075, size * 0.05, 0, 0, WS.TAU);
+          ctx.fill(); ctx.stroke();
+          ctx.fillStyle = 'rgba(255,255,255,.65)';
+          ctx.beginPath(); ctx.ellipse(-size * 0.02, -size * 0.015, size * 0.028, size * 0.015, 0, 0, WS.TAU); ctx.fill();
+          ctx.restore();
+        }
+      }
       ctx.globalAlpha = 1;
     }
   };

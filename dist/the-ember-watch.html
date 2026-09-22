@@ -10331,8 +10331,10 @@ window.WS = window.WS || {};
 
       // haunches: the seat. Wide and low, the mass a sitting cat rests on.
       shaded(g, cx + 6 * u, cy + 9 * u, 20 * u, 17 * u, p);
+      pelt(g, p, cx + 6 * u, cy + 9 * u, 20 * u, 17 * u, 0, 7, 0.35, 0.32);
       // chest, up and forward of the haunches, narrower and carried high
       shaded(g, cx - 6 * u, cy - 8 * u, 15 * u, 18 * u, p);
+      pelt(g, p, cx - 6 * u, cy - 8 * u, 15 * u, 18 * u, 0, 5, 0.3, 0.26);
       // a pale chest patch, so the silhouette isn't one flat colour front-on
       g.save();
       g.beginPath(); g.ellipse(cx - 6 * u, cy - 8 * u, 15 * u, 18 * u, 0, 0, WS.TAU); g.clip();
@@ -10347,6 +10349,16 @@ window.WS = window.WS || {};
         g.moveTo(cx + (2 + i * 8) * u, cy - 2 * u);
         g.lineTo(cx + (5 + i * 8) * u, cy + 14 * u);
         g.stroke();
+      }
+      // a little drawstring pouch at her hip - a few of her own namesake
+      // beans painted right on the character, not just thrown around her
+      poly(g, [[cx + 17 * u, cy + 1 * u], [cx + 25 * u, cy + 2 * u],
+        [cx + 24 * u, cy + 11 * u], [cx + 16 * u, cy + 10 * u]], wood.lo, wood.line, u * 0.7);
+      g.strokeStyle = wood.dark; g.lineWidth = 1 * u;
+      g.beginPath(); g.moveTo(cx + 17 * u, cy + 2 * u); g.lineTo(cx + 24 * u, cy + 3 * u); g.stroke();
+      const beanC = palette([0.62, 0.42, 0.20]);
+      for (const [bx2, by2, br2] of [[20, 6.5, 1.6], [22.6, 8, 1.4], [18.3, 8.6, 1.3]]) {
+        shaded(g, cx + bx2 * u, cy + by2 * u, br2 * u, br2 * 0.78 * u, beanC);
       }
       // front paws, together, the way a sitting cat holds them
       shaded(g, cx - 11 * u, cy + 15 * u, 6 * u, 7 * u, p);
@@ -10379,6 +10391,7 @@ window.WS = window.WS || {};
 
       // head, carried high and clear of the cloak
       shaded(g, cx - 20 * u, cy - 17 * u, 11 * u, 10 * u, p);
+      pelt(g, p, cx - 20 * u, cy - 17 * u, 11 * u, 10 * u, 0, 4, 0.35, 0.24);
       poly(g, [[cx - 28 * u, cy - 24 * u], [cx - 29 * u, cy - 36 * u],
         [cx - 20 * u, cy - 25 * u]], p.lo, p.line, u);
       poly(g, [[cx - 16 * u, cy - 25 * u], [cx - 13 * u, cy - 36 * u],
@@ -10388,6 +10401,14 @@ window.WS = window.WS || {};
         robe.mid, robe.line, u * 0.9);
       poly(g, [[cx - 27 * u, cy - 15 * u], [cx - 33 * u, cy - 13 * u],
         [cx - 27 * u, cy - 11 * u]], p.hi, p.line, u);      // muzzle
+      // nose and whiskers - the two marks that turn a muzzle into a face
+      g.fillStyle = p.dark;
+      g.beginPath(); g.moveTo(cx - 31 * u, cy - 14 * u); g.lineTo(cx - 28.5 * u, cy - 15 * u);
+      g.lineTo(cx - 28.5 * u, cy - 12.6 * u); g.closePath(); g.fill();
+      g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 0.5 * u; g.lineCap = 'round';
+      for (const wy of [-15.6, -13.6, -11.6]) {
+        g.beginPath(); g.moveTo(cx - 30 * u, cy + wy * u); g.lineTo(cx - 40 * u, cy + (wy - 1.2) * u); g.stroke();
+      }
       eyes(g, cx - 22 * u, cy - 18 * u, 4.5 * u, 1.9 * u, '#a8f26a');
 
       // the staff: planted beside the stall, a gnarled length of wood
@@ -17064,7 +17085,7 @@ window.WS = window.WS || {};
     coffin: { art: 'coffin', tint: [0.85, 0.85, 0.95], size: 30, noMagnet: true },
     graveblade: { art: 'graveblade', tint: [0.85, 0.20, 0.25], size: 30, noMagnet: true },
     twinglaive: { art: 'twinglaive', tint: [0.55, 1.0, 0.25], size: 30, noMagnet: true },
-    merchant: { art: 'beans', tint: [0.90, 0.52, 0.22], size: 46, noMagnet: true },
+    merchant: { art: 'beans', tint: [0.90, 0.52, 0.22], size: 56, noMagnet: true },
   };
 
   /* HOW EXPENDABLE EACH KIND IS when the field is full and something has to
@@ -23332,6 +23353,37 @@ window.WS = window.WS || {};
         ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(p.x, p.y, size * 0.9 + 6 * WS.sin(time * 2), 0, WS.TAU); ctx.stroke();
         ctx.restore();
+      }
+
+      if (p.kind === 'merchant') {
+        /* She IS named Beans - so she throws some. Three, thrown one after
+         * another from around her paw in a looping arc that empties and
+         * restarts, rather than orbiting her forever: a real toss reads as
+         * a toss because it lands and stops, even if the next one is a
+         * third of a second behind it. */
+        const originX = p.x - size * 0.065, originY = y + size * 0.165;
+        for (let i = 0; i < 3; i++) {
+          const t = (time * 0.6 + i * 0.333) % 1;
+          if (t > 0.82) continue;            // a beat of rest between throws
+          const tt = t / 0.82;
+          const dir = i % 2 === 0 ? -1 : 1;
+          const bx = originX + dir * tt * size * 0.42;
+          const by = originY - WS.sin(tt * WS.PI) * size * 0.32 + tt * size * 0.1;
+          ctx.save();
+          ctx.globalAlpha = tt < 0.85 ? 1 : (1 - tt) / 0.15;   // settles rather than pops
+          ctx.translate(bx, by);
+          ctx.rotate(tt * 5 * dir);
+          // a warm, light bean with a dark rim - the pad it flies over is
+          // nearly this same brown, so the fill alone all but vanished
+          ctx.fillStyle = '#e0a850';
+          ctx.strokeStyle = '#5c3a1a';
+          ctx.lineWidth = WS.max(0.8, size * 0.012);
+          ctx.beginPath(); ctx.ellipse(0, 0, size * 0.075, size * 0.05, 0, 0, WS.TAU);
+          ctx.fill(); ctx.stroke();
+          ctx.fillStyle = 'rgba(255,255,255,.65)';
+          ctx.beginPath(); ctx.ellipse(-size * 0.02, -size * 0.015, size * 0.028, size * 0.015, 0, 0, WS.TAU); ctx.fill();
+          ctx.restore();
+        }
       }
       ctx.globalAlpha = 1;
     }

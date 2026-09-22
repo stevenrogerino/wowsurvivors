@@ -1791,8 +1791,10 @@
 
       // haunches: the seat. Wide and low, the mass a sitting cat rests on.
       shaded(g, cx + 6 * u, cy + 9 * u, 20 * u, 17 * u, p);
+      pelt(g, p, cx + 6 * u, cy + 9 * u, 20 * u, 17 * u, 0, 7, 0.35, 0.32);
       // chest, up and forward of the haunches, narrower and carried high
       shaded(g, cx - 6 * u, cy - 8 * u, 15 * u, 18 * u, p);
+      pelt(g, p, cx - 6 * u, cy - 8 * u, 15 * u, 18 * u, 0, 5, 0.3, 0.26);
       // a pale chest patch, so the silhouette isn't one flat colour front-on
       g.save();
       g.beginPath(); g.ellipse(cx - 6 * u, cy - 8 * u, 15 * u, 18 * u, 0, 0, WS.TAU); g.clip();
@@ -1807,6 +1809,16 @@
         g.moveTo(cx + (2 + i * 8) * u, cy - 2 * u);
         g.lineTo(cx + (5 + i * 8) * u, cy + 14 * u);
         g.stroke();
+      }
+      // a little drawstring pouch at her hip - a few of her own namesake
+      // beans painted right on the character, not just thrown around her
+      poly(g, [[cx + 17 * u, cy + 1 * u], [cx + 25 * u, cy + 2 * u],
+        [cx + 24 * u, cy + 11 * u], [cx + 16 * u, cy + 10 * u]], wood.lo, wood.line, u * 0.7);
+      g.strokeStyle = wood.dark; g.lineWidth = 1 * u;
+      g.beginPath(); g.moveTo(cx + 17 * u, cy + 2 * u); g.lineTo(cx + 24 * u, cy + 3 * u); g.stroke();
+      const beanC = palette([0.62, 0.42, 0.20]);
+      for (const [bx2, by2, br2] of [[20, 6.5, 1.6], [22.6, 8, 1.4], [18.3, 8.6, 1.3]]) {
+        shaded(g, cx + bx2 * u, cy + by2 * u, br2 * u, br2 * 0.78 * u, beanC);
       }
       // front paws, together, the way a sitting cat holds them
       shaded(g, cx - 11 * u, cy + 15 * u, 6 * u, 7 * u, p);
@@ -1839,6 +1851,7 @@
 
       // head, carried high and clear of the cloak
       shaded(g, cx - 20 * u, cy - 17 * u, 11 * u, 10 * u, p);
+      pelt(g, p, cx - 20 * u, cy - 17 * u, 11 * u, 10 * u, 0, 4, 0.35, 0.24);
       poly(g, [[cx - 28 * u, cy - 24 * u], [cx - 29 * u, cy - 36 * u],
         [cx - 20 * u, cy - 25 * u]], p.lo, p.line, u);
       poly(g, [[cx - 16 * u, cy - 25 * u], [cx - 13 * u, cy - 36 * u],
@@ -1848,6 +1861,14 @@
         robe.mid, robe.line, u * 0.9);
       poly(g, [[cx - 27 * u, cy - 15 * u], [cx - 33 * u, cy - 13 * u],
         [cx - 27 * u, cy - 11 * u]], p.hi, p.line, u);      // muzzle
+      // nose and whiskers - the two marks that turn a muzzle into a face
+      g.fillStyle = p.dark;
+      g.beginPath(); g.moveTo(cx - 31 * u, cy - 14 * u); g.lineTo(cx - 28.5 * u, cy - 15 * u);
+      g.lineTo(cx - 28.5 * u, cy - 12.6 * u); g.closePath(); g.fill();
+      g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 0.5 * u; g.lineCap = 'round';
+      for (const wy of [-15.6, -13.6, -11.6]) {
+        g.beginPath(); g.moveTo(cx - 30 * u, cy + wy * u); g.lineTo(cx - 40 * u, cy + (wy - 1.2) * u); g.stroke();
+      }
       eyes(g, cx - 22 * u, cy - 18 * u, 4.5 * u, 1.9 * u, '#a8f26a');
 
       // the staff: planted beside the stall, a gnarled length of wood

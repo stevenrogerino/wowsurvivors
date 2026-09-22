@@ -16,7 +16,7 @@
     coffin: { art: 'coffin', tint: [0.85, 0.85, 0.95], size: 30, noMagnet: true },
     graveblade: { art: 'graveblade', tint: [0.85, 0.20, 0.25], size: 30, noMagnet: true },
     twinglaive: { art: 'twinglaive', tint: [0.55, 1.0, 0.25], size: 30, noMagnet: true },
-    merchant: { art: 'beans', tint: [0.90, 0.52, 0.22], size: 46, noMagnet: true },
+    merchant: { art: 'beans', tint: [0.90, 0.52, 0.22], size: 56, noMagnet: true },
   };
 
   /* HOW EXPENDABLE EACH KIND IS when the field is full and something has to
