@@ -152,6 +152,13 @@
     spec.rank = w.level;
     spec.evolved = !!w.evolved;
     spec.blend = w.mods.blend || null;
+    /* How many of this shot are landing on the field at once, for the
+       renderer's rank-halo alone (see R.drawBolts): a `ring` overwrites this
+       with its own count right after calling fillSpec. Everything else fires
+       one bolt per call, or a fan/burst that leaves from the same point
+       across separate frames rather than the same frame, so 1 is correct for
+       them by default. */
+    spec.burst = 1;
     return spec;
   }
 
@@ -277,6 +284,9 @@
     fillSpec(player, w);
     const speed = speedOf(player, w);
     const count = countOf(player, w);
+    // Every one of these leaves the same point on the same frame, unlike a
+    // fan or a burst - see fillSpec's note on spec.burst.
+    spec.burst = count;
     const offset = WS.random() * WS.TAU;
     for (let i = 0; i < count; i++) {
       const a = offset + (i / count) * WS.TAU;

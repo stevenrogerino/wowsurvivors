@@ -1632,9 +1632,21 @@
            projectile, so the two milestones the player already feels are also
            the two they can see. */
         if (rank >= WS.Config.projRankA) {
-          const far = r * (rank >= WS.Config.projRankB ? 5.2 : 4.2) * (b.evolved ? 1.2 : 1);
+          /* A `ring` weapon launches every projectile from the same point on
+             the same frame - unlike a fan or a trickled burst, which spread
+             out or arrive across several frames - so at rank 8 evolved that
+             is six to eight of these 88px halos stamped on the player at
+             once. `lighter` compositing adds light wherever circles overlap,
+             worst exactly where they all start, and it buried Knifestorm's
+             own survivor in solid white. b.burst carries how many left
+             together (see weapon.js's fillSpec/ring); everything that isn't
+             a ring is burst 1 and this damping is exactly 1 - the milestone
+             glow a single shot earns is untouched. */
+          const burst = b.burst || 1;
+          const burstDamp = burst > 1 ? WS.max(0.45, 1 / WS.pow(burst, 0.22)) : 1;
+          const far = r * (rank >= WS.Config.projRankB ? 5.2 : 4.2) * (b.evolved ? 1.2 : 1) * burstDamp;
           const ring = ctx.createRadialGradient(0, 0, r * 1.6, 0, 0, far);
-          ring.addColorStop(0, WS.rgb(c, 0.20 / WS.sqrt(heft)));
+          ring.addColorStop(0, WS.rgb(c, (0.20 / WS.sqrt(heft)) * (burst > 1 ? 1 / WS.sqrt(burst) : 1)));
           ring.addColorStop(1, WS.rgb(c, 0));
           ctx.fillStyle = ring;
           ctx.beginPath(); ctx.arc(0, 0, far, 0, WS.TAU); ctx.fill();

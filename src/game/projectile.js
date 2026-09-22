@@ -61,6 +61,7 @@
     b.rank = spec.rank || 1;
     b.evolved = !!spec.evolved;
     b.blend = spec.blend || null;
+    b.burst = spec.burst || 1;
     b.homingTarget = spec.homingTarget || null;
     /* The FLAG, not just the mark. Keying this off the target alone meant a
        bolt launched able to seek but with nobody in particular to seek could
