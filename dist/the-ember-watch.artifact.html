@@ -23582,6 +23582,44 @@ window.WS = window.WS || {};
       ctx.strokeStyle = WS.rgb(b.colour, 1);
       ctx.lineWidth = WS.max(1.5, r * 0.28);
       ctx.beginPath(); ctx.arc(0, 0, r * 0.7, 0, WS.TAU); ctx.stroke();
+    } else if (b.art === 'missile' || b.art === 'ember' || b.art === 'shard' || b.art === 'arrow') {
+      /* Four shapes that got the universal dark OUTLINE every bolt has and
+         nothing else - dagger and shield are the only two with a line
+         INSIDE them, so next to those two a plain diamond or hexagon reads
+         as a flat sticker no matter how many corners its own outline has.
+         Same clip-and-stroke-in-source-over trick as the dagger's grip,
+         one to three lines each, chosen per shape rather than a single
+         reused pattern: */
+      ctx.save();
+      boltPath(ctx, b, r); ctx.clip('evenodd');
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = 'rgba(20,16,30,.55)';
+      ctx.lineWidth = WS.max(1, r * 0.1);
+      if (b.art === 'missile') {
+        // a gem cut: a spine and two facets off it, so a mote reads as
+        // faceted arcane crystal rather than a plain kite
+        ctx.beginPath(); ctx.moveTo(r * 1.6, 0); ctx.lineTo(-r * 0.9, 0); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(r * 0.15, -r * 0.85); ctx.lineTo(r * 0.5, 0); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(r * 0.15, r * 0.85); ctx.lineTo(r * 0.5, 0); ctx.stroke();
+      } else if (b.art === 'ember') {
+        // crack lines radiating off-centre, like a coal fracturing as it burns
+        ctx.beginPath(); ctx.moveTo(r * 0.1, -r * 0.1); ctx.lineTo(r * 0.7, -r * 0.95); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(r * 0.1, -r * 0.1); ctx.lineTo(-r * 1.35, -r * 0.15); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(r * 0.1, -r * 0.1); ctx.lineTo(-r * 0.85, r * 0.9); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(r * 0.1, -r * 0.1); ctx.lineTo(r * 1.5, 0); ctx.stroke();
+      } else if (b.art === 'shard') {
+        // a crystal spine down the middle plus two angled facets, so it
+        // reads as cut ice rather than a smooth hexagonal pebble
+        ctx.beginPath(); ctx.moveTo(r * 2.1, 0); ctx.lineTo(-r * 1.5, 0); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(r * 0.5, -r * 0.5); ctx.lineTo(-r * 0.3, r * 0.12); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(r * 0.5, r * 0.5); ctx.lineTo(-r * 0.3, -r * 0.12); ctx.stroke();
+      } else if (b.art === 'arrow') {
+        // fletching at the tail: two angled vanes and the nock between them
+        ctx.beginPath(); ctx.moveTo(-r * 1.6, -r * 0.16); ctx.lineTo(-r * 1.95, -r * 0.42); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-r * 1.6, r * 0.16); ctx.lineTo(-r * 1.95, r * 0.42); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-r * 1.15, -r * 0.16); ctx.lineTo(-r * 1.15, r * 0.16); ctx.stroke();
+      }
+      ctx.restore();
     }
   }
 
