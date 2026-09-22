@@ -23931,27 +23931,21 @@ window.WS = window.WS || {};
         const S = o.size;
         ctx.fillStyle = 'rgba(255,255,255,.95)';
         if (o.art === 'axe' || o.art === 'sword') {
-          /* A fifth pass, going back to the two-part structure (a blocky
-             poll plus a single wide-flaring blade) rather than the plain
-             wedge: closer to an actual battleaxe head, and the earlier
-             version of this idea read as a boat only because the poll and
-             the blade were two disconnected shapes with a gap between them
-             (mast-and-sail) and the blade's outer edge was one smooth
-             curve (a hull). Merging them into one continuous outline and
-             cutting the curve into straight facets removes both cues
-             without giving up the two-part silhouette - a visible panel
-             line still separates the block from the blade, so the "two
-             parts" read survives, it just isn't drawn as two shapes. */
+          /* Poll block and blade, as two separate shapes - picked directly
+             over every merged/fixed version that followed it. */
           const head = () => {
             ctx.beginPath();
-            ctx.moveTo(S * 0.10, -S * 0.30);
-            ctx.lineTo(S * 0.46, -S * 0.30);
-            ctx.lineTo(S * 0.68, -S * 0.12);
-            ctx.lineTo(S * 1.20, S * 0.04);
-            ctx.lineTo(S * 1.05, S * 0.36);
-            ctx.lineTo(S * 0.60, S * 0.56);
-            ctx.lineTo(S * 0.28, S * 0.36);
-            ctx.lineTo(S * 0.10, S * 0.10);
+            ctx.moveTo(S * 0.10, -S * 0.24);
+            ctx.lineTo(S * 0.46, -S * 0.24);
+            ctx.lineTo(S * 0.46, -S * 0.04);
+            ctx.lineTo(S * 0.10, 0);
+            ctx.closePath();
+            ctx.moveTo(S * 0.10, S * 0.04);
+            ctx.lineTo(S * 0.40, 0);
+            ctx.lineTo(S * 1.45, S * 0.20);
+            ctx.lineTo(S * 0.95, S * 0.72);
+            ctx.lineTo(S * 0.28, S * 0.44);
+            ctx.lineTo(S * 0.10, S * 0.20);
             ctx.closePath();
           };
           const haft = () => {
@@ -23992,16 +23986,14 @@ window.WS = window.WS || {};
              crescent moon regardless of how the silhouette is built. */
           ctx.strokeStyle = 'rgba(8,10,16,.72)';
           ctx.lineWidth = WS.max(1, S * 0.06);
-          // the panel line between the poll block and the blade
           ctx.beginPath();
-          ctx.moveTo(S * 0.68, -S * 0.12);
-          ctx.lineTo(S * 0.28, S * 0.36);
+          ctx.moveTo(S * 0.24, -S * 0.24);
+          ctx.lineTo(S * 0.24, -S * 0.04);
           ctx.stroke();
-          // the bevel along the blade's own outer edge
           ctx.beginPath();
-          ctx.moveTo(S * 1.20, S * 0.04);
-          ctx.lineTo(S * 1.05, S * 0.36);
-          ctx.lineTo(S * 0.60, S * 0.56);
+          ctx.moveTo(S * 0.46, S * 0.12);
+          ctx.lineTo(S * 1.28, S * 0.24);
+          ctx.lineTo(S * 0.95, S * 0.66);
           ctx.stroke();
           ctx.restore();
         } else {
