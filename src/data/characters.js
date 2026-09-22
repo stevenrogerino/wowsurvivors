@@ -85,32 +85,42 @@
       name: 'DZ', title: 'Who Could Not Stay Buried', className: 'Graveblade',
       art: 'graveblade', color: [0.77, 0.12, 0.23], weapon: 'reaving_arc',
       description: 'He healed until the Light curdled, and something colder answered. It has not let go since.',
-      perk: 'Curdled Light is innate - overheal erupts as shadow, and {perkShare%}% of healing that lands lashes out with it.',
+      perk: 'An old practice, not a birthright: take up Blood Rite and healing curdles '
+        + '{perkShare%}% harder for you than it does for anyone else who has taken the same rite.',
       maxHealth: 155, moveSpeed: 200, armor: 2, pickupRadius: 58, healthRegen: 2.0,
       perkShare: 0.20,
-      apply: (p, c) => {
-        p.curdled += 1;
-        p.curdleOverheal = WS.max(p.curdleOverheal, WS.Config.curdleOverheal);
-        p.curdleShare += c.perkShare;
-      },
+      signatureBlessing: 'blood_rite',
+      /* Curdled Light used to be free at character select - felAttuned's own
+         restructuring (see ruinseeker below) made that the odd one out: every
+         class's identity power is something anyone can reach through a
+         blessing, with the class that owns it a little further ahead of
+         everyone else who took the same one. curdleShare is what carries that
+         edge here, and like Ruinseeker's felBonus it is inert until Blood
+         Rite (or anything else that sets curdled) actually turns the system on. */
+      apply: (p, c) => { p.curdleShare += c.perkShare; },
       unlockHint: 'Let healing curdle. When enough Light has rotted in one run, a blade will answer.',
     },
     ruinseeker: {
       name: 'Nerosus', title: 'The Spineless One', className: 'Ruinseeker',
       art: 'ruinseeker', color: [0.64, 0.19, 0.79], weapon: 'verdant_lance',
       description: 'Burned out both eyes to see the ruin clearly. Says it was worth it. Has not blinked since.',
-      perk: 'Born to the ruin: overkill always feeds Ruinform, it gathers '
-        + '{perkFel%}% faster, and the form can be held without pause - no one '
-        + 'else recovers from it quickly enough to do that.',
+      perk: 'Born to the ruin, not given it free: take up the Ruinous Pact and it '
+        + 'answers {perkFel%}% faster for you, and recovers quicker afterward than '
+        + 'it does for anyone else who has sworn the same oath.',
       maxHealth: 120, moveSpeed: 235, armor: 0, pickupRadius: 60, healthRegen: 0,
       perkDodge: 0.05, perkFel: 0.35,
-      /* ruinborn is what the Ruinous Pact CANNOT grant. The perk used to set
-         felAttuned and nothing else - the same flag the pact sets - and the
-         pact also carried +30% fel gain, so a paladin running it charged the
-         meter faster than the class whose identity it is, and held the form
-         permanently from two ranks of Ruin Hunger. */
+      signatureBlessing: 'ruinous_pact',
+      /* felAttuned/ruinborn used to be free at character select - which made
+         Ruinform a power only this one class could ever touch, unlike every
+         other identity mechanic in the game (Curdled Light, Dark Bargain,
+         Arcane Overflow) which anyone can reach through a blessing. Now the
+         Ruinous Pact is what turns the system on for everyone, Ruinseeker
+         included; felBonus and dodgeChance stay unconditional flavor - inert
+         on fel gain until something sets felAttuned, same as Graveblade's
+         curdleShare is inert until something sets curdled. What stays
+         exclusive is ruinborn itself, granted only when THIS class takes the
+         Pact (see blessings.js) - a deeper recovery floor, not a bigger one. */
       apply: (p, c) => {
-        p.felAttuned += 1; p.ruinborn += 1;
         p.felBonus += c.perkFel;
         p.dodgeChance += c.perkDodge;
       },

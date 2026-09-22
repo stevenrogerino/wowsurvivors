@@ -55,7 +55,8 @@
     area: {
       name: 'Expanse', art: 'expand', quality: 'uncommon',
       description: '+{v%}% effect area', max: 5, v: 0.12,
-      detail: 'Bigger auras and splashes, wider orbits, longer chain leaps.',
+      detail: 'Bigger auras, zones, orbits and novas. Chain and beam weapons gain REACH from '
+        + 'this (longer leaps, longer lines), not damage - look to pierce or count for those instead.',
       apply: (p, up) => { p.areaMultiplier += up.v; },
     },
     quantity: {
@@ -67,7 +68,9 @@
     luck: {
       name: 'Fortune', art: 'coin', quality: 'uncommon',
       description: '+{v%}% luck (better and more drops)', max: 4, v: 0.15,
-      detail: 'Better odds of coins, potions, sapper charges, and lodestones.',
+      detail: 'Better odds of coins, potions, sapper charges, and lodestones - but every rank here '
+        + 'is a rank not spent on clear speed, which is what actually keeps a build alive early. '
+        + 'A strong late-game luxury, a weak early priority.',
       apply: (p, up) => { p.luck += up.v; },
     },
     wisdom: {
@@ -97,7 +100,7 @@
     },
     warding_light: {
       name: 'Warding Light', art: 'aegis', quality: 'rare',
-      description: 'A warding light blocks one hit entirely. Recharges over time.', max: 3,
+      description: 'Blocks the next single hit against you completely, then recharges.', max: 3,
       detail: 'Blocks one hit every {Config.blockInterval1} / {Config.blockInterval2} / {Config.blockInterval3} seconds by rank.',
       apply: (p) => {
         const c = WS.Config;
@@ -157,8 +160,11 @@
          soulRending is a rank counter, and this upgrade's own `v` was a
          COPY of Config.felPerRank that nothing read. A duplicated number is
          a number that will disagree with itself eventually. */
-      description: '+{Config.felPerRank%}% fel from overkill, and +{Config.metaDurationPerRank}s of Ruinform', max: 5,
-      detail: 'Every scrap of overkill feeds the ruin faster, and the transformation holds a second longer per rank.',
+      description: '+{Config.felPerRank%}% fel from overkill, +{Config.metaDurationPerRank}s of Ruinform, '
+        + 'and a shorter wait before it can answer again', max: 5,
+      detail: 'Every scrap of overkill feeds the ruin faster, the transformation holds a second longer '
+        + 'per rank, and the recovery window after it ends shrinks too - though it never fully closes '
+        + 'unless the ruin is already part of you.',
       offer: (p) => p.felAttuned > 0,
       apply: (p) => { p.soulRending += 1; },
     },

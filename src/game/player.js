@@ -421,16 +421,16 @@
   /* ----------------------------------------------------------------- fel - */
   /** How long the ruin takes to answer again once the form ends.
    *
-   *  Ruin Hunger shortens it for everyone, but only the ruinborn can close it
-   *  completely: at max rank the Ruinseeker's window is zero and the form
-   *  chains straight back, while a Ruinous Pact on any other class bottoms
-   *  out at the floor. That gap is the whole of the difference between the
-   *  class and the blessing, and it is a hard one - it holds at any level of
-   *  overkill, which is not true of any rate or multiplier. */
+   *  Ruin Hunger shortens it for everyone, and the ruinborn always close it
+   *  further: at max rank the Ruinseeker's window floors at
+   *  metaRecoveryBornFloor (89.7% uptime) while a Ruinous Pact on any other
+   *  class floors at metaRecoveryFloor (79.3%). Neither reaches permanent any
+   *  more - the gap is real and holds at any level of overkill, but it is a
+   *  ten-point edge now, not the difference between mortal and unkillable. */
   Player.ruinRecovery = function (p) {
     const cfg = WS.Config;
     const step = cfg.metaRecoveryPerRank * p.soulRending;
-    if (p.ruinborn > 0) return WS.max(0, cfg.metaRecoveryBorn - step);
+    if (p.ruinborn > 0) return WS.max(cfg.metaRecoveryBornFloor, cfg.metaRecoveryBorn - step);
     return WS.max(cfg.metaRecoveryFloor, cfg.metaRecovery - step);
   };
 

@@ -196,21 +196,27 @@
     return choices;
   };
 
-  /** Three random blessings, never re-offering one already taken. */
+  /** Three random blessings, never re-offering one already taken. A class's
+   *  signature blessing (Ruinous Pact for the Ruinseeker, Blood Rite for the
+   *  Graveblade) always fills one of the three slots while it is still
+   *  available - the draft can still hand either to anyone, but the class
+   *  whose identity it is is never unlucky enough to miss it. */
   LevelUp.buildBlessingChoices = function (p) {
     const ids = WS.BlessingOrder.filter((id) => !p.blessingsTaken || !p.blessingsTaken[id]);
-    const choices = [];
-    for (let i = 0; i < WS.min(3, ids.length); i++) {
-      const id = ids.splice(WS.randInt(0, ids.length - 1), 1)[0];
+    const picks = [];
+    const sig = p.character && p.character.signatureBlessing;
+    if (sig && ids.includes(sig)) picks.push(ids.splice(ids.indexOf(sig), 1)[0]);
+    const slots = WS.min(3, ids.length + picks.length);
+    while (picks.length < slots) picks.push(ids.splice(WS.randInt(0, ids.length - 1), 1)[0]);
+    return picks.map((id) => {
       const b = WS.Blessings[id];
-      choices.push({
+      return {
         type: 'blessing', id, art: b.art, quality: b.quality || 'legendary',
         name: b.name,
         description: WS.template(b.description, b),
         note: 'Blessing - permanent for this run',
-      });
-    }
-    return choices;
+      };
+    });
   };
 
   LevelUp.apply = function (p, choice) {

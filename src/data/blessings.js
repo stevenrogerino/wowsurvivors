@@ -101,7 +101,11 @@
       name: 'Ruinous Pact', art: 'soulrend', quality: 'legendary',
       description: 'Overkill is no longer wasted: damage past the killing blow feeds the ruin, and it feeds {felGain%}% faster. Fill the meter and you become the monster.',
       felGain: 0.30,
-      apply: (p, b) => { p.felAttuned += 1; p.felBonus += b.felGain; },
+      apply: (p, b) => {
+        p.felAttuned += 1; p.felBonus += b.felGain;
+        // Ruinborn is what only the Ruinseeker's own oath grants - see characters.js.
+        if (p.characterId === 'ruinseeker') p.ruinborn += 1;
+      },
     },
     unyielding: {
       name: 'Unyielding Faith', art: 'aegis', quality: 'legendary',

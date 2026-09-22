@@ -149,7 +149,14 @@
     metaRecovery: 4.0,
     metaRecoveryBorn: 2.5,
     metaRecoveryPerRank: 0.5,
-    metaRecoveryFloor: 1.5,
+    /* At max Ruin Hunger (rank 5) with metaDuration+metaDurationPerRank*5 = 13s
+     * of uptime per form: metaRecoveryBornFloor gives the ruinborn 13/14.5 =
+     * 89.7% uptime, never fully permanent any more. metaRecoveryFloor gives
+     * everyone else 13/16.4 = 79.3% - the same ~10.4-point gap, so the
+     * ruinborn is reliably ahead but never unkillable-while-transformed the
+     * way 0 recovery made it. */
+    metaRecoveryBornFloor: 1.5,
+    metaRecoveryFloor: 3.4,
     metaDuration: 8.0,
     metaDamageMult: 2.00,
     metaCooldownMult: 0.60,
