@@ -23036,6 +23036,34 @@ window.WS = window.WS || {};
 
   R.drawZones = function (ctx, time) {
     const zones = WS.Projectile.zones;
+    /* Each of these is already, on its own admission a few lines down, one of
+       the two biggest things drawn in the game - forty-odd thousand pixels,
+       four gradients, two edges, twenty rotating ticks - and unlike a bolt or
+       a flash a zone SITS there for its whole multi-second duration rather
+       than fading in under a second. Arcane Overflow firing Hallowed Ring
+       repeatedly stacks several of these on top of each other for as long as
+       the gems keep coming, which is the other half of the reported lag
+       alongside the nova rings. Four is already more overlapping zones than
+       any single glance can tell apart, so past that the extras keep their
+       ground-burn, corona and the damage they tick (untouched) but drop the
+       gradients and spinning detail nothing can read anyway. */
+    const busy = zones.count > 4;
+    /* The one gradient every zone keeps even past `busy` - it is what makes
+       a zone read as energy rather than a plain disc, so it has to survive
+       every mode this function has. But it is additive, and a zone always
+       spawns AT THE PLAYER, so overflow-stacked zones from the same weapon
+       are not scattered like bolts - they are perfectly concentric, the
+       same circle redrawn on top of itself. `lighter` compositing then adds
+       their alphas at every radius, not just at one crowded point, so a
+       sqrt-style damping (right for bolts, which spread out and only
+       overlap near the muzzle) still saturated the whole disc to flat
+       white. Linear damping is the one that's actually correct for
+       "N identical circles stacked on the same center": it holds the total
+       to what a single zone already looked like, so a fifteen-deep stack
+       reads as the SAME field, not a blown-out searchlight - the additional
+       zones are still ticking their own damage, they just stop competing to
+       repaint ground the first one already lit. */
+    const stackDamp = zones.count > 1 ? 1 / zones.count : 1;
     ctx.save();
     for (let i = 0; i < zones.count; i++) {
       const z = zones.active[i];
@@ -23051,7 +23079,7 @@ window.WS = window.WS || {};
       // 1. Scorch. The ground goes darker under the effect, so it sits IN the
       //    world instead of floating over it.
       ctx.globalCompositeOperation = 'source-over';
-      if (!this.lite) {
+      if (!this.lite && !busy) {
       const burn = ctx.createRadialGradient(z.x, z.y, 0, z.x, z.y, R);
       burn.addColorStop(0, `rgba(0,0,0,${0.28 * fade})`);
       burn.addColorStop(0.75, `rgba(0,0,0,${0.16 * fade})`);
@@ -23069,12 +23097,12 @@ window.WS = window.WS || {};
       const hot = 1 + 0.10 * (zr - 1) + (z.evolved ? 0.5 : 0);
       ctx.globalCompositeOperation = 'lighter';
       const grd = ctx.createRadialGradient(z.x, z.y, R * 0.15, z.x, z.y, R);
-      grd.addColorStop(0, WS.rgb(z.colour, 0.34 * fade * hot));
-      grd.addColorStop(0.62, WS.rgb(z.colour, 0.17 * fade * hot));
+      grd.addColorStop(0, WS.rgb(z.colour, 0.34 * fade * hot * stackDamp));
+      grd.addColorStop(0.62, WS.rgb(z.colour, 0.17 * fade * hot * stackDamp));
       grd.addColorStop(1, WS.rgb(z.colour, 0));
       ctx.fillStyle = grd;
       ctx.beginPath(); ctx.arc(z.x, z.y, R, 0, WS.TAU); ctx.fill();
-      if (zr >= WS.Config.projRankA && !this.lite) {
+      if (zr >= WS.Config.projRankA && !this.lite && !busy) {
         const far = R * (zr >= WS.Config.projRankB ? 1.26 : 1.15) * (z.evolved ? 1.1 : 1);
         const halo = ctx.createRadialGradient(z.x, z.y, R * 0.9, z.x, z.y, far);
         halo.addColorStop(0, WS.rgb(z.colour, 0.18 * fade));
@@ -23085,19 +23113,22 @@ window.WS = window.WS || {};
       // what a discovery has mixed into it, at the heart of the field
       if (z.blend) {
         const bl = ctx.createRadialGradient(z.x, z.y, 0, z.x, z.y, R * 0.45);
-        bl.addColorStop(0, WS.rgb(z.blend, 0.30 * fade));
+        bl.addColorStop(0, WS.rgb(z.blend, 0.30 * fade * stackDamp));
         bl.addColorStop(1, WS.rgb(z.blend, 0));
         ctx.fillStyle = bl;
         ctx.beginPath(); ctx.arc(z.x, z.y, R * 0.45, 0, WS.TAU); ctx.fill();
       }
 
       // 3. Two edges: a soft one just inside, a bright hairline on the rim.
+      // Same concentric-stacking problem as the energy fill above, and the
+      // same fix: these are solid strokes, not a gradient, but N of them
+      // laid on the same ring in `lighter` mode saturate exactly as fast.
       const breathe = 0.98 + 0.02 * WS.sin(time * 4 + z.phase);
-      ctx.globalAlpha = 0.3 * fade;
+      ctx.globalAlpha = 0.3 * fade * stackDamp;
       ctx.strokeStyle = WS.rgb(z.colour, 1);
       ctx.lineWidth = 6;
       ctx.beginPath(); ctx.arc(z.x, z.y, R * breathe * 0.94, 0, WS.TAU); ctx.stroke();
-      ctx.globalAlpha = 0.85 * fade;
+      ctx.globalAlpha = 0.85 * fade * stackDamp;
       ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(z.x, z.y, R * breathe, 0, WS.TAU); ctx.stroke();
 
@@ -23106,7 +23137,7 @@ window.WS = window.WS || {};
       ctx.globalAlpha = 0.55 * fade;
       ctx.lineWidth = 2;
       const spin = time * 0.5 + z.phase;
-      for (let n = 0; this.lite ? false : n < 12; n++) {
+      for (let n = 0; (this.lite || busy) ? false : n < 12; n++) {
         const a = spin + (n / 12) * WS.TAU;
         const ca = WS.cos(a), sa = WS.sin(a);
         ctx.beginPath();
@@ -23129,7 +23160,7 @@ window.WS = window.WS || {};
        * graduations. Same language as the rim, applied to the ninety per
        * cent of the effect that had none - and all of it inside the radius
        * that damages, so the field still says exactly where it reaches. */
-      if (!this.lite) {
+      if (!this.lite && !busy) {
         ctx.globalAlpha = 0.34 * fade;
         ctx.lineWidth = 1.5;
         for (const k of [0.40, 0.66]) {
@@ -23566,6 +23597,21 @@ window.WS = window.WS || {};
 
   R.drawBolts = function (ctx) {
     const bolts = WS.Projectile.bolts;
+    /* Arcane Overflow fires every weapon at once on an 8% roll per gem
+       collected, and with a vacuum build gathering gems fast that can land
+       several times a second - each one a normal weapon's WORTH of bolts,
+       stacked on top of whatever the field already had. The damage from
+       that is the whole point of the blessing and untouched here; what
+       spiked was the render cost, because every bolt on a busy frame still
+       paid for a trail gradient and a multi-stop halo gradient each, and a
+       canvas gradient is not cheap to build 100+ times a frame. Past a
+       point no player is counting individual blades anyway - the field
+       reads as a wall of light either way - so a frame this full switches
+       every bolt to the same flat, single-fill glow `this.lite` already
+       uses for low-quality mode. Nothing here changes what a bolt IS: its
+       damage, count, and target are decided long before this function ever
+       runs. */
+    const busy = bolts.count > 70;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < bolts.count; i++) {
@@ -23597,7 +23643,7 @@ window.WS = window.WS || {};
          fast one draws a hard line - which is the cue for how quickly a shot
          crosses the field, and the one that makes a seeking missile's curve
          legible instead of a dot teleporting along an arc. */
-      if (b.trail !== false && !this.lite) {
+      if (b.trail !== false && !this.lite && !busy) {
         const speed = WS.sqrt(b.vx * b.vx + b.vy * b.vy);
         // The streak has to clear the bolt's own glow, which reaches r*2.4, or
         // it just thickens the blob. At 0.055 it did exactly that.
@@ -23627,7 +23673,7 @@ window.WS = window.WS || {};
       ctx.rotate(ang);
       // The glow is one gradient object per bolt per frame, and a busy field
       // carries hundreds; flat colour at a smaller radius reads close enough.
-      if (this.lite) {
+      if (this.lite || busy) {
         ctx.fillStyle = WS.rgb(c, 0.4);
         ctx.beginPath(); ctx.arc(0, 0, r * 1.5, 0, WS.TAU); ctx.fill();
       } else {
@@ -24154,6 +24200,16 @@ window.WS = window.WS || {};
 
   R.drawFlashes = function (ctx) {
     const flashes = WS.FX.flashes;
+    /* A nova fires up to four of these per activation, one with up to sixteen
+       spike-rays, and Arcane Overflow calling every weapon at once on every
+       gem collected can land several activations a second - so a vacuum
+       build with a nova in its loadout fills this pool with big, ray-heavy
+       rings faster than any one of them can fade. Past a point they are
+       already reading as one wall of light rather than as individual hits,
+       so the spike rays and the bright core - the two priciest parts, one a
+       gradient and the other up to sixteen extra strokes - drop out; the
+       ring itself, which is what actually says a hit landed, does not. */
+    const busy = flashes.count > 30;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < flashes.count; i++) {
@@ -24168,7 +24224,7 @@ window.WS = window.WS || {};
 
       // The core: bright, and gone inside the first third. This is the hit.
       const core = WS.clamp(1 - t * 3, 0, 1);
-      if (core > 0 && !this.lite) {
+      if (core > 0 && !this.lite && !busy) {
         const cg = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.radius * 0.7);
         cg.addColorStop(0, WS.rgb(f.colour, 0.85 * core));
         cg.addColorStop(1, WS.rgb(f.colour, 0));
@@ -24198,7 +24254,7 @@ window.WS = window.WS || {};
        * through it, growing with the same radius, give a nova a shape of
        * its own and something concrete for rank to add to: more rays past
        * the milestones where other weapons gain a projectile. */
-      if (f.spikes > 0 && !this.lite) {
+      if (f.spikes > 0 && !this.lite && !busy) {
         ctx.globalAlpha = (1 - t) * 0.85;
         ctx.strokeStyle = WS.rgb(f.colour, 1);
         ctx.lineWidth = WS.max(1, f.radius * 0.03 * (1 - e) + 0.8);
