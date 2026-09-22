@@ -1798,7 +1798,9 @@ $('#save').onclick = async () => {
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
     status(`Saved ${n} change${n === 1 ? '' : 's'} to src/data/tuning.js`
-      + (j.logged ? ' and CHANGELOG-BALANCE.md.' : '.'), 'ok');
+      + (j.logged ? ' and CHANGELOG-BALANCE.md' : '')
+      + (j.rebuilt ? ', rebuilt site/index.html.' : '. Site rebuild FAILED: ' + (j.rebuildError || 'unknown error')),
+      j.rebuilt ? 'ok' : 'bad');
   } catch (e) {
     status('Could not save: ' + e.message + ' — use Copy tuning.js instead.', 'bad');
   }

@@ -10,6 +10,12 @@
  * from the client, so there is no request that can make it write anywhere
  * else.
  *
+ * A save also rebuilds dist/the-ember-watch(.artifact).html and copies the
+ * plain bundle over site/index.html, via the same tools/bundle.js used for a
+ * manual ship - so /site always matches what the bench just previewed. This
+ * never touches git; committing and pushing is still a deliberate step the
+ * person takes on their own.
+ *
  * It binds to 127.0.0.1 only, and refuses a POST whose Origin is not this
  * server - a page on the open internet must not be able to reach a tool that
  * writes files, and a browser will happily send it one if nothing says no.
@@ -21,14 +27,28 @@
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const BENCH = path.join(__dirname, 'bench');
 const TUNING = path.join(ROOT, 'src', 'data', 'tuning.js');
 const CHANGELOG = path.join(ROOT, 'CHANGELOG-BALANCE.md');
+const BUNDLE = path.join(__dirname, 'bundle.js');
+const DIST_MAIN = path.join(ROOT, 'dist', 'the-ember-watch.html');
+const SITE_INDEX = path.join(ROOT, 'site', 'index.html');
 const HOST = '127.0.0.1';
 const PORT = +(process.env.PORT || process.argv[2] || 8770);
 const MAX_BODY = 4 * 1024 * 1024;
+
+/** Rebuilds both dist bundles and copies the plain one over site/index.html,
+ *  the same three steps a manual ship runs by hand. Local file writes only -
+ *  no git command ever runs from here. */
+function rebuildSite() {
+  execFileSync(process.execPath, [BUNDLE], { cwd: ROOT, stdio: 'pipe' });
+  execFileSync(process.execPath, [BUNDLE, '--artifact'], { cwd: ROOT, stdio: 'pipe' });
+  fs.mkdirSync(path.dirname(SITE_INDEX), { recursive: true });
+  fs.copyFileSync(DIST_MAIN, SITE_INDEX);
+}
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -127,9 +147,18 @@ const server = http.createServer((req, res) => {
           logged = true;
         }
         const n = Object.keys(overrides).length;
+        let rebuilt = true, rebuildError = null;
+        try {
+          rebuildSite();
+        } catch (e) {
+          rebuilt = false;
+          rebuildError = e.message;
+          console.error('site rebuild failed (tuning.js was still saved):', e.message);
+        }
         console.log(`saved ${n} override${n === 1 ? '' : 's'} -> src/data/tuning.js`
-          + (logged ? ' (+ CHANGELOG-BALANCE.md)' : ''));
-        send(res, 200, JSON.stringify({ ok: true, count: n, savedAt, logged }),
+          + (logged ? ' (+ CHANGELOG-BALANCE.md)' : '')
+          + (rebuilt ? ' (+ rebuilt site/index.html)' : ' (site rebuild FAILED)'));
+        send(res, 200, JSON.stringify({ ok: true, count: n, savedAt, logged, rebuilt, rebuildError }),
           'application/json; charset=utf-8');
       } catch (e) {
         console.error('save failed:', e.message);
