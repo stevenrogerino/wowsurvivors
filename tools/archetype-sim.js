@@ -107,6 +107,31 @@ const ARCHETYPES = [
     weapons: ['axe_gyre', 'reaving_arc', 'arcweb'],
     upgrades: ['vitality', 'might', 'armor', 'recovery', 'area'],
     blessings: ['bloodthirst', 'wild', 'kings'] },
+
+  /* Added for the follow-up pass: luck/drop-rate, pickup radius + speed, a
+     second flavor of Arcane Overflow, Dark Bargain's risk/reward, and pure
+     projectile-count (Duplicity) investment -- none of the original 16
+     archetypes isolated any of these five levers on their own. */
+  { name: 'shaman_luck_sapper', character: 'shaman', core: ['arcweb'],
+    weapons: ['arcweb', 'axe_gyre', 'hallowed_ring'],
+    upgrades: ['luck', 'magnet', 'wisdom', 'might', 'haste'],
+    blessings: ['fortune', 'wisdom', 'kings'] },
+  { name: 'hunter_magnet_speed', character: 'hunter', core: ['volley'],
+    weapons: ['volley', 'seeking_motes', 'moonbrand'],
+    upgrades: ['magnet', 'fleetfoot', 'wisdom', 'might', 'velocity'],
+    blessings: ['kings', 'wild', 'air'] },
+  { name: 'priest_overflow_nova', character: 'priest', core: ['dawnpulse', 'hallowed_ring'],
+    weapons: ['dawnpulse', 'hallowed_ring', 'judgement_disc', 'seeking_motes', 'moonbrand', 'volley'],
+    upgrades: ['wisdom', 'haste', 'area', 'recovery', 'might'],
+    blessings: ['arcane_overflow', 'ancestors', 'kings'] },
+  { name: 'warlock_dark_bargain', character: 'warlock', core: ['umbral_bolt', 'cinderfall'],
+    weapons: ['umbral_bolt', 'cinderfall', 'grave_tether'],
+    upgrades: ['dark_bargain', 'might', 'haste', 'wisdom', 'precision'],
+    blessings: ['kings', 'fel', 'wisdom'] },
+  { name: 'rogue_quantity_projectiles', character: 'rogue', core: ['knifestorm'],
+    weapons: ['knifestorm', 'volley', 'seeking_motes'],
+    upgrades: ['quantity', 'precision', 'ferocity', 'haste', 'might'],
+    blessings: ['kings', 'air', 'fel'] },
 ];
 
 /* ------------------------------------------------------ in-page policy -- */
@@ -209,6 +234,21 @@ function pickBlessing(build, choices) {
       WS.Game.startRun('thornhollow', build.character);
       const p = WS.Game.player;
 
+      /* Luck/economy instrumentation: how many of each pickup kind this run
+         actually rolled. Pickup.onKill rolls gold/potion/bomb/stone/hourglass
+         independently per kill at luck-scaled chances; nothing on the run
+         object already counts these by kind (WS.Save.stats.gemsCollected is
+         XP gems, a different pool), so it is tallied here the same way
+         tune-unions.js wraps WS.Enemy.damage to read a number the game
+         doesn't already expose. */
+      const pickupCounts = { coin: 0, potion: 0, bomb: 0, stone: 0, hourglass: 0, chest: 0, cache: 0 };
+      const realSpawn = WS.Pickup.spawn;
+      WS.Pickup.spawn = function (kind) {
+        const r = realSpawn.apply(this, arguments);
+        if (r && pickupCounts[kind] !== undefined) pickupCounts[kind]++;
+        return r;
+      };
+
       const snapshots = [];
       let ci = 0;
       const power = () => {
@@ -306,6 +346,11 @@ function pickBlessing(build, choices) {
         gold: run ? run.gold : 0,
         damageDone: run ? Math.round(run.damageDone) : 0,
         damageTaken: run ? Math.round(run.damageTaken) : 0,
+        damagePrevented: run ? Math.round(run.damagePrevented) : 0,
+        pickups: pickupCounts,
+        finalLuck: +p.luck.toFixed(2),
+        finalPickupRadius: Math.round(p.pickupRadius),
+        finalMoveSpeed: Math.round(p.moveSpeed),
         lowestHpPct: Math.round(lowestHpFrac * 100),
         maxEnemies,
         weapons: p.weapons.map((w) => w.id + ':' + w.level + (w.evolved ? 'E' : '')),
