@@ -1088,20 +1088,23 @@
             }
             g.restore();
 
-            // the curl: two full turns, ending in a waxed bead at the tip
+            // the curl: two and a half turns now, ending in a waxed bead -
+            // wound from exactly where the mass tip ends, so the spiral
+            // reads as the hair itself curling rather than a separate
+            // ornament stuck on next to it.
             g.save();
-            g.translate(cx + dir * 26, lip - 9.0);
+            g.translate(cx + dir * 25.5, lip - 9.4);
             g.scale(dir, 1);
             g.strokeStyle = cfg.hair.core;
             g.lineWidth = 1.7;
             g.lineCap = 'round';
             g.beginPath();
-            const turns = 2.1, steps = 40;
+            const turns = 2.5, steps = 46;
             let lastX = 0, lastY = 0;
             for (let i = 0; i <= steps; i++) {
               const t = i / steps;
               const a = t * turns * WS.TAU + WS.PI * 0.3;
-              const r = 6.6 * (1 - t * 0.88) + 0.3;
+              const r = 7.0 * (1 - t * 0.9) + 0.28;
               lastX = WS.cos(a) * r; lastY = WS.sin(a) * r * 0.92;
               if (i === 0) g.moveTo(lastX, lastY); else g.lineTo(lastX, lastY);
             }
@@ -1147,14 +1150,20 @@
           g.lineTo(cx + HEAD_RX + 2, eyeY - 2.4);
           g.lineTo(cx - HEAD_RX - 2, eyeY - 1.6);
           g.closePath(); g.fill();
-          g.globalAlpha = 0.5;
-          for (const dir of [-1, 1]) {
-            g.beginPath();
-            g.moveTo(cx + dir * 2.6, eyeY + 2.4);
-            g.lineTo(cx + dir * 5.6, eyeY + 2);
-            g.lineTo(cx + dir * 5, eyeY + 7);
-            g.lineTo(cx + dir * 3.2, eyeY + 7.2);
-            g.closePath(); g.fill();
+          /* The tear streaks used to run from here down to eyeY+7.2 - which
+             is exactly the moustache's own territory on a survivor wearing
+             one, so they are skipped there. A moustache this size is the
+             more interesting thing to actually see in that space. */
+          if (!cfg.mustache) {
+            g.globalAlpha = 0.5;
+            for (const dir of [-1, 1]) {
+              g.beginPath();
+              g.moveTo(cx + dir * 2.6, eyeY + 2.4);
+              g.lineTo(cx + dir * 5.6, eyeY + 2);
+              g.lineTo(cx + dir * 5, eyeY + 7);
+              g.lineTo(cx + dir * 3.2, eyeY + 7.2);
+              g.closePath(); g.fill();
+            }
           }
           g.restore();
         }
