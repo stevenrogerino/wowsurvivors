@@ -24023,7 +24023,27 @@ window.WS = window.WS || {};
           ctx.lineTo(S * 1.28, S * 0.24);
           ctx.lineTo(S * 0.95, S * 0.66);
           ctx.stroke();
+          /* More surface than edge, so far: everything above traces the
+             outline. A rivet band across the poll and a fuller running
+             down the blade's own middle - not along its border - give the
+             white fill somewhere for the eye to land other than its own
+             silhouette, the same reason the bolt facets went in. */
+          ctx.beginPath();
+          ctx.moveTo(S * 0.10, -S * 0.14);
+          ctx.lineTo(S * 0.46, -S * 0.14);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(S * 0.30, S * 0.10);
+          ctx.lineTo(S * 1.15, S * 0.28);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(S * 0.20, S * 0.08);
+          ctx.lineTo(S * 0.28, S * 0.38);
+          ctx.stroke();
           ctx.restore();
+          ctx.fillStyle = 'rgba(8,10,16,.6)';
+          ctx.beginPath(); ctx.arc(S * 0.20, -S * 0.19, WS.max(0.6, S * 0.02), 0, WS.TAU); ctx.fill();
+          ctx.beginPath(); ctx.arc(S * 0.36, -S * 0.19, WS.max(0.6, S * 0.02), 0, WS.TAU); ctx.fill();
         } else {
           ctx.beginPath();
           ctx.moveTo(0, -S * 0.7); ctx.lineTo(S * 0.28, 0);
