@@ -135,7 +135,7 @@
       if (WS.Pickup.spawn('merchant',
         WS.clamp(player.x + WS.cos(a) * 400, 80, WS.CONST.WORLD_WIDTH - 80),
         WS.clamp(player.y + WS.sin(a) * 400, 80, WS.CONST.WORLD_HEIGHT - 80))) {
-        WS.Game.toast('Beans sets up shop', 'The cat druid is selling eggs - walk over to spend your coin.');
+        WS.Game.toast('Beans sets up shop', '"COME GET SOME BEANS... I MEAN EGGS!" Walk over to spend your coin.');
       }
     }
 
