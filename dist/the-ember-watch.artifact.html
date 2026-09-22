@@ -5995,44 +5995,103 @@ window.WS = window.WS || {};
           g.restore();
         }
         if (cfg.mustache) {
-          /* A COMICALLY LARGE CURLY MOUSTACHE - Vonnra's own mark, drawn
-             nowhere else in the cast. This is not trying to read as facial
-             hair at a glance the way the warrior's beard does; it is trying
-             to read as a comically large curly moustache, well past the
-             width of the skull it is attached to, with a tip that winds
-             through a turn and a half rather than just rounding off.
+          /* THE MOUSTACHE. Vonnra's own mark, drawn nowhere else in the
+             cast, and not a subtle one - the first pass read as "facial
+             hair, a bit wide"; this one is meant to be the first thing
+             about her a player notices. Four things make that true rather
+             than just a bigger version of a small shape:
+
+               profile   it DROOPS before it sweeps - down and out from
+                         the lip, then hard up into the curl. A shape that
+                         only tapers reads as a horn; the droop is what
+                         makes it read as hair with weight to it.
+               reach     the tip lands past HEAD_RX*2 out from centre -
+                         wider than the skull it grows from, the way the
+                         chest brand and the crown are held to their own
+                         proportions and this is deliberately not.
+               curl      two full turns, not one and a half, ending in a
+                         waxed bead rather than just running out of line.
+               texture   strands with the sweep and a sheen along the top
+                         edge - the same "a gradient reads as nothing, an
+                         edge reads as a shape" rule everything else in
+                         this file is built on, applied to hair instead of
+                         plate for the first time in the rig.
+
              Anchored off eyeY for the same reason the beard is - guessing
              at the jaw draws the whole thing over the eyes. */
           const lip = eyeY + 5.4;
+          const hi = cfg.hair.key, dk = cfg.hair.line;
           for (const dir of [-1, 1]) {
             const top = [
-              [cx + dir * 1, lip - 1.4], [cx + dir * 5, lip - 1.0], [cx + dir * 9, lip - 1.8],
-              [cx + dir * 12.5, lip - 3.4], [cx + dir * 15, lip - 5.4],
+              [cx + dir * 1, lip - 1.0], [cx + dir * 4, lip + 0.6], [cx + dir * 8, lip + 1.6],
+              [cx + dir * 13, lip + 0.6], [cx + dir * 18, lip - 2.0], [cx + dir * 22.5, lip - 5.8],
+              [cx + dir * 25.5, lip - 9.4],
             ];
             const bottom = [
-              [cx + dir * 15.4, lip - 4.2], [cx + dir * 12.5, lip - 0.4], [cx + dir * 8.5, lip + 1.8],
-              [cx + dir * 4, lip + 2.4], [cx + dir * 1, lip + 1.4],
+              [cx + dir * 26.2, lip - 7.6], [cx + dir * 22.5, lip - 2.4], [cx + dir * 18, lip + 2.4],
+              [cx + dir * 13, lip + 4.8], [cx + dir * 8, lip + 4.6], [cx + dir * 4, lip + 2.6],
+              [cx + dir * 1, lip + 1.2],
             ];
-            panel(g, top.concat(bottom), cfg.hair);
-            // the curl: wound enough to read as a spiral, not a blob
+            const mass = top.concat(bottom);
+            panel(g, mass, cfg.hair);
+            const tracePath = () => {
+              g.beginPath();
+              g.moveTo(mass[0][0], mass[0][1]);
+              for (let i = 1; i < mass.length; i++) g.lineTo(mass[i][0], mass[i][1]);
+              g.closePath();
+            };
+
+            // sheen: a bright streak along the top, the groomed look
             g.save();
-            g.translate(cx + dir * 15.2, lip - 5.0);
+            tracePath(); g.clip();
+            g.strokeStyle = hi; g.globalAlpha = 0.5; g.lineWidth = 0.7;
+            g.beginPath();
+            g.moveTo(cx + dir * 3, lip - 0.6);
+            g.quadraticCurveTo(cx + dir * 12, lip - 0.6, cx + dir * 20, lip - 3.6);
+            g.stroke();
+
+            // strands, following the sweep - real texture, not a silhouette
+            g.strokeStyle = dk; g.globalAlpha = 0.4; g.lineWidth = 0.35;
+            for (let i = 0; i < 6; i++) {
+              const t = i / 5;
+              const x0 = cx + dir * (2 + t * 20), y0 = lip + 3.6 - t * 8.4;
+              const x1 = cx + dir * (5 + t * 21.5), y1 = lip - 5.6 - t * 3.6;
+              g.beginPath();
+              g.moveTo(x0, y0);
+              g.quadraticCurveTo((x0 + x1) / 2 + dir * 1.5, (y0 + y1) / 2, x1, y1);
+              g.stroke();
+            }
+            g.restore();
+
+            // the curl: two full turns, ending in a waxed bead at the tip
+            g.save();
+            g.translate(cx + dir * 26, lip - 9.0);
             g.scale(dir, 1);
             g.strokeStyle = cfg.hair.core;
-            g.lineWidth = 1.5;
+            g.lineWidth = 1.7;
             g.lineCap = 'round';
             g.beginPath();
-            const turns = 1.6, steps = 24;
+            const turns = 2.1, steps = 40;
+            let lastX = 0, lastY = 0;
             for (let i = 0; i <= steps; i++) {
               const t = i / steps;
-              const a = t * turns * WS.TAU + WS.PI * 0.35;
-              const r = 4.6 * (1 - t * 0.86) + 0.4;
-              const x = WS.cos(a) * r, y = WS.sin(a) * r * 0.92;
-              if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
+              const a = t * turns * WS.TAU + WS.PI * 0.3;
+              const r = 6.6 * (1 - t * 0.88) + 0.3;
+              lastX = WS.cos(a) * r; lastY = WS.sin(a) * r * 0.92;
+              if (i === 0) g.moveTo(lastX, lastY); else g.lineTo(lastX, lastY);
             }
             g.stroke();
+            g.fillStyle = cfg.hair.core;
+            g.beginPath(); g.arc(lastX, lastY, 0.85, 0, WS.TAU); g.fill();
             g.restore();
           }
+          // the tuft where the two halves meet
+          g.fillStyle = cfg.hair.shade;
+          g.beginPath();
+          g.moveTo(cx - 1.1, lip - 0.6);
+          g.quadraticCurveTo(cx, lip - 3.2, cx + 1.1, lip - 0.6);
+          g.quadraticCurveTo(cx, lip + 0.4, cx - 1.1, lip - 0.6);
+          g.closePath(); g.fill();
         }
         if (cfg.browband) {
           /* A band of iron across the brow. It is what a man who will not wear
