@@ -119,7 +119,24 @@
     curdleOverheal: 1.00,
     curdleShare: 0.25,
     curdlePerRank: 0.15,
-    curdleCoefficient: 1.00,
+    /* The coverage buff (curdleRadius, below) got Curdled Light to roughly
+     * 10-15% of a real weapon's output even at max investment - a coverage
+     * lever can't close a gap that size, because healing income itself was
+     * never sized like a weapon's damage stat: no rank ladder, no evolution,
+     * nothing past a handful of flat regen sources. Measured against the
+     * dummy field (WS.Weapon.reach's own comparison basis, the same "dps"
+     * tools/sim.js prints for every weapon) with every curdleShare lever
+     * maxed (blessing + Graveblade's class perk + 5 ranks of the Curdled
+     * Light upgrade = 1.20 share) and a genuinely buildable healing income
+     * (base regen + maxed Recovery + a couple of the game's own healing
+     * weapons landing regularly, ~10-24 hp/s): coefficient 1.00 -> 2.15
+     * takes a fully-committed build from roughly 150-350 dps to 310-750,
+     * landing right at ~500 for the middle of that range (regen=16) - real
+     * weapon territory, not a rounding error next to it. A casual pickup
+     * (one Recovery rank, no other investment) stays modest at ~20-50 dps
+     * either way, since the multiplier only pays off once the healing
+     * income actually justifies it. */
+    curdleCoefficient: 2.15,
     /* Measured with tools/curdled-sim.js against a real, moving, killable
      * crowd (gauntlet): 110->140 is +43% total damage for the shared
      * curdleShare=0.25 baseline and +48% for Graveblade's 0.45 - coverage,
