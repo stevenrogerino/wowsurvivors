@@ -23921,27 +23921,29 @@ window.WS = window.WS || {};
         const S = o.size;
         ctx.fillStyle = 'rgba(255,255,255,.95)';
         if (o.art === 'axe' || o.art === 'sword') {
-          /* A third pass. Two rounds of a wide, roughly AS-TALL-AS-LONG
-             wedge both still read as a blob at 20-32px, faceted edge or
-             not - and the reason isn't the edge, it's the aspect ratio.
-             The dagger this sits beside is a knife shape for exactly one
-             reason worth stealing: it is about three times longer than it
-             is wide, so its silhouette can only ever be read as elongated,
-             never as round. This head is built the same way - a hatchet
-             profile, narrow at the eye and reaching well out from the haft
-             before it ever gets as wide as it's going to get - rather than
-             a flared crescent that is nearly as tall as it is long and so
-             looks circular from any distance an anti-aliased 20px shape is
-             ever seen at. */
+          /* A fourth pass. A symmetric elongated wedge (the previous round)
+             fixed the round-blob problem but still read as generic, not as
+             an axe specifically - and every attempt to widen it back out
+             for a more axe-like silhouette immediately collapsed back into
+             a blob, a leaf, or (with a flat top and a curved bottom both
+             trying to read at once) a little sailboat. What actually reads
+             as an axe head at this size is a single-bit profile: a
+             straight, near-flat SPINE on one edge, and a distinctly wider,
+             faceted cutting edge on the other - built from straight
+             segments throughout, because every curve tried here softened
+             into round at 20-32px the same way the mustache's curl did at
+             gameplay size. Checked un-rotated and large before it was ever
+             checked small, specifically to catch that collapse early
+             rather than after porting it in. */
           const head = () => {
             ctx.beginPath();
-            ctx.moveTo(S * 0.15, -S * 0.12);
-            ctx.lineTo(S * 0.15, S * 0.12);
-            ctx.lineTo(S * 0.32, S * 0.26);
-            ctx.lineTo(S * 1.15, S * 0.30);
-            ctx.lineTo(S * 1.38, 0);
-            ctx.lineTo(S * 1.15, -S * 0.30);
-            ctx.lineTo(S * 0.32, -S * 0.26);
+            ctx.moveTo(S * 0.15, -S * 0.10);
+            ctx.lineTo(S * 1.25, -S * 0.14);
+            ctx.lineTo(S * 1.50, S * 0.02);
+            ctx.lineTo(S * 1.30, S * 0.35);
+            ctx.lineTo(S * 0.95, S * 0.55);
+            ctx.lineTo(S * 0.55, S * 0.42);
+            ctx.lineTo(S * 0.20, S * 0.15);
             ctx.closePath();
           };
           const haft = () => {
@@ -23980,14 +23982,13 @@ window.WS = window.WS || {};
              the head - a line through the middle does not separate an edge
              from a body, it cuts the bit in half and the axe reads as a
              crescent moon regardless of how the silhouette is built. */
-          ctx.strokeStyle = 'rgba(8,10,16,.7)';
-          ctx.lineWidth = WS.max(1, S * 0.08);
+          ctx.strokeStyle = 'rgba(8,10,16,.72)';
+          ctx.lineWidth = WS.max(1, S * 0.06);
           ctx.beginPath();
-          ctx.moveTo(S * 0.32, S * 0.26);
-          ctx.lineTo(S * 1.15, S * 0.30);
-          ctx.lineTo(S * 1.38, 0);
-          ctx.lineTo(S * 1.15, -S * 0.30);
-          ctx.lineTo(S * 0.32, -S * 0.26);
+          ctx.moveTo(S * 1.25, -S * 0.14);
+          ctx.lineTo(S * 1.50, S * 0.02);
+          ctx.lineTo(S * 1.30, S * 0.35);
+          ctx.lineTo(S * 0.95, S * 0.55);
           ctx.stroke();
           ctx.restore();
         } else {
