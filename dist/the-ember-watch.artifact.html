@@ -23921,25 +23921,27 @@ window.WS = window.WS || {};
         const S = o.size;
         ctx.fillStyle = 'rgba(255,255,255,.95)';
         if (o.art === 'axe' || o.art === 'sword') {
-          /* A second pass on this shape: the wedge above was correct in
-             principle - concave eye, straight diagonals, sharp corners -
-             but the corners it flared to sat so close to the cutting edge's
-             own curve that at the size this actually draws at (20-32px,
-             not the sketch it was checked at) the toe and heel folded back
-             into the bit and the whole head anti-aliased into a round white
-             nub on a stick. A wider flare, taken further back down the
-             haft before it turns, keeps those corners a real distance from
-             the curve between them, so the silhouette survives getting
-             small the same way the chest emblem's spiral had to learn to. */
+          /* A third pass. Two rounds of a wide, roughly AS-TALL-AS-LONG
+             wedge both still read as a blob at 20-32px, faceted edge or
+             not - and the reason isn't the edge, it's the aspect ratio.
+             The dagger this sits beside is a knife shape for exactly one
+             reason worth stealing: it is about three times longer than it
+             is wide, so its silhouette can only ever be read as elongated,
+             never as round. This head is built the same way - a hatchet
+             profile, narrow at the eye and reaching well out from the haft
+             before it ever gets as wide as it's going to get - rather than
+             a flared crescent that is nearly as tall as it is long and so
+             looks circular from any distance an anti-aliased 20px shape is
+             ever seen at. */
           const head = () => {
             ctx.beginPath();
-            ctx.moveTo(S * 0.20, -S * 0.18);
-            ctx.quadraticCurveTo(S * 0.04, 0, S * 0.20, S * 0.18);
-            ctx.lineTo(S * 0.40, S * 0.24);
-            ctx.quadraticCurveTo(S * 0.62, S * 0.80, S * 1.06, S * 0.62);
-            ctx.quadraticCurveTo(S * 0.92, S * 0.20, S * 1.00, 0);
-            ctx.quadraticCurveTo(S * 0.92, -S * 0.20, S * 1.06, -S * 0.62);
-            ctx.quadraticCurveTo(S * 0.62, -S * 0.80, S * 0.40, -S * 0.24);
+            ctx.moveTo(S * 0.15, -S * 0.12);
+            ctx.lineTo(S * 0.15, S * 0.12);
+            ctx.lineTo(S * 0.32, S * 0.26);
+            ctx.lineTo(S * 1.15, S * 0.30);
+            ctx.lineTo(S * 1.38, 0);
+            ctx.lineTo(S * 1.15, -S * 0.30);
+            ctx.lineTo(S * 0.32, -S * 0.26);
             ctx.closePath();
           };
           const haft = () => {
@@ -23978,12 +23980,14 @@ window.WS = window.WS || {};
              the head - a line through the middle does not separate an edge
              from a body, it cuts the bit in half and the axe reads as a
              crescent moon regardless of how the silhouette is built. */
-          ctx.strokeStyle = 'rgba(8,10,16,.68)';
-          ctx.lineWidth = WS.max(1, S * 0.09);
+          ctx.strokeStyle = 'rgba(8,10,16,.7)';
+          ctx.lineWidth = WS.max(1, S * 0.08);
           ctx.beginPath();
-          ctx.moveTo(S * 0.50, -S * 0.60);
-          ctx.quadraticCurveTo(S * 0.94, -S * 0.66, S * 0.98, 0);
-          ctx.quadraticCurveTo(S * 0.94, S * 0.66, S * 0.50, S * 0.60);
+          ctx.moveTo(S * 0.32, S * 0.26);
+          ctx.lineTo(S * 1.15, S * 0.30);
+          ctx.lineTo(S * 1.38, 0);
+          ctx.lineTo(S * 1.15, -S * 0.30);
+          ctx.lineTo(S * 0.32, -S * 0.26);
           ctx.stroke();
           ctx.restore();
         } else {
