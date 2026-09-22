@@ -6088,11 +6088,15 @@ window.WS = window.WS || {};
             // floating next to it - the polar loop below starts at a real
             // radius from centre, which left a gap here before this moveTo.
             g.moveTo(0, 0);
+            // wound the OTHER way round (negative angle step): the tip
+            // sweeps up and out first, same as before, but then hooks back
+            // in toward the cheek as it tightens, instead of curling on
+            // out away from the face - a handlebar curls in, not out.
             const turns = 1.85, steps = 36;
             let lastX = 0, lastY = 0;
             for (let i = 0; i <= steps; i++) {
               const t = i / steps;
-              const a = t * turns * WS.TAU + WS.PI * 0.3;
+              const a = -t * turns * WS.TAU + WS.PI * 0.3;
               const r = 8.2 * (1 - t * 0.72) + 0.4;
               lastX = WS.cos(a) * r; lastY = WS.sin(a) * r * 0.92;
               g.lineTo(lastX, lastY);
