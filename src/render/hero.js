@@ -1088,18 +1088,18 @@
             }
             g.restore();
 
-            /* The curl, wound from exactly where the mass tip ends so it
-               reads as the hair itself curling rather than an ornament
-               stuck on next to it. 2.5 tight turns looked right blown up
-               to face height and turned into a solid dark dot at the sizes
-               survivors are actually drawn at on the field (40-96px,
-               against the 850px+ that check was made at) - a spiral that
-               tight anti-aliases its own windings together at those sizes,
-               which is a way for a curl to disappear that a screenshot at
-               one size will never catch. Fewer turns, spaced FURTHER apart
-               (a shallower radius falloff) and a thicker line: two rings
-               with real daylight between them survives being drawn small
-               the way a fine multi-turn spiral cannot. */
+            /* The curl. Earlier attempts wound a spiral CENTRED ON the tip,
+               which always bulges half its own loop out past the tip before
+               it can curl back - reads as curling out no matter which way
+               it winds. This one centres the spiral INSET from the tip,
+               back toward the cheek, and starts the path exactly at the
+               tip: the tip is then the single outermost point the coil
+               ever reaches, and everything after it winds inward, the way
+               a real handlebar hooks back over itself rather than looping
+               out past its own end. A thick line and a shallow single-ish
+               turn (not a fine multi-turn spiral) also keeps it reading as
+               a hook rather than anti-aliasing into a dot at the 40-96px
+               survivors are actually drawn at on the field. */
             g.save();
             g.translate(cx + dir * 25.5, lip - 9.4);
             g.scale(dir, 1);
@@ -1107,23 +1107,18 @@
             g.lineWidth = 2.1;
             g.lineCap = 'round';
             g.lineJoin = 'round';
+            const insetX = 7.0, insetY = 0.3, turns = 1.5, steps = 36;
+            const r0 = WS.sqrt(insetX * insetX + insetY * insetY);
+            const a0 = WS.atan2(insetY, insetX);
+            const centreX = -insetX, centreY = -insetY;
             g.beginPath();
-            // start the stroke AT the tip (the local origin) so the curl
-            // reads as one strand growing out of the mass, not a loop
-            // floating next to it - the polar loop below starts at a real
-            // radius from centre, which left a gap here before this moveTo.
             g.moveTo(0, 0);
-            // wound the OTHER way round (negative angle step): the tip
-            // sweeps up and out first, same as before, but then hooks back
-            // in toward the cheek as it tightens, instead of curling on
-            // out away from the face - a handlebar curls in, not out.
-            const turns = 1.85, steps = 36;
             let lastX = 0, lastY = 0;
             for (let i = 0; i <= steps; i++) {
               const t = i / steps;
-              const a = -t * turns * WS.TAU + WS.PI * 0.3;
-              const r = 8.2 * (1 - t * 0.72) + 0.4;
-              lastX = WS.cos(a) * r; lastY = WS.sin(a) * r * 0.92;
+              const a = a0 - t * turns * WS.TAU;
+              const r = r0 * (1 - t);
+              lastX = centreX + WS.cos(a) * r; lastY = centreY + WS.sin(a) * r * 0.92;
               g.lineTo(lastX, lastY);
             }
             g.stroke();
