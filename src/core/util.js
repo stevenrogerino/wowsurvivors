@@ -254,10 +254,10 @@ window.WS = window.WS || {};
   WS.CONST = {
     TICK_RATE: 1 / 60,          // the browser build simulates at 60 Hz
     MAX_TICKS_PER_FRAME: 5,
-    PLAYER_DAMAGE_SCALE: 0.91,
-    PLAYER_SPEED_SCALE: 0.91,
-    PLAYER_COOLDOWN_SCALE: 1.099,
-    ENEMY_SCALE: 1.08,
+    PLAYER_DAMAGE_SCALE: 1,
+    PLAYER_SPEED_SCALE: 1,
+    PLAYER_COOLDOWN_SCALE: 1,
+    ENEMY_SCALE: 1,
     WORLD_WIDTH: 1280,
     WORLD_HEIGHT: 720,
     MAX_ENEMIES: 320,
