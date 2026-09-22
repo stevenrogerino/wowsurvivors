@@ -6073,29 +6073,43 @@ window.WS = window.WS || {};
             }
             g.restore();
 
-            // the curl: two and a half turns now, ending in a waxed bead -
-            // wound from exactly where the mass tip ends, so the spiral
-            // reads as the hair itself curling rather than a separate
-            // ornament stuck on next to it.
+            /* The curl, wound from exactly where the mass tip ends so it
+               reads as the hair itself curling rather than an ornament
+               stuck on next to it. 2.5 tight turns looked right blown up
+               to face height and turned into a solid dark dot at the sizes
+               survivors are actually drawn at on the field (40-96px,
+               against the 850px+ that check was made at) - a spiral that
+               tight anti-aliases its own windings together at those sizes,
+               which is a way for a curl to disappear that a screenshot at
+               one size will never catch. Fewer turns, spaced FURTHER apart
+               (a shallower radius falloff) and a thicker line: two rings
+               with real daylight between them survives being drawn small
+               the way a fine multi-turn spiral cannot. */
             g.save();
             g.translate(cx + dir * 25.5, lip - 9.4);
             g.scale(dir, 1);
             g.strokeStyle = cfg.hair.core;
-            g.lineWidth = 1.7;
+            g.lineWidth = 2.1;
             g.lineCap = 'round';
+            g.lineJoin = 'round';
             g.beginPath();
-            const turns = 2.5, steps = 46;
+            // start the stroke AT the tip (the local origin) so the curl
+            // reads as one strand growing out of the mass, not a loop
+            // floating next to it - the polar loop below starts at a real
+            // radius from centre, which left a gap here before this moveTo.
+            g.moveTo(0, 0);
+            const turns = 1.85, steps = 36;
             let lastX = 0, lastY = 0;
             for (let i = 0; i <= steps; i++) {
               const t = i / steps;
               const a = t * turns * WS.TAU + WS.PI * 0.3;
-              const r = 7.0 * (1 - t * 0.9) + 0.28;
+              const r = 8.2 * (1 - t * 0.72) + 0.4;
               lastX = WS.cos(a) * r; lastY = WS.sin(a) * r * 0.92;
-              if (i === 0) g.moveTo(lastX, lastY); else g.lineTo(lastX, lastY);
+              g.lineTo(lastX, lastY);
             }
             g.stroke();
             g.fillStyle = cfg.hair.core;
-            g.beginPath(); g.arc(lastX, lastY, 0.85, 0, WS.TAU); g.fill();
+            g.beginPath(); g.arc(lastX, lastY, 1.05, 0, WS.TAU); g.fill();
             g.restore();
           }
           // the tuft where the two halves meet
