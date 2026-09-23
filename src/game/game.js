@@ -94,6 +94,7 @@
     this.leveling = false;
     this.leveling = false;
 
+    WS.Finale.reset();
     this.player = WS.Player.create(characterId);
     WS.WaveManager.reset(this.run.map);
     WS.Renderer.buildScenery(this.run.map);
@@ -168,6 +169,7 @@
     this.run = null;
     this.arenaBounds = null;
     WS.Arena.stop();
+    WS.Finale.reset();
     WS.FX.clear();
     WS.Enemy.clear();
     WS.Projectile.clear();
@@ -312,11 +314,21 @@
     return true;
   };
 
-  /** The midpoint draft. Unlike the opening one the run is already going, so
+  /* The drafts that interrupt a run already under way: the midpoint one,
+     and the one the finale's breather hands out at dawn. */
+  const DRAFTS = {
+    second: ['The Second Blessing', 'Halfway. The dark has taken your measure.',
+      'Halfway to dawn. One more.'],
+    third: ['The Third Blessing', 'The night is over. The one who made it is not.',
+      'Dawn. One last gift, for what is coming.'],
+  };
+
+  /** A draft mid-run. Unlike the opening one the run is already going, so
    *  this stops it rather than starting it. */
-  Game.offerBlessing = function () {
+  Game.offerBlessing = function (kind) {
     const choices = WS.LevelUp.buildBlessingChoices(this.player);
     if (!choices.length) return;        // nothing left unheld: say nothing
+    const words = DRAFTS[kind] || DRAFTS.second;
     this.blessingChoices = choices;
     this.state = 'blessing';
     this.timeScale = 1;
@@ -325,9 +337,8 @@
        of a fight reads as the game interrupting you rather than as a thing
        the run had been building toward. The banner's clock is stopped behind
        an overlay, so it plays when the cards clear. */
-    this.announce('The Second Blessing', 'Halfway. The dark has taken your measure.',
-      3.2, { kind: 'glory' });
-    WS.UI.openBlessing(choices, 'Halfway to dawn. One more, and no more.');
+    this.announce(words[0], words[1], 3.2, { kind: 'glory' });
+    WS.UI.openBlessing(choices, words[2]);
   };
 
   Game.chooseBlessing = function (choice) {
@@ -343,9 +354,10 @@
   };
 
   /* ------------------------------------------------------- run outcomes -- */
-  Game.victory = function () {
+  /** Thirty minutes held: the win is banked whatever happens next. */
+  Game.bankVictory = function () {
     const run = this.run;
-    if (run.victorious) return;
+    if (run.victorious) return false;
     run.victorious = true;
     WS.Save.stats.totalVictories++;
     WS.Save.db.unlocks.hyper[run.mapId] = true;
@@ -353,7 +365,43 @@
     this.state = 'over';
     this.running = false;
     WS.Achievements.check();
+    return true;
+  };
 
+  Game.victory = function () {
+    if (!this.bankVictory()) return;
+    this.celebrate();
+  };
+
+  /** 30:00 on a map with a finale. The win is banked exactly as it always
+   *  was, but the dawn is not the end of the story yet: the panel offers
+   *  the finale beside the endless options, and the cinematic waits for
+   *  whichever ending the player actually reaches. */
+  Game.reachDawn = function () {
+    if (!this.bankVictory()) return;
+    WS.Audio.play('victory');
+    WS.FX.screen('rgba(245,197,107,.3)', 1.0);
+    WS.UI.openVictory();
+  };
+
+  /** Back into the run from the dawn panel, to face the finale. */
+  Game.faceFinale = function () {
+    this.running = true;
+    this.state = 'playing';
+    WS.UI.closeOverlay();
+    WS.Finale.begin(this.run);
+  };
+
+  /** The finale is beaten. The story ends here, so the dawn plays here. */
+  Game.finaleVictory = function () {
+    this.state = 'over';
+    this.running = false;
+    WS.Achievements.check();
+    this.celebrate();
+  };
+
+  Game.celebrate = function () {
+    const run = this.run;
     /* Thirty minutes of holding the line earns more than a panel sliding up.
      *
      * The prologue's last line is "Hold until the light comes back"; this is
@@ -445,6 +493,7 @@
      * had not been one before. */
     if (reason === 'defeated') WS.FX.screen('rgba(226,72,61,.35)', 1.0);
     WS.Arena.stop();
+    WS.Finale.reset();
     WS.UI.openGameOver(reason);
   };
 
@@ -493,6 +542,7 @@
     if (!this.running) return;
 
     if (run.map.arena) WS.Arena.update(dt);
+    else if (WS.Finale.running()) WS.Finale.update(dt);
     else WS.WaveManager.update(dt, run);
     if (!this.running) return;
 
@@ -531,9 +581,13 @@
       return;
     }
 
-    // Victory is banked the moment the survivor reaches 30:00.
-    if (!run.victorious && !run.map.arena && run.time >= WS.Config.deathTime) {
-      this.victory();
+    /* Victory is banked the moment the survivor reaches 30:00 - and on a map
+       with a finale, that is also where the choice is: face what made the
+       night, or wait for Death. */
+    if (!run.victorious && !run.map.arena && !WS.Finale.running()
+      && run.time >= WS.Config.deathTime) {
+      if (WS.Finale.available(run)) this.reachDawn();
+      else this.victory();
       return;
     }
 

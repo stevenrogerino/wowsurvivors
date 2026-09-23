@@ -282,8 +282,9 @@
     const modeBits = [];
     if (run.hyper) modeBits.push('Hyper');
     if (run.mode === 'endless') modeBits.push('True Endless');
-    else if (run.victorious) modeBits.push('Overtime');
+    else if (run.victorious && !WS.Finale.running()) modeBits.push('Overtime');
     if (run.map.arena) modeBits.push('Eclipse Arena · Phase ' + WS.Arena.phase);
+    if (WS.Finale.running()) modeBits.push(WS.Finale.hudLabel());
     e.mode.textContent = modeBits.join(' · ');
 
     /* Cheap: a number compared once a frame, and a repaint only on the few
@@ -305,7 +306,8 @@
     const boss = WS.Enemy.leadBoss();
     if (boss) {
       e.boss.classList.remove('hidden');
-      if (e.bossName.textContent !== boss.template.name) e.bossName.textContent = boss.template.name;
+      const bossName = boss.displayName || boss.template.name;
+      if (e.bossName.textContent !== bossName) e.bossName.textContent = bossName;
       const pct = WS.clamp(boss.health / boss.maxHealth, 0, 1);
       e.bFill.style.strokeDashoffset = e.bossLen * (1 - pct);
       e.bossPct.textContent = `${WS.formatNumber(boss.health)} / ${WS.formatNumber(boss.maxHealth)}  ·  ${WS.round(pct * 100)}%`;
@@ -2032,13 +2034,31 @@
     const s = shell(run.map.name,
       `${WS.Config.difficulties[WS.Save.settings.difficulty].label}`
       + `${run.hyper ? ' · Hyper' : ''} · ${WS.Characters[run.characterId].name}`);
-    s.body.append(verdict('win', 'The night broke first',
-      `You held ${run.map.name} for thirty minutes. Death is on the field now — it always is.`,
-      runFigures(run, WS.Game.player)));
+    /* Three ways this panel can arrive: at 30:00 with a finale still to
+       face, at 30:00 on a battlefield that has none, and after the finale
+       has been beaten - where the story is over and only Death is left. */
+    const def = WS.Finales && WS.Finales[run.mapId];
+    const canFace = !!def && WS.Finale.available(run) && !run.finaleStarted;
+    if (run.finaleCleared && def && def.epilogue) {
+      s.body.append(verdict('win', def.epilogue[0],
+        `${def.epilogue[1]} Death is still out there, if you want it.`,
+        runFigures(run, WS.Game.player)));
+    } else if (canFace) {
+      s.body.append(verdict('win', 'Dawn, and not the end',
+        `You held ${run.map.name} for thirty minutes and the win is banked. `
+        + `${def.title} is still out there - or wait for Death, who always comes.`,
+        runFigures(run, WS.Game.player)));
+    } else {
+      s.body.append(verdict('win', 'The night broke first',
+        `You held ${run.map.name} for thirty minutes. Death is on the field now — it always is.`,
+        runFigures(run, WS.Game.player)));
+    }
     s.body.classList.add('fitted');
     s.body.append(buildSheet());
-    const claim = el('button', 'btn primary', 'Claim the win');
+    const claim = el('button', canFace ? 'btn' : 'btn primary', 'Claim the win');
     claim.addEventListener('click', () => WS.Game.endRun('victory'));
+    const face = canFace ? el('button', 'btn primary', 'Face ' + def.title) : null;
+    if (face) face.addEventListener('click', () => WS.Game.faceFinale());
     const fight = el('button', 'btn', 'Fight to the end');
     fight.addEventListener('click', () => {
       WS.Game.run.victorious = true;
@@ -2050,6 +2070,7 @@
     const endless = el('button', 'btn', 'True Endless');
     endless.addEventListener('click', () => WS.Game.continueEndless());
     s.foot.append(el('div', 'spacer'), fight, endless, claim);
+    if (face) s.foot.append(face);
     this.show(s.inner);
   };
 

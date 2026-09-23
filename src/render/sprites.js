@@ -3190,6 +3190,9 @@
     },
 
     has(art) { return !!CREATURES[art]; },
+    /** Adds an art from outside this file - the finale's machines are drawn
+     *  by src/render/finale-art.js and their portraits come through here. */
+    define(art, painter) { CREATURES[art] = painter; },
     clear() { cache.clear(); },
   };
 

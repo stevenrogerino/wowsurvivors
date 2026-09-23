@@ -129,7 +129,8 @@
     const enemies = WS.Enemy.pool.active;
     for (let i = enemies.length - 1; i >= 0; i--) {
       const e = enemies[i];
-      if (e.boss) WS.Enemy.hit(e, e.maxHealth * 0.08, 'bomb');
+      if (!e || e.untargetable) continue;
+      if (e.boss || e.part) WS.Enemy.hit(e, e.maxHealth * 0.08, 'bomb');
       else WS.Enemy.damage(e, e.health + 1, false, 'bomb');
     }
   };

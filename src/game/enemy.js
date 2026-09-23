@@ -56,13 +56,15 @@
 
   /* -------------------------------------------------------------- spawn -- */
   Enemy.spawn = function (id, x, y, scale, force) {
-    let template = WS.Enemies[id] || WS.Elites[id] || WS.Bosses[id];
+    let template = WS.Enemies[id] || WS.Elites[id] || WS.Bosses[id]
+      || (WS.FinaleUnits && WS.FinaleUnits[id]);
     if (!template) return null;
     const isBoss = !!WS.Bosses[id];
     const isElite = !!WS.Elites[id];
+    const isPart = !!template.part;
 
     if (this.pool.count >= WS.CONST.MAX_ENEMIES) {
-      if (!(isBoss || isElite || force) || !evictFodder()) return null;
+      if (!(isBoss || isElite || isPart || force) || !evictFodder()) return null;
     }
     const e = this.pool.acquire();
     if (!e) return null;
@@ -74,6 +76,19 @@
     e.radius = template.radius;
     e.boss = isBoss;
     e.elite = isElite;
+    /* The finale's machines and their parts. `untargetable` is a shield the
+       player's weapons do not even aim at - a hull behind its turrets, a
+       machine underground - and `dmgTaken` is armour or an opening. `hidden`
+       is untargetable AND not there: nothing drawn, nothing touched. */
+    e.part = isPart;
+    e.finale = !!template.finale;
+    e.untargetable = false;
+    e.hidden = false;
+    e.dmgTaken = 1;
+    e.host = null;
+    e.displayName = null;
+    e.finaleAdd = false;
+    e.finaleTag = 0;
     e.stationary = !!template.stationary;
     e.maxHealth = WS.floor(template.health * scale * WS.CONST.ENEMY_SCALE);
     e.health = e.maxHealth;
@@ -180,7 +195,7 @@
   Enemy.findCollision = function (x, y, radius, hitBy) {
     let found = null;
     this.grid.query(x, y, radius + 40, (e) => {
-      if (found || e._dead) return;
+      if (found || e._dead || e.untargetable) return;
       if (hitBy && hitBy.get(e) === e.spawnId) return;
       const reach = radius + e.radius;
       if (WS.dist2(x, y, e.x, e.y) <= reach * reach) found = e;
@@ -193,7 +208,7 @@
     let best = null, bestDist = range * range;
     for (let i = 0; i < this.pool.count; i++) {
       const e = this.pool.active[i];
-      if (e._dead || (excluded && excluded.has(e))) continue;
+      if (e._dead || e.untargetable || (excluded && excluded.has(e))) continue;
       const d = WS.dist2(x, y, e.x, e.y);
       if (d < bestDist) { bestDist = d; best = e; }
     }
@@ -341,7 +356,7 @@
       // blocks, or is mid-invulnerability; takeDamage decides what lands.
       let struck = false;
       e.contactCooldown -= dt;
-      if (!frozen && e.contactCooldown <= 0 && distance < e.radius + player.radius) {
+      if (!frozen && !e.hidden && e.contactCooldown <= 0 && distance < e.radius + player.radius) {
         e.contactCooldown = e.boss ? cfg.contactCooldownBoss : cfg.contactCooldownNormal;
         struck = true;
         WS.Player.takeDamage(player, e.damage, t.name);
@@ -358,7 +373,7 @@
         }
       }
 
-      if (e.boss && !t.arena && !frozen) {
+      if (e.boss && !t.arena && !t.finale && !frozen) {
         e.attackTimer -= dt;
         if (e.attackTimer <= 0) {
           this.bossAttack(e, dx, dy);
@@ -453,6 +468,7 @@
     const player = WS.Game.player;
     const crit = WS.random() < player.critChance;
     if (crit) amount *= player.critDamage;
+    if (e.dmgTaken !== 1) amount *= e.dmgTaken;
     this.damage(e, amount, crit, source);
     WS.FX.damage(e.x, e.y - e.radius * 0.6, amount, crit);
     WS.Audio.play(crit ? 'crit' : 'hit', e.x);
@@ -485,10 +501,11 @@
     while (i < this.pool.count) {
       const e = this.pool.active[i];
       const reach = radius + e.radius;
+      if (e.untargetable) { i++; continue; }
       if ((!hitBy || hitBy.get(e) !== e.spawnId) && WS.dist2(x, y, e.x, e.y) <= reach * reach) {
         if (hitBy) hitBy.set(e, e.spawnId);
         struck++;
-        if (knockback && !e.boss) {
+        if (knockback && !e.boss && !e.finale) {
           const [kx, ky] = WS.normalize(e.x - x, e.y - y);
           e.x += kx * knockback;
           e.y += ky * knockback;
@@ -508,6 +525,7 @@
     let i = 0;
     while (i < this.pool.count) {
       const e = this.pool.active[i];
+      if (e.untargetable) { i++; continue; }
       let t = ((e.x - x1) * dx + (e.y - y1) * dy) / lenSq;
       t = WS.clamp(t, 0, 1);
       const px = x1 + dx * t, py = y1 + dy * t;
@@ -572,6 +590,15 @@
       WS.Player.heal(player,
         WS.floor(player.maxHealth * player.bloodthirstHealPct) + player.bloodthirstHealFlat,
         'bloodthirst');
+    }
+
+    /* A finale's machine is not finished when its health is: a hull becomes
+       a wreck, a galleon crashes and its captain climbs out. What happens
+       next belongs to the encounter, not to the generic boss funeral. */
+    if (t.finale) {
+      this.pool.release(e);
+      WS.Finale.onUnitDead(e);
+      return;
     }
 
     if (e.boss) {

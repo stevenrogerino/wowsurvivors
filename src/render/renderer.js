@@ -355,7 +355,7 @@
   function healthBar(ctx, e) {
     if (e.health >= e.maxHealth) return;
     const pct = WS.clamp(e.health / e.maxHealth, 0, 1);
-    const champion = e.boss || e.elite;
+    const champion = e.boss || e.elite || e.part;
     let alpha = 1;
     if (!champion) {
       if (pct >= FODDER_BAR_AT) return;
@@ -482,6 +482,7 @@
     this.drawPlayerMark(ctx, player, time);
     this.drawAuras(ctx, player, time);
     if (WS.Arena.active) this.drawArena(ctx, time);
+    if (WS.Finale.stage !== 'idle') WS.FinaleArt.drawGround(ctx, time);
 
     this.drawCorpses(ctx);
 
@@ -506,6 +507,8 @@
     this.drawOrbits(ctx, player);
     this.drawBolts(ctx);
     this.drawBeams(ctx);
+
+    if (WS.Finale.stage !== 'idle') WS.FinaleArt.drawAir(ctx, time);
 
     /* ---- effects --------------------------------------------------------- */
     this.drawFlashes(ctx);
@@ -567,6 +570,7 @@
       ctx.fillStyle = grd;
       ctx.fillRect(0, 0, this.viewW, this.viewH);
     }
+    if (WS.Finale.stage !== 'idle') WS.FinaleArt.drawOverlay(ctx, time, this);
     this.drawBanner(ctx, run);
   };
 
@@ -603,6 +607,15 @@
 
   R.drawEnemy = function (ctx, e, time) {
     const t = e.template;
+    if (e.hidden) return;
+    /* The finale's machines have moving parts - a drill that turns, sails
+       that fill, a cockpit that opens - so they are drawn live rather than
+       stamped from a cached sprite. */
+    if (t.machine && WS.FinaleArt) {
+      WS.FinaleArt.drawUnit(ctx, e, time);
+      healthBar(ctx, e);
+      return;
+    }
     const size = e.spriteSize;
     const bob = WS.sin(e.bob) * (e.boss ? 3 : 2);
     shadow(ctx, e.x, e.y + e.radius * 0.55, e.radius * 0.85);
@@ -704,7 +717,8 @@
       ctx.restore();
     }
 
-    if (WS.Save.settings.showHealthBars || e.elite || e.boss) healthBar(ctx, e);
+    if (e.finale && WS.FinaleArt) WS.FinaleArt.adorn(ctx, e, time);
+    if (WS.Save.settings.showHealthBars || e.elite || e.boss || e.part) healthBar(ctx, e);
 
     if (e.elite && !e.boss) {
       ctx.font = `600 10px ${UI_FONT}`;

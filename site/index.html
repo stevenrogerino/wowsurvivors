@@ -2001,10 +2001,10 @@ window.WS = window.WS || {};
   WS.CONST = {
     TICK_RATE: 1 / 60,          // the browser build simulates at 60 Hz
     MAX_TICKS_PER_FRAME: 5,
-    PLAYER_DAMAGE_SCALE: 0.91,
-    PLAYER_SPEED_SCALE: 0.91,
-    PLAYER_COOLDOWN_SCALE: 1.099,
-    ENEMY_SCALE: 1.08,
+    PLAYER_DAMAGE_SCALE: 1,
+    PLAYER_SPEED_SCALE: 1,
+    PLAYER_COOLDOWN_SCALE: 1,
+    ENEMY_SCALE: 1,
     WORLD_WIDTH: 1280,
     WORLD_HEIGHT: 720,
     MAX_ENEMIES: 320,
@@ -2164,8 +2164,8 @@ window.WS = window.WS || {};
 
     thornsFlat: 10,
     thornsDamagePct: 0.40,
-    retributionBase: 5,
-    retributionPerRank: 4,
+    retributionBase: 4.55,
+    retributionPerRank: 3.64,
     retributionRange: 60,
     retributionRangePerRank: 20,
     retributionTick: 0.5,
@@ -2180,8 +2180,33 @@ window.WS = window.WS || {};
     curdleOverheal: 1.00,
     curdleShare: 0.25,
     curdlePerRank: 0.15,
-    curdleCoefficient: 1.00,
-    curdleRadius: 110,
+    /* The coverage buff (curdleRadius, below) got Curdled Light to roughly
+     * 10-15% of a real weapon's output even at max investment - a coverage
+     * lever can't close a gap that size, because healing income itself was
+     * never sized like a weapon's damage stat: no rank ladder, no evolution,
+     * nothing past a handful of flat regen sources. Measured against the
+     * dummy field (WS.Weapon.reach's own comparison basis, the same "dps"
+     * tools/sim.js prints for every weapon) with every curdleShare lever
+     * maxed (blessing + Graveblade's class perk + 5 ranks of the Curdled
+     * Light upgrade = 1.20 share) and a genuinely buildable healing income
+     * (base regen + maxed Recovery + a couple of the game's own healing
+     * weapons landing regularly, ~10-24 hp/s): coefficient 1.00 -> 2.15
+     * takes a fully-committed build from roughly 150-350 dps to 310-750,
+     * landing right at ~500 for the middle of that range (regen=16) - real
+     * weapon territory, not a rounding error next to it. A casual pickup
+     * (one Recovery rank, no other investment) stays modest at ~20-50 dps
+     * either way, since the multiplier only pays off once the healing
+     * income actually justifies it. */
+    curdleCoefficient: 2.15,
+    /* Measured with tools/curdled-sim.js against a real, moving, killable
+     * crowd (gauntlet): 110->140 is +43% total damage for the shared
+     * curdleShare=0.25 baseline and +48% for Graveblade's 0.45 - coverage,
+     * not overkill, since the burst applies its damage to every target in
+     * range rather than dividing it. curdleInterval was tested alongside it
+     * and measured within 2% either way (noise), so it's left alone; the
+     * pool's remainder already carries between ticks (see player.js), which
+     * is why a faster tick neither gains nor loses total output. */
+    curdleRadius: 140,
     curdleInterval: 0.50,
     gravebladeThreshold: 4000,
 
@@ -2210,9 +2235,16 @@ window.WS = window.WS || {};
     metaRecovery: 4.0,
     metaRecoveryBorn: 2.5,
     metaRecoveryPerRank: 0.5,
-    metaRecoveryFloor: 1.5,
+    /* At max Ruin Hunger (rank 5) with metaDuration+metaDurationPerRank*5 = 13s
+     * of uptime per form: metaRecoveryBornFloor gives the ruinborn 13/14.5 =
+     * 89.7% uptime, never fully permanent any more. metaRecoveryFloor gives
+     * everyone else 13/16.4 = 79.3% - the same ~10.4-point gap, so the
+     * ruinborn is reliably ahead but never unkillable-while-transformed the
+     * way 0 recovery made it. */
+    metaRecoveryBornFloor: 1.5,
+    metaRecoveryFloor: 3.4,
     metaDuration: 8.0,
-    metaDamageMult: 2.20,
+    metaDamageMult: 2.00,
     metaCooldownMult: 0.60,
     metaDurationPerRank: 1.0,
     glaiveMetas: 3,
@@ -3115,32 +3147,42 @@ window.WS = window.WS || {};
       name: 'DZ', title: 'Who Could Not Stay Buried', className: 'Graveblade',
       art: 'graveblade', color: [0.77, 0.12, 0.23], weapon: 'reaving_arc',
       description: 'He healed until the Light curdled, and something colder answered. It has not let go since.',
-      perk: 'Curdled Light is innate - overheal erupts as shadow, and {perkShare%}% of healing that lands lashes out with it.',
+      perk: 'An old practice, not a birthright: take up Blood Rite and healing curdles '
+        + '{perkShare%}% harder for you than it does for anyone else who has taken the same rite.',
       maxHealth: 155, moveSpeed: 200, armor: 2, pickupRadius: 58, healthRegen: 2.0,
       perkShare: 0.20,
-      apply: (p, c) => {
-        p.curdled += 1;
-        p.curdleOverheal = WS.max(p.curdleOverheal, WS.Config.curdleOverheal);
-        p.curdleShare += c.perkShare;
-      },
+      signatureBlessing: 'blood_rite',
+      /* Curdled Light used to be free at character select - felAttuned's own
+         restructuring (see ruinseeker below) made that the odd one out: every
+         class's identity power is something anyone can reach through a
+         blessing, with the class that owns it a little further ahead of
+         everyone else who took the same one. curdleShare is what carries that
+         edge here, and like Ruinseeker's felBonus it is inert until Blood
+         Rite (or anything else that sets curdled) actually turns the system on. */
+      apply: (p, c) => { p.curdleShare += c.perkShare; },
       unlockHint: 'Let healing curdle. When enough Light has rotted in one run, a blade will answer.',
     },
     ruinseeker: {
       name: 'Nerosus', title: 'The Spineless One', className: 'Ruinseeker',
       art: 'ruinseeker', color: [0.64, 0.19, 0.79], weapon: 'verdant_lance',
       description: 'Burned out both eyes to see the ruin clearly. Says it was worth it. Has not blinked since.',
-      perk: 'Born to the ruin: overkill always feeds Ruinform, it gathers '
-        + '{perkFel%}% faster, and the form can be held without pause - no one '
-        + 'else recovers from it quickly enough to do that.',
+      perk: 'Born to the ruin, not given it free: take up the Ruinous Pact and it '
+        + 'answers {perkFel%}% faster for you, and recovers quicker afterward than '
+        + 'it does for anyone else who has sworn the same oath.',
       maxHealth: 120, moveSpeed: 235, armor: 0, pickupRadius: 60, healthRegen: 0,
       perkDodge: 0.05, perkFel: 0.35,
-      /* ruinborn is what the Ruinous Pact CANNOT grant. The perk used to set
-         felAttuned and nothing else - the same flag the pact sets - and the
-         pact also carried +30% fel gain, so a paladin running it charged the
-         meter faster than the class whose identity it is, and held the form
-         permanently from two ranks of Ruin Hunger. */
+      signatureBlessing: 'ruinous_pact',
+      /* felAttuned/ruinborn used to be free at character select - which made
+         Ruinform a power only this one class could ever touch, unlike every
+         other identity mechanic in the game (Curdled Light, Dark Bargain,
+         Arcane Overflow) which anyone can reach through a blessing. Now the
+         Ruinous Pact is what turns the system on for everyone, Ruinseeker
+         included; felBonus and dodgeChance stay unconditional flavor - inert
+         on fel gain until something sets felAttuned, same as Graveblade's
+         curdleShare is inert until something sets curdled. What stays
+         exclusive is ruinborn itself, granted only when THIS class takes the
+         Pact (see blessings.js) - a deeper recovery floor, not a bigger one. */
       apply: (p, c) => {
-        p.felAttuned += 1; p.ruinborn += 1;
         p.felBonus += c.perkFel;
         p.dodgeChance += c.perkDodge;
       },
@@ -3166,7 +3208,7 @@ window.WS = window.WS || {};
   WS.Weapons = {
     seeking_motes: {
       name: 'Seeking Motes', school: 'arcane', behavior: 'aimed', art: 'missile',
-      cooldown: 0.85, damage: 6, speed: 370, projectiles: 3, pierce: 2, range: 560,
+      cooldown: 0.934, damage: 5.46, speed: 337, projectiles: 3, pierce: 2, range: 560,
       homing: true, life: 2.2, radius: 6, burst: true,
       description: 'A rapid volley of small seeking motes that curve through the crowd.',
       evolveName: 'Mote Cascade', evolvePairing: 'quantity',
@@ -3174,7 +3216,7 @@ window.WS = window.WS || {};
     },
     cinderfall: {
       name: 'Cinderfall', school: 'fire', behavior: 'aimed', art: 'ember',
-      cooldown: 1.60, damage: 34, speed: 380, projectiles: 1, pierce: 0, range: 600,
+      cooldown: 1.758, damage: 30.94, speed: 346, projectiles: 1, pierce: 0, range: 600,
       splash: 70, life: 2.4, radius: 10,
       description: 'A slow, heavy cinder that bursts on impact.',
       evolveName: 'Fallen Star', evolvePairing: 'area',
@@ -3182,7 +3224,7 @@ window.WS = window.WS || {};
     },
     rimeshard: {
       name: 'Rimeshard', school: 'frost', behavior: 'aimed', art: 'shard',
-      cooldown: 1.10, damage: 20, speed: 400, projectiles: 1, pierce: 1, range: 580,
+      cooldown: 1.209, damage: 18.2, speed: 364, projectiles: 1, pierce: 2, range: 580,
       slowFactor: 0.55, slowDuration: 2.0, life: 2.2, radius: 9,
       description: 'Bitter cold that slows whatever it strikes.',
       evolveName: 'Deepwinter', evolvePairing: 'haste',
@@ -3191,21 +3233,21 @@ window.WS = window.WS || {};
     arcweb: {
       name: 'Arcweb', school: 'nature', behavior: 'chain',
       color: [0.55, 0.80, 1.00], art: 'spark',
-      cooldown: 1.50, damage: 30, chains: 4, range: 250,
+      cooldown: 1.649, damage: 27.3, chains: 5, range: 250,
       description: 'Lightning that leaps from foe to foe.',
       evolveName: 'Skybreak', evolvePairing: 'precision',
       evolveDescription: 'The sky answers every call.',
     },
     dawnpulse: {
       name: 'Dawnpulse', school: 'holy', behavior: 'nova', art: 'ring',
-      cooldown: 2.40, damage: 30, radius: 150, expandTime: 0.35, knockback: 26,
+      cooldown: 2.638, damage: 27.3, radius: 150, expandTime: 0.35, knockback: 26,
       description: 'A ring of Light erupts outward from the survivor.',
       evolveName: 'Circle of Dawn', evolvePairing: 'vitality',
       evolveDescription: 'Each dawn mends the faithful.', evolvedHeal: 3,
     },
     verdant_lance: {
       name: 'Verdant Lance', school: 'nature', behavior: 'beam', art: 'beam',
-      cooldown: 1.30, damage: 22, range: 620, beamWidth: 26,
+      cooldown: 1.429, damage: 20.02, range: 620, beamWidth: 26,
       metaWidthMult: 1.8, color: [0.55, 1.00, 0.20],
       description: 'A lance of green fire that burns everything standing in its path.',
       evolveName: 'Verdant Gaze', evolvePairing: 'dodge',
@@ -3213,7 +3255,7 @@ window.WS = window.WS || {};
     },
     grave_tether: {
       name: 'Grave Tether', school: 'shadow', behavior: 'aimed', art: 'coil',
-      cooldown: 1.45, damage: 28, speed: 420, projectiles: 1, pierce: 1,
+      cooldown: 1.594, damage: 25.48, speed: 382, projectiles: 1, pierce: 2,
       range: 600, life: 2.4, radius: 10, heal: 4, color: [0.55, 0.20, 0.75],
       description: 'A coil of dark magic that wounds the living and knits your own flesh back together.',
       evolveName: 'Tether of Anguish', evolvePairing: 'wisdom',
@@ -3221,7 +3263,7 @@ window.WS = window.WS || {};
     },
     blightfield: {
       name: 'Blightfield', school: 'shadow', behavior: 'zone', art: 'zone',
-      cooldown: 3.90, damage: 13, radius: 130, duration: 4.5, tickRate: 0.45,
+      cooldown: 4.286, damage: 11.83, radius: 130, duration: 4.5, tickRate: 0.45,
       color: [0.45, 0.85, 0.35],
       description: 'Corrupts the ground underfoot; anything standing in it rots.',
       evolveName: 'Blighted Earth', evolvePairing: 'chilling_presence',
@@ -3229,7 +3271,7 @@ window.WS = window.WS || {};
     },
     reaving_arc: {
       name: 'Reaving Arc', school: 'shadow', behavior: 'nova', art: 'ring',
-      cooldown: 2.20, damage: 34, radius: 130, expandTime: 0.28, knockback: 20,
+      cooldown: 2.418, damage: 30.94, radius: 130, expandTime: 0.28, knockback: 20,
       heal: 6, color: [0.85, 0.15, 0.20],
       description: 'A sweeping graveblade that carves health out of the wound it makes.',
       evolveName: 'Rend and Mend', evolvePairing: 'recovery',
@@ -3237,14 +3279,14 @@ window.WS = window.WS || {};
     },
     hallowed_ring: {
       name: 'Hallowed Ring', school: 'holy', behavior: 'zone', art: 'zone',
-      cooldown: 3.60, damage: 11, radius: 120, duration: 4.0, tickRate: 0.5,
+      cooldown: 3.956, damage: 10.01, radius: 120, duration: 4.0, tickRate: 0.5,
       description: "Hallows the ground beneath the survivor's feet.",
       evolveName: 'Hallowed Ground', evolvePairing: 'armor',
       evolveDescription: 'Sacred ground that shelters as it burns.', evolvedHeal: 1,
     },
     umbral_bolt: {
       name: 'Umbral Bolt', school: 'shadow', behavior: 'aimed', art: 'bolt',
-      cooldown: 1.00, damage: 26, speed: 400, projectiles: 1, pierce: 2, range: 580,
+      cooldown: 1.099, damage: 23.66, speed: 364, projectiles: 1, pierce: 2, range: 580,
       life: 2.4, radius: 9,
       description: 'Bolts of shadow that tear straight through ranks.',
       evolveName: 'Ruin Bolt', evolvePairing: 'might',
@@ -3252,7 +3294,7 @@ window.WS = window.WS || {};
     },
     knifestorm: {
       name: 'Knifestorm', school: 'physical', behavior: 'ring', art: 'dagger',
-      cooldown: 1.30, damage: 18, speed: 380, projectiles: 6, pierce: 1,
+      cooldown: 1.429, damage: 16.38, speed: 346, projectiles: 6, pierce: 1,
       life: 0.9, radius: 8,
       description: 'A whirling ring of thrown steel.',
       evolveName: 'Steel Flurry', evolvePairing: 'fleetfoot',
@@ -3274,7 +3316,7 @@ window.WS = window.WS || {};
          keeps things off you, rather than the worst weapon on the list. The
          cooldown stays above the duration on purpose: at 3.4 it measured 174
          but never stops turning, and the weapon loses its rhythm. */
-      cooldown: 4.20, damage: 22, projectiles: 3, orbitRadius: 85, orbitSpeed: 4.2,
+      cooldown: 4.616, damage: 23.66, projectiles: 3, orbitRadius: 85, orbitSpeed: 4.2,
       duration: 3.2, radius: 20,
       description: 'Axes circle the survivor, shredding all who close in.',
       evolveName: 'Gyrestorm', evolvePairing: 'ferocity',
@@ -3282,7 +3324,7 @@ window.WS = window.WS || {};
     },
     volley: {
       name: 'Volley', school: 'physical', behavior: 'spray', art: 'arrow',
-      cooldown: 1.40, damage: 17, speed: 460, projectiles: 3, pierce: 1, range: 620,
+      cooldown: 1.539, damage: 15.47, speed: 419, projectiles: 3, pierce: 2, range: 620,
       spread: 0.16, life: 1.7, radius: 8,
       description: 'A widening spread of hunting arrows.',
       evolveName: 'Arrowfall', evolvePairing: 'velocity',
@@ -3290,7 +3332,7 @@ window.WS = window.WS || {};
     },
     moonbrand: {
       name: 'Moonbrand', school: 'arcane', behavior: 'aimed', art: 'moon',
-      cooldown: 1.20, damage: 24, speed: 320, projectiles: 1, pierce: 0, range: 560,
+      cooldown: 1.319, damage: 21.84, speed: 291, projectiles: 1, pierce: 0, range: 560,
       homing: true, life: 2.6, radius: 9,
       description: 'Moonlit flame that tracks its prey.',
       evolveName: 'Moonfall', evolvePairing: 'magnet',
@@ -3299,7 +3341,7 @@ window.WS = window.WS || {};
     },
     judgement_disc: {
       name: 'Judgement Disc', school: 'holy', behavior: 'bounce', art: 'shield',
-      cooldown: 2.60, damage: 30, speed: 430, projectiles: 1, bounces: 3, range: 600,
+      cooldown: 2.308, damage: 27.3, speed: 391, projectiles: 1, bounces: 5, range: 600,
       life: 3.0, radius: 11,
       description: 'A hurled shield that ricochets between enemies.',
       evolveName: 'Reckoning', evolvePairing: 'luck',
@@ -3373,28 +3415,28 @@ window.WS = window.WS || {};
      */
     union_firmament: {
       name: 'Firmament', school: 'arcane', behavior: 'storm', isUnion: true, art: 'moon',
-      cooldown: 1.05, damage: 20, strikes: 8, stormRadius: 270, splash: 72, radius: 12,
+      cooldown: 1.154, damage: 18.2, strikes: 8, stormRadius: 270, splash: 72, radius: 12,
       description: 'Sun and moon rain from the heavens without end.',
     },
     union_ruin: {
       name: 'Ruin Unbound', school: 'shadow', behavior: 'aimed', isUnion: true, art: 'chaos',
-      cooldown: 0.9, damage: 28, speed: 470, projectiles: 2, pierce: 4, range: 620,
+      cooldown: 0.989, damage: 25.48, speed: 428, projectiles: 2, pierce: 4, range: 620,
       splash: 82, homing: true, life: 2.6, radius: 12, color: [0.60, 0.30, 1.00],
       description: 'Ruin that devours everything in its path.',
     },
     union_steel: {
       name: 'Storm of Steel', school: 'physical', behavior: 'ring', isUnion: true, art: 'dagger',
-      cooldown: 0.85, damage: 18, speed: 440, projectiles: 12, pierce: 3, life: 1.1, radius: 9,
+      cooldown: 0.934, damage: 16.38, speed: 400, projectiles: 12, pierce: 3, life: 1.1, radius: 9,
       description: 'An unending cyclone of thrown steel.',
     },
     union_sanctuary: {
       name: 'Sanctuary', school: 'holy', behavior: 'nova', isUnion: true, art: 'ring',
-      cooldown: 1.8, damage: 26, radius: 205, expandTime: 0.4, knockback: 34,
+      cooldown: 1.978, damage: 23.66, radius: 205, expandTime: 0.4, knockback: 34,
       description: 'The Light claims this ground as its own.',
     },
     union_stormcall: {
       name: 'Stormcall', school: 'nature', behavior: 'orbit', isUnion: true, art: 'sword',
-      cooldown: 4.60, damage: 26, projectiles: 5, orbitRadius: 95, orbitSpeed: 5.0,
+      cooldown: 5.055, damage: 23.66, projectiles: 5, orbitRadius: 95, orbitSpeed: 5.0,
       duration: 4.0, radius: 22, procChain: 0.35, color: [0.45, 0.85, 1.00],
       description: 'Blessed blade of the Tempest: a cyclone of steel that answers every cut with lightning.',
     },
@@ -3454,132 +3496,132 @@ window.WS = window.WS || {};
     /* ------------------------------------------------------ Thornhollow ---- */
     lampling: {
       name: 'Lampling Tunneler', family: 'lampling', art: 'lampling', tint: [0.95, 0.85, 0.55],
-      health: 18, speed: 64, damage: 8, xp: 3, radius: 13,
+      health: 19, speed: 64, damage: 9, xp: 3, radius: 13,
     },
     boar: {
       name: 'Thicket Tusker', family: 'beast', art: 'boar', tint: [0.68, 0.46, 0.28],
-      health: 26, speed: 76, damage: 9, xp: 3, radius: 15,
+      health: 28, speed: 76, damage: 10, xp: 3, radius: 15,
     },
     wolf: {
       name: 'Longtooth Wolf', family: 'beast', art: 'wolf', tint: [0.62, 0.62, 0.68],
-      health: 22, speed: 92, damage: 8, xp: 4, radius: 14,
+      health: 24, speed: 92, damage: 9, xp: 4, radius: 14,
     },
     gilkin: {
       name: 'Gilkin Forager', family: 'gilkin', art: 'gilkin', tint: [0.45, 0.90, 0.60],
-      health: 20, speed: 88, damage: 7, xp: 4, radius: 14,
+      health: 22, speed: 88, damage: 8, xp: 4, radius: 14,
     },
     gilkin_tidecaller: {
       name: 'Gilkin Tidecaller', family: 'gilkin', art: 'gilkin', tint: [0.40, 0.65, 1.00],
-      health: 26, speed: 70, damage: 9, xp: 6, radius: 14, caster: true,
+      health: 28, speed: 70, damage: 10, xp: 6, radius: 14, caster: true,
       ranged: { range: 260, cooldown: 3.2, speed: 220, school: 'frost' },
     },
     mongrel: {
       name: 'Snarlpack Mongrel', family: 'mongrel', art: 'mongrel', tint: [0.85, 0.70, 0.45],
-      health: 48, speed: 60, damage: 13, xp: 6, radius: 18,
+      health: 52, speed: 60, damage: 14, xp: 6, radius: 18,
     },
     kerchief: {
       name: 'Kerchief Footpad', family: 'kerchief', art: 'bandit', tint: [1.00, 0.45, 0.40],
-      health: 55, speed: 95, damage: 13, xp: 8, radius: 16,
+      health: 59, speed: 95, damage: 14, xp: 8, radius: 16,
     },
     /* ------------------------------------------------------ Dustreach ---- */
     kerchief_pillager: {
       name: 'Kerchief Pillager', family: 'kerchief', art: 'bandit', tint: [1.00, 0.70, 0.40],
-      health: 40, speed: 68, damage: 11, xp: 8, radius: 15, caster: true,
+      health: 43, speed: 68, damage: 12, xp: 8, radius: 15, caster: true,
       ranged: { range: 280, cooldown: 2.8, speed: 240, school: 'fire' },
     },
     harvest_reaper: {
       name: 'Harvest Reaper', family: 'mechanical', art: 'golem', tint: [0.80, 0.70, 0.40],
-      health: 95, speed: 46, damage: 17, xp: 10, radius: 20,
+      health: 103, speed: 46, damage: 18, xp: 10, radius: 20,
       burst: { radius: 92, damagePct: 1.1, tint: [1.00, 0.62, 0.25] },
     },
     fleshripper: {
       name: 'Young Fleshripper', family: 'beast', art: 'vulture', tint: [0.85, 0.60, 0.40],
-      health: 34, speed: 100, damage: 10, xp: 6, radius: 14,
+      health: 37, speed: 100, damage: 11, xp: 6, radius: 14,
       orbit: { range: 150, spin: 1.0 },
     },
     coyote: {
       name: 'Coyote Packrunner', family: 'beast', art: 'wolf', tint: [0.82, 0.68, 0.42],
-      health: 30, speed: 96, damage: 10, xp: 5, radius: 14,
+      health: 32, speed: 96, damage: 11, xp: 5, radius: 14,
     },
     bruiser: {
       name: 'Kerchief Bruiser', family: 'kerchief', art: 'brute', tint: [0.90, 0.45, 0.35],
       // A brute is the wall of its family and was drawn the same size as the
       // shambler. Visual only - the hitbox is the radius and it has not moved.
-      health: 80, speed: 78, damage: 16, xp: 10, radius: 17, spriteScale: 1.2,
+      health: 86, speed: 78, damage: 17, xp: 10, radius: 17, spriteScale: 1.2,
     },
     /* ------------------------------------------------------ Mourneholt ---- */
     ghoul: {
       name: 'Rotting Shambler', family: 'undead', art: 'ghoul', tint: [0.60, 0.80, 0.50],
-      health: 60, speed: 55, damage: 14, xp: 8, radius: 17,
+      health: 65, speed: 55, damage: 15, xp: 8, radius: 17,
     },
     skeleton: {
       name: 'Skeletal Warrior', family: 'undead', art: 'skeleton', tint: [0.88, 0.90, 0.82],
-      health: 45, speed: 70, damage: 12, xp: 7, radius: 16,
+      health: 49, speed: 70, damage: 13, xp: 7, radius: 16,
     },
     skeletal_mage: {
       name: 'Skeletal Frostweaver', family: 'undead', art: 'skeleton', tint: [0.60, 0.80, 1.00],
-      health: 40, speed: 60, damage: 11, xp: 9, radius: 15, caster: true,
+      health: 43, speed: 60, damage: 12, xp: 9, radius: 15, caster: true,
       ranged: { range: 270, cooldown: 3.0, speed: 220, school: 'frost', slowFactor: 0.6, slowDuration: 1.2 },
     },
     moonwretch: {
       name: 'Blackfang Moonwretch', family: 'moonwretch', art: 'moonwretch', tint: [0.55, 0.52, 0.62],
-      health: 75, speed: 105, damage: 16, xp: 10, radius: 17,
+      health: 81, speed: 105, damage: 17, xp: 10, radius: 17,
     },
     spider: {
       name: 'Venomweb Creeper', family: 'beast', art: 'spider', tint: [0.42, 0.32, 0.55],
-      health: 38, speed: 90, damage: 11, xp: 6, radius: 14,
+      health: 41, speed: 90, damage: 12, xp: 6, radius: 14,
       trail: { interval: 1.5, radius: 34, life: 4.5, damagePct: 0.35,
         tint: [0.62, 0.35, 0.85] },
     },
     /* --------------------------------------------------- Ochre Plains ---- */
     longstrider: {
       name: 'Greater Longstrider', family: 'beast', art: 'strider', tint: [0.75, 0.55, 0.80],
-      health: 55, speed: 80, damage: 13, xp: 8, radius: 17,
+      health: 59, speed: 80, damage: 14, xp: 8, radius: 17,
     },
     raptor: {
       name: 'Sunhide Raptor', family: 'beast', art: 'raptor', tint: [0.90, 0.60, 0.25],
-      health: 60, speed: 108, damage: 15, xp: 9, radius: 16,
+      health: 65, speed: 108, damage: 16, xp: 9, radius: 16,
     },
     bristlekin: {
       name: 'Thornhide Battleguard', family: 'bristlekin', art: 'bristlekin', tint: [0.85, 0.55, 0.40],
-      health: 90, speed: 65, damage: 17, xp: 11, radius: 18,
+      health: 97, speed: 65, damage: 18, xp: 11, radius: 18,
     },
     shrikewing: {
       name: 'Shrikewing Windcaller', family: 'shrikewing', art: 'shrikewing', tint: [0.65, 0.85, 1.00],
-      health: 48, speed: 75, damage: 12, xp: 10, radius: 15, caster: true,
+      health: 52, speed: 75, damage: 13, xp: 10, radius: 15, caster: true,
       ranged: { range: 290, cooldown: 2.6, speed: 250, school: 'nature' },
       orbit: { range: 250, spin: 0.85 },
     },
     karrash: {
       name: 'Karrash Outrunner', family: 'karrash', art: 'karrash', tint: [0.80, 0.60, 0.42],
-      health: 85, speed: 95, damage: 16, xp: 11, radius: 18,
+      health: 92, speed: 95, damage: 17, xp: 11, radius: 18,
     },
     lion: {
       name: 'Savannah Prowler', family: 'beast', art: 'cat', tint: [0.88, 0.72, 0.40],
-      health: 65, speed: 100, damage: 15, xp: 9, radius: 16,
+      health: 70, speed: 100, damage: 16, xp: 9, radius: 16,
     },
     /* ----------------------------------------------------- Pale Wastes ---- */
     pale_ghoul: {
       name: 'Palewaste Ghoul', family: 'undead', art: 'ghoul', tint: [0.55, 0.88, 0.95],
-      health: 85, speed: 72, damage: 17, xp: 10, radius: 17,
+      health: 92, speed: 72, damage: 18, xp: 10, radius: 17,
     },
     crypt_fiend: {
       name: 'Crypt Skitterer', family: 'undead', art: 'spider', tint: [0.60, 0.70, 0.85],
-      health: 100, speed: 82, damage: 18, xp: 12, radius: 18,
+      health: 108, speed: 82, damage: 19, xp: 12, radius: 18,
     },
     necromancer: {
       name: 'Cult Necromancer', family: 'undead', art: 'necromancer', tint: [0.70, 0.45, 0.90],
-      health: 70, speed: 60, damage: 14, xp: 13, radius: 16, caster: true,
+      health: 76, speed: 60, damage: 15, xp: 13, radius: 16, caster: true,
       ranged: { range: 300, cooldown: 2.6, speed: 240, school: 'shadow' },
     },
     abomination: {
       name: 'Stitched Horror', family: 'undead', art: 'abomination', tint: [0.65, 0.80, 0.50],
-      health: 220, speed: 40, damage: 26, xp: 18, radius: 24,
+      health: 238, speed: 40, damage: 28, xp: 18, radius: 24,
       split: { into: 'ghoul', count: 3, scale: 0.75 },
     },
     geist: {
       name: 'Hungering Geist', family: 'undead', art: 'geist', tint: [0.70, 0.85, 0.95],
-      health: 55, speed: 118, damage: 14, xp: 10, radius: 14,
+      health: 59, speed: 118, damage: 15, xp: 10, radius: 14,
       burst: { radius: 74, damagePct: 0.9, fuse: 0.55, tint: [0.60, 0.90, 1.00] },
     },
   };
@@ -3588,31 +3630,31 @@ window.WS = window.WS || {};
   WS.Elites = {
     snarlpack_bonesnapper: {
       name: 'Snarlpack Bonesnapper', family: 'mongrel', elite: true, art: 'mongrel',
-      tint: [1.00, 0.72, 0.15], health: 340, speed: 62, damage: 22, xp: 34, radius: 28,
+      tint: [1.00, 0.72, 0.15], health: 367, speed: 62, damage: 24, xp: 34, radius: 28,
     },
     kerchief_enforcer: {
       name: 'Kerchief Enforcer', family: 'kerchief', elite: true, art: 'brute',
-      tint: [1.00, 0.45, 0.30], health: 480, speed: 72, damage: 26, xp: 44, radius: 28,
+      tint: [1.00, 0.45, 0.30], health: 518, speed: 72, damage: 28, xp: 44, radius: 28,
       spriteScale: 1.2,
       lunge: { range: 300, cooldown: 5.0, windup: 0.55, time: 0.45 },
     },
     bone_sentinel: {
       name: 'Bone Sentinel', family: 'undead', elite: true, art: 'skeleton',
-      tint: [0.90, 0.95, 1.00], health: 620, speed: 58, damage: 30, xp: 56, radius: 30,
+      tint: [0.90, 0.95, 1.00], health: 670, speed: 58, damage: 32, xp: 56, radius: 30,
     },
     karrash_battlelord: {
       name: 'Karrash Battlelord', family: 'karrash', elite: true, art: 'karrash',
-      tint: [1.00, 0.62, 0.20], health: 780, speed: 78, damage: 34, xp: 68, radius: 30,
+      tint: [1.00, 0.62, 0.20], health: 842, speed: 78, damage: 37, xp: 68, radius: 30,
       lunge: { range: 340, cooldown: 4.4, windup: 0.55, time: 0.5 },
     },
     deathbound_vanguard: {
       name: 'Deathbound Vanguard', family: 'undead', elite: true, art: 'skeleton',
-      tint: [0.55, 0.80, 1.00], health: 950, speed: 62, damage: 38, xp: 80, radius: 32,
+      tint: [0.55, 0.80, 1.00], health: 1026, speed: 62, damage: 41, xp: 80, radius: 32,
     },
     // Eclipse Arena: a stationary channeler that drags you toward the chasm.
     shadow_weaver: {
       name: 'Shadow-Weaver', family: 'void', elite: true, stationary: true, art: 'wraith',
-      tint: [0.70, 0.40, 0.98], health: 6000, speed: 0, damage: 6, xp: 0, radius: 26,
+      tint: [0.70, 0.40, 0.98], health: 6480, speed: 0, damage: 6, xp: 0, radius: 26,
     },
   };
 
@@ -3631,14 +3673,14 @@ window.WS = window.WS || {};
     grimtunnel: {
       bossKit: ['crown', 'trophies'],
       name: 'Foreman Grimtunnel', family: 'lampling', art: 'lampling', tint: [1.00, 0.90, 0.55],
-      health: 1900, speed: 55, damage: 30, xp: 160, radius: 40, gold: 35, interval: 4.0,
+      health: 2052, speed: 55, damage: 32, xp: 160, radius: 40, gold: 35, interval: 4.0,
       patterns: [{ type: 'summon', id: 'lampling', count: 7 }, { type: 'charge' }],
       yell: 'Mine! My light! MINE!',
     },
     murkgill: {
       bossKit: ['crown', 'spines'],
       name: 'Murk-Gill the Ancient', family: 'gilkin', art: 'gilkin', tint: [0.30, 0.95, 0.85],
-      health: 2900, speed: 58, damage: 34, xp: 220, radius: 44, gold: 40,
+      health: 3132, speed: 58, damage: 37, xp: 220, radius: 44, gold: 40,
       interval: 3.6, school: 'frost',
       patterns: [{ type: 'volley', bolts: 5 }, { type: 'summon', id: 'gilkin', count: 8 }],
       yell: 'Blorp! Blorp-blorp-BLORRRP!',
@@ -3646,14 +3688,14 @@ window.WS = window.WS || {};
     gnarlfang: {
       bossKit: ['mane', 'trophies'],
       name: 'Gnarlfang the Ravager', family: 'mongrel', art: 'mongrel', tint: [0.95, 0.55, 0.20],
-      health: 4200, speed: 60, damage: 40, xp: 300, radius: 48, gold: 50, interval: 3.4,
+      health: 4536, speed: 60, damage: 43, xp: 300, radius: 48, gold: 50, interval: 3.4,
       patterns: [{ type: 'summon', id: 'mongrel', count: 6 }, { type: 'charge' }],
       yell: 'This forest belongs to the Snarlpack!',
     },
     redcowl: {
       bossKit: ['plumehat', 'pauldrons'],
       name: 'Captain Redcowl', family: 'kerchief', art: 'bandit', tint: [0.95, 0.25, 0.20],
-      health: 5600, speed: 70, damage: 44, xp: 360, radius: 46, gold: 55,
+      health: 6048, speed: 70, damage: 48, xp: 360, radius: 46, gold: 55,
       interval: 3.2, school: 'physical',
       patterns: [{ type: 'volley', bolts: 7 }, { type: 'charge' }],
       yell: 'The Kerchiefs send their regards!',
@@ -3661,7 +3703,7 @@ window.WS = window.WS || {};
     fenroth: {
       bossKit: ['horns', 'mane'],
       name: 'Fenroth, Terror of the Vale', family: 'beast', art: 'moonwretch', tint: [0.85, 0.20, 0.20],
-      health: 9000, speed: 66, damage: 52, xp: 700, radius: 54, gold: 100,
+      health: 9720, speed: 66, damage: 56, xp: 700, radius: 54, gold: 100,
       interval: 3.0, school: 'shadow',
       patterns: [{ type: 'summon', id: 'wolf', count: 8 }, { type: 'charge' }, { type: 'ring', bolts: 10 }],
       yell: 'The vale runs red tonight!',
@@ -3670,7 +3712,7 @@ window.WS = window.WS || {};
     harvestking: {
       bossKit: ['crown', 'brand'],
       name: 'The Harvest King', family: 'mechanical', art: 'golem', tint: [1.00, 0.80, 0.30],
-      health: 4800, speed: 48, damage: 42, xp: 320, radius: 50, gold: 50,
+      health: 5184, speed: 48, damage: 45, xp: 320, radius: 50, gold: 50,
       interval: 3.8, school: 'fire',
       patterns: [{ type: 'ring', bolts: 9 }, { type: 'charge' }],
       yell: 'CROPS. REQUIRE. BLOOD.',
@@ -3678,7 +3720,7 @@ window.WS = window.WS || {};
     masked_admiral: {
       bossKit: ['pauldrons', 'banner'],
       name: 'The Masked Admiral', family: 'kerchief', art: 'bandit', tint: [0.90, 0.20, 0.25],
-      health: 11000, speed: 72, damage: 55, xp: 800, radius: 52, gold: 110,
+      health: 11880, speed: 72, damage: 59, xp: 800, radius: 52, gold: 110,
       interval: 2.9, school: 'physical',
       patterns: [{ type: 'volley', bolts: 9 }, { type: 'summon', id: 'kerchief', count: 8 }, { type: 'charge' }],
       yell: "You'll never take me alive, lapdog!",
@@ -3687,14 +3729,14 @@ window.WS = window.WS || {};
     barkfang: {
       bossKit: ['horns', 'spines'],
       name: 'Old Barkfang', family: 'moonwretch', art: 'moonwretch', tint: [0.70, 0.62, 0.80],
-      health: 5200, speed: 74, damage: 42, xp: 330, radius: 46, gold: 50, interval: 3.4,
+      health: 5616, speed: 74, damage: 45, xp: 330, radius: 46, gold: 50, interval: 3.4,
       patterns: [{ type: 'charge' }, { type: 'summon', id: 'moonwretch', count: 5 }],
       yell: 'The hunt is joined!',
     },
     silkfang: {
       bossKit: ['crown', 'spines'],
       name: 'Matriarch Silkfang', family: 'beast', art: 'spider', tint: [0.70, 0.40, 0.90],
-      health: 6400, speed: 60, damage: 46, xp: 380, radius: 48, gold: 55,
+      health: 6912, speed: 60, damage: 50, xp: 380, radius: 48, gold: 55,
       interval: 3.5, school: 'nature',
       patterns: [{ type: 'summon', id: 'spider', count: 9 }, { type: 'ring', bolts: 8 }],
       yell: '*a chittering shriek echoes from the dark*',
@@ -3702,7 +3744,7 @@ window.WS = window.WS || {};
     mordecai: {
       bossKit: ['spines', 'trophies'],
       name: 'Mordecai the Unburied', family: 'undead', art: 'necromancer', tint: [0.75, 0.90, 0.80],
-      health: 7800, speed: 56, damage: 48, xp: 420, radius: 50, gold: 60,
+      health: 8424, speed: 56, damage: 52, xp: 420, radius: 50, gold: 60,
       interval: 3.3, school: 'shadow',
       patterns: [{ type: 'summon', id: 'skeleton', count: 7 }, { type: 'volley', bolts: 7 }],
       yell: 'Death is a door. I walked back through it.',
@@ -3710,7 +3752,7 @@ window.WS = window.WS || {};
     palewraith: {
       bossKit: ['crown', 'brand'],
       name: 'The Pale Wraith', family: 'undead', art: 'wraith', tint: [0.80, 0.85, 1.00],
-      health: 13500, speed: 62, damage: 58, xp: 900, radius: 52, gold: 120,
+      health: 14580, speed: 62, damage: 63, xp: 900, radius: 52, gold: 120,
       interval: 2.8, school: 'shadow',
       patterns: [{ type: 'volley', bolts: 9 }, { type: 'summon', id: 'ghoul', count: 8 }, { type: 'ring', bolts: 12 }],
       yell: 'The candles gutter. The dark remains.',
@@ -3719,14 +3761,14 @@ window.WS = window.WS || {};
     thornmane: {
       bossKit: ['banner', 'mane'],
       name: 'Warlord Bristlegore', family: 'bristlekin', art: 'bristlekin', tint: [0.95, 0.45, 0.25],
-      health: 6800, speed: 62, damage: 48, xp: 400, radius: 48, gold: 55, interval: 3.4,
+      health: 7344, speed: 62, damage: 52, xp: 400, radius: 48, gold: 55, interval: 3.4,
       patterns: [{ type: 'summon', id: 'bristlekin', count: 6 }, { type: 'charge' }],
       yell: 'Thornhide! Take back the land!',
     },
     shriekfeather: {
       bossKit: ['crown', 'plumehat'],
       name: 'Windmatron Shriekfeather', family: 'shrikewing', art: 'shrikewing', tint: [0.60, 0.85, 1.00],
-      health: 7600, speed: 68, damage: 50, xp: 440, radius: 46, gold: 60,
+      health: 8208, speed: 68, damage: 54, xp: 440, radius: 46, gold: 60,
       interval: 3.2, school: 'nature',
       patterns: [{ type: 'volley', bolts: 8 }, { type: 'summon', id: 'shrikewing', count: 6 }],
       yell: 'The wind will strip your bones!',
@@ -3734,14 +3776,14 @@ window.WS = window.WS || {};
     kazrok: {
       bossKit: ['banner', 'pauldrons'],
       name: 'Warlord Kazrok of the Karrash', family: 'karrash', art: 'karrash', tint: [1.00, 0.55, 0.15],
-      health: 9200, speed: 76, damage: 54, xp: 500, radius: 52, gold: 70, interval: 3.0,
+      health: 9936, speed: 76, damage: 58, xp: 500, radius: 52, gold: 70, interval: 3.0,
       patterns: [{ type: 'charge' }, { type: 'volley', bolts: 7 }, { type: 'summon', id: 'karrash', count: 5 }],
       yell: 'The Karrash own these plains! Die, two-legs!',
     },
     stormhide: {
       bossKit: ['pauldrons', 'brand'],
       name: 'Stormhide the Colossus', family: 'beast', art: 'strider', tint: [0.40, 0.70, 1.00],
-      health: 16000, speed: 52, damage: 62, xp: 1000, radius: 58, gold: 130,
+      health: 17280, speed: 52, damage: 67, xp: 1000, radius: 58, gold: 130,
       interval: 3.0, school: 'nature',
       patterns: [{ type: 'ring', bolts: 12 }, { type: 'charge' }, { type: 'volley', bolts: 9 }],
       yell: '*thunder rolls across the savannah*',
@@ -3750,7 +3792,7 @@ window.WS = window.WS || {};
     boneweaver: {
       bossKit: ['spines', 'crown'],
       name: 'Ossuar the Boneweaver', family: 'undead', art: 'necromancer', tint: [0.80, 0.55, 1.00],
-      health: 8800, speed: 58, damage: 52, xp: 480, radius: 50, gold: 65,
+      health: 9504, speed: 58, damage: 56, xp: 480, radius: 50, gold: 65,
       interval: 3.2, school: 'shadow',
       patterns: [{ type: 'summon', id: 'pale_ghoul', count: 8 }, { type: 'volley', bolts: 8 }],
       yell: 'Your bones will serve the Pale!',
@@ -3758,7 +3800,7 @@ window.WS = window.WS || {};
     gorestitch: {
       bossKit: ['trophies', 'spines'],
       name: 'Gorestitch the Amalgam', family: 'undead', art: 'abomination', tint: [0.75, 0.95, 0.55],
-      health: 12000, speed: 44, damage: 60, xp: 560, radius: 58, gold: 75,
+      health: 12960, speed: 44, damage: 65, xp: 560, radius: 58, gold: 75,
       interval: 3.6, school: 'shadow',
       patterns: [{ type: 'ring', bolts: 10 }, { type: 'charge' }],
       yell: 'Fresh meat for the pile!',
@@ -3766,7 +3808,7 @@ window.WS = window.WS || {};
     marrowfrost: {
       bossKit: ['pauldrons', 'trophies'],
       name: 'Marrowfrost, the Pale Lord', family: 'undead', art: 'lich', tint: [0.55, 0.85, 1.00],
-      health: 22000, speed: 56, damage: 70, xp: 1400, radius: 60, gold: 200,
+      health: 23760, speed: 56, damage: 76, xp: 1400, radius: 60, gold: 200,
       interval: 2.7, school: 'frost',
       patterns: [
         { type: 'volley', bolts: 9 },
@@ -3781,7 +3823,7 @@ window.WS = window.WS || {};
     death_itself: {
       bossKit: ['brand'],
       name: 'Death Itself', family: 'death', art: 'reaper', tint: [0.80, 0.90, 1.00],
-      health: 5000000, speed: 265, damage: 600, xp: 5000, radius: 46, gold: 999,
+      health: 5400000, speed: 265, damage: 648, xp: 5000, radius: 46, gold: 999,
       interval: 60, patterns: [{ type: 'charge' }],
       yell: 'Rest now. You have fought enough.',
     },
@@ -3793,7 +3835,7 @@ window.WS = window.WS || {};
       /* spriteScale, not radius: the corona is drawn inside its own tile now
          (it never was), so the sprite lost reach. This buys the presence back
          without moving the hitbox on the final fight in the game. */
-      health: 300000, speed: 0, damage: 34, xp: 0, radius: 62, gold: 0,
+      health: 324000, speed: 0, damage: 37, xp: 0, radius: 62, gold: 0,
       spriteScale: 1.35,
       interval: 99, arena: true, stationary: true, school: 'holy',
       patterns: [{ type: 'charge' }],
@@ -4055,7 +4097,8 @@ window.WS = window.WS || {};
     area: {
       name: 'Expanse', art: 'expand', quality: 'uncommon',
       description: '+{v%}% effect area', max: 5, v: 0.12,
-      detail: 'Bigger auras and splashes, wider orbits, longer chain leaps.',
+      detail: 'Bigger auras, zones, orbits and novas. Chain and beam weapons gain REACH from '
+        + 'this (longer leaps, longer lines), not damage - look to pierce or count for those instead.',
       apply: (p, up) => { p.areaMultiplier += up.v; },
     },
     quantity: {
@@ -4067,7 +4110,9 @@ window.WS = window.WS || {};
     luck: {
       name: 'Fortune', art: 'coin', quality: 'uncommon',
       description: '+{v%}% luck (better and more drops)', max: 4, v: 0.15,
-      detail: 'Better odds of coins, potions, sapper charges, and lodestones.',
+      detail: 'Better odds of coins, potions, sapper charges, and lodestones - but every rank here '
+        + 'is a rank not spent on clear speed, which is what actually keeps a build alive early. '
+        + 'A strong late-game luxury, a weak early priority.',
       apply: (p, up) => { p.luck += up.v; },
     },
     wisdom: {
@@ -4097,7 +4142,7 @@ window.WS = window.WS || {};
     },
     warding_light: {
       name: 'Warding Light', art: 'aegis', quality: 'rare',
-      description: 'A warding light blocks one hit entirely. Recharges over time.', max: 3,
+      description: 'Blocks the next single hit against you completely, then recharges.', max: 3,
       detail: 'Blocks one hit every {Config.blockInterval1} / {Config.blockInterval2} / {Config.blockInterval3} seconds by rank.',
       apply: (p) => {
         const c = WS.Config;
@@ -4157,8 +4202,11 @@ window.WS = window.WS || {};
          soulRending is a rank counter, and this upgrade's own `v` was a
          COPY of Config.felPerRank that nothing read. A duplicated number is
          a number that will disagree with itself eventually. */
-      description: '+{Config.felPerRank%}% fel from overkill, and +{Config.metaDurationPerRank}s of Ruinform', max: 5,
-      detail: 'Every scrap of overkill feeds the ruin faster, and the transformation holds a second longer per rank.',
+      description: '+{Config.felPerRank%}% fel from overkill, +{Config.metaDurationPerRank}s of Ruinform, '
+        + 'and a shorter wait before it can answer again', max: 5,
+      detail: 'Every scrap of overkill feeds the ruin faster, the transformation holds a second longer '
+        + 'per rank, and the recovery window after it ends shrinks too - though it never fully closes '
+        + 'unless the ruin is already part of you.',
       offer: (p) => p.felAttuned > 0,
       apply: (p) => { p.soulRending += 1; },
     },
@@ -4378,7 +4426,11 @@ window.WS = window.WS || {};
       name: 'Ruinous Pact', art: 'soulrend', quality: 'legendary',
       description: 'Overkill is no longer wasted: damage past the killing blow feeds the ruin, and it feeds {felGain%}% faster. Fill the meter and you become the monster.',
       felGain: 0.30,
-      apply: (p, b) => { p.felAttuned += 1; p.felBonus += b.felGain; },
+      apply: (p, b) => {
+        p.felAttuned += 1; p.felBonus += b.felGain;
+        // Ruinborn is what only the Ruinseeker's own oath grants - see characters.js.
+        if (p.characterId === 'ruinseeker') p.ruinborn += 1;
+      },
     },
     unyielding: {
       name: 'Unyielding Faith', art: 'aegis', quality: 'legendary',
@@ -4721,8 +4773,8 @@ window.WS = window.WS || {};
           text: 'Take one more and you cannot. Ranking a weapon to {Config.weaponMaxLevel} and learning its paired passive evolves it into something far stronger - the card tells you which passive it wants.' },
         { name: 'Two evolved weapons can become one',
           text: 'Some pairs merge into a single greater weapon and give you the slot back. The Codex remembers every pairing you find.' },
-        { name: 'Thirty minutes is the win',
-          text: 'Bosses arrive on a schedule and the horde never stops thickening. Survive to 30:00 and the battlefield is yours - though Death itself turns up at exactly that moment, so leaving is also a decision.' },
+        { name: 'Thirty minutes is the win - and then a choice',
+          text: 'Bosses arrive on a schedule and the horde never stops thickening. Survive to 30:00 and the win is banked. Then choose: face whatever has been driving the night - first light clears the field, you get thirty seconds and a third blessing, and the finale begins - or stay out for Death, who always comes.' },
         { name: 'Gold outlives the run',
           text: 'You keep every coin whether you win, die or walk away. Spend it with the Trainer on permanent lessons that apply to every run after.' },
       ],
@@ -4799,6 +4851,314 @@ window.WS = window.WS || {};
         { beat: 'day', hold: 4.5, lines: [
           'You kept the watch at {map} until dawn.'] },
       ],
+    },
+  };
+
+})(window.WS);
+
+/* ===== src/data/finales.js ===== */
+/* The finales: what is waiting at 30:00.
+ *
+ * Holding until dawn used to be the whole game - reach thirty minutes and the
+ * results panel slid up. Now dawn is where the story is. At 30:00 the first
+ * light burns the horde off the field, the survivor gets thirty seconds and a
+ * third blessing, and then whatever has been driving the night arrives in
+ * person. Victory is beating it.
+ *
+ * THE ARC, one map at a time. The dark comes up out of the ground because
+ * someone has been digging the ember out from under it:
+ *
+ *   Thornhollow   Foreman Grimtunnel, a lampling with a mining claim and a
+ *                 war machine - the Candlecrawler. Beaten, he ejects and
+ *                 floats off toward the Dustreach.
+ *   Dustreach     His hired muscle: the Masked Admiral and the Dust Galleon, a
+ *                 land-ship that sails the top of the field. Sink it and the
+ *                 Admiral fights on foot. She strikes her colours and says
+ *                 where the ember is going.
+ *   Mourneholt    Mordecai, paid in stolen ember and bound to four lanterns
+ *                 of it. Grimtunnel swoops in at the end and steals the lot.
+ *   Ochre Plains  Grimtunnel again, in a walking fortress built from what he
+ *                 stole. It cannot be killed - it can only be driven to blow
+ *                 itself up, which it does, and he retreats into the Pale.
+ *   Pale Wastes   His last machine drills into the heart of the dark, and
+ *                 wakes what lives there. Marrowfrost, the Pale Lord, in two
+ *                 forms. The ultimate fight.
+ *
+ * THE RULE every finale follows: each one carries both kinds of target.
+ * Fodder, in numbers, for a build that has spent thirty minutes on area - and
+ * a small set of priority targets (turrets, cannons, lanterns, legs, pipes,
+ * shards) that decide how the fight goes, for a build that hits one thing
+ * very hard. Neither build is locked out; each has a part of every fight
+ * that is its best moment and a part that is its worst.
+ *
+ * Health is the number at 30:00 on this map before difficulty and Hyper.
+ * Measured against a finished build's single-target damage at 30:00
+ * (roughly 2,000 unevolved to 5,300 fully evolved), each finale is sized to
+ * run two to four minutes. Mechanics are code (src/game/finale.js); every
+ * number they read is here so the bench can reach it.
+ */
+'use strict';
+(function (WS) {
+
+  /* Who is talking. The survivor is not in this list: their lines are
+     written with {name} and take the colour of their own class. */
+  WS.FinaleSpeakers = {
+    grimtunnel: { name: 'Grimtunnel', colour: '#ffd36b', art: 'lampling', tint: [1.0, 0.86, 0.5] },
+    admiral: { name: 'The Masked Admiral', colour: '#ff8a7a', art: 'bandit',
+      tint: [0.92, 0.22, 0.28], kit: ['plumehat', 'pauldrons'] },
+    mordecai: { name: 'Mordecai', colour: '#9fe6c0', art: 'necromancer',
+      tint: [0.55, 0.92, 0.72], kit: ['spines', 'trophies'] },
+    marrowfrost: { name: 'Marrowfrost', colour: '#a9dcff', art: 'lich',
+      tint: [0.62, 0.88, 1.0], kit: ['crown', 'pauldrons'] },
+    narrator: { name: '', colour: '#e8dcc4' },
+  };
+
+  /* The machines and the people in them. These go in the bestiary with
+     everything else, which is how a player finds out they have met them. */
+  Object.assign(WS.Bosses, {
+    candlecrawler: {
+      name: 'The Candlecrawler', family: 'lampling', art: 'candlecrawler', machine: 'candlecrawler',
+      tint: [0.95, 0.66, 0.30], health: 460000, speed: 0, damage: 34, xp: 900, radius: 64,
+      gold: 400, drawScale: 1.3, interval: 99, finale: true, stationary: true, school: 'fire',
+      yell: 'Candlecrawler! Dig me out a thief!',
+    },
+    dust_galleon: {
+      name: 'The Dust Galleon', family: 'kerchief', art: 'galleon', machine: 'galleon',
+      tint: [0.72, 0.48, 0.30], health: 240000, speed: 0, damage: 38, xp: 700, radius: 78,
+      gold: 250, drawScale: 1.1, interval: 99, finale: true, stationary: true, school: 'physical',
+      yell: 'Run out the guns!',
+    },
+    admiral_ashore: {
+      bossKit: ['plumehat', 'pauldrons'],
+      name: 'The Masked Admiral, Ashore', family: 'kerchief', art: 'bandit',
+      tint: [0.92, 0.22, 0.28], health: 230000, speed: 0, damage: 42, xp: 700, radius: 34,
+      gold: 300, interval: 99, finale: true, stationary: true, school: 'physical',
+      yell: 'Fine. I will do it myself.',
+    },
+    mordecai_bound: {
+      bossKit: ['spines', 'trophies'],
+      name: 'Mordecai, Lantern-Bound', family: 'undead', art: 'necromancer',
+      tint: [0.55, 0.92, 0.72], health: 420000, speed: 0, damage: 44, xp: 1200, radius: 42,
+      gold: 500, interval: 99, finale: true, stationary: true, school: 'shadow',
+      yell: 'Four lanterns, four lives. You have one.',
+    },
+    stormbreaker: {
+      name: 'The Stormbreaker', family: 'mechanical', art: 'stormbreaker', machine: 'stormbreaker',
+      tint: [0.62, 0.70, 0.82], health: 600000, speed: 0, damage: 52, xp: 1500, radius: 82,
+      gold: 600, drawScale: 1.15, interval: 99, finale: true, stationary: true, school: 'nature',
+      yell: 'Forty tons of stolen ember and ONE very good idea!',
+    },
+    heart_drill: {
+      name: 'The Heart-Drill', family: 'mechanical', art: 'heartdrill', machine: 'heartdrill',
+      tint: [0.86, 0.52, 0.26], health: 380000, speed: 0, damage: 56, xp: 1500, radius: 80,
+      gold: 600, drawScale: 1.25, interval: 99, finale: true, stationary: true, school: 'fire',
+      yell: 'One more meter and it is ALL mine!',
+    },
+    pale_lord: {
+      bossKit: ['crown', 'pauldrons'],
+      name: 'Marrowfrost, the Pale Lord', family: 'undead', art: 'lich',
+      tint: [0.62, 0.88, 1.00], health: 560000, speed: 0, damage: 64, xp: 3000, radius: 56,
+      spriteScale: 1.25,
+      gold: 1500, interval: 99, finale: true, stationary: true, school: 'frost',
+      yell: 'Every night your kind burns my ember. Tonight I take it back.',
+    },
+  });
+
+  /* The parts. Not bosses - they do not take the boss arc and they do not get
+     the boss funeral - but they always show their health, because a priority
+     target you cannot see the progress on is not a decision, it is a guess. */
+  WS.FinaleUnits = {
+    lantern_turret: {
+      name: 'Lantern Turret', family: 'mechanical', art: 'turret', machine: 'turret',
+      tint: [1.00, 0.78, 0.38], health: 32000, speed: 0, damage: 24, xp: 90, radius: 24,
+      finale: true, part: true, stationary: true,
+    },
+    galleon_cannon: {
+      name: 'Gun Port', family: 'mechanical', art: 'turret', machine: 'cannon',
+      tint: [0.62, 0.50, 0.40], health: 22000, speed: 0, damage: 30, xp: 90, radius: 24,
+      finale: true, part: true, stationary: true,
+    },
+    soul_lantern: {
+      name: 'Soul Lantern', family: 'undead', art: 'turret', machine: 'soullantern',
+      tint: [0.55, 1.00, 0.75], health: 28000, speed: 0, damage: 20, xp: 120, radius: 26,
+      finale: true, part: true, stationary: true,
+    },
+    walker_leg: {
+      name: 'Stormbreaker Leg', family: 'mechanical', art: 'turret', machine: 'leg',
+      tint: [0.60, 0.66, 0.78], health: 55000, speed: 0, damage: 40, xp: 160, radius: 34,
+      finale: true, part: true, stationary: true,
+    },
+    tesla_pylon: {
+      name: 'Tesla Pylon', family: 'mechanical', art: 'turret', machine: 'pylon',
+      tint: [0.55, 0.85, 1.00], health: 24000, speed: 0, damage: 30, xp: 100, radius: 24,
+      finale: true, part: true, stationary: true,
+    },
+    coolant_pipe: {
+      name: 'Ember Coolant Line', family: 'mechanical', art: 'turret', machine: 'pipe',
+      tint: [0.95, 0.55, 0.25], health: 40000, speed: 0, damage: 30, xp: 140, radius: 28,
+      finale: true, part: true, stationary: true,
+    },
+    frost_shard: {
+      name: 'Pale Shard', family: 'undead', art: 'turret', machine: 'shard',
+      tint: [0.70, 0.92, 1.00], health: 16000, speed: 0, damage: 30, xp: 80, radius: 22,
+      finale: true, part: true, stationary: true,
+    },
+  };
+
+  /* One per map. `script` names the encounter in src/game/finale.js.
+     Dialogue lines are [speaker, text]; `say` are the mid-fight lines the
+     script calls by key. */
+  WS.Finales = {
+    thornhollow: {
+      script: 'candlecrawler',
+      title: 'Foreman Grimtunnel', subtitle: 'at the controls of the Candlecrawler',
+      art: 'candlecrawler', tint: [0.95, 0.66, 0.30],
+      intro: [
+        ['grimtunnel', 'Thirty minutes. Thirty minutes of burning MY light.'],
+        ['grimtunnel', 'Every stone you broke was on MY claim!'],
+        ['grimtunnel', 'Candlecrawler! Dig me out a thief!'],
+      ],
+      say: {
+        turretsDown: ['grimtunnel', 'The lamps! Who approved GLASS lamps?!'],
+        turretsBack: ['grimtunnel', 'Bolt them back on! Faster!'],
+        burrow: ['grimtunnel', 'Down we go! You cannot burn what you cannot find!'],
+        surface: ['grimtunnel', 'Surprise! It is me! Again!'],
+        meltdown: ['grimtunnel', 'It is fine! Red means FAST!'],
+      },
+      outro: [
+        ['grimtunnel', 'Eject! EJECT!'],
+        ['grimtunnel', 'Keep your dawn! There is more ember under the Dustreach than this whole forest!'],
+        ['grimtunnel', 'My light! MIIINE!'],
+      ],
+      epilogue: ['Grimtunnel escapes', 'His pod drifts south, toward the Dustreach.'],
+      tuning: {
+        turretHpGrowth: 0.18, overheat: 10, overheatVuln: 1.5,
+        burrowAt: 0.60, burrowTime: 12, meltdownAt: 0.25,
+        bombDamage: 34, bombRadius: 64, bombTele: 1.1,
+        drillDamage: 48, drillWindup: 1.1, drillTime: 0.9, drillRange: 560,
+        eruptDamage: 44, eruptRadius: 90, eruptTele: 1.3,
+        ringDamage: 30, ringSpeed: 190,
+        lamplings: 10,
+      },
+    },
+
+    dustreach: {
+      script: 'galleon',
+      title: 'The Masked Admiral', subtitle: 'and the Dust Galleon, under contract',
+      art: 'galleon', tint: [0.72, 0.48, 0.30],
+      intro: [
+        ['admiral', 'Ahoy, lamp-thief! The little foreman sends his regards.'],
+        ['admiral', 'And his invoice.'],
+        ['admiral', 'Run out the guns!'],
+      ],
+      say: {
+        portDown: ['admiral', 'Patch that port, you bilge rats!'],
+        boarders: ['admiral', 'Boarders away!'],
+        crash: ['admiral', 'She is going down! ...Fine. I will do it myself.'],
+        duel: ['admiral', 'En garde, and so on.'],
+        low: ['admiral', 'You fight like a Kerchief. I mean that as an insult.'],
+      },
+      outro: [
+        ['admiral', 'Enough. The foreman pays in ember, not gold. It was never going to be enough.'],
+        ['admiral', 'The cargo is bound north. Gallowmere. Something there is being woken.'],
+        ['admiral', 'Tell Redcowl the ship was my fault.'],
+      ],
+      epilogue: ['The Admiral strikes her colours', 'The stolen ember was bound for Mourneholt.'],
+      tuning: {
+        sailSpeed: 70, broadsideDamage: 40, broadsideTele: 1.2, broadsideWidth: 64,
+        grapeDamage: 26, kegDamage: 46, kegRadius: 80, kegTele: 1.2,
+        dashDamage: 50, dashWindup: 0.55, dashTime: 0.35, dashRange: 340,
+        pistolDamage: 30, boarders: 8, rally: 4,
+      },
+    },
+
+    mourneholt: {
+      script: 'mordecai',
+      title: 'Mordecai, Lantern-Bound', subtitle: 'paid in stolen ember',
+      art: 'necromancer', tint: [0.55, 0.92, 0.72],
+      intro: [
+        ['mordecai', 'Death is a door. The foreman sold me the key.'],
+        ['mordecai', 'Four lanterns, four lives. You have one.'],
+      ],
+      say: {
+        exposed: ['mordecai', 'Darkness suits me better anyway.'],
+        relight: ['mordecai', 'I said four lives. I never said only four.'],
+        rise: ['mordecai', 'Gallowmere! RISE!'],
+      },
+      outro: [
+        ['mordecai', 'The door... is closing...'],
+        ['grimtunnel', 'I will be taking THAT, bone-bag. Pleasure doing business!'],
+        ['grimtunnel', 'See you on the Ochre, thief! Bring a bigger light!'],
+      ],
+      epilogue: ['Grimtunnel steals the lantern-ember', 'His pod races east, over the Ochre Plains.'],
+      tuning: {
+        lanternBond: 0.05, exposedTime: 14, exposedVuln: 1.4, relight: 3,
+        riseAt: 0.30, handDamage: 44, handRadius: 58, handTele: 1.0,
+        knellDamage: 38, knellSpeed: 200, knellGap: 34,
+        lanceDamage: 30, raise: 6,
+      },
+    },
+
+    ochre: {
+      script: 'stormbreaker',
+      title: 'Grimtunnel, again', subtitle: 'in the Stormbreaker, his walking fortress',
+      art: 'stormbreaker', tint: [0.62, 0.70, 0.82],
+      intro: [
+        ['grimtunnel', 'Behold! Forty tons of stolen ember and ONE very good idea!'],
+        ['grimtunnel', 'The Karrash said it could not be done. So I stopped paying them!'],
+      ],
+      say: {
+        legDown: ['grimtunnel', 'Is that a LEG? That was a leg!'],
+        kneel: ['grimtunnel', 'Knees! Why does it have KNEES? Fine - fortress mode!'],
+        pylons: ['grimtunnel', 'Pylons up! Let us see you walk through THAT!'],
+        destruct: ['grimtunnel', 'You want the ember? HAVE ALL OF IT!'],
+      },
+      outro: [
+        ['grimtunnel', 'You are still ALIVE?! Fine. FINE. I will go to the source!'],
+        ['grimtunnel', 'The Pale! Every stone in the world gets its light from the Pale!'],
+      ],
+      epilogue: ['The Stormbreaker is scrap', 'Grimtunnel flees north, into the Pale Wastes.'],
+      tuning: {
+        standingArmor: 0.35, kneelVuln: 1.3, kneelStagger: 10, destructAt: 0.15,
+        destructTime: 7, destructDamage: 400,
+        stompDamage: 46, stompRadius: 76, stompTele: 0.9,
+        beamDamage: 42, beamTele: 1.4, beamSpin: 0.55, beamTime: 4.5, beamWidth: 46,
+        fenceDamage: 30, missileDamage: 40, missileRadius: 70, missileTele: 1.2,
+        karrash: 5,
+      },
+    },
+
+    palewastes: {
+      script: 'paleheart',
+      title: 'The Heart-Drill', subtitle: 'Grimtunnel’s last machine',
+      art: 'heartdrill', tint: [0.86, 0.52, 0.26],
+      intro: [
+        ['grimtunnel', 'You are too late! One more meter and it is ALL mine!'],
+        ['grimtunnel', 'The heart of the dark! Where every stone gets its light!'],
+      ],
+      say: {
+        pipe: ['grimtunnel', 'That was a COOLANT line! Do you know what those COST?'],
+        breach: ['grimtunnel', 'We are through! We are... wait. That is not light.'],
+        wake: ['marrowfrost', 'Little candle. You dug so very deep.'],
+        frozen: ['grimtunnel', 'Cold! COLD! Very cold!'],
+        lord: ['marrowfrost', 'Every night your kind burns my ember. Tonight I take it back.'],
+        shards: ['marrowfrost', 'The Pale remembers every shard of itself.'],
+        winter: ['marrowfrost', 'Then let there be no dawn at all.'],
+      },
+      outro: [
+        ['marrowfrost', 'The ember... was never mine either...'],
+        ['narrator', 'The Pale breaks. For the first time in a thousand nights, nothing climbs out of the ground.'],
+        ['grimtunnel', '...So. Truce? I could offer you a VERY reasonable share of the light.'],
+      ],
+      epilogue: ['The dark is broken', 'The Ember Watch holds. Dawn comes, and this time it stays.'],
+      tuning: {
+        pipeBreak: 0.15, debrisDamage: 48, debrisRadius: 70, debrisTele: 1.1,
+        ventDamage: 44, ventSpin: 0.6, ventTele: 1.2,
+        shardReduce: 0.40, shardEvery: 30, winterAt: 0.40, winterEnrage: 100,
+        novaDamage: 50, novaSpeed: 190, novaGap: 30,
+        gridDamage: 56, gridTele: 1.5, spikeDamage: 40,
+        ghouls: 10,
+      },
     },
   };
 
@@ -11730,6 +12090,9 @@ window.WS = window.WS || {};
     },
 
     has(art) { return !!CREATURES[art]; },
+    /** Adds an art from outside this file - the finale's machines are drawn
+     *  by src/render/finale-art.js and their portraits come through here. */
+    define(art, painter) { CREATURES[art] = painter; },
     clear() { cache.clear(); },
   };
 
@@ -15113,13 +15476,15 @@ window.WS = window.WS || {};
 
   /* -------------------------------------------------------------- spawn -- */
   Enemy.spawn = function (id, x, y, scale, force) {
-    let template = WS.Enemies[id] || WS.Elites[id] || WS.Bosses[id];
+    let template = WS.Enemies[id] || WS.Elites[id] || WS.Bosses[id]
+      || (WS.FinaleUnits && WS.FinaleUnits[id]);
     if (!template) return null;
     const isBoss = !!WS.Bosses[id];
     const isElite = !!WS.Elites[id];
+    const isPart = !!template.part;
 
     if (this.pool.count >= WS.CONST.MAX_ENEMIES) {
-      if (!(isBoss || isElite || force) || !evictFodder()) return null;
+      if (!(isBoss || isElite || isPart || force) || !evictFodder()) return null;
     }
     const e = this.pool.acquire();
     if (!e) return null;
@@ -15131,6 +15496,19 @@ window.WS = window.WS || {};
     e.radius = template.radius;
     e.boss = isBoss;
     e.elite = isElite;
+    /* The finale's machines and their parts. `untargetable` is a shield the
+       player's weapons do not even aim at - a hull behind its turrets, a
+       machine underground - and `dmgTaken` is armour or an opening. `hidden`
+       is untargetable AND not there: nothing drawn, nothing touched. */
+    e.part = isPart;
+    e.finale = !!template.finale;
+    e.untargetable = false;
+    e.hidden = false;
+    e.dmgTaken = 1;
+    e.host = null;
+    e.displayName = null;
+    e.finaleAdd = false;
+    e.finaleTag = 0;
     e.stationary = !!template.stationary;
     e.maxHealth = WS.floor(template.health * scale * WS.CONST.ENEMY_SCALE);
     e.health = e.maxHealth;
@@ -15237,7 +15615,7 @@ window.WS = window.WS || {};
   Enemy.findCollision = function (x, y, radius, hitBy) {
     let found = null;
     this.grid.query(x, y, radius + 40, (e) => {
-      if (found || e._dead) return;
+      if (found || e._dead || e.untargetable) return;
       if (hitBy && hitBy.get(e) === e.spawnId) return;
       const reach = radius + e.radius;
       if (WS.dist2(x, y, e.x, e.y) <= reach * reach) found = e;
@@ -15250,7 +15628,7 @@ window.WS = window.WS || {};
     let best = null, bestDist = range * range;
     for (let i = 0; i < this.pool.count; i++) {
       const e = this.pool.active[i];
-      if (e._dead || (excluded && excluded.has(e))) continue;
+      if (e._dead || e.untargetable || (excluded && excluded.has(e))) continue;
       const d = WS.dist2(x, y, e.x, e.y);
       if (d < bestDist) { bestDist = d; best = e; }
     }
@@ -15398,7 +15776,7 @@ window.WS = window.WS || {};
       // blocks, or is mid-invulnerability; takeDamage decides what lands.
       let struck = false;
       e.contactCooldown -= dt;
-      if (!frozen && e.contactCooldown <= 0 && distance < e.radius + player.radius) {
+      if (!frozen && !e.hidden && e.contactCooldown <= 0 && distance < e.radius + player.radius) {
         e.contactCooldown = e.boss ? cfg.contactCooldownBoss : cfg.contactCooldownNormal;
         struck = true;
         WS.Player.takeDamage(player, e.damage, t.name);
@@ -15415,7 +15793,7 @@ window.WS = window.WS || {};
         }
       }
 
-      if (e.boss && !t.arena && !frozen) {
+      if (e.boss && !t.arena && !t.finale && !frozen) {
         e.attackTimer -= dt;
         if (e.attackTimer <= 0) {
           this.bossAttack(e, dx, dy);
@@ -15510,6 +15888,7 @@ window.WS = window.WS || {};
     const player = WS.Game.player;
     const crit = WS.random() < player.critChance;
     if (crit) amount *= player.critDamage;
+    if (e.dmgTaken !== 1) amount *= e.dmgTaken;
     this.damage(e, amount, crit, source);
     WS.FX.damage(e.x, e.y - e.radius * 0.6, amount, crit);
     WS.Audio.play(crit ? 'crit' : 'hit', e.x);
@@ -15542,10 +15921,11 @@ window.WS = window.WS || {};
     while (i < this.pool.count) {
       const e = this.pool.active[i];
       const reach = radius + e.radius;
+      if (e.untargetable) { i++; continue; }
       if ((!hitBy || hitBy.get(e) !== e.spawnId) && WS.dist2(x, y, e.x, e.y) <= reach * reach) {
         if (hitBy) hitBy.set(e, e.spawnId);
         struck++;
-        if (knockback && !e.boss) {
+        if (knockback && !e.boss && !e.finale) {
           const [kx, ky] = WS.normalize(e.x - x, e.y - y);
           e.x += kx * knockback;
           e.y += ky * knockback;
@@ -15565,6 +15945,7 @@ window.WS = window.WS || {};
     let i = 0;
     while (i < this.pool.count) {
       const e = this.pool.active[i];
+      if (e.untargetable) { i++; continue; }
       let t = ((e.x - x1) * dx + (e.y - y1) * dy) / lenSq;
       t = WS.clamp(t, 0, 1);
       const px = x1 + dx * t, py = y1 + dy * t;
@@ -15629,6 +16010,15 @@ window.WS = window.WS || {};
       WS.Player.heal(player,
         WS.floor(player.maxHealth * player.bloodthirstHealPct) + player.bloodthirstHealFlat,
         'bloodthirst');
+    }
+
+    /* A finale's machine is not finished when its health is: a hull becomes
+       a wreck, a galleon crashes and its captain climbs out. What happens
+       next belongs to the encounter, not to the generic boss funeral. */
+    if (t.finale) {
+      this.pool.release(e);
+      WS.Finale.onUnitDead(e);
+      return;
     }
 
     if (e.boss) {
@@ -16852,16 +17242,16 @@ window.WS = window.WS || {};
   /* ----------------------------------------------------------------- fel - */
   /** How long the ruin takes to answer again once the form ends.
    *
-   *  Ruin Hunger shortens it for everyone, but only the ruinborn can close it
-   *  completely: at max rank the Ruinseeker's window is zero and the form
-   *  chains straight back, while a Ruinous Pact on any other class bottoms
-   *  out at the floor. That gap is the whole of the difference between the
-   *  class and the blessing, and it is a hard one - it holds at any level of
-   *  overkill, which is not true of any rate or multiplier. */
+   *  Ruin Hunger shortens it for everyone, and the ruinborn always close it
+   *  further: at max rank the Ruinseeker's window floors at
+   *  metaRecoveryBornFloor (89.7% uptime) while a Ruinous Pact on any other
+   *  class floors at metaRecoveryFloor (79.3%). Neither reaches permanent any
+   *  more - the gap is real and holds at any level of overkill, but it is a
+   *  ten-point edge now, not the difference between mortal and unkillable. */
   Player.ruinRecovery = function (p) {
     const cfg = WS.Config;
     const step = cfg.metaRecoveryPerRank * p.soulRending;
-    if (p.ruinborn > 0) return WS.max(0, cfg.metaRecoveryBorn - step);
+    if (p.ruinborn > 0) return WS.max(cfg.metaRecoveryBornFloor, cfg.metaRecoveryBorn - step);
     return WS.max(cfg.metaRecoveryFloor, cfg.metaRecovery - step);
   };
 
@@ -17238,7 +17628,8 @@ window.WS = window.WS || {};
     const enemies = WS.Enemy.pool.active;
     for (let i = enemies.length - 1; i >= 0; i--) {
       const e = enemies[i];
-      if (e.boss) WS.Enemy.hit(e, e.maxHealth * 0.08, 'bomb');
+      if (!e || e.untargetable) continue;
+      if (e.boss || e.part) WS.Enemy.hit(e, e.maxHealth * 0.08, 'bomb');
       else WS.Enemy.damage(e, e.health + 1, false, 'bomb');
     }
   };
@@ -17472,8 +17863,8 @@ window.WS = window.WS || {};
       dashSpeed: 340,
       biteRadius: 46,
       biteCooldown: 0.55,
-      dmgBase: 14,
-      dmgPerLevel: 1.0,
+      dmgBase: 12.74,
+      dmgPerLevel: 0.91,
       huntRange: 560,
       leash: 440,
       wanderSpeed: 150,
@@ -18129,21 +18520,27 @@ window.WS = window.WS || {};
     return choices;
   };
 
-  /** Three random blessings, never re-offering one already taken. */
+  /** Three random blessings, never re-offering one already taken. A class's
+   *  signature blessing (Ruinous Pact for the Ruinseeker, Blood Rite for the
+   *  Graveblade) always fills one of the three slots while it is still
+   *  available - the draft can still hand either to anyone, but the class
+   *  whose identity it is is never unlucky enough to miss it. */
   LevelUp.buildBlessingChoices = function (p) {
     const ids = WS.BlessingOrder.filter((id) => !p.blessingsTaken || !p.blessingsTaken[id]);
-    const choices = [];
-    for (let i = 0; i < WS.min(3, ids.length); i++) {
-      const id = ids.splice(WS.randInt(0, ids.length - 1), 1)[0];
+    const picks = [];
+    const sig = p.character && p.character.signatureBlessing;
+    if (sig && ids.includes(sig)) picks.push(ids.splice(ids.indexOf(sig), 1)[0]);
+    const slots = WS.min(3, ids.length + picks.length);
+    while (picks.length < slots) picks.push(ids.splice(WS.randInt(0, ids.length - 1), 1)[0]);
+    return picks.map((id) => {
       const b = WS.Blessings[id];
-      choices.push({
+      return {
         type: 'blessing', id, art: b.art, quality: b.quality || 'legendary',
         name: b.name,
         description: WS.template(b.description, b),
         note: 'Blessing - permanent for this run',
-      });
-    }
-    return choices;
+      };
+    });
   };
 
   LevelUp.apply = function (p, choice) {
@@ -18531,6 +18928,1592 @@ window.WS = window.WS || {};
 
 })(window.WS);
 
+/* ===== src/game/finale.js ===== */
+/* The finale: what happens when the survivor chooses to face whatever made
+ * the night, instead of waiting for Death.
+ *
+ *   purge     first light burns the horde off the field in one expanding wave
+ *   breather  thirty seconds, full health, the third blessing, and Beans
+ *   fight     the map's encounter script (src/data/finales.js says which)
+ *   outro     the villain gets away, or does not; then the dawn cinematic
+ *
+ * Every attack an encounter makes is one of a handful of telegraphed shapes
+ * below - a circle, a lane, an expanding ring with openings, a sweeping beam,
+ * a grid, safe ground in a field of doom - so all five fights share one
+ * visual language: a shape appears, it tells you how long you have, and it
+ * does exactly what it drew. Nothing reaches the survivor except through
+ * Player.takeDamage, so armour, dodge, Warding Light and Thorns all work.
+ */
+'use strict';
+(function (WS) {
+
+  const W = () => WS.CONST.WORLD_WIDTH;
+  const H = () => WS.CONST.WORLD_HEIGHT;
+  const BREATHER = 30;
+  const PURGE_SPEED = 1150;
+  const EPILOGUE = 3.6;
+
+  const F = {
+    stage: 'idle',        // idle | purge | breather | fight | outro | done
+    def: null, mapId: null, script: null, s: null,
+    t: 0, timer: 0, purgeR: 0,
+    hpScale: 1, dmgScale: 1,
+    units: [], marks: [], queue: [], line: null,
+    wrecks: [], pods: [],
+    darkness: 0, darkTarget: 0,
+    cinema: 0, cinemaMax: 0,
+    bounds: null,
+    label: '',
+    tagCounter: 0,
+  };
+
+  F.reset = function () {
+    this.stage = 'idle';
+    this.def = null; this.mapId = null; this.script = null; this.s = null;
+    this.t = 0; this.timer = 0; this.purgeR = 0;
+    this.units.length = 0; this.marks.length = 0; this.queue.length = 0;
+    this.line = null;
+    this.wrecks.length = 0; this.pods.length = 0;
+    this.darkness = 0; this.darkTarget = 0;
+    this.cinema = 0; this.cinemaMax = 0;
+    if (this.bounds && WS.Game.arenaBounds === this.bounds) WS.Game.arenaBounds = null;
+    this.bounds = null;
+    this.label = '';
+  };
+
+  /** A finale is on the field and owns the clock. */
+  F.running = function () {
+    return this.stage !== 'idle' && this.stage !== 'done';
+  };
+
+  F.available = function (run) {
+    return !!(run && !run.map.arena && WS.Finales && WS.Finales[run.mapId]);
+  };
+
+  /** Called from the dawn panel's "Face" button, with the game running. */
+  F.begin = function (run) {
+    this.reset();
+    const def = WS.Finales[run.mapId];
+    if (!def) return false;
+    this.def = def;
+    this.mapId = run.mapId;
+    this.script = SCRIPTS[def.script];
+    const hyper = run.hyper ? WS.Config.hyperScale : 1;
+    this.hpScale = run.diffScale * hyper;
+    this.dmgScale = run.diffScale * hyper;
+    this.stage = 'purge';
+    this.purgeR = 0;
+    this.label = 'First light';
+    run.finaleStarted = true;
+    WS.Projectile.hostiles.releaseAll();
+    WS.Hazard.clear();
+    WS.Game.announce('First Light', 'The horde cannot stand it. Something bigger can.', 3.4,
+      { kind: 'glory' });
+    WS.Audio.play('evolve');
+    WS.FX.screen('rgba(255,236,190,.55)', 1.2);
+    WS.FX.shake(7, 0.6);
+    return true;
+  };
+
+  /* ------------------------------------------------------------ helpers -- */
+  F.dmg = function (v) { return v * this.dmgScale; };
+
+  F.live = function (e) { return !!(e && !e._dead && e.finaleTag); };
+
+  /** Spawn one of the encounter's own units. Health comes from the template
+   *  times difficulty and Hyper only: it is already sized for 30:00 here. */
+  F.unit = function (id, x, y, hpMult) {
+    const e = WS.Enemy.spawn(id, x, y, 1, true);
+    if (!e) return null;
+    const t = e.template;
+    e.maxHealth = WS.floor(t.health * this.hpScale * (hpMult || 1));
+    e.health = e.maxHealth;
+    e.damage = t.damage * this.dmgScale;
+    e.finaleTag = ++this.tagCounter;
+    this.units.push(e);
+    return e;
+  };
+
+  /** A part bolted to a host: it rides along at an offset and dies with it. */
+  F.part = function (id, host, ox, oy, hpMult) {
+    const e = this.unit(id, host.x + ox, host.y + oy, hpMult);
+    if (!e) return null;
+    e.host = host; e.ox = ox; e.oy = oy;
+    return e;
+  };
+
+  /** Removes a unit without killing it - a machine leaving, not dying. */
+  F.remove = function (e) {
+    if (!this.live(e)) return;
+    e.finaleTag = 0;
+    WS.Enemy.pool.release(e);
+  };
+
+  /** The fodder. Sized to the horde at 30:00 on this map, and NOT to the
+   *  overtime ramp - a finale that got harder the longer you took would
+   *  punish exactly the builds that take longer. */
+  F.addScale = function () {
+    const run = WS.Game.run;
+    const hyper = run.hyper ? WS.Config.hyperScale : 1;
+    return (1 + WS.Config.deathTime / WS.Config.enemyScaleTime)
+      * run.map.difficulty * run.diffScale * hyper;
+  };
+
+  F.adds = function (id, n, x, y, spread) {
+    const scale = this.addScale();
+    for (let i = 0; i < n; i++) {
+      const a = WS.random() * WS.TAU;
+      const r = spread * (0.35 + 0.65 * WS.random());
+      const e = WS.Enemy.spawn(id,
+        WS.clamp(x + WS.cos(a) * r, 30, W() - 30),
+        WS.clamp(y + WS.sin(a) * r, 30, H() - 30), scale);
+      if (e) e.finaleAdd = true;
+    }
+  };
+
+  /** A ring of them closing in from off-screen, the way a swarm event does. */
+  F.addsRing = function (id, n, dist) {
+    const scale = this.addScale();
+    for (let i = 0; i < n; i++) {
+      const e = WS.Enemy.spawnRing(id, dist || 700, scale);
+      if (e) e.finaleAdd = true;
+    }
+  };
+
+  F.clearAdds = function () {
+    const pool = WS.Enemy.pool;
+    for (let i = pool.count - 1; i >= 0; i--) {
+      const e = pool.active[i];
+      if (e && !e.finale) {
+        WS.FX.corpse(e);
+        WS.FX.burst(e.x, e.y, 5, WS.hex(e.template.tint), 120, 0.4, 2.5);
+        pool.releaseAt(i);
+      }
+    }
+  };
+
+  /* Dialogue: one line at a time, at a readable pace, in order. */
+  F.speak = function (who, text, dur) {
+    const d = dur || WS.clamp(1.8 + text.length * 0.05, 2.4, 6.0);
+    this.queue.push({ who, text, dur: d, life: d });
+  };
+  F.say = function (key) {
+    const l = this.def && this.def.say && this.def.say[key];
+    if (l) this.speak(l[0], l[1]);
+  };
+  F.sayOnce = function (key) {
+    const s = this.s;
+    if (!s) return;
+    s.said = s.said || {};
+    if (s.said[key]) return;
+    s.said[key] = true;
+    this.say(key);
+  };
+  F.linesLeft = function () {
+    let t = this.line ? this.line.life : 0;
+    for (const l of this.queue) t += l.dur;
+    return t;
+  };
+  function updateLines(dt) {
+    if (F.line) {
+      F.line.life -= dt;
+      if (F.line.life <= 0) F.line = null;
+    }
+    if (!F.line && F.queue.length) F.line = F.queue.shift();
+  }
+
+  /** Countdown timers on the script state: true once per `every` seconds. */
+  F.every = function (key, dt, every, speed) {
+    // Nothing fires while a cinematic beat has the stage.
+    if (this.cinema > 0) return false;
+    const tm = this.s.tm;
+    if (tm[key] === undefined) tm[key] = every;
+    tm[key] -= dt * (speed || 1);
+    if (tm[key] <= 0) { tm[key] += every; return true; }
+    return false;
+  };
+
+  /* ------------------------------------------------------ attack shapes -- */
+  /** A circle that detonates when its fill reaches the edge. `from` makes it
+   *  a lobbed shell: the renderer draws it flying in over the telegraph. */
+  F.circle = function (x, y, r, tele, dmg, name, opts) {
+    const o = opts || {};
+    this.marks.push({ kind: 'circle', x, y, r, tele, maxTele: tele, dmg: this.dmg(dmg), name,
+      tint: o.tint || [1.0, 0.45, 0.25], from: o.from || null, style: o.style || 'blast',
+      burn: o.burn || 0 });
+  };
+
+  /** A straight line of trouble: telegraphed, then live for `active`. */
+  F.lane = function (x, y, ang, len, w, tele, dmg, name, opts) {
+    const o = opts || {};
+    this.marks.push({ kind: 'lane', x, y, ang, len, w, tele, maxTele: tele,
+      active: o.active || 0.3, dmg: this.dmg(dmg), name, hit: false,
+      tint: o.tint || [1.0, 0.55, 0.25], style: o.style || 'shot' });
+  };
+
+  /** Expanding ring with openings - stand in a gap as it passes. */
+  F.ring = function (cx, cy, opts) {
+    const o = opts;
+    this.marks.push({ kind: 'ring', cx, cy, r: o.r0 || 30, speed: o.speed || 180, thick: o.thick || 28,
+      gapBase: o.gapBase !== undefined ? o.gapBase : WS.random() * WS.TAU,
+      gapWidth: o.gapWidth || 40, gapCount: o.gaps || 1, gapRot: 0, spin: o.spin || 0,
+      delay: o.delay || 0, dmg: this.dmg(o.dmg), name: o.name, hit: false,
+      tint: o.tint || [1.0, 0.6, 0.3], max: o.max || 1100 });
+  };
+
+  /** One or more beams turning about a point. `arms` of them, evenly spaced. */
+  F.sweep = function (cx, cy, ang, spin, len, w, tele, dur, dmg, name, opts) {
+    const o = opts || {};
+    this.marks.push({ kind: 'sweep', cx, cy, ang, spin, len, w, tele, maxTele: tele,
+      dur, maxDur: dur, dmg: this.dmg(dmg), name, cd: 0, arms: o.arms || 1,
+      follow: o.follow || null, oy: o.oy || 0,
+      tint: o.tint || [0.55, 0.85, 1.0] });
+  };
+
+  /** Squares over a rectangle; a few are safe and everything else lands. */
+  F.grid = function (b, cols, rows, safeCount, tele, dmg, name, opts) {
+    const o = opts || {};
+    const cells = [];
+    const w = (b.maxX - b.minX) / cols, h = (b.maxY - b.minY) / rows;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) cells.push({ x: b.minX + c * w, y: b.minY + r * h, w, h, safe: false });
+    }
+    WS.shuffle(cells).slice(0, safeCount).forEach((c) => { c.safe = true; });
+    this.marks.push({ kind: 'grid', cells, tele, maxTele: tele, dmg: this.dmg(dmg), name,
+      tint: o.tint || [0.6, 0.85, 1.0] });
+  };
+
+  /** Doom everywhere except inside the zones. */
+  F.safe = function (zones, tele, dmg, name) {
+    this.marks.push({ kind: 'safe', zones, tele, maxTele: tele, dmg: this.dmg(dmg), name });
+  };
+
+  /** Lightning strung between two units, live while both stand. */
+  F.fence = function (a, b, dmg, name) {
+    this.marks.push({ kind: 'fence', a, b, dmg: this.dmg(dmg), name, cd: 0 });
+  };
+
+  F.fan = function (x, y, ang, n, spread, speed, dmg, school, name, src) {
+    for (let i = 0; i < n; i++) {
+      const a = ang + (i - (n - 1) / 2) * spread;
+      WS.Projectile.spawnHostile(x, y, WS.cos(a) * speed, WS.sin(a) * speed,
+        this.dmg(dmg), school, name, src || null);
+    }
+  };
+
+  F.radial = function (x, y, n, speed, dmg, school, name, offset, src) {
+    for (let i = 0; i < n; i++) {
+      const a = (offset || 0) + (i / n) * WS.TAU;
+      WS.Projectile.spawnHostile(x, y, WS.cos(a) * speed, WS.sin(a) * speed,
+        this.dmg(dmg), school, name, src || null);
+    }
+  };
+
+  F.aim = function (e) {
+    const p = WS.Game.player;
+    return WS.atan2(p.y - e.y, p.x - e.x);
+  };
+
+  F.near = function (spread) {
+    const p = WS.Game.player;
+    const a = WS.random() * WS.TAU, r = WS.random() * spread;
+    return [WS.clamp(p.x + WS.cos(a) * r, 40, W() - 40), WS.clamp(p.y + WS.sin(a) * r, 40, H() - 40)];
+  };
+
+  F.eruption = function (x, y, r, tint) {
+    WS.FX.flash(x, y, r, tint || [1.0, 0.7, 0.35], 0.5);
+    WS.FX.burst(x, y, 16, WS.hex(tint || [0.7, 0.55, 0.4]), 240, 0.8, 4);
+    WS.FX.shake(6, 0.35);
+    WS.Audio.play('explode', x);
+  };
+
+  /** A machine that has stopped being a machine: drawn as scrap for a while. */
+  F.wreck = function (e, kind, life) {
+    if (kind !== 'fallen') this.wrecks.push({ x: e.x, y: e.y, radius: e.radius,
+      kind: kind || e.template.machine || 'generic',
+      art: e.template.art, tint: e.template.tint, size: e.spriteSize,
+      life: life || 30, maxLife: life || 30, rot: 0, vy: 0, fall: 0 });
+    F.eruption(e.x, e.y, e.radius * 2.2, [1.0, 0.6, 0.3]);
+    WS.FX.flash(e.x, e.y, e.radius * 5, '#f5c56b', 0.9);
+    WS.FX.stop(0.14);
+  };
+
+  /** Grimtunnel's escape pod, on a path of waypoints. */
+  F.pod = function (x, y, path, opts) {
+    const o = opts || {};
+    this.pods.push({ x, y, path: path.slice(), speed: o.speed || 260, t: 0, frozen: !!o.frozen,
+      carrying: !!o.carrying, grabAt: o.grabAt || null, done: false });
+    return this.pods[this.pods.length - 1];
+  };
+
+  /* -------------------------------------------------------------- stages -- */
+  function purgeEnemy(e) {
+    const run = WS.Game.run;
+    WS.FX.corpse(e);
+    WS.FX.burst(e.x, e.y, e.boss ? 20 : 6, '#ffe6ae', e.boss ? 220 : 130, 0.5, 3);
+    WS.Save.recordKill(e.template, e.id);
+    run.kills++;
+  }
+
+  function startBreather() {
+    const p = WS.Game.player;
+    F.stage = 'breather';
+    F.timer = BREATHER;
+    F.label = 'Breathe';
+    p.health = p.maxHealth;
+    WS.FX.flash(p.x, p.y, 120, WS.CONST.COLORS.heal, 0.6);
+    WS.XP.vacuumAll();
+    const a = WS.random() * WS.TAU;
+    if (WS.Pickup.spawn('merchant',
+      WS.clamp(p.x + WS.cos(a) * 220, 100, W() - 100),
+      WS.clamp(p.y + WS.sin(a) * 160, 100, H() - 100))) {
+      WS.Game.toast('Beans sets up shop', '"Big fight? Eggs help. Probably."');
+    }
+    WS.Game.offerBlessing('third');
+  }
+
+  /** Letterbox the fight for `dur` seconds: the survivor cannot be hurt and
+   *  nothing is fired, so an entrance can be watched rather than survived. */
+  F.cine = function (dur) {
+    this.cinema = WS.max(this.cinema || 0, dur);
+    this.cinemaMax = WS.max(this.cinemaMax || 0, this.cinema);
+  };
+
+  function arrive() {
+    const def = F.def;
+    F.stage = 'fight';
+    F.cine(4.2);
+    F.s = { tm: {}, said: {} };
+    F.script.start(F);
+    WS.Game.announce(def.title, def.subtitle, 4.2,
+      { kind: 'dread', art: def.art, tint: def.tint });
+    WS.Audio.play('boss');
+    WS.Audio.playMusic('eclipse');
+    WS.FX.shake(8, 0.6);
+    for (const l of def.intro) F.speak(l[0], l[1]);
+  }
+
+  /** The encounter is won: clear the field and let the story finish. */
+  F.win = function () {
+    if (this.stage !== 'fight') return;
+    this.stage = 'outro';
+    this.marks.length = 0;
+    WS.Projectile.hostiles.releaseAll();
+    WS.Hazard.clear();
+    this.clearAdds();
+    this.queue.length = 0;
+    this.line = null;
+    for (const l of this.def.outro) this.speak(l[0], l[1]);
+    this.timer = this.linesLeft() + EPILOGUE;
+    this.epilogueShown = false;
+    this.cinema = 0; this.cinemaMax = 0;
+    this.cine(this.timer);
+    WS.Game.timeScale = 0.25;           // the killing blow, in slow motion
+    WS.FX.stop(0.2);
+    this.darkTarget = 0;
+    if (this.script.onWin) this.script.onWin(this);
+    WS.Audio.play('victory');
+    WS.FX.screen('rgba(255,230,174,.3)', 1.0);
+  };
+
+  function finish() {
+    const run = WS.Game.run;
+    F.stage = 'done';
+    F.label = '';
+    for (const e of F.units) if (F.live(e)) F.remove(e);
+    F.units.length = 0;
+    if (F.bounds && WS.Game.arenaBounds === F.bounds) WS.Game.arenaBounds = null;
+    F.bounds = null;
+    F.darkness = 0; F.darkTarget = 0;
+    run.finaleCleared = true;
+    const st = WS.Save.stats;
+    st.finales = st.finales || {};
+    st.finales[F.mapId] = (st.finales[F.mapId] || 0) + 1;
+    WS.Save.save();
+    WS.Game.finaleVictory();
+  }
+
+  /* ------------------------------------------------------------- update -- */
+  F.update = function (dt) {
+    const p = WS.Game.player;
+    this.t += dt;
+    updateLines(dt);
+    this.darkness += (this.darkTarget - this.darkness) * WS.min(1, dt * 1.5);
+    if (this.cinema > 0) {
+      this.cinema -= dt;
+      p.invulnerable = WS.max(p.invulnerable, 0.2);
+      if (this.cinema <= 0) { this.cinema = 0; this.cinemaMax = 0; }
+    }
+
+    if (this.stage === 'purge') {
+      this.purgeR += PURGE_SPEED * dt;
+      const pool = WS.Enemy.pool;
+      for (let i = pool.count - 1; i >= 0; i--) {
+        const e = pool.active[i];
+        if (e && WS.dist2(e.x, e.y, p.x, p.y) <= this.purgeR * this.purgeR) {
+          purgeEnemy(e);
+          pool.releaseAt(i);
+        }
+      }
+      if (this.purgeR > 1700) startBreather();
+      return;
+    }
+
+    if (this.stage === 'breather') {
+      const before = this.timer;
+      this.timer -= dt;
+      if (before > 8 && this.timer <= 8) {
+        WS.Game.announce('The ground is shaking.', 'Eight seconds.', 3.0);
+        WS.Audio.play('warn');
+      }
+      if (this.timer < 8) WS.FX.shake(1.5 + (8 - this.timer) * 0.4, 0.1);
+      this.label = 'Breathe · ' + WS.max(0, WS.ceil(this.timer));
+      if (this.timer <= 0) arrive();
+      return;
+    }
+
+    if (this.stage === 'fight') {
+      // Parts ride their host; a host that is gone takes its parts with it.
+      for (let i = this.units.length - 1; i >= 0; i--) {
+        const e = this.units[i];
+        if (!this.live(e)) { this.units.splice(i, 1); continue; }
+        if (e.host) {
+          if (!this.live(e.host)) { this.units.splice(i, 1); this.remove(e); continue; }
+          e.x = e.host.x + e.ox; e.y = e.host.y + e.oy;
+          e.hidden = e.host.hidden;
+        }
+        if (e.hidden) e.untargetable = true;
+      }
+      if (WS.Enemy.freezeTimer <= 0) this.script.update(this, dt);
+      if (!WS.Game.running) return;
+      updateMarks(dt);
+      if (!WS.Game.running) return;
+    } else if (this.stage === 'outro') {
+      p.invulnerable = WS.max(p.invulnerable, 0.2);
+      if (this.script.outro) this.script.outro(this, dt);
+      this.timer -= dt;
+      if (!this.epilogueShown && this.timer <= EPILOGUE) {
+        this.epilogueShown = true;
+        const ep = this.def.epilogue;
+        if (ep) WS.Game.announce(ep[0], ep[1], EPILOGUE, { kind: 'glory' });
+      }
+      if (this.timer <= 0) finish();
+    }
+    updateDecor(dt);
+  };
+
+  function updateDecor(dt) {
+    for (let i = F.wrecks.length - 1; i >= 0; i--) {
+      const w = F.wrecks[i];
+      w.life -= dt;
+      if (w.fall > 0) {
+        w.fall -= dt;
+        w.y += w.vy * dt;
+        w.rot += 0.25 * dt;
+      }
+      if (WS.random() < dt * 6) {
+        WS.FX.burst(w.x + WS.randRange(-40, 40), w.y + WS.randRange(-30, 10), 1,
+          '#5a4a40', 40, 1.2, 5);
+      }
+      if (w.life <= 0) F.wrecks.splice(i, 1);
+    }
+    for (const pod of F.pods) {
+      pod.t += dt;
+      if (pod.frozen || pod.done) continue;
+      const wp = pod.path[0];
+      if (!wp) { pod.done = true; continue; }
+      const [dx, dy, d] = WS.normalize(wp[0] - pod.x, wp[1] - pod.y);
+      const step = pod.speed * dt;
+      if (d <= step) {
+        pod.x = wp[0]; pod.y = wp[1]; pod.path.shift();
+        if (wp[2] === 'grab') {
+          pod.carrying = true;
+          WS.FX.flash(pod.x, pod.y, 60, '#9fe6c0', 0.5);
+          WS.Audio.play('gem');
+        }
+        if (wp[2] === 'freeze') {
+          pod.frozen = true;
+          WS.FX.flash(pod.x, pod.y, 70, [0.7, 0.9, 1.0], 0.6);
+          WS.Audio.play('freeze');
+        }
+      } else {
+        pod.x += dx * step; pod.y += dy * step;
+      }
+    }
+  }
+
+  function inLane(m, px, py, pr) {
+    const dx = px - m.x, dy = py - m.y;
+    const c = WS.cos(m.ang), s = WS.sin(m.ang);
+    const along = dx * c + dy * s;
+    const across = -dx * s + dy * c;
+    return along >= -pr && along <= m.len + pr && WS.abs(across) <= m.w / 2 + pr * 0.6;
+  }
+
+  function inGap(m, angle) {
+    const half = (m.gapWidth * WS.PI / 180) * 0.5;
+    for (let i = 0; i < m.gapCount; i++) {
+      const centre = m.gapBase + m.gapRot + (i / m.gapCount) * WS.TAU;
+      const d = ((angle - centre + WS.PI * 3) % WS.TAU) - WS.PI;
+      if (WS.abs(d) <= half) return true;
+    }
+    return false;
+  }
+  F.inGap = inGap;
+
+  function segDist(px, py, ax, ay, bx, by) {
+    const dx = bx - ax, dy = by - ay;
+    const l2 = dx * dx + dy * dy || 1;
+    const t = WS.clamp(((px - ax) * dx + (py - ay) * dy) / l2, 0, 1);
+    return WS.dist(px, py, ax + dx * t, ay + dy * t);
+  }
+
+  function hurt(m, amount) {
+    WS.Player.takeDamage(WS.Game.player, amount, m.name);
+  }
+
+  function updateMarks(dt) {
+    const p = WS.Game.player;
+    const pr = p.radius;
+    for (let i = F.marks.length - 1; i >= 0; i--) {
+      const m = F.marks[i];
+      let done = false;
+      if (m.kind === 'circle') {
+        m.tele -= dt;
+        if (m.tele <= 0) {
+          if (WS.dist(p.x, p.y, m.x, m.y) < m.r + pr * 0.5) hurt(m, m.dmg);
+          WS.FX.flash(m.x, m.y, m.r, m.tint, 0.35);
+          if (m.style !== 'quiet') WS.Audio.play('enemyHit', m.x);
+          if (m.burn > 0) {
+            WS.Hazard.spawn(m.x, m.y, { radius: m.r * 0.6, fuse: 0.2, life: m.burn,
+              damage: m.dmg * 0.25, interval: 0.5, tint: m.tint, name: m.name });
+          }
+          done = true;
+        }
+      } else if (m.kind === 'lane') {
+        if (m.tele > 0) {
+          m.tele -= dt;
+          if (m.tele <= 0) {
+            WS.Audio.play('explode', m.x);
+            WS.FX.shake(3, 0.15);
+          }
+        } else {
+          m.active -= dt;
+          if (!m.hit && inLane(m, p.x, p.y, pr)) { m.hit = true; hurt(m, m.dmg); }
+          if (m.active <= 0) done = true;
+        }
+      } else if (m.kind === 'ring') {
+        if (m.delay > 0) { m.delay -= dt; continue; }
+        m.r += m.speed * dt;
+        m.gapRot += m.spin * dt;
+        const d = WS.dist(p.x, p.y, m.cx, m.cy);
+        if (!m.hit && WS.abs(d - m.r) < m.thick * 0.5 + pr * 0.5) {
+          if (!inGap(m, WS.atan2(p.y - m.cy, p.x - m.cx))) { m.hit = true; hurt(m, m.dmg); }
+        }
+        if (m.r > m.max) done = true;
+      } else if (m.kind === 'sweep') {
+        if (m.follow) {
+          if (F.live(m.follow)) { m.cx = m.follow.x; m.cy = m.follow.y + m.oy; } else done = true;
+        }
+        if (m.tele > 0) {
+          m.tele -= dt;
+        } else {
+          m.ang += m.spin * dt;
+          m.dur -= dt;
+          m.cd -= dt;
+          if (m.cd <= 0) {
+            for (let a = 0; a < m.arms; a++) {
+              const ang = m.ang + (a / m.arms) * WS.TAU;
+              const probe = { x: m.cx, y: m.cy, ang, len: m.len, w: m.w };
+              if (inLane(probe, p.x, p.y, pr)) { m.cd = 0.7; hurt(m, m.dmg); break; }
+            }
+          }
+          if (m.dur <= 0) done = true;
+        }
+      } else if (m.kind === 'grid') {
+        m.tele -= dt;
+        if (m.tele <= 0) {
+          for (const c of m.cells) {
+            if (c.safe) continue;
+            if (p.x >= c.x && p.x <= c.x + c.w && p.y >= c.y && p.y <= c.y + c.h) hurt(m, m.dmg);
+            WS.FX.flash(c.x + c.w / 2, c.y + c.h / 2, c.w * 0.45, m.tint, 0.3);
+          }
+          WS.Audio.play('explode');
+          WS.FX.shake(5, 0.3);
+          done = true;
+        }
+      } else if (m.kind === 'safe') {
+        m.tele -= dt;
+        if (m.tele <= 0) {
+          const inside = m.zones.some((z) => WS.dist(p.x, p.y, z.x, z.y) < z.r);
+          if (!inside) hurt(m, m.dmg);
+          done = true;
+        }
+      } else if (m.kind === 'fence') {
+        if (!F.live(m.a) || !F.live(m.b)) done = true;
+        else {
+          m.cd -= dt;
+          if (m.cd <= 0 && segDist(p.x, p.y, m.a.x, m.a.y, m.b.x, m.b.y) < 12 + pr * 0.6) {
+            m.cd = 0.7;
+            hurt(m, m.dmg);
+          }
+        }
+      }
+      if (!WS.Game.running) return;
+      if (done) F.marks.splice(i, 1);
+    }
+  }
+
+  /** Called by Enemy.kill for anything carrying `finale`. */
+  F.onUnitDead = function (e) {
+    const run = WS.Game.run;
+    const t = e.template;
+    const idx = this.units.indexOf(e);
+    if (idx >= 0) this.units.splice(idx, 1);
+    e.finaleTag = 0;
+    if (e.boss) {
+      run.bossesSlain++;
+      WS.Save.stats.bosses[e.id] = (WS.Save.stats.bosses[e.id] || 0) + 1;
+      const gold = WS.floor((t.gold || 100) * run.goldMult * WS.Game.player.goldMultiplier);
+      WS.Game.addGold(gold, e.x, e.y);
+      for (let n = 0; n < 10; n++) {
+        WS.XP.spawnGem(e.x + WS.randRange(-50, 50), e.y + WS.randRange(-50, 50),
+          WS.floor((t.xp || 100) / 10));
+      }
+      WS.FX.shake(9, 0.5);
+      WS.Audio.play('explode', e.x);
+    } else {
+      WS.FX.flash(e.x, e.y, e.radius * 3, WS.hex(t.tint), 0.45);
+      WS.FX.shake(4, 0.25);
+      WS.Audio.play('explode', e.x);
+    }
+    if (this.stage === 'fight' && this.script.onDead) this.script.onDead(this, e);
+  };
+
+  /** What the HUD mode line says while a finale is on. */
+  F.hudLabel = function () {
+    if (!this.running()) return '';
+    if (this.stage === 'fight' && this.s && this.s.label) return 'Finale · ' + this.s.label;
+    return 'Finale · ' + this.label;
+  };
+
+  /* ================================================================== */
+  /*  The encounters                                                     */
+  /* ================================================================== */
+
+  /* Keeps a machine a comfortable distance from the survivor, easing
+     toward a point on the far side of where it already is. */
+  function keepAway(F, e, dist, speed, dt, box) {
+    const p = WS.Game.player;
+    const [dx, dy] = WS.normalize(e.x - p.x, e.y - p.y);
+    const b = box || { minX: 110, maxX: W() - 110, minY: 110, maxY: H() - 110 };
+    const tx = WS.clamp(p.x + dx * dist, b.minX, b.maxX);
+    const ty = WS.clamp(p.y + dy * dist, b.minY, b.maxY);
+    const [mx, my, d] = WS.normalize(tx - e.x, ty - e.y);
+    const step = WS.min(d, speed * dt);
+    e.x += mx * step; e.y += my * step;
+    if (WS.abs(mx) > 0.1) e.facing = p.x < e.x ? -1 : 1;
+  }
+
+  /* Where a big machine may roam: clear of the edges and below the HUD's
+     boss arc, which covers the top of the screen. */
+  const MACHINE_BOX = { minX: 170, maxX: 1110, minY: 250, maxY: 560 };
+
+  function busy(e) { return e.windup > 0 || e.chargeTimer > 0; }
+
+  function charge(e, windup, time, range, girth) {
+    const p = WS.Game.player;
+    const [dx, dy] = WS.normalize(p.x - e.x, p.y - e.y);
+    WS.Enemy.beginCharge(e, dx, dy, windup, time, range, girth);
+    WS.Audio.play('warn', e.x);
+  }
+
+  const SCRIPTS = {};
+
+  /* ---------------------------------------------------- Thornhollow --- */
+  /* The Candlecrawler. A shielded hull behind two lantern turrets: kill the
+     turrets and it overheats with its cockpit open. Past 60% it burrows and
+     hunts you from underneath while lamplings pour out; past 25% it melts
+     down and drills in pairs, leaving the ground on fire. */
+  SCRIPTS.candlecrawler = {
+    start(F) {
+      const s = F.s;
+      s.mode = 'rise'; s.rise = 1.8; s.cycle = 0; s.turrets = []; s.chain = 0;
+      s.label = 'The Candlecrawler rises';
+      const c = s.core = F.unit('candlecrawler', 640, 280);
+      c.untargetable = true;
+      c.rise = 0;
+      F.eruption(640, 280, 160, [1.0, 0.7, 0.35]);
+      s.tm = { bomb: 4.5, drill: 8, hatch: 7, ring: 9, trail: 0 };
+    },
+    deploy(F) {
+      const s = F.s, T = F.def.tuning, c = s.core;
+      const mult = 1 + T.turretHpGrowth * s.cycle;
+      s.turrets = [
+        F.part('lantern_turret', c, -62, -14, mult),
+        F.part('lantern_turret', c, 62, -14, mult),
+      ].filter(Boolean);
+      c.untargetable = true; c.dmgTaken = 1;
+      c.displayName = 'The Candlecrawler · Shielded';
+      s.mode = 'shielded';
+      s.label = 'Break the lantern turrets';
+      WS.FX.flash(c.x, c.y, 120, [1.0, 0.8, 0.4], 0.4);
+    },
+    update(F, dt) {
+      const s = F.s, T = F.def.tuning, c = s.core;
+      if (!F.live(c)) return;
+      const p = WS.Game.player;
+      const hp = c.health / c.maxHealth;
+
+      if (s.mode === 'rise') {
+        s.rise -= dt;
+        c.rise = WS.clamp(1 - s.rise / 1.8, 0, 1);
+        if (s.rise <= 0) { c.rise = 1; this.deploy(F); }
+        return;
+      }
+
+      // The two thresholds, checked in whatever mode the fight is in.
+      if (!s.burrowed && hp <= T.burrowAt && s.mode !== 'burrow') {
+        s.burrowed = true;
+        for (const t of s.turrets) F.remove(t);
+        s.turrets = [];
+        s.mode = 'burrow'; s.burrowT = T.burrowTime;
+        s.mx = c.x; s.my = c.y; s.erupts = 0;
+        c.hidden = true; c.untargetable = true; c.dmgTaken = 1;
+        c.windup = 0; c.chargeTimer = 0; c.telegraph = null;
+        F.eruption(c.x, c.y, 140);
+        F.say('burrow');
+        s.label = 'Underground';
+        c.displayName = 'The Candlecrawler · Burrowing';
+        F.addsRing('lampling', T.lamplings + 6, 700);
+        return;
+      }
+      if (!s.melt && hp <= T.meltdownAt && s.mode === 'stripped') {
+        s.melt = true;
+        F.say('meltdown');
+        s.label = 'Meltdown';
+        c.displayName = 'The Candlecrawler · Meltdown';
+        WS.FX.screen('rgba(255,80,40,.2)', 0.8);
+      }
+      const pace = s.melt ? 1.55 : 1;
+
+      if (s.mode === 'burrow') {
+        const [dx, dy, d] = WS.normalize(p.x - s.mx, p.y - s.my);
+        const step = WS.min(d, 150 * dt);
+        s.mx += dx * step; s.my += dy * step;
+        s.burrowT -= dt;
+        if (WS.random() < dt * 14) {
+          WS.FX.burst(s.mx, s.my, 1, '#6b5238', 60, 0.8, 4);
+        }
+        if (F.every('erupt', dt, 3.3)) {
+          F.circle(s.mx, s.my, T.eruptRadius, T.eruptTele, T.eruptDamage, 'The Candlecrawler',
+            { style: 'erupt', tint: [0.9, 0.6, 0.3] });
+          s.erupts++;
+          if (s.erupts === 2) F.addsRing('lampling', T.lamplings, 700);
+        }
+        if (s.burrowT <= 0) {
+          c.x = WS.clamp(s.mx, MACHINE_BOX.minX, MACHINE_BOX.maxX); c.y = WS.clamp(s.my, MACHINE_BOX.minY, MACHINE_BOX.maxY);
+          c.hidden = false; c.untargetable = false;
+          F.eruption(c.x, c.y, 150);
+          F.circle(c.x, c.y, T.eruptRadius, 0.05, T.eruptDamage, 'The Candlecrawler', { style: 'quiet' });
+          s.mode = 'stripped';
+          s.label = 'Plating stripped';
+          c.displayName = 'The Candlecrawler';
+          F.say('surface');
+          s.tm.drill = 3; s.tm.ring = 5;
+        }
+        return;
+      }
+
+      if (s.mode === 'overheat') {
+        s.heat -= dt;
+        if (WS.random() < dt * 10) {
+          WS.FX.burst(c.x + WS.randRange(-40, 40), c.y - 30, 1, '#d8d4cc', 70, 1.0, 5);
+        }
+        if (s.heat <= 0) {
+          s.cycle++;
+          this.deploy(F);
+          F.say('turretsBack');
+        }
+        return;
+      }
+
+      // shielded / stripped: the machine hunts.
+      if (!busy(c)) {
+        if (s.chain > 0) {
+          s.chain--;
+          charge(c, 0.6, T.drillTime, T.drillRange, 1.5);
+        } else {
+          keepAway(F, c, 250, s.melt ? 80 : 55, dt, MACHINE_BOX);
+        }
+      }
+      c.damage = F.dmg(busy(c) ? T.drillDamage : c.template.damage);
+
+      if (s.melt && c.chargeTimer > 0 && F.every('trail', dt, 0.1)) {
+        WS.Hazard.spawn(c.x, c.y, { radius: 34, fuse: 0.25, life: 3.2, damage: F.dmg(12),
+          interval: 0.45, tint: [1.0, 0.5, 0.2], name: 'Burning track' });
+      }
+
+      if (F.every('drill', dt, s.mode === 'stripped' ? 6 : 8, pace) && !busy(c)) {
+        charge(c, T.drillWindup, T.drillTime, T.drillRange, 1.5);
+        if (s.melt) s.chain = 1;
+      }
+
+      if (F.every('bomb', dt, s.mode === 'stripped' ? 4 : 3.4, pace)) {
+        const guns = s.mode === 'shielded' ? s.turrets.filter((t) => F.live(t)) : [c];
+        for (const g of guns) {
+          const n = s.mode === 'stripped' ? 3 : 2;
+          for (let k = 0; k < n; k++) {
+            const [x, y] = k === 0 ? [p.x, p.y] : F.near(150);
+            F.circle(x, y, T.bombRadius, T.bombTele + k * 0.15, T.bombDamage, 'Lantern bomb',
+              { from: { x: g.x, y: g.y - 10 }, burn: s.melt ? 3 : 2, tint: [1.0, 0.62, 0.22] });
+          }
+        }
+      }
+
+      if (F.every('hatch', dt, s.mode === 'stripped' ? 12 : 10)) {
+        F.adds('lampling', T.lamplings, c.x, c.y + 50, 100);
+        WS.FX.flash(c.x, c.y + 40, 60, [1.0, 0.85, 0.5], 0.3);
+      }
+
+      if (s.mode === 'stripped' && F.every('ring', dt, 9, pace)) {
+        F.ring(c.x, c.y, { speed: T.ringSpeed, gaps: 2, gapWidth: 50, dmg: T.ringDamage,
+          name: 'Candle-fire ring', tint: [1.0, 0.55, 0.2] });
+      }
+    },
+    onDead(F, e) {
+      const s = F.s;
+      if (e === s.core) {
+        s.core = null;
+        F.wreck(e, 'candlecrawler', 40);
+        F.pod(e.x, e.y - 30, [[e.x + 40, e.y - 140], [e.x + 260, -80], [e.x + 520, -220]],
+          { speed: 190 });
+        F.win();
+        return;
+      }
+      if (e.template.part) {
+        s.turrets = s.turrets.filter((t) => t !== e && F.live(t));
+        if (!s.turrets.length && s.mode === 'shielded' && F.live(s.core)) {
+          const c = s.core;
+          s.mode = 'overheat'; s.heat = F.def.tuning.overheat;
+          c.untargetable = false; c.dmgTaken = F.def.tuning.overheatVuln;
+          c.windup = 0; c.chargeTimer = 0; c.telegraph = null;
+          c.displayName = 'The Candlecrawler · Overheating';
+          s.label = 'Overheating - cockpit open!';
+          F.say('turretsDown');
+          WS.FX.flash(c.x, c.y, 150, [1.0, 0.4, 0.2], 0.6);
+          WS.Game.toast('Cockpit exposed', 'It takes extra damage while it overheats.');
+        }
+      }
+    },
+  };
+
+  /* ------------------------------------------------------- Dustreach --- */
+  /* The Dust Galleon sails the top of the field and fires broadsides down
+     it - lanes you step between - from three gun ports you can shoot out.
+     Sink it and it crashes into the field; the Admiral climbs out of the
+     wreck and it becomes a duel: dashes in threes, pistols, powder kegs. */
+  const SAIL_Y = 176;
+  SCRIPTS.galleon = {
+    start(F) {
+      const s = F.s;
+      s.mode = 'sailin'; s.dir = 1; s.label = 'The Dust Galleon';
+      const g = s.core = F.unit('dust_galleon', -220, SAIL_Y);
+      g.untargetable = true;
+      s.ports = [
+        F.part('galleon_cannon', g, -78, 34),
+        F.part('galleon_cannon', g, 0, 42),
+        F.part('galleon_cannon', g, 78, 34),
+      ].filter(Boolean);
+      for (const port of s.ports) port.untargetable = true;
+      s.tm = { broadside: 3.5, grape: 5, keg: 6.5, board: 8 };
+    },
+    update(F, dt) {
+      const s = F.s, T = F.def.tuning;
+      const p = WS.Game.player;
+
+      if (s.mode === 'sailin' || s.mode === 'sail') {
+        const g = s.core;
+        if (!F.live(g)) return;
+        if (s.mode === 'sailin') {
+          g.x += 260 * dt;
+          if (g.x >= 640) {
+            s.mode = 'sail';
+            g.untargetable = false;
+            for (const port of s.ports) if (F.live(port)) port.untargetable = false;
+          }
+        } else {
+          g.x += s.dir * T.sailSpeed * dt;
+          if (g.x > W() - 250) s.dir = -1;
+          if (g.x < 250) s.dir = 1;
+        }
+        g.y = SAIL_Y + WS.sin(F.t * 1.3) * 6;
+        g.facing = s.dir;
+        if (s.mode !== 'sail') return;
+
+        const ports = s.ports.filter((q) => F.live(q));
+        const hp = g.health / g.maxHealth;
+        s.label = ports.length ? `Broadsides · ${ports.length} gun port${ports.length > 1 ? 's' : ''}`
+          : 'Guns silenced';
+
+        if (F.every('broadside', dt, 6.5)) {
+          ports.forEach((q, i) => {
+            const ang = hp > 0.7 ? WS.PI / 2 : WS.atan2(p.y - q.y, p.x - q.x);
+            F.lane(q.x, q.y + 8, ang, 800, T.broadsideWidth, T.broadsideTele + i * 0.3,
+              T.broadsideDamage, 'Broadside', { active: 0.35, tint: [1.0, 0.7, 0.35] });
+          });
+        }
+        if (ports.length && F.every('grape', dt, 4.2)) {
+          const q = ports[WS.randInt(0, ports.length - 1)];
+          F.fan(q.x, q.y + 10, F.aim(q), 7, 0.14, 300, T.grapeDamage, 'physical', 'Grapeshot', q);
+        }
+        if (F.every('keg', dt, 7)) {
+          for (let k = 0; k < 3; k++) {
+            const [x, y] = k === 0 ? [p.x, p.y] : F.near(120);
+            F.circle(x, y, T.kegRadius, T.kegTele + k * 0.2, T.kegDamage, 'Powder keg',
+              { from: { x: g.x, y: g.y }, tint: [1.0, 0.5, 0.25] });
+          }
+        }
+        if (F.every('board', dt, 12)) {
+          F.sayOnce('boarders');
+          F.adds('kerchief', T.boarders - 3, g.x, g.y + 80, 140);
+          F.adds('bruiser', 3, g.x, g.y + 80, 140);
+        }
+        return;
+      }
+
+      if (s.mode === 'crash') {
+        s.crashT -= dt;
+        if (s.crashT <= 0) {
+          const a = s.adm = F.unit('admiral_ashore', s.wx, s.wy + 110);
+          if (a) {
+            WS.Game.announce('The Masked Admiral', 'Ashore, and furious', 3.4,
+              { kind: 'dread', art: 'bandit', tint: a.template.tint });
+            F.eruption(a.x, a.y, 80, [0.9, 0.3, 0.3]);
+          }
+          F.say('duel');
+          s.mode = 'duel'; s.dashes = 0;
+          s.label = 'The duel';
+          s.tm = { dash: 3, pistol: 2, keg: 6, rally: 10 };
+        }
+        return;
+      }
+
+      if (s.mode === 'duel') {
+        const a = s.adm;
+        if (!F.live(a)) return;
+        const hp = a.health / a.maxHealth;
+        if (hp < 0.3) F.sayOnce('low');
+        const pace = hp < 0.3 ? 1.35 : 1;
+        a.damage = F.dmg(busy(a) ? T.dashDamage : a.template.damage);
+
+        if (!busy(a)) {
+          if (s.dashes > 0) {
+            s.dashes--;
+            charge(a, T.dashWindup * 0.7, T.dashTime, T.dashRange, 1.8);
+          } else {
+            // Circles you at a duelling distance.
+            const [dx, dy, d] = WS.normalize(a.x - p.x, a.y - p.y);
+            const ang = WS.atan2(dy, dx) + 0.9 * dt;
+            const tx = WS.clamp(p.x + WS.cos(ang) * 210, 60, W() - 60);
+            const ty = WS.clamp(p.y + WS.sin(ang) * 210, 60, H() - 60);
+            const [mx, my, md] = WS.normalize(tx - a.x, ty - a.y);
+            const step = WS.min(md, 170 * dt);
+            a.x += mx * step; a.y += my * step;
+            a.facing = p.x < a.x ? -1 : 1;
+            if (d < 1) a.x += 1;
+          }
+        }
+        if (F.every('dash', dt, 5.5, pace) && !busy(a)) {
+          s.dashes = 2;
+          charge(a, T.dashWindup, T.dashTime, T.dashRange, 1.8);
+        }
+        if (!busy(a) && s.dashes === 0 && F.every('pistol', dt, 2.6, pace)) {
+          F.fan(a.x, a.y - 10, F.aim(a), 5, 0.12, 340, T.pistolDamage, 'fire', 'Pistol volley', a);
+        }
+        if (F.every('keg', dt, 8, pace)) {
+          F.circle(p.x, p.y, T.kegRadius, T.kegTele, T.kegDamage, 'Powder keg',
+            { from: { x: a.x, y: a.y }, tint: [1.0, 0.5, 0.25] });
+          for (let k = 0; k < 4; k++) {
+            const ang = (k / 4) * WS.TAU + WS.random() * 0.5;
+            F.circle(WS.clamp(p.x + WS.cos(ang) * 110, 40, W() - 40),
+              WS.clamp(p.y + WS.sin(ang) * 110, 40, H() - 40),
+              T.kegRadius * 0.8, T.kegTele + 0.3, T.kegDamage, 'Powder keg',
+              { from: { x: a.x, y: a.y }, tint: [1.0, 0.5, 0.25] });
+          }
+        }
+        if (F.every('rally', dt, 14)) {
+          F.adds('bruiser', T.rally, a.x, a.y, 160);
+        }
+      }
+    },
+    onDead(F, e) {
+      const s = F.s;
+      if (e === s.core) {
+        // Sunk. It comes down into the field and stays there, burning.
+        s.core = null;
+        for (const q of s.ports) F.remove(q);
+        s.ports = [];
+        s.wx = WS.clamp(e.x, 240, W() - 240); s.wy = 290;
+        const w = { x: s.wx, y: e.y, radius: e.radius, kind: 'galleon', art: e.template.art, tint: e.template.tint,
+          size: e.spriteSize, life: 600, maxLife: 600, rot: 0, vy: (290 - e.y) / 1.4, fall: 1.4 };
+        F.wrecks.push(w);
+        F.eruption(e.x, e.y, 180);
+        WS.FX.stop(0.14);
+        F.marks.length = 0;
+        F.say('crash');
+        s.mode = 'crash'; s.crashT = 2.6;
+        s.label = 'Shipwreck';
+        for (let k = 0; k < 4; k++) {
+          WS.Hazard.spawn(s.wx - 150 + k * 100, 302 + WS.randRange(-20, 20), { radius: 46, fuse: 1.4,
+            life: 600, damage: F.dmg(14), interval: 0.5, tint: [1.0, 0.5, 0.2], name: 'Burning wreck' });
+        }
+        return;
+      }
+      if (e === s.adm) {
+        s.adm = null;
+        F.wreck(e, 'fallen', 30);
+        F.win();
+        return;
+      }
+      if (e.template.part) {
+        F.sayOnce('portDown');
+        s.ports = s.ports.filter((q) => q !== e && F.live(q));
+      }
+    },
+  };
+
+  /* ------------------------------------------------------ Mourneholt --- */
+  /* Mordecai cannot be touched while any of his four soul lanterns burns,
+     and every lantern broken tears a piece out of him. Break them all and
+     he is exposed in the dark for a few seconds - then he relights three.
+     Hands come up where you stand; the knell rings out with gaps in it. */
+  const LANTERNS = [[270, 170], [1010, 170], [270, 560], [1010, 560]];
+  const GRAVES = [[640, 250], [420, 230], [860, 230], [640, 450], [400, 430], [880, 430]];
+  SCRIPTS.mordecai = {
+    start(F) {
+      const s = F.s;
+      s.cycle = 0; s.hands = 0; s.grave = 0;
+      const m = s.core = F.unit('mordecai_bound', 640, 250);
+      F.eruption(640, 250, 120, [0.55, 1.0, 0.75]);
+      this.light(F, 4);
+      s.tm = { hand: 3, lance: 4, knell: 7, blink: 8, spawn: 6 };
+    },
+    light(F, n) {
+      const s = F.s, m = s.core;
+      const mult = 1 + 0.15 * s.cycle;
+      const spots = WS.shuffle(LANTERNS.slice()).slice(0, n);
+      s.lanterns = spots.map(([x, y]) => {
+        const l = F.unit('soul_lantern', x, y, mult);
+        if (l) WS.FX.flash(x, y, 70, [0.55, 1.0, 0.75], 0.5);
+        return l;
+      }).filter(Boolean);
+      m.untargetable = true; m.dmgTaken = 1;
+      m.displayName = 'Mordecai, Lantern-Bound · Warded';
+      s.mode = 'warded';
+      s.label = `Break the soul lanterns · ${s.lanterns.length} lit`;
+      F.darkTarget = 0;
+    },
+    update(F, dt) {
+      const s = F.s, T = F.def.tuning, m = s.core;
+      if (!F.live(m)) return;
+      const p = WS.Game.player;
+      const hp = m.health / m.maxHealth;
+      if (!s.risen && hp <= T.riseAt) {
+        s.risen = true;
+        F.say('rise');
+        F.addsRing('skeleton', 12, 640);
+        F.addsRing('ghoul', 10, 700);
+      }
+      const pace = s.risen ? 1.35 : 1;
+      m.facing = p.x < m.x ? -1 : 1;
+
+      if (s.mode === 'exposed') {
+        s.exposed -= dt;
+        s.label = `Exposed · ${WS.max(0, WS.ceil(s.exposed))}`;
+        if (s.exposed <= 0) {
+          s.cycle++;
+          this.light(F, T.relight);
+          F.say('relight');
+        }
+      } else {
+        s.lanterns = s.lanterns.filter((l) => F.live(l));
+        s.label = `Break the soul lanterns · ${s.lanterns.length} lit`;
+        if (F.every('spawn', dt, 9)) {
+          for (const l of s.lanterns) F.adds(WS.random() < 0.5 ? 'skeleton' : 'ghoul', 2, l.x, l.y, 60);
+        }
+      }
+
+      if (F.every('blink', dt, 8)) {
+        let i;
+        do { i = WS.randInt(0, GRAVES.length - 1); } while (i === s.grave);
+        s.grave = i;
+        WS.FX.flash(m.x, m.y, 60, [0.55, 1.0, 0.75], 0.4);
+        m.x = GRAVES[i][0]; m.y = GRAVES[i][1];
+        WS.FX.flash(m.x, m.y, 80, [0.55, 1.0, 0.75], 0.5);
+        WS.Audio.play('cast', m.x);
+      }
+
+      if (F.every('hand', dt, 5, pace)) s.hands = 3;
+      if (s.hands > 0 && F.every('handStep', dt, 0.45)) {
+        s.hands--;
+        F.circle(p.x, p.y, T.handRadius, T.handTele, T.handDamage, 'Grasping dead',
+          { style: 'hands', tint: [0.55, 1.0, 0.7] });
+      }
+      if (F.every('lance', dt, 4, pace)) {
+        F.fan(m.x, m.y - 20, F.aim(m), 5, 0.16, 260, T.lanceDamage, 'shadow', 'Bone lance', m);
+      }
+      if (F.every('knell', dt, s.mode === 'exposed' || s.risen ? 7.5 : 11)) {
+        F.ring(m.x, m.y, { speed: T.knellSpeed, gaps: 3, gapWidth: T.knellGap, dmg: T.knellDamage,
+          name: 'Death knell', tint: [0.6, 1.0, 0.8] });
+        WS.Audio.play('boss');
+      }
+    },
+    onDead(F, e) {
+      const s = F.s, T = F.def.tuning, m = s.core;
+      if (e === m) {
+        s.core = null;
+        F.darkTarget = 0;
+        F.wreck(e, 'fallen', 20);
+        s.orb = { x: e.x, y: e.y - 20 };
+        F.pod(1420, 90, [[e.x + 30, e.y - 70], [e.x, e.y - 30, 'grab'], [e.x - 200, e.y - 180],
+          [-250, 80]], { speed: 330 });
+        F.win();
+        return;
+      }
+      if (e.template.part && F.live(m)) {
+        s.lanterns = s.lanterns.filter((l) => l !== e && F.live(l));
+        // The bond snaps, and takes a piece of him with it.
+        WS.Enemy.damage(m, m.maxHealth * T.lanternBond, false, 'soulbond');
+        WS.FX.flash(m.x, m.y, 90, [0.55, 1.0, 0.75], 0.5);
+        if (!F.live(m)) return;
+        if (!s.lanterns.length) {
+          s.mode = 'exposed'; s.exposed = T.exposedTime;
+          m.untargetable = false; m.dmgTaken = T.exposedVuln;
+          m.displayName = 'Mordecai, Lantern-Bound · Exposed';
+          F.darkTarget = 0.7;
+          F.sayOnce('exposed');
+          WS.Game.toast('Mordecai is exposed', 'Every lantern is out. Hit him before he relights them.');
+        }
+      }
+    },
+  };
+
+  /* ---------------------------------------------------- Ochre Plains --- */
+  /* The Stormbreaker walks the top of the field on legs you can break,
+     stamping where it steps and sweeping a lightning cannon under itself.
+     Its hull shrugs most damage off while it stands. Break both front legs
+     and it kneels, staggered - then digs in as a fortress behind a cage of
+     tesla fences. At 15% it does not die. It blows itself up, and you had
+     better be behind a rock. */
+  SCRIPTS.stormbreaker = {
+    start(F) {
+      const s = F.s;
+      s.mode = 'enter'; s.dir = 1; s.step = 0; s.kneel = 0;
+      s.label = 'The Stormbreaker';
+      const w = s.core = F.unit('stormbreaker', 640, -160);
+      w.untargetable = true;
+      s.legs = [F.part('walker_leg', w, -84, 96), F.part('walker_leg', w, 84, 96)].filter(Boolean);
+      for (const l of s.legs) l.untargetable = true;
+      s.tm = { step: 1.3, sweep: 6, missile: 5, karrash: 9 };
+    },
+    update(F, dt) {
+      const s = F.s, T = F.def.tuning, w = s.core;
+      if (!F.live(w)) return;
+      const p = WS.Game.player;
+      const hp = w.health / w.maxHealth;
+      w.walkPhase = (w.walkPhase || 0) + dt * (s.mode === 'walk' ? 2.4 : 0);
+
+      if (s.mode === 'enter') {
+        w.y += 120 * dt;
+        if (w.y >= 235) {
+          w.y = 235; s.mode = 'walk';
+          w.untargetable = false;
+          for (const l of s.legs) if (F.live(l)) l.untargetable = false;
+          F.eruption(w.x, w.y + 90, 120, [0.8, 0.7, 0.5]);
+        }
+        return;
+      }
+
+      if (s.mode !== 'destruct' && hp <= T.destructAt) {
+        this.destruct(F);
+        return;
+      }
+
+      if (s.mode === 'walk') {
+        w.dmgTaken = T.standingArmor;
+        w.displayName = 'The Stormbreaker · Armoured';
+        s.label = 'Break its legs';
+        w.x += s.dir * 38 * dt;
+        if (w.x > 950) s.dir = -1;
+        if (w.x < 330) s.dir = 1;
+        w.facing = s.dir;
+        if (F.every('step', dt, 1.3)) {
+          s.step = 1 - s.step;
+          const fx = w.x + (s.step ? -84 : 84) + s.dir * 60;
+          F.circle(fx, w.y + 130, T.stompRadius, T.stompTele, T.stompDamage, 'Stomp',
+            { style: 'stomp', tint: [0.9, 0.75, 0.5] });
+        }
+        if (F.every('sweep', dt, 10)) this.beam(F, 1);
+        if (F.every('missile', dt, 7)) this.missiles(F, 4);
+        if (F.every('karrash', dt, 13)) F.addsRing('karrash', T.karrash, 700);
+        return;
+      }
+
+      if (s.mode === 'kneel') {
+        s.kneelT -= dt;
+        s.kneel = WS.min(1, s.kneel + dt * 1.5);
+        w.y += (275 - w.y) * WS.min(1, dt * 3);
+        s.label = `Staggered · ${WS.max(0, WS.ceil(s.kneelT))}`;
+        if (s.kneelT <= 0) this.fortress(F);
+        return;
+      }
+
+      if (s.mode === 'fortress') {
+        w.dmgTaken = 1;
+        s.pylons = s.pylons.filter((q) => F.live(q));
+        s.label = s.pylons.length ? `Fortress · ${s.pylons.length} pylons` : 'Fortress · fences down';
+        if (!s.pylons.length && !s.reraised && hp < 0.5) {
+          s.reraised = true;
+          this.pylons(F);
+        }
+        if (F.every('sweep', dt, 9)) this.beam(F, 2);
+        if (F.every('missile', dt, 5)) this.missiles(F, 5);
+        if (F.every('bolts', dt, 6.5)) {
+          F.radial(w.x, w.y + 30, 16, 200, T.missileDamage * 0.7, 'nature', 'Arc bolt',
+            WS.random() * WS.TAU, w);
+        }
+        if (F.every('karrash', dt, 15)) F.addsRing('karrash', T.karrash, 700);
+        return;
+      }
+
+      if (s.mode === 'destruct') {
+        s.destructT -= dt;
+        s.label = `SELF-DESTRUCT · ${WS.max(0, WS.ceil(s.destructT))}`;
+        w.shake = 1 - s.destructT / T.destructTime;
+        if (WS.random() < dt * 8) {
+          WS.FX.burst(w.x + WS.randRange(-70, 70), w.y + WS.randRange(-40, 40), 3, '#ffd07a', 160, 0.5, 3);
+        }
+        if (s.destructT <= 0 && !s.blown) {
+          s.blown = true;
+          WS.FX.screen('rgba(255,240,210,.8)', 1.4);
+          WS.FX.shake(14, 1.0);
+          F.wreck(w, 'stormbreaker', 60);
+          F.pod(w.x, w.y - 60, [[w.x - 60, w.y - 200], [w.x - 400, -180]], { speed: 260 });
+          F.remove(w);
+          s.core = null;
+          WS.Save.stats.bosses.stormbreaker = (WS.Save.stats.bosses.stormbreaker || 0) + 1;
+          WS.Game.run.bossesSlain++;
+          F.win();
+        }
+      }
+    },
+    beam(F, n) {
+      const s = F.s, T = F.def.tuning, w = s.core;
+      const p = WS.Game.player;
+      const side = p.x < w.x ? -1 : 1;
+      for (let k = 0; k < n; k++) {
+        const sd = k === 0 ? side : -side;
+        F.sweep(w.x, w.y + 40, WS.PI / 2 + sd * 1.25, -sd * T.beamSpin, 900, T.beamWidth,
+          T.beamTele, T.beamTime, T.beamDamage, 'Lightning cannon',
+          { follow: w, oy: 40, tint: [0.55, 0.85, 1.0] });
+      }
+      WS.Audio.play('warn', w.x);
+    },
+    missiles(F, n) {
+      const T = F.def.tuning, w = F.s.core;
+      const p = WS.Game.player;
+      for (let k = 0; k < n; k++) {
+        const [x, y] = k === 0 ? [p.x, p.y] : F.near(170);
+        F.circle(x, y, T.missileRadius, T.missileTele + k * 0.12, T.missileDamage, 'Ember missile',
+          { from: { x: w.x, y: w.y - 30 }, tint: [1.0, 0.6, 0.3] });
+      }
+    },
+    pylons(F) {
+      const s = F.s, T = F.def.tuning;
+      const at = [[360, 330], [920, 330], [920, 610], [360, 610]];
+      s.pylons = at.map(([x, y]) => F.unit('tesla_pylon', x, y)).filter(Boolean);
+      if (s.pylons.length === 4) {
+        const [a, b, c, d] = s.pylons;
+        F.fence(a, d, T.fenceDamage, 'Tesla fence');
+        F.fence(b, c, T.fenceDamage, 'Tesla fence');
+        F.fence(c, d, T.fenceDamage, 'Tesla fence');
+      }
+      F.say('pylons');
+    },
+    fortress(F) {
+      const s = F.s, w = s.core;
+      s.mode = 'fortress';
+      w.dmgTaken = 1;
+      w.displayName = 'The Stormbreaker · Fortress';
+      this.pylons(F);
+      s.tm.sweep = 3; s.tm.missile = 2; s.tm.bolts = 4;
+    },
+    destruct(F) {
+      const s = F.s, T = F.def.tuning, w = s.core;
+      s.mode = 'destruct';
+      s.destructT = T.destructTime;
+      w.untargetable = true;
+      w.windup = 0; w.chargeTimer = 0; w.telegraph = null;
+      for (const l of s.legs || []) F.remove(l);
+      for (const q of s.pylons || []) F.remove(q);
+      s.legs = []; s.pylons = [];
+      F.marks.length = 0;
+      F.clearAdds();
+      w.displayName = 'The Stormbreaker · Self-destruct';
+      F.say('destruct');
+      WS.Game.announce('SELF-DESTRUCT', 'Get behind a rock!', 3.0, { kind: 'dread',
+        art: 'stormbreaker', tint: w.template.tint });
+      WS.Audio.play('warn');
+      const zones = [];
+      const xs = WS.shuffle([240, 520, 780, 1040]).slice(0, 3);
+      for (const x of xs) {
+        zones.push({ x: x + WS.randRange(-40, 40), y: 520 + WS.randRange(-50, 60), r: 62 });
+      }
+      s.zones = zones;
+      F.safe(zones, T.destructTime, T.destructDamage, 'The Stormbreaker’s last breath');
+    },
+    onDead(F, e) {
+      const s = F.s, T = F.def.tuning;
+      if (e === s.core) {
+        // Killed outright in one blow past the threshold: it still goes up.
+        s.core = null;
+        F.wreck(e, 'stormbreaker', 60);
+        F.pod(e.x, e.y - 60, [[e.x - 60, e.y - 200], [e.x - 400, -180]], { speed: 260 });
+        F.win();
+        return;
+      }
+      if (s.mode === 'walk' && s.legs && s.legs.includes(e)) {
+        s.legs = s.legs.filter((l) => l !== e && F.live(l));
+        F.sayOnce('legDown');
+        if (!s.legs.length && F.live(s.core)) {
+          s.mode = 'kneel'; s.kneelT = T.kneelStagger;
+          const w = s.core;
+          w.dmgTaken = T.kneelVuln;
+          w.displayName = 'The Stormbreaker · Staggered';
+          F.say('kneel');
+          F.marks.length = 0;
+          WS.FX.shake(12, 0.8);
+          F.eruption(w.x, w.y + 80, 160, [0.8, 0.7, 0.5]);
+          WS.Game.toast('It is down', 'Staggered - it takes extra damage until it recovers.');
+        }
+      }
+    },
+  };
+
+  /* ----------------------------------------------------- Pale Wastes --- */
+  /* The Heart-Drill bores into the Pale behind three ember coolant lines;
+     each line cut tears a sixth out of it. When it breaks through,
+     Marrowfrost wakes, freezes Grimtunnel where he floats and closes the
+     field in a blizzard. Pale Shards orbit him and turn most damage away
+     until they break. At 40% he becomes the Heart of Winter: the dark comes
+     down, the cross of frost never stops turning, and there is a clock. */
+  SCRIPTS.paleheart = {
+    start(F) {
+      const s = F.s;
+      s.mode = 'drill';
+      s.label = 'Cut the coolant lines';
+      const d = s.core = F.unit('heart_drill', 640, 225);
+      F.eruption(640, 265, 160, [0.9, 0.6, 0.3]);
+      s.pipes = [[410, 290], [870, 290], [640, 400]]
+        .map(([x, y]) => F.unit('coolant_pipe', x, y)).filter(Boolean);
+      s.tm = { debris: 3, vent: 7, ghoul: 6 };
+      s.ventDir = 1;
+    },
+    update(F, dt) {
+      const s = F.s, T = F.def.tuning;
+      const p = WS.Game.player;
+
+      if (s.mode === 'drill') {
+        const d = s.core;
+        if (!F.live(d)) return;
+        d.drillSpin = (d.drillSpin || 0) + dt * 9;
+        s.pipes = s.pipes.filter((q) => F.live(q));
+        s.label = s.pipes.length ? `Cut the coolant lines · ${s.pipes.length} left` : 'Break the drill';
+        if (F.every('debris', dt, 4)) {
+          for (let k = 0; k < 4; k++) {
+            const [x, y] = k === 0 ? [p.x, p.y] : F.near(190);
+            F.circle(x, y, T.debrisRadius, T.debrisTele + k * 0.15, T.debrisDamage, 'Falling ice',
+              { style: 'ice', tint: [0.7, 0.9, 1.0] });
+          }
+        }
+        if (F.every('vent', dt, 11)) {
+          s.ventDir = -s.ventDir;
+          F.sweep(d.x, d.y + 20, WS.random() * WS.TAU, s.ventDir * T.ventSpin, 900, 40, T.ventTele,
+            6, T.ventDamage, 'Flame vent', { arms: 4, follow: d, oy: 20, tint: [1.0, 0.55, 0.25] });
+        }
+        if (F.every('ghoul', dt, 12)) F.adds('pale_ghoul', T.ghouls, d.x, d.y + 120, 170);
+        return;
+      }
+
+      if (s.mode === 'breach') {
+        s.breachT += dt;
+        if (s.breachT > 0.05 && !s.b1) {
+          s.b1 = true; F.say('breach');
+          F.pod(640, 225, [[640, 170], [320, 200, 'freeze']], { speed: 180 });
+        }
+        if (s.breachT > 3.2 && !s.b2) { s.b2 = true; F.say('wake'); F.darkTarget = 0.35; }
+        if (s.breachT > 5.4 && !s.b3) { s.b3 = true; F.say('frozen'); }
+        if (WS.random() < dt * 5) {
+          WS.FX.burst(640 + WS.randRange(-120, 120), 200, 2, '#bfe6ff', 120, 0.9, 3);
+        }
+        if (s.breachT > 7.4) this.lord(F);
+        return;
+      }
+
+      const L = s.lord;
+      if (!F.live(L)) return;
+      const hp = L.health / L.maxHealth;
+      L.facing = p.x < L.x ? -1 : 1;
+
+      if (s.mode === 'lord') {
+        s.orbit += dt * 0.9;
+        L.x = 640 + WS.cos(F.t * 0.33) * 170;
+        L.y = 240 + WS.sin(F.t * 0.5) * 40;
+        s.shards = s.shards.filter((q) => F.live(q));
+        s.shards.forEach((q, i) => {
+          const a = s.orbit + (i / 4) * WS.TAU;
+          q.x = L.x + WS.cos(a) * 120; q.y = L.y + WS.sin(a) * 90;
+        });
+        L.dmgTaken = s.shards.length ? T.shardReduce : 1;
+        L.displayName = s.shards.length ? 'Marrowfrost · Warded by the Pale'
+          : 'Marrowfrost, the Pale Lord';
+        s.label = s.shards.length ? `Shatter the Pale Shards · ${s.shards.length}` : 'He is open';
+        if (!s.shards.length) {
+          s.shardT -= dt;
+          if (s.shardT <= 0) { this.shards(F); F.sayOnce('shards'); }
+        }
+        if (hp <= T.winterAt) { this.winter(F); return; }
+        if (F.every('nova', dt, 9)) this.nova(F);
+        if (F.every('grid', dt, 14)) {
+          F.grid(F.bounds, 5, 4, 4, T.gridTele, T.gridDamage, 'Glacial spikes');
+          WS.Game.toast('Glacial spikes', 'Find the ground that is not marked.');
+        }
+        if (F.every('spike', dt, 5)) {
+          F.radial(L.x, L.y, 14, 190, T.spikeDamage, 'frost', 'Ice lance', F.t, L);
+        }
+        if (F.every('tide', dt, 16)) {
+          F.addsRing('skeleton', 6, 560);
+          F.addsRing('pale_ghoul', T.ghouls - 4, 620);
+        }
+        return;
+      }
+
+      if (s.mode === 'winter') {
+        s.enrage -= dt;
+        s.label = `Heart of Winter · ${WS.max(0, WS.ceil(s.enrage))}`;
+        L.x += (640 - L.x) * WS.min(1, dt * 0.8);
+        L.y += (250 - L.y) * WS.min(1, dt * 0.8);
+        if (F.every('cross', dt, 8)) {
+          s.ventDir = -s.ventDir;
+          F.sweep(L.x, L.y, WS.random() * WS.TAU, s.ventDir * 0.5, 900, 36, 1.0, 8.2,
+            T.ventDamage, 'Frost cross', { arms: 4, follow: L, tint: [0.7, 0.92, 1.0] });
+        }
+        if (F.every('nova', dt, 7)) this.nova(F);
+        if (F.every('grid', dt, 12)) F.grid(F.bounds, 5, 4, 4, T.gridTele, T.gridDamage, 'Glacial spikes');
+        if (F.every('spike', dt, 4)) {
+          F.radial(L.x, L.y, 16, 200, T.spikeDamage, 'frost', 'Ice lance', F.t, L);
+        }
+        if (s.enrage <= 0 && F.every('winterEnd', dt, 3)) {
+          WS.Player.takeDamage(p, 99999, 'The endless winter');
+        }
+      }
+    },
+    nova(F) {
+      const T = F.def.tuning, L = F.s.lord;
+      F.ring(L.x, L.y, { speed: T.novaSpeed, gaps: 3, gapWidth: T.novaGap, spin: 0.35,
+        dmg: T.novaDamage, name: 'Frost nova', tint: [0.7, 0.92, 1.0] });
+      F.ring(L.x, L.y, { speed: T.novaSpeed, gaps: 3, gapWidth: T.novaGap, spin: -0.35, delay: 1.3,
+        dmg: T.novaDamage, name: 'Frost nova', tint: [0.7, 0.92, 1.0] });
+    },
+    shards(F) {
+      const s = F.s, L = s.lord;
+      s.shards = [];
+      for (let i = 0; i < 4; i++) {
+        const q = F.unit('frost_shard', L.x, L.y);
+        if (q) s.shards.push(q);
+      }
+      s.shardT = F.def.tuning.shardEvery;
+      WS.FX.flash(L.x, L.y, 160, [0.7, 0.92, 1.0], 0.5);
+    },
+    lord(F) {
+      const s = F.s;
+      s.mode = 'lord';
+      s.orbit = 0;
+      F.bounds = { minX: 200, maxX: 1080, minY: 96, maxY: 650 };
+      WS.Game.arenaBounds = F.bounds;
+      const L = s.lord = F.unit('pale_lord', 640, 240);
+      F.darkTarget = 0.15;
+      if (L) {
+        F.eruption(L.x, L.y, 200, [0.7, 0.92, 1.0]);
+        WS.Game.announce('Marrowfrost, the Pale Lord', 'The dark itself, awake', 4.0,
+          { kind: 'dread', art: 'lich', tint: L.template.tint });
+        this.shards(F);
+      }
+      F.say('lord');
+      s.tm = { nova: 4, grid: 9, spike: 3, tide: 8 };
+    },
+    winter(F) {
+      const s = F.s, T = F.def.tuning, L = s.lord;
+      s.mode = 'winter';
+      for (const q of s.shards) F.remove(q);
+      s.shards = [];
+      L.dmgTaken = 1;
+      L.spriteSize *= 1.3;
+      L.displayName = 'The Heart of Winter';
+      s.enrage = T.winterEnrage;
+      F.darkTarget = 0.72;
+      F.clearAdds();
+      F.say('winter');
+      WS.Game.announce('The Heart of Winter', 'Break him before the cold does.', 3.4,
+        { kind: 'dread', art: 'lich', tint: L.template.tint });
+      WS.FX.screen('rgba(170,220,255,.35)', 1.0);
+      s.tm = { cross: 1.5, nova: 5, grid: 8, spike: 2.5 };
+    },
+    onDead(F, e) {
+      const s = F.s, T = F.def.tuning;
+      if (e === s.core && s.mode === 'drill') {
+        s.core = null;
+        for (const q of s.pipes) F.remove(q);
+        s.pipes = [];
+        F.wreck(e, 'heartdrill', 600);
+        F.marks.length = 0;
+        F.clearAdds();
+        s.mode = 'breach'; s.breachT = 0;
+        s.label = 'The breach';
+        WS.FX.shake(12, 1.2);
+        return;
+      }
+      if (e === s.lord) {
+        s.lord = null;
+        F.darkTarget = 0;
+        F.wreck(e, 'fallen', 30);
+        F.win();
+        return;
+      }
+      if (s.mode === 'drill' && s.pipes.includes(e) && F.live(s.core)) {
+        s.pipes = s.pipes.filter((q) => q !== e && F.live(q));
+        F.sayOnce('pipe');
+        WS.Enemy.damage(s.core, s.core.maxHealth * T.pipeBreak, false, 'coolant');
+        WS.FX.flash(s.core.x, s.core.y, 140, [1.0, 0.6, 0.25], 0.5);
+      }
+    },
+    onWin(F) {
+      for (const pod of F.pods) {
+        if (pod.frozen) {
+          pod.frozen = false;
+          pod.thawed = true;
+          pod.path = [[pod.x + 60, pod.y + 120]];
+          pod.speed = 40;
+        }
+      }
+    },
+  };
+
+  WS.Finale = F;
+
+})(window.WS);
+
 /* ===== src/game/game.js ===== */
 /* Orchestration: run lifecycle, the fixed-step simulation, banners and toasts,
  * gold, victory and defeat. The UI layer reads this state and never mutates the
@@ -18628,6 +20611,7 @@ window.WS = window.WS || {};
     this.leveling = false;
     this.leveling = false;
 
+    WS.Finale.reset();
     this.player = WS.Player.create(characterId);
     WS.WaveManager.reset(this.run.map);
     WS.Renderer.buildScenery(this.run.map);
@@ -18702,6 +20686,7 @@ window.WS = window.WS || {};
     this.run = null;
     this.arenaBounds = null;
     WS.Arena.stop();
+    WS.Finale.reset();
     WS.FX.clear();
     WS.Enemy.clear();
     WS.Projectile.clear();
@@ -18846,11 +20831,21 @@ window.WS = window.WS || {};
     return true;
   };
 
-  /** The midpoint draft. Unlike the opening one the run is already going, so
+  /* The drafts that interrupt a run already under way: the midpoint one,
+     and the one the finale's breather hands out at dawn. */
+  const DRAFTS = {
+    second: ['The Second Blessing', 'Halfway. The dark has taken your measure.',
+      'Halfway to dawn. One more.'],
+    third: ['The Third Blessing', 'The night is over. The one who made it is not.',
+      'Dawn. One last gift, for what is coming.'],
+  };
+
+  /** A draft mid-run. Unlike the opening one the run is already going, so
    *  this stops it rather than starting it. */
-  Game.offerBlessing = function () {
+  Game.offerBlessing = function (kind) {
     const choices = WS.LevelUp.buildBlessingChoices(this.player);
     if (!choices.length) return;        // nothing left unheld: say nothing
+    const words = DRAFTS[kind] || DRAFTS.second;
     this.blessingChoices = choices;
     this.state = 'blessing';
     this.timeScale = 1;
@@ -18859,9 +20854,8 @@ window.WS = window.WS || {};
        of a fight reads as the game interrupting you rather than as a thing
        the run had been building toward. The banner's clock is stopped behind
        an overlay, so it plays when the cards clear. */
-    this.announce('The Second Blessing', 'Halfway. The dark has taken your measure.',
-      3.2, { kind: 'glory' });
-    WS.UI.openBlessing(choices, 'Halfway to dawn. One more, and no more.');
+    this.announce(words[0], words[1], 3.2, { kind: 'glory' });
+    WS.UI.openBlessing(choices, words[2]);
   };
 
   Game.chooseBlessing = function (choice) {
@@ -18877,9 +20871,10 @@ window.WS = window.WS || {};
   };
 
   /* ------------------------------------------------------- run outcomes -- */
-  Game.victory = function () {
+  /** Thirty minutes held: the win is banked whatever happens next. */
+  Game.bankVictory = function () {
     const run = this.run;
-    if (run.victorious) return;
+    if (run.victorious) return false;
     run.victorious = true;
     WS.Save.stats.totalVictories++;
     WS.Save.db.unlocks.hyper[run.mapId] = true;
@@ -18887,7 +20882,43 @@ window.WS = window.WS || {};
     this.state = 'over';
     this.running = false;
     WS.Achievements.check();
+    return true;
+  };
 
+  Game.victory = function () {
+    if (!this.bankVictory()) return;
+    this.celebrate();
+  };
+
+  /** 30:00 on a map with a finale. The win is banked exactly as it always
+   *  was, but the dawn is not the end of the story yet: the panel offers
+   *  the finale beside the endless options, and the cinematic waits for
+   *  whichever ending the player actually reaches. */
+  Game.reachDawn = function () {
+    if (!this.bankVictory()) return;
+    WS.Audio.play('victory');
+    WS.FX.screen('rgba(245,197,107,.3)', 1.0);
+    WS.UI.openVictory();
+  };
+
+  /** Back into the run from the dawn panel, to face the finale. */
+  Game.faceFinale = function () {
+    this.running = true;
+    this.state = 'playing';
+    WS.UI.closeOverlay();
+    WS.Finale.begin(this.run);
+  };
+
+  /** The finale is beaten. The story ends here, so the dawn plays here. */
+  Game.finaleVictory = function () {
+    this.state = 'over';
+    this.running = false;
+    WS.Achievements.check();
+    this.celebrate();
+  };
+
+  Game.celebrate = function () {
+    const run = this.run;
     /* Thirty minutes of holding the line earns more than a panel sliding up.
      *
      * The prologue's last line is "Hold until the light comes back"; this is
@@ -18979,6 +21010,7 @@ window.WS = window.WS || {};
      * had not been one before. */
     if (reason === 'defeated') WS.FX.screen('rgba(226,72,61,.35)', 1.0);
     WS.Arena.stop();
+    WS.Finale.reset();
     WS.UI.openGameOver(reason);
   };
 
@@ -19027,6 +21059,7 @@ window.WS = window.WS || {};
     if (!this.running) return;
 
     if (run.map.arena) WS.Arena.update(dt);
+    else if (WS.Finale.running()) WS.Finale.update(dt);
     else WS.WaveManager.update(dt, run);
     if (!this.running) return;
 
@@ -19065,9 +21098,13 @@ window.WS = window.WS || {};
       return;
     }
 
-    // Victory is banked the moment the survivor reaches 30:00.
-    if (!run.victorious && !run.map.arena && run.time >= WS.Config.deathTime) {
-      this.victory();
+    /* Victory is banked the moment the survivor reaches 30:00 - and on a map
+       with a finale, that is also where the choice is: face what made the
+       night, or wait for Death. */
+    if (!run.victorious && !run.map.arena && !WS.Finale.running()
+      && run.time >= WS.Config.deathTime) {
+      if (WS.Finale.available(run)) this.reachDawn();
+      else this.victory();
       return;
     }
 
@@ -22000,6 +24037,1248 @@ window.WS = window.WS || {};
 
 })(window.WS);
 
+/* ===== src/render/finale-art.js ===== */
+/* The finale, drawn.
+ *
+ * The machines are drawn live, every frame, in world units scaled from their
+ * own radius: a drill that turns, treads that roll, sails that fill, a
+ * cockpit that pops open when it overheats. The same painters, called once
+ * with `still`, become the portraits the boss banner and the bestiary use.
+ *
+ * Telegraphs follow the rule the Eclipse Arena settled: a thing you must
+ * react to cannot be told by colour alone. Doomed ground is hatched and the
+ * hatching tightens as it lands; safe ground wears corner brackets.
+ */
+'use strict';
+(function (WS) {
+
+  const UI_FONT = "'Archivo', 'Segoe UI', system-ui, sans-serif";
+  const A = {};
+
+  const rgba = (c, a) => WS.rgb(c, WS.clamp(a, 0, 1));
+  function pal(tint) {
+    return {
+      hi: WS.hex(WS.mix(tint, [1, 1, 1], 0.35)), mid: WS.hex(WS.shade(tint, 0.85)),
+      lo: WS.hex(WS.shade(tint, 0.5)), dark: WS.hex(WS.shade(tint, 0.26)),
+      line: WS.hex(WS.shade(tint, 0.1)),
+    };
+  }
+  const IRON = pal([0.42, 0.42, 0.46]);
+  const BRASS = pal([0.86, 0.66, 0.32]);
+  const WOOD = pal([0.52, 0.34, 0.2]);
+
+  function rrect(ctx, x, y, w, h, r) {
+    r = WS.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function plate(ctx, x, y, w, h, r, p) {
+    const g = ctx.createLinearGradient(x, y, x, y + h);
+    g.addColorStop(0, p.hi); g.addColorStop(0.45, p.mid); g.addColorStop(1, p.lo);
+    rrect(ctx, x, y, w, h, r);
+    ctx.fillStyle = g; ctx.fill();
+    ctx.lineWidth = WS.max(1.5, h * 0.05); ctx.strokeStyle = p.line; ctx.stroke();
+  }
+
+  function shape(ctx, pts, p, lw) {
+    let minY = 1e9, maxY = -1e9;
+    ctx.beginPath();
+    pts.forEach(([x, y], i) => {
+      if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+      minY = WS.min(minY, y); maxY = WS.max(maxY, y);
+    });
+    ctx.closePath();
+    const g = ctx.createLinearGradient(0, minY, 0, maxY);
+    g.addColorStop(0, p.hi); g.addColorStop(0.5, p.mid); g.addColorStop(1, p.lo);
+    ctx.fillStyle = g; ctx.fill();
+    ctx.lineWidth = lw || 2; ctx.strokeStyle = p.line; ctx.stroke();
+  }
+
+  function rivets(ctx, x0, x1, y, n, r) {
+    ctx.fillStyle = 'rgba(20,16,12,.55)';
+    for (let i = 0; i < n; i++) {
+      const x = x0 + (x1 - x0) * (n === 1 ? 0.5 : i / (n - 1));
+      ctx.beginPath(); ctx.arc(x, y, r, 0, WS.TAU); ctx.fill();
+    }
+  }
+
+  function glow(ctx, x, y, r, col, a) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, rgba(col, a));
+    g.addColorStop(1, rgba(col, 0));
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, WS.TAU); ctx.fill();
+    ctx.restore();
+  }
+
+  function flame(ctx, x, y, h, t) {
+    const f = 1 + 0.18 * WS.sin(t * 17) + 0.1 * WS.sin(t * 29);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const g = ctx.createRadialGradient(x, y - h * 0.4, 0, x, y - h * 0.4, h * f);
+    g.addColorStop(0, 'rgba(255,240,190,.95)');
+    g.addColorStop(0.45, 'rgba(255,170,60,.7)');
+    g.addColorStop(1, 'rgba(255,90,20,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(x, y - h * 0.45 * f, h * 0.32, h * 0.7 * f, 0, 0, WS.TAU);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /** Grimtunnel himself, in a glass bubble - he is in every one of them. */
+  function pilot(ctx, x, y, r, t, still) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(x, y, r, 0, WS.TAU); ctx.clip();
+    const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.4, 1, x, y, r);
+    g.addColorStop(0, 'rgba(190,225,255,.55)');
+    g.addColorStop(1, 'rgba(30,45,70,.75)');
+    ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    const sz = WS.round(r * 2.3);
+    const bob = still ? 0 : WS.sin(t * 5) * r * 0.05;
+    ctx.drawImage(WS.Sprites.creature('lampling', [1.0, 0.86, 0.5], sz),
+      x - sz / 2, y - sz * 0.5 + bob, sz, sz);
+    ctx.restore();
+    ctx.save();
+    ctx.lineWidth = WS.max(2, r * 0.14);
+    ctx.strokeStyle = BRASS.lo;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, WS.TAU); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,.55)';
+    ctx.lineWidth = WS.max(1, r * 0.08);
+    ctx.beginPath(); ctx.arc(x, y, r * 0.78, WS.PI * 1.15, WS.PI * 1.55); ctx.stroke();
+    ctx.restore();
+  }
+
+  function aimAt(e, still) {
+    const p = WS.Game.player;
+    if (still || !p) return -WS.PI / 2;
+    return WS.atan2(p.y - e.y, p.x - e.x);
+  }
+
+  /* ------------------------------------------------------------ machines -- */
+  const M = {};
+
+  M.candlecrawler = function (ctx, e, t, o) {
+    const R = e.radius, x = e.x, y = e.y, f = e.facing < 0 ? -1 : 1;
+    const busy = !o.still && (e.windup > 0 || e.chargeTimer > 0);
+    const rise = e.rise === undefined ? 1 : e.rise;
+    ctx.save();
+    if (rise < 1) {
+      ctx.beginPath(); ctx.rect(x - R * 3, y - R * 3, R * 6, R * 3.9); ctx.clip();
+      ctx.translate(0, (1 - rise) * R * 1.8);
+    }
+    if (busy && e.windup > 0) ctx.translate(WS.randRange(-2, 2), WS.randRange(-2, 2));
+    const p = pal(e.template.tint);
+    // tracks
+    const treadOff = o.still ? 0 : (t * (e.chargeTimer > 0 ? 260 : 40)) % 14;
+    plate(ctx, x - R * 1.25, y + R * 0.3, R * 2.5, R * 0.6, R * 0.3, IRON);
+    ctx.save();
+    rrect(ctx, x - R * 1.25, y + R * 0.3, R * 2.5, R * 0.6, R * 0.3); ctx.clip();
+    ctx.strokeStyle = 'rgba(10,10,12,.6)'; ctx.lineWidth = 3;
+    for (let tx = x - R * 1.3 - treadOff * f; tx < x + R * 1.3; tx += 14) {
+      ctx.beginPath(); ctx.moveTo(tx, y + R * 0.3); ctx.lineTo(tx + 4, y + R * 0.9); ctx.stroke();
+    }
+    ctx.restore();
+    for (let i = 0; i < 5; i++) {
+      const wx = x - R * 0.95 + i * R * 0.475;
+      ctx.fillStyle = IRON.dark;
+      ctx.beginPath(); ctx.arc(wx, y + R * 0.6, R * 0.17, 0, WS.TAU); ctx.fill();
+      ctx.fillStyle = IRON.hi;
+      ctx.beginPath(); ctx.arc(wx, y + R * 0.6, R * 0.06, 0, WS.TAU); ctx.fill();
+    }
+    // candle smokestacks at the back
+    for (let k = 0; k < 2; k++) {
+      const sx = x - f * R * (0.55 + k * 0.3), sy = y - R * 0.3;
+      const h = R * (0.62 - k * 0.14);
+      plate(ctx, sx - R * 0.1, sy - h, R * 0.2, h, R * 0.06, pal([0.96, 0.9, 0.74]));
+      if (!o.wreck) flame(ctx, sx, sy - h, R * 0.28, t + k);
+    }
+    // the hull
+    shape(ctx, [[x - R * 1.1, y + R * 0.38], [x + R * 1.1, y + R * 0.38],
+      [x + R * 0.85 * f + (f < 0 ? 0 : 0), y - R * 0.36], [x - R * 0.95 * f, y - R * 0.36]]
+      .map(([px, py]) => [px, py]), p, 2.5);
+    // hazard band
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x - R * 1.08, y + R * 0.16, R * 2.16, R * 0.18); ctx.clip();
+    ctx.fillStyle = '#e8b73a'; ctx.fillRect(x - R * 1.1, y + R * 0.16, R * 2.2, R * 0.18);
+    ctx.fillStyle = '#1c1812';
+    for (let bx = x - R * 1.2; bx < x + R * 1.2; bx += R * 0.24) {
+      ctx.beginPath();
+      ctx.moveTo(bx, y + R * 0.34); ctx.lineTo(bx + R * 0.12, y + R * 0.16);
+      ctx.lineTo(bx + R * 0.22, y + R * 0.16); ctx.lineTo(bx + R * 0.1, y + R * 0.34);
+      ctx.fill();
+    }
+    ctx.restore();
+    rivets(ctx, x - R * 0.9, x + R * 0.9, y - R * 0.22, 7, R * 0.035);
+    // the drill
+    const dx0 = x + f * R * 0.95, dy0 = y + R * 0.02;
+    const len = R * 0.95, half = R * 0.36;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(dx0, dy0 - half); ctx.lineTo(dx0 + f * len, dy0); ctx.lineTo(dx0, dy0 + half);
+    ctx.closePath();
+    const dg = ctx.createLinearGradient(0, dy0 - half, 0, dy0 + half);
+    dg.addColorStop(0, '#e6e2da'); dg.addColorStop(0.5, '#8d8a86'); dg.addColorStop(1, '#3a3836');
+    ctx.fillStyle = dg; ctx.fill();
+    ctx.strokeStyle = '#1b1a18'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.clip();
+    const spin = o.still ? 0 : (t * (busy ? 16 : 5)) % 1;
+    ctx.strokeStyle = 'rgba(20,20,22,.7)'; ctx.lineWidth = 3;
+    for (let s = -1; s < 7; s++) {
+      const u = (s + spin) / 6;
+      const sx = dx0 + f * len * u;
+      ctx.beginPath();
+      ctx.moveTo(sx, dy0 - half); ctx.lineTo(sx + f * len * 0.14, dy0 + half); ctx.stroke();
+    }
+    ctx.restore();
+    if (busy && e.chargeTimer > 0) {
+      glow(ctx, dx0 + f * len, dy0, R * 0.6, [1.0, 0.7, 0.3], 0.6);
+    }
+    // headlamp
+    if (!o.wreck) glow(ctx, x + f * R * 0.62, y - R * 0.2, R * 0.35, [1.0, 0.92, 0.6], 0.8);
+    // cockpit
+    const open = !o.still && e.dmgTaken > 1 && !e.untargetable;
+    pilot(ctx, x - f * R * 0.05, y - R * 0.5, R * 0.38, t, o.still);
+    if (open) {
+      ctx.save();
+      ctx.translate(x - f * R * 0.05 - f * R * 0.36, y - R * 0.55);
+      ctx.rotate(-f * (0.9 + 0.08 * WS.sin(t * 8)));
+      ctx.fillStyle = BRASS.mid; ctx.strokeStyle = BRASS.line; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(f * R * 0.36, 0, R * 0.4, WS.PI, 0); ctx.fill(); ctx.stroke();
+      ctx.restore();
+      glow(ctx, x, y - R * 0.5, R * 0.9, [1.0, 0.3, 0.2], 0.35 + 0.2 * WS.sin(t * 10));
+    }
+    if (!o.still && !o.wreck && e.health / e.maxHealth < 0.25 && !e.untargetable) {
+      glow(ctx, x, y, R * 1.5, [1.0, 0.25, 0.1], 0.18 + 0.12 * WS.sin(t * 7));
+    }
+    ctx.restore();
+  };
+
+  M.turret = function (ctx, e, t, o) {
+    const R = e.radius, x = e.x, y = e.y;
+    const p = pal(e.template.tint);
+    plate(ctx, x - R * 0.9, y + R * 0.1, R * 1.8, R * 0.6, R * 0.2, IRON);
+    const ang = aimAt(e, o.still);
+    ctx.save();
+    ctx.translate(x, y - R * 0.1); ctx.rotate(ang);
+    plate(ctx, 0, -R * 0.2, R * 1.3, R * 0.4, R * 0.1, IRON);
+    ctx.fillStyle = '#16120e';
+    ctx.beginPath(); ctx.ellipse(R * 1.3, 0, R * 0.08, R * 0.2, 0, 0, WS.TAU); ctx.fill();
+    ctx.restore();
+    // the lantern
+    rrect(ctx, x - R * 0.55, y - R * 0.75, R * 1.1, R * 0.95, R * 0.3);
+    const lg = ctx.createRadialGradient(x, y - R * 0.3, 1, x, y - R * 0.3, R * 0.7);
+    lg.addColorStop(0, '#fff3c4'); lg.addColorStop(0.5, p.hi); lg.addColorStop(1, p.lo);
+    ctx.fillStyle = lg; ctx.fill();
+    ctx.strokeStyle = IRON.dark; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.strokeStyle = 'rgba(30,24,20,.6)'; ctx.lineWidth = 1.6;
+    for (const dx of [-0.2, 0.2]) {
+      ctx.beginPath(); ctx.moveTo(x + R * dx, y - R * 0.75); ctx.lineTo(x + R * dx, y + R * 0.2); ctx.stroke();
+    }
+    if (!o.wreck) glow(ctx, x, y - R * 0.3, R * 1.4, [1.0, 0.8, 0.4], 0.45 + 0.15 * WS.sin(t * 6 + x));
+  };
+
+  M.cannon = function (ctx, e, t, o) {
+    const R = e.radius, x = e.x, y = e.y;
+    rrect(ctx, x - R * 0.7, y - R * 0.7, R * 1.4, R * 1.2, R * 0.12);
+    ctx.fillStyle = WOOD.dark; ctx.fill();
+    ctx.strokeStyle = '#c9a24a'; ctx.lineWidth = 2; ctx.stroke();
+    const ang = o.still ? WS.PI / 2 : WS.clamp(aimAt(e, false), 0.2, WS.PI - 0.2);
+    ctx.save();
+    ctx.translate(x, y); ctx.rotate(ang);
+    plate(ctx, -R * 0.2, -R * 0.3, R * 1.3, R * 0.6, R * 0.2, pal([0.24, 0.24, 0.27]));
+    ctx.fillStyle = '#0b0a09';
+    ctx.beginPath(); ctx.ellipse(R * 1.1, 0, R * 0.12, R * 0.25, 0, 0, WS.TAU); ctx.fill();
+    ctx.restore();
+  };
+
+  M.galleon = function (ctx, e, t, o) {
+    const R = e.radius, x = e.x, y = e.y, f = e.facing < 0 ? -1 : 1;
+    const wreck = !!o.wreck;
+    if (!o.still && !wreck) {
+      ctx.save();
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = '#000';
+      ctx.beginPath(); ctx.ellipse(x, y + R * 2.1, R * 1.5, R * 0.22, 0, 0, WS.TAU); ctx.fill();
+      ctx.restore();
+      for (let i = 0; i < 3; i++) {
+        const k = ((t * 0.8 + i / 3) % 1);
+        ctx.save();
+        ctx.globalAlpha = 0.25 * (1 - k);
+        ctx.fillStyle = '#c9a877';
+        ctx.beginPath();
+        ctx.ellipse(x - f * R * (0.4 + k * 1.2), y + R * (0.75 + k * 0.5), R * (0.2 + k * 0.4),
+          R * (0.1 + k * 0.15), 0, 0, WS.TAU);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+    // masts and sails, behind the hull's rail
+    const billow = o.still ? 0.1 : 0.1 + 0.05 * WS.sin(t * 2.1);
+    const masts = wreck ? [[0.5, 0.9]] : [[-0.55, 1.95], [0.5, 1.75]];
+    for (const [mx, mh] of masts) {
+      const px = x + f * R * mx;
+      ctx.strokeStyle = WOOD.line; ctx.lineWidth = R * 0.07;
+      ctx.beginPath(); ctx.moveTo(px, y - R * 0.2); ctx.lineTo(px, y - R * mh); ctx.stroke();
+      ctx.strokeStyle = WOOD.hi; ctx.lineWidth = R * 0.025;
+      ctx.beginPath(); ctx.moveTo(px - R * 0.015, y - R * 0.2); ctx.lineTo(px - R * 0.015, y - R * mh); ctx.stroke();
+      const sw = R * 0.55, top = y - R * (mh - 0.15), bot = y - R * 0.45;
+      ctx.beginPath();
+      ctx.moveTo(px - sw, top);
+      ctx.quadraticCurveTo(px + f * R * billow * 2, top - R * 0.08, px + sw, top);
+      ctx.quadraticCurveTo(px + sw + f * R * billow * 3, (top + bot) / 2, px + sw * 0.92, bot);
+      ctx.quadraticCurveTo(px, bot + R * 0.06, px - sw * 0.92, bot);
+      ctx.quadraticCurveTo(px - sw + f * R * billow * 3, (top + bot) / 2, px - sw, top);
+      const sg = ctx.createLinearGradient(px - sw, 0, px + sw, 0);
+      sg.addColorStop(0, wreck ? '#6d6153' : '#efe3c8'); sg.addColorStop(1, wreck ? '#4a4034' : '#c8b893');
+      ctx.fillStyle = sg; ctx.fill();
+      ctx.strokeStyle = '#6b5a40'; ctx.lineWidth = 1.5; ctx.stroke();
+      if (wreck) {
+        ctx.fillStyle = '#1a1612';
+        ctx.beginPath(); ctx.arc(px + sw * 0.3, (top + bot) / 2, R * 0.14, 0, WS.TAU); ctx.fill();
+      } else {
+        // the Kerchief mask
+        const my = (top + bot) / 2;
+        ctx.fillStyle = '#c3322c';
+        ctx.beginPath(); ctx.ellipse(px, my, sw * 0.42, R * 0.18, 0, 0, WS.TAU); ctx.fill();
+        ctx.fillStyle = '#1a1210';
+        for (const d of [-1, 1]) {
+          ctx.beginPath(); ctx.ellipse(px + d * sw * 0.17, my - R * 0.02, sw * 0.1, R * 0.06, 0, 0, WS.TAU); ctx.fill();
+        }
+      }
+      if (!wreck) {
+        const fx = px, fy = y - R * mh;
+        ctx.fillStyle = '#c3322c';
+        ctx.beginPath();
+        ctx.moveTo(fx, fy);
+        ctx.quadraticCurveTo(fx - f * R * 0.2, fy + R * (0.05 + 0.04 * WS.sin(t * 6 + mx)),
+          fx - f * R * 0.4, fy + R * 0.02);
+        ctx.lineTo(fx - f * R * 0.36, fy + R * 0.14);
+        ctx.lineTo(fx, fy + R * 0.14);
+        ctx.fill();
+      }
+    }
+    // the hull
+    ctx.beginPath();
+    ctx.moveTo(x + f * R * 1.8, y - R * 0.3);
+    ctx.quadraticCurveTo(x + f * R * 1.3, y + R * 0.55, x, y + R * 0.62);
+    ctx.quadraticCurveTo(x - f * R * 1.2, y + R * 0.5, x - f * R * 1.6, y - R * 0.45);
+    ctx.lineTo(x - f * R * 1.35, y - R * 0.5);
+    ctx.lineTo(x + f * R * 1.55, y - R * 0.32);
+    ctx.closePath();
+    const hg = ctx.createLinearGradient(0, y - R * 0.5, 0, y + R * 0.62);
+    hg.addColorStop(0, wreck ? '#3a2c22' : WOOD.hi); hg.addColorStop(0.45, wreck ? '#2a2019' : WOOD.mid);
+    hg.addColorStop(1, wreck ? '#140f0c' : WOOD.dark);
+    ctx.fillStyle = hg; ctx.fill();
+    ctx.strokeStyle = WOOD.line; ctx.lineWidth = 3; ctx.stroke();
+    ctx.save();
+    ctx.clip();
+    ctx.strokeStyle = 'rgba(20,12,8,.45)'; ctx.lineWidth = 1.5;
+    for (let py = y - R * 0.3; py < y + R * 0.65; py += R * 0.14) {
+      ctx.beginPath(); ctx.moveTo(x - R * 2, py); ctx.lineTo(x + R * 2, py + R * 0.06); ctx.stroke();
+    }
+    ctx.restore();
+    ctx.strokeStyle = wreck ? '#5a4a30' : '#d8b04a'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x - f * R * 1.45, y - R * 0.36); ctx.lineTo(x + f * R * 1.6, y - R * 0.2); ctx.stroke();
+    // stern windows
+    if (!wreck) {
+      for (let i = 0; i < 3; i++) {
+        ctx.fillStyle = `rgba(255,210,120,${0.7 + 0.2 * WS.sin(t * 3 + i)})`;
+        ctx.fillRect(x - f * R * (1.25 - i * 0.14) - R * 0.04, y - R * 0.25, R * 0.08, R * 0.12);
+      }
+    }
+    // the Admiral on the quarterdeck
+    if (!wreck && !o.still) {
+      const sz = WS.round(R * 0.95);
+      ctx.drawImage(WS.Sprites.creature('bandit', [0.92, 0.22, 0.28], sz, ['plumehat', 'pauldrons']),
+        x - f * R * 1.05 - sz / 2, y - R * 0.45 - sz * 0.62, sz, sz);
+    }
+    if (wreck) {
+      glow(ctx, x - R * 0.4, y, R * 0.9, [1.0, 0.45, 0.15], 0.4 + 0.2 * WS.sin(t * 9));
+      glow(ctx, x + R * 0.6, y - R * 0.2, R * 0.6, [1.0, 0.55, 0.2], 0.35 + 0.2 * WS.sin(t * 7));
+    }
+  };
+
+  M.soullantern = function (ctx, e, t, o) {
+    const R = e.radius, x = e.x, y = e.y;
+    ctx.strokeStyle = IRON.line; ctx.lineWidth = R * 0.18;
+    ctx.beginPath(); ctx.moveTo(x, y + R * 0.9); ctx.lineTo(x, y - R * 1.3); ctx.lineTo(x + R * 0.5, y - R * 1.3); ctx.stroke();
+    ctx.strokeStyle = IRON.mid; ctx.lineWidth = R * 0.07;
+    ctx.beginPath(); ctx.moveTo(x - R * 0.03, y + R * 0.9); ctx.lineTo(x - R * 0.03, y - R * 1.25); ctx.stroke();
+    const sway = o.still ? 0 : WS.sin(t * 1.6 + x) * 0.12;
+    ctx.save();
+    ctx.translate(x + R * 0.5, y - R * 1.3); ctx.rotate(sway);
+    ctx.strokeStyle = IRON.line; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, R * 0.35); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-R * 0.35, R * 0.4); ctx.lineTo(R * 0.35, R * 0.4); ctx.lineTo(R * 0.45, R * 1.3);
+    ctx.lineTo(-R * 0.45, R * 1.3); ctx.closePath();
+    ctx.fillStyle = 'rgba(40,70,55,.8)'; ctx.fill();
+    ctx.strokeStyle = IRON.dark; ctx.lineWidth = 2.5; ctx.stroke();
+    const pulse = o.still ? 1 : 0.8 + 0.2 * WS.sin(t * 5 + x);
+    glow(ctx, 0, R * 0.85, R * 0.55 * pulse, [0.6, 1.0, 0.75], 0.95);
+    glow(ctx, 0, R * 0.85, R * 2.2, [0.45, 1.0, 0.7], 0.35 * pulse);
+    ctx.restore();
+  };
+
+  /** Front legs are separate targets; everything else is drawn with the body. */
+  M.stormbreaker = function (ctx, e, t, o) {
+    const R = e.radius, x = e.x, y = e.y;
+    const p = pal(e.template.tint);
+    const s = WS.Finale.s;
+    const jolt = e.shake ? e.shake * 5 : 0;
+    ctx.save();
+    if (jolt) ctx.translate(WS.randRange(-jolt, jolt), WS.randRange(-jolt, jolt));
+    const kneel = s && s.kneel ? s.kneel : 0;
+    const phase = e.walkPhase || 0;
+    // back legs
+    for (const d of [-1, 1]) {
+      const lift = o.still ? 0 : WS.max(0, WS.sin(phase + (d < 0 ? WS.PI / 2 : WS.PI * 1.5))) * 12;
+      const hx = x + d * R * 0.9, hy = y;
+      const fx = x + d * R * (1.6 - kneel * 0.3), fy = y + R * (1.0 - kneel * 0.5) - lift;
+      const kx = x + d * R * 1.55, ky = y - R * (0.35 + kneel * 0.2);
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = IRON.line; ctx.lineWidth = R * 0.3;
+      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(kx, ky); ctx.lineTo(fx, fy); ctx.stroke();
+      ctx.strokeStyle = IRON.lo; ctx.lineWidth = R * 0.2;
+      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(kx, ky); ctx.lineTo(fx, fy); ctx.stroke();
+      ctx.fillStyle = IRON.dark;
+      ctx.beginPath(); ctx.ellipse(fx, fy + R * 0.08, R * 0.26, R * 0.1, 0, 0, WS.TAU); ctx.fill();
+    }
+    // front-leg stumps once the legs are gone
+    const legsGone = s && s.core === e && s.legs && !s.legs.length && s.mode !== 'enter';
+    if (legsGone) {
+      for (const d of [-1, 1]) {
+        plate(ctx, x + d * R * 0.62 - R * 0.14, y + R * 0.2, R * 0.28, R * 0.45, R * 0.08, IRON);
+        if (!o.still && WS.random() < 0.3) glow(ctx, x + d * R * 0.62, y + R * 0.65, R * 0.25, [0.6, 0.85, 1.0], 0.9);
+      }
+    }
+    // body
+    ctx.beginPath();
+    ctx.moveTo(x - R * 1.25, y + R * 0.2);
+    ctx.quadraticCurveTo(x - R * 1.3, y - R * 0.6, x - R * 0.5, y - R * 0.78);
+    ctx.lineTo(x + R * 0.5, y - R * 0.78);
+    ctx.quadraticCurveTo(x + R * 1.3, y - R * 0.6, x + R * 1.25, y + R * 0.2);
+    ctx.quadraticCurveTo(x, y + R * 0.62, x - R * 1.25, y + R * 0.2);
+    ctx.closePath();
+    const bg = ctx.createLinearGradient(0, y - R * 0.8, 0, y + R * 0.6);
+    bg.addColorStop(0, p.hi); bg.addColorStop(0.5, p.mid); bg.addColorStop(1, p.dark);
+    ctx.fillStyle = bg; ctx.fill();
+    ctx.strokeStyle = p.line; ctx.lineWidth = 3; ctx.stroke();
+    ctx.save(); ctx.clip();
+    ctx.strokeStyle = 'rgba(10,14,20,.35)'; ctx.lineWidth = 2;
+    for (const band of [-0.45, -0.1, 0.25]) {
+      ctx.beginPath(); ctx.moveTo(x - R * 1.4, y + R * band); ctx.quadraticCurveTo(x, y + R * (band + 0.18), x + R * 1.4, y + R * band); ctx.stroke();
+    }
+    ctx.restore();
+    rivets(ctx, x - R * 1.0, x + R * 1.0, y - R * 0.6, 9, R * 0.03);
+    // the stolen ember, behind a grille
+    const heat = o.still ? 0.8 : 0.7 + 0.3 * WS.sin(t * 3);
+    glow(ctx, x, y - R * 0.05, R * 0.55, [1.0, 0.6, 0.25], 0.8 * heat);
+    ctx.strokeStyle = 'rgba(20,20,24,.8)'; ctx.lineWidth = 2;
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath(); ctx.moveTo(x + i * R * 0.1, y - R * 0.3); ctx.lineTo(x + i * R * 0.1, y + R * 0.2); ctx.stroke();
+    }
+    pilot(ctx, x, y - R * 0.62, R * 0.24, t, o.still);
+    // belly cannon
+    plate(ctx, x - R * 0.2, y + R * 0.38, R * 0.4, R * 0.36, R * 0.1, pal([0.72, 0.52, 0.3]));
+    const firing = !o.still && WS.Finale.marks.some((m) => m.kind === 'sweep' && m.follow === e);
+    glow(ctx, x, y + R * 0.78, R * (firing ? 0.7 : 0.3), [0.55, 0.85, 1.0], firing ? 0.95 : 0.5);
+    if (s && s.mode === 'destruct' && s.core === e) {
+      const blink = WS.sin(t * 18) > 0;
+      glow(ctx, x, y, R * 2, [1.0, 0.2, 0.1], blink ? 0.4 : 0.15);
+    }
+    ctx.restore();
+  };
+
+  M.leg = function (ctx, e, t, o) {
+    const R = e.radius;
+    const host = e.host;
+    const d = e.ox < 0 ? -1 : 1;
+    const hx = host ? host.x + d * host.radius * 0.62 : e.x - d * R;
+    const hy = host ? host.y + host.radius * 0.15 : e.y - R * 2;
+    const phase = host && host.walkPhase ? host.walkPhase : 0;
+    const lift = o.still ? 0 : WS.max(0, WS.sin(phase + (d < 0 ? 0 : WS.PI))) * 16;
+    const fx = e.x, fy = e.y + R * 0.6 - lift;
+    const kx = (hx + fx) / 2 + d * R * 0.7, ky = (hy + fy) / 2 - R * 0.2;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.strokeStyle = IRON.line; ctx.lineWidth = R * 0.62;
+    ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(kx, ky); ctx.lineTo(fx, fy); ctx.stroke();
+    ctx.strokeStyle = IRON.mid; ctx.lineWidth = R * 0.44;
+    ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(kx, ky); ctx.lineTo(fx, fy); ctx.stroke();
+    ctx.strokeStyle = IRON.hi; ctx.lineWidth = R * 0.1;
+    ctx.beginPath(); ctx.moveTo(hx - 3, hy - 3); ctx.lineTo(kx - 3, ky - 3); ctx.lineTo(fx - 3, fy - 3); ctx.stroke();
+    ctx.fillStyle = IRON.dark;
+    ctx.beginPath(); ctx.arc(kx, ky, R * 0.3, 0, WS.TAU); ctx.fill();
+    ctx.fillStyle = '#9fd6ff';
+    ctx.beginPath(); ctx.arc(kx, ky, R * 0.1, 0, WS.TAU); ctx.fill();
+    plate(ctx, fx - R * 0.55, fy - R * 0.1, R * 1.1, R * 0.3, R * 0.1, IRON);
+  };
+
+  M.pylon = function (ctx, e, t, o) {
+    const R = e.radius, x = e.x, y = e.y;
+    plate(ctx, x - R * 0.7, y + R * 0.2, R * 1.4, R * 0.5, R * 0.12, IRON);
+    plate(ctx, x - R * 0.22, y - R * 1.5, R * 0.44, R * 1.75, R * 0.1, pal([0.72, 0.5, 0.3]));
+    ctx.strokeStyle = '#d9914a'; ctx.lineWidth = 2;
+    for (let i = 0; i < 6; i++) {
+      const ry = y - R * 1.3 + i * R * 0.26;
+      ctx.beginPath(); ctx.ellipse(x, ry, R * 0.34, R * 0.08, 0, 0, WS.TAU); ctx.stroke();
+    }
+    ctx.fillStyle = '#cfe8ff';
+    ctx.beginPath(); ctx.arc(x, y - R * 1.65, R * 0.3, 0, WS.TAU); ctx.fill();
+    glow(ctx, x, y - R * 1.65, R * 1.1, [0.55, 0.85, 1.0], o.still ? 0.6 : 0.5 + 0.3 * WS.sin(t * 13 + x));
+    if (!o.still && WS.random() < 0.5) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = 'rgba(180,225,255,.8)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(x, y - R * 1.65);
+      let px = x, py = y - R * 1.65;
+      for (let i = 0; i < 4; i++) { px += WS.randRange(-8, 8); py += WS.randRange(-9, 3); ctx.lineTo(px, py); }
+      ctx.stroke();
+      ctx.restore();
+    }
+  };
+
+  M.pipe = function (ctx, e, t, o) {
+    const R = e.radius, x = e.x, y = e.y;
+    ctx.fillStyle = IRON.dark;
+    ctx.beginPath(); ctx.arc(x, y, R, 0, WS.TAU); ctx.fill();
+    ctx.strokeStyle = IRON.hi; ctx.lineWidth = 2.5; ctx.stroke();
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * WS.TAU;
+      ctx.fillStyle = IRON.hi;
+      ctx.beginPath(); ctx.arc(x + WS.cos(a) * R * 0.82, y + WS.sin(a) * R * 0.82, R * 0.07, 0, WS.TAU); ctx.fill();
+    }
+    glow(ctx, x, y, R * 0.8, [1.0, 0.55, 0.2], o.still ? 0.8 : 0.65 + 0.25 * WS.sin(t * 4 + x));
+    const rot = o.still ? 0 : t * 0.8;
+    ctx.save();
+    ctx.translate(x, y); ctx.rotate(rot);
+    ctx.strokeStyle = '#b8392a'; ctx.lineWidth = R * 0.14;
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.5, 0, WS.TAU); ctx.stroke();
+    for (let i = 0; i < 4; i++) {
+      ctx.rotate(WS.PI / 2);
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(R * 0.5, 0); ctx.stroke();
+    }
+    ctx.restore();
+  };
+
+  M.shard = function (ctx, e, t, o) {
+    const R = e.radius, x = e.x, y = e.y + (o.still ? 0 : WS.sin(t * 3 + e.spawnId) * 4);
+    const rot = o.still ? 0 : t * 1.4 + e.spawnId;
+    ctx.save();
+    ctx.translate(x, y); ctx.rotate(WS.sin(rot) * 0.3);
+    const g = ctx.createLinearGradient(-R, -R * 1.5, R, R * 1.5);
+    g.addColorStop(0, '#f3fbff'); g.addColorStop(0.5, '#9fd4f5'); g.addColorStop(1, '#3f7ea8');
+    ctx.beginPath();
+    ctx.moveTo(0, -R * 1.5); ctx.lineTo(R * 0.7, -R * 0.2); ctx.lineTo(R * 0.4, R * 1.2);
+    ctx.lineTo(-R * 0.4, R * 1.2); ctx.lineTo(-R * 0.7, -R * 0.2); ctx.closePath();
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = '#1e4a6a'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(0, -R * 1.5); ctx.lineTo(0, R * 1.2); ctx.stroke();
+    ctx.restore();
+    glow(ctx, x, y, R * 1.6, [0.7, 0.92, 1.0], 0.4);
+  };
+
+  M.heartdrill = function (ctx, e, t, o) {
+    const R = e.radius, x = e.x, y = e.y;
+    const wreck = !!o.wreck;
+    // the bore
+    ctx.save();
+    ctx.beginPath(); ctx.ellipse(x, y + R * 1.0, R * 0.75, R * 0.26, 0, 0, WS.TAU);
+    ctx.fillStyle = '#07090d'; ctx.fill();
+    ctx.strokeStyle = '#bfe6ff'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.restore();
+    glow(ctx, x, y + R * 1.0, R * 0.8, wreck ? [0.7, 0.9, 1.0] : [1.0, 0.45, 0.2], 0.55);
+    // derrick
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = wreck ? '#2c3440' : IRON.line; ctx.lineWidth = R * 0.1;
+    const apexX = x + (wreck ? R * 0.5 : 0), apexY = y - R * (wreck ? 1.0 : 1.55);
+    ctx.beginPath();
+    ctx.moveTo(x - R * 0.95, y + R * 0.85); ctx.lineTo(apexX, apexY); ctx.lineTo(x + R * 0.95, y + R * 0.85);
+    ctx.stroke();
+    ctx.strokeStyle = wreck ? '#3c4550' : IRON.lo; ctx.lineWidth = R * 0.04;
+    for (let i = 1; i < 6; i++) {
+      const k = i / 6;
+      const lx = x - R * 0.95 + (apexX - x + R * 0.95) * k, ly = y + R * 0.85 + (apexY - y - R * 0.85) * k;
+      const rx = x + R * 0.95 + (apexX - x - R * 0.95) * k;
+      ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(rx, ly); ctx.stroke();
+      if (i < 5) {
+        const k2 = (i + 1) / 6;
+        const ly2 = y + R * 0.85 + (apexY - y - R * 0.85) * k2;
+        const rx2 = x + R * 0.95 + (apexX - x - R * 0.95) * k2;
+        ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(rx2, ly2); ctx.stroke();
+      }
+    }
+    // shaft
+    const spin = o.still || wreck ? 0 : ((e.drillSpin || 0) % 1);
+    ctx.save();
+    rrect(ctx, x - R * 0.16, y + R * 0.2, R * 0.32, R * 0.85, R * 0.05);
+    ctx.fillStyle = '#6d6a66'; ctx.fill(); ctx.clip();
+    ctx.strokeStyle = 'rgba(20,20,22,.7)'; ctx.lineWidth = 3;
+    for (let i = -1; i < 7; i++) {
+      const sy = y + R * 0.2 + ((i + spin) / 6) * R * 0.85;
+      ctx.beginPath(); ctx.moveTo(x - R * 0.2, sy); ctx.lineTo(x + R * 0.2, sy + R * 0.1); ctx.stroke();
+    }
+    ctx.restore();
+    // engine drum
+    plate(ctx, x - R * 0.78, y - R * 0.42, R * 1.56, R * 0.72, R * 0.2, wreck ? pal([0.3, 0.34, 0.4]) : pal(e.template.tint));
+    rivets(ctx, x - R * 0.62, x + R * 0.62, y - R * 0.3, 8, R * 0.03);
+    if (!wreck) {
+      for (let i = 0; i < 3; i++) {
+        const gx = x - R * 0.4 + i * R * 0.4;
+        ctx.fillStyle = '#10131a';
+        ctx.beginPath(); ctx.arc(gx, y - R * 0.05, R * 0.12, 0, WS.TAU); ctx.fill();
+        ctx.strokeStyle = '#ffcf6b'; ctx.lineWidth = 2;
+        const a = WS.PI * 0.8 + (o.still ? 0.5 : 0.5 + 0.4 * WS.sin(t * (2 + i))) * WS.PI;
+        ctx.beginPath(); ctx.moveTo(gx, y - R * 0.05); ctx.lineTo(gx + WS.cos(a) * R * 0.1, y - R * 0.05 + WS.sin(a) * R * 0.1); ctx.stroke();
+      }
+      pilot(ctx, x + R * 0.95, y - R * 0.4, R * 0.24, t, o.still);
+      for (const sx of [-0.55, 0.55]) {
+        if (!o.still && WS.random() < 0.25) {
+          WS.FX.burst(x + sx * R, y - R * 0.5, 1, '#7a7470', 40, 1.0, 4);
+        }
+      }
+    } else {
+      ctx.fillStyle = 'rgba(200,235,255,.35)';
+      ctx.fillRect(x - R * 0.78, y - R * 0.5, R * 1.56, R * 0.15);
+    }
+  };
+
+  /* Wrecks: the machine, darkened, tilted, smoking, with nothing moving. */
+  function drawWreck(ctx, w, time) {
+    const painter = M[w.kind];
+    if (!painter) return;
+    const fade = WS.clamp(w.life / 1.5, 0, 1);
+    ctx.save();
+    ctx.globalAlpha = fade;
+    ctx.translate(w.x, w.y); ctx.rotate(w.rot || 0.08); ctx.translate(-w.x, -w.y);
+    if (w.kind !== 'galleon') ctx.filter = 'brightness(.42) saturate(.5)';
+    const fake = { x: w.x, y: w.y, radius: w.radius || 60, facing: 1, template: { tint: w.tint },
+      dmgTaken: 1, untargetable: false, health: 1, maxHealth: 1, spawnId: 1 };
+    painter(ctx, fake, time, { wreck: true, still: true });
+    ctx.restore();
+  }
+
+  /* ------------------------------------------------------ units and wards -- */
+  A.drawUnit = function (ctx, e, time) {
+    const painter = M[e.template.machine];
+    if (!painter) return;
+    // Every machine sits on the ground with a contact shadow, like the rest.
+    if (e.template.machine !== 'galleon') {
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.ellipse(e.x, e.y + e.radius * 0.85, e.radius * 1.2, e.radius * 0.3, 0, 0, WS.TAU);
+      ctx.fill();
+      ctx.restore();
+    }
+    const ds = e.template.drawScale || 1;
+    if (ds !== 1) {
+      ctx.save();
+      ctx.translate(e.x, e.y); ctx.scale(ds, ds); ctx.translate(-e.x, -e.y);
+    }
+    painter(ctx, e, time, {});
+    if (ds !== 1) ctx.restore();
+    if (e.flash > 0) {
+      ctx.save();
+      ctx.globalAlpha = WS.clamp(e.flash / 0.09, 0, 1) * 0.35;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = e.flashCrit ? '#ffd45c' : '#ff6b5c';
+      ctx.beginPath(); ctx.ellipse(e.x, e.y, e.radius * 1.1, e.radius * 0.9, 0, 0, WS.TAU); ctx.fill();
+      ctx.restore();
+    }
+    A.adorn(ctx, e, time);
+  };
+
+  /** Shields, openings and armour, drawn the same way on every finale unit. */
+  A.adorn = function (ctx, e, time) {
+    if (e.hidden || (e.rise !== undefined && e.rise < 1)) return;
+    const R = e.radius;
+    const big = e.template.machine && e.boss ? 1.55 : 1.35;
+    if (e.untargetable) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const tint = e.template.tint;
+      ctx.globalAlpha = 0.28 + 0.1 * WS.sin(time * 3);
+      ctx.strokeStyle = WS.rgb(WS.mix(tint, [1, 1, 1], 0.4), 1);
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.ellipse(e.x, e.y - R * 0.1, R * big, R * big * 0.82, 0, 0, WS.TAU); ctx.stroke();
+      // hex facets, so a ward reads as a shape and not only a tint
+      ctx.globalAlpha = 0.16;
+      ctx.lineWidth = 1.2;
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * WS.TAU + time * 0.3;
+        const rx = WS.cos(a) * R * big * 0.8, ry = WS.sin(a) * R * big * 0.65;
+        ctx.beginPath();
+        for (let k = 0; k < 6; k++) {
+          const ha = (k / 6) * WS.TAU;
+          const px = e.x + rx + WS.cos(ha) * R * 0.18, py = e.y - R * 0.1 + ry + WS.sin(ha) * R * 0.18;
+          if (k) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+        }
+        ctx.closePath(); ctx.stroke();
+      }
+      ctx.restore();
+    } else if (e.dmgTaken > 1) {
+      ctx.save();
+      ctx.globalAlpha = 0.55 + 0.3 * WS.sin(time * 8);
+      ctx.strokeStyle = '#ff5a4a';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([10, 6]);
+      ctx.lineDashOffset = -time * 40;
+      ctx.beginPath(); ctx.ellipse(e.x, e.y + R * 0.55, R * 1.35, R * 0.45, 0, 0, WS.TAU); ctx.stroke();
+      ctx.restore();
+    } else if (e.dmgTaken < 1 && e.boss) {
+      ctx.save();
+      ctx.globalAlpha = 0.4;
+      ctx.strokeStyle = '#cfd6e2';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(e.x, e.y + R * 0.55, R * 1.3, R * 0.42, 0, 0, WS.TAU); ctx.stroke();
+      ctx.setLineDash([4, 8]);
+      ctx.beginPath(); ctx.ellipse(e.x, e.y + R * 0.55, R * 1.45, R * 0.5, 0, 0, WS.TAU); ctx.stroke();
+      ctx.restore();
+    }
+  };
+
+  /* ------------------------------------------------------------ the pod -- */
+  function drawPod(ctx, pod, time) {
+    const x = pod.x, y = pod.y + (pod.frozen ? 0 : WS.sin(time * 4) * 3);
+    if (pod.carrying) {
+      ctx.strokeStyle = 'rgba(40,30,20,.8)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x, y + 18); ctx.lineTo(x, y + 40); ctx.stroke();
+      glow(ctx, x, y + 46, 18, [0.55, 1.0, 0.75], 0.9);
+    }
+    if (!pod.frozen && !pod.done) {
+      glow(ctx, x, y + 22, 14 + WS.sin(time * 30) * 3, [1.0, 0.6, 0.25], 0.9);
+    }
+    // propeller
+    ctx.save();
+    ctx.translate(x, y - 22);
+    ctx.fillStyle = BRASS.lo;
+    ctx.fillRect(-2, 0, 4, 6);
+    const w = pod.frozen ? 14 : 16 * WS.abs(WS.cos(time * 25));
+    ctx.fillStyle = '#6b5a40';
+    ctx.fillRect(-w, -2, w * 2, 3);
+    ctx.restore();
+    pilot(ctx, x, y, 18, time, false);
+    if (pod.frozen) {
+      ctx.save();
+      rrect(ctx, x - 28, y - 30, 56, 58, 6);
+      ctx.fillStyle = 'rgba(190,230,255,.45)'; ctx.fill();
+      ctx.strokeStyle = 'rgba(240,250,255,.8)'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x - 20, y - 22); ctx.lineTo(x - 6, y + 8); ctx.moveTo(x + 14, y - 24); ctx.lineTo(x + 20, y + 4); ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  /* ------------------------------------------------------------- marks --- */
+  function hatch(ctx, x0, y0, w, h, gap, col, lw) {
+    ctx.strokeStyle = col; ctx.lineWidth = lw;
+    ctx.beginPath();
+    for (let d = -h; d < w; d += gap) {
+      ctx.moveTo(x0 + d, y0 + h); ctx.lineTo(x0 + d + h, y0);
+    }
+    ctx.stroke();
+  }
+
+  function drawCircle(ctx, m, time) {
+    const k = WS.clamp(1 - m.tele / m.maxTele, 0, 1);
+    const c = m.tint;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, WS.TAU);
+    ctx.fillStyle = rgba(c, 0.08 + 0.12 * k); ctx.fill();
+    ctx.save(); ctx.clip();
+    hatch(ctx, m.x - m.r, m.y - m.r, m.r * 2, m.r * 2, 16 - 8 * k, rgba(c, 0.22 + 0.4 * k), 1 + 1.4 * k);
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(m.x, m.y, m.r * k, 0, WS.TAU);
+    ctx.fillStyle = rgba(c, 0.16 + 0.22 * k); ctx.fill();
+    ctx.lineWidth = 2 + 1.5 * k;
+    ctx.strokeStyle = rgba(WS.mix(c, [1, 1, 1], 0.3), 0.55 + 0.4 * k);
+    ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, WS.TAU); ctx.stroke();
+    if (m.style === 'hands' && k > 0.4) {
+      ctx.strokeStyle = rgba([0.85, 1.0, 0.9], (k - 0.4) * 1.4);
+      ctx.lineWidth = 3; ctx.lineCap = 'round';
+      for (let i = 0; i < 5; i++) {
+        const a = -WS.PI / 2 + (i - 2) * 0.35;
+        const L = m.r * 0.55 * (k - 0.4) / 0.6;
+        ctx.beginPath(); ctx.moveTo(m.x + (i - 2) * 6, m.y + 6);
+        ctx.lineTo(m.x + (i - 2) * 6 + WS.cos(a) * L, m.y + 6 + WS.sin(a) * L); ctx.stroke();
+      }
+    }
+    if (m.style === 'erupt' || m.style === 'stomp') {
+      ctx.strokeStyle = rgba([0.2, 0.14, 0.1], 0.5 * k); ctx.lineWidth = 2;
+      for (let i = 0; i < 7; i++) {
+        const a = (i / 7) * WS.TAU + m.x;
+        ctx.beginPath(); ctx.moveTo(m.x, m.y);
+        ctx.lineTo(m.x + WS.cos(a) * m.r * 0.9 * k, m.y + WS.sin(a) * m.r * 0.9 * k); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawShell(ctx, m, time) {
+    const k = WS.clamp(1 - m.tele / m.maxTele, 0, 1);
+    if (m.style === 'ice') {
+      const y = m.y - (1 - k) * 360;
+      ctx.save();
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = '#dff3ff'; ctx.strokeStyle = '#3f7ea8'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(m.x, y + 16); ctx.lineTo(m.x + 10, y - 6); ctx.lineTo(m.x, y - 20); ctx.lineTo(m.x - 10, y - 6);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.restore();
+      return;
+    }
+    if (!m.from) return;
+    const x = m.from.x + (m.x - m.from.x) * k;
+    const y = m.from.y + (m.y - m.from.y) * k - WS.sin(k * WS.PI) * 160;
+    ctx.save();
+    ctx.fillStyle = '#211b16';
+    ctx.beginPath(); ctx.arc(x, y, 7, 0, WS.TAU); ctx.fill();
+    glow(ctx, x, y, 12, m.tint, 0.8);
+    ctx.restore();
+  }
+
+  function drawLane(ctx, m, time) {
+    ctx.save();
+    ctx.translate(m.x, m.y); ctx.rotate(m.ang);
+    const c = m.tint;
+    if (m.tele > 0) {
+      const k = WS.clamp(1 - m.tele / m.maxTele, 0, 1);
+      ctx.fillStyle = rgba(c, 0.07 + 0.12 * k);
+      ctx.fillRect(0, -m.w / 2, m.len, m.w);
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, -m.w / 2, m.len, m.w); ctx.clip();
+      hatch(ctx, 0, -m.w / 2, m.len, m.w, 18 - 8 * k, rgba(c, 0.2 + 0.35 * k), 1 + k);
+      ctx.restore();
+      ctx.strokeStyle = rgba(c, 0.5 + 0.4 * k); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, -m.w / 2); ctx.lineTo(m.len, -m.w / 2);
+      ctx.moveTo(0, m.w / 2); ctx.lineTo(m.len, m.w / 2); ctx.stroke();
+      ctx.fillStyle = rgba([1, 1, 1], 0.2 + 0.4 * k);
+      const off = (time * 220) % 60;
+      for (let d = off; d < m.len; d += 60) {
+        ctx.beginPath(); ctx.moveTo(d, -m.w * 0.2); ctx.lineTo(d + 14, 0); ctx.lineTo(d, m.w * 0.2); ctx.fill();
+      }
+    } else {
+      ctx.globalCompositeOperation = 'lighter';
+      const a = WS.clamp(m.active / 0.35, 0, 1);
+      ctx.fillStyle = rgba(c, 0.55 * a);
+      ctx.fillRect(0, -m.w / 2, m.len, m.w);
+      ctx.fillStyle = `rgba(255,245,220,${(0.8 * a).toFixed(3)})`;
+      ctx.fillRect(0, -m.w * 0.15, m.len, m.w * 0.3);
+    }
+    ctx.restore();
+  }
+
+  function drawRing(ctx, m) {
+    if (m.delay > 0) {
+      ctx.save();
+      ctx.globalAlpha = 0.3;
+      ctx.strokeStyle = rgba(m.tint, 1); ctx.lineWidth = 2; ctx.setLineDash([6, 8]);
+      ctx.beginPath(); ctx.arc(m.cx, m.cy, 40, 0, WS.TAU); ctx.stroke();
+      ctx.restore();
+      return;
+    }
+    ctx.save();
+    ctx.lineWidth = m.thick;
+    ctx.strokeStyle = rgba(m.tint, 0.5);
+    const steps = 160;
+    ctx.beginPath();
+    for (let i = 0; i < steps; i++) {
+      const a0 = (i / steps) * WS.TAU;
+      if (WS.Finale.inGap(m, a0 + WS.TAU / steps / 2)) continue;
+      ctx.moveTo(m.cx + WS.cos(a0) * m.r, m.cy + WS.sin(a0) * m.r);
+      ctx.arc(m.cx, m.cy, m.r, a0, a0 + WS.TAU / steps);
+    }
+    ctx.stroke();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = rgba(WS.mix(m.tint, [1, 1, 1], 0.5), 0.9);
+    ctx.beginPath();
+    for (let i = 0; i < steps; i++) {
+      const a0 = (i / steps) * WS.TAU;
+      if (WS.Finale.inGap(m, a0 + WS.TAU / steps / 2)) continue;
+      const rr = m.r + m.thick * 0.5;
+      ctx.moveTo(m.cx + WS.cos(a0) * rr, m.cy + WS.sin(a0) * rr);
+      ctx.arc(m.cx, m.cy, rr, a0, a0 + WS.TAU / steps);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawSweep(ctx, m, time) {
+    ctx.save();
+    for (let a = 0; a < m.arms; a++) {
+      const ang = m.ang + (a / m.arms) * WS.TAU;
+      const ex = m.cx + WS.cos(ang) * m.len, ey = m.cy + WS.sin(ang) * m.len;
+      if (m.tele > 0) {
+        const k = WS.clamp(1 - m.tele / m.maxTele, 0, 1);
+        ctx.globalAlpha = 0.35 + 0.45 * k;
+        ctx.strokeStyle = rgba(m.tint, 1);
+        ctx.lineWidth = 2 + m.w * 0.15 * k;
+        ctx.setLineDash([12, 10]);
+        ctx.lineDashOffset = -time * 60;
+        ctx.beginPath(); ctx.moveTo(m.cx, m.cy); ctx.lineTo(ex, ey); ctx.stroke();
+        ctx.setLineDash([]);
+        // which way it will turn
+        const r = 150, sgn = m.spin >= 0 ? 1 : -1;
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(m.cx, m.cy, r, ang, ang + sgn * 0.7, sgn < 0); ctx.stroke();
+        const ha = ang + sgn * 0.7;
+        const hx = m.cx + WS.cos(ha) * r, hy = m.cy + WS.sin(ha) * r;
+        const tang = ha + sgn * WS.PI / 2;
+        ctx.beginPath();
+        ctx.moveTo(hx + WS.cos(tang) * 12, hy + WS.sin(tang) * 12);
+        ctx.lineTo(hx + WS.cos(tang + 2.5) * 10, hy + WS.sin(tang + 2.5) * 10);
+        ctx.lineTo(hx + WS.cos(tang - 2.5) * 10, hy + WS.sin(tang - 2.5) * 10);
+        ctx.closePath(); ctx.fillStyle = rgba(m.tint, 1); ctx.fill();
+      } else {
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = rgba(m.tint, 0.35);
+        ctx.lineWidth = m.w * (1 + 0.1 * WS.sin(time * 40));
+        ctx.beginPath(); ctx.moveTo(m.cx, m.cy); ctx.lineTo(ex, ey); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,.85)';
+        ctx.lineWidth = m.w * 0.28;
+        ctx.beginPath(); ctx.moveTo(m.cx, m.cy); ctx.lineTo(ex, ey); ctx.stroke();
+        ctx.globalCompositeOperation = 'source-over';
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawGrid(ctx, m) {
+    const k = WS.clamp(1 - m.tele / m.maxTele, 0, 1);
+    ctx.save();
+    for (const c of m.cells) {
+      const x = c.x + 3, y = c.y + 3, w = c.w - 6, h = c.h - 6;
+      if (c.safe) {
+        ctx.fillStyle = 'rgba(61,220,122,.13)'; ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = 'rgba(120,245,170,.85)'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+        const b = WS.min(w, h) * 0.26;
+        for (const [cx, cy, sx, sy] of [[x, y, 1, 1], [x + w, y, -1, 1], [x, y + h, 1, -1], [x + w, y + h, -1, -1]]) {
+          ctx.beginPath(); ctx.moveTo(cx + sx * b, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + sy * b); ctx.stroke();
+        }
+      } else {
+        ctx.fillStyle = rgba(m.tint, 0.1 + 0.2 * k); ctx.fillRect(x, y, w, h);
+        ctx.save();
+        ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+        hatch(ctx, x, y, w, h, 18 - 8 * k, rgba(m.tint, 0.3 + 0.5 * k), 1 + 1.6 * k);
+        ctx.restore();
+        ctx.strokeStyle = rgba(m.tint, 0.5 + 0.45 * k); ctx.lineWidth = 2 + 1.5 * k;
+        ctx.strokeRect(x, y, w, h);
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawSafe(ctx, m, time) {
+    const k = WS.clamp(1 - m.tele / m.maxTele, 0, 1);
+    const W = WS.CONST.WORLD_WIDTH, H = WS.CONST.WORLD_HEIGHT;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, W, H);
+    for (const z of m.zones) { ctx.moveTo(z.x + z.r, z.y); ctx.arc(z.x, z.y, z.r, 0, WS.TAU, true); }
+    ctx.fillStyle = `rgba(226,72,61,${(0.08 + 0.2 * k + 0.06 * WS.sin(time * 10)).toFixed(3)})`;
+    ctx.fill('evenodd');
+    ctx.clip('evenodd');
+    hatch(ctx, 0, 0, W, H, 30 - 14 * k, `rgba(255,150,120,${(0.15 + 0.3 * k).toFixed(3)})`, 1 + k);
+    ctx.restore();
+    for (const z of m.zones) {
+      const rock = WS.Sprites.prop('rock', WS.round(z.r * 1.3));
+      ctx.drawImage(rock, z.x - z.r * 0.65, z.y - z.r * 1.15, z.r * 1.3, z.r * 1.3);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(120,245,170,.9)'; ctx.lineWidth = 3;
+      ctx.setLineDash([14, 10]); ctx.lineDashOffset = -time * 30;
+      ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, WS.TAU); ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  function drawFence(ctx, m, time) {
+    if (!WS.Finale.live(m.a) || !WS.Finale.live(m.b)) return;
+    const ax = m.a.x, ay = m.a.y - m.a.radius * 1.6, bx = m.b.x, by = m.b.y - m.b.radius * 1.6;
+    const [nx, ny] = WS.normalize(-(by - ay), bx - ax);
+    const pts = [];
+    const segs = 14;
+    for (let i = 0; i <= segs; i++) {
+      const k = i / segs;
+      const j = (i === 0 || i === segs) ? 0 : WS.randRange(-9, 9);
+      pts.push([ax + (bx - ax) * k + nx * j, ay + (by - ay) * k + ny * j]);
+    }
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const [lw, col] of [[8, 'rgba(90,170,255,.35)'], [2.5, 'rgba(220,240,255,.95)']]) {
+      ctx.lineWidth = lw; ctx.strokeStyle = col;
+      ctx.beginPath();
+      pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      ctx.stroke();
+    }
+    ctx.restore();
+    // and the ground under it, so the line reads where the feet go
+    ctx.save();
+    ctx.strokeStyle = 'rgba(120,190,255,.35)'; ctx.lineWidth = 4; ctx.setLineDash([6, 6]);
+    ctx.beginPath(); ctx.moveTo(m.a.x, m.a.y); ctx.lineTo(m.b.x, m.b.y); ctx.stroke();
+    ctx.restore();
+  }
+
+  /* --------------------------------------------------------- the layers -- */
+  A.drawGround = function (ctx, time) {
+    const F = WS.Finale;
+    const p = WS.Game.player;
+    const s = F.s;
+
+    if (F.bounds) {
+      const b = F.bounds, W = WS.CONST.WORLD_WIDTH, H = WS.CONST.WORLD_HEIGHT;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, W, H);
+      ctx.rect(b.minX, b.minY, b.maxX - b.minX, b.maxY - b.minY);
+      ctx.fillStyle = 'rgba(200,225,255,.22)';
+      ctx.fill('evenodd');
+      ctx.clip('evenodd');
+      ctx.strokeStyle = 'rgba(240,250,255,.35)'; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let i = 0; i < 90; i++) {
+        const sx = ((i * 137 + time * 240) % (W + 200)) - 100;
+        const sy = ((i * 89 + time * 60) % H);
+        ctx.moveTo(sx, sy); ctx.lineTo(sx - 18, sy + 6);
+      }
+      ctx.stroke();
+      ctx.restore();
+      ctx.save();
+      ctx.strokeStyle = 'rgba(190,230,255,.75)'; ctx.lineWidth = 3;
+      ctx.strokeRect(b.minX, b.minY, b.maxX - b.minX, b.maxY - b.minY);
+      ctx.restore();
+    }
+
+    for (const w of F.wrecks) drawWreck(ctx, w, time);
+
+    if (F.stage === 'purge' && p) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const r = F.purgeR;
+      const g = ctx.createRadialGradient(p.x, p.y, WS.max(0, r - 90), p.x, p.y, r);
+      g.addColorStop(0, 'rgba(255,230,170,0)');
+      g.addColorStop(0.8, 'rgba(255,230,170,.35)');
+      g.addColorStop(1, 'rgba(255,250,230,.9)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, WS.TAU); ctx.fill();
+      ctx.restore();
+    }
+
+    if (s) {
+      // Mordecai's tethers to his lanterns
+      if (s.lanterns && F.live(s.core) && s.mode === 'warded') {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(140,255,190,.5)'; ctx.lineWidth = 2.5;
+        ctx.setLineDash([8, 7]); ctx.lineDashOffset = -time * 50;
+        for (const l of s.lanterns) {
+          if (!F.live(l)) continue;
+          ctx.beginPath(); ctx.moveTo(l.x + l.radius * 0.5, l.y - l.radius * 0.5);
+          ctx.lineTo(s.core.x, s.core.y - s.core.radius * 0.5); ctx.stroke();
+        }
+        ctx.restore();
+      }
+      // the Heart-Drill's coolant lines
+      if (s.pipes && F.live(s.core)) {
+        for (const q of s.pipes) {
+          if (!F.live(q)) continue;
+          ctx.save();
+          ctx.lineCap = 'round';
+          ctx.strokeStyle = IRON.line; ctx.lineWidth = 18;
+          ctx.beginPath(); ctx.moveTo(q.x, q.y); ctx.lineTo(s.core.x, s.core.y + s.core.radius * 0.2); ctx.stroke();
+          ctx.strokeStyle = IRON.mid; ctx.lineWidth = 12;
+          ctx.beginPath(); ctx.moveTo(q.x, q.y); ctx.lineTo(s.core.x, s.core.y + s.core.radius * 0.2); ctx.stroke();
+          ctx.strokeStyle = `rgba(255,150,60,${(0.5 + 0.3 * WS.sin(time * 5)).toFixed(2)})`; ctx.lineWidth = 3;
+          ctx.setLineDash([10, 12]); ctx.lineDashOffset = time * 60;
+          ctx.beginPath(); ctx.moveTo(q.x, q.y); ctx.lineTo(s.core.x, s.core.y + s.core.radius * 0.2); ctx.stroke();
+          ctx.restore();
+        }
+      }
+      // the Candlecrawler, underground
+      if (s.mode === 'burrow') {
+        ctx.save();
+        ctx.fillStyle = 'rgba(70,50,32,.85)';
+        ctx.beginPath(); ctx.ellipse(s.mx, s.my, 46, 20, 0, 0, WS.TAU); ctx.fill();
+        ctx.strokeStyle = 'rgba(30,20,12,.8)'; ctx.lineWidth = 2;
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * WS.TAU + time;
+          ctx.beginPath(); ctx.moveTo(s.mx, s.my);
+          ctx.lineTo(s.mx + WS.cos(a) * 60, s.my + WS.sin(a) * 26); ctx.stroke();
+        }
+        ctx.restore();
+      }
+      if (s.orb && !F.pods.some((q) => q.carrying)) glow(ctx, s.orb.x, s.orb.y, 22, [0.55, 1.0, 0.75], 0.9);
+    }
+
+    for (const m of F.marks) {
+      if (m.kind === 'circle') drawCircle(ctx, m, time);
+      else if (m.kind === 'lane') drawLane(ctx, m, time);
+      else if (m.kind === 'ring') drawRing(ctx, m);
+      else if (m.kind === 'grid') drawGrid(ctx, m);
+      else if (m.kind === 'safe') drawSafe(ctx, m, time);
+    }
+  };
+
+  A.drawAir = function (ctx, time) {
+    const F = WS.Finale;
+    for (const m of F.marks) {
+      if (m.kind === 'sweep') drawSweep(ctx, m, time);
+      else if (m.kind === 'fence') drawFence(ctx, m, time);
+      else if (m.kind === 'circle' && (m.from || m.style === 'ice')) drawShell(ctx, m, time);
+    }
+    for (const pod of F.pods) {
+      if (pod.x < -120 || pod.x > WS.CONST.WORLD_WIDTH + 120 || pod.y < -120) continue;
+      drawPod(ctx, pod, time);
+    }
+  };
+
+  function wrap(ctx, text, maxW) {
+    const words = text.split(' ');
+    const lines = [];
+    let cur = '';
+    for (const w of words) {
+      const next = cur ? cur + ' ' + w : w;
+      if (ctx.measureText(next).width > maxW && cur) { lines.push(cur); cur = w; } else cur = next;
+    }
+    if (cur) lines.push(cur);
+    return lines;
+  }
+
+  /** Screen space: the dark, the letterbox, who is talking, the countdown. */
+  A.drawOverlay = function (ctx, time, R) {
+    const F = WS.Finale;
+    const p = WS.Game.player;
+    const vw = R.viewW, vh = R.viewH;
+
+    if (F.darkness > 0.01 && p) {
+      const cx = R.offsetX + p.x * R.scale, cy = R.offsetY + p.y * R.scale;
+      const r = (360 - 150 * F.darkness) * R.scale;
+      const g = ctx.createRadialGradient(cx, cy, r * 0.35, cx, cy, r);
+      g.addColorStop(0, 'rgba(0,0,0,0)');
+      g.addColorStop(1, `rgba(2,4,8,${(0.85 * F.darkness).toFixed(3)})`);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, vw, vh);
+    }
+
+    if (F.cinema > 0 && F.cinemaMax > 0) {
+      const inA = WS.clamp((F.cinemaMax - F.cinema) / 0.5, 0, 1);
+      const outA = WS.clamp(F.cinema / 0.5, 0, 1);
+      const k = WS.min(inA, outA);
+      const bar = vh * 0.085 * (1 - (1 - k) * (1 - k));
+      ctx.fillStyle = '#030406';
+      ctx.fillRect(0, 0, vw, bar);
+      ctx.fillRect(0, vh - bar, vw, bar);
+    }
+
+    const covered = WS.Game.overlayCovers();
+    if (F.stage === 'breather' && !covered) {
+      const n = WS.max(0, WS.ceil(F.timer));
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(245,197,107,.85)';
+      ctx.font = `600 ${WS.round(13 * R.scale + 4)}px ${UI_FONT}`;
+      ctx.fillText('THE FIELD IS CLEAR · BREATHE', vw / 2, vh * 0.16);
+      if (F.timer <= 10) {
+        const k = F.timer - WS.floor(F.timer);
+        ctx.globalAlpha = 0.5 + 0.5 * k;
+        ctx.font = `700 ${WS.round((42 + 20 * k) * R.scale + 10)}px ${UI_FONT}`;
+        ctx.fillStyle = F.timer <= 3 ? '#ff7a64' : '#ffe6ae';
+        ctx.fillText(String(n), vw / 2, vh * 0.16 + (54 * R.scale + 14));
+      }
+      ctx.restore();
+    }
+
+    if (F.s && F.s.mode === 'destruct' && F.s.destructT > 0 && !covered) {
+      ctx.save();
+      ctx.textAlign = 'center';
+      const k = F.s.destructT - WS.floor(F.s.destructT);
+      ctx.font = `800 ${WS.round((60 + 30 * k) * R.scale + 10)}px ${UI_FONT}`;
+      ctx.fillStyle = `rgba(255,96,72,${(0.6 + 0.4 * k).toFixed(2)})`;
+      ctx.fillText(String(WS.ceil(F.s.destructT)), vw / 2, vh * 0.3);
+      ctx.restore();
+    }
+
+    const line = F.line;
+    if (line && !covered) {
+      const sp = WS.FinaleSpeakers[line.who] || WS.FinaleSpeakers.narrator;
+      const age = line.dur - line.life;
+      const a = WS.min(WS.clamp(age / 0.25, 0, 1), WS.clamp(line.life / 0.35, 0, 1));
+      const fs = WS.round(WS.clamp(15 * R.scale + 4, 14, 22));
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.font = `500 ${fs}px ${UI_FONT}`;
+      const maxW = WS.min(vw * 0.6, 760);
+      const lines = wrap(ctx, line.text, maxW);
+      let wmax = 0;
+      for (const l of lines) wmax = WS.max(wmax, ctx.measureText(l).width);
+      const portrait = sp.art ? fs * 3.2 : 0;
+      const padX = fs, padY = fs * 0.75;
+      const nameH = sp.name ? fs * 1.1 : 0;
+      const boxW = wmax + padX * 2 + portrait;
+      const boxH = WS.max(portrait, nameH + lines.length * fs * 1.35) + padY * 2;
+      const bx = vw / 2 - boxW / 2;
+      const by = vh * 0.78 - boxH / 2;
+      rrect(ctx, bx, by, boxW, boxH, 6);
+      ctx.fillStyle = 'rgba(8,9,13,.86)'; ctx.fill();
+      ctx.strokeStyle = 'rgba(245,197,107,.35)'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = sp.colour;
+      ctx.fillRect(bx + 10, by, boxW - 20, 2);
+      if (sp.art) {
+        const ps = WS.round(portrait);
+        const pimg = WS.Sprites.creature(sp.art, sp.tint, ps, sp.kit);
+        ctx.save();
+        ctx.beginPath(); ctx.arc(bx + padX * 0.6 + ps / 2, by + boxH / 2, ps * 0.46, 0, WS.TAU);
+        ctx.fillStyle = 'rgba(40,34,30,.9)'; ctx.fill(); ctx.clip();
+        ctx.drawImage(pimg, bx + padX * 0.6, by + boxH / 2 - ps / 2 + 3, ps, ps);
+        ctx.restore();
+      }
+      const tx = bx + padX + portrait;
+      let ty = by + padY + fs * 0.9;
+      ctx.textAlign = 'left';
+      if (sp.name) {
+        ctx.font = `700 ${WS.round(fs * 0.72)}px ${UI_FONT}`;
+        ctx.fillStyle = sp.colour;
+        ctx.fillText(sp.name.toUpperCase(), tx, ty - fs * 0.15);
+        ty += nameH;
+      }
+      ctx.font = `${sp.name ? 500 : 'italic 500'} ${fs}px ${UI_FONT}`;
+      ctx.fillStyle = '#f1ebdf';
+      for (const l of lines) { ctx.fillText(l, tx, ty); ty += fs * 1.35; }
+      ctx.restore();
+    }
+  };
+
+  /* ------------------------------------------------------------ portraits -- */
+  function portrait(kind, tint, fr, fy) {
+    return function (g, s) {
+      const e = { x: s / 2, y: s * fy, radius: s * fr, facing: 1, template: { tint },
+        dmgTaken: 1, untargetable: false, health: 1, maxHealth: 1, spawnId: 3, rise: 1 };
+      M[kind](g, e, 0, { still: true });
+    };
+  }
+  WS.Sprites.define('candlecrawler', portrait('candlecrawler', [0.95, 0.66, 0.30], 0.25, 0.6));
+  WS.Sprites.define('galleon', portrait('galleon', [0.72, 0.48, 0.30], 0.24, 0.68));
+  WS.Sprites.define('stormbreaker', portrait('stormbreaker', [0.62, 0.70, 0.82], 0.22, 0.44));
+  WS.Sprites.define('heartdrill', portrait('heartdrill', [0.86, 0.52, 0.26], 0.23, 0.56));
+  WS.Sprites.define('turret', portrait('turret', [1.0, 0.78, 0.38], 0.3, 0.62));
+
+  A.machines = M;
+  WS.FinaleArt = A;
+
+})(window.WS);
+
 /* ===== src/render/renderer.js ===== */
 /* Canvas renderer. The world is a fixed 1280x720 space letterboxed into the
  * viewport, so gameplay is identical at every window size. Draw order is
@@ -22358,7 +25637,7 @@ window.WS = window.WS || {};
   function healthBar(ctx, e) {
     if (e.health >= e.maxHealth) return;
     const pct = WS.clamp(e.health / e.maxHealth, 0, 1);
-    const champion = e.boss || e.elite;
+    const champion = e.boss || e.elite || e.part;
     let alpha = 1;
     if (!champion) {
       if (pct >= FODDER_BAR_AT) return;
@@ -22485,6 +25764,7 @@ window.WS = window.WS || {};
     this.drawPlayerMark(ctx, player, time);
     this.drawAuras(ctx, player, time);
     if (WS.Arena.active) this.drawArena(ctx, time);
+    if (WS.Finale.stage !== 'idle') WS.FinaleArt.drawGround(ctx, time);
 
     this.drawCorpses(ctx);
 
@@ -22509,6 +25789,8 @@ window.WS = window.WS || {};
     this.drawOrbits(ctx, player);
     this.drawBolts(ctx);
     this.drawBeams(ctx);
+
+    if (WS.Finale.stage !== 'idle') WS.FinaleArt.drawAir(ctx, time);
 
     /* ---- effects --------------------------------------------------------- */
     this.drawFlashes(ctx);
@@ -22570,6 +25852,7 @@ window.WS = window.WS || {};
       ctx.fillStyle = grd;
       ctx.fillRect(0, 0, this.viewW, this.viewH);
     }
+    if (WS.Finale.stage !== 'idle') WS.FinaleArt.drawOverlay(ctx, time, this);
     this.drawBanner(ctx, run);
   };
 
@@ -22606,6 +25889,15 @@ window.WS = window.WS || {};
 
   R.drawEnemy = function (ctx, e, time) {
     const t = e.template;
+    if (e.hidden) return;
+    /* The finale's machines have moving parts - a drill that turns, sails
+       that fill, a cockpit that opens - so they are drawn live rather than
+       stamped from a cached sprite. */
+    if (t.machine && WS.FinaleArt) {
+      WS.FinaleArt.drawUnit(ctx, e, time);
+      healthBar(ctx, e);
+      return;
+    }
     const size = e.spriteSize;
     const bob = WS.sin(e.bob) * (e.boss ? 3 : 2);
     shadow(ctx, e.x, e.y + e.radius * 0.55, e.radius * 0.85);
@@ -22707,7 +25999,8 @@ window.WS = window.WS || {};
       ctx.restore();
     }
 
-    if (WS.Save.settings.showHealthBars || e.elite || e.boss) healthBar(ctx, e);
+    if (e.finale && WS.FinaleArt) WS.FinaleArt.adorn(ctx, e, time);
+    if (WS.Save.settings.showHealthBars || e.elite || e.boss || e.part) healthBar(ctx, e);
 
     if (e.elite && !e.boss) {
       ctx.font = `600 10px ${UI_FONT}`;
@@ -25112,8 +28405,9 @@ window.WS = window.WS || {};
     const modeBits = [];
     if (run.hyper) modeBits.push('Hyper');
     if (run.mode === 'endless') modeBits.push('True Endless');
-    else if (run.victorious) modeBits.push('Overtime');
+    else if (run.victorious && !WS.Finale.running()) modeBits.push('Overtime');
     if (run.map.arena) modeBits.push('Eclipse Arena · Phase ' + WS.Arena.phase);
+    if (WS.Finale.running()) modeBits.push(WS.Finale.hudLabel());
     e.mode.textContent = modeBits.join(' · ');
 
     /* Cheap: a number compared once a frame, and a repaint only on the few
@@ -25135,7 +28429,8 @@ window.WS = window.WS || {};
     const boss = WS.Enemy.leadBoss();
     if (boss) {
       e.boss.classList.remove('hidden');
-      if (e.bossName.textContent !== boss.template.name) e.bossName.textContent = boss.template.name;
+      const bossName = boss.displayName || boss.template.name;
+      if (e.bossName.textContent !== bossName) e.bossName.textContent = bossName;
       const pct = WS.clamp(boss.health / boss.maxHealth, 0, 1);
       e.bFill.style.strokeDashoffset = e.bossLen * (1 - pct);
       e.bossPct.textContent = `${WS.formatNumber(boss.health)} / ${WS.formatNumber(boss.maxHealth)}  ·  ${WS.round(pct * 100)}%`;
@@ -26862,13 +30157,31 @@ window.WS = window.WS || {};
     const s = shell(run.map.name,
       `${WS.Config.difficulties[WS.Save.settings.difficulty].label}`
       + `${run.hyper ? ' · Hyper' : ''} · ${WS.Characters[run.characterId].name}`);
-    s.body.append(verdict('win', 'The night broke first',
-      `You held ${run.map.name} for thirty minutes. Death is on the field now — it always is.`,
-      runFigures(run, WS.Game.player)));
+    /* Three ways this panel can arrive: at 30:00 with a finale still to
+       face, at 30:00 on a battlefield that has none, and after the finale
+       has been beaten - where the story is over and only Death is left. */
+    const def = WS.Finales && WS.Finales[run.mapId];
+    const canFace = !!def && WS.Finale.available(run) && !run.finaleStarted;
+    if (run.finaleCleared && def && def.epilogue) {
+      s.body.append(verdict('win', def.epilogue[0],
+        `${def.epilogue[1]} Death is still out there, if you want it.`,
+        runFigures(run, WS.Game.player)));
+    } else if (canFace) {
+      s.body.append(verdict('win', 'Dawn, and not the end',
+        `You held ${run.map.name} for thirty minutes and the win is banked. `
+        + `${def.title} is still out there - or wait for Death, who always comes.`,
+        runFigures(run, WS.Game.player)));
+    } else {
+      s.body.append(verdict('win', 'The night broke first',
+        `You held ${run.map.name} for thirty minutes. Death is on the field now — it always is.`,
+        runFigures(run, WS.Game.player)));
+    }
     s.body.classList.add('fitted');
     s.body.append(buildSheet());
-    const claim = el('button', 'btn primary', 'Claim the win');
+    const claim = el('button', canFace ? 'btn' : 'btn primary', 'Claim the win');
     claim.addEventListener('click', () => WS.Game.endRun('victory'));
+    const face = canFace ? el('button', 'btn primary', 'Face ' + def.title) : null;
+    if (face) face.addEventListener('click', () => WS.Game.faceFinale());
     const fight = el('button', 'btn', 'Fight to the end');
     fight.addEventListener('click', () => {
       WS.Game.run.victorious = true;
@@ -26880,6 +30193,7 @@ window.WS = window.WS || {};
     const endless = el('button', 'btn', 'True Endless');
     endless.addEventListener('click', () => WS.Game.continueEndless());
     s.foot.append(el('div', 'spacer'), fight, endless, claim);
+    if (face) s.foot.append(face);
     this.show(s.inner);
   };
 
