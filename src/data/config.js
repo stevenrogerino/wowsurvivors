@@ -195,6 +195,10 @@
 
     eggVendorInterval: 420,
     eggVendorCost: 100,
+    /* How long Beans stays once she sets up shop. She used to stay until you
+       walked into her, which made her a bank: park her, farm, and spend at
+       the best moment. She is a visit, not a vault. */
+    eggVendorStay: 90,
     eggRunDamage: 0.001,
     eggRunHealth: 1,
 

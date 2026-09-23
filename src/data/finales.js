@@ -173,7 +173,7 @@
       ],
       epilogue: ['Grimtunnel escapes', 'His pod drifts south, toward the Dustreach.'],
       tuning: {
-        damage: 6.5,   // x difficulty x Hyper x Config.finaleDamage
+        damage: 8,   // x difficulty x Hyper x Config.finaleDamage
         turretHpGrowth: 0.18, overheat: 10, overheatVuln: 1.5,
         burrowAt: 0.60, burrowTime: 12, meltdownAt: 0.25,
         bombDamage: 34, bombRadius: 64, bombTele: 1.1,
@@ -207,7 +207,7 @@
       ],
       epilogue: ['The Admiral strikes her colours', 'The stolen ember was bound for Mourneholt.'],
       tuning: {
-        damage: 7,   // x difficulty x Hyper x Config.finaleDamage
+        damage: 9,   // x difficulty x Hyper x Config.finaleDamage
         sailSpeed: 70, broadsideDamage: 40, broadsideTele: 1.2, broadsideWidth: 64,
         grapeDamage: 26, kegDamage: 46, kegRadius: 80, kegTele: 1.2,
         dashDamage: 50, dashWindup: 0.55, dashTime: 0.35, dashRange: 340,
@@ -238,7 +238,7 @@
       ],
       epilogue: ['Grimtunnel steals the lantern-ember', 'His pod races east, over the Ochre Plains.'],
       tuning: {
-        damage: 9,   // x difficulty x Hyper x Config.finaleDamage
+        damage: 10.5,   // x difficulty x Hyper x Config.finaleDamage
         lanternBond: 0.05, exposedTime: 14, exposedVuln: 1.4, relight: 3,
         riseAt: 0.30, handDamage: 44, handRadius: 58, handTele: 1.0,
         knellDamage: 38, knellSpeed: 200, knellGap: 34,
@@ -266,7 +266,7 @@
       ],
       epilogue: ['The Stormbreaker is scrap', 'Grimtunnel flees north, into the Pale Wastes.'],
       tuning: {
-        damage: 10,   // x difficulty x Hyper x Config.finaleDamage
+        damage: 11.5,   // x difficulty x Hyper x Config.finaleDamage
         standingArmor: 0.35, kneelVuln: 1.3, kneelStagger: 10, destructAt: 0.15,
         // Near-lethal on Ochre's 30:00 curve (x8.3): hide, or be carried out.
         destructTime: 7, destructDamage: 90,
@@ -301,7 +301,7 @@
       ],
       epilogue: ['The dark is broken', 'The Ember Watch holds. Dawn comes, and this time it stays.'],
       tuning: {
-        damage: 10,   // x difficulty x Hyper x Config.finaleDamage
+        damage: 12,   // x difficulty x Hyper x Config.finaleDamage
         pipeBreak: 0.15, debrisDamage: 48, debrisRadius: 70, debrisTele: 1.1,
         ventDamage: 44, ventSpin: 0.7, ventTele: 1.2,
         shardReduce: 0.40, shardEvery: 30, winterAt: 0.40, winterEnrage: 100,

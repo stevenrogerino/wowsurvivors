@@ -2275,6 +2275,10 @@ window.WS = window.WS || {};
 
     eggVendorInterval: 420,
     eggVendorCost: 100,
+    /* How long Beans stays once she sets up shop. She used to stay until you
+       walked into her, which made her a bank: park her, farm, and spend at
+       the best moment. She is a visit, not a vault. */
+    eggVendorStay: 90,
     eggRunDamage: 0.001,
     eggRunHealth: 1,
 
@@ -5054,7 +5058,7 @@ window.WS = window.WS || {};
       ],
       epilogue: ['Grimtunnel escapes', 'His pod drifts south, toward the Dustreach.'],
       tuning: {
-        damage: 6.5,   // x difficulty x Hyper x Config.finaleDamage
+        damage: 8,   // x difficulty x Hyper x Config.finaleDamage
         turretHpGrowth: 0.18, overheat: 10, overheatVuln: 1.5,
         burrowAt: 0.60, burrowTime: 12, meltdownAt: 0.25,
         bombDamage: 34, bombRadius: 64, bombTele: 1.1,
@@ -5088,7 +5092,7 @@ window.WS = window.WS || {};
       ],
       epilogue: ['The Admiral strikes her colours', 'The stolen ember was bound for Mourneholt.'],
       tuning: {
-        damage: 7,   // x difficulty x Hyper x Config.finaleDamage
+        damage: 9,   // x difficulty x Hyper x Config.finaleDamage
         sailSpeed: 70, broadsideDamage: 40, broadsideTele: 1.2, broadsideWidth: 64,
         grapeDamage: 26, kegDamage: 46, kegRadius: 80, kegTele: 1.2,
         dashDamage: 50, dashWindup: 0.55, dashTime: 0.35, dashRange: 340,
@@ -5119,7 +5123,7 @@ window.WS = window.WS || {};
       ],
       epilogue: ['Grimtunnel steals the lantern-ember', 'His pod races east, over the Ochre Plains.'],
       tuning: {
-        damage: 9,   // x difficulty x Hyper x Config.finaleDamage
+        damage: 10.5,   // x difficulty x Hyper x Config.finaleDamage
         lanternBond: 0.05, exposedTime: 14, exposedVuln: 1.4, relight: 3,
         riseAt: 0.30, handDamage: 44, handRadius: 58, handTele: 1.0,
         knellDamage: 38, knellSpeed: 200, knellGap: 34,
@@ -5147,7 +5151,7 @@ window.WS = window.WS || {};
       ],
       epilogue: ['The Stormbreaker is scrap', 'Grimtunnel flees north, into the Pale Wastes.'],
       tuning: {
-        damage: 10,   // x difficulty x Hyper x Config.finaleDamage
+        damage: 11.5,   // x difficulty x Hyper x Config.finaleDamage
         standingArmor: 0.35, kneelVuln: 1.3, kneelStagger: 10, destructAt: 0.15,
         // Near-lethal on Ochre's 30:00 curve (x8.3): hide, or be carried out.
         destructTime: 7, destructDamage: 90,
@@ -5182,7 +5186,7 @@ window.WS = window.WS || {};
       ],
       epilogue: ['The dark is broken', 'The Ember Watch holds. Dawn comes, and this time it stays.'],
       tuning: {
-        damage: 10,   // x difficulty x Hyper x Config.finaleDamage
+        damage: 12,   // x difficulty x Hyper x Config.finaleDamage
         pipeBreak: 0.15, debrisDamage: 48, debrisRadius: 70, debrisTele: 1.1,
         ventDamage: 44, ventSpin: 0.7, ventTele: 1.2,
         shardReduce: 0.40, shardEvery: 30, winterAt: 0.40, winterEnrage: 100,
@@ -17822,6 +17826,13 @@ window.WS = window.WS || {};
       const pickup = this.pool.active[i];
       pickup.bob += dt * 3;
       pickup.life += dt;
+      if (pickup.kind === 'merchant' && pickup.life >= WS.Config.eggVendorStay) {
+        WS.FX.burst(pickup.x, pickup.y, 14, '#e0a850', 150, 0.6, 3);
+        WS.FX.flash(pickup.x, pickup.y, 50, WS.hex(pickup.type.tint), 0.35);
+        WS.Game.toast('Beans packs up', '"Eggs don\'t keep, friend. See you next time."');
+        this.pool.releaseAt(i);
+        continue;
+      }
       const [dx, dy, distance] = WS.normalize(player.x - pickup.x, player.y - pickup.y);
 
       if (!pickup.type.noMagnet && distance < player.pickupRadius) {
@@ -18309,7 +18320,8 @@ window.WS = window.WS || {};
       if (WS.Pickup.spawn('merchant',
         WS.clamp(player.x + WS.cos(a) * 400, 80, WS.CONST.WORLD_WIDTH - 80),
         WS.clamp(player.y + WS.sin(a) * 400, 80, WS.CONST.WORLD_HEIGHT - 80))) {
-        WS.Game.toast('Beans sets up shop', '"COME GET SOME BEANS... I MEAN EGGS!" Walk over to spend your coin.');
+        WS.Game.toast('Beans sets up shop', '"COME GET SOME BEANS... I MEAN EGGS!" Walk over to spend your coin - she leaves in '
+          + WS.formatTime(WS.Config.eggVendorStay) + '.');
       }
     }
 
@@ -19093,9 +19105,10 @@ window.WS = window.WS || {};
        difficulty times Hyper and nothing more, so a heavy telegraphed hit on
        Thornhollow did 44 while a common Kerchief at 30:00 touched for 134.
        Each finale names its own scale now (tuning.damage), set so its
-       heaviest common mechanic takes about a fifth of an 840-health,
-       16-armour survivor's bar on Thornhollow, climbing to near two fifths
-       on the Pale Wastes. Riding the map's full boss curve instead was
+       heaviest common mechanic takes about a quarter of an 840-health,
+       16-armour survivor's bar on Thornhollow, climbing to near half on
+       the Pale Wastes (raised twice on playtest: "hits a little too
+       softly"). Riding the map's full boss curve instead was
        measured and rejected: it doubles from the first map to the last on
        top of the escalation the encounters already carry, and put the Pale
        Lord's every heavy at two thirds of a bar. Config.finaleDamage is the
@@ -26963,6 +26976,33 @@ window.WS = window.WS || {};
       }
 
       if (p.kind === 'merchant') {
+        /* How long she stays, drawn on the ground around her: a ring that
+           drains clockwise from twelve o'clock and the seconds left under her
+           feet - a shape and a number, so it reads without colour. The last
+           fifteen seconds pulse. */
+        const stay = WS.Config.eggVendorStay;
+        const left = WS.max(0, stay - p.life);
+        const late = left <= 15;
+        ctx.save();
+        ctx.globalAlpha = late ? 0.65 + 0.3 * WS.sin(time * 8) : 0.75;
+        ctx.strokeStyle = 'rgba(0,0,0,.55)';
+        ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.arc(p.x, p.y, size * 0.78, 0, WS.TAU); ctx.stroke();
+        ctx.strokeStyle = late ? '#ffcf7a' : WS.hex(p.type.tint);
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, size * 0.78, -WS.PI / 2, -WS.PI / 2 + WS.TAU * (left / stay));
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.font = `600 ${WS.max(10, WS.round(size * 0.2))}px ${UI_FONT}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.8)';
+        const label = WS.formatTime(WS.ceil(left));
+        ctx.strokeText(label, p.x, p.y + size * 0.84);
+        ctx.fillStyle = late ? '#ffcf7a' : '#f3e6cf';
+        ctx.fillText(label, p.x, p.y + size * 0.84);
+        ctx.restore();
+
         /* She IS named Beans - so she throws some. Three, thrown one after
          * another from around her paw in a looping arc that empties and
          * restarts, rather than orbiting her forever: a real toss reads as

@@ -236,6 +236,13 @@
       const pickup = this.pool.active[i];
       pickup.bob += dt * 3;
       pickup.life += dt;
+      if (pickup.kind === 'merchant' && pickup.life >= WS.Config.eggVendorStay) {
+        WS.FX.burst(pickup.x, pickup.y, 14, '#e0a850', 150, 0.6, 3);
+        WS.FX.flash(pickup.x, pickup.y, 50, WS.hex(pickup.type.tint), 0.35);
+        WS.Game.toast('Beans packs up', '"Eggs don\'t keep, friend. See you next time."');
+        this.pool.releaseAt(i);
+        continue;
+      }
       const [dx, dy, distance] = WS.normalize(player.x - pickup.x, player.y - pickup.y);
 
       if (!pickup.type.noMagnet && distance < player.pickupRadius) {

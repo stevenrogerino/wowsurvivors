@@ -1450,6 +1450,33 @@
       }
 
       if (p.kind === 'merchant') {
+        /* How long she stays, drawn on the ground around her: a ring that
+           drains clockwise from twelve o'clock and the seconds left under her
+           feet - a shape and a number, so it reads without colour. The last
+           fifteen seconds pulse. */
+        const stay = WS.Config.eggVendorStay;
+        const left = WS.max(0, stay - p.life);
+        const late = left <= 15;
+        ctx.save();
+        ctx.globalAlpha = late ? 0.65 + 0.3 * WS.sin(time * 8) : 0.75;
+        ctx.strokeStyle = 'rgba(0,0,0,.55)';
+        ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.arc(p.x, p.y, size * 0.78, 0, WS.TAU); ctx.stroke();
+        ctx.strokeStyle = late ? '#ffcf7a' : WS.hex(p.type.tint);
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, size * 0.78, -WS.PI / 2, -WS.PI / 2 + WS.TAU * (left / stay));
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.font = `600 ${WS.max(10, WS.round(size * 0.2))}px ${UI_FONT}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.8)';
+        const label = WS.formatTime(WS.ceil(left));
+        ctx.strokeText(label, p.x, p.y + size * 0.84);
+        ctx.fillStyle = late ? '#ffcf7a' : '#f3e6cf';
+        ctx.fillText(label, p.x, p.y + size * 0.84);
+        ctx.restore();
+
         /* She IS named Beans - so she throws some. Three, thrown one after
          * another from around her paw in a looping arc that empties and
          * restarts, rather than orbiting her forever: a real toss reads as

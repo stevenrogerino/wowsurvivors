@@ -73,9 +73,10 @@
        difficulty times Hyper and nothing more, so a heavy telegraphed hit on
        Thornhollow did 44 while a common Kerchief at 30:00 touched for 134.
        Each finale names its own scale now (tuning.damage), set so its
-       heaviest common mechanic takes about a fifth of an 840-health,
-       16-armour survivor's bar on Thornhollow, climbing to near two fifths
-       on the Pale Wastes. Riding the map's full boss curve instead was
+       heaviest common mechanic takes about a quarter of an 840-health,
+       16-armour survivor's bar on Thornhollow, climbing to near half on
+       the Pale Wastes (raised twice on playtest: "hits a little too
+       softly"). Riding the map's full boss curve instead was
        measured and rejected: it doubles from the first map to the last on
        top of the escalation the encounters already carry, and put the Pale
        Lord's every heavy at two thirds of a bar. Config.finaleDamage is the
