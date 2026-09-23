@@ -420,12 +420,16 @@
     WS.UI.openVictory();
   };
 
+  /** "Stay for Death": play on past dawn. The win is already banked; the
+   *  overtime rules in WaveManager (a climbing horde, returning bosses on a
+   *  tightening clock, Death every minute) are what this walks into. */
   Game.continueEndless = function () {
     this.run.mode = 'endless';
+    this.run.victorious = true;
     this.running = true;
     this.state = 'playing';
     WS.UI.closeOverlay();
-    this.announce('True Endless', 'Nothing is coming to save you.', 3.0);
+    this.announce('Overtime', 'Death walks on every minute. Nothing is coming to save you.', 3.0);
   };
 
   /* The last second and a half.

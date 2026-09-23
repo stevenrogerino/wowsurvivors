@@ -179,6 +179,8 @@
 
     // Only once the pool cannot fill three slots does Breaking Point appear.
     if (choices.length < 3) {
+      // From here the HUD offers the auto-take switch under the portrait.
+      if (WS.Game && WS.Game.run) WS.Game.run.breakingSeen = true;
       const pct = WS.round(WS.Config.limitBreakDamage * 100);
       choices.push({
         type: 'breaking_point', id: 'breaking_point', art: 'fist', quality: 'legendary',

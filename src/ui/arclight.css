@@ -999,6 +999,25 @@ html, body {
 @keyframes peril { 0%, 100% { opacity: 0; transform: scale(.97); } 50% { opacity: .55; transform: scale(1.02); } }
 
 #hud-vitals { display: flex; flex-direction: column; gap: 3px; }
+
+/* The auto Breaking Point switch, hung under the portrait cluster. The HUD
+   lets pointers through to the field; this one thing catches them. */
+.hud-auto {
+  position: absolute; top: 100%; left: 0; margin-top: 10px;
+  display: flex; align-items: center; gap: 9px;
+  padding: 5px 11px 5px 6px; border-radius: 14px;
+  background: rgba(8,9,13,.72); border: 1px solid var(--rim);
+  color: var(--ink-dim); font-family: var(--ui); font-size: var(--t-micro);
+  letter-spacing: .08em; text-transform: uppercase; font-weight: 600;
+  pointer-events: auto; cursor: pointer; white-space: nowrap;
+  transition: border-color .18s var(--ease), color .18s var(--ease);
+}
+.hud-auto.hidden { display: none; }
+.hud-auto:hover, .hud-auto:focus-visible { border-color: var(--rim-lit); color: var(--ink); outline: none; }
+.hud-auto.on { color: var(--arc-hot); border-color: rgba(245,197,107,.45); }
+.hud-auto .switch { width: 30px; height: 16px; border-radius: 8px; }
+.hud-auto .switch::after { top: 2px; left: 2px; width: 10px; height: 10px; }
+.hud-auto .switch.on::after { transform: translateX(14px); }
 #hud-vitals .hp-text {
   font-family: var(--fig); font-size: 19px; font-weight: 500; font-variant-numeric: tabular-nums;
 }

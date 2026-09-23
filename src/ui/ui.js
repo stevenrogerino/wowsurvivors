@@ -84,7 +84,27 @@
     const hpText = el('div', 'hp-text', '');
     const meters = el('div'); meters.id = 'hud-meters';
     vitals.append(name, hpText, meters);
-    portraitWrap.append(gauge, vitals);
+    /* The Breaking Point auto-take, where it is needed rather than in a
+       settings list nobody opens mid-run. Hidden until the run first offers
+       a Breaking Point - before that there is nothing for it to take - and
+       the one clickable thing in a HUD that otherwise lets every pointer
+       through to the field. */
+    const autoBp = el('button', 'hud-auto hidden');
+    autoBp.type = 'button';
+    autoBp.setAttribute('role', 'switch');
+    autoBp.append(el('span', 'switch'), el('span', 'hud-auto-label', 'Auto Breaking Point'));
+    autoBp.title = 'Once there is nothing left to choose, take Breaking Point without stopping.';
+    // Steering starts on a pointerdown on the stage underneath: keep it there.
+    autoBp.addEventListener('pointerdown', (e) => e.stopPropagation());
+    autoBp.addEventListener('click', () => {
+      const st = WS.Save.settings;
+      st.autoBreakingPoint = !st.autoBreakingPoint;
+      WS.Save.save();
+      WS.Audio.play('ui');
+      UI.paintAutoBreaking();
+      autoBp.blur();   // or the next Space/Enter in a fight flips it again
+    });
+    portraitWrap.append(gauge, vitals, autoBp);
 
     /* -- timer rail ------------------------------------------------------- */
     const timer = el('div'); timer.id = 'hud-timer';
@@ -143,7 +163,7 @@
     hud.append(portraitWrap, timer, boss, stats, weapons, passives, toasts);
 
     this.els = {
-      gauge, aHP, aXP, portrait, lvl, name, hpText, meters,
+      gauge, aHP, aXP, portrait, lvl, name, hpText, meters, autoBp,
       timeText, railFill, railHead, rail, mode,
       boss, bossName, bFill, bossPct,
       goldV, killV, dpsV, hpsV, weapons, passives, toasts,
@@ -155,6 +175,22 @@
     aXP.style.strokeDasharray = this.els.xpCirc;
     this.els.bossLen = (bFill.getTotalLength && bFill.getTotalLength()) || 762;
     bFill.style.strokeDasharray = this.els.bossLen;
+  };
+
+  /** The auto-take switch's face: shown once the run has offered a Breaking
+   *  Point, and lit while the setting is on. */
+  UI.paintAutoBreaking = function () {
+    const b = this.els && this.els.autoBp;
+    const run = WS.Game.run;
+    if (!b || !run) return;
+    const seen = !!run.breakingSeen, on = !!WS.Save.settings.autoBreakingPoint;
+    if (b._seen !== seen) { b._seen = seen; b.classList.toggle('hidden', !seen); }
+    if (b._on !== on) {
+      b._on = on;
+      b.classList.toggle('on', on);
+      b.firstChild.classList.toggle('on', on);
+      b.setAttribute('aria-checked', String(on));
+    }
   };
 
   /** Puts the chosen HUD layout on the root, so the whole thing is one class
@@ -281,11 +317,11 @@
     }
     const modeBits = [];
     if (run.hyper) modeBits.push('Hyper');
-    if (run.mode === 'endless') modeBits.push('True Endless');
-    else if (run.victorious && !WS.Finale.running()) modeBits.push('Overtime');
+    if ((run.victorious || run.mode === 'endless') && !WS.Finale.running()) modeBits.push('Overtime');
     if (run.map.arena) modeBits.push('Eclipse Arena · Phase ' + WS.Arena.phase);
     if (WS.Finale.running()) modeBits.push(WS.Finale.hudLabel());
     e.mode.textContent = modeBits.join(' · ');
+    this.paintAutoBreaking();
 
     /* Cheap: a number compared once a frame, and a repaint only on the few
        moments in a run when it actually changes. */
@@ -1402,8 +1438,6 @@
     toggle('healNumbers', 'Floating healing numbers');
     toggle('showHealthBars', 'Health bars on trash mobs', 'Elites and bosses always keep theirs.');
     toggle('levelUpTooltips', 'Detailed level-up cards');
-    toggle('autoBreakingPoint', 'Take Breaking Point automatically',
-      'Once there are no upgrades left to offer, stop asking and keep playing.');
     choose('hudLayout', 'Arsenal and passives', 'Where your weapons and traits live.',
       [['strip', 'Along the foot'], ['rail', 'Up the edges']], () => UI.applyHudLayout());
     choose('quality', 'Graphics', 'Balanced drops trails, glows and ground detail for frames on a slower machine.',
@@ -1728,7 +1762,7 @@
       const spent = !!bp && choices.every((c) => c === bp || c.type === 'bread');
       ui.auto.hidden = !spent;
       ui.auto.title = 'Take Breaking Point now and every level after, '
-        + 'without stopping. Turn it off in Settings.';
+        + 'without stopping. Turn it off with the switch under your portrait.';
     }
     this._committing = false;
     ui.row.classList.remove('committing');
@@ -2059,17 +2093,15 @@
     claim.addEventListener('click', () => WS.Game.endRun('victory'));
     const face = canFace ? el('button', 'btn primary', 'Face ' + def.title) : null;
     if (face) face.addEventListener('click', () => WS.Game.faceFinale());
-    const fight = el('button', 'btn', 'Fight to the end');
-    fight.addEventListener('click', () => {
-      WS.Game.run.victorious = true;
-      WS.Game.running = true;
-      WS.Game.state = 'playing';
-      UI.closeOverlay();
-      WS.Game.announce('Overtime', 'Death arrives at 30:00.', 3.0);
-    });
-    const endless = el('button', 'btn', 'True Endless');
-    endless.addEventListener('click', () => WS.Game.continueEndless());
-    s.foot.append(el('div', 'spacer'), fight, endless, claim);
+    /* One way to stay. There used to be two - "Fight to the end" and "True
+       Endless" - and reaching dawn already switches the overtime on, so they
+       were the same game under two labels and a player had to guess what
+       the difference was. */
+    const stay = el('button', 'btn', 'Stay for Death');
+    stay.title = 'Keep playing past dawn: the horde keeps climbing, bosses return faster '
+      + 'and faster, and Death walks on every minute. The win is already banked.';
+    stay.addEventListener('click', () => WS.Game.continueEndless());
+    s.foot.append(el('div', 'spacer'), stay, claim);
     if (face) s.foot.append(face);
     this.show(s.inner);
   };

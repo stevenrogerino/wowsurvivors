@@ -80,9 +80,12 @@ const fail = [];
     }, { map, build: BUILD });
 
     if (!dawn.victorious) fail.push(`${map}: reaching 30:00 did not bank the win`);
+    for (const gone of ['Fight to the end', 'True Endless']) {
+      if (dawn.buttons.includes(gone)) fail.push(`${map}: the dawn panel still offers "${gone}"`);
+    }
     const face = dawn.buttons.find((b) => b.startsWith('Face'));
     if (!face) fail.push(`${map}: the dawn panel offers no finale (buttons: ${dawn.buttons.join(', ')})`);
-    for (const want of ['Fight to the end', 'True Endless', 'Claim the win']) {
+    for (const want of ['Stay for Death', 'Claim the win']) {
       if (!dawn.buttons.includes(want)) fail.push(`${map}: the dawn panel lost "${want}"`);
     }
 
