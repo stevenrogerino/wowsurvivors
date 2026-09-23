@@ -642,6 +642,7 @@
     }
     const sprite = e._spr;
     ctx.save();
+    if (e.fade !== undefined && e.fade < 1) ctx.globalAlpha = e.fade;
     ctx.translate(e.x, e.y + bob);
     // Bracing for a charge: the body compresses, then springs.
     if (e.windup > 0) {

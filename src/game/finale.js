@@ -28,7 +28,7 @@
     t: 0, timer: 0, purgeR: 0,
     hpScale: 1, dmgScale: 1,
     units: [], marks: [], queue: [], line: null,
-    wrecks: [], pods: [],
+    wrecks: [], pods: [], booms: [],
     darkness: 0, darkTarget: 0,
     cinema: 0, cinemaMax: 0,
     bounds: null,
@@ -42,7 +42,7 @@
     this.t = 0; this.timer = 0; this.purgeR = 0;
     this.units.length = 0; this.marks.length = 0; this.queue.length = 0;
     this.line = null;
-    this.wrecks.length = 0; this.pods.length = 0;
+    this.wrecks.length = 0; this.pods.length = 0; this.booms.length = 0;
     this.darkness = 0; this.darkTarget = 0;
     this.cinema = 0; this.cinemaMax = 0;
     if (this.bounds && WS.Game.arenaBounds === this.bounds) WS.Game.arenaBounds = null;
@@ -296,6 +296,15 @@
     WS.Audio.play('explode', x);
   };
 
+  /** A string of explosions over a machine as it comes apart. */
+  F.chain = function (x, y, spread, n, dur, tint) {
+    for (let i = 0; i < n; i++) {
+      this.booms.push({ t: (i / n) * dur + WS.random() * 0.1,
+        x: x + WS.randRange(-spread, spread), y: y + WS.randRange(-spread * 0.6, spread * 0.4),
+        r: 40 + WS.random() * 50, tint: tint || [1.0, 0.6, 0.3] });
+    }
+  };
+
   /** A machine that has stopped being a machine: drawn as scrap for a while. */
   F.wreck = function (e, kind, life) {
     if (kind !== 'fallen') this.wrecks.push({ x: e.x, y: e.y, radius: e.radius,
@@ -472,6 +481,11 @@
   };
 
   function updateDecor(dt) {
+    for (let i = F.booms.length - 1; i >= 0; i--) {
+      const b = F.booms[i];
+      b.t -= dt;
+      if (b.t <= 0) { F.eruption(b.x, b.y, b.r, b.tint); F.booms.splice(i, 1); }
+    }
     for (let i = F.wrecks.length - 1; i >= 0; i--) {
       const w = F.wrecks[i];
       w.life -= dt;
@@ -854,6 +868,7 @@
       const s = F.s;
       if (e === s.core) {
         s.core = null;
+        F.chain(e.x, e.y, e.radius * 1.2, 7, 1.6);
         F.wreck(e, 'candlecrawler', 40);
         F.pod(e.x, e.y - 30, [[e.x + 40, e.y - 140], [e.x + 260, -80], [e.x + 520, -220]],
           { speed: 190 });
@@ -1028,6 +1043,7 @@
           size: e.spriteSize, life: 600, maxLife: 600, rot: 0, vy: (290 - e.y) / 1.4, fall: 1.4 };
         F.wrecks.push(w);
         F.eruption(e.x, e.y, 180);
+        F.chain(s.wx, 290, 140, 6, 1.8, [1.0, 0.55, 0.25]);
         WS.FX.stop(0.14);
         F.marks.length = 0;
         F.say('crash');
@@ -1042,6 +1058,8 @@
       if (e === s.adm) {
         s.adm = null;
         F.wreck(e, 'fallen', 30);
+        F.wrecks.push({ x: e.x, y: e.y, radius: e.radius, kind: 'surrender', tint: e.template.tint,
+          life: 999, maxLife: 999, rot: 0.0001, vy: 0, fall: 0 });
         F.win();
         return;
       }
@@ -1064,8 +1082,11 @@
       const s = F.s;
       s.cycle = 0; s.hands = 0; s.grave = 0;
       const m = s.core = F.unit('mordecai_bound', 640, 250);
-      F.eruption(640, 250, 120, [0.55, 1.0, 0.75]);
+      m.fade = 0;
+      s.introT = 0;
       this.light(F, 4);
+      // The lanterns catch one at a time, and he is there when the last does.
+      s.lanterns.forEach((l, i) => { l.fade = 0; l.lightAt = 0.5 + i * 0.55; l.untargetable = true; });
       s.tm = { hand: 3, lance: 4, knell: 7, blink: 8, spawn: 6 };
     },
     light(F, n) {
@@ -1087,6 +1108,28 @@
       const s = F.s, T = F.def.tuning, m = s.core;
       if (!F.live(m)) return;
       const p = WS.Game.player;
+      if (s.introT !== undefined && s.introT < 3.4) {
+        s.introT += dt;
+        for (const l of s.lanterns) {
+          if (l.fade < 1 && s.introT >= l.lightAt) {
+            if (l.fade === 0) {
+              WS.FX.flash(l.x, l.y - l.radius, 90, [0.55, 1.0, 0.75], 0.6);
+              WS.Audio.play('cast', l.x);
+            }
+            l.fade = WS.min(1, l.fade + dt * 4);
+          }
+        }
+        m.fade = WS.clamp((s.introT - 2.6) / 0.7, 0, 1);
+        if (s.introT >= 2.6 && !s.risenIn) {
+          s.risenIn = true;
+          F.eruption(m.x, m.y, 130, [0.55, 1.0, 0.75]);
+        }
+        if (s.introT >= 3.4) {
+          m.fade = 1;
+          for (const l of s.lanterns) { l.fade = 1; l.untargetable = false; }
+        }
+        return;
+      }
       const hp = m.health / m.maxHealth;
       if (!s.risen && hp <= T.riseAt) {
         s.risen = true;
@@ -1267,6 +1310,7 @@
           s.blown = true;
           WS.FX.screen('rgba(255,240,210,.8)', 1.4);
           WS.FX.shake(14, 1.0);
+          F.chain(w.x, w.y, 170, 10, 2.2);
           F.wreck(w, 'stormbreaker', 60);
           F.pod(w.x, w.y - 60, [[w.x - 60, w.y - 200], [w.x - 400, -180]], { speed: 260 });
           F.remove(w);
@@ -1377,15 +1421,16 @@
      field in a blizzard. Pale Shards orbit him and turn most damage away
      until they break. At 40% he becomes the Heart of Winter: the dark comes
      down, the cross of frost never stops turning, and there is a clock. */
+  const DRILL_Y = 225;
   SCRIPTS.paleheart = {
     start(F) {
       const s = F.s;
       s.mode = 'drill';
       s.label = 'Cut the coolant lines';
-      const d = s.core = F.unit('heart_drill', 640, 225);
-      F.eruption(640, 265, 160, [0.9, 0.6, 0.3]);
-      s.pipes = [[410, 290], [870, 290], [640, 400]]
-        .map(([x, y]) => F.unit('coolant_pipe', x, y)).filter(Boolean);
+      const d = s.core = F.unit('heart_drill', 640, -300);
+      d.untargetable = true;
+      s.dropping = true; s.vy = 0;
+      s.pipes = [];
       s.tm = { debris: 3, vent: 7, ghoul: 6 };
       s.ventDir = 1;
     },
@@ -1396,6 +1441,21 @@
       if (s.mode === 'drill') {
         const d = s.core;
         if (!F.live(d)) return;
+        if (s.dropping) {
+          // It comes down out of the sky, and the Pale takes the hit.
+          s.vy += 1100 * dt;
+          d.y += s.vy * dt;
+          if (d.y >= DRILL_Y) {
+            d.y = DRILL_Y; s.dropping = false; d.untargetable = false;
+            F.eruption(640, DRILL_Y + 60, 220, [0.8, 0.9, 1.0]);
+            WS.FX.shake(14, 0.9);
+            WS.FX.screen('rgba(220,240,255,.4)', 0.6);
+            s.pipes = [[410, 290], [870, 290], [640, 400]]
+              .map(([x, y]) => F.unit('coolant_pipe', x, y)).filter(Boolean);
+            for (const q of s.pipes) F.eruption(q.x, q.y, 70, [1.0, 0.6, 0.25]);
+          }
+          return;
+        }
         d.drillSpin = (d.drillSpin || 0) + dt * 9;
         s.pipes = s.pipes.filter((q) => F.live(q));
         s.label = s.pipes.length ? `Cut the coolant lines · ${s.pipes.length} left` : 'Break the drill';
@@ -1557,6 +1617,9 @@
         s.lord = null;
         F.darkTarget = 0;
         F.wreck(e, 'fallen', 30);
+        F.chain(e.x, e.y, 110, 9, 2.0, [0.75, 0.93, 1.0]);
+        WS.FX.burst(e.x, e.y, 40, '#dff3ff', 380, 1.2, 5);
+        WS.FX.screen('rgba(235,248,255,.7)', 1.6);
         F.win();
         return;
       }

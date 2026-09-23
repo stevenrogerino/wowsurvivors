@@ -613,6 +613,30 @@
     }
   };
 
+  /** The Admiral on one knee, colours struck. */
+  M.surrender = function (ctx, e, t) {
+    const R = e.radius, x = e.x, y = e.y;
+    const sz = WS.round(R * 3.1);
+    ctx.save();
+    ctx.translate(x, y + R * 0.3);
+    ctx.scale(1, 0.82);
+    ctx.drawImage(WS.Sprites.creature('bandit', e.template.tint, sz, ['plumehat', 'pauldrons']),
+      -sz / 2, -sz * 0.62, sz, sz);
+    ctx.restore();
+    const px = x + R * 0.9, top = y - R * 2.2;
+    ctx.strokeStyle = '#5a4630'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(px, y + R * 0.6); ctx.lineTo(px, top); ctx.stroke();
+    const wave = WS.sin(t * 4) * R * 0.12;
+    ctx.beginPath();
+    ctx.moveTo(px, top);
+    ctx.quadraticCurveTo(px + R * 0.6, top + wave, px + R * 1.1, top + R * 0.1);
+    ctx.lineTo(px + R * 1.05, top + R * 0.75);
+    ctx.quadraticCurveTo(px + R * 0.55, top + R * 0.7 - wave, px, top + R * 0.7);
+    ctx.closePath();
+    ctx.fillStyle = '#f4efe4'; ctx.fill();
+    ctx.strokeStyle = 'rgba(80,70,60,.6)'; ctx.lineWidth = 1.2; ctx.stroke();
+  };
+
   /* Wrecks: the machine, darkened, tilted, smoking, with nothing moving. */
   function drawWreck(ctx, w, time) {
     const painter = M[w.kind];
@@ -621,7 +645,7 @@
     ctx.save();
     ctx.globalAlpha = fade;
     ctx.translate(w.x, w.y); ctx.rotate(w.rot || 0.08); ctx.translate(-w.x, -w.y);
-    if (w.kind !== 'galleon') ctx.filter = 'brightness(.42) saturate(.5)';
+    if (w.kind !== 'galleon' && w.kind !== 'surrender') ctx.filter = 'brightness(.42) saturate(.5)';
     const fake = { x: w.x, y: w.y, radius: w.radius || 60, facing: 1, template: { tint: w.tint },
       dmgTaken: 1, untargetable: false, health: 1, maxHealth: 1, spawnId: 1 };
     painter(ctx, fake, time, { wreck: true, still: true });
@@ -642,13 +666,16 @@
       ctx.fill();
       ctx.restore();
     }
+    if (e.fade !== undefined && e.fade <= 0) return;
     const ds = e.template.drawScale || 1;
+    if (e.fade !== undefined && e.fade < 1) { ctx.save(); ctx.globalAlpha = e.fade; }
     if (ds !== 1) {
       ctx.save();
       ctx.translate(e.x, e.y); ctx.scale(ds, ds); ctx.translate(-e.x, -e.y);
     }
     painter(ctx, e, time, {});
     if (ds !== 1) ctx.restore();
+    if (e.fade !== undefined && e.fade < 1) { ctx.restore(); return; }
     if (e.flash > 0) {
       ctx.save();
       ctx.globalAlpha = WS.clamp(e.flash / 0.09, 0, 1) * 0.35;
@@ -1077,6 +1104,14 @@
           ctx.beginPath(); ctx.moveTo(s.mx, s.my);
           ctx.lineTo(s.mx + WS.cos(a) * 60, s.my + WS.sin(a) * 26); ctx.stroke();
         }
+        ctx.restore();
+      }
+      if (s.dropping && s.core) {
+        const k = WS.clamp(1 - (225 - s.core.y) / 525, 0, 1);
+        ctx.save();
+        ctx.globalAlpha = 0.15 + 0.45 * k;
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.ellipse(640, 225 + 70, 60 + 90 * k, 16 + 22 * k, 0, 0, WS.TAU); ctx.fill();
         ctx.restore();
       }
       if (s.orb && !F.pods.some((q) => q.carrying)) glow(ctx, s.orb.x, s.orb.y, 22, [0.55, 1.0, 0.75], 0.9);

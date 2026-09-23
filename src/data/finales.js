@@ -85,7 +85,7 @@
     },
     stormbreaker: {
       name: 'The Stormbreaker', family: 'mechanical', art: 'stormbreaker', machine: 'stormbreaker',
-      tint: [0.62, 0.70, 0.82], health: 600000, speed: 0, damage: 52, xp: 1500, radius: 82,
+      tint: [0.62, 0.70, 0.82], health: 500000, speed: 0, damage: 52, xp: 1500, radius: 82,
       gold: 600, drawScale: 1.15, interval: 99, finale: true, stationary: true, school: 'nature',
       yell: 'Forty tons of stolen ember and ONE very good idea!',
     },
