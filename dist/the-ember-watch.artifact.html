@@ -5025,7 +5025,7 @@ window.WS = window.WS || {};
         turretHpGrowth: 0.18, overheat: 10, overheatVuln: 1.5,
         burrowAt: 0.60, burrowTime: 12, meltdownAt: 0.25,
         bombDamage: 34, bombRadius: 64, bombTele: 1.1,
-        drillDamage: 48, drillWindup: 1.1, drillTime: 0.9, drillRange: 560,
+        drillDamage: 42, drillWindup: 1.1, drillChainWindup: 0.75, surfaceTele: 1.0, drillTime: 0.9, drillRange: 560,
         eruptDamage: 44, eruptRadius: 90, eruptTele: 1.3,
         ringDamage: 30, ringSpeed: 190,
         lamplings: 10,
@@ -5058,6 +5058,9 @@ window.WS = window.WS || {};
         sailSpeed: 70, broadsideDamage: 40, broadsideTele: 1.2, broadsideWidth: 64,
         grapeDamage: 26, kegDamage: 46, kegRadius: 80, kegTele: 1.2,
         dashDamage: 50, dashWindup: 0.55, dashTime: 0.35, dashRange: 340,
+        // The second and third dash of a set: quicker, but still a human's
+        // reaction plus a step - below ~0.5s a lane this wide cannot be left.
+        dashChainWindup: 0.5,
         pistolDamage: 30, boarders: 8, rally: 4,
       },
     },
@@ -5112,8 +5115,8 @@ window.WS = window.WS || {};
         standingArmor: 0.35, kneelVuln: 1.3, kneelStagger: 10, destructAt: 0.15,
         destructTime: 7, destructDamage: 400,
         stompDamage: 46, stompRadius: 76, stompTele: 0.9,
-        beamDamage: 42, beamTele: 1.4, beamSpin: 0.55, beamTime: 4.5, beamWidth: 46,
-        fenceDamage: 30, missileDamage: 40, missileRadius: 70, missileTele: 1.2,
+        beamDamage: 42, beamTele: 1.4, beamSpin: 0.6, beamTime: 4.5, beamWidth: 46,
+        fenceDamage: 30, missileDamage: 40, missileRadius: 70, missileTele: 1.05,
         karrash: 5,
       },
     },
@@ -5143,10 +5146,10 @@ window.WS = window.WS || {};
       epilogue: ['The dark is broken', 'The Ember Watch holds. Dawn comes, and this time it stays.'],
       tuning: {
         pipeBreak: 0.15, debrisDamage: 48, debrisRadius: 70, debrisTele: 1.1,
-        ventDamage: 44, ventSpin: 0.6, ventTele: 1.2,
+        ventDamage: 44, ventSpin: 0.7, ventTele: 1.2,
         shardReduce: 0.40, shardEvery: 30, winterAt: 0.40, winterEnrage: 100,
-        novaDamage: 50, novaSpeed: 190, novaGap: 30,
-        gridDamage: 56, gridTele: 1.5, spikeDamage: 40,
+        novaDamage: 50, novaSpeed: 200, novaGap: 30,
+        gridDamage: 56, gridTele: 1.35, spikeDamage: 44,
         ghouls: 10,
       },
     },
@@ -15517,6 +15520,7 @@ window.WS = window.WS || {};
     e.windup = 0;
     e.windupMax = 0;
     e.chargeDir = null;
+    e.chargeLock = 0;
     e.chargeLen = 0;         // the lane it drew...
     e.chargeDur = 0;         // ...and how long it has to cover it
     e.scale = scale;         // kept so anything it splits into inherits the curve
@@ -15707,13 +15711,23 @@ window.WS = window.WS || {};
       if (e.windup > 0 && !frozen) {
         e.windup -= dt;
         speed = 0;
+        /* A charge can also lock EARLY: the lane stops following for the
+           last `chargeLock` seconds, so there is a window between "it is
+           aimed" and "it goes" to step out in. The finales use it - a
+           duellist at arm's length cannot be dodged after she commits. */
+        const locked = e.chargeLock > 0 && e.windup <= e.chargeLock;
         if (e.telegraph && e.telegraph.live) {
-          e.telegraph.dx = dx; e.telegraph.dy = dy;
+          if (!locked) { e.telegraph.dx = dx; e.telegraph.dy = dy; }
+          else if (!e.telegraph.locked) {
+            e.telegraph.locked = true;      // the renderer draws it set hard
+            WS.Audio.play('warn', e.x);
+          }
           e.telegraph.life = e.windup;
         }
         if (e.windup <= 0) {
           e.chargeTimer = e.chargeDur;
-          e.chargeDir = [dx, dy];
+          e.chargeDir = e.chargeLock > 0 && e.telegraph
+            ? [e.telegraph.dx, e.telegraph.dy] : [dx, dy];
           if (e.telegraph) {
             e.telegraph.live = false;      // aimed; from here it is a fact
             e.telegraph.firing = true;
@@ -15816,8 +15830,9 @@ window.WS = window.WS || {};
    *  charge and for a creature's lunge, because they are the same move at two
    *  sizes and the promise is the same: `live` says the lane is still being
    *  aimed, and the update loop turns that off the instant it commits. */
-  Enemy.beginCharge = function (e, dx, dy, windup, time, range, girth) {
+  Enemy.beginCharge = function (e, dx, dy, windup, time, range, girth, lock) {
     e.windup = windup;
+    e.chargeLock = lock || 0;
     e.windupMax = windup;
     e.chargeDur = time;
     e.chargeLen = range;
@@ -19625,10 +19640,14 @@ window.WS = window.WS || {};
 
   function busy(e) { return e.windup > 0 || e.chargeTimer > 0; }
 
+  /* Finale charges lock their lane CHARGE_LOCK seconds before they go: the
+     tell tracks you, then stops, then the machine commits - and that last
+     beat is the one a player reacts to. */
+  const CHARGE_LOCK = 0.3;
   function charge(e, windup, time, range, girth) {
     const p = WS.Game.player;
     const [dx, dy] = WS.normalize(p.x - e.x, p.y - e.y);
-    WS.Enemy.beginCharge(e, dx, dy, windup, time, range, girth);
+    WS.Enemy.beginCharge(e, dx, dy, windup, time, range, girth, WS.min(CHARGE_LOCK, windup * 0.6));
     WS.Audio.play('warn', e.x);
   }
 
@@ -19702,6 +19721,24 @@ window.WS = window.WS || {};
       const pace = s.melt ? 1.55 : 1;
 
       if (s.mode === 'burrow') {
+        // Coming up: the mound stops and the ground is marked where the hull
+        // will break through. It used to surface the same instant, under a
+        // mound that follows you - a hit nobody could see coming.
+        if (s.surfacing > 0) {
+          s.surfacing -= dt;
+          if (WS.random() < dt * 30) WS.FX.burst(s.mx, s.my, 1, '#8a6a44', 120, 0.6, 5);
+          if (s.surfacing <= 0) {
+            c.x = s.mx; c.y = s.my;
+            c.hidden = false; c.untargetable = false;
+            F.eruption(c.x, c.y, 150);
+            s.mode = 'stripped';
+            s.label = 'Plating stripped';
+            c.displayName = 'The Candlecrawler';
+            F.say('surface');
+            s.tm.drill = 3; s.tm.ring = 5;
+          }
+          return;
+        }
         const [dx, dy, d] = WS.normalize(p.x - s.mx, p.y - s.my);
         const step = WS.min(d, 150 * dt);
         s.mx += dx * step; s.my += dy * step;
@@ -19716,15 +19753,12 @@ window.WS = window.WS || {};
           if (s.erupts === 2) F.addsRing('lampling', T.lamplings, 700);
         }
         if (s.burrowT <= 0) {
-          c.x = WS.clamp(s.mx, MACHINE_BOX.minX, MACHINE_BOX.maxX); c.y = WS.clamp(s.my, MACHINE_BOX.minY, MACHINE_BOX.maxY);
-          c.hidden = false; c.untargetable = false;
-          F.eruption(c.x, c.y, 150);
-          F.circle(c.x, c.y, T.eruptRadius, 0.05, T.eruptDamage, 'The Candlecrawler', { style: 'quiet' });
-          s.mode = 'stripped';
-          s.label = 'Plating stripped';
-          c.displayName = 'The Candlecrawler';
-          F.say('surface');
-          s.tm.drill = 3; s.tm.ring = 5;
+          s.mx = WS.clamp(s.mx, MACHINE_BOX.minX, MACHINE_BOX.maxX);
+          s.my = WS.clamp(s.my, MACHINE_BOX.minY, MACHINE_BOX.maxY);
+          s.surfacing = T.surfaceTele;
+          F.circle(s.mx, s.my, T.eruptRadius, T.surfaceTele, T.eruptDamage, 'The Candlecrawler',
+            { style: 'erupt', tint: [0.9, 0.6, 0.3] });
+          WS.Audio.play('warn', s.mx);
         }
         return;
       }
@@ -19746,7 +19780,7 @@ window.WS = window.WS || {};
       if (!busy(c)) {
         if (s.chain > 0) {
           s.chain--;
-          charge(c, 0.6, T.drillTime, T.drillRange, 1.5);
+          charge(c, T.drillChainWindup, T.drillTime, T.drillRange, 1.5);
         } else {
           keepAway(F, c, 250, s.melt ? 80 : 55, dt, MACHINE_BOX);
         }
@@ -19915,7 +19949,7 @@ window.WS = window.WS || {};
         if (!busy(a)) {
           if (s.dashes > 0) {
             s.dashes--;
-            charge(a, T.dashWindup * 0.7, T.dashTime, T.dashRange, 1.8);
+            charge(a, T.dashChainWindup, T.dashTime, T.dashRange, 1.8);
           } else {
             // Circles you at a duelling distance.
             const [dx, dy, d] = WS.normalize(a.x - p.x, a.y - p.y);
@@ -26396,6 +26430,17 @@ window.WS = window.WS || {};
         ctx.strokeStyle = `rgba(255,140,120,${(aim ? 0.35 + 0.45 * k : 0.85 * fade).toFixed(3)})`;
         ctx.lineWidth = aim ? 1.5 : 2.5;
         ctx.strokeRect(0, -t.width / 2, t.length, t.width);
+        /* Locked but not yet gone: it stopped swinging, and it says so with
+           a second, heavier rail down each side - shape, not a colour shift,
+           so it reads at a glance in any palette. */
+        if (aim && t.locked) {
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(0, -t.width / 2 - 4); ctx.lineTo(t.length, -t.width / 2 - 4);
+          ctx.moveTo(0, t.width / 2 + 4); ctx.lineTo(t.length, t.width / 2 + 4);
+          ctx.stroke();
+          ctx.lineWidth = 1.5;
+        }
         // Chevrons pointing the way out.
         ctx.globalAlpha = (aim ? 0.5 + 0.4 * k : 0.9 * fade);
         for (let c = 1; c <= 3; c++) {

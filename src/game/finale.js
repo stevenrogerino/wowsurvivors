@@ -704,10 +704,14 @@
 
   function busy(e) { return e.windup > 0 || e.chargeTimer > 0; }
 
+  /* Finale charges lock their lane CHARGE_LOCK seconds before they go: the
+     tell tracks you, then stops, then the machine commits - and that last
+     beat is the one a player reacts to. */
+  const CHARGE_LOCK = 0.3;
   function charge(e, windup, time, range, girth) {
     const p = WS.Game.player;
     const [dx, dy] = WS.normalize(p.x - e.x, p.y - e.y);
-    WS.Enemy.beginCharge(e, dx, dy, windup, time, range, girth);
+    WS.Enemy.beginCharge(e, dx, dy, windup, time, range, girth, WS.min(CHARGE_LOCK, windup * 0.6));
     WS.Audio.play('warn', e.x);
   }
 
@@ -781,6 +785,24 @@
       const pace = s.melt ? 1.55 : 1;
 
       if (s.mode === 'burrow') {
+        // Coming up: the mound stops and the ground is marked where the hull
+        // will break through. It used to surface the same instant, under a
+        // mound that follows you - a hit nobody could see coming.
+        if (s.surfacing > 0) {
+          s.surfacing -= dt;
+          if (WS.random() < dt * 30) WS.FX.burst(s.mx, s.my, 1, '#8a6a44', 120, 0.6, 5);
+          if (s.surfacing <= 0) {
+            c.x = s.mx; c.y = s.my;
+            c.hidden = false; c.untargetable = false;
+            F.eruption(c.x, c.y, 150);
+            s.mode = 'stripped';
+            s.label = 'Plating stripped';
+            c.displayName = 'The Candlecrawler';
+            F.say('surface');
+            s.tm.drill = 3; s.tm.ring = 5;
+          }
+          return;
+        }
         const [dx, dy, d] = WS.normalize(p.x - s.mx, p.y - s.my);
         const step = WS.min(d, 150 * dt);
         s.mx += dx * step; s.my += dy * step;
@@ -795,15 +817,12 @@
           if (s.erupts === 2) F.addsRing('lampling', T.lamplings, 700);
         }
         if (s.burrowT <= 0) {
-          c.x = WS.clamp(s.mx, MACHINE_BOX.minX, MACHINE_BOX.maxX); c.y = WS.clamp(s.my, MACHINE_BOX.minY, MACHINE_BOX.maxY);
-          c.hidden = false; c.untargetable = false;
-          F.eruption(c.x, c.y, 150);
-          F.circle(c.x, c.y, T.eruptRadius, 0.05, T.eruptDamage, 'The Candlecrawler', { style: 'quiet' });
-          s.mode = 'stripped';
-          s.label = 'Plating stripped';
-          c.displayName = 'The Candlecrawler';
-          F.say('surface');
-          s.tm.drill = 3; s.tm.ring = 5;
+          s.mx = WS.clamp(s.mx, MACHINE_BOX.minX, MACHINE_BOX.maxX);
+          s.my = WS.clamp(s.my, MACHINE_BOX.minY, MACHINE_BOX.maxY);
+          s.surfacing = T.surfaceTele;
+          F.circle(s.mx, s.my, T.eruptRadius, T.surfaceTele, T.eruptDamage, 'The Candlecrawler',
+            { style: 'erupt', tint: [0.9, 0.6, 0.3] });
+          WS.Audio.play('warn', s.mx);
         }
         return;
       }
@@ -825,7 +844,7 @@
       if (!busy(c)) {
         if (s.chain > 0) {
           s.chain--;
-          charge(c, 0.6, T.drillTime, T.drillRange, 1.5);
+          charge(c, T.drillChainWindup, T.drillTime, T.drillRange, 1.5);
         } else {
           keepAway(F, c, 250, s.melt ? 80 : 55, dt, MACHINE_BOX);
         }
@@ -994,7 +1013,7 @@
         if (!busy(a)) {
           if (s.dashes > 0) {
             s.dashes--;
-            charge(a, T.dashWindup * 0.7, T.dashTime, T.dashRange, 1.8);
+            charge(a, T.dashChainWindup, T.dashTime, T.dashRange, 1.8);
           } else {
             // Circles you at a duelling distance.
             const [dx, dy, d] = WS.normalize(a.x - p.x, a.y - p.y);

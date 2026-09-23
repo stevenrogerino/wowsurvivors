@@ -107,6 +107,7 @@
     e.windup = 0;
     e.windupMax = 0;
     e.chargeDir = null;
+    e.chargeLock = 0;
     e.chargeLen = 0;         // the lane it drew...
     e.chargeDur = 0;         // ...and how long it has to cover it
     e.scale = scale;         // kept so anything it splits into inherits the curve
@@ -297,13 +298,23 @@
       if (e.windup > 0 && !frozen) {
         e.windup -= dt;
         speed = 0;
+        /* A charge can also lock EARLY: the lane stops following for the
+           last `chargeLock` seconds, so there is a window between "it is
+           aimed" and "it goes" to step out in. The finales use it - a
+           duellist at arm's length cannot be dodged after she commits. */
+        const locked = e.chargeLock > 0 && e.windup <= e.chargeLock;
         if (e.telegraph && e.telegraph.live) {
-          e.telegraph.dx = dx; e.telegraph.dy = dy;
+          if (!locked) { e.telegraph.dx = dx; e.telegraph.dy = dy; }
+          else if (!e.telegraph.locked) {
+            e.telegraph.locked = true;      // the renderer draws it set hard
+            WS.Audio.play('warn', e.x);
+          }
           e.telegraph.life = e.windup;
         }
         if (e.windup <= 0) {
           e.chargeTimer = e.chargeDur;
-          e.chargeDir = [dx, dy];
+          e.chargeDir = e.chargeLock > 0 && e.telegraph
+            ? [e.telegraph.dx, e.telegraph.dy] : [dx, dy];
           if (e.telegraph) {
             e.telegraph.live = false;      // aimed; from here it is a fact
             e.telegraph.firing = true;
@@ -406,8 +417,9 @@
    *  charge and for a creature's lunge, because they are the same move at two
    *  sizes and the promise is the same: `live` says the lane is still being
    *  aimed, and the update loop turns that off the instant it commits. */
-  Enemy.beginCharge = function (e, dx, dy, windup, time, range, girth) {
+  Enemy.beginCharge = function (e, dx, dy, windup, time, range, girth, lock) {
     e.windup = windup;
+    e.chargeLock = lock || 0;
     e.windupMax = windup;
     e.chargeDur = time;
     e.chargeLen = range;

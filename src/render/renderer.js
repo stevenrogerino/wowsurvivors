@@ -1024,6 +1024,17 @@
         ctx.strokeStyle = `rgba(255,140,120,${(aim ? 0.35 + 0.45 * k : 0.85 * fade).toFixed(3)})`;
         ctx.lineWidth = aim ? 1.5 : 2.5;
         ctx.strokeRect(0, -t.width / 2, t.length, t.width);
+        /* Locked but not yet gone: it stopped swinging, and it says so with
+           a second, heavier rail down each side - shape, not a colour shift,
+           so it reads at a glance in any palette. */
+        if (aim && t.locked) {
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(0, -t.width / 2 - 4); ctx.lineTo(t.length, -t.width / 2 - 4);
+          ctx.moveTo(0, t.width / 2 + 4); ctx.lineTo(t.length, t.width / 2 + 4);
+          ctx.stroke();
+          ctx.lineWidth = 1.5;
+        }
         // Chevrons pointing the way out.
         ctx.globalAlpha = (aim ? 0.5 + 0.4 * k : 0.9 * fade);
         for (let c = 1; c <= 3; c++) {
