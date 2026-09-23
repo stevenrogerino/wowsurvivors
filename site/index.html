@@ -5259,7 +5259,9 @@ window.WS = window.WS || {};
    * system rather than only at the top level. */
   const ROOTS = ['Config', 'CONST', 'Characters', 'Weapons', 'Unions', 'Enemies',
     'Elites', 'Bosses', 'Maps', 'Upgrades', 'MetaUpgrades', 'Blessings',
-    'Combos', 'Achievements', 'Lore', 'Arena.tuning'];
+    'Combos', 'Achievements', 'Lore', 'Arena.tuning',
+    // The map finales: each fight's tuning and script, its parts, its cast.
+    'Finales', 'FinaleUnits', 'FinaleSpeakers'];
   /* A Set, not an object literal. `{ __proto__: 1 }` does not create a key
    * called __proto__ - it sets the object's prototype - so the literal form of
    * this list silently failed to contain the one name it exists to catch, and

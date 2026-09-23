@@ -301,18 +301,22 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const missing = g.Tuning.roots.filter((r) => !nav.includes(r));
       // and the two that were reachable from nowhere until the bench looked
       const wrote = g.Tuning.set('CONST.ENEMY_SCALE', 1.5)
-        && g.Tuning.set('Arena.tuning.ringDamage', 99);
-      const landed = g.CONST.ENEMY_SCALE === 1.5 && g.Arena.tuning.ringDamage === 99;
+        && g.Tuning.set('Arena.tuning.ringDamage', 99)
+        && g.Tuning.set('Finales.dustreach.tuning.damage', 42);
+      const landed = g.CONST.ENEMY_SCALE === 1.5 && g.Arena.tuning.ringDamage === 99
+        && g.Finales.dustreach.tuning.damage === 42;
       g.Tuning.clear('CONST.ENEMY_SCALE'); g.Tuning.clear('Arena.tuning.ringDamage');
+      g.Tuning.clear('Finales.dustreach.tuning.damage');
       return { missing, wrote, landed,
-        restored: g.CONST.ENEMY_SCALE !== 1.5 && g.Arena.tuning.ringDamage !== 99 };
+        restored: g.CONST.ENEMY_SCALE !== 1.5 && g.Arena.tuning.ringDamage !== 99
+          && g.Finales.dustreach.tuning.damage !== 42 };
     });
     if (reach.missing.length) {
       fail.push('the tuning layer allows roots the bench never shows: '
         + reach.missing.join(', '));
     }
     if (!reach.wrote || !reach.landed) {
-      fail.push('the engine scalars and the Eclipse Arena fight cannot be tuned');
+      fail.push('the engine scalars, the Eclipse Arena fight or a finale cannot be tuned');
     }
     if (!reach.restored) fail.push('clearing an override did not put the value back');
 

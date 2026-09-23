@@ -283,6 +283,9 @@ const TABLES = [
   { root:'Lore',          label:'Script & manual' },
   { root:'CONST',         label:'Engine',         flat:true },
   { root:'Arena.tuning',  label:'Eclipse Arena',  flat:true },
+  { root:'Finales',       label:'Finales',        order:'MapOrder' },
+  { root:'FinaleUnits',   label:'Finale parts' },
+  { root:'FinaleSpeakers',label:'Finale cast' },
 ];
 const MAX_DEPTH = 3;          // deeper than this and it is edited as JSON
 
@@ -364,7 +367,7 @@ function entriesOf(t) {
     });
   }
   return keys.map((k) => ({ key: k, obj: table[k],
-    name: (table[k] && table[k].name) || k, path: t.root + '.' + k }));
+    name: (table[k] && (table[k].name || table[k].title)) || k, path: t.root + '.' + k }));
 }
 
 const isColour = (v) => Array.isArray(v) && v.length === 3
