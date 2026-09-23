@@ -13807,7 +13807,11 @@ window.WS = window.WS || {};
       perc: [0, 4, 8, 12], kit: 'bell', percGain: 2.4,
       prog: [0, 1, 0, 4],
       air: { cut: 520, q: 2.6, gain: 0.050, drift: 0.16, gust: 0.45 },
-      drone: { gain: 0.170, oct: 4, cut: 240 },
+      /* Heavier than the rest, since the drone went from a held tone to one
+         that breathes: a sub-bass under a graveyard is this zone's ground
+         (and it is 27Hz, felt more than heard), and it is what keeps
+         Mourneholt from sounding like the menu. */
+      drone: { gain: 0.215, oct: 4, cut: 240 },
     },
     // Ambergrass: it walks. Drums on the off-beat and a field full of insects.
     savannah: {
@@ -13891,7 +13895,7 @@ window.WS = window.WS || {};
       pad: 'triangle', padCut: 2200,
       perc: null, kit: null,
       air: { cut: 1050, q: 0.5, gain: 0.022, drift: 0.12, gust: 0.62 },
-      drone: { gain: 0.090, oct: 2, cut: 560, wave: 'triangle' },
+      drone: { gain: 0.070, oct: 2, cut: 560, wave: 'triangle' },
     },
     /* The prologue's own piece. It is not the menu loop, which is what it used
        to borrow: this one is slower than anything in the game, has no rhythm
@@ -13984,6 +13988,35 @@ window.WS = window.WS || {};
     },
   };
 
+  /* THE DRONE WAS THE CONSTANT NOISE. "There is a sound on the second map
+   * that never stops" was reported more than once, and two fixes went after
+   * the weather and the lead. Measured one layer at a time
+   * (tools/ambient-probe.js), the drone was the loudest thing in every score -
+   * on the Dustreach 14dB above the music it sat under - and its quietest
+   * half-second was exactly its loudest: one pitch, one level, from the first
+   * second of a run to the thirtieth minute. On the Dustreach it is a square
+   * wave, which is to say a buzz.
+   *
+   * So it is a bass part now. It moves to the root of the chord on every bar
+   * (folded to the nearest octave, so it walks rather than leaps), and it
+   * breathes with the bar - in on the downbeat, down to a murmur by the end -
+   * at a lower level overall. The zone keeps its own ground: every drone
+   * keeps its wave, register and filter, which is what check-score's
+   * "places" rule depends on. */
+  const DRONE_LEVEL = 0.62;
+  const DRONE_LOW = 0.3;
+  function droneBar(state, t0, bar) {
+    const sc = state.score.scale;
+    const prog = state.prog;
+    const centre = prog[(((state.step / PHRASE_LEN) | 0) % prog.length + prog.length) % prog.length];
+    let iv = sc[centre % sc.length];
+    if (iv > 6) iv -= 12;
+    state.drone.frequency.setTargetAtTime(semitone(state.droneFreq, iv), t0, 0.12);
+    const g = state.droneGain.gain;
+    g.setTargetAtTime(state.droneLevel, t0, bar * 0.06);
+    g.setTargetAtTime(state.droneLevel * DRONE_LOW, t0 + bar * 0.4, bar * 0.2);
+  }
+
   /** The weather. A noise bed under the whole zone, drifting so it never sits
    *  still enough to be heard as a hiss. */
   /** The weather's layers, as [playback rate, level]. Named rather than
@@ -14073,7 +14106,7 @@ window.WS = window.WS || {};
     droneFilter.type = 'lowpass'; droneFilter.frequency.value = dr.cut || 420;
     drone.type = dr.wave || 'sawtooth';
     drone.frequency.value = score.root / (dr.oct || 2);
-    droneGain.gain.value = dr.gain === undefined ? 0.12 : dr.gain;
+    droneGain.gain.value = 0.0001;
     drone.connect(droneFilter); droneFilter.connect(droneGain); droneGain.connect(bed);
     drone.start();
 
@@ -14105,7 +14138,10 @@ window.WS = window.WS || {};
     zone.connect(bed);
 
     const progSet = progsFor(score);
-    const state = { key, score, bed, zone, drone, step: 0, phrase: PHRASES[0],
+    const state = { key, score, bed, zone, drone, droneGain,
+      droneFreq: score.root / (dr.oct || 2),
+      droneLevel: (dr.gain === undefined ? 0.12 : dr.gain) * DRONE_LEVEL,
+      step: 0, phrase: PHRASES[0],
       progSet, prog: progSet[0],
       nextTime: ctx.currentTime + 0.1,
       timer: null, intensity: 0, want: 0, air: airBed(score, bed), boss: null,
@@ -14174,6 +14210,7 @@ window.WS = window.WS || {};
         }
         const ph = state.phrase || PHRASES[0];
         const sc = score.scale;
+        if (s % PHRASE_LEN === 0) droneBar(state, t0, beat * PHRASE_LEN);
         const deg = sc[(((s * ph.step + (ph.shift || 0)) % sc.length)
           + sc.length) % sc.length];
         const oct = ((s / (ph.oct / 4)) | 0) % 2 ? 12 : 0;
@@ -14342,6 +14379,13 @@ window.WS = window.WS || {};
     const score = state.score;
     const dread = state.boss === 'death';
     const bar = s % 16;
+    /* The layer's drone breathes on the bar like the zone's does, rather
+       than holding one sub-bass level for the length of the fight. */
+    if (bar === 0 && state.bossDroneGain) {
+      const dg = state.bossDroneGain.gain, len = beat * 16;
+      dg.setTargetAtTime(0.20, t0, len * 0.05);
+      dg.setTargetAtTime(0.09, t0 + len * 0.45, len * 0.2);
+    }
     /* The tread. A boss gallops - every step, so the fight has a pulse the
        zone does not. Death does not hurry: half the rate and twice the
        weight, which is the difference between being chased and being
@@ -14429,7 +14473,7 @@ window.WS = window.WS || {};
         dg.gain.value = 0.20;
         d.connect(df); df.connect(dg); dg.connect(g);
         d.start();
-        m.bossGain = g; m.bossDrone = d;
+        m.bossGain = g; m.bossDrone = d; m.bossDroneGain = dg;
       }
       m.bossGain.gain.setTargetAtTime(1, ctx.currentTime, BOSS_IN);
       if (m.zone) m.zone.gain.setTargetAtTime(BOSS_DUCK, ctx.currentTime, BOSS_IN);
@@ -14444,7 +14488,7 @@ window.WS = window.WS || {};
     } else if (m.bossGain) {
       if (m.zone) m.zone.gain.setTargetAtTime(1, ctx.currentTime, BOSS_OUT);
       const g = m.bossGain, d = m.bossDrone;
-      m.bossGain = null; m.bossDrone = null;
+      m.bossGain = null; m.bossDrone = null; m.bossDroneGain = null;
       try {
         g.gain.setTargetAtTime(0.0001, ctx.currentTime, BOSS_OUT);
         d.stop(ctx.currentTime + BOSS_OUT * 5);
