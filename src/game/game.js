@@ -465,7 +465,15 @@
   };
 
   Game.endRun = function (reason) {
-    if (!this.running && this.state === 'over') return;
+    /* Once per RUN, not once per "state is over". The dawn panel and the
+       finale's own victory both park the game in 'over' with nothing running
+       while they wait for a choice - so a guard on the state turned "Claim
+       the win" into a button that did nothing at all. What must not happen
+       twice is banking the run, and the run can say whether that has
+       happened. */
+    const done = this.run;
+    if (!done || done.ended) return;
+    done.ended = true;
     this.running = false;
     this.state = 'over';
     const run = this.run;

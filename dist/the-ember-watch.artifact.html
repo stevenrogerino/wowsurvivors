@@ -2137,6 +2137,9 @@ window.WS = window.WS || {};
     enemyScaleTime: 210,
     bossScaleTime: 500,
     hyperScale: 1.4,
+    /* One dial over every finale's damage (each also names its own scale,
+       tuning.damage in data/finales.js). */
+    finaleDamage: 1.0,
 
     endlessBossInterval: 75,
     endlessBossMinInterval: 30,
@@ -5022,6 +5025,7 @@ window.WS = window.WS || {};
       ],
       epilogue: ['Grimtunnel escapes', 'His pod drifts south, toward the Dustreach.'],
       tuning: {
+        damage: 6.5,   // x difficulty x Hyper x Config.finaleDamage
         turretHpGrowth: 0.18, overheat: 10, overheatVuln: 1.5,
         burrowAt: 0.60, burrowTime: 12, meltdownAt: 0.25,
         bombDamage: 34, bombRadius: 64, bombTele: 1.1,
@@ -5055,6 +5059,7 @@ window.WS = window.WS || {};
       ],
       epilogue: ['The Admiral strikes her colours', 'The stolen ember was bound for Mourneholt.'],
       tuning: {
+        damage: 7,   // x difficulty x Hyper x Config.finaleDamage
         sailSpeed: 70, broadsideDamage: 40, broadsideTele: 1.2, broadsideWidth: 64,
         grapeDamage: 26, kegDamage: 46, kegRadius: 80, kegTele: 1.2,
         dashDamage: 50, dashWindup: 0.55, dashTime: 0.35, dashRange: 340,
@@ -5085,6 +5090,7 @@ window.WS = window.WS || {};
       ],
       epilogue: ['Grimtunnel steals the lantern-ember', 'His pod races east, over the Ochre Plains.'],
       tuning: {
+        damage: 9,   // x difficulty x Hyper x Config.finaleDamage
         lanternBond: 0.05, exposedTime: 14, exposedVuln: 1.4, relight: 3,
         riseAt: 0.30, handDamage: 44, handRadius: 58, handTele: 1.0,
         knellDamage: 38, knellSpeed: 200, knellGap: 34,
@@ -5112,8 +5118,10 @@ window.WS = window.WS || {};
       ],
       epilogue: ['The Stormbreaker is scrap', 'Grimtunnel flees north, into the Pale Wastes.'],
       tuning: {
+        damage: 10,   // x difficulty x Hyper x Config.finaleDamage
         standingArmor: 0.35, kneelVuln: 1.3, kneelStagger: 10, destructAt: 0.15,
-        destructTime: 7, destructDamage: 400,
+        // Near-lethal on Ochre's 30:00 curve (x8.3): hide, or be carried out.
+        destructTime: 7, destructDamage: 90,
         stompDamage: 46, stompRadius: 76, stompTele: 0.9,
         beamDamage: 42, beamTele: 1.4, beamSpin: 0.6, beamTime: 4.5, beamWidth: 46,
         fenceDamage: 30, missileDamage: 40, missileRadius: 70, missileTele: 1.05,
@@ -5145,6 +5153,7 @@ window.WS = window.WS || {};
       ],
       epilogue: ['The dark is broken', 'The Ember Watch holds. Dawn comes, and this time it stays.'],
       tuning: {
+        damage: 10,   // x difficulty x Hyper x Config.finaleDamage
         pipeBreak: 0.15, debrisDamage: 48, debrisRadius: 70, debrisTele: 1.1,
         ventDamage: 44, ventSpin: 0.7, ventTele: 1.2,
         shardReduce: 0.40, shardEvery: 30, winterAt: 0.40, winterEnrage: 100,
@@ -19049,7 +19058,18 @@ window.WS = window.WS || {};
     this.script = SCRIPTS[def.script];
     const hyper = run.hyper ? WS.Config.hyperScale : 1;
     this.hpScale = run.diffScale * hyper;
-    this.dmgScale = run.diffScale * hyper;
+    /* The fight hits like the thirty minutes before it. Damage used to be
+       difficulty times Hyper and nothing more, so a heavy telegraphed hit on
+       Thornhollow did 44 while a common Kerchief at 30:00 touched for 134.
+       Each finale names its own scale now (tuning.damage), set so its
+       heaviest common mechanic takes about a fifth of an 840-health,
+       16-armour survivor's bar on Thornhollow, climbing to near two fifths
+       on the Pale Wastes. Riding the map's full boss curve instead was
+       measured and rejected: it doubles from the first map to the last on
+       top of the escalation the encounters already carry, and put the Pale
+       Lord's every heavy at two thirds of a bar. Config.finaleDamage is the
+       one dial over all five. */
+    this.dmgScale = run.diffScale * hyper * (def.tuning.damage || 1) * WS.Config.finaleDamage;
     this.stage = 'purge';
     this.purgeR = 0;
     this.label = 'First light';
@@ -21115,7 +21135,15 @@ window.WS = window.WS || {};
   };
 
   Game.endRun = function (reason) {
-    if (!this.running && this.state === 'over') return;
+    /* Once per RUN, not once per "state is over". The dawn panel and the
+       finale's own victory both park the game in 'over' with nothing running
+       while they wait for a choice - so a guard on the state turned "Claim
+       the win" into a button that did nothing at all. What must not happen
+       twice is banking the run, and the run can say whether that has
+       happened. */
+    const done = this.run;
+    if (!done || done.ended) return;
+    done.ended = true;
     this.running = false;
     this.state = 'over';
     const run = this.run;

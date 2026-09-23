@@ -86,6 +86,9 @@
     enemyScaleTime: 210,
     bossScaleTime: 500,
     hyperScale: 1.4,
+    /* One dial over every finale's damage (each also names its own scale,
+       tuning.damage in data/finales.js). */
+    finaleDamage: 1.0,
 
     endlessBossInterval: 75,
     endlessBossMinInterval: 30,

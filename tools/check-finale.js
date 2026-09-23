@@ -167,6 +167,53 @@ const fail = [];
     await page.close();
   }
 
+  /* "Claim the win" has to end the run. The dawn panel parks the game in
+     'over' while it waits for a choice, and endRun used to refuse to run
+     from 'over' - so the button banked nothing and opened nothing. */
+  if (!only) {
+    const page = await ctx.newPage();
+    const errs = [];
+    page.on('pageerror', (e) => errs.push(e.message));
+    await page.goto(GAME);
+    await page.waitForFunction(() => window.WS && WS.Game && WS.Finale);
+    await page.waitForTimeout(300);
+    const claim = await page.evaluate(() => {
+      if (WS.Prologue && WS.Prologue.active) WS.Prologue.finish();
+      WS.UI.closeOverlay();
+      WS.Save.db.seenManual = true;
+      WS.Save.settings.victoryCinematic = false;
+      WS.Game.startRun('thornhollow', 'mage');
+      WS.Game.chooseBlessing(WS.Game.blessingChoices[0]);
+      WS.Game.state = 'playing'; WS.Game.running = true;
+      WS.Game.leveling = false; WS.Game.pendingLevelUps = 0; WS.Game.settle = 0;
+      WS.UI.closeOverlay();
+      const p = WS.Game.player;
+      p.maxHealth = 1e7; p.health = 1e7;
+      WS.Game.run.secondBlessing = true;
+      WS.Game.run.time = WS.Config.deathTime - 0.5;
+      for (let i = 0; i < 120 && WS.Game.state === 'playing'; i++) WS.Game.update(1 / 60);
+      const before = WS.Save.stats.totalTime;
+      const btn = [...document.querySelectorAll('#overlay button')].find((b) => b.textContent === 'Claim the win');
+      if (!btn) return { missing: true };
+      btn.click();
+      const after = WS.Save.stats.totalTime;
+      const heading = document.querySelector('#overlay') ? document.querySelector('#overlay').textContent : '';
+      btn.click();   // a second click must not bank the run twice
+      return { banked: after > before, twice: WS.Save.stats.totalTime !== after,
+        results: /Victory/.test(heading) && ![...document.querySelectorAll('#overlay button')]
+          .some((b) => b.textContent === 'Claim the win') };
+    });
+    if (claim.missing) fail.push('claim: the dawn panel has no "Claim the win"');
+    else {
+      if (!claim.banked) fail.push('claim: "Claim the win" did not bank the run');
+      if (claim.twice) fail.push('claim: the run was banked twice');
+      if (!claim.results) fail.push('claim: "Claim the win" did not open the results panel');
+      if (!claim.twice && claim.banked && claim.results) console.log('\nclaim  : "Claim the win" banks the run once and opens the results');
+    }
+    for (const e of errs.slice(0, 5)) fail.push(`claim: page error: ${e}`);
+    await page.close();
+  }
+
   await browser.close();
   if (fail.length) {
     console.log('\nFAIL\n  ' + fail.join('\n  '));

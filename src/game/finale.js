@@ -69,7 +69,18 @@
     this.script = SCRIPTS[def.script];
     const hyper = run.hyper ? WS.Config.hyperScale : 1;
     this.hpScale = run.diffScale * hyper;
-    this.dmgScale = run.diffScale * hyper;
+    /* The fight hits like the thirty minutes before it. Damage used to be
+       difficulty times Hyper and nothing more, so a heavy telegraphed hit on
+       Thornhollow did 44 while a common Kerchief at 30:00 touched for 134.
+       Each finale names its own scale now (tuning.damage), set so its
+       heaviest common mechanic takes about a fifth of an 840-health,
+       16-armour survivor's bar on Thornhollow, climbing to near two fifths
+       on the Pale Wastes. Riding the map's full boss curve instead was
+       measured and rejected: it doubles from the first map to the last on
+       top of the escalation the encounters already carry, and put the Pale
+       Lord's every heavy at two thirds of a bar. Config.finaleDamage is the
+       one dial over all five. */
+    this.dmgScale = run.diffScale * hyper * (def.tuning.damage || 1) * WS.Config.finaleDamage;
     this.stage = 'purge';
     this.purgeR = 0;
     this.label = 'First light';

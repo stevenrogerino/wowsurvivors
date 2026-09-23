@@ -37,7 +37,9 @@ const dodgeOnly = process.argv.includes('--dodge-only');
 // so one run is an anecdote. Several seeds, averaged, is a measurement.
 const SEEDS = +(arg('--seeds') || 3);
 const BUILD = ['seeking_motes', 'umbral_bolt', 'cinderfall', 'arcweb', 'hallowed_ring', 'knifestorm'];
-const REF_HP = 320, REF_ARMOR = 6;
+// A committed 30:00 build, as the designer sees them at dawn: 840 health and
+// armour from the upgrade, the lessons and a blessing (~35% off).
+const REF_HP = 840, REF_ARMOR = 16;
 
 /* Runs in the page. Scores nine moves (eight directions and standing still)
  * against everything dangerous and takes the cheapest. */
@@ -314,7 +316,9 @@ async function runOne(page, map, dodge, seed) {
       }
       const top = Object.entries(by).sort((a, b) => b[1].dmg - a[1].dmg).slice(0, 7);
       for (const [name, v] of top) {
-        console.log(`           ${name.padEnd(38)} ${String(Math.round(v.dmg)).padStart(6)}  x${v.hits.toFixed(1)}`);
+        const each = v.hits ? v.dmg / v.hits : 0;
+        console.log(`           ${name.padEnd(38)} ${String(Math.round(v.dmg)).padStart(6)}  x${v.hits.toFixed(1).padEnd(5)}`
+          + ` ${String(Math.round(each)).padStart(4)} a hit (${Math.round(each / REF_HP * 100)}% of the bar)`);
       }
       if (dodge) summary.push([map, dpm, worst]);
     }
