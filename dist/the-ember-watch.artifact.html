@@ -20547,8 +20547,10 @@ window.WS = window.WS || {};
       if (s.mode === 'drill' && s.pipes.includes(e) && F.live(s.core)) {
         s.pipes = s.pipes.filter((q) => q !== e && F.live(q));
         F.sayOnce('pipe');
-        WS.Enemy.damage(s.core, s.core.maxHealth * T.pipeBreak, false, 'coolant');
-        WS.FX.flash(s.core.x, s.core.y, 140, [1.0, 0.6, 0.25], 0.5);
+        // The drill may die of this, and its own death handler clears s.core.
+        const d = s.core;
+        WS.FX.flash(d.x, d.y, 140, [1.0, 0.6, 0.25], 0.5);
+        WS.Enemy.damage(d, d.maxHealth * T.pipeBreak, false, 'coolant');
       }
     },
     onWin(F) {
