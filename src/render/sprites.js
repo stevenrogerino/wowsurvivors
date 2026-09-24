@@ -858,49 +858,89 @@
 
     /* --- humanoid frames -------------------------------------------------- */
     lampling(g, s, p) {
-      // (the frame goes on after the body, below)
-      const cx = s / 2, cy = s * 0.60, u = s / 100;
-      shaded(g, cx, cy, 20 * u, 22 * u, p);                       // hunched body
-      poly(g, [[cx - 4 * u, cy - 20 * u], [cx, cy - 46 * u], [cx + 4 * u, cy - 20 * u]], p.glow, p.line, u); // candle
+      /* A LAMPLING IS A LAMP THAT WALKS - the foreman's kind, and the first
+         thing in the game that comes for you, so it should look like his
+         family and not like an egg. A wax body with a pane of glass in the
+         belly and a flame behind it, long lamp-fin ears, the family candle
+         burning on its head, stubby legs, and a miner's pick over one
+         shoulder that is much too big for it. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const BRASS = { hi: '#ffe7a8', mid: '#d4a04a', lo: '#8c5a1c', dark: '#5a3a10', line: '#3a2208', glow: '#fff' };
+      const IRON = { hi: '#dfe3ea', mid: '#8d94a1', line: '#1d2129' };
+      // the pick, over the far shoulder, behind the body
+      g.save();
+      g.lineCap = 'round';
+      g.strokeStyle = '#2a1a0c'; g.lineWidth = 3.4 * u;
+      g.beginPath(); g.moveTo(X(70), Y(78)); g.lineTo(X(62), Y(30)); g.stroke();
+      g.strokeStyle = '#7a5530'; g.lineWidth = 2 * u;
+      g.beginPath(); g.moveTo(X(70), Y(78)); g.lineTo(X(62), Y(30)); g.stroke();
+      g.restore();
+      poly(g, P([[50, 30], [60, 26], [74, 27], [84, 34], [74, 31], [62, 32]]), IRON.mid, IRON.line, u * 0.8);
+      g.strokeStyle = IRON.hi; g.lineWidth = u * 0.7;
+      g.beginPath(); g.moveTo(X(56), Y(28.4)); g.lineTo(X(72), Y(28)); g.stroke();
+      // legs and feet
+      for (const [lx, d] of [[42, -1], [58, 1]]) {
+        shaded(g, X(lx), Y(80), X(4), X(6), p);
+        shaded(g, X(lx - 1.4), Y(86.6), X(6), X(3), { hi: '#8a5a34', mid: '#5e3a1f', lo: '#35200f', dark: '#35200f', line: '#1e1108', glow: '#fff' });
+        void d;
+      }
+      // the body: a squat lamp of wax
+      shaded(g, X(50), Y(62), X(19), X(19), p);
+      // the glass in its belly, and the light behind it
+      g.save();
+      g.beginPath();
+      g.moveTo(X(40), Y(56)); g.lineTo(X(60), Y(56)); g.lineTo(X(58), Y(74)); g.lineTo(X(42), Y(74)); g.closePath();
+      const gl = g.createLinearGradient(0, Y(56), 0, Y(74));
+      gl.addColorStop(0, '#6a3a10'); gl.addColorStop(1, '#ffb44a');
+      g.fillStyle = gl; g.fill();
+      g.clip();
+      g.globalCompositeOperation = 'lighter';
+      const fl = g.createRadialGradient(X(50), Y(67), 0, X(50), Y(67), X(9));
+      fl.addColorStop(0, 'rgba(255,230,160,.95)'); fl.addColorStop(1, 'rgba(255,160,60,0)');
+      g.fillStyle = fl; g.fillRect(X(38), Y(54), X(24), Y(22));
+      g.globalCompositeOperation = 'source-over';
+      g.strokeStyle = 'rgba(255,255,255,.45)'; g.lineWidth = u * 1;
+      g.beginPath(); g.moveTo(X(43), Y(59)); g.lineTo(X(42), Y(69)); g.stroke();
+      g.restore();
+      g.strokeStyle = BRASS.line; g.lineWidth = u * 2;
+      g.beginPath(); g.moveTo(X(40), Y(56)); g.lineTo(X(60), Y(56)); g.lineTo(X(58), Y(74)); g.lineTo(X(42), Y(74)); g.closePath(); g.stroke();
+      g.strokeStyle = BRASS.mid; g.lineWidth = u * 1.1; g.stroke();
+      g.beginPath(); g.moveTo(X(50), Y(56)); g.lineTo(X(50), Y(74)); g.stroke();
+      // a belt with a buckle, and a strap across
+      poly(g, P([[32, 72], [68, 72], [67, 76], [33, 76]]), '#5e3a1f', '#1e1108', u * 0.7);
+      poly(g, P([[47.4, 71.4], [52.6, 71.4], [52.6, 76.6], [47.4, 76.6]]), BRASS.mid, BRASS.line, u * 0.6);
+      // arms: the near one holding the haft, the far one on it too
+      shaded(g, X(63), Y(56), X(4.4), X(7.4), p, 0.4);
+      shaded(g, X(65.4), Y(50), X(3.6), X(3.2), p);
+      shaded(g, X(35), Y(60), X(4.4), X(7.4), p, -0.4);
+      shaded(g, X(33), Y(67), X(3.6), X(3.2), p);
+      // the head, sunk into the body
+      shaded(g, X(49), Y(40), X(13), X(12), p);
+      // ear-fins, the family's, long and swept
+      poly(g, P([[38, 38], [22, 28], [27, 35], [24, 36.4], [37, 43]]), p.mid, p.line, u * 0.9);
+      poly(g, P([[60, 36], [74, 25], [70, 32], [73, 33.4], [61, 41]]), p.lo, p.line, u * 0.9);
+      // eyes, a snub nose, and a grin with one tooth
+      eyes(g, X(46), Y(40), X(4.2), X(1.6), '#ffcf5c');
+      shaded(g, X(44.6), Y(44.4), X(2.6), X(2.2), { hi: '#ffc59a', mid: '#d9895e', lo: '#8a4a2c', dark: '#8a4a2c', line: '#4a2414', glow: '#fff' });
+      g.strokeStyle = p.line; g.lineWidth = u * 0.9; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(X(40), Y(47.4)); g.quadraticCurveTo(X(45), Y(50.4), X(51), Y(47.4)); g.stroke();
+      poly(g, P([[44, 48.6], [45.6, 48.8], [44.8, 50.6]]), '#fff', '#8a8a8a', u * 0.3);
+      // the candle on its head, and the flame
+      poly(g, P([[46, 29], [52, 29], [52, 18], [46, 18]]), p.glow, p.line, u * 0.8);
+      g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(X(46.8), Y(18.4), X(1.4), Y(10));
+      g.fillStyle = p.glow;
+      for (const [x, len] of [[47.2, 4], [50.6, 6]]) {
+        g.beginPath(); g.moveTo(X(x - 0.8), Y(18.4)); g.lineTo(X(x - 0.6), Y(18.4 + len));
+        g.arc(X(x), Y(18.4 + len), X(0.7), WS.PI, 0, true); g.lineTo(X(x + 0.8), Y(18.4)); g.fill();
+      }
+      poly(g, P([[44.6, 29], [53.4, 29], [53, 31.4], [45, 31.4]]), BRASS.mid, BRASS.line, u * 0.6);
       g.save(); g.shadowColor = '#ffcf6b'; g.shadowBlur = 10 * u;
       g.fillStyle = '#ffe6a8';
-      g.beginPath(); g.ellipse(cx, cy - 48 * u, 2.4 * u, 4 * u, 0, 0, WS.TAU); g.fill();
+      g.beginPath(); g.ellipse(X(49), Y(13.6), X(2.4), X(4.2), 0, 0, WS.TAU); g.fill();
+      g.fillStyle = '#fffaf0';
+      g.beginPath(); g.ellipse(X(49), Y(15), X(1.1), X(2), 0, 0, WS.TAU); g.fill();
       g.restore();
-      shaded(g, cx, cy - 14 * u, 12 * u, 11 * u, p);              // head
-      poly(g, [[cx - 11 * u, cy - 18 * u], [cx - 16 * u, cy - 30 * u], [cx - 6 * u, cy - 22 * u]], p.lo, p.line, u);
-      poly(g, [[cx + 11 * u, cy - 18 * u], [cx + 16 * u, cy - 30 * u], [cx + 6 * u, cy - 22 * u]], p.lo, p.line, u);
-      eyes(g, cx, cy - 14 * u, 4.5 * u, 1.7 * u, '#ffd36b');
-      /* A LAMPLING IS A LAMP, and it was a smooth egg with a flame on top.
-         Panes in a frame, a collar where the glass meets the housing and a
-         foot under it - all of which are hard lines, and none of which touch
-         the outline. */
-      {
-        const cx2 = s / 2, cy2 = s * 0.56, u2 = s / 100;
-        g.save();
-        g.beginPath(); g.ellipse(cx2, cy2, 24 * u2, 27 * u2, 0, 0, WS.TAU); g.clip();
-        g.strokeStyle = p.line; g.globalAlpha = 0.45; g.lineWidth = 1.6 * u2;
-        for (const dx of [-11, 0, 11]) {
-          g.beginPath();
-          g.moveTo(cx2 + dx * u2, cy2 - 30 * u2);
-          g.quadraticCurveTo(cx2 + dx * 1.2 * u2, cy2, cx2 + dx * u2, cy2 + 30 * u2);
-          g.stroke();
-        }
-        g.globalAlpha = 0.28; g.strokeStyle = p.hi; g.lineWidth = 1.1 * u2;
-        for (const dx of [-11, 0, 11]) {
-          g.beginPath();
-          g.moveTo(cx2 + (dx + 2) * u2, cy2 - 30 * u2);
-          g.quadraticCurveTo(cx2 + (dx + 2) * 1.2 * u2, cy2, cx2 + (dx + 2) * u2, cy2 + 30 * u2);
-          g.stroke();
-        }
-        g.globalAlpha = 0.4; g.strokeStyle = p.line; g.lineWidth = 2 * u2;
-        for (const dy of [-13, 13]) {
-          g.beginPath();
-          g.moveTo(cx2 - 26 * u2, cy2 + dy * u2);
-          g.quadraticCurveTo(cx2, cy2 + (dy + 3) * u2, cx2 + 26 * u2, cy2 + dy * u2);
-          g.stroke();
-        }
-        g.restore();
-      }
     },
 
     mongrel(g, s, p) {
@@ -1158,80 +1198,94 @@
     },
 
     necromancer(g, s, p) {
-      const cx = s / 2, cy = s * 0.58, u = s / 100;
-      // Sleeves first, so the robe reads as a figure with arms rather than a
-      // traffic cone with a face painted on it.
-      for (const dir of [-1, 1]) {
-        poly(g, [[cx + dir * 10 * u, cy - 16 * u], [cx + dir * 27 * u, cy - 5 * u],
-        [cx + dir * 23 * u, cy + 9 * u], [cx + dir * 10 * u, cy - 2 * u]], p.mid, p.line, u);
-        // A pale cuff at the wrist. The sleeve in the robe's own shadow tone
-        // vanished into it; the cuff is what makes the arm a separate mass.
-        shaded(g, cx + dir * 24 * u, cy + 2 * u, 5 * u, 4 * u, p);
-      }
-      const robe = [[cx - 22 * u, cy + 26 * u], [cx - 12 * u, cy - 22 * u],
-        [cx + 12 * u, cy - 22 * u], [cx + 22 * u, cy + 26 * u]];
-      poly(g, robe, p.mid, p.line, u);
-      /* FOLDS, and a cord at the waist. The necromancer measured the flattest
-         thing in the bestiary at 19% - a plain trapezoid of one colour, which
-         is a traffic cone however good the hood on top of it is. Cloth hanging
-         from a cord gathers, and a gather is a shaded side with a LIT CREST
-         beside it and a hard line where the surface turns. The survivors'
-         robes were fixed the same way, and there the gradients alone measured
-         nothing until the terminator went in. */
+      /* A CULTIST, not a cone. The robe keeps its bell - it is the family
+         silhouette and the casters are marked from above by the renderer -
+         but it is now a figure wearing it: a deep peaked hood with a face
+         in the dark, a mantle over the shoulders, sleeves with the hands
+         out of them working the orb, a sash with the cult's sigil hanging
+         from it, candles and a skull at the belt, and a ragged, layered hem. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const hexA = (hex, a) => `rgba(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(',')},${a})`;
+      const SKIN = { hi: '#c9d0c0', mid: '#8e9888', lo: '#4a5246', dark: '#2a302a', line: '#1a1e1a', glow: '#fff' };
+      const BONE = { hi: '#f2ede0', mid: '#d8d0bd', lo: '#9a9280', dark: '#5e594c', line: '#3d392f', glow: '#fff' };
+      // the robe: a bell, with a ragged hem in two layers
+      const hem = [];
+      for (let i = 0; i <= 10; i++) hem.push([72 - i * 4.4, 88 + (i % 2 ? -3 : 0.8)]);
+      const robe = [[40, 36], [60, 36], [66, 60], [72, 88]].concat(hem, [[34, 60]]);
       g.save();
-      g.beginPath();
-      g.moveTo(robe[0][0], robe[0][1]);
-      for (let i = 1; i < robe.length; i++) g.lineTo(robe[i][0], robe[i][1]);
-      g.closePath(); g.clip();
-      for (const k of [-0.68, -0.26, 0.18, 0.62]) {
-        const topX = cx + k * 11 * u, botX = cx + k * 21 * u;
-        const w0 = 1.4 * u, w1 = (2.6 + 1.4 * Math.abs(k)) * u;
-        const grd = g.createLinearGradient(botX - w1, 0, botX + w1, 0);
-        grd.addColorStop(0, 'rgba(0,0,0,.30)');
-        grd.addColorStop(0.5, 'rgba(0,0,0,.03)');
-        grd.addColorStop(0.72, 'rgba(255,255,255,.20)');
-        grd.addColorStop(1, 'rgba(255,255,255,0)');
-        g.fillStyle = grd;
-        g.beginPath();
-        g.moveTo(topX - w0, cy - 22 * u); g.lineTo(topX + w0, cy - 22 * u);
-        g.lineTo(botX + w1, cy + 26 * u); g.lineTo(botX - w1, cy + 26 * u);
-        g.closePath(); g.fill();
-        g.strokeStyle = 'rgba(0,0,0,.28)'; g.lineWidth = 0.9 * u;
-        g.beginPath();
-        g.moveTo(topX - w0, cy - 22 * u); g.lineTo(botX - w1, cy + 26 * u);
-        g.stroke();
+      g.beginPath(); P(robe).forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath();
+      const rg = g.createLinearGradient(0, Y(36), 0, Y(90));
+      rg.addColorStop(0, p.mid); rg.addColorStop(0.6, p.lo); rg.addColorStop(1, p.dark);
+      g.fillStyle = rg; g.fill();
+      g.clip();
+      for (const [x0, x1] of [[43, 33], [47, 44], [53, 56], [57, 67]]) {
+        const fg = g.createLinearGradient(X(x1 - 3), 0, X(x1 + 3), 0);
+        fg.addColorStop(0, 'rgba(0,0,0,.36)'); fg.addColorStop(0.62, 'rgba(255,255,255,.12)'); fg.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = fg;
+        g.beginPath(); g.moveTo(X(x0 - 1), Y(38)); g.lineTo(X(x0 + 1), Y(38));
+        g.lineTo(X(x1 + 3), Y(90)); g.lineTo(X(x1 - 3), Y(90)); g.closePath(); g.fill();
       }
-      // the cord, knotted at the waist
-      g.strokeStyle = p.dark; g.globalAlpha = 0.55; g.lineWidth = 1.4 * u;
-      g.lineCap = 'round';
-      g.beginPath();
-      g.moveTo(cx - 14 * u, cy - 3 * u);
-      g.quadraticCurveTo(cx, cy + 1 * u, cx + 14 * u, cy - 3 * u);
-      g.stroke();
-      g.strokeStyle = p.hi; g.globalAlpha = 0.22;
-      g.beginPath();
-      g.moveTo(cx - 14 * u, cy - 4.2 * u);
-      g.quadraticCurveTo(cx, cy - 0.2 * u, cx + 14 * u, cy - 4.2 * u);
-      g.stroke();
-      g.strokeStyle = p.dark; g.globalAlpha = 0.45; g.lineWidth = 1 * u;
-      g.beginPath();
-      g.moveTo(cx + 3 * u, cy + 0.4 * u); g.lineTo(cx + 5 * u, cy + 9 * u);
-      g.stroke();
+      // an inner hem showing under the outer one, in a darker cloth
+      g.fillStyle = 'rgba(0,0,0,.3)';
+      g.fillRect(X(26), Y(82), X(48), Y(9));
       g.restore();
-      /* A hem, so the robe has a foot instead of dissolving into the ground.
-         It was a flat disc of the darkest tone, which on the one creature in
-         the bestiary with no interior structure at all was the largest
-         unlit shape on the field. */
-      shaded(g, cx, cy + 26 * u, 22 * u, 5 * u,
-        { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow });
-      poly(g, [[cx - 12 * u, cy - 18 * u], [cx, cy - 40 * u], [cx + 12 * u, cy - 18 * u]], p.lo, p.line, u); // hood
-      g.fillStyle = '#0a0a12';
-      g.beginPath(); g.ellipse(cx, cy - 22 * u, 8 * u, 9 * u, 0, 0, WS.TAU); g.fill();
-      eyes(g, cx, cy - 22 * u, 4 * u, 2 * u, '#c77dff');
-      g.save(); g.shadowColor = '#a45bff'; g.shadowBlur = 14 * u;   // channelled orb
-      g.fillStyle = '#c9a4ff';
-      g.beginPath(); g.arc(cx + 24 * u, cy - 4 * u, 5 * u, 0, WS.TAU); g.fill();
+      // the sash down the front, and the sigil on it
+      poly(g, P([[47, 48], [53, 48], [54, 78], [50, 82], [46, 78]]), p.dark, p.line, u * 0.6);
+      g.save();
+      g.strokeStyle = p.glow; g.globalAlpha = 0.85; g.lineWidth = u * 0.8; g.lineCap = 'round';
+      g.shadowColor = p.glow; g.shadowBlur = 3 * u;
+      // an eye in a falling triangle: the cult watches from below
+      g.beginPath(); g.moveTo(X(46.6), Y(59)); g.lineTo(X(53.4), Y(59)); g.lineTo(X(50), Y(67)); g.closePath(); g.stroke();
+      g.beginPath(); g.ellipse(X(50), Y(61.8), X(1.8), X(1), 0, 0, WS.TAU); g.stroke();
+      g.fillStyle = p.glow; g.beginPath(); g.arc(X(50), Y(61.8), X(0.55), 0, WS.TAU); g.fill();
       g.restore();
+      // the belt: a cord, a skull, and two stubs of candle
+      g.strokeStyle = '#2a2218'; g.lineWidth = u * 1.6; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(X(37), Y(50)); g.quadraticCurveTo(X(50), Y(53), X(63), Y(50)); g.stroke();
+      shaded(g, X(40), Y(56), X(3), X(3.2), BONE);
+      g.fillStyle = BONE.line;
+      g.beginPath(); g.arc(X(39), Y(55.6), X(0.8), 0, WS.TAU); g.fill();
+      g.beginPath(); g.arc(X(41), Y(55.6), X(0.8), 0, WS.TAU); g.fill();
+      for (const cx of [58, 61]) {
+        poly(g, P([[cx - 1, 52], [cx + 1, 52], [cx + 1, 57], [cx - 1, 57]]), '#efe6cc', '#6a604a', u * 0.4);
+        g.save(); g.shadowColor = '#ffb040'; g.shadowBlur = 3 * u; g.fillStyle = '#ffd890';
+        g.beginPath(); g.ellipse(X(cx), Y(50.8), X(0.6), X(1.1), 0, 0, WS.TAU); g.fill(); g.restore();
+      }
+      // sleeves, and the hands out of them, raised to the orb
+      for (const dir of [-1, 1]) {
+        poly(g, P([[50 + dir * 9, 38], [50 + dir * 22, 46], [50 + dir * 24, 56], [50 + dir * 16, 54], [50 + dir * 10, 46]]), p.mid, p.line, u * 0.8);
+        poly(g, P([[50 + dir * 16, 53], [50 + dir * 24.6, 55.4], [50 + dir * 23, 58.6], [50 + dir * 15.4, 56.6]]), p.hi, p.line, u * 0.6);
+        shaded(g, X(50 + dir * 21), Y(59.6), X(2.6), X(2.4), SKIN);
+      }
+      // the orb, held between them in the near hand
+      g.save(); g.shadowColor = p.glow; g.shadowBlur = 14 * u;
+      g.fillStyle = hexA(p.glow, 0.95);
+      g.beginPath(); g.arc(X(74), Y(55), X(4.6), 0, WS.TAU); g.fill();
+      g.restore();
+      g.fillStyle = 'rgba(255,255,255,.8)';
+      g.beginPath(); g.arc(X(72.6), Y(53.6), X(1.4), 0, WS.TAU); g.fill();
+      // the mantle over the shoulders
+      poly(g, P([[34, 44], [40, 34], [60, 34], [66, 44], [58, 47], [50, 45], [42, 47]]), p.mid, p.line, u * 0.8);
+      g.strokeStyle = hexA(p.hi, 0.5); g.lineWidth = u * 0.7;
+      g.beginPath(); g.moveTo(X(35), Y(43.4)); g.lineTo(X(40.4), Y(35)); g.stroke();
+      // the hood: peaked, deep, and a face at the back of it
+      poly(g, P([[38, 38], [42, 22], [50, 10], [58, 22], [62, 38]]), p.lo, p.line, u * 0.9);
+      g.save();
+      g.beginPath(); g.ellipse(X(50), Y(29), X(7.4), X(8.4), 0, 0, WS.TAU);
+      const hg = g.createRadialGradient(X(50), Y(30), 0, X(50), Y(29), X(8.4));
+      hg.addColorStop(0, '#16121c'); hg.addColorStop(1, '#050408');
+      g.fillStyle = hg; g.fill();
+      g.clip();
+      // a chin and a mouth, just, where the light from the orb reaches
+      g.fillStyle = hexA(SKIN.lo, 0.8);
+      g.beginPath(); g.ellipse(X(50), Y(35.6), X(3.6), X(2.4), 0, 0, WS.TAU); g.fill();
+      g.strokeStyle = '#0a080c'; g.lineWidth = u * 0.6;
+      g.beginPath(); g.moveTo(X(48), Y(35.4)); g.quadraticCurveTo(X(50), Y(36.4), X(52), Y(35.2)); g.stroke();
+      g.restore();
+      g.strokeStyle = hexA(p.hi, 0.45); g.lineWidth = u * 0.7;
+      g.beginPath(); g.moveTo(X(38.6), Y(37)); g.lineTo(X(42.4), Y(22.4)); g.lineTo(X(50), Y(11)); g.stroke();
+      eyes(g, X(50), Y(28), X(3), X(1.6), p.glow);
     },
 
     lich(g, s, p) {
@@ -1663,58 +1717,81 @@
     },
 
     ghoul(g, s, p) {
-      const cx = s / 2, cy = s * 0.60, u = s / 100;
-      shaded(g, cx + 3 * u, cy + 4 * u, 21 * u, 22 * u, p, 0.18);  // lopsided
-      /* THE DRAGGING ARM, as a limb rather than an ellipse.
-         A rotated oval beside the body traces its own pointed outline and
-         reads as a leaf stuck to the ghoul's side - which is what this was.
-         An arm is wide at the shoulder and narrow at the wrist, it comes OUT
-         of the mass rather than sitting next to it, and there is a hand on
-         the end of it. */
-      poly(g, [
-        [cx - 9 * u, cy - 6 * u], [cx - 16 * u, cy - 4 * u],
-        [cx - 21 * u, cy + 16 * u], [cx - 16 * u, cy + 18 * u],
-        [cx - 13 * u, cy + 2 * u],
-      ], p.lo, p.line, u);
-      shaded(g, cx - 19 * u, cy + 18 * u, 4.5 * u, 4 * u, p);
-      for (const k of [-1, 0, 1]) {
-        poly(g, [
-          [cx + (-20 + k * 2.6) * u, cy + 20 * u],
-          [cx + (-20.5 + k * 3.4) * u, cy + 27 * u],
-          [cx + (-18.4 + k * 2.6) * u, cy + 20 * u],
-        ], p.hi, p.line, u * 0.8);
-      }
-      /* RIBS. A rotting thing should be coming apart, and the ghoul was as
-         smooth and whole as an apple. Four bones showing through the hide and
-         a hollow where the belly has gone - two marks, and it stops being a
-         green pebble and starts being a corpse that is still walking. */
+      /* A CORPSE THAT IS STILL WALKING, not a pebble with an arm. Hunched
+         over its own belly, one arm reaching for you and the other dragging,
+         the burial clothes rotted to rags, ribs through the side, the jaw
+         hanging. In profile, looking left, like the rest of the bestiary. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+      const RAG = '#3c3a34', RAG_LO = '#1e1c18';
+      // far leg and far arm, dragging
+      shaded(g, X(58), Y(78), X(4.4), X(10), far, 0.2);
+      poly(g, P([[56, 85.4], [62, 85.4], [63, 89.4], [54, 89.6]]), far.mid, far.line, u * 0.6);
+      shaded(g, X(58), Y(58), X(4), X(11), far, -0.3);
+      shaded(g, X(62), Y(72), X(3.4), X(3.2), far);
+      // near leg, bent at the knee
+      shaded(g, X(46), Y(74), X(5), X(8), p, -0.35);
+      shaded(g, X(43.4), Y(81), X(4), X(6), p, 0.2);
+      poly(g, P([[40, 85.6], [46, 85.8], [46.4, 89.6], [36, 89.8], [36.6, 87.8]]), p.mid, p.line, u * 0.6);
+      // the rag breeches, torn at the knee
+      poly(g, P([[42, 62], [62, 62], [63, 72], [57, 76], [54, 70], [50, 77], [44, 75], [41, 70]]), RAG, RAG_LO, u * 0.7);
+      // the body, hunched forward over its belly
+      shaded(g, X(52), Y(52), X(15), X(14), p, -0.5);
       g.save();
-      g.beginPath(); g.ellipse(cx + 3 * u, cy + 4 * u, 21 * u, 22 * u, 0.18, 0, WS.TAU); g.clip();
-      const hollow = g.createRadialGradient(cx + 4 * u, cy + 12 * u, 1 * u,
-        cx + 4 * u, cy + 12 * u, 13 * u);
-      hollow.addColorStop(0, 'rgba(18,10,8,.62)');
-      hollow.addColorStop(1, 'rgba(18,10,8,0)');
-      g.fillStyle = hollow;
-      g.beginPath(); g.ellipse(cx + 4 * u, cy + 12 * u, 13 * u, 11 * u, 0, 0, WS.TAU); g.fill();
+      g.beginPath(); g.ellipse(X(52), Y(52), X(15), X(14), -0.5, 0, WS.TAU); g.clip();
+      // the rotted shirt across the back, open at the side
+      g.fillStyle = RAG;
+      g.beginPath();
+      g.moveTo(X(46), Y(36)); g.lineTo(X(70), Y(44)); g.lineTo(X(68), Y(64)); g.lineTo(X(60), Y(60)); g.lineTo(X(56), Y(66));
+      g.lineTo(X(52), Y(56)); g.lineTo(X(55), Y(46)); g.closePath(); g.fill();
+      // the side where the flesh has gone: ribs
+      const hollow = g.createRadialGradient(X(46), Y(54), 1, X(46), Y(54), X(9));
+      hollow.addColorStop(0, 'rgba(18,10,8,.7)'); hollow.addColorStop(1, 'rgba(18,10,8,0)');
+      g.fillStyle = hollow; g.beginPath(); g.arc(X(46), Y(54), X(9), 0, WS.TAU); g.fill();
       g.lineCap = 'round';
       for (let i = 0; i < 4; i++) {
-        const y = cy + (-8 + i * 5) * u, w = (13 - i * 1.2) * u;
-        g.strokeStyle = 'rgba(20,14,10,.5)'; g.lineWidth = 2.6 * u;
-        g.beginPath();
-        g.moveTo(cx + 3 * u - w, y);
-        g.quadraticCurveTo(cx + 3 * u, y + 4 * u, cx + 3 * u + w, y);
-        g.stroke();
-        g.strokeStyle = 'rgba(232,226,204,.5)'; g.lineWidth = 1.5 * u;
-        g.beginPath();
-        g.moveTo(cx + 3 * u - w, y - 0.8 * u);
-        g.quadraticCurveTo(cx + 3 * u, y + 3.2 * u, cx + 3 * u + w, y - 0.8 * u);
-        g.stroke();
+        const y = 48 + i * 3.6;
+        g.strokeStyle = 'rgba(232,226,204,.7)'; g.lineWidth = u * 1.3;
+        g.beginPath(); g.moveTo(X(52), Y(y - 1)); g.quadraticCurveTo(X(44), Y(y), X(40 + i), Y(y + 3)); g.stroke();
       }
       g.restore();
-      shaded(g, cx - 2 * u, cy - 18 * u, 12 * u, 11 * u, p, -0.25);
-      g.fillStyle = '#2a1414';                                     // hanging jaw
-      g.beginPath(); g.ellipse(cx - 2 * u, cy - 10 * u, 6 * u, 5 * u, 0, 0, WS.TAU); g.fill();
-      eyes(g, cx - 2 * u, cy - 21 * u, 4 * u, 1.8 * u, '#d9ff7a');
+      // the reaching arm, out in front, fingers crooked
+      shaded(g, X(38), Y(46), X(9), X(4.2), p, -0.2);
+      shaded(g, X(26), Y(47), X(8), X(3.4), p, 0.15);
+      g.lineCap = 'round';
+      for (let i = 0; i < 4; i++) {
+        const a = WS.PI + (-0.5 + i * 0.32);
+        const k1x = 19 + Math.cos(a) * 3.6, k1y = 47 + Math.sin(a) * 3.6;
+        const tx = k1x + Math.cos(a + 0.7) * 3, ty = k1y + Math.sin(a + 0.7) * 3;
+        g.strokeStyle = p.line; g.lineWidth = u * 1.5;
+        g.beginPath(); g.moveTo(X(19), Y(47)); g.lineTo(X(k1x), Y(k1y)); g.lineTo(X(tx), Y(ty)); g.stroke();
+        g.strokeStyle = p.hi; g.lineWidth = u * 0.8;
+        g.beginPath(); g.moveTo(X(19), Y(47)); g.lineTo(X(k1x), Y(k1y)); g.lineTo(X(tx), Y(ty)); g.stroke();
+      }
+      // a rag hanging off the forearm
+      poly(g, P([[30, 48], [36, 48.6], [35, 55], [32, 53], [30, 56]]), RAG, RAG_LO, u * 0.5);
+      // the head, low and forward, the jaw hanging
+      shaded(g, X(38), Y(33), X(9.6), X(9), p, -0.2);
+      g.save();
+      g.beginPath(); g.ellipse(X(38), Y(33), X(9.6), X(9), -0.2, 0, WS.TAU); g.clip();
+      g.fillStyle = 'rgba(18,10,8,.35)';
+      g.beginPath(); g.ellipse(X(36), Y(37), X(4), X(3), 0, 0, WS.TAU); g.fill();       // the sunk cheek
+      g.strokeStyle = 'rgba(20,14,10,.5)'; g.lineWidth = u * 0.6;
+      g.beginPath(); g.moveTo(X(41), Y(26)); g.lineTo(X(43), Y(29)); g.lineTo(X(42), Y(31)); g.stroke();   // a split in the scalp
+      g.restore();
+      // lank hair down the back of the skull
+      g.strokeStyle = 'rgba(40,36,30,.8)'; g.lineWidth = u * 0.8; g.lineCap = 'round';
+      for (let i = 0; i < 5; i++) {
+        g.beginPath(); g.moveTo(X(41 + i * 1.4), Y(25.4 + i * 0.6));
+        g.quadraticCurveTo(X(46 + i * 1.2), Y(32), X(45 + i * 1.6), Y(40)); g.stroke();
+      }
+      // the jaw, hanging open
+      poly(g, P([[30, 37], [38, 38.4], [37, 44], [31, 43]]), p.lo, p.line, u * 0.6);
+      g.fillStyle = '#2a1414';
+      g.beginPath(); g.moveTo(X(30.4), Y(36.4)); g.lineTo(X(37.4), Y(37.6)); g.lineTo(X(36.4), Y(41)); g.lineTo(X(31), Y(40.4)); g.closePath(); g.fill();
+      for (let i = 0; i < 3; i++) g.fillStyle = '#e6dcc0', g.fillRect(X(31.4 + i * 1.9), Y(36.6), X(1), Y(1.4));
+      eyes(g, X(34.4), Y(31), X(2.6), X(1.4), '#d9ff7a');
     },
 
     geist(g, s, p) {
