@@ -1689,10 +1689,9 @@
       WS.Audio.play('ui');
       this.setBanishMode(!this.banishMode);
     });
-    /* Offered only on a draft that HAS a Breaking Point - that is, only once
-       the upgrade pool is spent and every later level-up will be this same
-       card. Before then there is a real choice here and nothing should take
-       it for you. */
+    /* Offered only on a draft the auto-take would act on: one with a
+       Breaking Point and no evolution or union beside it (the rule is
+       Game.autoBreakingPoint). */
     const auto = el('button', 'btn small', 'Auto-pick');
     auto.type = 'button';
     auto.addEventListener('click', () => {
@@ -1759,7 +1758,7 @@
       /* Offered on the same terms the auto-take uses, so the button never
          appears on a draft it would not act on. */
       const bp = choices.find((c) => c.type === 'breaking_point');
-      const spent = !!bp && choices.every((c) => c === bp || c.type === 'bread');
+      const spent = !!bp && !choices.some((c) => c.type === 'evolve' || c.type === 'union');
       ui.auto.hidden = !spent;
       ui.auto.title = 'Take Breaking Point now and every level after, '
         + 'without stopping. Turn it off with the switch under your portrait.';

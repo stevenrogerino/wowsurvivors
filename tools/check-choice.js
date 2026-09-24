@@ -445,8 +445,26 @@ const note = [];
     const BP = { type: 'breaking_point', id: 'breaking_point', name: 'Breaking Point' };
     const BREAD = { type: 'bread', id: 'loaf', name: 'Bread', heal: 60 };
     const UNION = { type: 'union', id: 'union_ruin', name: 'Ruin' };
+    const RANK = { type: 'weapon_rank', id: 'cinderfall', name: 'Cinderfall' };
+    const EVOLVE = { type: 'evolve', id: 'cinderfall', name: 'Cinderfall' };
     run([BP, BREAD, BREAD], 'spent');
     run([UNION, BP, BREAD], 'union');
+    run([EVOLVE, BP, BREAD], 'evolve');
+    // The case that made it look broken in play: a rank the player has been
+    // passing over, beside the Breaking Point they switched it on to take.
+    run([RANK, BP, BREAD], 'rank');
+    /* And from the field: a level that arrives mid-fight is taken without the
+       world slowing or a screen opening. */
+    WS.LevelUp.buildChoices = () => [RANK, BP, BREAD].map((c) => JSON.parse(JSON.stringify(c)));
+    WS.Save.settings.autoBreakingPoint = true;
+    WS.Game.state = 'playing'; WS.Game.running = true; WS.Game.leveling = false;
+    WS.Game.settle = 0;
+    const lb0 = p.limitBreaks;
+    WS.Game.pendingLevelUps = 2;
+    WS.Game.openLevelUp();
+    out.field = { gained: p.limitBreaks - lb0, state: WS.Game.state, settle: WS.Game.settle,
+      pending: WS.Game.pendingLevelUps };
+    WS.Game.pendingLevelUps = 0; WS.Game.leveling = false;
     WS.LevelUp.buildChoices = real;
     WS.Save.settings.autoBreakingPoint = false;
     return out;
@@ -456,6 +474,18 @@ const note = [];
   }
   if (auto.union.gained !== 0 || auto.union.state !== 'levelup') {
     fail.push('auto-pick took Breaking Point off a draft that still offered a union');
+  }
+  if (auto.evolve.gained !== 0 || auto.evolve.state !== 'levelup') {
+    fail.push('auto-pick took Breaking Point off a draft that still offered an evolution');
+  }
+  if (auto.rank.gained !== 1 || auto.rank.state !== 'playing') {
+    fail.push('auto-pick left Breaking Point on the table beside an ordinary weapon rank - '
+      + 'switched on, it has to take it');
+  }
+  if (auto.field.gained !== 2 || auto.field.state !== 'playing' || auto.field.settle > 0
+    || auto.field.pending !== 0) {
+    fail.push(`two levels on the field with auto-pick on did not both go quietly (took `
+      + `${auto.field.gained}, state ${auto.field.state}, settle ${auto.field.settle})`);
   }
 
   await b.close();

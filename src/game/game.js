@@ -90,6 +90,7 @@
     this.toasts.length = 0;
     this.banner = null;
     this.pendingLevelUps = 0;
+    this._dealt = null;
     this.settle = 0;
     this.leveling = false;
     this.leveling = false;
@@ -233,8 +234,43 @@
      next, which is the single largest jolt in the game. */
   const SETTLE = 0.16;
 
+  /** The Breaking Point the auto-take should take off this draft, or null.
+   *
+   *  It used to wait until every other card was a loaf, on the theory that
+   *  anything else was a real choice. In play that meant it almost never
+   *  fired: a late draft is Breaking Point beside a weapon rank or a stat the
+   *  player has been passing over for ten minutes, and "turned it on and it
+   *  does nothing" was the report. So it takes Breaking Point whenever it is
+   *  offered - that is what switching it on says - except beside an
+   *  evolution or a union. Those are rare and they are the build; losing one
+   *  to a setting would be worse than one more card screen. */
+  Game.autoBreakingPoint = function (choices) {
+    if (!WS.Save.settings.autoBreakingPoint || !choices) return null;
+    const bp = choices.find((c) => c.type === 'breaking_point');
+    if (!bp) return null;
+    if (choices.some((c) => c.type === 'evolve' || c.type === 'union')) return null;
+    return bp;
+  };
+
   Game.openLevelUp = function () {
     if (this.leveling || this.pendingLevelUps <= 0) return;
+    /* Taken without stopping at all: no slow-down, no cards, just a word
+       over the survivor. The draft is dealt here so that one that turns out
+       NOT to be auto-taken is the same draft the player then sees. */
+    if (this.state === 'playing' && WS.Save.settings.autoBreakingPoint) {
+      const choices = WS.LevelUp.buildChoices(this.player);
+      const bp = this.autoBreakingPoint(choices);
+      if (bp) {
+        WS.LevelUp.apply(this.player, bp);
+        this.pendingLevelUps--;
+        const p = this.player;
+        WS.FX.notice(p.x, p.y - 30, 'Breaking Point', '#ffb347');
+        WS.Audio.play('gem');
+        if (this.pendingLevelUps > 0) this.openLevelUp();
+        return;
+      }
+      this._dealt = choices;
+    }
     this.leveling = true;
     /* Nothing to slow down when a choice is already on screen: this is the
        second of a stacked pair and the world stopped for the first one. */
@@ -249,23 +285,15 @@
     this.settle = 0;
     this.timeScale = 1;
     this.state = 'levelup';
-    this.levelChoices = WS.LevelUp.buildChoices(this.player);
+    this.levelChoices = this._dealt || WS.LevelUp.buildChoices(this.player);
+    this._dealt = null;
 
-    /* Past the end of the upgrade pool there is nothing left to choose: the
-       draft is Breaking Point and two loaves, and it will be that every level
-       for the rest of the run. Taking it without stopping the game is what
-       the player was going to do anyway, twenty times over. Only ever armed
-       from the screen that offers it, so it cannot swallow a real choice. */
-    if (WS.Save.settings.autoBreakingPoint) {
-      const bp = this.levelChoices.find((c) => c.type === 'breaking_point');
-      /* Only when there is genuinely nothing else. Breaking Point appears as
-         soon as the pool cannot fill three slots, which is NOT the same as
-         the pool being empty - a draft of union / Breaking Point / bread is
-         real, and taking the Breaking Point off it would quietly throw away
-         a union. Auto-pick waits until every other card is a loaf. */
-      const nothingElse = bp && this.levelChoices.every(
-        (c) => c === bp || c.type === 'bread');
-      if (bp && nothingElse) {
+    /* The auto-take again, for a level that arrives while a card screen is
+       already up (openLevelUp takes the rest before the world ever slows).
+       Rule in Game.autoBreakingPoint. */
+    {
+      const bp = this.autoBreakingPoint(this.levelChoices);
+      if (bp) {
         this.state = 'playing';
         this.chooseLevelUp(bp);
         return;
