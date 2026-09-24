@@ -2570,20 +2570,79 @@
 
   /** The verdict: one panel that states the outcome in the run's own numbers,
    *  before the ledger. */
-  function verdict(kind, title, line, figures) {
-    const wrap = el('div', 'verdict ' + kind);
+  function verdict(kind, title, line, figures, log) {
+    const wrap = el('div', 'verdict ' + kind + (log ? ' has-log' : ''));
+    const main = el('div', 'verdict-main');
     const head = el('div', 'verdict-head');
     head.append(el('div', 'verdict-title', title));
     head.append(el('div', 'verdict-line', line));
-    wrap.append(head);
+    main.append(head);
     const grid = el('div', 'verdict-figures');
     for (const [k, v] of figures) {
       const f = el('div', 'vf');
       f.append(el('div', 'v', v), el('div', 'label', k));
       grid.append(f);
     }
-    wrap.append(grid);
+    main.append(grid);
+    wrap.append(main);
+    if (log) wrap.append(log);
     return wrap;
+  }
+
+  /* THE WATCH'S LOG.
+   *
+   * The verdict says what happened in the run's numbers; the log says it the
+   * way the Watch would write it down at the end of a night - who kept the
+   * wall and where, how it ended, what fell, whose work it mostly was, what
+   * came out of the fire. Built from the run's own facts and nothing random,
+   * so the same night always reads the same way. */
+  function logEntry(run, p, outcome) {
+    if (!run || !p) return null;
+    const who = p.character.name, where = run.map.name, t = WS.formatTime(run.time);
+    const n = WS.Save.stats.totalRuns || 1;
+    const lines = [];
+    // Written out below a dozen, the way it would be in a book.
+    const WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+    const say = (v) => (v < WORDS.length ? WORDS[v] : WS.formatNumber(v));
+    const Say = (v) => { const w = say(v); return w.charAt(0).toUpperCase() + w.slice(1); };
+    if (outcome === 'defeated') lines.push(`${who} kept the watch in ${where} for ${t}, and then the dark got in.`);
+    else if (outcome === 'abandoned') lines.push(`${who} left the wall in ${where} at ${t}. The Watch does not ask why.`);
+    else if (outcome === 'arena_victory') lines.push(`${who} walked into the Eclipse Arena and came out of it with the sun.`);
+    else lines.push(`${who} kept the watch in ${where} until dawn.`);
+
+    const k = run.kills || 0;
+    lines.push(k <= 0 ? 'Nothing fell.' : k === 1 ? 'One of them will not be coming back.'
+      : `${Say(k)} of them will not be coming back.`);
+    const b = run.bossesSlain || 0;
+    if (b === 1) lines.push('One of the night\'s worst came, and stayed down.');
+    else if (b > 1) lines.push(`${Say(b)} of the night's worst came, and stayed down.`);
+
+    // Whose work it mostly was.
+    let top = null, most = 0;
+    for (const [id, v] of Object.entries(run.damageByWeapon || {})) if (v > most) { most = v; top = id; }
+    let topEvolved = null;
+    if (top && WS.Weapons[top]) {
+      const w = WS.Player.getWeapon(p, top);
+      const evolved = !!(w && w.evolved && WS.Weapons[top].evolveName);
+      const name = evolved ? WS.Weapons[top].evolveName : WS.Weapons[top].name;
+      if (evolved) topEvolved = top;
+      lines.push(evolved ? `Most of that was ${name}'s work, and it came out of the fire tonight.`
+        : `Most of that was ${name}'s work.`);
+    }
+    const forged = p.weapons.filter((w) => w.evolved && w.data.evolveName && w.id !== topEvolved)
+      .map((w) => w.data.evolveName);
+    if (forged.length === 1) lines.push(`${forged[0]} came out of the fire tonight.`);
+    else if (forged.length > 1) lines.push(`${forged.slice(0, -1).join(', ')} and ${forged[forged.length - 1]} came out of the fire tonight.`);
+
+    if (outcome === 'defeated') lines.push(run.time < 300 ? 'A short night. The fire is still lit for whoever is next.'
+      : 'Somebody else will have to keep the fire tonight.');
+    else if (outcome === 'arena_victory') lines.push('The sky is its own again.');
+    else lines.push('The fire is still lit.');
+
+    const box = el('div', 'watch-log');
+    box.append(el('div', 'log-head', `From the Watch's log \u00b7 Night ${WS.formatNumber(n)}`));
+    box.append(el('p', 'log-text', lines.join(' ')));
+    return box;
   }
 
   function runFigures(run, player) {
@@ -2610,16 +2669,16 @@
     if (run.finaleCleared && def && def.epilogue) {
       s.body.append(verdict('win', def.epilogue[0],
         `${def.epilogue[1]} Death is still out there, if you want it.`,
-        runFigures(run, WS.Game.player)));
+        runFigures(run, WS.Game.player), logEntry(run, WS.Game.player, 'dawn')));
     } else if (canFace) {
       s.body.append(verdict('win', 'Dawn, and not the end',
         `You held ${run.map.name} for thirty minutes and the win is banked. `
         + `${def.title} is still out there - or wait for Death, who always comes.`,
-        runFigures(run, WS.Game.player)));
+        runFigures(run, WS.Game.player), logEntry(run, WS.Game.player, 'dawn')));
     } else {
       s.body.append(verdict('win', 'The night broke first',
         `You held ${run.map.name} for thirty minutes. Death is on the field now — it always is.`,
-        runFigures(run, WS.Game.player)));
+        runFigures(run, WS.Game.player), logEntry(run, WS.Game.player, 'dawn')));
     }
     s.body.classList.add('fitted');
     s.body.append(buildSheet());
@@ -2664,7 +2723,7 @@
     };
     const kinds = { defeated: 'loss', victory: 'win', abandoned: 'neutral', arena_victory: 'win' };
     s.body.append(verdict(kinds[reason] || 'neutral', titles[reason] || 'The run ends',
-      lines[reason] || sub, runFigures(run, WS.Game.player)));
+      lines[reason] || sub, runFigures(run, WS.Game.player), logEntry(run, WS.Game.player, reason)));
     s.body.classList.add('fitted');
     s.body.append(buildSheet());
     const again = el('button', 'btn primary', 'Run again');

@@ -2523,3 +2523,53 @@ body.hud-rail #hud-passives { gap: 9px; }
   .bp-top { grid-template-columns: 120px 1fr; }
   .bp-art { width: 120px; height: 120px; }
 }
+
+/* ======================================================== THE LOG =========
+ * The Watch's entry for the night, in the verdict's empty right half. */
+.verdict.has-log { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 42%); column-gap: 30px; align-items: start; }
+.watch-log {
+  position: relative; padding: 4px 0 4px 22px; margin-top: 4px;
+  border-left: 1px dotted rgba(245,226,190,.28);
+}
+.watch-log .log-head {
+  font-family: var(--voice); font-style: italic; font-weight: 700; font-size: 15px; color: var(--arc);
+}
+.watch-log .log-head::before {
+  content: ''; display: inline-block; width: 7px; height: 7px; margin: 0 9px 2px 0;
+  transform: rotate(45deg); background: var(--arc);
+}
+.watch-log .log-text {
+  margin: 8px 0 0; font-family: var(--voice); font-style: italic; font-size: 17px; line-height: 1.55;
+  color: #e3d8c4;
+}
+@media (max-width: 860px) {
+  .verdict.has-log { grid-template-columns: 1fr; }
+  .watch-log { margin-top: 16px; }
+}
+
+/* ============================================ CARDS AND THE MANUAL, INKED ==
+ * The level-up card's words, and the field manual, in the Watch's hand. */
+.card .card-body { font-family: var(--voice); font-size: 17px; line-height: 1.4; color: #ddd3c1; font-variant-numeric: lining-nums; }
+.card .card-detail { font-family: var(--voice); font-style: italic; font-size: 14px; line-height: 1.4; color: var(--ink-dim); }
+.card .card-reacts .react { font-family: var(--voice); font-size: 14px; }
+
+.manual-lede {
+  border: 1px solid transparent; border-image: var(--frame-panel) 24 / 12px stretch;
+  box-shadow: var(--lift-1);
+  background: var(--mottle, none) 0 0 / 320px 320px,
+    radial-gradient(120% 80% at 50% -20%, rgba(245,197,107,.10), transparent 62%),
+    linear-gradient(180deg, var(--obsidian-2), var(--obsidian));
+}
+.manual-lede::before { display: none; }
+.manual-lede-title { font-family: var(--voice); font-weight: 700; font-size: 34px; color: var(--arc-hot); }
+.manual-lede-body { font-family: var(--voice); font-style: italic; font-size: 19px; color: #ddd2bf; }
+.row .row-sub { font-family: var(--voice); font-size: 15.5px; line-height: 1.45; color: #b8ad9a; }
+.key-row {
+  border: 1px solid transparent; border-image: var(--frame-a) 24 / 10px stretch; box-shadow: none;
+  background: var(--mottle, none) 0 0 / 320px 320px, var(--obsidian);
+}
+.key-row span { font-family: var(--voice); font-size: 16px; color: #cfc4b1; }
+/* Upright body text in the voice is set at the regular weight (Alegreya 400,
+   embedded for it) - with only 700 upright in the file it rendered bold. */
+.card .card-body, .card .card-detail, .card .card-reacts .react, .row .row-sub,
+.key-row span, .bp-ledger .kv span:last-child { font-weight: 400; }
