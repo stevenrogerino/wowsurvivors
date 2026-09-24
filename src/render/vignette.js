@@ -758,6 +758,89 @@
     void v;
   }
 
+  /* ------------------------------------------------------- the bestiary -- */
+  /* A creature's page in the Watch's book: the thing on its own ground at
+   * night, a lantern held up to it from the left - the Watch looking at it -
+   * lighting one side and leaving the other to the dark. What the Watch has
+   * not yet met is only a shape against its sky, with a cold edge where the
+   * moon finds it. */
+  const GROUNDS = {
+    forest:   { sky: ['#03070a', '#0c1a15', '#1b3023'], ridge: '#0b1813', ground: ['#08110b', '#0c160f'] },
+    plains:   { sky: ['#140c0c', '#3a1c12', '#7a3c16'], ridge: '#2a150a', ground: ['#1c0f07', '#120904'] },
+    haunted:  { sky: ['#030208', '#110d20', '#231a36'], ridge: '#0c0916', ground: ['#08070d', '#0b0913'] },
+    savannah: { sky: ['#2a0a0a', '#6a1a10', '#a8341a'], ridge: '#5a180e', ground: ['#2a0c06', '#1a0704'] },
+    glacier:  { sky: ['#02040a', '#0b1d34', '#163150'], ridge: '#132540', ground: ['#0e1a2c', '#16263e'] },
+    arena:    { sky: ['#040208', '#1d0c2a', '#35163a'], ridge: '#100818', ground: ['#0a0612', '#120a1c'] },
+    none:     { sky: ['#010102', '#07070c', '#101018'], ridge: '#08080d', ground: ['#050507', '#08080b'] },
+  };
+
+  function beastPage(g, w, h, t, v) {
+    const o = v.opts;
+    const s = WS.min(w, h);
+    const pal = GROUNDS[o.place] || GROUNDS.none;
+    const horizon = h * 0.58, floor = h * 0.86;
+    skyFill(g, w, horizon, pal.sky);
+    stars(g, v, w, horizon, t, 36);
+    ridge(g, v, 'far', w, horizon, s * 0.04, s * 0.12, pal.ridge, 6);
+    ground(g, w, h, horizon, pal.ground[0], pal.ground[1]);
+
+    const size = WS.round(s * (o.boss ? 0.8 : 0.7));
+    const src = WS.Sprites.creature(o.art, o.known ? o.tint : [0.12, 0.13, 0.17], size, o.kit);
+    const cx = w * 0.54, cy = floor;
+    const breath = 1 + 0.01 * Math.sin(t * 1.3 + (o.boss ? 0.5 : 0));
+
+    if (o.known) {
+      // The lantern's pool on the ground, then the thing standing in it.
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      g.beginPath(); g.ellipse(cx - s * 0.1, cy, s * 0.5, s * 0.12, 0, 0, WS.TAU); g.clip();
+      glow(g, cx - s * 0.18, cy, s * 0.55, '255,170,90', 0.22);
+      g.restore();
+      g.fillStyle = 'rgba(0,0,0,.5)';
+      g.beginPath(); g.ellipse(cx, cy, size * 0.3, size * 0.07, 0, 0, WS.TAU); g.fill();
+      if (!v.s.lit || v.s.lit.width !== src.width) {
+        v.s.lit = document.createElement('canvas');
+        v.s.lit.width = src.width; v.s.lit.height = src.height;
+      }
+      const lg = v.s.lit.getContext('2d');
+      lg.globalCompositeOperation = 'source-over';
+      lg.clearRect(0, 0, src.width, src.height);
+      lg.drawImage(src, 0, 0);
+      lg.globalCompositeOperation = 'source-atop';
+      const flick = 0.9 + 0.1 * wob(t * 2.4, 1.1);
+      const side = lg.createLinearGradient(0, 0, src.width, 0);
+      side.addColorStop(0.1, `rgba(255,170,90,${0.36 * flick})`);
+      side.addColorStop(0.5, 'rgba(255,170,90,0)');
+      side.addColorStop(0.62, 'rgba(4,6,12,0)');
+      side.addColorStop(1, 'rgba(4,6,12,.55)');
+      lg.fillStyle = side;
+      lg.fillRect(0, 0, src.width, src.height);
+      g.save();
+      g.translate(cx, cy); g.scale(1, breath);
+      g.drawImage(v.s.lit, -size / 2, -size * 0.74, size, size);
+      g.restore();
+      // The lantern itself, just in frame.
+      g.save(); g.globalCompositeOperation = 'lighter';
+      glow(g, w * 0.04, h * 0.64, s * 0.3, '255,170,90', 0.28 * flick);
+      g.restore();
+    } else {
+      // Unmet: a shape, and a cold rim where the moon catches it.
+      const sil1 = sil(src, '#040509');
+      const rim = sil(src, 'rgba(150,176,220,1)');
+      g.save();
+      g.translate(cx, cy); g.scale(1, breath);
+      g.globalAlpha = 0.5;
+      g.filter = 'blur(2px)';
+      g.drawImage(rim, -size / 2 + 1.5, -size * 0.74 - 1.5, size, size);
+      g.filter = 'none';
+      g.globalAlpha = 1;
+      g.drawImage(sil1, -size / 2, -size * 0.74, size, size);
+      g.restore();
+    }
+    fog(g, v, 'fog', w, horizon + s * 0.12, s, t, '170,180,210', 0.05);
+    frameClose(g, w, h, 0.6);
+  }
+
   WS.Vignette = {
     /** The survivor, on watch. */
     survivor(id, tint, rank) {
@@ -768,6 +851,10 @@
       const m = WS.Maps[id];
       const paint = PLACES[m.art] || PLACES.forest;
       return mount('m:' + id, (g, w, h, t, v) => paint(g, w, h, t, v, m), { key: 'm:' + id });
+    },
+    /** A creature's page portrait. `o`: art, tint, kit, known, boss, place. */
+    beast(id, o) {
+      return mount('b:' + id + (o.known ? ':k' : ':u'), beastPage, Object.assign({ key: 'b:' + id }, o));
     },
     /** How many pictures are currently animating - for the checks. */
     get live() { return live.size; },

@@ -239,3 +239,11 @@ The interface is only half of it; the other half is how the world answers.
   (`Audio.setAmbience('hearth')`): a breathing low roar, a hiss, crackles,
   pops and the odd settling log. It lives only while the menu is up, is torn
   down with sound off, and books nothing against a suspended clock.
+- **The Bestiary is the Watch's book.** An index of every entry (creatures,
+  elites, bosses) and the open page beside it: the thing on its own ground at
+  night under a lantern (`WS.Vignette.beast`), a field note in the Watch's
+  voice (`WS.Lore.bestiary`, tunable like the rest of the writing), a boss's
+  cry, and a ledger - put down, first met (`stats.firstMet`: when, where, how
+  far into the night), where it walks (from the battlefields' own
+  schedules), how it fights (from what its template actually does), and its
+  measure. An unmet page is a shape against its sky and says where it walks.

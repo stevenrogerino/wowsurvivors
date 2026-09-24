@@ -1644,65 +1644,167 @@
    * and an unslain creature reads as a silhouette behind a question mark
    * rather than as a row you have not filled in yet.
    */
+  /* ------------------------------------------------------------ bestiary -- */
+  /* The Watch's book of everything that has come out of the dark.
+   *
+   * It was a wall of tiles: a sprite, a name or three question marks, and a
+   * kill count on hover. Now it is a book - an index of every entry down the
+   * left, and on the right the page of the one you have open: the thing on
+   * its own ground under a lantern, what the Watch has written about it, how
+   * it fights, where it walks, how many you have put down and when you first
+   * did. A page the Watch has not earned yet is a shape against its sky and
+   * a line saying where it has been seen. */
+  const FINALE_HOME = { candlecrawler: 'thornhollow', dust_galleon: 'dustreach', admiral_ashore: 'dustreach',
+    mordecai_bound: 'mourneholt', stormbreaker: 'ochre', heart_drill: 'palewastes', pale_lord: 'palewastes' };
+
+  /** Where a thing walks, from the battlefields' own schedules. */
+  function habitat(id) {
+    const out = [];
+    for (const mid of WS.MapOrder) {
+      const m = WS.Maps[mid];
+      let how = null;
+      const boss = (m.bosses || []).find((x) => x.id === id);
+      if (boss) how = 'arrives at ' + WS.formatTime(boss.at);
+      else if (FINALE_HOME[id] === mid) how = 'at dawn';
+      else if ((m.phases || []).some((ph) => ph.elite === id)) how = 'leads the horde';
+      else if ((m.phases || []).some((ph) => (ph.roster || []).some((r) => r.id === id))) how = 'walks';
+      else if ((m.events || []).some((ev) => ev.id === id)) how = 'swarms';
+      if (m.arena && id === 'aethelgard') how = 'waits';
+      if (how) out.push({ mid, m, how });
+    }
+    return out;
+  }
+
+  /** How it fights, said plainly, from what its template actually does. */
+  function fightsBy(t) {
+    const out = [];
+    if (t.lunge) out.push('plants, marks a lane and charges down it');
+    if (t.ranged) out.push('strikes from a distance');
+    if (t.orbit) out.push('circles at a distance');
+    if (t.trail) out.push('leaves poisoned ground behind it');
+    if (t.burst) out.push('bursts where it dies');
+    if (t.split) out.push('comes apart into smaller things');
+    if (t.speed >= 90) out.push('fast');
+    else if (t.speed && t.speed <= 55) out.push('slow');
+    return out;
+  }
+
+  function whenMet(fm) {
+    if (!fm) return 'before the Watch kept dates';
+    const days = WS.floor((Date.now() - fm.at) / 86400000);
+    const when = days <= 0 ? 'today' : days === 1 ? 'yesterday' : days < 30 ? days + ' days ago'
+      : new Date(fm.at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+    const where = WS.Maps[fm.map] ? ' in ' + WS.Maps[fm.map].name : '';
+    return `${when}${where}, ${WS.formatTime(fm.t)} into the night`;
+  }
+
   UI.paneBestiary = function () {
     const wrap = el('div');
     wrap.style.marginTop = '16px';
 
+    const groups = [['Creatures', WS.Enemies, 'Creature'], ['Elites', WS.Elites, 'Elite'], ['Bosses', WS.Bosses, 'Boss']];
     const all = [];
-    for (const id of Object.keys(WS.Enemies)) all.push([id, WS.Enemies[id], 'Creature']);
-    for (const id of Object.keys(WS.Elites)) all.push([id, WS.Elites[id], 'Elite']);
-    for (const id of Object.keys(WS.Bosses)) all.push([id, WS.Bosses[id], 'Boss']);
+    for (const [, table, kind] of groups) for (const id of Object.keys(table)) all.push({ id, t: table[id], kind });
+    const killsOf = (id) => WS.Save.stats.bestiary[id] || WS.Save.stats.bosses[id] || 0;
+    const found = all.filter((e) => killsOf(e.id) > 0).length;
 
-    const found = all.filter(([id]) =>
-      (WS.Save.stats.bestiary[id] || WS.Save.stats.bosses[id] || 0) > 0).length;
     const head = el('div', 'codex-head');
     head.append(el('div', 'card-body pane-intro', 'Everything that has come for you, and everything that has not yet.'));
     head.append(el('div', 'codex-count', `${found} / ${all.length}`));
     wrap.append(head);
 
-    const grid = el('div', 'beast-grid');
-    for (const [id, t, kind] of all) {
-      const kills = WS.Save.stats.bestiary[id] || WS.Save.stats.bosses[id] || 0;
-      const known = kills > 0;
-      const cell = el('div', 'beast' + (known ? '' : ' unknown') + ' ' + kind.toLowerCase());
-      cell.style.setProperty('--q', WS.hex(known ? t.tint : [0.3, 0.32, 0.4]));
+    const book = el('div', 'book');
+    const index = el('div', 'book-index');
+    const page = el('div', 'book-page');
+    book.append(index, page);
+    wrap.append(book);
 
-      const plate = el('div', 'beast-plate');
-      if (known) {
+    const tiles = new Map();
+    const open = (e) => {
+      UI.bookSel = e.id;
+      for (const [id, n] of tiles) n.classList.toggle('selected', id === e.id);
+      fillPage(page, e, killsOf(e.id));
+    };
+
+    for (const [title, , kind] of groups) {
+      const list = all.filter((e) => e.kind === kind);
+      if (!list.length) continue;
+      const n = list.filter((e) => killsOf(e.id) > 0).length;
+      const h = el('h3', 'book-group');
+      h.append(el('span', null, title), el('i', null, `${n} of ${list.length}`));
+      index.append(h);
+      const grid = el('div', 'book-grid');
+      for (const e of list) {
+        const known = killsOf(e.id) > 0;
+        const tile = el('button', 'book-tab' + (known ? '' : ' unknown') + ' ' + kind.toLowerCase());
+        tile.type = 'button';
         const img = new Image();
-        img.src = WS.Sprites.creature(t.art, t.tint, 52, t.bossKit).toDataURL();
-        img.width = img.height = 52;
-        plate.append(img);
-      } else {
-        // The silhouette is still the real creature, just unlit: the shape is
-        // a hint, which is what a compendium entry you have not earned is for.
-        const img = new Image();
-        img.src = WS.Sprites.creature(t.art, [0.16, 0.17, 0.21], 52, t.bossKit).toDataURL();
-        img.width = img.height = 52;
-        plate.append(img, el('span', 'q', '?'));
+        img.src = WS.Sprites.creature(e.t.art, known ? e.t.tint : [0.16, 0.17, 0.21], 44, e.t.bossKit).toDataURL();
+        img.width = img.height = 44;
+        tile.append(img);
+        tile.setAttribute('aria-label', known ? e.t.name : 'Not yet met');
+        tipOn(tile, tipText(known ? e.t.name : 'Not yet met'), { prefer: ['above', 'below'], delay: 200 });
+        tile.addEventListener('click', () => { WS.Audio.play('page'); open(e); });
+        tile.addEventListener('focus', () => { if (UI.bookSel !== e.id) open(e); });
+        tiles.set(e.id, tile);
+        grid.append(tile);
       }
-      cell.append(plate);
-      cell.append(el('div', 'beast-name', known ? t.name : '???'));
-      cell.append(el('div', 'beast-sub', known ? `${WS.formatNumber(kills)} slain` : kind));
-      if (known) {
-        tipOn(cell, () => {
-          const bdy = el('div', 'tip-body');
-          bdy.append(...tipHead(t.name, t.tint, WS.formatNumber(kills) + ' slain', `${kind} · ${t.family}`));
-          const st = el('div', 'tip-stats');
-          for (const [v, k] of [[t.health, 'health'], [t.damage, 'damage']]) {
-            const sp = el('span');
-            sp.append(el('b', null, WS.formatNumber(v)), el('i', null, ' ' + k));
-            st.append(sp);
-          }
-          bdy.append(st);
-          return bdy;
-        }, { prefer: ['above', 'below'] });
-      }
-      grid.append(cell);
+      index.append(grid);
     }
-    wrap.append(grid);
+    // Open to the last page read, or the first thing met, or the first entry.
+    const start = all.find((e) => e.id === UI.bookSel) || all.find((e) => killsOf(e.id) > 0) || all[0];
+    if (start) open(start);
     return wrap;
   };
+
+  function fillPage(page, e, kills) {
+    const t = e.t, known = kills > 0, boss = e.kind === 'Boss';
+    const home = habitat(e.id);
+    const place = home.length ? home[0].m.art : (e.id === 'death_itself' ? 'none' : 'none');
+    page.replaceChildren();
+    page.classList.toggle('unknown', !known);
+    page.style.setProperty('--q', WS.hex(known ? t.tint : [0.4, 0.42, 0.5]));
+
+    const top = el('div', 'bp-top');
+    const art = el('div', 'art bp-art');
+    art.append(WS.Vignette ? WS.Vignette.beast(e.id, { art: t.art, tint: t.tint, kit: t.bossKit,
+      known, boss, place }) : el('div'), el('i', 'frame'));
+    const words = el('div', 'bp-words');
+    words.append(el('h3', 'bp-name', known ? t.name : 'Not yet met'));
+    const fam = t.family ? t.family.charAt(0).toUpperCase() + t.family.slice(1) : '';
+    words.append(el('div', 'bp-kind', [e.kind, fam].filter(Boolean).join(' · ')));
+    if (known) {
+      const note = WS.Lore.bestiary && WS.Lore.bestiary[e.id];
+      if (note) words.append(el('p', 'bp-note', note));
+      if (t.yell) words.append(el('q', 'bp-cry', t.yell.replace(/^\*|\*$/g, '')));
+    } else {
+      words.append(el('p', 'bp-note', home.length
+        ? `The Watch has no page for this one yet. Something walks in ${home[0].m.name} that you have not met.`
+        : 'The Watch has no page for this one yet.'));
+    }
+    top.append(art, words);
+    page.append(top);
+
+    // The ledger sits under the note, beside the picture, so a page is read
+    // whole without scrolling.
+    const ledger = el('div', 'bp-ledger');
+    const line = (k, v) => {
+      const row = el('div', 'kv');
+      row.append(el('span', null, k), el('span', null, v));
+      ledger.append(row);
+    };
+    if (known) {
+      line('Put down', WS.formatNumber(kills));
+      line('First met', whenMet(WS.Save.stats.firstMet && WS.Save.stats.firstMet[e.id]));
+    }
+    if (home.length) line('Walks', home.map((h) => h.how === 'walks' ? h.m.name : `${h.m.name}, ${h.how}`).join('; '));
+    if (known) {
+      const f = fightsBy(t);
+      if (f.length) line('Fights', f.join(', '));
+      line('Measure', `${WS.formatNumber(t.health)} health, strikes for ${WS.formatNumber(t.damage)}`);
+    }
+    words.append(ledger);
+  }
 
   UI.paneStats = function () {
     const s = WS.Save.stats;

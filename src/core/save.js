@@ -174,6 +174,9 @@
         bosses: {},        // bossId -> kills
         families: {},      // family -> kills
         bestiary: {},      // enemyId -> kills
+        /* When each thing was first put down: { at: epoch ms, map, t: run
+           seconds }. The bestiary's pages are dated from it. */
+        firstMet: {},
       },
     };
   }
@@ -243,6 +246,14 @@
       if (typeof s[k] === 'number') s[k] = WS.max(0, s[k]);
     }
     s.bestiary = scrubMap(s.bestiary, 'count');
+    // A first meeting is a small record; one that is not the right shape is
+    // dropped on its own rather than costing the rest.
+    if (!isPlain(s.firstMet)) s.firstMet = {};
+    for (const k of Object.keys(s.firstMet)) {
+      const m = s.firstMet[k];
+      if (!isPlain(m) || !Number.isFinite(m.at) || !Number.isFinite(m.t)
+        || typeof m.map !== 'string') delete s.firstMet[k];
+    }
     s.bosses = scrubMap(s.bosses, 'count');
     s.families = scrubMap(s.families, 'count');
     s.bestTime = scrubMap(s.bestTime, 'count');
@@ -594,7 +605,13 @@
       const s = this.db.statistics;
       s.totalKills++;
       if (template.family) s.families[template.family] = (s.families[template.family] || 0) + 1;
-      if (id) s.bestiary[id] = (s.bestiary[id] || 0) + 1;
+      if (id) {
+        s.bestiary[id] = (s.bestiary[id] || 0) + 1;
+        if (!s.firstMet[id]) {
+          const run = WS.Game && WS.Game.run;
+          s.firstMet[id] = { at: Date.now(), map: (run && run.mapId) || '', t: run ? WS.floor(run.time) : 0 };
+        }
+      }
     },
 
     discoverCombo(id) {

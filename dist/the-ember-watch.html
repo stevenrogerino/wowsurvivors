@@ -2541,6 +2541,71 @@ body.hud-rail #hud-passives { gap: 9px; }
 .sheet-passive .sp-feeds { font-size: 11px; color: var(--arc); margin-top: 1px; }
 .sheet .row, .sheet-passive { cursor: default; }
 
+/* ======================================================== THE BOOK ========
+ * The bestiary as the Watch's book: an index of entries on the left, the open
+ * page on the right. The page holds still while the index scrolls under it.
+ */
+.book { display: grid; grid-template-columns: minmax(280px, 38%) 1fr; gap: 20px; align-items: start; }
+.book-group {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  margin: 4px 0 8px; font-family: var(--voice); font-style: italic; font-weight: 700;
+  font-size: 17px; color: var(--arc);
+}
+.book-group i { font-style: italic; font-weight: 500; font-size: 14px; color: var(--ink-faint); }
+.book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; margin-bottom: 14px; }
+.book-tab {
+  appearance: none; cursor: pointer; padding: 3px; aspect-ratio: 1;
+  display: grid; place-items: center;
+  background: radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--q, #8a7a60) 12%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--obsidian-2), var(--obsidian));
+  border: 1px solid transparent;
+  border-image: var(--frame-quiet) 24 / 8px stretch;
+  transition: transform .12s var(--ease-out);
+}
+.book-tab img { width: 44px; height: 44px; display: block; }
+.book-tab.unknown img { filter: brightness(.7); }
+.book-tab.boss { border-image-source: var(--frame-a); }
+.book-tab:hover { transform: translateY(-2px); border-image-source: var(--frame-quiet-lit); }
+.book-tab.selected { border-image-source: var(--frame-slot-gilt); }
+
+.book-page {
+  position: sticky; top: 0;
+  padding: 18px 20px 16px;
+  background: var(--mottle, none) 0 0 / 320px 320px, linear-gradient(180deg, var(--obsidian-2), var(--obsidian));
+  border: 1px solid transparent;
+  border-image: var(--frame-panel) 24 / 12px stretch;
+  box-shadow: var(--lift-1);
+}
+.bp-top { display: grid; grid-template-columns: 190px 1fr; gap: 20px; align-items: start; }
+.bp-art { width: 190px; height: 190px; position: relative; }
+.bp-art canvas.vignette { display: block; width: 100%; height: 100%; }
+.bp-art .frame {
+  position: absolute; inset: 0; pointer-events: none; box-sizing: border-box;
+  border: 1px solid transparent; border-image: var(--frame-picture) 24 / 12px stretch;
+  box-shadow: inset 0 0 22px rgba(0,0,0,.6);
+}
+.bp-name {
+  margin: 2px 0 0; font-family: var(--voice); font-weight: 700; font-size: 28px; line-height: 1.1;
+  color: color-mix(in oklab, var(--q) 55%, #f4ecdc);
+}
+.book-page.unknown .bp-name { color: var(--ink-faint); font-style: italic; }
+.bp-kind { font-family: var(--voice); font-style: italic; font-size: 16px; color: #a99c86; margin-top: 3px; }
+.bp-note { font-family: var(--voice); font-style: italic; font-size: 17px; line-height: 1.45; color: #e2d7c3; margin: 9px 0 0; }
+.bp-cry {
+  display: block; margin-top: 12px; padding-left: 14px; border-left: 2px solid color-mix(in srgb, var(--q) 60%, transparent);
+  font-family: var(--voice); font-weight: 700; font-size: 16px; color: #f0dccc; quotes: '\201C' '\201D';
+}
+.bp-ledger { margin-top: 12px; padding-top: 6px; border-top: 1px dotted rgba(245,226,190,.2); }
+.bp-ledger .kv { padding: 2px 0; }
+.bp-cry { margin-top: 9px; }
+.bp-ledger .kv span:last-child { font-weight: 500; font-family: var(--voice); text-align: right; max-width: 70%; }
+@media (max-width: 860px) {
+  .book { grid-template-columns: 1fr; }
+  .book-page { position: static; }
+  .bp-top { grid-template-columns: 120px 1fr; }
+  .bp-art { width: 120px; height: 120px; }
+}
+
 </style>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%230b0d12'/><circle cx='50' cy='50' r='30' fill='none' stroke='%23f5c56b' stroke-width='8' stroke-dasharray='120 60'/></svg>">
 </head>
@@ -3362,6 +3427,9 @@ window.WS = window.WS || {};
         bosses: {},        // bossId -> kills
         families: {},      // family -> kills
         bestiary: {},      // enemyId -> kills
+        /* When each thing was first put down: { at: epoch ms, map, t: run
+           seconds }. The bestiary's pages are dated from it. */
+        firstMet: {},
       },
     };
   }
@@ -3431,6 +3499,14 @@ window.WS = window.WS || {};
       if (typeof s[k] === 'number') s[k] = WS.max(0, s[k]);
     }
     s.bestiary = scrubMap(s.bestiary, 'count');
+    // A first meeting is a small record; one that is not the right shape is
+    // dropped on its own rather than costing the rest.
+    if (!isPlain(s.firstMet)) s.firstMet = {};
+    for (const k of Object.keys(s.firstMet)) {
+      const m = s.firstMet[k];
+      if (!isPlain(m) || !Number.isFinite(m.at) || !Number.isFinite(m.t)
+        || typeof m.map !== 'string') delete s.firstMet[k];
+    }
     s.bosses = scrubMap(s.bosses, 'count');
     s.families = scrubMap(s.families, 'count');
     s.bestTime = scrubMap(s.bestTime, 'count');
@@ -3782,7 +3858,13 @@ window.WS = window.WS || {};
       const s = this.db.statistics;
       s.totalKills++;
       if (template.family) s.families[template.family] = (s.families[template.family] || 0) + 1;
-      if (id) s.bestiary[id] = (s.bestiary[id] || 0) + 1;
+      if (id) {
+        s.bestiary[id] = (s.bestiary[id] || 0) + 1;
+        if (!s.firstMet[id]) {
+          const run = WS.Game && WS.Game.run;
+          s.firstMet[id] = { at: Date.now(), map: (run && run.mapId) || '', t: run ? WS.floor(run.time) : 0 };
+        }
+      }
     },
 
     discoverCombo(id) {
@@ -5738,6 +5820,83 @@ window.WS = window.WS || {};
         { beat: 'day', hold: 4.5, lines: [
           'You kept the watch at {map} until dawn.'] },
       ],
+    },
+
+    /* The bestiary's field notes: what the Watch has written down about each
+     * thing that has come out of the dark, in the Watch's own voice. One or
+     * two sentences each - a page, not an essay - and where there is a lesson
+     * in how it fights, the note gives it. The book shows a note only once
+     * the thing has been put down at least once. */
+    bestiary: {
+      // Thornhollow
+      lampling: 'They dig toward light the way moths fly at it. A lampling will chew through a cellar wall to sit beside your candle, and then through you to keep it.',
+      boar: 'Charges whatever moved last. In Thornhollow that is usually you.',
+      wolf: 'Never alone. If you have counted one, count again.',
+      gilkin: 'Small, green and certain that everything in reach is food. The Watch has found gilkin teeth marks in lantern brass.',
+      gilkin_tidecaller: 'Sings the river up out of its banks and throws it at you in pieces. Cold pieces. Close the distance; they do not like it close.',
+      mongrel: 'Half dog, half grudge. The Snarlpack were somebody\'s hounds once, and nobody has come forward to claim them.',
+      kerchief: 'Red cloth over the face and quick hands under it. They rob the dead first and the living second, which is at least an order.',
+      // The Dustreach
+      kerchief_pillager: 'The ones who throw. Firepots, bottles, once a boot - whatever the last farm had in it.',
+      harvest_reaper: 'The threshing engines never stopped when the farmers did. They are still bringing in the harvest. Stand clear when one breaks: it takes its last swing on the way down.',
+      fleshripper: 'Circles until you tire, then lands. The trick is not to tire.',
+      coyote: 'You will hear them laughing before you see them. Keep walking.',
+      bruiser: 'What the Kerchiefs send when the footpads come back empty-handed.',
+      // Mourneholt
+      ghoul: 'Slow, stupid, and there are always more of them than you left behind.',
+      skeleton: 'Still holding the sword it was buried with. Most of them are still holding the grudge, too.',
+      skeletal_mage: 'The cold in Mourneholt is not weather. It is these.',
+      moonwretch: 'Something that was a wolf once, and then looked at the moon for too long.',
+      spider: 'Leaves its venom on the ground behind it. Never follow a spider; go around.',
+      // The Ochre Plains
+      longstrider: 'Tall as a watchtower and about as easy to turn.',
+      raptor: 'Hunts in the heat of the day, which on the Ochre Plains is all of it.',
+      bristlekin: 'Grows its armour. The old ones are more quill than beast.',
+      shrikewing: 'Rides the updraft over you and calls the wind down in knives. Keep moving, so it has to keep turning.',
+      karrash: 'The Karrash send their young to run down strangers. It is how they grow up. Do not be how they grow up.',
+      lion: 'Waits in grass the colour of itself.',
+      // The Pale Wastes
+      pale_ghoul: 'The cold keeps them. They are older than the others, and hungrier for it.',
+      crypt_fiend: 'Too many legs for a thing that used to be a person.',
+      necromancer: 'Throws the grave\'s own cold at you from behind its dead. Get past the dead.',
+      abomination: 'Sewn together from what the cult had spare. It comes apart when it dies, and the parts still want you.',
+      geist: 'A hunger with nothing left around it. It bursts where it falls - do not be standing there.',
+      // Elites
+      snarlpack_bonesnapper: 'The Snarlpack\'s biggest, fed first and meanest for it.',
+      kerchief_enforcer: 'Plants its feet, picks you, and comes straight down the line. Step off the line.',
+      bone_sentinel: 'A knight once, and still standing a knight\'s watch - over the wrong side.',
+      karrash_battlelord: 'Charges once it has chosen you: everything the Karrash believe about glory, in one straight line. Be somewhere else when it arrives.',
+      deathbound_vanguard: 'The front rank of the Pale. It does not break, because there is nothing left in it to break.',
+      shadow_weaver: 'A shape the dark makes when it wants hands.',
+      // Bosses
+      grimtunnel: 'Stole the Watch\'s light and ran it down a mine shaft. He has hoarded flames ever since, and every one he takes makes the night a little longer.',
+      murkgill: 'The oldest gilkin in the river, and the loudest. Nobody knows what "blorp" means. Everybody knows what it means when he says it twice.',
+      gnarlfang: 'Leads the Snarlpack by the simple method of having bitten everyone else in it.',
+      redcowl: 'Captain of the Kerchiefs. Polite in the way a knife is sharp.',
+      fenroth: 'The Vale\'s oldest wolf, and the reason there are no shepherds left in it.',
+      harvestking: 'The greatest of the threshing engines, crowned in rusted scythes. It still keeps the harvest. It has only changed its mind about the crop.',
+      masked_admiral: 'Commands a fleet with no sea. Somewhere out in the Dustreach there is a ship on dry land, and a very long story.',
+      barkfang: 'Old, grey and patient. The moonwretches follow him because he has never once been in a hurry.',
+      silkfang: 'Mother of every web in Mourneholt. She does not speak; the sound she makes instead is worse.',
+      mordecai: 'A necromancer who died and did not accept it. The Watch has put him down four times that it knows of.',
+      palewraith: 'Where it passes, the candles gutter out. The Watch keeps spares.',
+      thornmane: 'The Thornhide say the plains were theirs before anyone walked them. He intends to prove it on you.',
+      shriekfeather: 'Matron of the Shrikewings. The wind she calls has taken roofs off, and the people under them.',
+      kazrok: 'Warlord of the Karrash, who has never let a stranger cross the plains alive. There is a first time for things.',
+      stormhide: 'When it walks, the plains thunder. When it charges, they do not have time to.',
+      boneweaver: 'Builds with bones the way a mason builds with stone. The Pale\'s architect.',
+      gorestitch: 'Every Stitched Horror that ever fell went into this one. It remembers all of them.',
+      marrowfrost: 'The Pale Lord\'s herald, sent ahead to count the lights and put some out. Where it stands, the frost grows toward you.',
+      death_itself: 'Walks when the night runs past its hour. It is not cruel, and it does not stop.',
+      aethelgard: 'The Eclipse Sovereign, who took the sun into its crown and would not give it back. The fight that ends in daylight - if it ends.',
+      // The finales
+      candlecrawler: 'Grimtunnel\'s digging engine: a mine on legs, hung with the lamps he stole. It burrows when it is losing, which is often. Break the lamps.',
+      dust_galleon: 'A warship that sails the Dustreach on wheels and spite, firing on anything that carries a light. Hired, not loyal - the Admiral will tell you so herself.',
+      admiral_ashore: 'The Masked Admiral, off her ship and out of patience. She fights better than she sails.',
+      mordecai_bound: 'Mordecai again, bound into four lanterns of stolen ember - four lives to spend, one lantern each. Break the lanterns and he runs out.',
+      stormbreaker: 'Grimtunnel\'s walking fortress: forty tons of stolen ember and very confident engineering. Its shield hangs off the pylons; bring down the pylons and the shield goes with them.',
+      heart_drill: 'Grimtunnel\'s last machine, sunk into the Pale Wastes to reach the heart of the dark. He reached it. It was awake.',
+      pale_lord: 'Marrowfrost, the Pale Lord: the dark itself, woken at the bottom of the world and crowned in rime. Every ember the Watch has ever burned was taken from him, and tonight he came for all of it.',
     },
   };
 
@@ -24888,6 +25047,89 @@ window.WS = window.WS || {};
     void v;
   }
 
+  /* ------------------------------------------------------- the bestiary -- */
+  /* A creature's page in the Watch's book: the thing on its own ground at
+   * night, a lantern held up to it from the left - the Watch looking at it -
+   * lighting one side and leaving the other to the dark. What the Watch has
+   * not yet met is only a shape against its sky, with a cold edge where the
+   * moon finds it. */
+  const GROUNDS = {
+    forest:   { sky: ['#03070a', '#0c1a15', '#1b3023'], ridge: '#0b1813', ground: ['#08110b', '#0c160f'] },
+    plains:   { sky: ['#140c0c', '#3a1c12', '#7a3c16'], ridge: '#2a150a', ground: ['#1c0f07', '#120904'] },
+    haunted:  { sky: ['#030208', '#110d20', '#231a36'], ridge: '#0c0916', ground: ['#08070d', '#0b0913'] },
+    savannah: { sky: ['#2a0a0a', '#6a1a10', '#a8341a'], ridge: '#5a180e', ground: ['#2a0c06', '#1a0704'] },
+    glacier:  { sky: ['#02040a', '#0b1d34', '#163150'], ridge: '#132540', ground: ['#0e1a2c', '#16263e'] },
+    arena:    { sky: ['#040208', '#1d0c2a', '#35163a'], ridge: '#100818', ground: ['#0a0612', '#120a1c'] },
+    none:     { sky: ['#010102', '#07070c', '#101018'], ridge: '#08080d', ground: ['#050507', '#08080b'] },
+  };
+
+  function beastPage(g, w, h, t, v) {
+    const o = v.opts;
+    const s = WS.min(w, h);
+    const pal = GROUNDS[o.place] || GROUNDS.none;
+    const horizon = h * 0.58, floor = h * 0.86;
+    skyFill(g, w, horizon, pal.sky);
+    stars(g, v, w, horizon, t, 36);
+    ridge(g, v, 'far', w, horizon, s * 0.04, s * 0.12, pal.ridge, 6);
+    ground(g, w, h, horizon, pal.ground[0], pal.ground[1]);
+
+    const size = WS.round(s * (o.boss ? 0.8 : 0.7));
+    const src = WS.Sprites.creature(o.art, o.known ? o.tint : [0.12, 0.13, 0.17], size, o.kit);
+    const cx = w * 0.54, cy = floor;
+    const breath = 1 + 0.01 * Math.sin(t * 1.3 + (o.boss ? 0.5 : 0));
+
+    if (o.known) {
+      // The lantern's pool on the ground, then the thing standing in it.
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      g.beginPath(); g.ellipse(cx - s * 0.1, cy, s * 0.5, s * 0.12, 0, 0, WS.TAU); g.clip();
+      glow(g, cx - s * 0.18, cy, s * 0.55, '255,170,90', 0.22);
+      g.restore();
+      g.fillStyle = 'rgba(0,0,0,.5)';
+      g.beginPath(); g.ellipse(cx, cy, size * 0.3, size * 0.07, 0, 0, WS.TAU); g.fill();
+      if (!v.s.lit || v.s.lit.width !== src.width) {
+        v.s.lit = document.createElement('canvas');
+        v.s.lit.width = src.width; v.s.lit.height = src.height;
+      }
+      const lg = v.s.lit.getContext('2d');
+      lg.globalCompositeOperation = 'source-over';
+      lg.clearRect(0, 0, src.width, src.height);
+      lg.drawImage(src, 0, 0);
+      lg.globalCompositeOperation = 'source-atop';
+      const flick = 0.9 + 0.1 * wob(t * 2.4, 1.1);
+      const side = lg.createLinearGradient(0, 0, src.width, 0);
+      side.addColorStop(0.1, `rgba(255,170,90,${0.36 * flick})`);
+      side.addColorStop(0.5, 'rgba(255,170,90,0)');
+      side.addColorStop(0.62, 'rgba(4,6,12,0)');
+      side.addColorStop(1, 'rgba(4,6,12,.55)');
+      lg.fillStyle = side;
+      lg.fillRect(0, 0, src.width, src.height);
+      g.save();
+      g.translate(cx, cy); g.scale(1, breath);
+      g.drawImage(v.s.lit, -size / 2, -size * 0.74, size, size);
+      g.restore();
+      // The lantern itself, just in frame.
+      g.save(); g.globalCompositeOperation = 'lighter';
+      glow(g, w * 0.04, h * 0.64, s * 0.3, '255,170,90', 0.28 * flick);
+      g.restore();
+    } else {
+      // Unmet: a shape, and a cold rim where the moon catches it.
+      const sil1 = sil(src, '#040509');
+      const rim = sil(src, 'rgba(150,176,220,1)');
+      g.save();
+      g.translate(cx, cy); g.scale(1, breath);
+      g.globalAlpha = 0.5;
+      g.filter = 'blur(2px)';
+      g.drawImage(rim, -size / 2 + 1.5, -size * 0.74 - 1.5, size, size);
+      g.filter = 'none';
+      g.globalAlpha = 1;
+      g.drawImage(sil1, -size / 2, -size * 0.74, size, size);
+      g.restore();
+    }
+    fog(g, v, 'fog', w, horizon + s * 0.12, s, t, '170,180,210', 0.05);
+    frameClose(g, w, h, 0.6);
+  }
+
   WS.Vignette = {
     /** The survivor, on watch. */
     survivor(id, tint, rank) {
@@ -24898,6 +25140,10 @@ window.WS = window.WS || {};
       const m = WS.Maps[id];
       const paint = PLACES[m.art] || PLACES.forest;
       return mount('m:' + id, (g, w, h, t, v) => paint(g, w, h, t, v, m), { key: 'm:' + id });
+    },
+    /** A creature's page portrait. `o`: art, tint, kit, known, boss, place. */
+    beast(id, o) {
+      return mount('b:' + id + (o.known ? ':k' : ':u'), beastPage, Object.assign({ key: 'b:' + id }, o));
     },
     /** How many pictures are currently animating - for the checks. */
     get live() { return live.size; },
@@ -33236,65 +33482,167 @@ window.WS = window.WS || {};
    * and an unslain creature reads as a silhouette behind a question mark
    * rather than as a row you have not filled in yet.
    */
+  /* ------------------------------------------------------------ bestiary -- */
+  /* The Watch's book of everything that has come out of the dark.
+   *
+   * It was a wall of tiles: a sprite, a name or three question marks, and a
+   * kill count on hover. Now it is a book - an index of every entry down the
+   * left, and on the right the page of the one you have open: the thing on
+   * its own ground under a lantern, what the Watch has written about it, how
+   * it fights, where it walks, how many you have put down and when you first
+   * did. A page the Watch has not earned yet is a shape against its sky and
+   * a line saying where it has been seen. */
+  const FINALE_HOME = { candlecrawler: 'thornhollow', dust_galleon: 'dustreach', admiral_ashore: 'dustreach',
+    mordecai_bound: 'mourneholt', stormbreaker: 'ochre', heart_drill: 'palewastes', pale_lord: 'palewastes' };
+
+  /** Where a thing walks, from the battlefields' own schedules. */
+  function habitat(id) {
+    const out = [];
+    for (const mid of WS.MapOrder) {
+      const m = WS.Maps[mid];
+      let how = null;
+      const boss = (m.bosses || []).find((x) => x.id === id);
+      if (boss) how = 'arrives at ' + WS.formatTime(boss.at);
+      else if (FINALE_HOME[id] === mid) how = 'at dawn';
+      else if ((m.phases || []).some((ph) => ph.elite === id)) how = 'leads the horde';
+      else if ((m.phases || []).some((ph) => (ph.roster || []).some((r) => r.id === id))) how = 'walks';
+      else if ((m.events || []).some((ev) => ev.id === id)) how = 'swarms';
+      if (m.arena && id === 'aethelgard') how = 'waits';
+      if (how) out.push({ mid, m, how });
+    }
+    return out;
+  }
+
+  /** How it fights, said plainly, from what its template actually does. */
+  function fightsBy(t) {
+    const out = [];
+    if (t.lunge) out.push('plants, marks a lane and charges down it');
+    if (t.ranged) out.push('strikes from a distance');
+    if (t.orbit) out.push('circles at a distance');
+    if (t.trail) out.push('leaves poisoned ground behind it');
+    if (t.burst) out.push('bursts where it dies');
+    if (t.split) out.push('comes apart into smaller things');
+    if (t.speed >= 90) out.push('fast');
+    else if (t.speed && t.speed <= 55) out.push('slow');
+    return out;
+  }
+
+  function whenMet(fm) {
+    if (!fm) return 'before the Watch kept dates';
+    const days = WS.floor((Date.now() - fm.at) / 86400000);
+    const when = days <= 0 ? 'today' : days === 1 ? 'yesterday' : days < 30 ? days + ' days ago'
+      : new Date(fm.at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+    const where = WS.Maps[fm.map] ? ' in ' + WS.Maps[fm.map].name : '';
+    return `${when}${where}, ${WS.formatTime(fm.t)} into the night`;
+  }
+
   UI.paneBestiary = function () {
     const wrap = el('div');
     wrap.style.marginTop = '16px';
 
+    const groups = [['Creatures', WS.Enemies, 'Creature'], ['Elites', WS.Elites, 'Elite'], ['Bosses', WS.Bosses, 'Boss']];
     const all = [];
-    for (const id of Object.keys(WS.Enemies)) all.push([id, WS.Enemies[id], 'Creature']);
-    for (const id of Object.keys(WS.Elites)) all.push([id, WS.Elites[id], 'Elite']);
-    for (const id of Object.keys(WS.Bosses)) all.push([id, WS.Bosses[id], 'Boss']);
+    for (const [, table, kind] of groups) for (const id of Object.keys(table)) all.push({ id, t: table[id], kind });
+    const killsOf = (id) => WS.Save.stats.bestiary[id] || WS.Save.stats.bosses[id] || 0;
+    const found = all.filter((e) => killsOf(e.id) > 0).length;
 
-    const found = all.filter(([id]) =>
-      (WS.Save.stats.bestiary[id] || WS.Save.stats.bosses[id] || 0) > 0).length;
     const head = el('div', 'codex-head');
     head.append(el('div', 'card-body pane-intro', 'Everything that has come for you, and everything that has not yet.'));
     head.append(el('div', 'codex-count', `${found} / ${all.length}`));
     wrap.append(head);
 
-    const grid = el('div', 'beast-grid');
-    for (const [id, t, kind] of all) {
-      const kills = WS.Save.stats.bestiary[id] || WS.Save.stats.bosses[id] || 0;
-      const known = kills > 0;
-      const cell = el('div', 'beast' + (known ? '' : ' unknown') + ' ' + kind.toLowerCase());
-      cell.style.setProperty('--q', WS.hex(known ? t.tint : [0.3, 0.32, 0.4]));
+    const book = el('div', 'book');
+    const index = el('div', 'book-index');
+    const page = el('div', 'book-page');
+    book.append(index, page);
+    wrap.append(book);
 
-      const plate = el('div', 'beast-plate');
-      if (known) {
+    const tiles = new Map();
+    const open = (e) => {
+      UI.bookSel = e.id;
+      for (const [id, n] of tiles) n.classList.toggle('selected', id === e.id);
+      fillPage(page, e, killsOf(e.id));
+    };
+
+    for (const [title, , kind] of groups) {
+      const list = all.filter((e) => e.kind === kind);
+      if (!list.length) continue;
+      const n = list.filter((e) => killsOf(e.id) > 0).length;
+      const h = el('h3', 'book-group');
+      h.append(el('span', null, title), el('i', null, `${n} of ${list.length}`));
+      index.append(h);
+      const grid = el('div', 'book-grid');
+      for (const e of list) {
+        const known = killsOf(e.id) > 0;
+        const tile = el('button', 'book-tab' + (known ? '' : ' unknown') + ' ' + kind.toLowerCase());
+        tile.type = 'button';
         const img = new Image();
-        img.src = WS.Sprites.creature(t.art, t.tint, 52, t.bossKit).toDataURL();
-        img.width = img.height = 52;
-        plate.append(img);
-      } else {
-        // The silhouette is still the real creature, just unlit: the shape is
-        // a hint, which is what a compendium entry you have not earned is for.
-        const img = new Image();
-        img.src = WS.Sprites.creature(t.art, [0.16, 0.17, 0.21], 52, t.bossKit).toDataURL();
-        img.width = img.height = 52;
-        plate.append(img, el('span', 'q', '?'));
+        img.src = WS.Sprites.creature(e.t.art, known ? e.t.tint : [0.16, 0.17, 0.21], 44, e.t.bossKit).toDataURL();
+        img.width = img.height = 44;
+        tile.append(img);
+        tile.setAttribute('aria-label', known ? e.t.name : 'Not yet met');
+        tipOn(tile, tipText(known ? e.t.name : 'Not yet met'), { prefer: ['above', 'below'], delay: 200 });
+        tile.addEventListener('click', () => { WS.Audio.play('page'); open(e); });
+        tile.addEventListener('focus', () => { if (UI.bookSel !== e.id) open(e); });
+        tiles.set(e.id, tile);
+        grid.append(tile);
       }
-      cell.append(plate);
-      cell.append(el('div', 'beast-name', known ? t.name : '???'));
-      cell.append(el('div', 'beast-sub', known ? `${WS.formatNumber(kills)} slain` : kind));
-      if (known) {
-        tipOn(cell, () => {
-          const bdy = el('div', 'tip-body');
-          bdy.append(...tipHead(t.name, t.tint, WS.formatNumber(kills) + ' slain', `${kind} · ${t.family}`));
-          const st = el('div', 'tip-stats');
-          for (const [v, k] of [[t.health, 'health'], [t.damage, 'damage']]) {
-            const sp = el('span');
-            sp.append(el('b', null, WS.formatNumber(v)), el('i', null, ' ' + k));
-            st.append(sp);
-          }
-          bdy.append(st);
-          return bdy;
-        }, { prefer: ['above', 'below'] });
-      }
-      grid.append(cell);
+      index.append(grid);
     }
-    wrap.append(grid);
+    // Open to the last page read, or the first thing met, or the first entry.
+    const start = all.find((e) => e.id === UI.bookSel) || all.find((e) => killsOf(e.id) > 0) || all[0];
+    if (start) open(start);
     return wrap;
   };
+
+  function fillPage(page, e, kills) {
+    const t = e.t, known = kills > 0, boss = e.kind === 'Boss';
+    const home = habitat(e.id);
+    const place = home.length ? home[0].m.art : (e.id === 'death_itself' ? 'none' : 'none');
+    page.replaceChildren();
+    page.classList.toggle('unknown', !known);
+    page.style.setProperty('--q', WS.hex(known ? t.tint : [0.4, 0.42, 0.5]));
+
+    const top = el('div', 'bp-top');
+    const art = el('div', 'art bp-art');
+    art.append(WS.Vignette ? WS.Vignette.beast(e.id, { art: t.art, tint: t.tint, kit: t.bossKit,
+      known, boss, place }) : el('div'), el('i', 'frame'));
+    const words = el('div', 'bp-words');
+    words.append(el('h3', 'bp-name', known ? t.name : 'Not yet met'));
+    const fam = t.family ? t.family.charAt(0).toUpperCase() + t.family.slice(1) : '';
+    words.append(el('div', 'bp-kind', [e.kind, fam].filter(Boolean).join(' · ')));
+    if (known) {
+      const note = WS.Lore.bestiary && WS.Lore.bestiary[e.id];
+      if (note) words.append(el('p', 'bp-note', note));
+      if (t.yell) words.append(el('q', 'bp-cry', t.yell.replace(/^\*|\*$/g, '')));
+    } else {
+      words.append(el('p', 'bp-note', home.length
+        ? `The Watch has no page for this one yet. Something walks in ${home[0].m.name} that you have not met.`
+        : 'The Watch has no page for this one yet.'));
+    }
+    top.append(art, words);
+    page.append(top);
+
+    // The ledger sits under the note, beside the picture, so a page is read
+    // whole without scrolling.
+    const ledger = el('div', 'bp-ledger');
+    const line = (k, v) => {
+      const row = el('div', 'kv');
+      row.append(el('span', null, k), el('span', null, v));
+      ledger.append(row);
+    };
+    if (known) {
+      line('Put down', WS.formatNumber(kills));
+      line('First met', whenMet(WS.Save.stats.firstMet && WS.Save.stats.firstMet[e.id]));
+    }
+    if (home.length) line('Walks', home.map((h) => h.how === 'walks' ? h.m.name : `${h.m.name}, ${h.how}`).join('; '));
+    if (known) {
+      const f = fightsBy(t);
+      if (f.length) line('Fights', f.join(', '));
+      line('Measure', `${WS.formatNumber(t.health)} health, strikes for ${WS.formatNumber(t.damage)}`);
+    }
+    words.append(ledger);
+  }
 
   UI.paneStats = function () {
     const s = WS.Save.stats;

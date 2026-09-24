@@ -147,6 +147,83 @@
           'You kept the watch at {map} until dawn.'] },
       ],
     },
+
+    /* The bestiary's field notes: what the Watch has written down about each
+     * thing that has come out of the dark, in the Watch's own voice. One or
+     * two sentences each - a page, not an essay - and where there is a lesson
+     * in how it fights, the note gives it. The book shows a note only once
+     * the thing has been put down at least once. */
+    bestiary: {
+      // Thornhollow
+      lampling: 'They dig toward light the way moths fly at it. A lampling will chew through a cellar wall to sit beside your candle, and then through you to keep it.',
+      boar: 'Charges whatever moved last. In Thornhollow that is usually you.',
+      wolf: 'Never alone. If you have counted one, count again.',
+      gilkin: 'Small, green and certain that everything in reach is food. The Watch has found gilkin teeth marks in lantern brass.',
+      gilkin_tidecaller: 'Sings the river up out of its banks and throws it at you in pieces. Cold pieces. Close the distance; they do not like it close.',
+      mongrel: 'Half dog, half grudge. The Snarlpack were somebody\'s hounds once, and nobody has come forward to claim them.',
+      kerchief: 'Red cloth over the face and quick hands under it. They rob the dead first and the living second, which is at least an order.',
+      // The Dustreach
+      kerchief_pillager: 'The ones who throw. Firepots, bottles, once a boot - whatever the last farm had in it.',
+      harvest_reaper: 'The threshing engines never stopped when the farmers did. They are still bringing in the harvest. Stand clear when one breaks: it takes its last swing on the way down.',
+      fleshripper: 'Circles until you tire, then lands. The trick is not to tire.',
+      coyote: 'You will hear them laughing before you see them. Keep walking.',
+      bruiser: 'What the Kerchiefs send when the footpads come back empty-handed.',
+      // Mourneholt
+      ghoul: 'Slow, stupid, and there are always more of them than you left behind.',
+      skeleton: 'Still holding the sword it was buried with. Most of them are still holding the grudge, too.',
+      skeletal_mage: 'The cold in Mourneholt is not weather. It is these.',
+      moonwretch: 'Something that was a wolf once, and then looked at the moon for too long.',
+      spider: 'Leaves its venom on the ground behind it. Never follow a spider; go around.',
+      // The Ochre Plains
+      longstrider: 'Tall as a watchtower and about as easy to turn.',
+      raptor: 'Hunts in the heat of the day, which on the Ochre Plains is all of it.',
+      bristlekin: 'Grows its armour. The old ones are more quill than beast.',
+      shrikewing: 'Rides the updraft over you and calls the wind down in knives. Keep moving, so it has to keep turning.',
+      karrash: 'The Karrash send their young to run down strangers. It is how they grow up. Do not be how they grow up.',
+      lion: 'Waits in grass the colour of itself.',
+      // The Pale Wastes
+      pale_ghoul: 'The cold keeps them. They are older than the others, and hungrier for it.',
+      crypt_fiend: 'Too many legs for a thing that used to be a person.',
+      necromancer: 'Throws the grave\'s own cold at you from behind its dead. Get past the dead.',
+      abomination: 'Sewn together from what the cult had spare. It comes apart when it dies, and the parts still want you.',
+      geist: 'A hunger with nothing left around it. It bursts where it falls - do not be standing there.',
+      // Elites
+      snarlpack_bonesnapper: 'The Snarlpack\'s biggest, fed first and meanest for it.',
+      kerchief_enforcer: 'Plants its feet, picks you, and comes straight down the line. Step off the line.',
+      bone_sentinel: 'A knight once, and still standing a knight\'s watch - over the wrong side.',
+      karrash_battlelord: 'Charges once it has chosen you: everything the Karrash believe about glory, in one straight line. Be somewhere else when it arrives.',
+      deathbound_vanguard: 'The front rank of the Pale. It does not break, because there is nothing left in it to break.',
+      shadow_weaver: 'A shape the dark makes when it wants hands.',
+      // Bosses
+      grimtunnel: 'Stole the Watch\'s light and ran it down a mine shaft. He has hoarded flames ever since, and every one he takes makes the night a little longer.',
+      murkgill: 'The oldest gilkin in the river, and the loudest. Nobody knows what "blorp" means. Everybody knows what it means when he says it twice.',
+      gnarlfang: 'Leads the Snarlpack by the simple method of having bitten everyone else in it.',
+      redcowl: 'Captain of the Kerchiefs. Polite in the way a knife is sharp.',
+      fenroth: 'The Vale\'s oldest wolf, and the reason there are no shepherds left in it.',
+      harvestking: 'The greatest of the threshing engines, crowned in rusted scythes. It still keeps the harvest. It has only changed its mind about the crop.',
+      masked_admiral: 'Commands a fleet with no sea. Somewhere out in the Dustreach there is a ship on dry land, and a very long story.',
+      barkfang: 'Old, grey and patient. The moonwretches follow him because he has never once been in a hurry.',
+      silkfang: 'Mother of every web in Mourneholt. She does not speak; the sound she makes instead is worse.',
+      mordecai: 'A necromancer who died and did not accept it. The Watch has put him down four times that it knows of.',
+      palewraith: 'Where it passes, the candles gutter out. The Watch keeps spares.',
+      thornmane: 'The Thornhide say the plains were theirs before anyone walked them. He intends to prove it on you.',
+      shriekfeather: 'Matron of the Shrikewings. The wind she calls has taken roofs off, and the people under them.',
+      kazrok: 'Warlord of the Karrash, who has never let a stranger cross the plains alive. There is a first time for things.',
+      stormhide: 'When it walks, the plains thunder. When it charges, they do not have time to.',
+      boneweaver: 'Builds with bones the way a mason builds with stone. The Pale\'s architect.',
+      gorestitch: 'Every Stitched Horror that ever fell went into this one. It remembers all of them.',
+      marrowfrost: 'The Pale Lord\'s herald, sent ahead to count the lights and put some out. Where it stands, the frost grows toward you.',
+      death_itself: 'Walks when the night runs past its hour. It is not cruel, and it does not stop.',
+      aethelgard: 'The Eclipse Sovereign, who took the sun into its crown and would not give it back. The fight that ends in daylight - if it ends.',
+      // The finales
+      candlecrawler: 'Grimtunnel\'s digging engine: a mine on legs, hung with the lamps he stole. It burrows when it is losing, which is often. Break the lamps.',
+      dust_galleon: 'A warship that sails the Dustreach on wheels and spite, firing on anything that carries a light. Hired, not loyal - the Admiral will tell you so herself.',
+      admiral_ashore: 'The Masked Admiral, off her ship and out of patience. She fights better than she sails.',
+      mordecai_bound: 'Mordecai again, bound into four lanterns of stolen ember - four lives to spend, one lantern each. Break the lanterns and he runs out.',
+      stormbreaker: 'Grimtunnel\'s walking fortress: forty tons of stolen ember and very confident engineering. Its shield hangs off the pylons; bring down the pylons and the shield goes with them.',
+      heart_drill: 'Grimtunnel\'s last machine, sunk into the Pale Wastes to reach the heart of the dark. He reached it. It was awake.',
+      pale_lord: 'Marrowfrost, the Pale Lord: the dark itself, woken at the bottom of the world and crowned in rime. Every ember the Watch has ever burned was taken from him, and tonight he came for all of it.',
+    },
   };
 
 })(window.WS);
