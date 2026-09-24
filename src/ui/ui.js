@@ -730,6 +730,14 @@
   }
 
   /* ---------------------------------------------------------- main menu -- */
+  const SAYINGS = [
+    'Thirty minutes until dawn',
+    'Keep the fire lit. Keep your feet moving.',
+    'Nobody is coming. That is why we are here.',
+    'Every light you keep is one he cannot count',
+    'The dark is patient. Be more patient.',
+    'Dawn has never once been late',
+  ];
   UI.openMenu = function () {
     this.hud.classList.add('hidden');
     const s = shell('The Ember Watch', 'Arclight');
@@ -755,7 +763,11 @@
     }
     ember.append(sparks);
     h.append(el('span', 'art', 'The'), ember, el('span', 'wm', 'Watch'));
-    const sub = el('div', 'game-sub', 'Thirty minutes until dawn');
+    /* The Watch has more than one thing it says to itself. One is chosen
+       per visit to the menu, from Math.random rather than the game's stream,
+       which a menu has no business drawing from. */
+    if (!UI.saying) UI.saying = SAYINGS[Math.floor(Math.random() * SAYINGS.length)];
+    const sub = el('div', 'game-sub', UI.saying);
     title.append(h, sub, el('div', 'title-arc'));
     s.head.replaceChildren(title);
 
@@ -914,14 +926,39 @@
     return el('div', 'cartouche bracketed');
   }
 
+  /** A cartouche's figures. `num` rows read figure-first, the way you would
+   *  say them - "110 health" - and the rest read as a label and its answer. */
+  function statLine(rows) {
+    const line = el('div', 'stat-line');
+    for (const r of rows) {
+      if (!r) continue;
+      const box = el('div', 's' + (r[2] ? ' num' : ''));
+      box.append(el('span', 'label', r[0]), el('b', null, String(r[1])));
+      line.append(box);
+    }
+    return line;
+  }
+
+  function perk(label, text) {
+    const p = el('div', 'perk');
+    p.append(el('span', 'perk-label', label), el('span', null, text));
+    return p;
+  }
+
+  /** The old still, for a build without the living pictures. */
+  function stillArt(canvas) {
+    const img = new Image();
+    img.src = canvas.toDataURL();
+    img.width = img.height = 184;
+    return img;
+  }
+
   function fillSurvivorCartouche(node, id) {
     const c = WS.Characters[id];
     node.innerHTML = '';
     const art = el('div', 'art');
-    const img = new Image();
-    img.src = WS.Sprites.portrait(id, c.color, 184).toDataURL();
-    img.width = img.height = 184;
-    art.append(img, el('i', 'frame'));
+    art.append(WS.Vignette ? WS.Vignette.survivor(id, c.color) : stillArt(WS.Sprites.portrait(id, c.color, 184)),
+      el('i', 'frame'));
     art.style.setProperty('--q', WS.hex(c.color));
 
     const body = el('div');
@@ -929,20 +966,15 @@
     body.append(el('div', 'label role', `${c.className} · ${c.title}`));
     body.append(el('p', 'flavour', WS.template(c.description, c)));
 
-    const stats = el('div', 'stat-line');
-    const stat = (k, v) => {
-      const box = el('div', 's');
-      box.append(el('span', 'label', k), el('b', null, String(v)));
-      stats.append(box);
-    };
-    stat('Health', c.maxHealth);
-    stat('Speed', c.moveSpeed);
-    stat('Armor', c.armor || '—');
-    stat('Pickup', c.pickupRadius);
-    if (c.healthRegen) stat('Regen', c.healthRegen.toFixed(1) + '/s');
-    stat('Opens with', WS.Weapons[c.weapon].name);
-    body.append(stats);
-    body.append(el('div', 'perk', WS.template(c.perk, c)));
+    body.append(statLine([
+      ['Health', c.maxHealth, true],
+      ['Speed', c.moveSpeed, true],
+      ['Armor', c.armor || 'no', true],
+      ['Pickup', c.pickupRadius, true],
+      c.healthRegen ? ['Regen', c.healthRegen.toFixed(1) + '/s', true] : null,
+      ['Opens with', WS.Weapons[c.weapon].name],
+    ]));
+    body.append(perk('Knack', WS.template(c.perk, c)));
 
     node.append(art, body);
   }
@@ -952,10 +984,8 @@
     node.innerHTML = '';
     const art = el('div', 'art');
     const key = { forest: 'leaf', plains: 'wheat', haunted: 'deadtree', savannah: 'sun', glacier: 'crystal', arena: 'sovereign' }[m.art] || 'rune';
-    const img = new Image();
-    img.src = WS.Sprites.zoneCard(m, key, 184).toDataURL();
-    img.width = img.height = 184;
-    art.append(img, el('i', 'frame'));
+    art.append(WS.Vignette ? WS.Vignette.battlefield(id) : stillArt(WS.Sprites.zoneCard(m, key, 184)),
+      el('i', 'frame'));
     art.style.setProperty('--q', WS.hex(m.groundAlt));
 
     const body = el('div');
@@ -963,22 +993,15 @@
     body.append(el('div', 'label role', m.subtitle));
     body.append(el('p', 'flavour', WS.template(m.description, m)));
 
-    const stats = el('div', 'stat-line');
-    const stat = (k, v) => {
-      const box = el('div', 's');
-      box.append(el('span', 'label', k), el('b', null, String(v)));
-      stats.append(box);
-    };
-    stat('Difficulty', '×' + m.difficulty);
-    stat('Gold', '×' + m.goldMult);
-    if (!m.arena) {
-      stat('Bosses', m.bosses.length);
-      stat('Swarms', m.events.length);
-      const best = WS.Save.stats.bestTime[id] || 0;
-      stat('Your best', best ? WS.formatTime(best) : '—');
-    }
-    if (WS.Save.db.unlocks.hyper[id]) stat('Hyper', 'unlocked');
-    body.append(stats);
+    const best = WS.Save.stats.bestTime[id] || 0;
+    body.append(statLine([
+      ['Difficulty', '×' + m.difficulty, true],
+      ['Gold', '×' + m.goldMult, true],
+      m.arena ? null : ['Bosses', m.bosses.length, true],
+      m.arena ? null : ['Swarms', m.events.length, true],
+      m.arena ? null : ['Your best', best ? WS.formatTime(best) : 'not yet'],
+      WS.Save.db.unlocks.hyper[id] ? ['Hyper', 'unlocked'] : null,
+    ]));
 
     // The roster this battlefield actually fields, so the pick is informed.
     if (!m.arena) {
@@ -987,7 +1010,7 @@
         for (const r of phase.roster) if (!seen.includes(r.id)) seen.push(r.id);
       }
       const names = seen.slice(0, 6).map((eid) => WS.Enemies[eid].name).join(', ');
-      body.append(el('div', 'perk', 'Fields: ' + names + (seen.length > 6 ? ', and worse.' : '.')));
+      body.append(perk('Who walks here', names + (seen.length > 6 ? ', and worse.' : '.')));
     }
     node.append(art, body);
   }
@@ -1079,9 +1102,10 @@
   UI.paneTrainer = function (rerender) {
     const wrap = el('div');
     wrap.style.marginTop = '16px';
-    const intro = el('div', 'card-body',
-      'Permanent training, bought with banked gold and applied to every future run.');
-    intro.style.marginBottom = '12px';
+    // Every lesson is permanent; the drillmaster says so in his own words.
+    const intro = el('div', 'trainer-voice');
+    intro.append(el('q', null, 'Gold is no use to the dead. Hand it here and I will give you something that stays with you, every night after this one.'),
+      el('span', 'who', 'Harrow, drillmaster of the Watch'));
     const rows = el('div', 'rows');
     for (const id of WS.MetaUpgradeOrder) {
       const m = WS.MetaUpgrades[id];
@@ -1094,7 +1118,7 @@
       const row = el('div', 'row trainer-row' + (rank >= m.max ? ' maxed' : ''));
       row.append(icon(m.art, WS.CONST.COLORS.arc, 40));
       const main = el('div', 'row-main');
-      main.append(el('div', 'row-name', m.name));
+      main.append(el('div', 'row-name', m.name.replace(/^Lessons:\s*/, '')));
       main.append(el('div', 'row-sub', WS.template(m.description, m)));
       row.append(main);
 
@@ -1285,7 +1309,7 @@
     const found = all.filter(([id]) =>
       (WS.Save.stats.bestiary[id] || WS.Save.stats.bosses[id] || 0) > 0).length;
     const head = el('div', 'codex-head');
-    head.append(el('div', 'card-body', 'Everything that has come for you, and everything that has not yet.'));
+    head.append(el('div', 'card-body pane-intro', 'Everything that has come for you, and everything that has not yet.'));
     head.append(el('div', 'codex-count', `${found} / ${all.length}`));
     wrap.append(head);
 
@@ -1327,6 +1351,14 @@
     const s = WS.Save.stats;
     const wrap = el('div');
     wrap.style.marginTop = '16px';
+    /* The book opens with a sentence, not a dashboard: what the tiles below
+       add up to, said the way a watch captain would write it in the log. */
+    const nights = s.totalRuns || 0;
+    const plural = (n, one, many) => `${WS.formatNumber(n)} ${n === 1 ? one : many}`;
+    wrap.append(el('p', 'pane-intro book-line', nights
+      ? `${plural(nights, 'night', 'nights')} on the wall, ${WS.formatNumber(s.totalVictories || 0)} seen through to dawn. `
+        + `${plural(s.totalKills || 0, 'thing', 'things')} out there will not be coming back.`
+      : 'The book is empty. Every name in it started that way.'));
     const grid = el('div', 'stat-grid');
     const items = [
       ['Runs', WS.formatNumber(s.totalRuns)],
@@ -1354,7 +1386,7 @@
        its own place, because it wears the same landscape the picker shows. */
     const head = el('div', 'codex-head');
     head.style.marginTop = '20px';
-    head.append(el('div', 'card-body', 'Longest you have lasted on each battlefield.'));
+    head.append(el('div', 'card-body pane-intro', 'The longest you have held each place.'));
     const best = el('div', 'record-grid');
     for (const id of WS.MapOrder) {
       if (!WS.Save.isMapUnlocked(id)) continue;
@@ -1370,7 +1402,7 @@
       card.append(art);
       const body = el('div');
       body.append(el('div', 'record-name', m.name));
-      body.append(el('div', 'record-time', time ? WS.formatTime(time) : '—'));
+      body.append(el('div', 'record-time', time ? WS.formatTime(time) : 'not yet'));
       card.append(body);
       best.append(card);
     }
@@ -1934,16 +1966,16 @@
     };
     kv('Health', `${WS.floor(p.health)} / ${WS.floor(p.maxHealth)}`);
     kv('Armor', `${p.armor} (${WS.round(p.armor / (p.armor + WS.Config.armorConstant) * 100)}% reduction)`);
-    kv('Damage', `x${p.damageMultiplier.toFixed(2)}`);
-    kv('Cooldowns', `x${p.cooldownMultiplier.toFixed(2)}`);
-    kv('Effect area', `x${p.areaMultiplier.toFixed(2)}`);
+    kv('Damage', `×${p.damageMultiplier.toFixed(2)}`);
+    kv('Cooldowns', `×${p.cooldownMultiplier.toFixed(2)}`);
+    kv('Effect area', `×${p.areaMultiplier.toFixed(2)}`);
     kv('Move speed', WS.round(p.moveSpeed));
-    kv('Crit', `${WS.round(p.critChance * 100)}% for x${p.critDamage.toFixed(2)}`);
+    kv('Crit', `${WS.round(p.critChance * 100)}% for ×${p.critDamage.toFixed(2)}`);
     kv('Projectiles', `+${p.projectileBonus}`);
     kv('Pickup radius', WS.round(p.pickupRadius));
-    kv('Luck', `x${p.luck.toFixed(2)}`);
-    kv('Experience', `x${p.xpMultiplier.toFixed(2)}`);
-    kv('Gold', `x${p.goldMultiplier.toFixed(2)}`);
+    kv('Luck', `×${p.luck.toFixed(2)}`);
+    kv('Experience', `×${p.xpMultiplier.toFixed(2)}`);
+    kv('Gold', `×${p.goldMultiplier.toFixed(2)}`);
     if (p.healthRegen > 0) kv('Regeneration', p.healthRegen.toFixed(1) + '/s');
     if (p.dodgeChance > 0) kv('Evasion', WS.round(p.dodgeChance * 100) + '%');
     if (p.lifesteal > 0) kv('Lifesteal', (p.lifesteal * 100).toFixed(1) + '%');

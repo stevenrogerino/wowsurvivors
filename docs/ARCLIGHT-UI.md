@@ -170,3 +170,25 @@ The interface is only half of it; the other half is how the world answers.
   ducks under horns, level-ups and detonations rather than fighting them.
 - **The verdict comes before the accounting.** Victory and defeat open with one
   panel stating the outcome and six figures, then the ledger below it.
+
+## The voice, the ledger, and the living pictures
+
+- **Voice.** Alegreya (serif) carries everything the game says aloud: names,
+  titles, tabs, banners, verdicts, the pane intros, the survivor's name on the
+  HUD. Archivo keeps mechanical description; IBM Plex Mono is left only for
+  keycaps and tiny slot ranks.
+- **Ledger.** Figures are set in Alegreya with `lining-nums tabular-nums`, so
+  a column still aligns and a running timer does not shimmy. The build sheet
+  walks name to figure on a dotted leader. Multipliers are `×`, not `x`.
+  Figure-first stats read the way you would say them: "110 health".
+- **Living pictures** (`src/render/vignette.js`). The survivor cartouche is the
+  survivor on watch at a fire, with something in the treeline that opens its
+  eyes now and then; each battlefield cartouche is that place in its own
+  weather. One ~30fps loop drives them and a picture leaves it the moment its
+  canvas leaves the page; reduced motion paints each once. They draw from a
+  local generator, never `WS.random`.
+- **Menu backdrop.** The prologue's hills at night, mirrored so the moon rises
+  in the empty sky opposite the logotype, with the watch fire below the frame
+  lighting the panels from underneath.
+- **Short screens.** Under 520px of height the header drops to one line and
+  the footer to one row, so a phone on its side still has a pane to read.

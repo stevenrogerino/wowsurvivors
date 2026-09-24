@@ -2608,7 +2608,71 @@
     { art: 'boar', tint: [0.70, 0.45, 0.28], size: 42, y: 0.38, speed: 8, phase: 0.55 },
   ];
 
+  /* The menu is the night before the run: the same hills the prologue is set
+   * in, under the same moon, with the watch fire somewhere below the panels
+   * throwing its light up across them. Everything moves slowly - the camera
+   * breathes, the mist travels, embers climb - so the front of the game is a
+   * place you are waiting in rather than a page you are reading. */
   R.drawMenuScene = function (ctx, time) {
+    const S = WS.Scene;
+    if (!S) return this.drawMenuField(ctx, time);
+    const t = time;
+    ctx.save();
+    // Mirrored: the prologue hangs its moon low on the left, which is exactly
+    // where the logotype sits. Here it rises in the empty sky across from it.
+    ctx.translate(W, 0); ctx.scale(-1, 1);
+    S.camera(ctx, t);
+    S.sky(ctx, t, 0.03);
+    S.ranges(ctx, 0.03);
+    S.woodFar(ctx, 0);
+    S.ground(ctx, 0.03);
+    S.woodNear(ctx, 0);
+    S.mist(ctx, t, 0.03);
+    ctx.restore();
+    // The fire: below the frame, felt rather than seen.
+    const flick = 0.86 + 0.08 * WS.sin(t * 2.3) + 0.06 * WS.sin(t * 7.9 + 1.3);
+    const fire = ctx.createRadialGradient(W * 0.5, H * 1.08, 0, W * 0.5, H * 1.08, H * 0.95);
+    fire.addColorStop(0, `rgba(255,132,48,${(0.42 * flick).toFixed(3)})`);
+    fire.addColorStop(0.45, `rgba(214,84,30,${(0.14 * flick).toFixed(3)})`);
+    fire.addColorStop(1, 'rgba(120,40,20,0)');
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = fire;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+    this.drawMenuEmbers(ctx, t, flick);
+  };
+
+  /* Embers off the fire, rising the full height of the screen and turning on
+   * the air as they go. Their own list, not Scene.drift's, because these come
+   * from one place and have somewhere to be. */
+  let menuEmbers = null;
+  R.drawMenuEmbers = function (ctx, t, flick) {
+    if (!menuEmbers) {
+      menuEmbers = [];
+      let s = 1337;
+      const r = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+      for (let i = 0; i < 46; i++) {
+        menuEmbers.push({ x: 0.5 + (r() - 0.5) * 0.7, off: r() * 20, life: 7 + r() * 9,
+          sway: 20 + r() * 70, ph: r() * 6.28, r: 0.8 + r() * 1.7 });
+      }
+    }
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const e of menuEmbers) {
+      const p = ((t + e.off) % e.life) / e.life;
+      const y = H * (1.04 - p * 1.12);
+      const x = W * e.x + WS.sin(t * 0.5 + e.ph) * e.sway * p + p * 60;
+      const a = WS.sin(p * WS.PI) * (0.55 + 0.45 * WS.sin(t * 4 + e.ph)) * flick;
+      if (a < 0.02) continue;
+      ctx.fillStyle = `rgba(255,${WS.round(200 - 110 * p)},${WS.round(110 - 60 * p)},${(a * 0.85).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(x, y, e.r * (1 - p * 0.45), 0, WS.TAU); ctx.fill();
+    }
+    ctx.restore();
+  };
+
+  /** The field the menu used to sit over - kept for a build without Scene. */
+  R.drawMenuField = function (ctx, time) {
     // Scenery drifts on a long loop. Two speeds, so the field has depth.
     for (const p of this.props) {
       const near = p.size > 70;

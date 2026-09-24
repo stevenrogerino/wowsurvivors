@@ -234,8 +234,9 @@ html, body {
    read as a place, not enough to compete with them for attention. */
 #overlay.scene {
   background:
-    radial-gradient(ellipse 82% 76% at 50% 42%, rgba(8,10,15,.40), rgba(6,7,11,.76));
-  backdrop-filter: blur(6px) saturate(.95);
+    linear-gradient(180deg, rgba(6,7,11,.18) 0%, rgba(6,7,11,.30) 30%, rgba(6,7,11,.52) 100%),
+    radial-gradient(ellipse 82% 76% at 50% 42%, rgba(8,10,15,.10), rgba(6,7,11,.40));
+  backdrop-filter: blur(1.5px) saturate(1.05);
 }
 /* Panels need their own ground once the backdrop is a place rather than a
    void: without this the roster tiles float on grass. */
@@ -675,6 +676,7 @@ html, body {
   box-shadow: var(--lift-1);
 }
 .cartouche .art img { display: block; width: 184px; height: 184px; }
+.cartouche .art canvas.vignette { display: block; width: 100%; height: 100%; }
 /* Two hairlines inside the chamfer: the rim, and the survivor's own colour
    inlaid a few pixels in, the same construction as an ability plate. */
 .cartouche .art .frame {
@@ -1916,4 +1918,129 @@ input[type=range]::-moz-range-thumb {
   font-size: 17px;
   letter-spacing: .2px;
   color: #d9cdb4;
+}
+
+/* ======================================================= THE LEDGER ======
+ * Numbers were set in a monospace, which is the voice of a terminal. This is
+ * a watch-house: its sums are kept by hand in a book. Figures move into the
+ * serif, lining and tabular so columns still hold and a counting timer does
+ * not shimmy, and the build sheet gets the one thing every ledger has - the
+ * dotted leader that walks your eye from a name to its figure.
+ */
+.cartouche .stat-line .s b, .row .row-value, .trainer-row .rank-count, .btn.buy,
+.codex-count, .record .record-time, .stat .stat-value, .verdict-figures .vf .v,
+.kv span:last-child, .bank .v,
+#hud-vitals .hp-text, #hud-timer .time, #hud-stats .stat-line .v {
+  font-family: var(--voice);
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: 0;
+}
+.cartouche .stat-line .s b { font-weight: 700; font-size: 18px; }
+.cartouche .stat-line { gap: 4px 22px; margin-top: 10px; }
+.cartouche .stat-line .s.num { flex-direction: row-reverse; justify-content: flex-end; }
+.cartouche .stat-line .label {
+  font-family: var(--voice); font-style: italic; font-size: 16px; font-weight: 500;
+  letter-spacing: 0; text-transform: lowercase; color: var(--ink-dim);
+}
+.cartouche .stat-line .s:not(.num) .label::after { content: ''; }
+.verdict-figures .vf .v { font-weight: 700; font-size: 30px; }
+.bank .v { font-weight: 700; font-size: 22px; }
+.row .row-value { font-weight: 700; font-size: 16px; }
+.trainer-row .rank-count { font-weight: 700; font-size: 15px; }
+.btn.buy b { font-weight: 700; font-size: 17px; }
+.btn.buy .g { font-family: var(--voice); font-style: italic; font-size: 14px; margin-left: 3px; }
+.codex-count { font-weight: 700; font-size: 20px; }
+.stat .stat-value { font-weight: 700; }
+.record .record-time { font-weight: 700; }
+
+#hud-timer .time { font-weight: 700; font-size: 36px; line-height: 1; }
+#hud-vitals .hp-text { font-weight: 700; font-size: 21px; }
+#hud-vitals .hp-text small { font-family: var(--voice); font-style: italic; }
+#hud-stats .stat-line .v { font-weight: 700; font-size: 20px; }
+
+/* The build sheet: name, a dotted leader, then the figure. */
+.kv { align-items: baseline; }
+.kv span:first-child {
+  display: flex; align-items: baseline; gap: 8px; flex: 1; min-width: 0;
+  font-family: var(--voice); font-size: 15px; color: var(--ink-dim);
+}
+.kv span:first-child::after {
+  content: ''; flex: 1; min-width: 12px; height: 0;
+  border-bottom: 1px dotted rgba(245,226,190,.22);
+  transform: translateY(-3px);
+}
+.kv span:last-child { font-weight: 700; font-size: 15px; color: var(--ink); }
+.kv.meter-row span:first-child::after { border-bottom-color: rgba(245,226,190,.12); }
+
+/* The title's rule becomes a flourish: an ember stone, a spark, and a line
+   that thins out the way a pen stroke does. */
+#title-wrap .title-arc {
+  width: 330px; max-width: 70%; height: 12px; margin: 7px 0 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 330 14'%3E%3Cdefs%3E%3ClinearGradient id='f' x1='0' x2='1'%3E%3Cstop offset='0' stop-color='%23f5c56b' stop-opacity='.95'/%3E%3Cstop offset='1' stop-color='%23f5c56b' stop-opacity='0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M7 1.5 12.5 7 7 12.5 1.5 7Z' fill='%23f5c56b'/%3E%3Cpath d='M7 4.5 9.5 7 7 9.5 4.5 7Z' fill='%23fff2cf'/%3E%3Ccircle cx='19' cy='7' r='1.3' fill='%23f5c56b'/%3E%3Cpath d='M25 6.2 C120 5.2 220 6.4 330 7 C220 7.6 120 8.8 25 7.8Z' fill='url(%23f)'/%3E%3C/svg%3E") left center / 100% 100% no-repeat;
+  transform-origin: left center;
+}
+
+/* The perk and the roster note are inscriptions, not callouts: a named line
+   under a rule, rather than a tinted box with a coloured edge. */
+.cartouche .perk {
+  background: none; border-left: 0; padding: 9px 0 0; margin-top: 11px;
+  border-top: 1px solid rgba(245,226,190,.10);
+  display: flex; align-items: baseline; gap: 12px;
+  color: var(--ink);
+}
+.cartouche .perk .perk-label {
+  flex: none; font-family: var(--voice); font-style: italic; font-weight: 700;
+  font-size: 16px; color: var(--arc);
+}
+
+/* The Trainer speaks for himself. */
+.trainer-voice {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px;
+  margin: 2px 0 14px; padding-left: 16px; border-left: 2px solid rgba(245,197,107,.35);
+}
+.trainer-voice q {
+  font-family: var(--voice); font-style: italic; font-size: 18px; color: #e9dcc2;
+  quotes: '\201C' '\201D';
+}
+.trainer-voice .who { font-family: var(--voice); font-size: 15px; color: var(--ink-faint); }
+
+/* Card notes were inheriting the micro-label tracking, which spaces a serif
+   italic out into separate letters. */
+.card .card-note { letter-spacing: 0; }
+
+/* A pane's opening line is spoken, like the rest of the Watch's words. */
+.pane-intro {
+  font-family: var(--voice); font-style: italic; font-size: 17px; color: #d9cdb4;
+  line-height: 1.45;
+}
+.book-line { margin: 0 0 16px; max-width: 70ch; }
+.stat .stat-label {
+  font-family: var(--voice); font-style: italic; font-weight: 500; font-size: 15px;
+  letter-spacing: 0; text-transform: lowercase; color: var(--ink-dim);
+}
+.stat .stat-value { font-size: 26px; }
+.record .record-name { font-family: var(--voice); font-weight: 700; font-size: 16px; }
+.record.unset .record-time { font-family: var(--voice); font-style: italic; font-weight: 500; font-size: 15px; color: var(--ink-faint); }
+/* The flourish is taller than the hairline it replaced; the cartouche gives
+   the difference back so the roster's second row stays clear of the fold. */
+.cartouche { padding-top: 16px; padding-bottom: 16px; }
+
+/* ===================================================== SHORT SCREENS ======
+ * A phone on its side is ~390px tall. The header and the two-row footer used
+ * to take all of it, leaving the pane a 20px strip. Below 520px of height the
+ * logotype sets on one line without its saying and flourish, the tabs and
+ * buttons tighten, and the footer keeps to a single row. */
+@media (max-height: 520px) {
+  #overlay { padding: 10px 14px; }
+  .overlay-inner { gap: 8px; }
+  #title-wrap .game-title { font-size: 26px; }
+  #title-wrap .game-sub, #title-wrap .title-arc { display: none; }
+  .tab { font-size: 15px; padding: 4px 11px 5px; }
+  .overlay-foot { flex-wrap: nowrap; gap: 6px; }
+  .overlay-foot .btn { padding: 6px 10px; font-size: 12px; white-space: nowrap; }
+  .overlay-foot .btn.primary { font-size: 15px; padding: 6px 14px; }
+  .bank { padding: 4px 10px; white-space: nowrap; }
+  .bank .v { font-size: 17px; }
+  .cartouche { padding: 10px; gap: 14px; margin-bottom: 8px; }
+  .cartouche .art { height: 96px; }
 }
