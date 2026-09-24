@@ -99,6 +99,22 @@
     Tip.anchor = anchor;
     placeTip(anchor, prefer);
     n.classList.add('shown');
+    /* A tip belongs to what it describes. Switching a tab, closing a screen
+       or rebuilding a HUD slot removes that thing without any pointer ever
+       leaving it, and the tip used to stay on screen describing nothing -
+       most easily seen by tabbing away from the bestiary with a tip up. So
+       while a tip is shown, it checks every frame that its anchor is still
+       there and still visible, and goes when it is not. */
+    if (!Tip.watching) {
+      Tip.watching = true;
+      const watch = () => {
+        const a = Tip.anchor;
+        if (!a) { Tip.watching = false; return; }
+        if (!a.isConnected || !a.getClientRects().length) { hideTip(); Tip.watching = false; return; }
+        requestAnimationFrame(watch);
+      };
+      requestAnimationFrame(watch);
+    }
   }
 
   function hideTip(anchor) {
@@ -2510,10 +2526,16 @@
 
     const right = panel();
     right.append(el('h3', null, 'Survivor'));
+    /* The run and its meters get a panel of their own. They were under the
+       survivor's two dozen figures in the same column, so on the pause
+       screen the healing done - the one number a healing build paused to
+       check - was below the fold of a panel you had to know to scroll. */
+    const third = panel();
+    let into = right;
     const kv = (k, v) => {
       const line = el('div', 'kv');
       line.append(el('span', null, k), el('span', null, String(v)));
-      right.append(line);
+      into.append(line);
     };
     kv('Health', `${WS.floor(p.health)} / ${WS.floor(p.maxHealth)}`);
     kv('Armor', `${p.armor} (${WS.round(p.armor / (p.armor + WS.Config.armorConstant) * 100)}% reduction)`);
@@ -2534,7 +2556,8 @@
     if (p.felAttuned > 0) kv('Metamorphoses', p.metamorphoses);
     if (p.blessingNames.length) kv('Blessings', p.blessingNames.join(', '));
 
-    right.append(el('h3', null, 'Run'));
+    into = third;
+    third.append(el('h3', null, 'Run'));
     kv('Time', WS.formatTime(run.time));
     kv('Slain', WS.formatNumber(run.kills));
     kv('Bosses', run.bossesSlain);
@@ -2575,13 +2598,14 @@
       return meter;
     };
     const dmgMeter = meterFor('Damage meter', run.damageByWeapon, WS.CONST.COLORS.arc);
-    if (dmgMeter) right.append(dmgMeter);
+    if (dmgMeter) third.append(dmgMeter);
     const healMeter = meterFor('Healing meter', run.healingBySource, WS.CONST.COLORS.heal);
-    if (healMeter) right.append(healMeter);
+    if (healMeter) third.append(healMeter);
     const overMeter = meterFor('Overhealing', run.overhealBySource, WS.CONST.COLORS.shadow);
-    if (overMeter) right.append(overMeter);
+    if (overMeter) third.append(overMeter);
 
-    sheet.append(left.frame, right.frame);
+    sheet.classList.add('three');
+    sheet.append(left.frame, right.frame, third.frame);
     return sheet;
   }
 

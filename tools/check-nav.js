@@ -69,7 +69,10 @@ const path = require('path');
 
   await page.keyboard.press('ArrowRight');
   const right = await where();
-  if (right && right.y !== start.y) fail.push(`right left the row: ${start.y} -> ${right.y}`);
+  /* Within a few pixels: a tile lifts 2px on hover and animates there, so a
+     tile caught mid-lift reads a pixel off its row-mates. Rows are ~90px
+     apart, so this still fails on any real change of row. */
+  if (right && Math.abs(right.y - start.y) > 3) fail.push(`right left the row: ${start.y} -> ${right.y}`);
   if (right && right.x <= start.x) fail.push('right did not move right');
 
   await page.keyboard.press('ArrowDown');
@@ -81,7 +84,7 @@ const path = require('path');
 
   await page.keyboard.press('ArrowUp');
   const back = await where();
-  if (back && right && (back.x !== right.x || back.y !== right.y)) {
+  if (back && right && (Math.abs(back.x - right.x) > 3 || Math.abs(back.y - right.y) > 3)) {
     fail.push(`up did not return to the tile above: expected ${right.x},${right.y}` +
       ` got ${back.x},${back.y}`);
   }
