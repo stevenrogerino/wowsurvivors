@@ -113,6 +113,8 @@
     this.sfxGain.gain.value = s.sound ? s.effectsVolume * 0.6 : 0;
     this.musicGain.gain.value = s.music ? s.musicVolume * 0.35 : 0;
     // A switch that only turns the volume down is not a switch.
+    if (!s.sound) this.stopAmbience();
+    else if (this.ambienceWanted && !this._amb) this.setAmbience(this.ambienceWanted);
     if (!s.music) this.stopMusic();
     else if (this.wanted && !this._music) this.startScore(this.wanted);
   };
@@ -233,7 +235,7 @@
   const lastPlayed = Object.create(null);
   const THROTTLE = {
     hit: 0.045, crit: 0.07, gem: 0.06, cast: 0.05, enemyHit: 0.06,
-    explode: 0.09, freeze: 0.2, coin: 0.08, hover: 0.045,
+    explode: 0.09, freeze: 0.2, coin: 0.08, hover: 0.045, page: 0.08,
     /* `warn` is the only one of these that also DUCKS - it pulls the whole mix
        to half for seven tenths of a second, because a charge committing is
        worth hearing over everything else. That is true of one charge and a
@@ -281,7 +283,7 @@
     cast: 0.08, gem: 0.10, coin: 0.06, potion: 0.11, chest: 0.09,
     // interface: barely there, but a click that is bit-identical forty times
     // in a row is the most machine-like sound in the game
-    ui: 0.03, hover: 0.045, select: 0.035, warn: 0.04,
+    ui: 0.03, hover: 0.045, select: 0.035, warn: 0.04, page: 0.08,
   };
 
   /** One draw of a value inside +/- `amt` of itself. Articulation, not pitch:
@@ -400,14 +402,40 @@
       const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98];
       notes.forEach((f, i) => tone({ type: 'triangle', freq: f, decay: 0.7, gain: 0.14, delay: i * 0.12 }));
     },
-    ui() { tone({ type: 'square', freq: 660, decay: 0.05, gain: 0.05 }); },
+    /* THE INTERFACE IS MADE OF THINGS.
+     *
+     * It used to be made of square waves: a 660Hz beep for a click, a sine
+     * blip for a hover, an 880-to-1200 chirp for a choice. That is the sound
+     * of a machine, in a game whose menus are now ink, paper and a fire. So
+     * the interface sounds like what it looks like: a button is a knock on
+     * wood, a hover is a pen nib touching the page, a choice is a piece set
+     * down on the table, and a tab is a page turned. All of it is still made
+     * here from an oscillator or a slice of the noise buffer - nothing loads. */
+    ui() {
+      // A knock: a short, falling body note under a dry click.
+      tone({ type: 'triangle', freq: 210, to: 150, decay: 0.07, gain: 0.11, filter: 'lowpass', cutoff: 900 });
+      tone({ type: 'sine', freq: 540, decay: 0.03, gain: 0.025 });
+      noise({ filter: 'bandpass', freq: 2600, q: 2, attack: 0.001, decay: 0.018, gain: 0.03 });
+    },
     /* The sound of the cursor finding something. Deliberately almost nothing -
-       a quarter the gain of a click and half its length - because it fires
-       every time the mouse crosses a tile and anything louder becomes a
-       machine gun. It is throttled harder than any combat voice for the same
-       reason: sweeping a cursor across a roster is forty hovers a second. */
-    hover() { tone({ type: 'sine', freq: 1180, decay: 0.028, gain: 0.014 }); },
-    select() { tone({ type: 'square', freq: 880, to: 1200, decay: 0.09, gain: 0.06 }); },
+       it fires every time the mouse crosses a tile and anything louder becomes
+       a machine gun, and it is throttled harder than any combat voice for the
+       same reason: sweeping a cursor across a roster is forty hovers a second.
+       A pen nib touching paper: a dry scratch high up, falling slightly. */
+    hover() { noise({ filter: 'bandpass', freq: 5600, to: 4300, q: 4, attack: 0.002, decay: 0.03, gain: 0.014 }); },
+    select() {
+      // A piece set down: a soft thump, the wood of it, and felt.
+      tone({ type: 'sine', freq: 110, to: 72, decay: 0.12, gain: 0.09 });
+      tone({ type: 'triangle', freq: 300, to: 220, decay: 0.08, gain: 0.055, filter: 'lowpass', cutoff: 1400 });
+      noise({ filter: 'bandpass', freq: 1800, q: 1.4, attack: 0.001, decay: 0.03, gain: 0.035 });
+    },
+    page() {
+      // A page turned: a swish that rises as the leaf lifts, its rustle, and
+      // the small tap of it settling.
+      noise({ filter: 'bandpass', freq: 900, to: 3800, q: 0.9, attack: 0.05, decay: 0.16, gain: 0.08 });
+      noise({ filter: 'highpass', freq: 3200, q: 0.7, attack: 0.02, decay: 0.12, gain: 0.028, delay: 0.04 });
+      noise({ filter: 'bandpass', freq: 2400, q: 3, attack: 0.002, decay: 0.014, gain: 0.02, delay: 0.19 });
+    },
     warn() {
       tone({ type: 'square', freq: 330, decay: 0.2, gain: 0.12 });
       tone({ type: 'square', freq: 330, decay: 0.2, gain: 0.12, delay: 0.24 });
@@ -1680,6 +1708,95 @@
    *  a room the player has walked away from - and, with the guards above, it
    *  also means nothing is scheduled while they are gone, so coming back is
    *  silent until something actually happens. */
+  /* ------------------------------------------------------------ ambience -- */
+  /* The watch fire, under the menu.
+   *
+   * The menu is drawn as the night before a run with a fire burning below the
+   * frame, and it was silent apart from the score. This is that fire: a low
+   * bed of flame (the noise buffer through a lowpass that breathes on a slow
+   * wobble), a thin hiss of hot air above it, and crackles - short, bright
+   * slices of noise at random pitches and weights, now and then a pop with a
+   * little thump under it, and once in a while a log settling.
+   *
+   * It keeps every rule the score keeps. It lives only while the menu is up
+   * and stops the moment a run begins. With sound off it builds nothing at
+   * all - it is torn down, not turned down. The crackles are drawn on a timer
+   * that asks whether the clock is running before it books anything, so a
+   * suspended context takes no bookings, and it books only the present: a
+   * stalled timer does not come back and play every crackle it missed. */
+  Audio.setAmbience = function (key) {
+    this.ambienceWanted = key || null;
+    if (!key) { this.stopAmbience(); return; }
+    if (!this.ctx || !WS.Save.settings.sound) return;
+    if (this._amb && this._amb.key === key) return;
+    this.stopAmbience();
+    this.startHearth();
+  };
+
+  Audio.startHearth = function () {
+    const ctx = this.ctx;
+    noiseBuf();
+    const bus = ctx.createGain();
+    bus.gain.setValueAtTime(0.0001, ctx.currentTime);
+    bus.gain.exponentialRampToValueAtTime(1, ctx.currentTime + 1.8);
+    bus.connect(this.sfxGain);
+    const srcs = [];
+    const bed = (type, freq, q, level) => {
+      const src = ctx.createBufferSource();
+      src.buffer = noiseBuffer; src.loop = true;
+      const f = ctx.createBiquadFilter();
+      f.type = type; f.frequency.value = freq; f.Q.value = q;
+      const g = ctx.createGain(); g.gain.value = level;
+      src.connect(f); f.connect(g); g.connect(bus);
+      src.start(ctx.currentTime, Math.random() * (noiseBuffer.duration - 1));
+      srcs.push(src);
+      return f;
+    };
+    const roar = bed('lowpass', 320, 0.7, 0.06);
+    bed('bandpass', 3200, 0.6, 0.006);
+    // The flame breathes: a slow wobble on the roar's cutoff.
+    const lfo = ctx.createOscillator(), depth = ctx.createGain();
+    lfo.frequency.value = 0.17; depth.gain.value = 110;
+    lfo.connect(depth); depth.connect(roar.frequency);
+    lfo.start(); srcs.push(lfo);
+
+    const amb = { key: 'hearth', bus, srcs, timer: 0 };
+    amb.timer = setInterval(() => {
+      if (!live() || !WS.Save.settings.sound || this._amb !== amb) return;
+      const r = Math.random();
+      if (r < 0.34) {
+        noise({ filter: 'bandpass', freq: 1800 + Math.random() * 4400, q: 3 + Math.random() * 5,
+          attack: 0.001, decay: 0.006 + Math.random() * 0.03, gain: 0.012 + Math.random() * 0.05, bus });
+      }
+      if (r > 0.975) {
+        // A pop: two crackles close together, and a thump under them.
+        noise({ filter: 'bandpass', freq: 2600, q: 2, attack: 0.001, decay: 0.02, gain: 0.07, bus });
+        noise({ filter: 'bandpass', freq: 4200, q: 3, attack: 0.001, decay: 0.012, gain: 0.04, bus, delay: 0.03 });
+        tone({ type: 'sine', freq: 95, to: 60, decay: 0.06, gain: 0.03, bus });
+      } else if (r > 0.968) {
+        // A log settling into the coals.
+        noise({ filter: 'lowpass', freq: 520, to: 260, q: 0.8, attack: 0.03, decay: 0.45, gain: 0.05, bus });
+      }
+    }, 70);
+    this._amb = amb;
+  };
+
+  Audio.stopAmbience = function () {
+    const amb = this._amb;
+    if (!amb) return;
+    this._amb = null;
+    clearInterval(amb.timer);
+    const ctx = this.ctx;
+    try {
+      const t = ctx.currentTime;
+      amb.bus.gain.cancelScheduledValues(t);
+      amb.bus.gain.setValueAtTime(WS.max(0.0001, amb.bus.gain.value), t);
+      amb.bus.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+      for (const s of amb.srcs) s.stop(t + 0.4);
+      setTimeout(() => { try { amb.bus.disconnect(); } catch (e) { /* gone */ } }, 600);
+    } catch (e) { /* the context is closing */ }
+  };
+
   Audio.setAttentive = function (attentive) {
     const ctx = this.ctx;
     if (!ctx) return;

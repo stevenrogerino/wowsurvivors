@@ -232,3 +232,10 @@ The interface is only half of it; the other half is how the world answers.
   the card does, on the pause sheet's arsenal and new passives list, and in
   the bestiary. Passive level-up cards now say which carried weapon they
   evolve.
+- **The interface sounds like what it looks like.** A button is a knock on
+  wood, a hover the scratch of a pen nib, a choice a piece set down on the
+  table, a tab a page turned - noise and oscillators, no files, replacing the
+  square-wave beeps. Under the menu the watch fire burns
+  (`Audio.setAmbience('hearth')`): a breathing low roar, a hiss, crackles,
+  pops and the odd settling log. It lives only while the menu is up, is torn
+  down with sound off, and books nothing against a suspended clock.

@@ -1076,6 +1076,8 @@
   /* ---------------------------------------------------------- main menu -- */
   UI.openMenu = function () {
     this.hud.classList.add('hidden');
+    // The watch fire is burning whenever the menu is up.
+    WS.Audio.setAmbience('hearth');
     const s = shell('The Ember Watch', 'Arclight');
 
     const title = el('div'); title.id = 'title-wrap';
@@ -1141,7 +1143,7 @@
     for (const [id, label] of TABS) {
       const b = el('button', 'tab', label);
       b.dataset.tab = id;
-      b.addEventListener('click', () => { UI.tab = id; WS.Audio.play('ui'); render(); });
+      b.addEventListener('click', () => { UI.tab = id; WS.Audio.play('page'); render(); });
       tabs.append(b);
     }
     /* The tab strip used to scroll away with the pane beneath it - both were
@@ -1236,6 +1238,7 @@
     story.addEventListener('click', () => {
       WS.Audio.play('ui');
       UI.closeOverlay();
+      WS.Audio.setAmbience(null);
       WS.Prologue.begin(() => UI.openMenu());
     });
 
@@ -2445,7 +2448,7 @@
       const b = el('button', 'tab', label);
       b.type = 'button';
       b.dataset.view = id;
-      b.addEventListener('click', () => { view = id; WS.Audio.play('ui'); render(); });
+      b.addEventListener('click', () => { view = id; WS.Audio.play('page'); render(); });
       tabs.append(b);
     }
     s.inner.insertBefore(tabs, s.body);

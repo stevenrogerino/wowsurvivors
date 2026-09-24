@@ -77,6 +77,8 @@
   }
 
   Game.startRun = function (mapId, characterId) {
+    // The menu's fire goes out when the run begins.
+    if (WS.Audio.setAmbience) WS.Audio.setAmbience(null);
     this.run = newRun(mapId, characterId);
     this.arenaBounds = null;
     WS.FX.clear();
