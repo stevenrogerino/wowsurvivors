@@ -212,3 +212,11 @@ The interface is only half of it; the other half is how the world answers.
   icon's face - a dark wedge for the time still owed, taken away clockwise
   from twelve with a warm hairline on the hand - not a ring around it. Ranks
   are italic serif numerals in the corner; an evolved weapon wears a ✦.
+- **The top of the HUD.** The portrait is a medallion: health a painted band
+  (lit at the top, deep at the foot) between inked rings, notched at each
+  quarter, experience a gilt thread inside it, and the level a gilt seal. The
+  clock is the night - a strip of sky from dusk to dawn with the hours to come
+  under a veil, the moon riding its edge, boss hours as inked diamonds that
+  gild once passed, and a sun at the end. The boss bar is a painted stroke in
+  a drawn frame with a pale band that holds after a hit and drains to meet the
+  health, and a seal on the bar at a finale boss's next phase gate.

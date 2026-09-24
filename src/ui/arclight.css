@@ -2233,3 +2233,160 @@ body.hud-rail #hud-passives { gap: 9px; }
   border: 1px solid transparent;
   border-image: var(--frame-slot) 24 / 12px / 5px stretch;
 }
+
+/* ======================================================= THE WATCH HUD ====
+ * The top half of the HUD in the same hand as the rest: the portrait is a
+ * medallion with inked edges and a painted health band, the clock is the
+ * night itself, and the boss bar is a painted stroke in a drawn frame.
+ */
+
+/* -- the medallion ---------------------------------------------------- */
+.gauge-wrap .track { stroke: rgba(0,0,0,.5); }
+.gauge-wrap svg:not(.gauge-ink) .track:first-of-type { stroke-width: 8; }
+.gauge-wrap .arc-hp {
+  stroke: url(#hp-paint); stroke-width: 8; stroke-linecap: butt;
+  filter: drop-shadow(0 0 4px rgba(200,50,43,.55));
+}
+.gauge-wrap.critical .arc-hp { filter: drop-shadow(0 0 7px rgba(255,90,74,.8)); }
+.gauge-wrap .arc-xp {
+  stroke: #e9b95c; stroke-width: 3; stroke-linecap: butt;
+  filter: drop-shadow(0 0 3px rgba(245,197,107,.55));
+}
+.gauge-wrap .gauge-ink { position: absolute; inset: 0; transform: none; pointer-events: none; overflow: visible; }
+.gauge-wrap .gauge-ink .ink { fill: rgba(232,212,176,.62); }
+.gauge-wrap .gauge-ink .ink.soft { fill: rgba(232,212,176,.28); }
+.gauge-wrap .gauge-ink .notch { stroke: rgba(10,8,8,.85); stroke-width: 1.6; stroke-linecap: round; }
+.gauge-wrap .portrait {
+  inset: 17px; border: 0;
+  background: radial-gradient(circle at 42% 30%, #232030, #0c0b12 70%);
+  box-shadow: inset 0 -8px 14px rgba(0,0,0,.55), inset 0 3px 8px rgba(255,236,200,.06);
+}
+.gauge-wrap.critical .portrait { border: 0; box-shadow: inset 0 0 18px rgba(226,72,61,.45); }
+/* The seal. */
+.gauge-wrap .lvl {
+  bottom: -6px; width: 30px; height: 30px; padding: 0; border-radius: 50%;
+  display: grid; place-items: center;
+  background: radial-gradient(circle at 38% 32%, #ffe3a0, #d99a3a 55%, #8a5a1c);
+  border: 0; box-shadow: 0 0 0 1.5px rgba(40,24,8,.85), 0 2px 6px rgba(0,0,0,.6),
+    inset 0 -2px 3px rgba(80,40,0,.5), inset 0 1px 2px rgba(255,248,220,.6);
+  color: #2b1804; font-family: var(--voice); font-weight: 800; font-size: 15px;
+  font-variant-numeric: lining-nums; letter-spacing: 0; line-height: 1;
+}
+
+/* -- the night -------------------------------------------------------- */
+#hud-timer .time { text-shadow: 0 2px 8px rgba(0,0,0,.7); }
+#hud-timer .rail.night {
+  height: 12px; margin-top: 10px; overflow: visible;
+  background:
+    linear-gradient(90deg, #0a0f24 0%, #121634 30%, #22193a 58%, #43203a 76%, #8a3b2a 90%, #e9974a 100%);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.6), 0 3px 10px rgba(0,0,0,.5);
+  border: 1px solid transparent;
+  border-image: var(--frame-pip) 24 / 5px / 3px stretch;
+}
+#hud-timer .rail.night .stars {
+  position: absolute; inset: 0; pointer-events: none; opacity: .85;
+  background:
+    radial-gradient(1px 1px at 6% 30%, #fff, transparent), radial-gradient(1px 1px at 13% 70%, #cfe0ff, transparent),
+    radial-gradient(1.2px 1.2px at 21% 40%, #fff, transparent), radial-gradient(1px 1px at 29% 65%, #dfe8ff, transparent),
+    radial-gradient(1px 1px at 37% 25%, #fff, transparent), radial-gradient(1.2px 1.2px at 46% 60%, #fff, transparent),
+    radial-gradient(1px 1px at 54% 35%, #e8e0ff, transparent), radial-gradient(1px 1px at 63% 72%, #fff, transparent),
+    radial-gradient(1px 1px at 71% 30%, #ffe8e0, transparent), radial-gradient(.8px .8px at 80% 55%, #fff, transparent);
+  -webkit-mask-image: linear-gradient(90deg, #000 70%, transparent 92%);
+          mask-image: linear-gradient(90deg, #000 70%, transparent 92%);
+}
+/* The hours not yet come, under a veil. */
+#hud-timer .rail.night .fill { display: none; }
+#hud-timer .rail.night .veil {
+  position: absolute; top: 0; bottom: 0; right: 0;
+  left: calc(var(--night, 0) * 100%);
+  background: linear-gradient(90deg, rgba(3,4,9,.55), rgba(3,4,9,.78));
+}
+#hud-timer .rail.night .head {
+  top: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px;
+  background: none; border-radius: 0; box-shadow: none; z-index: 2;
+  filter: drop-shadow(0 0 5px rgba(220,232,255,.75));
+}
+#hud-timer .rail.night .head svg { display: block; width: 100%; height: 100%; }
+#hud-timer .rail.night .head .moon { fill: #eef2ff; }
+#hud-timer .rail.night .sun {
+  position: absolute; right: -9px; top: 50%; width: 16px; height: 16px; margin-top: -8px;
+  border-radius: 50%; z-index: 1;
+  background: radial-gradient(circle, #fff3c8 0 35%, #ffb85a 55%, rgba(255,150,60,0) 72%);
+  opacity: calc(.45 + var(--night, 0) * .55);
+}
+/* Boss hours: small inked diamonds riding the top edge. */
+#hud-timer .rail.night .tick {
+  top: -5px; width: 7px; height: 7px; margin-left: -3.5px;
+  background: #19141e; transform: rotate(45deg);
+  box-shadow: 0 0 0 1px rgba(232,212,176,.55);
+}
+#hud-timer .rail.night .tick.passed {
+  background: var(--arc); opacity: 1;
+  box-shadow: 0 0 0 1px rgba(40,24,8,.8), 0 0 6px rgba(245,197,107,.6);
+}
+#hud-timer .mode { font-family: var(--voice); font-style: italic; font-size: 15px; letter-spacing: 0; text-transform: none; }
+
+/* -- the boss --------------------------------------------------------- */
+#hud-boss .boss-name {
+  font-family: var(--voice); font-weight: 700; font-size: 22px; letter-spacing: .01em;
+  text-transform: none; color: #f6e6e2; margin-bottom: 7px;
+  text-shadow: 0 0 16px rgba(226,72,61,.55), 0 2px 6px rgba(0,0,0,.8);
+}
+#hud-boss .boss-name::before, #hud-boss .boss-name::after {
+  content: ''; display: inline-block; width: 7px; height: 7px; margin: 0 12px 4px;
+  transform: rotate(45deg); background: #c8322b; box-shadow: 0 0 8px rgba(226,72,61,.8);
+}
+#hud-boss .b-bar {
+  position: relative; height: 14px;
+  background: linear-gradient(180deg, rgba(0,0,0,.72), rgba(20,6,8,.8));
+  border: 1px solid transparent;
+  border-image: var(--frame-slot) 24 / 8px / 4px stretch;
+  box-shadow: 0 4px 14px rgba(0,0,0,.55);
+}
+#hud-boss .b-fill, #hud-boss .b-drain { position: absolute; left: 0; top: 0; bottom: 0; }
+#hud-boss .b-drain { background: rgba(255,214,190,.42); }
+#hud-boss .b-fill {
+  background:
+    linear-gradient(180deg, rgba(255,210,190,.35), rgba(255,210,190,0) 40%, rgba(0,0,0,.35)),
+    linear-gradient(90deg, #6e1210, #b82a24 60%, #e2483d);
+  box-shadow: 0 0 10px rgba(226,72,61,.5);
+  transition: width .12s linear;
+}
+/* The next phase gate: a seal on the bar that the health cannot pass. */
+#hud-boss .b-gate {
+  position: absolute; top: -5px; bottom: -5px; width: 3px; margin-left: -1.5px; display: none;
+  background: #f4e2c8; box-shadow: 0 0 0 1px rgba(20,8,8,.85), 0 0 8px rgba(255,220,180,.7);
+}
+#hud-boss .b-gate.shown { display: block; }
+#hud-boss .b-pct {
+  font-family: var(--voice); font-style: italic; font-size: 14px; color: #cdbfb0;
+  margin-top: 6px; letter-spacing: 0;
+}
+
+/* -- the tallies ------------------------------------------------------ */
+#hud-stats .stat-line .label {
+  font-family: var(--voice); font-style: italic; font-weight: 500; font-size: 15px;
+  letter-spacing: .02em; text-transform: none; color: #b9ad98;
+}
+#hud-stats .stat-line.dps .label, #hud-stats .stat-line.hps .label { font-variant: small-caps; font-style: normal; }
+#hud-stats .stat-line .v { text-shadow: 0 2px 6px rgba(0,0,0,.7); }
+
+/* -- meters and the auto switch --------------------------------------- */
+.meter .meter-label {
+  font-family: var(--voice); font-style: italic; font-weight: 500; font-size: 14px;
+  letter-spacing: 0; text-transform: none; color: #c9bda6;
+}
+.meter .meter-track {
+  height: 7px; border-radius: 0; border: 1px solid transparent;
+  border-image: var(--frame-pip) 24 / 4px / 2px stretch;
+}
+.hud-auto {
+  font-family: var(--voice); font-style: italic; font-size: 14px; letter-spacing: 0;
+  text-transform: none; font-weight: 500;
+}
+#hud-boss .b-drain { background: linear-gradient(180deg, rgba(255,214,176,.62), rgba(214,130,96,.5)); }
+.gauge-wrap .gauge-ink .ink { fill: rgba(236,214,172,.85); }
+.gauge-wrap .gauge-ink .ink.soft { fill: rgba(236,214,172,.4); }
+@media (max-width: 720px) {
+  .gauge-wrap .lvl { width: 22px; height: 22px; font-size: 12px; bottom: -4px; }
+}

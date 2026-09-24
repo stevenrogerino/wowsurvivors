@@ -52,6 +52,37 @@
     return c;
   }
 
+  /** A ring drawn in ink: a circle that wanders a fraction off true and
+   *  swells and thins as it goes round, returned as an SVG path to fill with
+   *  the even-odd rule. The same hand as the frames in src/ui/frames.js, bent
+   *  into a circle for the portrait's medallion. */
+  function inkRing(cx, cy, r, w, seed) {
+    let t = (seed * 2654435761) >>> 0;
+    const rnd = () => {
+      t = (t + 0x6D2B79F5) >>> 0;
+      let q = Math.imul(t ^ (t >>> 15), t | 1);
+      q ^= q + Math.imul(q ^ (q >>> 7), q | 61);
+      return ((q ^ (q >>> 14)) >>> 0) / 4294967296;
+    };
+    const p1 = rnd() * 6.28, p2 = rnd() * 6.28, p3 = rnd() * 6.28;
+    const out = [], inn = [];
+    const n = 72;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const rr = r + 0.45 * Math.sin(a * 2 + p1) + 0.25 * Math.sin(a * 5 + p2);
+      const hw = w * (0.5 + 0.22 * Math.sin(a * 3 + p3));
+      out.push(`${(cx + Math.cos(a) * (rr + hw)).toFixed(2)} ${(cy + Math.sin(a) * (rr + hw)).toFixed(2)}`);
+      inn.push(`${(cx + Math.cos(a) * (rr - hw)).toFixed(2)} ${(cy + Math.sin(a) * (rr - hw)).toFixed(2)}`);
+    }
+    return 'M' + out.join(' L') + 'Z M' + inn.reverse().join(' L') + 'Z';
+  }
+
+  function svgEl(tag, attrs) {
+    const n = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  }
+
   /* ================================================================= HUD == */
   UI.buildHUD = function () {
     const hud = this.hud;
@@ -63,21 +94,39 @@
     const gauge = el('div', 'gauge-wrap');
     const svg = document.createElementNS(ns, 'svg');
     svg.setAttribute('viewBox', '0 0 112 112');
-    const rHP = 52, rXP = 43;
-    // A dashed track behind the health arc reads as graduations, so a glance
-    // gives a rough fraction without reading the number.
-    const tHP = svgArc(rHP, 6, 'track');
-    const gHP = svgArc(rHP, 6, 'ticks');
-    // 32 graduations that divide the circumference exactly, so the last tick
-    // meets the first instead of leaving a ragged seam at twelve o'clock.
-    gHP.style.strokeDasharray = `1.5 ${(2 * Math.PI * rHP) / 32 - 1.5}`;
-    const aHP = svgArc(rHP, 6, 'arc-hp');
+    /* Health is a painted band - lit at the top, deep at the foot - and
+       experience a gilt thread inside it. Both still run on dash offsets;
+       what changed is the paint, and the machined graduations are gone. */
+    const rHP = 50.5, rXP = 42.5;
+    const defs = svgEl('defs', {});
+    const grad = svgEl('linearGradient', { id: 'hp-paint', x1: '0', y1: '0', x2: '1', y2: '0' });
+    // The svg is turned -90deg, so its x axis runs up the screen.
+    grad.append(svgEl('stop', { offset: '0', 'stop-color': '#7a1614' }),
+      svgEl('stop', { offset: '0.55', 'stop-color': '#c8322b' }),
+      svgEl('stop', { offset: '1', 'stop-color': '#ff7a5c' }));
+    defs.append(grad);
+    const tHP = svgArc(rHP, 8, 'track');
+    const aHP = svgArc(rHP, 8, 'arc-hp');
     const tXP = svgArc(rXP, 3, 'track');
     const aXP = svgArc(rXP, 3, 'arc-xp');
-    svg.append(tHP, gHP, aHP, tXP, aXP);
+    svg.append(defs, tHP, aHP, tXP, aXP);
+    // The ink over it, unturned: the medallion's edges, and a notch at each
+    // quarter so a glance still gives a fraction without reading a number.
+    const ink = svgEl('svg', { viewBox: '0 0 112 112', class: 'gauge-ink' });
+    ink.append(svgEl('path', { d: inkRing(56, 56, 55.2, 1.5, 3), 'fill-rule': 'evenodd', class: 'ink' }),
+      svgEl('path', { d: inkRing(56, 56, 45.8, 1.1, 5), 'fill-rule': 'evenodd', class: 'ink soft' }),
+      svgEl('path', { d: inkRing(56, 56, 39.6, 1.3, 7), 'fill-rule': 'evenodd', class: 'ink' }));
+    // 25%, 50% and 75% of the band, which starts at twelve and runs clockwise.
+    for (const q of [0.25, 0.5, 0.75]) {
+      const ang = q * Math.PI * 2 - Math.PI / 2;
+      const x0 = 56 + Math.cos(ang) * 46.5, y0 = 56 + Math.sin(ang) * 46.5;
+      const x1 = 56 + Math.cos(ang) * 55, y1 = 56 + Math.sin(ang) * 55;
+      ink.append(svgEl('line', { x1: x0, y1: y0, x2: x1, y2: y1, class: 'notch' }));
+    }
     const portrait = el('div', 'portrait');
-    const lvl = el('div', 'lvl', 'LV 1');
-    gauge.append(svg, portrait, lvl);
+    // The level is a seal pressed into the foot of the medallion.
+    const lvl = el('div', 'lvl', '1');
+    gauge.append(svg, portrait, ink, lvl);
 
     const vitals = el('div'); vitals.id = 'hud-vitals';
     const name = el('div', 'name', '');
@@ -109,38 +158,41 @@
     /* -- timer rail ------------------------------------------------------- */
     const timer = el('div'); timer.id = 'hud-timer';
     const timeText = el('div', 'time', '0:00');
-    const rail = el('div', 'rail');
+    /* The night, as a strip of sky: dusk at the left, dawn at the right,
+       stars across it, and the hours still to come under a veil that draws
+       back as they pass. The moon rides the edge of the veil - it is where
+       you are in the night - and each boss is an inked mark along the top.
+       railFill is the veil's complement, kept under its old name. */
+    const rail = el('div', 'rail night');
     const railFill = el('div', 'fill');
+    const veil = el('div', 'veil');
     const railHead = el('div', 'head');
-    rail.append(railFill, railHead);
+    railHead.append(svgEl('svg', { viewBox: '0 0 20 20' }));
+    railHead.firstChild.append(svgEl('path', { d: 'M13.5 2.6a8 8 0 1 0 3.9 12.6A6.6 6.6 0 0 1 13.5 2.6Z', class: 'moon' }));
+    rail.append(railFill, veil, el('i', 'stars'), railHead, el('i', 'sun'));
     for (const at of WS.Config.bossTimes) {
       const tick = el('i', 'tick');
       tick.style.left = (at / WS.Config.deathTime * 100) + '%';
       tick.dataset.at = at;
       rail.append(tick);
     }
-    const deathTick = el('i', 'tick death');
-    deathTick.style.left = '100%';
-    rail.append(deathTick);
     const mode = el('div', 'label mode', '');
     timer.append(timeText, rail, mode);
 
     /* -- boss arc --------------------------------------------------------- */
     const boss = el('div', 'hidden'); boss.id = 'hud-boss';
     const bossName = el('div', 'boss-name', '');
-    const bossSvg = document.createElementNS(ns, 'svg');
-    bossSvg.setAttribute('viewBox', '0 0 760 30');
-    bossSvg.setAttribute('preserveAspectRatio', 'none');
-    const CURVE = 'M5,25 Q380,-4 755,25';
-    const bTrack = document.createElementNS(ns, 'path');
-    bTrack.setAttribute('class', 'b-track');
-    bTrack.setAttribute('d', CURVE);
-    const bFill = document.createElementNS(ns, 'path');
-    bFill.setAttribute('class', 'b-fill');
-    bFill.setAttribute('d', CURVE);
-    bossSvg.append(bTrack, bFill);
+    /* A painted bar in a drawn frame. Behind the health, a paler band that
+       holds where the health was and drains after it, so a big hit reads as
+       a big hit; and a seal on the bar at the next phase gate, where the
+       finale will not let the health fall past until something breaks. */
+    const bar = el('div', 'b-bar');
+    const bDrain = el('div', 'b-drain');
+    const bFill = el('div', 'b-fill');
+    const bGate = el('i', 'b-gate');
+    bar.append(bDrain, bFill, bGate);
     const bossPct = el('div', 'b-pct', '');
-    boss.append(bossName, bossSvg, bossPct);
+    boss.append(bossName, bar, bossPct);
 
     /* -- tallies ---------------------------------------------------------- */
     const stats = el('div'); stats.id = 'hud-stats';
@@ -151,10 +203,10 @@
       stats.append(line);
       return v;
     };
-    const goldV = tally('gold', 'Gold');
-    const killV = tally('kills', 'Slain');
-    const dpsV = tally('dps', 'DPS');
-    const hpsV = tally('hps', 'HPS');
+    const goldV = tally('gold', 'gold');
+    const killV = tally('kills', 'slain');
+    const dpsV = tally('dps', 'dps');
+    const hpsV = tally('hps', 'hps');
 
     const weapons = el('div'); weapons.id = 'hud-weapons';
     const passives = el('div'); passives.id = 'hud-passives';
@@ -165,7 +217,7 @@
     this.els = {
       gauge, aHP, aXP, portrait, lvl, name, hpText, meters, autoBp,
       timeText, railFill, railHead, rail, mode,
-      boss, bossName, bFill, bossPct,
+      boss, bossName, bFill, bDrain, bGate, bossPct,
       goldV, killV, dpsV, hpsV, weapons, passives, toasts,
       hpCirc: 2 * Math.PI * rHP, xpCirc: 2 * Math.PI * rXP,
       bossLen: 0,
@@ -173,8 +225,9 @@
     };
     aHP.style.strokeDasharray = this.els.hpCirc;
     aXP.style.strokeDasharray = this.els.xpCirc;
-    this.els.bossLen = (bFill.getTotalLength && bFill.getTotalLength()) || 762;
-    bFill.style.strokeDasharray = this.els.bossLen;
+    this.els.bossDrain = 1;
+    this.els.bossDrainAt = 0;
+    this.els.bossRef = null;
   };
 
   /** The auto-take switch's face: shown once the run has offered a Breaking
@@ -299,13 +352,15 @@
     e.gauge.classList.toggle('critical', hpPct < 0.3);
     const xpPct = WS.clamp(p.xp / p.xpToNext, 0, 1);
     e.aXP.style.strokeDashoffset = -e.xpCirc * (1 - xpPct);
-    e.lvl.textContent = 'LV ' + p.level;
+    const lv = String(p.level);
+    if (e.lvl.textContent !== lv) e.lvl.textContent = lv;
     e.hpText.innerHTML = `${WS.max(0, WS.floor(p.health))}<small> / ${WS.floor(p.maxHealth)}</small>`;
 
     e.timeText.textContent = WS.formatTime(run.time);
     const clockPct = WS.min(100, run.time / WS.Config.deathTime * 100);
     e.railFill.style.width = clockPct + '%';
     e.railHead.style.left = clockPct + '%';
+    e.rail.style.setProperty('--night', (clockPct / 100).toFixed(4));
     for (const tick of e.rail.children) {
       if (tick.dataset && tick.dataset.at) {
         tick.classList.toggle('passed', run.time >= +tick.dataset.at);
@@ -341,7 +396,21 @@
       const bossName = boss.displayName || boss.template.name;
       if (e.bossName.textContent !== bossName) e.bossName.textContent = bossName;
       const pct = WS.clamp(boss.health / boss.maxHealth, 0, 1);
-      e.bFill.style.strokeDashoffset = e.bossLen * (1 - pct);
+      const now = performance.now() / 1000;
+      if (e.bossRef !== boss) { e.bossRef = boss; e.bossDrain = pct; e.bossDrainAt = now; }
+      // The pale band holds for a beat after a hit, then runs down to meet it.
+      if (pct >= e.bossDrain) { e.bossDrain = pct; e.bossDrainAt = now; }
+      else if (now - e.bossDrainAt > 0.45) {
+        // A third of the bar a second, in real time, whatever the frame rate.
+        const dt = WS.min(0.1, now - (e.bossDrainTick || now));
+        e.bossDrain = WS.max(pct, e.bossDrain - dt * 0.33);
+      }
+      e.bossDrainTick = now;
+      e.bFill.style.width = (pct * 100).toFixed(2) + '%';
+      e.bDrain.style.width = (e.bossDrain * 100).toFixed(2) + '%';
+      const gate = boss.hpFloor > 0 ? boss.hpFloor / boss.maxHealth : 0;
+      e.bGate.style.left = (gate * 100).toFixed(2) + '%';
+      e.bGate.classList.toggle('shown', gate > 0);
       e.bossPct.textContent = `${WS.formatNumber(boss.health)} / ${WS.formatNumber(boss.maxHealth)}  ·  ${WS.round(pct * 100)}%`;
     } else {
       e.boss.classList.add('hidden');
