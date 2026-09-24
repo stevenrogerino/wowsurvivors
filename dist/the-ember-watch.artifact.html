@@ -7364,24 +7364,55 @@ window.WS = window.WS || {};
          * mark on a face with one small highlight in them, and that inversion
          * is the entire fix: it reads as an eye at portrait size and as a
          * decisive dark mark at 34px, where a pale one dissolves. */
-        g.fillStyle = 'rgba(44,30,22,.42)';
-        g.beginPath(); g.ellipse(0, 0.5, 3.1, 2.3, 0, 0, WS.TAU); g.fill();
+        g.fillStyle = 'rgba(44,30,22,.3)';
+        g.beginPath(); g.ellipse(0, -0.2, 3.0, 2.1, 0, 0, WS.TAU); g.fill();
+        /* AN EYE, not a hole. The dark almond carried the look at 34px and
+           still does - it is the base everything below sits in - but at
+           portrait size it was a blank: no lid, no iris, the whole cast
+           staring out of the same two dolls' eyes. So inside it, small
+           enough that the mark stays dark at play size: a sliver of white
+           at the corners, an iris in the survivor's own colour, a pupil, a
+           catchlight, and a heavy upper lid that gives the eye its lean. */
         g.fillStyle = '#20161a';
         g.beginPath(); g.ellipse(0, 0, 2.15, 1.6, 0, 0, WS.TAU); g.fill();
-        g.fillStyle = C.eye;
-        g.beginPath(); g.ellipse(-0.35, -0.4, 0.95, 0.8, 0, 0, WS.TAU); g.fill();
+        g.save();
+        g.beginPath(); g.ellipse(0, 0.1, 2.0, 1.42, 0, 0, WS.TAU); g.clip();
+        g.fillStyle = 'rgba(236,226,214,.55)';
+        g.fillRect(-2.2, -1.6, 4.4, 3.2);
+        g.fillStyle = C.irisRing || '#2a1c14';
+        g.beginPath(); g.arc(dir * -0.15, 0.15, 1.3, 0, WS.TAU); g.fill();
+        g.fillStyle = C.iris || C.eye;
+        g.beginPath(); g.arc(dir * -0.15, 0.15, 1.02, 0, WS.TAU); g.fill();
+        g.fillStyle = '#0e0a0c';
+        g.beginPath(); g.arc(dir * -0.15, 0.2, 0.52, 0, WS.TAU); g.fill();
+        // the lid's shadow across the top of the eyeball
+        const lid = g.createLinearGradient(0, -1.6, 0, 0.2);
+        lid.addColorStop(0, 'rgba(30,18,14,.75)'); lid.addColorStop(1, 'rgba(30,18,14,0)');
+        g.fillStyle = lid; g.fillRect(-2.2, -1.6, 4.4, 1.8);
+        g.restore();
+        g.fillStyle = 'rgba(255,255,255,.92)';
+        g.beginPath(); g.arc(dir * -0.15 - 0.45, -0.3, 0.36, 0, WS.TAU); g.fill();
+        // the upper lid: a heavy line over the top, flicked at the outer end
+        g.strokeStyle = '#1a100c'; g.lineWidth = 0.85; g.lineCap = 'round';
+        g.beginPath();
+        g.moveTo(-dir * 2.1, 0.2);
+        g.quadraticCurveTo(0, -2.1, dir * 2.3, -0.3);
+        g.lineTo(dir * 2.9, -0.7);
+        g.stroke();
       }
       g.restore();
       if (lit2) glow(g, cx + dir * dx, y, 5.5, C.eye, 0.5);
     }
     // A brow: one short dark stroke over each eye, angled in. Two marks, and
     // the face has an expression instead of a stare.
-    g.strokeStyle = 'rgba(26,18,12,.45)';
-    g.lineWidth = 1.1; g.lineCap = 'round';
+    /* Set low at the inner end and arched out, which is resolve; the other
+       way up - inner end high - read, once the eyes had lids, as worry. */
+    g.strokeStyle = tight ? 'rgba(26,18,12,.45)' : 'rgba(34,22,14,.7)';
+    g.lineWidth = tight ? 1.1 : 1.25; g.lineCap = 'round';
     for (const dir of [-1, 1]) {
       g.beginPath();
-      g.moveTo(cx + dir * 1.9, y - 3.4);
-      g.lineTo(cx + dir * 6.1, y - 2.7);
+      g.moveTo(cx + dir * 1.8, y - 2.9);
+      g.quadraticCurveTo(cx + dir * 4.2, y - 4.4, cx + dir * 6.4, y - 3.6);
       g.stroke();
     }
     if (!tight) {
@@ -7407,6 +7438,38 @@ window.WS = window.WS || {};
       g.stroke();
       g.restore();
     }
+  }
+
+  /** A mouth, and the warmth in the cheeks. Only on the open faces - a
+   *  beard or a moustache already is the lower half of the face.
+   *
+   *  Every clean-shaven survivor was eyes and a nose over an unbroken
+   *  field of skin down to the chin, which is the face of a doll. Two
+   *  marks change that: a mouth set a little firm (they have been awake
+   *  all night) with the lower lip catching the light, and a blush on each
+   *  cheek. Neither changes a pixel of the outline. */
+  function face(g, cx, y) {
+    const my = y + 7.4;
+    g.save();
+    for (const dir of [-1, 1]) {
+      const bl = g.createRadialGradient(cx + dir * 6.2, y + 4.4, 0, cx + dir * 6.2, y + 4.4, 3.4);
+      bl.addColorStop(0, 'rgba(214,110,96,.26)'); bl.addColorStop(1, 'rgba(214,110,96,0)');
+      g.fillStyle = bl;
+      g.beginPath(); g.arc(cx + dir * 6.2, y + 4.4, 3.4, 0, WS.TAU); g.fill();
+    }
+    g.lineCap = 'round';
+    g.strokeStyle = 'rgba(70,32,26,.8)'; g.lineWidth = 0.8;
+    // a half smile, the right corner up: they have made it through worse
+    g.beginPath();
+    g.moveTo(cx - 2.4, my - 0.3);
+    g.quadraticCurveTo(cx - 0.2, my + 0.7, cx + 2.7, my - 0.8);
+    g.stroke();
+    // the lower lip: a little light under the line, and its shadow beneath
+    g.strokeStyle = 'rgba(236,170,150,.5)'; g.lineWidth = 0.7;
+    g.beginPath(); g.moveTo(cx - 1.2, my + 1.0); g.quadraticCurveTo(cx + 0.2, my + 1.5, cx + 1.4, my + 1.0); g.stroke();
+    g.strokeStyle = 'rgba(40,22,16,.25)'; g.lineWidth = 0.6;
+    g.beginPath(); g.moveTo(cx - 1, my + 2.2); g.quadraticCurveTo(cx + 0.2, my + 2.6, cx + 1.2, my + 2.2); g.stroke();
+    g.restore();
   }
 
   function drawHead(g, cfg, C) {
@@ -7652,12 +7715,14 @@ window.WS = window.WS || {};
           g.fill();
           glow(g, cx + dir * 3.9, eyeY - 1.2, 7, C.eye, 0.6);
         }
+        face(g, cx, eyeY);
         // The knot, trailing back past the jaw.
         panel(g, [[cx + HEAD_RX - 1, eyeY - 4.6], [cx + HEAD_RX + 5, eyeY - 1],
           [cx + HEAD_RX + 4.5, eyeY + 5], [cx + HEAD_RX - 1, eyeY + 2]],
           ramp([0.16, 0.13, 0.19]));
       } else {
         eyes(g, cx, eyeY, C, false, false);
+        if (!cfg.beard && !cfg.mustache) face(g, cx, eyeY);
         if (cfg.beard) {
           /* A beard reads by its BOTTOM EDGE and by the fact that it is made
              of strands. The first one was a rounded slab with a separate
@@ -8061,6 +8126,27 @@ window.WS = window.WS || {};
         g.beginPath(); g.moveTo(x, FOOT_Y - 4.5); g.lineTo(x - 0.8, FOOT_Y); g.stroke();
         g.strokeStyle = C.trimRamp.key; g.globalAlpha = 0.3;
         g.beginPath(); g.moveTo(x + 1.1, FOOT_Y - 4.5); g.lineTo(x + 0.3, FOOT_Y); g.stroke();
+      }
+      g.restore();
+      /* Embroidery above the braid: a running border of diamonds in the
+         survivor's own colour, stitched between two threads. A robe is the
+         most expensive thing a caster owns and it was plain cloth to the
+         floor; a worked border is what says somebody made it for them. */
+      g.save();
+      g.beginPath();
+      g.moveTo(cx - b.waist, WAIST_Y - 4 - lift); g.lineTo(cx + b.waist, WAIST_Y - 4 - lift);
+      g.lineTo(cx + b.hip + 8 + drag, FOOT_Y); g.lineTo(cx - b.hip - 8 + drag, FOOT_Y);
+      g.closePath(); g.clip();
+      const ey = FOOT_Y - 7.6, span = (b.hip + 7.4) * 2, x0 = cx - b.hip - 7.4 + drag;
+      g.strokeStyle = C.trimRamp.key; g.globalAlpha = 0.55; g.lineWidth = 0.5;
+      for (const dy of [-2.2, 2.2]) { g.beginPath(); g.moveTo(x0 - 2, ey + dy); g.lineTo(x0 + span + 2, ey + dy); g.stroke(); }
+      g.globalAlpha = 0.85;
+      for (let i = 0; i < 9; i++) {
+        const x = x0 + span * (i + 0.5) / 9;
+        g.fillStyle = C.accentRamp.core;
+        g.beginPath(); g.moveTo(x, ey - 1.6); g.lineTo(x + 1.3, ey); g.lineTo(x, ey + 1.6); g.lineTo(x - 1.3, ey); g.closePath(); g.fill();
+        g.fillStyle = C.trimRamp.key;
+        g.beginPath(); g.arc(x + span / 18, ey, 0.45, 0, WS.TAU); g.fill();
       }
       g.restore();
       g.fillStyle = 'rgba(0,0,0,.30)';
@@ -9616,6 +9702,11 @@ window.WS = window.WS || {};
        * there read as anger where a cold one reads as absence. */
       eye: demon ? '#d9ff6b'
         : eyeOverride ? WS.hex(eyeOverride) : WS.hex(WS.mix(t, [1, 1, 1], 0.72)),
+      /* The iris of an open eye: the survivor's colour grounded toward a
+         warm brown, so a white-tinted priest still has an eye with a colour
+         in it and a saturated one does not glare. */
+      iris: demon ? '#b8e84a' : WS.hex(WS.mix(t, [0.36, 0.25, 0.17], 0.45)),
+      irisRing: demon ? '#2a3a10' : WS.hex(WS.mix(t, [0.1, 0.07, 0.05], 0.72)),
     };
   }
 
