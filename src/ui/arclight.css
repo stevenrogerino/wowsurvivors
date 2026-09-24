@@ -1666,3 +1666,254 @@ input[type=range]::-moz-range-thumb {
 }
 .import-box:focus { border-color: var(--rim-arc); }
 .import-box::placeholder { color: var(--ink-faint); }
+
+/* ======================================================================
+ * THE VOICE
+ *
+ * The interface was clean and it was nobody's: every screen the same
+ * obsidian box, every region named in ten-pixel tracked capitals, every
+ * frame bracketed like a targeting reticle, one grotesque for everything.
+ * That is the look of a UI that was generated rather than made, and a game
+ * about a lamp held against the dark should not read like a dashboard.
+ *
+ * So the Watch speaks in its own hand. Alegreya - a calligraphic book face -
+ * carries the voice: titles, names, verdicts, the captions that used to be
+ * shouted in caps. Archivo stays for the working parts, and the HUD, which
+ * is read at a glance mid-fight, is left almost alone. Surfaces get grain,
+ * so they read as material rather than as fills. The corner reticles give
+ * way to the one shape this world is actually built on: the ember stone.
+ * ====================================================================== */
+:root {
+  --voice: 'Alegreya', 'Iowan Old Style', Georgia, serif;
+  /* A fine film grain, as a tile. feTurbulence rendered once by the
+     browser; no image asset. */
+  --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 .92  0 0 0 0 .8  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* -- the grain: one layer over every menu, never over the field ------- */
+#overlay::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 5;
+  background-image: var(--grain); background-size: 160px 160px;
+  opacity: .055; mix-blend-mode: overlay;
+}
+
+/* -- headings speak --------------------------------------------------- */
+.overlay-head h1 {
+  font-family: var(--voice); font-weight: 700; text-transform: none;
+  letter-spacing: .005em; font-size: 36px; line-height: 1;
+  color: var(--arc-hot);
+  text-shadow: 0 0 28px rgba(245,197,107,.22), 0 2px 0 rgba(0,0,0,.6);
+}
+.overlay-head .sub {
+  font-family: var(--voice); font-style: italic; font-weight: 500;
+  font-size: 17px; color: #b9b2a4;
+}
+.panel-title {
+  font-family: var(--voice); font-style: italic; font-weight: 500;
+  font-size: 16px; letter-spacing: .01em; text-transform: none;
+  color: var(--arc);
+}
+/* The ember stone - the shape every gem on the field is - in front of a
+   caption, in place of the corner reticle. */
+.panel-title::before, .ember-mark::before {
+  content: ""; display: inline-block; width: 7px; height: 7px; margin: 0 9px 2px 1px;
+  background: currentColor; transform: rotate(45deg);
+  box-shadow: 0 0 8px currentColor; opacity: .85;
+}
+.bracketed::before, .bracketed::after { opacity: .28; }
+
+/* -- tabs: a row of names, not a row of commands ---------------------- */
+.tab {
+  font-family: var(--voice); font-weight: 700; font-size: 17px;
+  letter-spacing: .01em; text-transform: none; padding: 9px 15px 10px;
+  color: #9a9486;
+}
+.tab.active {
+  color: var(--arc-hot);
+  border-bottom-color: var(--arc);
+  text-shadow: 0 0 16px rgba(245,197,107,.35);
+}
+
+/* -- buttons: sentence case, and the one that starts a run is lit ------ */
+.btn {
+  text-transform: none; letter-spacing: .015em; font-size: 13px; font-weight: 600;
+}
+.btn.small { text-transform: none; letter-spacing: .015em; font-size: 12px; }
+.btn.primary {
+  font-family: var(--voice); font-weight: 700; font-size: 17px; letter-spacing: .01em;
+  padding: 9px 26px 10px;
+  background:
+    radial-gradient(120% 140% at 50% 120%, rgba(255,150,60,.28), transparent 60%),
+    linear-gradient(180deg, rgba(245,197,107,.2), rgba(245,197,107,.05));
+  box-shadow: var(--bevel), 0 0 26px -8px rgba(255,160,70,.55);
+  animation: hearth 5.5s ease-in-out infinite;
+}
+/* A banked fire does not pulse; it breathes, unevenly. */
+@keyframes hearth {
+  0%, 100% { box-shadow: var(--bevel), 0 0 24px -9px rgba(255,160,70,.5); }
+  37%      { box-shadow: var(--bevel), 0 0 30px -7px rgba(255,160,70,.66); }
+  52%      { box-shadow: var(--bevel), 0 0 22px -10px rgba(255,160,70,.44); }
+  78%      { box-shadow: var(--bevel), 0 0 28px -8px rgba(255,160,70,.6); }
+}
+@media (prefers-reduced-motion: reduce) { .btn.primary { animation: none; } }
+
+/* -- cards: the medallion is the card --------------------------------- */
+.card { align-items: center; text-align: center; padding: 24px 22px 20px; gap: 9px; }
+.card .icon-plate, .card .icon-plate img { width: 84px; height: 84px; }
+.card .icon-plate { margin-bottom: 4px; }
+.card .icon-plate::before { inset: -22px; opacity: .2; }
+.card .card-name {
+  font-family: var(--voice); font-weight: 700; font-size: 22px; line-height: 1.1;
+  letter-spacing: .005em;
+}
+.card .card-note {
+  font-family: var(--voice); font-style: italic; font-weight: 500;
+  font-size: 14px; letter-spacing: .01em; text-transform: none; color: #a39c8e;
+}
+.card .card-body { font-size: 14px; color: #b6bccb; }
+.card .card-pips { justify-content: center; }
+.card .card-reacts { align-items: center; }
+/* the corner ticks go; one stone sits at the top of the card instead */
+.card .card-inlay i { display: none; }
+.card .card-inlay::before {
+  content: ""; position: absolute; top: -5px; left: 50%; width: 8px; height: 8px;
+  margin-left: -4px; transform: rotate(45deg);
+  background: var(--q, var(--arc)); box-shadow: 0 0 10px var(--q, var(--arc));
+  opacity: .8;
+}
+
+/* -- the verdict is said, not labelled -------------------------------- */
+.verdict-title {
+  font-family: var(--voice); font-weight: 800; letter-spacing: .005em;
+  font-size: 48px;
+}
+.verdict-line { font-family: var(--voice); font-style: italic; font-size: 18px; color: #b3ac9e; }
+
+/* -- the title: an ember, not a gradient ------------------------------ */
+#title-wrap .game-title, #prologue .game-title {
+  font-family: var(--voice); text-transform: none; gap: .22em;
+  font-size: clamp(34px, 5.4vw, 62px);
+}
+#title-wrap .game-title .art, #prologue .game-title .art {
+  font-family: var(--voice); font-style: italic; font-weight: 500;
+  font-size: .5em; letter-spacing: .02em; color: #8d8779;
+}
+#title-wrap .game-title .wm, #prologue .game-title .wm {
+  font-weight: 700; letter-spacing: .01em; color: #d4d6de;
+}
+#title-wrap .game-title .nm, #prologue .game-title .nm {
+  font-weight: 800; letter-spacing: .005em; position: relative;
+  animation: ember-breath 6.5s ease-in-out infinite;
+}
+/* It smoulders: the glow under it swells and gutters on an uneven count. */
+@keyframes ember-breath {
+  0%, 100% { filter: drop-shadow(0 2px 0 rgba(0,0,0,.55)) drop-shadow(0 0 26px rgba(255,150,60,.28)); }
+  23%      { filter: drop-shadow(0 2px 0 rgba(0,0,0,.55)) drop-shadow(0 0 40px rgba(255,160,70,.5)); }
+  31%      { filter: drop-shadow(0 2px 0 rgba(0,0,0,.55)) drop-shadow(0 0 22px rgba(255,140,50,.24)); }
+  64%      { filter: drop-shadow(0 2px 0 rgba(0,0,0,.55)) drop-shadow(0 0 34px rgba(255,160,70,.42)); }
+}
+#title-wrap .game-sub {
+  font-family: var(--voice); font-style: italic; font-weight: 500;
+  font-size: 18px; letter-spacing: .01em; text-transform: none; color: #9d968a;
+  margin-top: 10px;
+}
+/* sparks leaving the word */
+#title-wrap .sparks { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+#title-wrap .sparks i {
+  position: absolute; bottom: 30%; width: 3px; height: 3px; border-radius: 50%;
+  background: #ffc27a; box-shadow: 0 0 6px 1px rgba(255,150,60,.8);
+  opacity: 0; animation: spark 3.6s ease-out infinite;
+}
+@keyframes spark {
+  0%   { opacity: 0; transform: translate(0, 0) scale(1); }
+  12%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx, 8px), -70px) scale(.3); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #title-wrap .game-title .nm { animation: none; }
+  #title-wrap .sparks { display: none; }
+}
+#title-wrap h1.game-title { position: relative; }
+
+/* -- the purse, in words --------------------------------------------- */
+.bank .label, .bank > span:first-child {
+  font-family: var(--voice); font-style: italic; font-size: 15px;
+  letter-spacing: .01em; text-transform: none;
+}
+
+/* -- the roster speaks too -------------------------------------------- */
+.cartouche h3 {
+  font-family: var(--voice); font-weight: 700; font-size: 32px; letter-spacing: .005em;
+  line-height: 1.05;
+}
+.cartouche .role {
+  font-family: var(--voice); font-style: italic; font-weight: 500;
+  font-size: 16px; letter-spacing: .01em; text-transform: none; color: #b0a58d;
+}
+.cartouche .flavour {
+  font-family: var(--voice); font-style: italic; font-weight: 500;
+  font-size: 17px; color: #c9c3b6; line-height: 1.4;
+}
+.pick .pick-name { font-family: var(--voice); font-weight: 700; font-size: 16px; letter-spacing: 0; line-height: 1.15; }
+
+/* The gilt, re-poured for a serif: the old ramp's dark middle band sat in
+   the thin strokes and turned the word to mud. Brighter, hotter, with the
+   heat low in the letters where a coal would carry it. */
+#title-wrap .game-title .nm, #prologue .game-title .nm {
+  background-image: linear-gradient(180deg,
+    #fff4d8 0%, #ffe2a4 30%, #ffc56a 58%, #f39a3c 82%, #ffcf86 100%);
+}
+/* The logotype is an h1 in the overlay head, so it inherited the heading's
+   text-shadow - and on a word whose fill is transparent (the gilt is a
+   clipped background) a text-shadow shows THROUGH the letters, which is
+   what was turning EMBER to mud. Its glow is a filter; it wants no shadow. */
+#title-wrap .game-title, #title-wrap .game-title .nm { text-shadow: none; }
+#title-wrap .game-title .wm { text-shadow: 0 2px 0 rgba(0,0,0,.6); }
+
+/* -- the build sheet and the verdict's figures, in the same hand ------- */
+.sheet h3 {
+  font-family: var(--voice); font-style: italic; font-weight: 500;
+  font-size: 17px; letter-spacing: .01em; text-transform: none; color: var(--arc);
+}
+.sheet h3::before {
+  content: ""; display: inline-block; width: 7px; height: 7px; margin: 0 9px 2px 1px;
+  background: currentColor; transform: rotate(45deg); box-shadow: 0 0 8px currentColor; opacity: .85;
+}
+.verdict-figures .vf .label {
+  font-family: var(--voice); font-style: italic; font-weight: 500; font-size: 14px;
+  letter-spacing: .01em; text-transform: lowercase; color: #9d968a;
+}
+/* A card is as tall as what it has to say. The row still stretches its
+   cards to one height, so three short blessings stand level without a
+   hand's-breadth of empty glass under each. */
+.card { min-height: 236px; }
+
+/* -- rows: names in the voice, a mastered lesson says so -------------- */
+.row .row-name { font-family: var(--voice); font-weight: 700; font-size: 18px; letter-spacing: .005em; }
+/* later than, and as specific as, the tag's own rule - so it wins plainly */
+.maxed-tag {
+  font-family: var(--voice); font-style: italic; font-weight: 500;
+  letter-spacing: .01em; text-transform: none; font-size: 16px;
+}
+/* The sheet above the grid grew with the voice and pushed the second row
+   of survivors under the fold, where focusing it scrolled the pane - so the
+   voice is set a size tighter here, and a tile's name keeps to one line. */
+.cartouche h3 { font-size: 29px; }
+.cartouche .flavour { font-size: 16px; margin-top: 6px; }
+.pick .pick-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pick > div { min-width: 0; }
+/* ...and the head gives a little back, so the whole roster still fits a
+   720p window without the pane scrolling under the player's focus. */
+#title-wrap .game-title { font-size: clamp(34px, 5vw, 56px); }
+#title-wrap .game-sub { margin-top: 6px; }
+.tab { padding: 7px 15px 8px; }
+
+/* The survivor's name is spoken, not labelled. */
+#hud-vitals .name {
+  font-family: var(--voice);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 17px;
+  letter-spacing: .2px;
+  color: #d9cdb4;
+}

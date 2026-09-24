@@ -32,19 +32,20 @@ asset is being pulled in at runtime.
 
 ## Licensed — used within the licence
 
-**Typefaces.** Two families, both under the SIL Open Font License 1.1:
+**Typefaces.** Three families, all under the SIL Open Font License 1.1:
 
 | Family | Copyright | Canonical licence |
 | --- | --- | --- |
 | Archivo | Omnibus-Type | https://github.com/Omnibus-Type/Archivo |
 | IBM Plex Mono | IBM Corp. | https://github.com/IBM/plex |
+| Alegreya | Juan Pablo del Peral, Huerta Tipográfica | https://github.com/huertatipografica/Alegreya |
 
 Latin subsets are embedded as data URIs in `src/ui/fonts.css`. The OFL
 expressly permits bundling fonts with, and embedding them in, a program —
 including a commercial one. Three conditions matter in practice:
 
 1. The copyright and licence notice must travel with the font. **That is what
-   this file is doing.** Before any public release, drop the two upstream
+   this file is doing.** Before any public release, drop the three upstream
    `OFL.txt` files into `licenses/` verbatim rather than relying on this
    summary.
 2. The fonts may not be sold on their own. Shipping them inside the game is

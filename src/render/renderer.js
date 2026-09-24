@@ -22,10 +22,18 @@
   // cascade, so the fallbacks have to be spelled out at every call site;
   // naming it once keeps world text and panel text from drifting apart.
   const UI_FONT = "'Archivo', 'Segoe UI', system-ui, sans-serif";
+  // The Watch's own voice - the serif the panels use for names and lines
+  // spoken aloud. Banners are announcements, so they speak in it too.
+  const VOICE_FONT = "'Alegreya', 'Iowan Old Style', Georgia, serif";
 
   R.init = function (canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
+    // Canvas text never triggers a webfont load on its own; ask up front so
+    // the first banner of a run is not set in the fallback.
+    if (document.fonts && document.fonts.load) {
+      for (const f of ['700 38px Alegreya', 'italic 500 17px Alegreya']) document.fonts.load(f).catch(() => {});
+    }
     this.applyQuality();
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -2716,8 +2724,8 @@
      * Titles ride a small vertical settle so they arrive rather than blink.
      */
     const rise = (1 - settle) * 10;
-    ctx.font = `600 ${b.kind === 'plain' ? 30 : 38}px ${UI_FONT}`;
-    ctx.letterSpacing = dread ? '3px' : '1.5px';
+    ctx.font = `700 ${b.kind === 'plain' ? 32 : 42}px ${VOICE_FONT}`;
+    ctx.letterSpacing = dread ? '1.5px' : '0.5px';
     ctx.lineJoin = 'round';
     ctx.lineWidth = 7;
     ctx.strokeStyle = 'rgba(4,6,10,.9)';
@@ -2737,8 +2745,8 @@
     ctx.fillText(b.title, cx, y - rise);
 
     if (b.subtitle) {
-      ctx.font = `400 15.5px ${UI_FONT}`;
-      ctx.letterSpacing = '0.4px';
+      ctx.font = `italic 500 18px ${VOICE_FONT}`;
+      ctx.letterSpacing = '0.2px';
       ctx.globalAlpha = alpha * WS.clamp(t * 4 - 0.35, 0, 1);
       ctx.lineWidth = 5;
       ctx.strokeText(b.subtitle, cx, y + 52);

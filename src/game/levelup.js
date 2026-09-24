@@ -106,7 +106,7 @@
         candidates.push({
           type: 'weapon_rank', id: w.id, art: d.art, school: d.school, weight: 3,
           name: d.name, description: WS.template(d.description, d),
-          note: `Rank ${w.level}  >  ${w.level + 1}`,
+          note: `Rank ${w.level} to ${w.level + 1}`,
           rank: w.level + 1, maxRank: WS.WEAPON_MAX_LEVEL,
           reacts: reactionsFor(p, w.id, 'weapon_rank', w.level + 1),
         });
@@ -116,7 +116,7 @@
           name: d.evolveName, description: d.evolveDescription,
           rank: WS.WEAPON_MAX_LEVEL, maxRank: WS.WEAPON_MAX_LEVEL,
           reacts: reactionsFor(p, w.id, 'evolve', WS.WEAPON_MAX_LEVEL),
-          note: 'EVOLUTION - ' + d.name + ' transformed',
+          note: 'Evolution · ' + d.name + ', transformed',
         });
       }
     }
@@ -133,7 +133,7 @@
         candidates.push({
           type: 'union', id: recipe.result, art: d.art, school: d.school, weight: 10,
           unionFrom: recipe.from, name: d.name, description: WS.template(d.description, d),
-          note: `UNION - merges evolved ${WS.Weapons[a].name} + ${WS.Weapons[b].name}`,
+          note: `Union · ${WS.Weapons[a].name} and ${WS.Weapons[b].name}, made one`,
         });
       }
     }
@@ -148,7 +148,7 @@
           name: d.name, description: WS.template(d.description, d),
           rank: 1, maxRank: WS.WEAPON_MAX_LEVEL,
           reacts: reactionsFor(p, id, 'new_weapon', 1),
-          note: 'New Weapon  -  pairs with ' + WS.Upgrades[d.evolvePairing].name,
+          note: 'New weapon · pairs with ' + WS.Upgrades[d.evolvePairing].name,
         });
       }
     }
@@ -164,7 +164,7 @@
           name: up.name, description: WS.template(up.description, up),
           detail: WS.template(up.detail, up),
           rank: rank + 1, maxRank: up.max,
-          note: `Rank ${rank + 1} / ${up.max}`,
+          note: `Rank ${rank + 1} of ${up.max}`,
         });
       }
     }
@@ -216,7 +216,7 @@
         type: 'blessing', id, art: b.art, quality: b.quality || 'legendary',
         name: b.name,
         description: WS.template(b.description, b),
-        note: 'Blessing - permanent for this run',
+        note: 'A blessing · yours for the rest of the night',
       };
     });
   };

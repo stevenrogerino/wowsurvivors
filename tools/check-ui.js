@@ -367,7 +367,7 @@ const path = require('path');
       await new Promise((r) => requestAnimationFrame(r));
       steps.push({
         gold, shown, spent: gold - WS.Save.db.gold, now: WS.Save.db.gold,
-        nowShown: read(), want: WS.formatNumber(WS.Save.db.gold) + 'g',
+        nowShown: read(), want: WS.formatNumber(WS.Save.db.gold) + ' gold',
       });
     }
     return steps;

@@ -741,8 +741,20 @@
      * word is the ember because the ember is the thing that is lit - one warm
      * point held inside something grey and steady, which is the whole title
      * said in type before a word of it is read. */
-    h.append(el('span', 'art', 'The'), el('span', 'nm', 'Ember'),
-      el('span', 'wm', 'Watch'));
+    const ember = el('span', 'nm', 'Ember');
+    /* Sparks leaving the lit word - a handful, on staggered clocks, so the
+       title is a fire that is going rather than a picture of one. */
+    const sparks = el('span', 'sparks');
+    for (let i = 0; i < 7; i++) {
+      const sp = el('i');
+      sp.style.left = (12 + i * 12.5) + '%';
+      sp.style.animationDelay = (i * 0.53 + (i % 3) * 0.31).toFixed(2) + 's';
+      sp.style.animationDuration = (2.8 + (i % 4) * 0.55).toFixed(2) + 's';
+      sp.style.setProperty('--dx', ((i % 2 ? 1 : -1) * (4 + i * 2)) + 'px');
+      sparks.append(sp);
+    }
+    ember.append(sparks);
+    h.append(el('span', 'art', 'The'), ember, el('span', 'wm', 'Watch'));
     const sub = el('div', 'game-sub', 'Thirty minutes until dawn');
     title.append(h, sub, el('div', 'title-arc'));
     s.head.replaceChildren(title);
@@ -773,7 +785,7 @@
     const render = () => {
       for (const btn of tabs.children) btn.classList.toggle('active', btn.dataset.tab === UI.tab);
       panes.replaceChildren(UI.buildPane(UI.tab, render));
-      bankValue.textContent = WS.formatNumber(WS.Save.db.gold) + 'g';
+      bankValue.textContent = WS.formatNumber(WS.Save.db.gold) + ' gold';
       requestAnimationFrame(() => {
         const body = s.inner.querySelector('.overlay-body');
         if (!body) return;
@@ -1116,7 +1128,7 @@
       row.append(track);
 
       if (cost === null) {
-        row.append(el('div', 'row-value maxed-tag', 'MAXED'));
+        row.append(el('div', 'row-value maxed-tag', 'Mastered'));
       } else {
         const buy = el('button', 'btn buy', '');
         buy.append(el('b', null, WS.formatNumber(cost)), el('span', 'g', 'g'));
@@ -2138,7 +2150,7 @@
     menu.addEventListener('click', () => WS.Game.quitToMenu());
     const banked = el('div', 'bank');
     banked.append(el('span', 'label', 'Banked this run'),
-      el('span', 'v', WS.formatNumber(run.gold) + 'g'));
+      el('span', 'v', WS.formatNumber(run.gold) + ' gold'));
     s.foot.append(banked, el('div', 'spacer'), menu, again);
     this.show(s.inner);
   };

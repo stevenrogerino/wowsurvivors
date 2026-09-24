@@ -29,9 +29,10 @@
     },
     the_long_dark_ends: {
       name: 'The Long Dark Ends', art: 'frostaura',
-      description: 'Defeat Lich-Lord Marrowfrost.',
+      description: 'Break Marrowfrost, the Pale Lord, at the end of the last night.',
       reward: { type: 'gold', amount: 1000 },
-      test: (db) => !!db.statistics.bosses.marrowfrost,
+      test: (db) => !!(db.statistics.bosses.pale_lord
+        || (db.statistics.finales && db.statistics.finales.palewastes)),
     },
 
     /* ------------------------------------------------- map progression --- */

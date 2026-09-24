@@ -142,9 +142,13 @@
       patterns: [{ type: 'ring', bolts: 10 }, { type: 'charge' }],
       yell: 'Fresh meat for the pile!',
     },
+    /* The id is historical - saves and statistics key on it. The Pale Lord
+       himself is the finale (data/finales.js); killing him at 27:00 and then
+       watching him rise at 30:00 told the story backwards. This is his
+       herald: the cold, sent on ahead to take your measure. */
     marrowfrost: {
       bossKit: ['pauldrons', 'trophies'],
-      name: 'Marrowfrost, the Pale Lord', family: 'undead', art: 'lich', tint: [0.55, 0.85, 1.00],
+      name: 'The Rime Herald', family: 'undead', art: 'lich', tint: [0.55, 0.85, 1.00],
       health: 23760, speed: 56, damage: 76, xp: 1400, radius: 60, gold: 200,
       interval: 2.7, school: 'frost',
       patterns: [
@@ -152,7 +156,7 @@
         { type: 'ring', bolts: 14 },
         { type: 'summon', id: 'crypt_fiend', count: 6 },
       ],
-      yell: 'Your warmth offends me, little one.',
+      yell: 'My lord is counting your lights, little one. I have come to put some out.',
     },
 
     // Not on any schedule: at 30:00 Death itself arrives, and again every
