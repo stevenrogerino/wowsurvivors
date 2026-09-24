@@ -64,6 +64,8 @@
     const t = boss.template;
     WS.Game.announce(t.name, t.yell, 3.4, { kind: 'dread', art: t.art, tint: t.tint });
     WS.Audio.play('boss');
+    // And it says its piece, a beat after the horn.
+    if (t.yell) setTimeout(() => WS.Audio.babble(WS.Audio.voiceFor(id, t), t.yell), 650);
     WS.FX.shake(6, 0.5);
     WS.FX.screen('rgba(180,40,120,.14)', 0.4);
     return boss;

@@ -255,3 +255,24 @@ The interface is only half of it; the other half is how the world answers.
   Every watcher has a record in `WS.Lore.watchers` - their story, a line in
   their own voice, and for the unfound a rumor of where to look - shown on
   the roster and in a record page.
+
+## Sound
+
+- **No hiss.** The weather bed - looping filtered noise under every zone - is
+  gone for good (`check-voices` fails if any score names one or a zone's top
+  end reads as noise). Places are made of what lives in them: `LIFE` voices in
+  audio.js, pitched and short, placed across the stereo field with some room
+  on them. Crickets, birds, frogs and an owl in Thornhollow; hawks and crows
+  and a low gust over the Dustreach; owls and a wail in Mourneholt; cicadas
+  on Ambergrass; wind through ice, chimes and glints in the Rimewaste; a bell
+  under the Eclipse.
+- **A room.** One generated impulse feeds a reverb behind the effects and one
+  behind the score. Kits ask for as much as suits them (`ROOM`).
+- **Voices.** `Audio.babble(who, text)` is a small formant synth: a grumble
+  with each finale line and each boss's arrival, its syllables taken from the
+  line and its mood from the punctuation. Per-speaker recipes in `VOICES`.
+- **Signatures.** The finales have their own sounds - the Candlecrawler's
+  rumble, the Galleon's cannons, Mordecai's lanterns breaking, the
+  Stormbreaker's zap and stamp, the Heart-Drill, Marrowfrost's ice and winter.
+- **Spells by school.** `cast` takes the weapon's school as a variant, with
+  its own throttle per school.

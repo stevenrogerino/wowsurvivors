@@ -56,6 +56,8 @@
       WS.Game.announce(this.boss.template.name, this.boss.template.yell, 4.0,
         { kind: 'dread', art: this.boss.template.art, tint: this.boss.template.tint });
       WS.Audio.play('boss');
+      const yell = this.boss.template.yell;
+      setTimeout(() => WS.Audio.babble('celestial', yell), 700);
     }
   };
 

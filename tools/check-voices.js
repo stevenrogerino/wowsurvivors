@@ -14,12 +14,10 @@
  *             of a run - was a five per cent spread nobody can hear. `warn`
  *             measured 0.08 on the scale below. It was the same sound.
  *
- *   period    The weather bed is one looping buffer, and a loop has a period
- *             whether or not anyone chose one. At 1.2 seconds its envelope
- *             autocorrelated 0.90 against itself one loop later, with
- *             harmonics at 2.4, 3.6 and 4.8 - a texture repeating fifty times
- *             a minute, which is what "a grainy hum" IS. A drifting filter
- *             over the top never touched the period underneath it.
+ *   hiss      There is no weather bed any more. It was a loop of filtered
+ *             noise under every zone, and after every fix it could be given
+ *             it was still heard as a hiss. This rule keeps it gone: no score
+ *             names a noise bed, and no zone's top end reads as noise.
  *
  *   moves     The chord bed was root, fifth and octave stacked on whatever
  *             degree the arpeggio had just landed on: the same interval
@@ -78,16 +76,14 @@ const SAME = 1.6;
 /* How strongly the weather may autocorrelate against itself at any lag under
  * ten seconds.
  *
- * SET FROM BOTH SIDES, and the first attempt was set from one. The single
- * looping buffer that started all this measured 0.90 at 1.2s, so 0.62 looked
- * like plenty of room - and then the shipping build with its buffer put back
- * to 1.2s PASSED at 0.494, because the second layer at 0.79x does not repeat
- * on the first one's period and halves the correlation at that lag all on its
- * own. The threshold had been set against a bed the game no longer plays.
- * Measured on what it does play: 0.057, 0.058, 0.074 across three runs of the
- * fixed build, against 0.494 for the short buffer. A quarter sits an order of
- * magnitude above the noise and half an order below the bug. */
-const PERIOD = 0.25;
+ * The two ceilings for `hiss`. Flatness is 1 for white noise and near 0 for
+ * a few pure tones; the old weather beds made the top of every zone read as
+ * noise. The share above 5kHz catches a bed that sits very high - the
+ * Rimewaste's old highpass had nearly half its energy up there. Both are set
+ * from the build that ships (see the figures the check prints) with room
+ * either side; they are not tuned to pass. */
+const HISS_FLAT = 0.2;
+const HISS_HI = 0.6;
 /* Distinct chords a zone has to pass through in four bars. Three is a
  * progression; two is a see-saw; one is what it used to be. */
 const CHORDS = 3;
@@ -163,65 +159,62 @@ const fail = [];
     }
   }
 
-  /* ---- period: the weather does not find itself ------------------------ */
-  const period = await page.evaluate(async () => {
-    /* Rendered offline, at length, because the question is about a period of
-       seconds and a live analyser cannot be read faster than a frame. */
-    const SR = 22050, SECS = 26;
-    const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-    if (!OC) return { skip: 'no OfflineAudioContext' };
-    const oc = new OC(1, SR * SECS, SR);
-    const spec = WS.Audio.scores().glacier.air;   // the brightest, grainiest bed
-    /* THE GAME'S buffer length and THE GAME'S layers. Writing 11.3 and
-       [[1, 1], [0.79, 0.72]] in here instead - which is what this did first -
-       meant the rule rendered a bed the game might no longer be playing, and
-       would have gone on passing with the shipping buffer back at 1.2s. */
-    const air = WS.Audio.weather();
-    const buf = oc.createBuffer(1, Math.floor(SR * air.seconds), SR);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    const f = oc.createBiquadFilter();
-    f.type = spec.type || 'lowpass'; f.frequency.value = spec.cut; f.Q.value = spec.q;
-    f.connect(oc.destination);
-    for (const [rate, level] of air.layers) {
-      const src = oc.createBufferSource();
-      src.buffer = buf; src.loop = true; src.playbackRate.value = rate;
-      const g = oc.createGain(); g.gain.value = level;
-      src.connect(g); g.connect(f); src.start(0);
+  /* ---- hiss: no place is built on a bed of noise ----------------------- *
+   * This rule used to be `period`, and it policed the weather bed: a loop of
+   * filtered white noise under every zone, which was measured, de-periodised,
+   * split into two layers at irrational rates, given gusts and a drifting
+   * filter - and was still, to the player who asked for it gone, "the fuzzy
+   * hiss". It is gone. Places are made of what lives in them (LIFE in
+   * audio.js), and every one of those voices is pitched and ends.
+   *
+   * So the rule now keeps it gone. No score may name a noise bed, and a zone
+   * left playing with nothing else happening must not carry its energy in the
+   * flat, noise-shaped top of the spectrum: measured as the share of the
+   * music bus above 5kHz, and its spectral flatness from 2 to 11kHz, over a
+   * long listen to every zone.
+   *
+   * NEGATIVE TEST, run: against the build before the beds came out this fails
+   * with "<zone> names a noise bed" for all eight scores, and the Dustreach,
+   * Ambergrass and the Rimewaste read 0.466, 0.454 and 0.461 flatness against
+   * 0.006-0.118 for every zone of the build that ships. */
+  const hiss = await page.evaluate(async () => {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = { beds: [], zones: {} };
+    const scores = WS.Audio.scores();
+    for (const k of Object.keys(scores)) if (scores[k].air) out.beds.push(k);
+    const ctx = WS.Audio.ctx;
+    const an = ctx.createAnalyser();
+    an.fftSize = 4096; an.smoothingTimeConstant = 0;
+    WS.Audio.musicGain.connect(an);
+    const bins = new Float32Array(an.frequencyBinCount);
+    const hz = ctx.sampleRate / an.fftSize;
+    for (const k of ['forest', 'plains', 'cursed', 'savannah', 'glacier', 'eclipse', 'menu']) {
+      WS.Audio.stopMusic(); WS.Audio.playMusic(k);
+      if (WS.Audio._music) { WS.Audio._music.intensity = 0; WS.Audio._music.want = 0; }
+      await sleep(800);
+      const acc = new Float64Array(bins.length);
+      const until = performance.now() + 8000;
+      while (performance.now() < until) {
+        an.getFloatFrequencyData(bins);
+        for (let i = 0; i < bins.length; i++) acc[i] += Math.pow(10, Math.max(-140, bins[i]) / 10);
+        await sleep(30);
+      }
+      let tot = 0, hi = 0, logs = 0, lin = 0, n = 0;
+      for (let i = 1; i < acc.length; i++) {
+        tot += acc[i];
+        if (i * hz > 5000) hi += acc[i];
+        if (i * hz > 2000 && i * hz < 11000) { logs += Math.log(acc[i] + 1e-30); lin += acc[i]; n++; }
+      }
+      out.zones[k] = { hi: +(hi / tot).toFixed(3), flat: +(Math.exp(logs / n) / (lin / n)).toFixed(3) };
     }
-    const rendered = await oc.startRendering();
-    const pcm = rendered.getChannelData(0);
-    /* The ENVELOPE, not the waveform. Two different stretches of white noise
-       never correlate sample for sample however identical their character;
-       what the ear hears repeating in a bed is its shape over time. */
-    const HOP = 256;
-    const env = new Float64Array(Math.floor(pcm.length / HOP));
-    for (let i = 0; i < env.length; i++) {
-      let e = 0;
-      for (let j = 0; j < HOP; j++) e += Math.abs(pcm[i * HOP + j]);
-      env[i] = e / HOP;
-    }
-    let mean = 0;
-    for (let i = 0; i < env.length; i++) mean += env[i];
-    mean /= env.length;
-    for (let i = 0; i < env.length; i++) env[i] -= mean;
-    let power = 0;
-    for (let i = 0; i < env.length; i++) power += env[i] * env[i];
-    const perHop = HOP / SR;
-    let worst = { r: 0, lag: 0 };
-    // Lags from a fifth of a second (below that it is timbre, not repetition)
-    // out to ten seconds (beyond that the player has moved on).
-    for (let lag = Math.round(0.2 / perHop); lag < Math.round(10 / perHop); lag++) {
-      let s = 0;
-      for (let i = 0; i + lag < env.length; i++) s += env[i] * env[i + lag];
-      const r = s / power;
-      if (r > worst.r) worst = { r: +r.toFixed(3), lag: +(lag * perHop).toFixed(2) };
-    }
-    return worst;
+    WS.Audio.stopMusic();
+    try { WS.Audio.musicGain.disconnect(an); } catch (e) { /* gone */ }
+    return out;
   });
-  if (period.skip) console.log('  (period: ' + period.skip + ')');
-  else if (period.r > PERIOD) {
-    fail.push(`the weather finds itself again every ${period.lag}s (${period.r})`);
+  for (const k of hiss.beds) fail.push(`${k} names a noise bed - the hiss is back`);
+  for (const [k, z] of Object.entries(hiss.zones)) {
+    if (z.hi > HISS_HI) fail.push(`${k} carries ${Math.round(z.hi * 100)}% of its energy above 5kHz`);
+    if (z.flat > HISS_FLAT) fail.push(`${k}'s top end is flat like noise (${z.flat})`);
   }
 
   /* ---- same: no voice is the same voice twice -------------------------- */
@@ -284,7 +277,7 @@ const fail = [];
 
   console.log('harmony   ' + Object.entries(harmony)
     .map(([k, h]) => `${k} ${h.chords}/${h.bars}`).join('  '));
-  if (!period.skip) console.log(`weather   worst ${period.r} at ${period.lag}s`);
+  console.log('hiss      ' + Object.entries(hiss.zones).map(([k, z]) => `${k} ${z.hi}/${z.flat}`).join('  '));
   console.log('voices    ' + Object.entries(voices)
     .sort((a, b) => a[1] - b[1]).map(([k, v]) => `${k} ${v}`).join('  '));
 

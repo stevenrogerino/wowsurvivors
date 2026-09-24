@@ -14935,6 +14935,28 @@ window.WS = window.WS || {};
     this.duck.gain.value = 1;
     this.sfxGain.connect(this.master);
     this.chatterGain.connect(this.sfxGain);
+
+    /* A ROOM. Nothing in the game had one: every voice was bone dry, so a
+     * bell stopped the instant it stopped and a boss's horn sounded like it
+     * was playing inside the listener's head. One generated impulse - a
+     * couple of seconds of noise that darkens as it decays, the way air eats
+     * the top of a real tail - feeds two convolvers, one behind the effects
+     * and one behind the score, so each still answers its own volume slider
+     * and the music switch still silences everything the music made. Sends,
+     * not inserts: a voice asks for as much room as it wants and the dry
+     * signal is untouched. */
+    const ir = makeRoom(this.ctx, 2.6);
+    const room = (dest, level) => {
+      const inp = this.ctx.createGain();
+      const conv = this.ctx.createConvolver();
+      conv.buffer = ir;
+      const out = this.ctx.createGain();
+      out.gain.value = level;
+      inp.connect(conv); conv.connect(out); out.connect(dest);
+      return inp;
+    };
+    this.sfxRoom = room(this.sfxGain, 0.9);
+    this.musicRoom = room(this.musicGain, 0.8);
     this.musicGain.connect(this.duck);
     this.duck.connect(this.master);
     this.applySettings();
@@ -14956,6 +14978,35 @@ window.WS = window.WS || {};
     if (!s.music) this.stopMusic();
     else if (this.wanted && !this._music) this.startScore(this.wanted);
   };
+
+  /** The room's impulse: stereo noise that decays over `secs`, losing its
+   *  top faster than its bottom, with a short gap before the first
+   *  reflection. The two channels are drawn separately so the tail is wide. */
+  function makeRoom(ctx, secs) {
+    const rate = ctx.sampleRate, len = WS.floor(rate * secs), pre = WS.floor(rate * 0.014);
+    const buf = ctx.createBuffer(2, len, rate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch);
+      let lp = 0;
+      for (let i = pre; i < len; i++) {
+        const k = (i - pre) / (len - pre);
+        // Darkening: the one-pole's coefficient falls as the tail ages.
+        const a = 0.55 - 0.47 * k;
+        lp += a * ((Math.random() * 2 - 1) - lp);
+        d[i] = lp * Math.pow(1 - k, 2.2) * 0.6;
+      }
+    }
+    return buf;
+  }
+
+  /** How much of a voice goes to the room. `music` picks the score's room. */
+  function send(node, amt, music) {
+    const room = music ? Audio.musicRoom : Audio.sfxRoom;
+    if (!amt || !room) return;
+    const g = Audio.ctx.createGain();
+    g.gain.value = amt;
+    node.connect(g); g.connect(room);
+  }
 
   /* ------------------------------------------------------------ primitives */
   function env(node, t0, attack, decay, peak) {
@@ -14987,6 +15038,7 @@ window.WS = window.WS || {};
     }
     last.connect(gain);
     gain.connect(opts.bus || Audio.voiceBus || Audio.sfxGain);
+    send(gain, opts.verb === undefined ? Audio.verbFor : opts.verb);
     env(gain, t0, opts.attack || 0.005, opts.decay || 0.15, opts.gain === undefined ? 0.3 : opts.gain);
     osc.start(t0);
     osc.stop(t0 + (opts.attack || 0.005) + (opts.decay || 0.15) + 0.05);
@@ -15031,6 +15083,7 @@ window.WS = window.WS || {};
     f.Q.value = opts.q === undefined ? 1.2 : opts.q;
     const gain = ctx.createGain();
     src.connect(f); f.connect(gain); gain.connect(opts.bus || Audio.voiceBus || Audio.sfxGain);
+    send(gain, opts.verb === undefined ? Audio.verbFor : opts.verb);
     env(gain, t0, opts.attack || 0.004, opts.decay || 0.2, opts.gain === undefined ? 0.25 : opts.gain);
     /* START SOMEWHERE ELSE IN IT, every time.
      *
@@ -15074,6 +15127,7 @@ window.WS = window.WS || {};
   const THROTTLE = {
     hit: 0.045, crit: 0.07, gem: 0.06, cast: 0.05, enemyHit: 0.06,
     explode: 0.09, freeze: 0.2, coin: 0.08, hover: 0.045, page: 0.08,
+    rumble: 0.8, cannon: 0.25, glass: 0.2, zap: 0.35, shock: 0.4, drill: 1.2, shatter: 0.15,
     /* `warn` is the only one of these that also DUCKS - it pulls the whole mix
        to half for seven tenths of a second, because a charge committing is
        worth hearing over everything else. That is true of one charge and a
@@ -15174,6 +15228,52 @@ window.WS = window.WS || {};
   const FATIGUE_GAP = 0.45;     // the gap widens by up to this much more
   const FATIGUE_GAIN = 0.22;    // and the voice gives back up to this much gain
 
+  /** The seven schools, as sound. */
+  const CAST = {
+    // A lick of flame: breath rising through a warm band, and a low push.
+    fire() {
+      noise({ filter: 'bandpass', freq: 700, to: vary(2200, 0.2), q: 1.1, attack: 0.03, decay: vary(0.16, 0.25), gain: 0.12 });
+      tone({ type: 'sine', freq: 140, to: 90, decay: 0.12, gain: 0.05 });
+    },
+    // Glass: two high, pure partials that ring a moment, and a crystal tick.
+    frost() {
+      tone({ type: 'sine', freq: vary(1760, 0.04), decay: vary(0.22, 0.2), gain: 0.035 });
+      tone({ type: 'sine', freq: vary(2637, 0.04), decay: vary(0.16, 0.2), gain: 0.022, delay: 0.012 });
+      noise({ filter: 'highpass', freq: 5200, q: 0.8, attack: 0.001, decay: 0.012, gain: 0.02 });
+    },
+    // A shimmer: a detuned pair sweeping up, the arcane's glassy fizz.
+    arcane() {
+      tone({ type: 'triangle', freq: 520, to: vary(880, 0.12), decay: vary(0.12, 0.25), gain: 0.07 });
+      tone({ type: 'sine', freq: 1046, to: vary(1568, 0.1), decay: 0.10, gain: 0.03, delay: 0.02 });
+    },
+    // A small bell: a soft attack and a fifth above it.
+    holy() {
+      tone({ type: 'sine', freq: vary(880, 0.03), decay: vary(0.35, 0.2), gain: 0.05, attack: 0.008 });
+      tone({ type: 'sine', freq: vary(1320, 0.03), decay: vary(0.28, 0.2), gain: 0.025, attack: 0.008 });
+    },
+    // Wood and sap: a plucked, woody knock.
+    nature() {
+      tone({ type: 'triangle', freq: vary(330, 0.08), to: 240, decay: vary(0.10, 0.2), gain: 0.08, filter: 'lowpass', cutoff: 1400 });
+      noise({ filter: 'bandpass', freq: 1300, q: 2.4, attack: 0.001, decay: 0.02, gain: 0.03 });
+    },
+    // Something drawn in: a dark swoop falling away under a breath.
+    shadow() {
+      tone({ type: 'sawtooth', freq: 260, to: vary(110, 0.15), decay: vary(0.16, 0.2), gain: 0.05, filter: 'lowpass', cutoff: 700 });
+      noise({ filter: 'bandpass', freq: 1400, to: 500, q: 1.0, attack: 0.02, decay: 0.14, gain: 0.03 });
+    },
+    // Steel through air: a quick swish.
+    physical() {
+      noise({ filter: 'bandpass', freq: 1800, to: vary(3400, 0.2), q: 1.6, attack: 0.012, decay: vary(0.08, 0.25), gain: 0.17 });
+    },
+  };
+
+  /** A struck metal partial set - the basis of every bell and chime below. */
+  function chime(freq, decay, gain, delay) {
+    tone({ type: 'sine', freq, decay, gain, delay, attack: 0.004 });
+    tone({ type: 'sine', freq: freq * 2.76, decay: decay * 0.5, gain: gain * 0.35, delay, attack: 0.003 });
+    tone({ type: 'sine', freq: freq * 5.4, decay: decay * 0.25, gain: gain * 0.15, delay, attack: 0.002 });
+  }
+
   const KITS = {
     /* The five kits below carry most of a run between them, so they are also
        the five where articulation moves per play and not just pitch. How long
@@ -15181,7 +15281,11 @@ window.WS = window.WS || {};
        anything real; holding them fixed while sliding the pitch is what makes
        a jittered sound read as ONE sound on a slider rather than as a series
        of separate events. */
-    cast() { tone({ type: 'triangle', freq: 520, to: 780, decay: vary(0.10, 0.25), gain: 0.10 }); },
+    /* A SPELL SOUNDS LIKE ITS SCHOOL. Every weapon in the game used to cast
+       with one triangle blip, so a build of six weapons was one sound six
+       times. The school is passed as the variant, and each has its own
+       small gesture - quiet, because these are chatter and fire constantly. */
+    cast() { (CAST[Audio.variant] || CAST.arcane)(); },
     hit() { noise({ freq: 1500, to: vary(500, 0.25), decay: vary(0.07, 0.30), gain: 0.10, q: vary(0.8, 0.35) }); },
     crit() {
       noise({ freq: 2400, to: vary(700, 0.22), decay: vary(0.11, 0.25), gain: 0.16, q: vary(0.9, 0.30) });
@@ -15194,8 +15298,9 @@ window.WS = window.WS || {};
     },
     gem() { tone({ type: 'sine', freq: 1180, to: vary(1560, 0.16), decay: vary(0.09, 0.28), gain: 0.07 }); },
     coin() {
-      tone({ type: 'square', freq: 1400, decay: 0.05, gain: 0.06 });
-      tone({ type: 'square', freq: 2100, decay: 0.07, gain: 0.05, delay: 0.05 });
+      // Two small struck coins, not two square beeps.
+      chime(vary(1900, 0.03), 0.16, 0.04, 0);
+      chime(vary(2530, 0.03), 0.2, 0.035, 0.05);
     },
     potion() {
       /* The swell is the sound, so the swell is what moves: where it arrives
@@ -15206,23 +15311,35 @@ window.WS = window.WS || {};
       tone({ type: 'sine', freq: 600, to: vary(1350, 0.18), decay: vary(0.3, 0.28), gain: 0.09, delay: vary(0.05, 0.4) });
     },
     chest() {
-      for (let i = 0; i < 5; i++) {
-        tone({ type: 'square', freq: 900 + i * 240, decay: 0.10, gain: 0.05, delay: i * 0.045 });
+      // A lid thrown back, then coins falling out of it in a bright run.
+      tone({ type: 'triangle', freq: 180, to: 120, decay: 0.12, gain: 0.08, filter: 'lowpass', cutoff: 900 });
+      for (let i = 0; i < 6; i++) {
+        chime(vary(1500 + i * 170, 0.04), 0.2, 0.06, 0.06 + i * 0.05 + Math.random() * 0.02);
       }
     },
     level() {
+      // A rising chime, each note a struck bell rather than a beep.
       const notes = [523.25, 659.25, 783.99, 1046.5];
-      notes.forEach((f, i) => tone({ type: 'triangle', freq: f, decay: 0.45, gain: 0.13, delay: i * 0.07 }));
+      notes.forEach((f, i) => {
+        chime(f, 0.9, 0.08, i * 0.07);
+        tone({ type: 'triangle', freq: f, decay: 0.4, gain: 0.05, delay: i * 0.07 });
+      });
     },
     evolve() {
-      const notes = [392, 523.25, 659.25, 783.99, 1046.5, 1318.5];
-      notes.forEach((f, i) => tone({ type: 'sawtooth', freq: f, decay: 0.5, gain: 0.09, delay: i * 0.06, filter: 'lowpass', cutoff: 2600 }));
-      noise({ freq: 3000, to: 400, decay: 0.7, gain: 0.10 });
+      // A swelling chord that opens, and a shower of bells over the top.
+      for (const f of [196, 293.66, 392, 587.33]) {
+        tone({ type: 'sawtooth', freq: f, decay: 1.4, gain: 0.05, attack: 0.25, filter: 'lowpass', cutoff: 1800 });
+      }
+      const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98];
+      notes.forEach((f, i) => chime(f, 1.1, 0.06, 0.18 + i * 0.07));
     },
     boss() {
-      tone({ type: 'sawtooth', freq: 82, to: 55, decay: 1.6, gain: 0.28, filter: 'lowpass', cutoff: 500 });
-      tone({ type: 'sawtooth', freq: 123, to: 82, decay: 1.4, gain: 0.18, filter: 'lowpass', cutoff: 700, delay: 0.1 });
-      noise({ freq: 200, to: 70, decay: 1.2, gain: 0.12, filter: 'lowpass' });
+      // A horn in a big room, and a gong under it.
+      tone({ type: 'sawtooth', freq: 82, to: 55, decay: 1.6, gain: 0.24, filter: 'lowpass', cutoff: 600, attack: 0.08 });
+      tone({ type: 'sawtooth', freq: 123, to: 82, decay: 1.4, gain: 0.16, filter: 'lowpass', cutoff: 800, delay: 0.1, attack: 0.08 });
+      tone({ type: 'sine', freq: 58, decay: 2.4, gain: 0.2, attack: 0.004 });
+      tone({ type: 'sine', freq: 58 * 2.4, decay: 1.6, gain: 0.07, attack: 0.004 });
+      tone({ type: 'sine', freq: 58 * 3.9, decay: 1.1, gain: 0.04, attack: 0.004 });
     },
     explode() {
       noise({ freq: 900, to: 60, decay: vary(0.55, 0.22), gain: 0.32, filter: 'lowpass', q: vary(0.5, 0.3) });
@@ -15237,8 +15354,71 @@ window.WS = window.WS || {};
       noise({ freq: 300, to: 50, decay: 1.6, gain: 0.16, filter: 'lowpass' });
     },
     victory() {
+      // A fanfare in bells over a held major chord.
+      for (const f of [261.63, 329.63, 392, 523.25]) {
+        tone({ type: 'triangle', freq: f, decay: 2.4, gain: 0.06, attack: 0.2 });
+      }
       const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98];
-      notes.forEach((f, i) => tone({ type: 'triangle', freq: f, decay: 0.7, gain: 0.14, delay: i * 0.12 }));
+      notes.forEach((f, i) => chime(f, 1.3, 0.08, i * 0.12));
+    },
+
+    /* ---- the finales: each machine and monster sounds like itself ---- */
+    // The Candlecrawler going under, or coming up: earth moving.
+    rumble() {
+      tone({ type: 'sawtooth', freq: 48, to: 34, decay: 1.4, gain: 0.2, filter: 'lowpass', cutoff: 180, attack: 0.1 });
+      noise({ filter: 'lowpass', freq: 260, to: 90, q: 0.7, attack: 0.15, decay: 1.2, gain: 0.14 });
+      for (let i = 0; i < 5; i++) {
+        noise({ filter: 'bandpass', freq: vary(900, 0.3), q: 3, attack: 0.002, decay: 0.03, gain: 0.03, delay: 0.2 + i * 0.17 });
+      }
+    },
+    // The Galleon's guns: a report, the boom behind it, and the shot's whistle.
+    cannon() {
+      noise({ filter: 'lowpass', freq: 1800, to: 120, q: 0.6, attack: 0.002, decay: 0.5, gain: 0.26 });
+      tone({ type: 'sine', freq: 72, to: 38, decay: 0.6, gain: 0.26, attack: 0.002 });
+      tone({ type: 'sine', freq: 1500, to: 700, decay: 0.45, gain: 0.02, delay: 0.1, attack: 0.05 });
+    },
+    // One of Mordecai's lanterns breaking: glass, and something let out.
+    glass() {
+      for (let i = 0; i < 7; i++) {
+        tone({ type: 'sine', freq: vary(2400 + i * 520, 0.15), decay: 0.12 + Math.random() * 0.18, gain: 0.03, delay: Math.random() * 0.08, attack: 0.001 });
+      }
+      noise({ filter: 'highpass', freq: 3000, q: 0.7, attack: 0.001, decay: 0.08, gain: 0.07 });
+      tone({ type: 'sine', freq: 520, to: 180, decay: 1.2, gain: 0.05, delay: 0.1, attack: 0.3 });
+    },
+    // Electricity arcing across the Stormbreaker's pylons.
+    zap() {
+      tone({ type: 'sawtooth', freq: vary(90, 0.2), decay: 0.3, gain: 0.22, filter: 'bandpass', cutoff: 1600 });
+      for (let i = 0; i < 4; i++) {
+        tone({ type: 'square', freq: vary(1200, 0.4), to: vary(300, 0.3), decay: 0.05, gain: 0.08, delay: i * 0.05 + Math.random() * 0.02 });
+      }
+    },
+    // The Stormbreaker's stamp: a pressure wave through the ground.
+    shock() {
+      tone({ type: 'sine', freq: 90, to: 30, decay: 0.9, gain: 0.3, attack: 0.002 });
+      noise({ filter: 'lowpass', freq: 600, to: 60, q: 0.9, attack: 0.004, decay: 0.7, gain: 0.18 });
+      tone({ type: 'triangle', freq: 180, to: 60, decay: 0.5, gain: 0.08, attack: 0.002 });
+    },
+    // The Heart-Drill biting: a grinding whine climbing.
+    drill() {
+      tone({ type: 'sawtooth', freq: 70, to: 110, decay: 1.1, gain: 0.16, filter: 'lowpass', cutoff: 900, attack: 0.1 });
+      tone({ type: 'square', freq: 440, to: 660, decay: 1.0, gain: 0.025, filter: 'lowpass', cutoff: 2000, attack: 0.1 });
+      noise({ filter: 'bandpass', freq: 500, to: 900, q: 2, attack: 0.1, decay: 1.0, gain: 0.06 });
+    },
+    // Ice breaking - Marrowfrost's wards, his shards.
+    shatter() {
+      for (let i = 0; i < 9; i++) {
+        tone({ type: 'sine', freq: vary(3100 + i * 380, 0.2), decay: 0.08 + Math.random() * 0.25, gain: 0.03, delay: Math.random() * 0.12, attack: 0.001 });
+      }
+      tone({ type: 'sine', freq: 220, to: 110, decay: 0.5, gain: 0.08, attack: 0.002 });
+      noise({ filter: 'bandpass', freq: 4200, q: 1.2, attack: 0.001, decay: 0.1, gain: 0.05 });
+    },
+    // The winter coming down: a deep swell and a choir of cold.
+    winter() {
+      for (const [f, d] of [[55, 0], [82.4, 6], [110, -6], [164.8, 9]]) {
+        tone({ type: 'sawtooth', freq: f, decay: 3.2, gain: 0.05, attack: 1.0, filter: 'lowpass', cutoff: 900 });
+        tone({ type: 'sine', freq: f * 4, decay: 2.8, gain: 0.02, attack: 1.2 });
+        void d;
+      }
     },
     /* THE INTERFACE IS MADE OF THINGS.
      *
@@ -15274,26 +15454,49 @@ window.WS = window.WS || {};
       noise({ filter: 'highpass', freq: 3200, q: 0.7, attack: 0.02, decay: 0.12, gain: 0.028, delay: 0.04 });
       noise({ filter: 'bandpass', freq: 2400, q: 3, attack: 0.002, decay: 0.014, gain: 0.02, delay: 0.19 });
     },
+    /* A charge committing: two stabs of low brass, the second a step up, so
+       it reads as a threat drawing breath rather than a machine beeping. */
     warn() {
-      tone({ type: 'square', freq: 330, decay: 0.2, gain: 0.12 });
-      tone({ type: 'square', freq: 330, decay: 0.2, gain: 0.12, delay: 0.24 });
+      for (const [f, d] of [[196, 0], [220, 0.22]]) {
+        tone({ type: 'sawtooth', freq: f, decay: 0.2, gain: 0.13, delay: d, attack: 0.02,
+          filter: 'lowpass', cutoff: 1400 });
+        tone({ type: 'sine', freq: f / 2, decay: 0.22, gain: 0.08, delay: d, attack: 0.01 });
+      }
     },
   };
 
   // How far each kit pushes the score down, and for how long.
   const DUCK = {
+    winter: [0.35, 3.0], shock: [0.6, 0.6],
     boss: [0.28, 1.6], evolve: [0.4, 1.1], level: [0.4, 0.9],
     victory: [0.3, 1.8], death: [0.25, 1.8], explode: [0.55, 0.5], warn: [0.5, 0.7],
   };
 
-  /** @param {string} kit  @param {number} [x] world x, to place it in the field. */
-  Audio.pitch = 1;
+  /** How much room each kit is given. The chatter gets a breath of it - a
+   *  hit with no room is a click, one with a lot is a smear - and the rare,
+   *  important sounds get enough to hang in the air after they end. */
+  const ROOM = {
+    hit: 0.04, crit: 0.08, enemyHit: 0.03, cast: 0.10, gem: 0.06, coin: 0.05,
+    playerHurt: 0.10, potion: 0.18, chest: 0.16, explode: 0.22, freeze: 0.3,
+    level: 0.34, evolve: 0.42, victory: 0.45, boss: 0.5, death: 0.5, warn: 0.12,
+    ui: 0.05, select: 0.08, page: 0.05,
+    rumble: 0.3, cannon: 0.35, glass: 0.45, zap: 0.2, shock: 0.35, drill: 0.25, shatter: 0.45, winter: 0.7,
+  };
 
-  Audio.play = function (kit, x) {
+  /** @param {string} kit  @param {number} [x] world x, to place it in the field.
+   *  @param {string} [variant]  a flavour of the kit - a spell's school. Each
+   *  variant keeps its own throttle, so a fire spell never swallows the frost
+   *  one that fired in the same tick. */
+  Audio.pitch = 1;
+  Audio.verbFor = 0;
+  Audio.variant = null;
+
+  Audio.play = function (kit, x, variant) {
     if (!live() || !WS.Save.settings.sound) return;
     const t = this.ctx.currentTime;
     const chatter = CHATTER[kit];
     const gap = THROTTLE[kit];
+    const key = variant ? kit + ':' + variant : kit;
     /* LATELY, not ever.
      *
      * The backlog only grows while a kit is being throttled, but it did not
@@ -15311,20 +15514,20 @@ window.WS = window.WS || {};
        mean it ended. Measured hammering one kit with no real gap in the
        calls at all: fatigue climbed for fifteen-odd seconds and then reset
        itself, every time, once its own widening crossed the fixed line. */
-    const resetAt = WS.max(gap, lastGap[kit] || 0) * 3;
-    if (chatter && gap && (waiting[kit] || sustainStart[kit])
-        && t - (lastPlayed[kit] || 0) > resetAt) {
-      waiting[kit] = 0;
-      sustainStart[kit] = null;   // the streak broke; fatigue breaks with it
+    const resetAt = WS.max(gap, lastGap[key] || 0) * 3;
+    if (chatter && gap && (waiting[key] || sustainStart[key])
+        && t - (lastPlayed[key] || 0) > resetAt) {
+      waiting[key] = 0;
+      sustainStart[key] = null;   // the streak broke; fatigue breaks with it
     }
     /* How much has been happening in this kit lately, 0 to 1. Everything below
        reads the run's density through this one number. */
-    const heft = chatter ? WS.min(1, (waiting[kit] || 0) / HEFT) : 0;
+    const heft = chatter ? WS.min(1, (waiting[key] || 0) / HEFT) : 0;
     /* And how long this kit has gone WITHOUT the break that resets it above -
      * see FATIGUE above.
      *
      * This used to be gated on heft alone: fatigue only ran while heft sat at
-     * its ceiling. But heft is `waiting[kit] / HEFT`, and waiting is zeroed
+     * its ceiling. But heft is `waiting[key] / HEFT`, and waiting is zeroed
      * the instant a voice actually fires - so heft is a sawtooth, 0 again for
      * every call right after each voice and only climbing back toward 1 as
      * the next backlog builds. Gating on it meant fatigue was wiped by the
@@ -15335,8 +15538,8 @@ window.WS = window.WS || {};
      * clock the backlog does, and only that reset above can stop it. */
     let fatigue = 0;
     if (chatter && gap) {
-      if (!sustainStart[kit]) sustainStart[kit] = t;
-      fatigue = WS.clamp((t - sustainStart[kit] - FATIGUE_GRACE) / FATIGUE_WINDOW, 0, 1);
+      if (!sustainStart[key]) sustainStart[key] = t;
+      fatigue = WS.clamp((t - sustainStart[key] - FATIGUE_GRACE) / FATIGUE_WINDOW, 0, 1);
     }
     if (gap) {
       /* The gap WIDENS as it gets busy, and the voice gets heavier to match.
@@ -15347,12 +15550,12 @@ window.WS = window.WS || {};
        * more with fewer voices - which is the whole trade. Fatigue widens it
        * FURTHER, on top of that, once the siege has run long enough to earn it. */
       const widened = gap * (1 + 0.9 * heft) * (1 + FATIGUE_GAP * fatigue);
-      if (lastPlayed[kit] && t - lastPlayed[kit] < widened) {
-        if (chatter) waiting[kit] = (waiting[kit] || 0) + 1;   // remembered, not lost
+      if (lastPlayed[key] && t - lastPlayed[key] < widened) {
+        if (chatter) waiting[key] = (waiting[key] || 0) + 1;   // remembered, not lost
         return;
       }
-      lastPlayed[kit] = t;
-      lastGap[kit] = widened;
+      lastPlayed[key] = t;
+      lastGap[key] = widened;
     }
     const d = DUCK[kit];
     if (d && this.duck) {
@@ -15393,7 +15596,7 @@ window.WS = window.WS || {};
     const spread = VARY[kit] || 0;
     let dest = this.sfxGain;
     if (chatter) {
-      waiting[kit] = 0;
+      waiting[key] = 0;
       /* One voice, carrying what the ones it replaced would have said: louder
          and lower for a clump, light and bright for a single event. The player
          hears the difference between three kills and thirty without hearing
@@ -15408,13 +15611,15 @@ window.WS = window.WS || {};
          only way to measure from outside that a clump sounds different from a
          single event - the voice itself is gone by the time anything could
          look at it. */
-      this.lastShape = { kit, heft, fatigue, gain: shape.gain.value, pitch: this.pitch };
+      this.lastShape = { kit: key, heft, fatigue, gain: shape.gain.value, pitch: this.pitch };
     } else if (spread) {
       this.pitch = 1 + (Math.random() - 0.5) * 2 * spread;
     }
     this.voiceBus = placeAt(x, dest) || dest;
+    this.verbFor = ROOM[kit] || 0;
+    this.variant = variant || null;
     try { fn(); } catch (e) { /* audio graph exhausted */ }
-    finally { this.voiceBus = null; this.pitch = 1; }
+    finally { this.voiceBus = null; this.pitch = 1; this.verbFor = 0; this.variant = null; }
   };
 
   /* --------------------------------------------------------------- music -- */
@@ -15574,7 +15779,7 @@ window.WS = window.WS || {};
       pad: 'sine', padCut: 1800,
       perc: [0, 3, 5, 8, 11, 13], kit: 'tick',
       prog: [0, 3, 1, 0],
-      air: { cut: 1600, q: 0.7, gain: 0.034, drift: 0.35, gust: 0.55 },
+      life: { rate: 0.48, voices: ['cricket', 'cricket', 'cricket', 'bird', 'bird', 'frog', 'owl'] },
       drone: { gain: 0.085, oct: 2, cut: 520 },
     },
     // The Dustreach: dry, wide, hot. A rattle and a sawing wind.
@@ -15582,9 +15787,9 @@ window.WS = window.WS || {};
       root: 130.81, scale: [0, 2, 3, 7, 9], wave: 'sawtooth', tempo: 1.5,
       leadCut: 13,
       pad: 'triangle', padCut: 900,
-      perc: [0, 3, 6, 9, 12], kit: 'shake',
+      perc: [0, 3, 6, 9, 12], kit: 'shake', percGain: 1.9,
       prog: [0, 4, 2, 3],
-      air: { cut: 2400, q: 1.1, gain: 0.030, drift: 0.45, gust: 0.75, type: 'bandpass' },
+      life: { rate: 0.56, voices: ['hawk', 'hawk', 'hawk', 'crow', 'gust'] },
       drone: { gain: 0.100, oct: 2, cut: 620, wave: 'square' },
     },
     // Mourneholt: a graveyard. A bell, a long moan, a flattened second.
@@ -15597,7 +15802,7 @@ window.WS = window.WS || {};
          A graveyard bell that tolls four times a bar is still a graveyard. */
       perc: [0, 4, 8, 12], kit: 'bell', percGain: 2.4,
       prog: [0, 1, 0, 4],
-      air: { cut: 520, q: 2.6, gain: 0.050, drift: 0.16, gust: 0.45 },
+      life: { rate: 0.32, voices: ['owl', 'owl', 'wail', 'crow', 'cricket'] },
       /* Heavier than the rest, since the drone went from a held tone to one
          that breathes: a sub-bass under a graveyard is this zone's ground
          (and it is 27Hz, felt more than heard), and it is what keeps
@@ -15606,13 +15811,19 @@ window.WS = window.WS || {};
     },
     // Ambergrass: it walks. Drums on the off-beat and a field full of insects.
     savannah: {
-      root: 123.47, scale: [0, 2, 5, 7, 10], wave: 'sawtooth', tempo: 1.4,
-      leadCut: 3,
-      pad: 'triangle', padCut: 1500,
-      perc: [0, 3, 6, 8, 11, 14], kit: 'skin',
+      /* A reed, not a saw. The Dustreach and Ambergrass both led on a
+         sawtooth within a semitone of each other, and the weather beds were
+         what told them apart; with those gone the lead has to. A square is
+         hollow where a saw is bright - the sound of a pipe across a plain. */
+      root: 123.47, scale: [0, 2, 5, 7, 10], wave: 'square', tempo: 1.4,
+      leadCut: 5,
+      pad: 'sine', padCut: 1500,
+      perc: [0, 3, 6, 8, 11, 14], kit: 'skin', percGain: 1.6,
       prog: [0, 2, 3, 1],
-      air: { cut: 4800, q: 2.8, gain: 0.020, drift: 0.60, gust: 0.70, type: 'bandpass' },
-      drone: { gain: 0.105, oct: 2, cut: 700 },
+      life: { rate: 0.52, voices: ['cicada', 'cicada', 'cicada', 'bird'] },
+      /* Warm and an octave up: the Dustreach's square drone sat a semitone
+         from this one in the same octave, and the two plains had one floor. */
+      drone: { gain: 0.105, oct: 1, cut: 900, wave: 'triangle' },
     },
     /* The Rimewaste: almost nothing, very far apart, very bright.
        Its weather was a HIGHPASS at 5600Hz, the only one in the game, which
@@ -15638,9 +15849,9 @@ window.WS = window.WS || {};
       root: 98.00, scale: [0, 3, 5, 7, 10], wave: 'sine', tempo: 2.0,
       leadCut: 11,
       pad: 'sine', padCut: 2600,
-      perc: [0, 8], kit: 'bell',
+      perc: [0, 8], kit: 'bell', percGain: 2.6,
       prog: [0, 0, 3, 4],
-      air: { cut: 1500, q: 2.0, gain: 0.030, drift: 0.55, gust: 0.92, type: 'bandpass' },
+      life: { rate: 0.60, voices: ['whistle', 'chime', 'chime', 'glint', 'glint', 'creak'] },
       drone: { gain: 0.055, oct: 2, cut: 900, wave: 'triangle' },
     },
     /* The Eclipse: wrong. Struck stone on an odd count, an altered scale, and
@@ -15668,7 +15879,7 @@ window.WS = window.WS || {};
       pad: 'sawtooth', padCut: 1250,
       perc: [0, 5, 7, 12], kit: 'stone',
       prog: [0, 3, 2, 3],
-      air: { cut: 300, q: 1.2, gain: 0.060, drift: 0.12, gust: 0.40, type: 'bandpass' },
+      life: { rate: 0.30, voices: ['toll', 'toll', 'deep'] },
       /* An octave UP on Mourneholt, and a square rather than a saw. These
          two were the closest pair in the game before any of this and they
          stayed closest through four separate fixes - because their ground
@@ -15677,7 +15888,7 @@ window.WS = window.WS || {};
          separate two zones that share one. Mourneholt keeps the sub-bass,
          which is what a grave is; the Eclipse sits an octave above it on odd
          harmonics, which is what a wrong room is. */
-      drone: { gain: 0.170, oct: 2, cut: 300, wave: 'square' },
+      drone: { gain: 0.150, oct: 1, cut: 520, wave: 'square' },
     },
     // Not a place. No rhythm, no weather - just a room with a fire in it.
     menu: {
@@ -15685,7 +15896,7 @@ window.WS = window.WS || {};
       prog: [0, 3, 0, 1],
       pad: 'triangle', padCut: 2200,
       perc: null, kit: null,
-      air: { cut: 1050, q: 0.5, gain: 0.022, drift: 0.12, gust: 0.62 },
+      life: null,
       drone: { gain: 0.070, oct: 2, cut: 560, wave: 'triangle' },
     },
     /* The prologue's own piece. It is not the menu loop, which is what it used
@@ -15697,7 +15908,7 @@ window.WS = window.WS || {};
       prog: [0, 2, 0, 4],
       pad: 'sine', padCut: 560,
       perc: null, kit: null,
-      air: { cut: 340, q: 0.8, gain: 0.040, drift: 0.15, gust: 0.55 },
+      life: { rate: 0.16, voices: ['cricket', 'cricket', 'owl'] },
       quiet: 0.66,
       drone: { gain: 0.130, oct: 2, cut: 300 },
     },
@@ -15725,6 +15936,7 @@ window.WS = window.WS || {};
       osc.connect(f); last = f;
     }
     last.connect(g); g.connect(bed);
+    if (o.verb) send(g, o.verb, true);
     const a = o.attack || 0.02;
     g.gain.setValueAtTime(0.0001, t0);
     g.gain.exponentialRampToValueAtTime(Math.max(0.0001, o.gain), t0 + a);
@@ -15745,6 +15957,7 @@ window.WS = window.WS || {};
     f.Q.value = o.q === undefined ? 1.2 : o.q;
     const g = ctx.createGain();
     src.connect(f); f.connect(g); g.connect(bed);
+    if (o.verb) send(g, o.verb, true);
     const a = o.attack || 0.004;
     g.gain.setValueAtTime(0.0001, t0);
     g.gain.exponentialRampToValueAtTime(Math.max(0.0001, o.gain), t0 + a);
@@ -15758,9 +15971,11 @@ window.WS = window.WS || {};
     tick(bed, t0, v) {
       mNoise(bed, t0, { freq: 2600, to: 1200, decay: 0.05, gain: 0.055 * v, q: 2.4 });
     },
+    /* A rattle - seeds in a gourd - rather than the highpassed hiss it was:
+       a woody click and a short band of noise that has a top to it. */
     shake(bed, t0, v) {
-      mNoise(bed, t0, { freq: 5400, to: 3200, decay: 0.14, gain: 0.030 * v,
-        filter: 'highpass', q: 0.6 });
+      mNoise(bed, t0, { freq: 3800, to: 2800, decay: 0.11, gain: 0.06 * v, q: 1.6 });
+      mTone(bed, t0, { wave: 'triangle', freq: 820, decay: 0.03, gain: 0.020 * v, attack: 0.002 });
     },
     skin(bed, t0, v) {
       mNoise(bed, t0, { freq: 420, to: 130, decay: 0.14, gain: 0.045 * v,
@@ -15770,14 +15985,150 @@ window.WS = window.WS || {};
     },
     bell(bed, t0, v) {
       mTone(bed, t0, { wave: 'square', freq: 1244.5, decay: 1.10, gain: 0.020 * v,
-        cut: 2400, attack: 0.004 });
+        cut: 2400, attack: 0.004, verb: 0.5 });
       mTone(bed, t0, { wave: 'square', freq: 1864.7, decay: 0.80, gain: 0.010 * v,
-        cut: 3000, attack: 0.004, detune: 9 });
+        cut: 3000, attack: 0.004, detune: 9, verb: 0.4 });
     },
     stone(bed, t0, v) {
       mNoise(bed, t0, { freq: 940, to: 250, decay: 0.10, gain: 0.060 * v, q: 1.1 });
     },
   };
+
+  /* ---------------------------------------------------------------- life --
+   * THE PLACES ARE MADE OF WHAT LIVES IN THEM. Each battlefield names a few
+   * small voices and a rate, and the score's own clock calls one up now and
+   * then, somewhere in the stereo field, with a little of the room on it:
+   * crickets and frogs in the woods, crows over the Dustreach, owls and
+   * something wailing in Mourneholt, cicadas on the plains, wind whistling
+   * through ice and a chime in the Rimewaste, a shimmer in the Eclipse.
+   * Everything is pitched and everything ends - there is no bed under any of
+   * it - so nothing can settle into a hiss. The one noise-based voice, the
+   * Dustreach's gust, is kept below 600Hz, where noise is wind and not air. */
+  function lifeOut(bed, pan, verb) {
+    const ctx = Audio.ctx;
+    const g = ctx.createGain();
+    g.gain.value = 1;
+    let out = g;
+    if (ctx.createStereoPanner) {
+      const p = ctx.createStereoPanner();
+      p.pan.value = pan;
+      g.connect(p); out = p;
+    }
+    out.connect(bed);
+    if (verb) send(g, verb, true);
+    setTimeout(() => { try { g.disconnect(); if (out !== g) out.disconnect(); } catch (e) { /* gone */ } }, 9000);
+    return g;
+  }
+  const LIFE = {
+    cricket(o, t) {
+      const f = 4000 + WS.random() * 900, chirps = 3 + WS.floor(WS.random() * 4);
+      for (let c = 0; c < chirps; c++) {
+        for (let k = 0; k < 4; k++) {
+          mTone(o, t + c * 0.32 + k * 0.024, { wave: 'sine', freq: f, gain: 0.024, attack: 0.003, decay: 0.014 });
+        }
+      }
+    },
+    bird(o, t) {
+      const n = 2 + WS.floor(WS.random() * 3), base = 2300 + WS.random() * 1100;
+      for (let k = 0; k < n; k++) {
+        const up = WS.random() < 0.5;
+        mTone(o, t + k * 0.14, { wave: 'sine', freq: base * (up ? 0.85 : 1.15), to: base * (up ? 1.2 : 0.8),
+          slide: 0.09, gain: 0.016, attack: 0.01, decay: 0.09 });
+      }
+    },
+    owl(o, t) {
+      for (const [dt, f] of [[0, 392], [0.42, 370], [0.62, 370]]) {
+        mTone(o, t + dt, { wave: 'sine', freq: f, to: f * 0.94, slide: 0.25, gain: 0.043, attack: 0.06, decay: 0.28, cut: 900 });
+      }
+    },
+    frog(o, t) {
+      for (let k = 0; k < 3; k++) {
+        mTone(o, t + k * 0.13, { wave: 'sawtooth', freq: 140 + WS.random() * 30, gain: 0.026, attack: 0.01, decay: 0.07, cut: 700 });
+      }
+    },
+    crow(o, t) {
+      for (let k = 0; k < 2 + WS.floor(WS.random() * 2); k++) {
+        mTone(o, t + k * 0.32, { wave: 'sawtooth', freq: 640, to: 500, slide: 0.18, gain: 0.020, attack: 0.02, decay: 0.18, cut: 1500 });
+      }
+    },
+    // A hawk high over dry ground: one long, keening fall.
+    hawk(o, t) {
+      mTone(o, t, { wave: 'sawtooth', freq: 2900, to: 1900, slide: 0.55, gain: 0.045, attack: 0.04, decay: 0.6, cut: 4200 });
+      mTone(o, t + 0.75, { wave: 'sawtooth', freq: 2700, to: 1800, slide: 0.4, gain: 0.03, attack: 0.03, decay: 0.45, cut: 4000 });
+    },
+    wail(o, t) {
+      mTone(o, t, { wave: 'sine', freq: 330, to: 520, slide: 1.2, gain: 0.017, attack: 0.8, decay: 1.8 });
+      mTone(o, t + 1.2, { wave: 'sine', freq: 520, to: 290, slide: 1.4, gain: 0.014, attack: 0.1, decay: 1.6 });
+    },
+    cicada(o, t) {
+      /* A pulsing buzz: the carrier through a tremolo stage (which swings
+         between silence and full), then an envelope that swells and fades.
+         The tremolo has to MULTIPLY the envelope, not add to it - summed into
+         the same gain it swung the level by half of full scale around a
+         target of a hundredth, and the cicadas came out as the loudest thing
+         on the plain. */
+      const ctx = Audio.ctx;
+      const carrier = ctx.createOscillator(), trem = ctx.createOscillator();
+      const depth = ctx.createGain(), am = ctx.createGain(), env = ctx.createGain();
+      carrier.frequency.value = 4800 + WS.random() * 900;
+      trem.type = 'square'; trem.frequency.value = 55 + WS.random() * 25;
+      am.gain.value = 0.5; depth.gain.value = 0.5;
+      trem.connect(depth); depth.connect(am.gain);
+      carrier.connect(am); am.connect(env); env.connect(o);
+      const len = 1.6 + WS.random() * 1.4;
+      env.gain.setValueAtTime(0.0001, t);
+      env.gain.linearRampToValueAtTime(0.03, t + len * 0.4);
+      env.gain.linearRampToValueAtTime(0.0001, t + len);
+      carrier.start(t); trem.start(t); carrier.stop(t + len + 0.05); trem.stop(t + len + 0.05);
+    },
+    gust(o, t) {
+      mNoise(o, t, { filter: 'lowpass', freq: 220, to: 520, q: 0.9, gain: 0.040, attack: 1.8, decay: 2.4 });
+    },
+    whistle(o, t) {
+      const f = 620 + WS.random() * 260;
+      mTone(o, t, { wave: 'sine', freq: f, to: f * 1.25, slide: 1.6, gain: 0.014, attack: 1.0, decay: 1.8 });
+    },
+    chime(o, t) {
+      for (let k = 0; k < 3 + WS.floor(WS.random() * 3); k++) {
+        const f = 1800 + WS.random() * 2200;
+        mTone(o, t + k * (0.15 + WS.random() * 0.2), { wave: 'sine', freq: f, gain: 0.012, attack: 0.003, decay: 1.4 });
+      }
+    },
+    creak(o, t) {
+      mTone(o, t, { wave: 'sawtooth', freq: 90, to: 130, slide: 0.6, gain: 0.026, attack: 0.05, decay: 0.6, cut: 500 });
+    },
+    shimmer(o, t) {
+      for (let k = 0; k < 4; k++) {
+        const f = 3000 * Math.pow(1.38, k) * (0.95 + WS.random() * 0.1);
+        mTone(o, t + k * 0.12, { wave: 'sine', freq: f, to: f * 1.12, slide: 1.4, gain: 0.009, attack: 0.3, decay: 1.6 });
+      }
+    },
+    // Ice catching the light: a few very high, very short glints.
+    glint(o, t) {
+      for (let k = 0; k < 4 + WS.floor(WS.random() * 4); k++) {
+        mTone(o, t + k * (0.06 + WS.random() * 0.12), { wave: 'sine', freq: 5600 + WS.random() * 2600,
+          gain: 0.009, attack: 0.002, decay: 0.35 });
+      }
+    },
+    // A great bell struck somewhere under the arena, out of tune with itself.
+    toll(o, t) {
+      for (const [m, g, d] of [[1, 0.05, 3.2], [2.02, 0.022, 2.2], [2.94, 0.012, 1.6]]) {
+        mTone(o, t, { wave: 'sine', freq: 146.8 * m, gain: g, attack: 0.004, decay: d, detune: 12 });
+      }
+    },
+    deep(o, t) {
+      mTone(o, t, { wave: 'sine', freq: 41, to: 36, slide: 3, gain: 0.072, attack: 1.2, decay: 2.4 });
+    },
+  };
+  const LIFE_ROOM = { toll: 0.8, hawk: 0.5, glint: 0.7, owl: 0.5, wail: 0.9, crow: 0.35, bird: 0.3, whistle: 0.7, chime: 0.8, shimmer: 0.9, creak: 0.4, frog: 0.2, cricket: 0.15, cicada: 0.1, gust: 0.2, deep: 0.3 };
+  function life(state, t0) {
+    const L = state.score.life;
+    const kind = L.voices[WS.floor(WS.random() * L.voices.length)];
+    const fn = LIFE[kind];
+    if (!fn) return;
+    const pan = (WS.random() * 2 - 1) * 0.8;
+    fn(lifeOut(state.bed, pan, LIFE_ROOM[kind] || 0.3), t0 + WS.random() * 0.3);
+  }
 
   /* THE DRONE WAS THE CONSTANT NOISE. "There is a sound on the second map
    * that never stops" was reported more than once, and two fixes went after
@@ -15824,6 +16175,12 @@ window.WS = window.WS || {};
   const AIR_LAYERS = [[1, 0.81], [0.79, 0.58]];
 
   function airBed(score, bed) {
+    /* The weather bed is gone. It was two loops of filtered white noise under
+       every battlefield, forever, and however it was filtered, drifted or
+       made to gust, it was heard as one thing: a hiss. Places are made of
+       what lives in them now - see LIFE below. */
+    return null;
+    // eslint-disable-next-line no-unreachable
     const a = score.air;
     const ctx = Audio.ctx;
     if (!a || !ctx) return null;
@@ -15927,9 +16284,22 @@ window.WS = window.WS || {};
     const zone = ctx.createGain();
     zone.gain.value = 1;
     zone.connect(bed);
+    /* The melody and the chords play in a room. Dry, the score was a synth
+       in a box; a modest send puts the notes somewhere and lets a phrase
+       end on its own tail instead of stopping dead. */
+    send(zone, 0.28, true);
+    /* The melody answers itself across the stereo field: each new phrase
+       sits a little left or a little right of the last, so a line has
+       somewhere to move instead of every note arriving dead centre. */
+    const leads = [-0.28, 0.28].map((p) => {
+      const n = ctx.createStereoPanner ? ctx.createStereoPanner() : ctx.createGain();
+      if (n.pan) n.pan.value = p;
+      n.connect(zone);
+      return n;
+    });
 
     const progSet = progsFor(score);
-    const state = { key, score, bed, zone, drone, droneGain,
+    const state = { key, score, bed, zone, drone, droneGain, leads, side: 0,
       droneFreq: score.root / (dr.oct || 2),
       droneLevel: (dr.gain === undefined ? 0.12 : dr.gain) * DRONE_LEVEL,
       step: 0, phrase: PHRASES[0],
@@ -15987,6 +16357,7 @@ window.WS = window.WS || {};
             next = PHRASES[WS.floor(WS.random() * PHRASES.length)];
           }
           state.phrase = next;
+          state.side ^= 1;
         }
         /* And the progression underneath it, on its own slower bar line - see
            progsFor. Same "never the one just played" rule as the phrase, for
@@ -16032,9 +16403,13 @@ window.WS = window.WS || {};
            * character of a saw lives in its first few - and it puts the last
            * of the energy below 4kHz for every note any zone plays. */
           const f = semitone(score.root * 2, deg + oct);
-          mTone(zone, t0, { wave: score.wave, freq: f,
+          const lead = state.leads[state.side];
+          mTone(lead, t0, { wave: score.wave, freq: f,
             cut: WS.max(900, f * (score.leadCut || 6)),
             gain: 0.07 + state.intensity * 0.05, attack: 0.02, decay: beat * 1.6 });
+          /* And a breath of the note an octave up, short and quiet - the
+             shimmer that makes an oscillator sound played rather than held. */
+          mTone(lead, t0, { wave: 'sine', freq: f * 2, gain: 0.014, attack: 0.005, decay: beat * 0.5 });
         }
         /* A pulse under the bed once things are actually bad. Intensity used
            to change three things - whether the arpeggio played on odd steps,
@@ -16055,9 +16430,13 @@ window.WS = window.WS || {};
           const prog = state.prog;
           const centre = prog[(((s / PHRASE_LEN) | 0) % prog.length + prog.length) % prog.length];
           for (const iv of chordOn(sc, centre, state.intensity > 0.6)) {
-            mTone(zone, t0, { wave: score.pad || 'sine', cut: score.padCut,
-              freq: semitone(score.root, iv),
-              gain: 0.05, attack: 0.3, decay: beat * 4 });
+            /* Two voices a few cents apart, which is what makes a pad a pad:
+               a single oscillator per note is an organ with one stop. */
+            for (const d of [-7, 7]) {
+              mTone(zone, t0, { wave: score.pad || 'sine', cut: score.padCut,
+                freq: semitone(score.root, iv), detune: d,
+                gain: 0.034, attack: 0.3, decay: beat * 4 });
+            }
           }
         }
         /* The rhythm. A sixteen-step bar with a handful of steps struck, which
@@ -16093,45 +16472,8 @@ window.WS = window.WS || {};
             KIT[score.kit](zone, t0, 0.34 * weight);
           }
         }
-        /* The weather moves. Holding a noise bed at one cutoff forever is how
-           a wind becomes a hiss; retargeting it every other bar is enough to
-           keep the ear hearing a place instead of a filter. */
-        if (state.air && s % 8 === 0) {
-          const a = state.air.spec;
-          const swing = 1 + (WS.random() * 2 - 1) * a.drift;
-          state.air.filter.frequency.setTargetAtTime(a.cut * swing, t0, 2.2);
-          /* AND IT BREATHES. The cutoff moved; the level never did, and a
-             weather bed held at one level forever is the difference between
-             wind and a hiss however you filter it. The Rimewaste is the case
-             that showed it - a highpass at 5600Hz on noise held at a constant
-             0.026 is a grain, and the only thing that stops the ear filing it
-             as equipment noise is that it swells and recedes like something
-             moving past. Slower than the filter, so the two never breathe
-             together and the pair of them never find a period.
-
-             THE ZONE SAYS HOW MUCH, and this went wrong twice before it
-             said so. A flat 0.28 everywhere put a two-decibel random swing
-             on the top four bands of every score including the two stillest,
-             and Mourneholt and the Eclipse - the closest pair in the game -
-             fell from 4.0dB apart to 2.9, under the floor that exists to
-             stop two battlefields sounding like one. Tying it to the zone's
-             cutoff drift instead fixed that and broke something worse: the
-             Rimewaste, whose whole complaint was that its wind never lets
-             up, has a drift of 0.22 and so got the SMALLEST swell in the
-             game. Half a metric is not a design. `gust` is its own number
-             now, and falls back to the drift-derived one only for the zones
-             that have no opinion. */
-          /* EVERY zone names one. The drift-derived fallback below is what
-             the six zones that did not name one were getting, and it came to
-             0.06 for the Eclipse and the menu and 0.08 for Mourneholt: a bed
-             that swings by six per cent does not swing. Measured over
-             forty-two seconds, the quietest half-second of those zones sat
-             at 0.74 to 0.80 of the loudest - which is to say the weather
-             never let up anywhere, in any zone, at all. */
-          const gust = a.gust === undefined ? a.drift * 0.5 : a.gust;
-          const breath = 1 + (WS.random() * 2 - 1) * gust;
-          state.air.gain.gain.setTargetAtTime(a.gain * WS.max(0.02, breath), t0, 3.1);
-        }
+        /* What lives here, now and then: a cricket, a bird, an owl, the ice. */
+        if (score.life && WS.random() < score.life.rate) life(state, t0);
         if (state.bossGain) bossVoices(state, t0, s, beat);
         state.nextTime += beat;
         state.step++;
@@ -16213,8 +16555,7 @@ window.WS = window.WS || {};
        taking the rattle away is half of why it sounds inevitable rather
        than fast. */
     if (s % 2 === 1 && !dread) {
-      mNoise(g, t0, { freq: 6200, to: 3400, decay: 0.09, gain: 0.030,
-        filter: 'highpass', q: 0.7 });
+      mNoise(g, t0, { freq: 3200, to: 2400, decay: 0.06, gain: 0.030, q: 1.5 });
     }
     // And the wrong note in the middle of the bar - a flattened second over
     // the root, or a tritone if the thing on the field is Death itself.
@@ -16546,6 +16887,185 @@ window.WS = window.WS || {};
    *  a room the player has walked away from - and, with the guards above, it
    *  also means nothing is scheduled while they are gone, so coming back is
    *  silent until something actually happens. */
+  /* -------------------------------------------------------------- voices --
+   * THE BOSSES TALK. Not in words - nothing in this game is voiced and
+   * nothing will be - but the way a character in a big fantasy game grunts
+   * or harrumphs or cackles as their line comes up: a short, silly burst of
+   * speech-shaped noise that says WHO is talking and HOW they feel about it,
+   * so a line lands with a voice behind it instead of in silence.
+   *
+   * It is a small vocal tract. A buzz (the voice box) at the speaker's pitch
+   * goes through three resonant filters set to a vowel's formants (the
+   * mouth), and the formants glide from vowel to vowel as the syllables go
+   * by, with a puff of consonant at the front of some of them. The vowels
+   * are taken from the line itself, so the same line always sounds the same
+   * and a longer line babbles a little longer. How it is punctuated sets the
+   * mood: a shout climbs and hits harder, a question lifts at the end, a
+   * trailing line sinks and fades.
+   *
+   * Every speaker is a recipe: how high, how big a mouth, how fast, and
+   * what extra it carries - Grimtunnel's nasal squeak, Mordecai's hollow
+   * echo, Marrowfrost's choir of cold under a voice deeper than anything
+   * else in the game. */
+  const VOWELS = {
+    a: [730, 1090, 2440], e: [530, 1840, 2480], i: [300, 2200, 2950],
+    o: [570, 840, 2410], u: [320, 870, 2240], y: [400, 1700, 2500],
+  };
+  const VOICES = {
+    // A goblin foreman in a hurry: high, quick, nasal, all over the place.
+    grimtunnel: { pitch: 300, mouth: 1.35, syl: 0.072, count: [5, 9], wobble: 0.24, gain: 0.45, nasal: 1100, room: 0.12 },
+    // A pirate captain: brassy, confident, falling at the end of a line.
+    admiral: { pitch: 210, mouth: 1.12, syl: 0.1, count: [3, 5], wobble: 0.12, gain: 0.45, room: 0.16 },
+    // A necromancer who died: low, slow, hollow, with an echo in him.
+    mordecai: { pitch: 92, mouth: 0.86, syl: 0.15, count: [2, 4], wobble: 0.08, gain: 0.54, hollow: 0.011, room: 0.45 },
+    // The Pale Lord: the deepest thing in the game, and a choir under him.
+    marrowfrost: { pitch: 56, mouth: 0.7, syl: 0.24, count: [2, 3], wobble: 0.05, gain: 0.66, choir: true, room: 0.7 },
+    // For the bosses of the night, by what they are.
+    gruff: { pitch: 125, mouth: 1.0, syl: 0.11, count: [3, 5], wobble: 0.1, gain: 0.48, room: 0.25 },
+    beast: { pitch: 80, mouth: 0.8, syl: 0.16, count: [2, 3], wobble: 0.2, gain: 0.54, growl: true, room: 0.3 },
+    gurgle: { pitch: 240, mouth: 1.25, syl: 0.085, count: [4, 7], wobble: 0.3, gain: 0.42, bubble: true, room: 0.15 },
+    machine: { pitch: 110, mouth: 0.95, syl: 0.13, count: [3, 4], wobble: 0, gain: 0.39, square: true, room: 0.2 },
+    shrill: { pitch: 360, mouth: 1.4, syl: 0.09, count: [3, 5], wobble: 0.28, gain: 0.36, growl: true, room: 0.25 },
+    hollow: { pitch: 100, mouth: 0.88, syl: 0.15, count: [2, 4], wobble: 0.08, gain: 0.51, hollow: 0.009, room: 0.45 },
+    celestial: { pitch: 150, mouth: 1.0, syl: 0.2, count: [2, 4], wobble: 0.04, gain: 0.45, choir: true, room: 0.75 },
+  };
+
+  /** The syllables in a line: its vowels in order, one per sound group. */
+  function syllablesOf(text, count) {
+    const out = [];
+    const clean = text.toLowerCase().replace(/[^a-z]/g, ' ');
+    const groups = clean.match(/[aeiouy]+/g) || ['a'];
+    const want = WS.clamp(groups.length, count[0], count[1]);
+    for (let i = 0; i < want; i++) {
+      const g = groups[WS.floor(i * groups.length / want)];
+      const v = g[0];
+      // A consonant ahead of it if the letter before this group in the line
+      // was one: that is what makes it babble rather than moan.
+      out.push({ v: VOWELS[v] ? v : 'a', stop: i > 0 && (i * 7 + g.length) % 3 !== 0 });
+    }
+    return out;
+  }
+
+  Audio.babble = function (who, text) {
+    if (!live() || !WS.Save.settings.sound || !text) return;
+    const v = VOICES[who] || (typeof who === 'object' ? who : null);
+    if (!v) return;
+    const ctx = this.ctx;
+    const t0 = ctx.currentTime + 0.02;
+    const shout = /!/.test(text) || /\b[A-Z]{3,}\b/.test(text);
+    const ask = /\?\s*$/.test(text);
+    const trail = /(\.\.\.|…)\s*$/.test(text) && !shout;
+    const syl = syllablesOf(text, v.count);
+    const len = v.syl * (shout ? 0.85 : trail ? 1.3 : 1);
+    const end = t0 + syl.length * len;
+
+    const out = ctx.createGain();
+    out.gain.value = v.gain * (shout ? 1.35 : trail ? 0.75 : 1);
+    out.connect(this.sfxGain);
+    send(out, v.room);
+    const mouth = [0, 1, 2].map((k) => {
+      const f = ctx.createBiquadFilter();
+      f.type = 'bandpass';
+      f.Q.value = [5, 8, 11][k];
+      const g = ctx.createGain(); g.gain.value = [1, 0.55, 0.28][k];
+      f.connect(g); g.connect(out);
+      return f;
+    });
+    const amp = ctx.createGain();
+    amp.gain.value = 0.0001;
+    let into = amp;
+    if (v.hollow) {
+      // A short comb: the sound of a voice inside something it should not be.
+      const d = ctx.createDelay(0.05), fb = ctx.createGain(), mix = ctx.createGain();
+      d.delayTime.value = v.hollow; fb.gain.value = 0.55;
+      amp.connect(mix); amp.connect(d); d.connect(fb); fb.connect(d); d.connect(mix);
+      into = mix;
+    }
+    for (const f of mouth) into.connect(f);
+    if (v.nasal) {
+      const n = ctx.createBiquadFilter();
+      n.type = 'peaking'; n.frequency.value = v.nasal; n.Q.value = 3; n.gain.value = 9;
+      into.disconnect(); into.connect(n); for (const f of mouth) n.connect(f);
+    }
+
+    const srcs = [];
+    const voice = (mult, detune, level) => {
+      const o = ctx.createOscillator();
+      o.type = v.square ? 'square' : 'sawtooth';
+      o.detune.value = detune || 0;
+      const g = ctx.createGain(); g.gain.value = level;
+      o.connect(g); g.connect(amp);
+      srcs.push({ o, mult });
+      return o;
+    };
+    voice(1, 0, 1);
+    if (v.choir) { voice(2, 7, 0.35); voice(0.5, -5, 0.5); voice(1.5, 3, 0.18); }
+    if (v.growl) {
+      // A rasp riding the voice: noise through the same mouth.
+      const n = ctx.createBufferSource(); n.buffer = noiseBuf(); n.loop = true;
+      const ng = ctx.createGain(); ng.gain.value = 0.9;
+      n.connect(ng); ng.connect(amp);
+      n.start(t0, Math.random() * 5); n.stop(end + 0.3);
+    }
+
+    const base = v.pitch * (1 + (Math.random() - 0.5) * 0.06);
+    syl.forEach((sy, i) => {
+      const ts = t0 + i * len;
+      const k = syl.length > 1 ? i / (syl.length - 1) : 0;
+      // The pitch contour: a shout climbs to a peak, a question lifts at the
+      // end, anything else settles downward as a sentence does.
+      let contour = shout ? 1.12 + 0.28 * Math.sin(k * Math.PI) : ask ? 1 + 0.35 * k * k
+        : trail ? 1.05 - 0.3 * k : 1.06 - 0.16 * k;
+      contour *= 1 + (Math.random() - 0.5) * 2 * v.wobble;
+      if (v.bubble) contour *= i % 2 ? 1.3 : 0.85;
+      for (const s2 of srcs) s2.o.frequency.setTargetAtTime(base * contour * s2.mult, ts, 0.02);
+      const fm = VOWELS[sy.v];
+      mouth.forEach((f, j) => f.frequency.setTargetAtTime(fm[j] * v.mouth, ts, 0.018));
+      // Each syllable swells and nearly closes, which is what makes it speech.
+      const peak = i === 0 ? 1 : 0.85;
+      amp.gain.setTargetAtTime(peak, ts, 0.012);
+      amp.gain.setTargetAtTime(0.12, ts + len * 0.72, 0.02);
+      if (sy.stop) {
+        noise({ bus: out, filter: 'bandpass', freq: 2800 * v.mouth, q: 1.4, attack: 0.001, decay: 0.018,
+          gain: 0.25, delay: ts - ctx.currentTime, verb: 0 });
+      }
+    });
+    amp.gain.setTargetAtTime(0.0001, end, 0.04);
+    for (const s2 of srcs) {
+      s2.o.frequency.setValueAtTime(base * s2.mult, t0);
+      s2.o.start(t0); s2.o.stop(end + 0.4);
+    }
+    setTimeout(() => { try { out.disconnect(); } catch (e) { /* gone */ } }, (end - ctx.currentTime + 3) * 1000);
+
+    // The score and the chatter step back while someone is talking.
+    if (this.duck) {
+      const t = ctx.currentTime;
+      try {
+        this.duck.gain.cancelScheduledValues(t);
+        this.duck.gain.setValueAtTime(this.duck.gain.value, t);
+        this.duck.gain.linearRampToValueAtTime(0.6, t + 0.08);
+        this.duck.gain.setValueAtTime(0.6, end);
+        this.duck.gain.linearRampToValueAtTime(1, end + 0.5);
+      } catch (e) { /* raced a context change */ }
+    }
+  };
+
+  /** Which voice a boss of the night speaks in: by name for the ones with
+   *  a character, by what it is for the rest. */
+  const BOSS_VOICE = {
+    grimtunnel: 'grimtunnel', candlecrawler: 'grimtunnel', stormbreaker: 'grimtunnel', heart_drill: 'grimtunnel',
+    murkgill: 'gurgle', masked_admiral: 'admiral', admiral_ashore: 'admiral', dust_galleon: 'admiral',
+    mordecai: 'mordecai', mordecai_bound: 'mordecai', marrowfrost: 'hollow', pale_lord: 'marrowfrost',
+    harvestking: 'machine', shriekfeather: 'shrill', silkfang: 'shrill', aethelgard: 'celestial',
+    death_itself: 'celestial',
+  };
+  const FAMILY_VOICE = { beast: 'beast', mongrel: 'beast', moonwretch: 'beast', undead: 'hollow',
+    mechanical: 'machine', kerchief: 'gruff', bristlekin: 'gruff', karrash: 'gruff', gilkin: 'gurgle',
+    lampling: 'grimtunnel', celestial: 'celestial', death: 'celestial' };
+  Audio.voiceFor = function (id, t) {
+    return BOSS_VOICE[id] || (t && FAMILY_VOICE[t.family]) || 'gruff';
+  };
+
   /* ------------------------------------------------------------ ambience -- */
   /* The watch fire, under the menu.
    *
@@ -18399,7 +18919,7 @@ window.WS = window.WS || {};
       WS.FX.flash(player.x, player.y, radius * 0.22, w.mods.blend, hold * 0.9);
     }
     if (heal > 0) WS.Player.heal(player, heal, 'holy');
-    WS.Audio.play('cast');
+    WS.Audio.play('cast', undefined, w.data.school);
     return true;
   };
 
@@ -18413,7 +18933,7 @@ window.WS = window.WS || {};
       schoolColour(w), w.id,
       (w.evolved ? (d.evolvedHeal || 0) : 0) + (w.mods.healBonus || 0));
     mark(WS.Projectile.zones, w);
-    WS.Audio.play('cast');
+    WS.Audio.play('cast', undefined, w.data.school);
     return true;
   };
 
@@ -18444,7 +18964,7 @@ window.WS = window.WS || {};
     Weapon.chainFrom(muzzleX(player, cdx), muzzleY(player, cdy),
       damageOf(player, w), chains, range, w.id,
       schoolColour(w), w);
-    WS.Audio.play('cast');
+    WS.Audio.play('cast', undefined, w.data.school);
     return true;
   };
 
@@ -18511,7 +19031,7 @@ window.WS = window.WS || {};
       schoolColour(w), w.id, d.procChain || w.mods.procChain || 0);
     mark(WS.Projectile.orbits, w);
     player.spinTimer = durationOf(player, w, d.duration || 3.2);
-    WS.Audio.play('cast');
+    WS.Audio.play('cast', undefined, w.data.school);
     return true;
   };
 
@@ -18540,7 +19060,7 @@ window.WS = window.WS || {};
       WS.FX.burst(sx, sy, 5, WS.hex(colour), 110, 0.35, 2.5);
       landed++;
     }
-    if (landed) WS.Audio.play('cast');
+    if (landed) WS.Audio.play('cast', undefined, w.data.school);
     return true;
   };
 
@@ -18581,7 +19101,7 @@ window.WS = window.WS || {};
     WS.Projectile.spawnBeam(mx, my, x2, y2, width, schoolColour(w), 0.22);
     mark(WS.Projectile.beams, w);
     WS.FX.flash(mx, my, width, schoolColour(w), 0.2);
-    WS.Audio.play('cast');
+    WS.Audio.play('cast', undefined, w.data.school);
     return true;
   };
 
@@ -18758,7 +19278,7 @@ window.WS = window.WS || {};
     if (b === 'aimed' || b === 'spray' || b === 'ring' || b === 'bounce') {
       WS.FX.flash(player.x, player.y, 26, schoolColour(w), 0.16);
     }
-    if (w.data.behavior === 'aimed') WS.Audio.play('cast');
+    if (w.data.behavior === 'aimed') WS.Audio.play('cast', undefined, w.data.school);
   };
 
   /* ---------------------------------------------------------- describe -- */
@@ -20136,6 +20656,8 @@ window.WS = window.WS || {};
     const t = boss.template;
     WS.Game.announce(t.name, t.yell, 3.4, { kind: 'dread', art: t.art, tint: t.tint });
     WS.Audio.play('boss');
+    // And it says its piece, a beat after the horn.
+    if (t.yell) setTimeout(() => WS.Audio.babble(WS.Audio.voiceFor(id, t), t.yell), 650);
     WS.FX.shake(6, 0.5);
     WS.FX.screen('rgba(180,40,120,.14)', 0.4);
     return boss;
@@ -20893,6 +21415,8 @@ window.WS = window.WS || {};
       WS.Game.announce(this.boss.template.name, this.boss.template.yell, 4.0,
         { kind: 'dread', art: this.boss.template.art, tint: this.boss.template.tint });
       WS.Audio.play('boss');
+      const yell = this.boss.template.yell;
+      setTimeout(() => WS.Audio.babble('celestial', yell), 700);
     }
   };
 
@@ -21339,6 +21863,7 @@ window.WS = window.WS || {};
   F.say = function (key) {
     const l = this.def && this.def.say && this.def.say[key];
     if (l) this.speak(l[0], l[1]);
+    if (LINE_SOUND[key]) WS.Audio.play(LINE_SOUND[key]);
   };
   F.sayOnce = function (key) {
     const s = this.s;
@@ -21358,7 +21883,11 @@ window.WS = window.WS || {};
       F.line.life -= dt;
       if (F.line.life <= 0) F.line = null;
     }
-    if (!F.line && F.queue.length) F.line = F.queue.shift();
+    if (!F.line && F.queue.length) {
+      F.line = F.queue.shift();
+      // Whoever is speaking makes a noise as their line comes up.
+      if (F.line.who !== 'narrator') WS.Audio.babble(F.line.who, F.line.text);
+    }
   }
 
   /** Countdown timers on the script state: true once per `every` seconds. */
@@ -21387,7 +21916,7 @@ window.WS = window.WS || {};
     const o = opts || {};
     this.marks.push({ kind: 'lane', x, y, ang, len, w, tele, maxTele: tele,
       active: o.active || 0.3, dmg: this.dmg(dmg), name, hit: false,
-      tint: o.tint || [1.0, 0.55, 0.25], style: o.style || 'shot' });
+      tint: o.tint || [1.0, 0.55, 0.25], style: o.style || 'shot', sound: o.sound });
   };
 
   /** Expanding ring with openings - stand in a gap as it passes. */
@@ -21753,7 +22282,7 @@ window.WS = window.WS || {};
         if (m.tele > 0) {
           m.tele -= dt;
           if (m.tele <= 0) {
-            WS.Audio.play('explode', m.x);
+            WS.Audio.play(m.sound || 'explode', m.x);
             WS.FX.shake(3, 0.15);
           }
         } else {
@@ -21823,6 +22352,20 @@ window.WS = window.WS || {};
     }
   }
 
+  /* What each part of a finale sounds like when it goes. The machines
+     explode; a lantern breaks like glass; a pylon discharges; a pipe vents;
+     a shard of the Pale shatters. */
+  const PART_SOUND = {
+    lantern_turret: 'glass', soul_lantern: 'glass', galleon_cannon: 'cannon',
+    tesla_pylon: 'zap', coolant_pipe: 'drill', frost_shard: 'shatter', walker_leg: 'shock',
+  };
+  /* And the lines that land with a sound under them. */
+  const LINE_SOUND = {
+    burrow: 'rumble', surface: 'rumble', turretsDown: 'glass', crash: 'cannon',
+    rise: 'winter', relight: 'glass', pylons: 'zap', destruct: 'shock', kneel: 'shock',
+    breach: 'drill', wake: 'winter', lord: 'winter', shards: 'shatter', winter: 'winter',
+  };
+
   /** Called by Enemy.kill for anything carrying `finale`. */
   F.onUnitDead = function (e) {
     const run = WS.Game.run;
@@ -21844,7 +22387,7 @@ window.WS = window.WS || {};
     } else {
       WS.FX.flash(e.x, e.y, e.radius * 3, WS.hex(t.tint), 0.45);
       WS.FX.shake(4, 0.25);
-      WS.Audio.play('explode', e.x);
+      WS.Audio.play(PART_SOUND[e.id] || 'explode', e.x);
     }
     if (this.stage === 'fight' && this.script.onDead) this.script.onDead(this, e);
   };
@@ -22161,7 +22704,7 @@ window.WS = window.WS || {};
           ports.forEach((q, i) => {
             const ang = hp > 0.7 ? WS.PI / 2 : WS.atan2(p.y - q.y, p.x - q.x);
             F.lane(q.x, q.y + 8, ang, 800, T.broadsideWidth, T.broadsideTele + i * 0.3,
-              T.broadsideDamage, 'Broadside', { active: 0.35, tint: [1.0, 0.7, 0.35] });
+              T.broadsideDamage, 'Broadside', { active: 0.35, tint: [1.0, 0.7, 0.35], sound: 'cannon' });
           });
         }
         if (ports.length && F.every('grape', dt, 4.2)) {
@@ -22337,7 +22880,7 @@ window.WS = window.WS || {};
           if (l.fade < 1 && s.introT >= l.lightAt) {
             if (l.fade === 0) {
               WS.FX.flash(l.x, l.y - l.radius, 90, [0.55, 1.0, 0.75], 0.6);
-              WS.Audio.play('cast', l.x);
+              WS.Audio.play('cast', l.x, 'shadow');
             }
             l.fade = WS.min(1, l.fade + dt * 4);
           }
@@ -22393,7 +22936,7 @@ window.WS = window.WS || {};
         WS.FX.flash(m.x, m.y, 60, [0.55, 1.0, 0.75], 0.4);
         m.x = GRAVES[i][0]; m.y = GRAVES[i][1];
         WS.FX.flash(m.x, m.y, 80, [0.55, 1.0, 0.75], 0.5);
-        WS.Audio.play('cast', m.x);
+        WS.Audio.play('cast', m.x, 'shadow');
       }
 
       if (F.every('hand', dt, 5, pace)) s.hands = 3;
@@ -22579,6 +23122,7 @@ window.WS = window.WS || {};
           T.beamTele, T.beamTime, T.beamDamage, 'Lightning cannon',
           { follow: w, oy: 40, tint: [0.55, 0.85, 1.0] });
       }
+      WS.Audio.play('zap', w.x);   // the cannon charging
       WS.Audio.play('warn', w.x);
     },
     shockwave(F) {
@@ -22586,7 +23130,7 @@ window.WS = window.WS || {};
       F.ring(w.x, w.y + 90, { speed: 230, gaps: 3, gapWidth: 42, dmg: T.stompDamage,
         name: 'Shockwave', tint: [0.9, 0.75, 0.5] });
       WS.FX.shake(5, 0.3);
-      WS.Audio.play('explode', w.x);
+      WS.Audio.play('shock', w.x);
     },
     missiles(F, n) {
       const T = F.def.tuning, w = F.s.core;

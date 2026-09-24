@@ -361,7 +361,7 @@
       WS.FX.flash(player.x, player.y, radius * 0.22, w.mods.blend, hold * 0.9);
     }
     if (heal > 0) WS.Player.heal(player, heal, 'holy');
-    WS.Audio.play('cast');
+    WS.Audio.play('cast', undefined, w.data.school);
     return true;
   };
 
@@ -375,7 +375,7 @@
       schoolColour(w), w.id,
       (w.evolved ? (d.evolvedHeal || 0) : 0) + (w.mods.healBonus || 0));
     mark(WS.Projectile.zones, w);
-    WS.Audio.play('cast');
+    WS.Audio.play('cast', undefined, w.data.school);
     return true;
   };
 
@@ -406,7 +406,7 @@
     Weapon.chainFrom(muzzleX(player, cdx), muzzleY(player, cdy),
       damageOf(player, w), chains, range, w.id,
       schoolColour(w), w);
-    WS.Audio.play('cast');
+    WS.Audio.play('cast', undefined, w.data.school);
     return true;
   };
 
@@ -473,7 +473,7 @@
       schoolColour(w), w.id, d.procChain || w.mods.procChain || 0);
     mark(WS.Projectile.orbits, w);
     player.spinTimer = durationOf(player, w, d.duration || 3.2);
-    WS.Audio.play('cast');
+    WS.Audio.play('cast', undefined, w.data.school);
     return true;
   };
 
@@ -502,7 +502,7 @@
       WS.FX.burst(sx, sy, 5, WS.hex(colour), 110, 0.35, 2.5);
       landed++;
     }
-    if (landed) WS.Audio.play('cast');
+    if (landed) WS.Audio.play('cast', undefined, w.data.school);
     return true;
   };
 
@@ -543,7 +543,7 @@
     WS.Projectile.spawnBeam(mx, my, x2, y2, width, schoolColour(w), 0.22);
     mark(WS.Projectile.beams, w);
     WS.FX.flash(mx, my, width, schoolColour(w), 0.2);
-    WS.Audio.play('cast');
+    WS.Audio.play('cast', undefined, w.data.school);
     return true;
   };
 
@@ -720,7 +720,7 @@
     if (b === 'aimed' || b === 'spray' || b === 'ring' || b === 'bounce') {
       WS.FX.flash(player.x, player.y, 26, schoolColour(w), 0.16);
     }
-    if (w.data.behavior === 'aimed') WS.Audio.play('cast');
+    if (w.data.behavior === 'aimed') WS.Audio.play('cast', undefined, w.data.school);
   };
 
   /* ---------------------------------------------------------- describe -- */

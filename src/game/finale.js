@@ -192,6 +192,7 @@
   F.say = function (key) {
     const l = this.def && this.def.say && this.def.say[key];
     if (l) this.speak(l[0], l[1]);
+    if (LINE_SOUND[key]) WS.Audio.play(LINE_SOUND[key]);
   };
   F.sayOnce = function (key) {
     const s = this.s;
@@ -211,7 +212,11 @@
       F.line.life -= dt;
       if (F.line.life <= 0) F.line = null;
     }
-    if (!F.line && F.queue.length) F.line = F.queue.shift();
+    if (!F.line && F.queue.length) {
+      F.line = F.queue.shift();
+      // Whoever is speaking makes a noise as their line comes up.
+      if (F.line.who !== 'narrator') WS.Audio.babble(F.line.who, F.line.text);
+    }
   }
 
   /** Countdown timers on the script state: true once per `every` seconds. */
@@ -240,7 +245,7 @@
     const o = opts || {};
     this.marks.push({ kind: 'lane', x, y, ang, len, w, tele, maxTele: tele,
       active: o.active || 0.3, dmg: this.dmg(dmg), name, hit: false,
-      tint: o.tint || [1.0, 0.55, 0.25], style: o.style || 'shot' });
+      tint: o.tint || [1.0, 0.55, 0.25], style: o.style || 'shot', sound: o.sound });
   };
 
   /** Expanding ring with openings - stand in a gap as it passes. */
@@ -606,7 +611,7 @@
         if (m.tele > 0) {
           m.tele -= dt;
           if (m.tele <= 0) {
-            WS.Audio.play('explode', m.x);
+            WS.Audio.play(m.sound || 'explode', m.x);
             WS.FX.shake(3, 0.15);
           }
         } else {
@@ -676,6 +681,20 @@
     }
   }
 
+  /* What each part of a finale sounds like when it goes. The machines
+     explode; a lantern breaks like glass; a pylon discharges; a pipe vents;
+     a shard of the Pale shatters. */
+  const PART_SOUND = {
+    lantern_turret: 'glass', soul_lantern: 'glass', galleon_cannon: 'cannon',
+    tesla_pylon: 'zap', coolant_pipe: 'drill', frost_shard: 'shatter', walker_leg: 'shock',
+  };
+  /* And the lines that land with a sound under them. */
+  const LINE_SOUND = {
+    burrow: 'rumble', surface: 'rumble', turretsDown: 'glass', crash: 'cannon',
+    rise: 'winter', relight: 'glass', pylons: 'zap', destruct: 'shock', kneel: 'shock',
+    breach: 'drill', wake: 'winter', lord: 'winter', shards: 'shatter', winter: 'winter',
+  };
+
   /** Called by Enemy.kill for anything carrying `finale`. */
   F.onUnitDead = function (e) {
     const run = WS.Game.run;
@@ -697,7 +716,7 @@
     } else {
       WS.FX.flash(e.x, e.y, e.radius * 3, WS.hex(t.tint), 0.45);
       WS.FX.shake(4, 0.25);
-      WS.Audio.play('explode', e.x);
+      WS.Audio.play(PART_SOUND[e.id] || 'explode', e.x);
     }
     if (this.stage === 'fight' && this.script.onDead) this.script.onDead(this, e);
   };
@@ -1014,7 +1033,7 @@
           ports.forEach((q, i) => {
             const ang = hp > 0.7 ? WS.PI / 2 : WS.atan2(p.y - q.y, p.x - q.x);
             F.lane(q.x, q.y + 8, ang, 800, T.broadsideWidth, T.broadsideTele + i * 0.3,
-              T.broadsideDamage, 'Broadside', { active: 0.35, tint: [1.0, 0.7, 0.35] });
+              T.broadsideDamage, 'Broadside', { active: 0.35, tint: [1.0, 0.7, 0.35], sound: 'cannon' });
           });
         }
         if (ports.length && F.every('grape', dt, 4.2)) {
@@ -1190,7 +1209,7 @@
           if (l.fade < 1 && s.introT >= l.lightAt) {
             if (l.fade === 0) {
               WS.FX.flash(l.x, l.y - l.radius, 90, [0.55, 1.0, 0.75], 0.6);
-              WS.Audio.play('cast', l.x);
+              WS.Audio.play('cast', l.x, 'shadow');
             }
             l.fade = WS.min(1, l.fade + dt * 4);
           }
@@ -1246,7 +1265,7 @@
         WS.FX.flash(m.x, m.y, 60, [0.55, 1.0, 0.75], 0.4);
         m.x = GRAVES[i][0]; m.y = GRAVES[i][1];
         WS.FX.flash(m.x, m.y, 80, [0.55, 1.0, 0.75], 0.5);
-        WS.Audio.play('cast', m.x);
+        WS.Audio.play('cast', m.x, 'shadow');
       }
 
       if (F.every('hand', dt, 5, pace)) s.hands = 3;
@@ -1432,6 +1451,7 @@
           T.beamTele, T.beamTime, T.beamDamage, 'Lightning cannon',
           { follow: w, oy: 40, tint: [0.55, 0.85, 1.0] });
       }
+      WS.Audio.play('zap', w.x);   // the cannon charging
       WS.Audio.play('warn', w.x);
     },
     shockwave(F) {
@@ -1439,7 +1459,7 @@
       F.ring(w.x, w.y + 90, { speed: 230, gaps: 3, gapWidth: 42, dmg: T.stompDamage,
         name: 'Shockwave', tint: [0.9, 0.75, 0.5] });
       WS.FX.shake(5, 0.3);
-      WS.Audio.play('explode', w.x);
+      WS.Audio.play('shock', w.x);
     },
     missiles(F, n) {
       const T = F.def.tuning, w = F.s.core;
