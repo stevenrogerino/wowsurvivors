@@ -29,7 +29,7 @@
       maxHealth: 100, moveSpeed: 250, armor: 0, pickupRadius: 56, healthRegen: 0,
       perkSpeedMult: 1.10, perkCrit: 0.05,
       apply: (p, c) => { p.moveSpeed *= c.perkSpeedMult; p.critChance += c.perkCrit; },
-      unlockHint: 'Survive for 8 minutes in a single run.',
+      unlockHint: 'Held prisoner by the Kerchiefs.',
     },
     hunter: {
       name: 'Maeca Barefoot', title: 'Ranger of the Ashford Garrison', className: 'Hunter',
@@ -39,7 +39,7 @@
       maxHealth: 115, moveSpeed: 230, armor: 0, pickupRadius: 60, healthRegen: 0,
       perkPickup: 30, perkSpeedMult: 1.05,
       apply: (p, c) => { p.pickupRadius += c.perkPickup; p.moveSpeed *= c.perkSpeedMult; },
-      unlockHint: 'Reach level 20 in a single run.',
+      unlockHint: 'Holding out against the pack.',
     },
     warrior: {
       name: 'AAAAAAAAA', title: 'The Fallen Hero', className: 'Warrior',
@@ -49,7 +49,7 @@
       maxHealth: 160, moveSpeed: 210, armor: 3, pickupRadius: 54, healthRegen: 0,
       perkArmor: 2, perkHealth: 25,
       apply: (p, c) => { p.armor += c.perkArmor; p.maxHealth += c.perkHealth; p.health += c.perkHealth; },
-      unlockHint: 'Slay 2 bosses in a single run.',
+      unlockHint: 'Screaming under a cairn.',
     },
     warlock: {
       name: "Nim B'ladin", title: 'Exile of the Gloaming Grove', className: 'Warlock',
@@ -59,7 +59,7 @@
       maxHealth: 115, moveSpeed: 215, armor: 0, pickupRadius: 58, healthRegen: 0,
       perkDamage: 0.10,
       apply: (p, c) => { p.damageMultiplier += c.perkDamage; },
-      unlockHint: 'Slay 750 enemies across all runs.',
+      unlockHint: 'Waiting at the edge of a slaughter.',
     },
     shaman: {
       name: 'Vonnra Hydrocheck', title: 'Far Seer of the Waystation', className: 'Shaman',
@@ -69,7 +69,7 @@
       maxHealth: 125, moveSpeed: 215, armor: 1, pickupRadius: 58, healthRegen: 0,
       perkLuck: 0.15, perkArea: 0.08,
       apply: (p, c) => { p.luck += c.perkLuck; p.areaMultiplier += c.perkArea; },
-      unlockHint: 'Bank 500 gold across all runs.',
+      unlockHint: 'Reading fortunes in the storm.',
     },
     paladin: {
       name: 'Professor Keegan', title: 'Knight of the Argent Vigil (Probationary)', className: 'Paladin',
@@ -79,7 +79,7 @@
       maxHealth: 145, moveSpeed: 210, armor: 2, pickupRadius: 56, healthRegen: 0,
       perkArmor: 1, perkHealing: 0.20,
       apply: (p, c) => { p.armor += c.perkArmor; p.healingMult += c.perkHealing; },
-      unlockHint: 'Somewhere in Thornhollow, an adequate knight lies buried...',
+      unlockHint: 'Buried in Thornhollow, by mistake.',
     },
     graveblade: {
       name: 'DZ', title: 'Who Could Not Stay Buried', className: 'Graveblade',
@@ -98,7 +98,7 @@
          edge here, and like Ruinseeker's felBonus it is inert until Blood
          Rite (or anything else that sets curdled) actually turns the system on. */
       apply: (p, c) => { p.curdleShare += c.perkShare; },
-      unlockHint: 'Let healing curdle. When enough Light has rotted in one run, a blade will answer.',
+      unlockHint: 'Where the Light has curdled.',
     },
     ruinseeker: {
       name: 'Nerosus', title: 'The Spineless One', className: 'Ruinseeker',
@@ -124,7 +124,7 @@
         p.felBonus += c.perkFel;
         p.dodgeChance += c.perkDodge;
       },
-      unlockHint: 'Waste enough killing. Take the ruinform again and again, and the glaives will find you.',
+      unlockHint: 'Where the ruin has taken enough.',
     },
   };
 

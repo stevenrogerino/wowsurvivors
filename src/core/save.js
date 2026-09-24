@@ -177,6 +177,8 @@
         /* When each thing was first put down: { at: epoch ms, map, t: run
            seconds }. The bestiary's pages are dated from it. */
         firstMet: {},
+        /* The watchers brought in from the field, by character id. */
+        found: {},
       },
     };
   }
@@ -246,6 +248,7 @@
       if (typeof s[k] === 'number') s[k] = WS.max(0, s[k]);
     }
     s.bestiary = scrubMap(s.bestiary, 'count');
+    s.found = scrubMap(s.found, 'flag');
     // A first meeting is a small record; one that is not the right shape is
     // dropped on its own rather than costing the rest.
     if (!isPlain(s.firstMet)) s.firstMet = {};

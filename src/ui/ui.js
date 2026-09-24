@@ -1296,6 +1296,25 @@
     return img;
   }
 
+  const watcherLore = (id) => (WS.Lore && WS.Lore.watchers && WS.Lore.watchers[id]) || {};
+
+  /** A watcher not yet found: a shape at the fire, and what the Watch has heard. */
+  function fillUnfoundCartouche(node, id) {
+    const c = WS.Characters[id];
+    node.innerHTML = '';
+    node.classList.remove('map');
+    node.style.setProperty('--q', '#8a90a4');
+    const art = el('div', 'art');
+    art.append(WS.Vignette ? WS.Vignette.survivor(id, WS.Characters[id].color, 0, true) : el('div'), el('i', 'frame'));
+    const body = el('div');
+    body.append(el('h3', 'unfound', 'Not yet found'));
+    body.append(el('div', 'label role', c.className));
+    const rumor = watcherLore(id).rumor;
+    body.append(el('p', 'flavour', rumor ? WS.template(rumor, WS.Config.encounters) : (c.unlockHint || '')));
+    body.append(perk('Rumor', 'The Watch keeps a place at the fire for them.'));
+    node.append(art, body);
+  }
+
   function fillSurvivorCartouche(node, id) {
     const c = WS.Characters[id];
     node.innerHTML = '';
@@ -1307,7 +1326,15 @@
     node.style.setProperty('--q', WS.hex(c.color));
 
     const body = el('div');
-    body.append(el('h3', null, c.name));
+    const head = el('div', 'cart-head');
+    head.append(el('h3', null, c.name));
+    if (watcherLore(id).record) {
+      const rec = el('button', 'btn small record-btn', 'Their record');
+      rec.type = 'button';
+      rec.addEventListener('click', () => { WS.Audio.play('page'); UI.openRecord(id); });
+      head.append(rec);
+    }
+    body.append(head);
     body.append(el('div', 'label role', `${c.className} · ${c.title}`));
     body.append(el('p', 'flavour', WS.template(c.description, c)));
 
@@ -1394,9 +1421,18 @@
         node.addEventListener('click', () => {
           WS.Game.selection.character = id;
           WS.Audio.play('select');
-          for (const n of grid.children) n.classList.remove('selected');
+          for (const n of grid.children) n.classList.remove('selected', 'peek');
           node.classList.add('selected');
           fillSurvivorCartouche(detail, id);
+        });
+      } else {
+        // Not yet found: hear what the Watch knows of them. The selection
+        // stays with whoever you had.
+        node.addEventListener('click', () => {
+          WS.Audio.play('page');
+          for (const n of grid.children) n.classList.remove('peek');
+          node.classList.add('peek');
+          fillUnfoundCartouche(detail, id);
         });
       }
       grid.append(node);
@@ -2350,6 +2386,30 @@
   };
 
   /** The manual as its own overlay, for the menu button and the first run. */
+  /** A watcher's page in the Watch's book: who they are and how they came. */
+  UI.openRecord = function (id) {
+    const c = WS.Characters[id], L = watcherLore(id);
+    const s = shell(c.name, `${c.className} · ${c.title}`);
+    const page = el('div', 'record-page');
+    page.style.setProperty('--q', WS.hex(c.color));
+    const art = el('div', 'art rp-art');
+    art.append(WS.Vignette ? WS.Vignette.survivor(id, c.color) : el('div'), el('i', 'frame'));
+    const words = el('div', 'rp-words');
+    if (L.says) words.append(el('q', 'rp-says', L.says));
+    for (const para of (L.record || [])) words.append(el('p', 'rp-para', para));
+    const seen = el('div', 'bp-ledger');
+    const line = (k, v) => { const r = el('div', 'kv'); r.append(el('span', null, k), el('span', null, v)); seen.append(r); };
+    line('Carries', WS.Weapons[c.weapon].name);
+    line('Knack', WS.template(c.perk, c));
+    words.append(seen);
+    page.append(art, words);
+    s.body.append(page);
+    const back = el('button', 'btn primary', 'Back');
+    back.addEventListener('click', () => { WS.Audio.play('page'); UI.openMenu(); });
+    s.foot.append(el('div', 'spacer'), back);
+    this.show(s.inner);
+  };
+
   UI.openManual = function (onClose) {
     const m = manual();
     const s = shell(m.title || 'How to play',

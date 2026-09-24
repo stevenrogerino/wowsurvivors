@@ -140,7 +140,7 @@
       }
     }
 
-    /* ---- the coffin of Bartholomew the Adequate -------------------------- */
+    /* ---- the coffin of Professor Keegan, buried by mistake ---------------- */
     if (!this.coffinDone && !WS.Save.db.unlocks.characters.paladin) {
       this.coffinTimer -= dt;
       if (this.coffinTimer <= 0) {

@@ -318,6 +318,14 @@
     side.addColorStop(0.9, 'rgba(6,8,16,.55)');
     lg.fillStyle = side;
     lg.fillRect(0, 0, lit.width, lit.height);
+    if (o.shadow) {
+      // Not yet found: a shape at the edge of the firelight, lit only along
+      // the rim that faces the flames.
+      lg.globalCompositeOperation = 'source-over';
+      lg.clearRect(0, 0, lit.width, lit.height);
+      lg.drawImage(sil(hero, `rgba(255,150,70,${(0.55 * flick).toFixed(3)})`), -2, 0);
+      lg.drawImage(sil(hero, '#050508'), 0, 0);
+    }
 
     // Shadows first: a contact shadow, and the long one the fire throws.
     g.save();
@@ -843,8 +851,8 @@
 
   WS.Vignette = {
     /** The survivor, on watch. */
-    survivor(id, tint, rank) {
-      return mount('s:' + id, watchFire, { key: 's:' + id, id, tint, rank });
+    survivor(id, tint, rank, shadow) {
+      return mount('s:' + id, watchFire, { key: 's:' + id, id, tint, rank, shadow: !!shadow });
     },
     /** A battlefield, in its own weather. */
     battlefield(id) {

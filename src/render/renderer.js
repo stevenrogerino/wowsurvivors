@@ -1366,6 +1366,82 @@
    * colour distance across THIRTY-FOUR PIXELS: a bright speck, not a landmark. */
   const CALLOUT = { bomb: 1, stone: 1, hourglass: 1, chest: 1, cache: 1 };
 
+  /** A watcher, met on the field (src/game/encounters.js): the survivor
+   *  themselves, drawn through the hero rig - or, for the fallen hero, the
+   *  cairn he is still screaming under - with the ground you must stand on
+   *  marked around them, and how far along you are. */
+  R.drawWatcher = function (ctx, p, y, size, time) {
+    const who = p.who, ch = WS.Characters[who];
+    if (!ch) return;
+    const c = WS.Config.encounters;
+    const k = p.hold || 0;
+    if (who === 'warrior' && k < 1) {
+      // The cairn: stones heaped on a mound, shaking harder as you dig.
+      const shake = (0.6 + k * 2.4) * WS.sin(time * 38);
+      ctx.save();
+      ctx.translate(p.x + shake, p.y);
+      ctx.fillStyle = '#1a1714';
+      ctx.beginPath(); ctx.ellipse(0, 4, size * 0.62, size * 0.26, 0, 0, WS.TAU); ctx.fill();
+      const rock = WS.Sprites.prop('rock', WS.round(size * 0.55));
+      for (const [dx, dy, s] of [[-0.3, -0.05, 0.9], [0.28, -0.02, 0.85], [0, -0.3, 1.0], [-0.12, 0.12, 0.8], [0.18, 0.14, 0.75]]) {
+        const w = size * 0.55 * s;
+        ctx.drawImage(rock, dx * size - w / 2, dy * size - w * 0.7, w, w);
+      }
+      ctx.restore();
+    } else {
+      const hs = WS.round(size * 1.2);
+      const spr = WS.Sprites.hero(who, ch.color, hs);
+      ctx.drawImage(spr, p.x - hs / 2, y - hs * 0.72 + size * 0.2, hs, hs);
+      if (who === 'rogue') {
+        // Bound: two turns of rope around the middle, loosening as you cut.
+        ctx.save();
+        ctx.globalAlpha = 1 - k;
+        ctx.strokeStyle = '#b8955a'; ctx.lineWidth = 2;
+        for (const dy of [-0.18, -0.06]) {
+          ctx.beginPath(); ctx.ellipse(p.x, y + dy * hs + size * 0.05, hs * 0.2, hs * 0.05, 0, 0, WS.TAU); ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+    // The ground to stand on: a dashed ring, lit while you are on it.
+    ctx.save();
+    ctx.setLineDash([6, 7]);
+    ctx.lineDashOffset = -time * 12;
+    ctx.globalAlpha = p.near ? 0.85 : 0.45;
+    ctx.strokeStyle = WS.rgb(WS.mix(ch.color, [1, 1, 1], 0.4), 1);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(p.x, p.y, c.holdRadius, 0, WS.TAU); ctx.stroke();
+    ctx.setLineDash([]);
+    // How far along, clockwise from twelve.
+    if (k > 0) {
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.arc(p.x, p.y, c.holdRadius, 0, WS.TAU); ctx.stroke();
+      ctx.strokeStyle = WS.rgb(WS.mix(ch.color, [1, 0.9, 0.6], 0.3), 1); ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(p.x, p.y, c.holdRadius, -WS.PI / 2, -WS.PI / 2 + WS.TAU * k); ctx.stroke();
+    }
+    // A name over them, and what you are doing once you are doing it.
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.lineJoin = 'round'; ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(4,6,10,.9)';
+    const label = p.near && k > 0 ? WS.Encounters.holdText(who) : (who === 'warrior' && k < 1 ? 'A screaming cairn' : ch.name);
+    ctx.font = `700 15px ${VOICE_FONT}`;
+    ctx.strokeText(label, p.x, p.y - size * 1.05);
+    ctx.fillStyle = '#f4ecdc';
+    ctx.fillText(label, p.x, p.y - size * 1.05);
+    // The ones who will not wait say how long they will.
+    if (p.stay) {
+      const left = WS.max(0, p.stay - p.life);
+      ctx.font = `italic 500 13px ${VOICE_FONT}`;
+      ctx.textBaseline = 'top';
+      const t = WS.formatTime(left);
+      ctx.strokeText(t, p.x, p.y + c.holdRadius + 4);
+      ctx.fillStyle = left < 10 ? '#ffcf7a' : '#cfc6b6';
+      ctx.fillText(t, p.x, p.y + c.holdRadius + 4);
+    }
+    ctx.restore();
+  };
+
   R.drawPickups = function (ctx, time) {
     const pool = WS.Pickup.pool;
     for (let i = 0; i < pool.count; i++) {
@@ -1418,6 +1494,8 @@
         // above her head), so the blit offset is tuned to her, not shared.
         const spr = WS.Sprites.creature('beans', p.type.tint, size);
         ctx.drawImage(spr, p.x - size * 0.50, y - size * 0.60, size, size);
+      } else if (p.kind === 'watcher') {
+        this.drawWatcher(ctx, p, y, size, time);
       } else if (p.kind === 'cache') {
         // A parachute is never quite still - a small, slow sway says the
         // crate only just landed, rather than having always sat here.

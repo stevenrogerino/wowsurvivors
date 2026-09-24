@@ -100,6 +100,7 @@
     WS.Finale.reset();
     this.player = WS.Player.create(characterId);
     WS.WaveManager.reset(this.run.map);
+    WS.Encounters.reset(this.run);
     WS.Renderer.buildScenery(this.run.map);
 
     WS.Save.stats.totalRuns++;
@@ -593,6 +594,7 @@
     else if (WS.Finale.running()) WS.Finale.update(dt);
     else WS.WaveManager.update(dt, run);
     if (!this.running) return;
+    WS.Encounters.update(dt, run);
 
     WS.Enemy.update(dt);
     if (!this.running) return;

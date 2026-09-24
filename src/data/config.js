@@ -163,6 +163,24 @@
     curdleInterval: 0.50,
     gravebladeThreshold: 4000,
 
+    /* The watchers found in a run (src/game/encounters.js). Each is a person
+       met on the field, and each answers something you did in that run:
+         kerchiefs  Kerchiefs put down this run before Rav is found
+         beasts     beasts put down this run before Maeca is found
+         bosses     bosses slain this run before the cairn starts screaming
+         slaughter  kills inside `slaughterWindow` seconds that draw Nim out
+         gold       gold earned this run before Vonnra's storm gathers
+       hold is how long you stand with them to bring them in; stay is how long
+       a watcher who is not in danger waits for you before moving on, and gap
+       the quiet between one meeting and the next. */
+    encounters: {
+      kerchiefs: 60, beasts: 300, bosses: 2, slaughter: 40, slaughterWindow: 1.5, gold: 600,
+      hold: 3.0, holdRadius: 70, stay: 45, distance: 360,
+      // Seconds after one meeting ends before the next can begin, so they
+      // arrive as moments in a run rather than a queue.
+      gap: 120,
+    },
+
     // Fel / Ruinform: overkill harvested into a burst transformation.
     felPerOverkill: 1.00,
     felPerRank: 0.25,

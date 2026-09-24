@@ -2665,6 +2665,36 @@ body.hud-rail #hud-passives { gap: 9px; }
 .card .card-body, .card .card-detail, .card .card-reacts .react, .row .row-sub,
 .key-row span, .bp-ledger .kv span:last-child { font-weight: 400; }
 
+/* ===================================================== THE WATCHERS =======
+ * The roster's record button, the unfound cartouche, and a watcher's page. */
+.cart-head { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
+.record-btn { padding: 6px 14px; font-family: var(--voice); font-style: italic; font-weight: 700; font-size: 16px; letter-spacing: 0; text-transform: none; flex: none; color: var(--arc-hot); }
+.cartouche h3.unfound { color: var(--ink-faint); font-style: italic; }
+.pick.locked { cursor: pointer; }
+.pick.locked.peek { --frame: var(--frame-lit); opacity: .8; }
+.record-page { display: grid; grid-template-columns: 260px 1fr; gap: 28px; align-items: start; margin-top: 10px; }
+.rp-art { width: 260px; height: 260px; position: relative; }
+.rp-art canvas.vignette { display: block; width: 100%; height: 100%; }
+.rp-art .frame {
+  position: absolute; inset: 0; pointer-events: none; box-sizing: border-box;
+  border: 1px solid transparent; border-image: var(--frame-picture) 24 / 12px stretch;
+  box-shadow: inset 0 0 22px rgba(0,0,0,.6);
+}
+.rp-says {
+  display: block; padding-left: 16px; border-left: 2px solid color-mix(in srgb, var(--q) 60%, transparent);
+  font-family: var(--voice); font-weight: 700; font-size: 21px; line-height: 1.35;
+  color: color-mix(in oklab, var(--q) 45%, #f4ecdc); quotes: '\201C' '\201D';
+}
+.rp-para { font-family: var(--voice); font-size: 17.5px; line-height: 1.55; color: #ddd2bf; margin: 13px 0 0; max-width: 64ch; }
+.rp-para:first-of-type::first-letter {
+  float: left; font-weight: 800; font-size: 50px; line-height: .85; margin: 5px 7px 0 0;
+  color: color-mix(in oklab, var(--q) 60%, #f5c56b);
+}
+@media (max-width: 860px) {
+  .record-page { grid-template-columns: 1fr; }
+  .rp-art { width: 100%; height: 180px; }
+}
+
 </style>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%230b0d12'/><circle cx='50' cy='50' r='30' fill='none' stroke='%23f5c56b' stroke-width='8' stroke-dasharray='120 60'/></svg>">
 </head>
@@ -3187,6 +3217,24 @@ window.WS = window.WS || {};
     curdleInterval: 0.50,
     gravebladeThreshold: 4000,
 
+    /* The watchers found in a run (src/game/encounters.js). Each is a person
+       met on the field, and each answers something you did in that run:
+         kerchiefs  Kerchiefs put down this run before Rav is found
+         beasts     beasts put down this run before Maeca is found
+         bosses     bosses slain this run before the cairn starts screaming
+         slaughter  kills inside `slaughterWindow` seconds that draw Nim out
+         gold       gold earned this run before Vonnra's storm gathers
+       hold is how long you stand with them to bring them in; stay is how long
+       a watcher who is not in danger waits for you before moving on, and gap
+       the quiet between one meeting and the next. */
+    encounters: {
+      kerchiefs: 60, beasts: 300, bosses: 2, slaughter: 40, slaughterWindow: 1.5, gold: 600,
+      hold: 3.0, holdRadius: 70, stay: 45, distance: 360,
+      // Seconds after one meeting ends before the next can begin, so they
+      // arrive as moments in a run rather than a queue.
+      gap: 120,
+    },
+
     // Fel / Ruinform: overkill harvested into a burst transformation.
     felPerOverkill: 1.00,
     felPerRank: 0.25,
@@ -3489,6 +3537,8 @@ window.WS = window.WS || {};
         /* When each thing was first put down: { at: epoch ms, map, t: run
            seconds }. The bestiary's pages are dated from it. */
         firstMet: {},
+        /* The watchers brought in from the field, by character id. */
+        found: {},
       },
     };
   }
@@ -3558,6 +3608,7 @@ window.WS = window.WS || {};
       if (typeof s[k] === 'number') s[k] = WS.max(0, s[k]);
     }
     s.bestiary = scrubMap(s.bestiary, 'count');
+    s.found = scrubMap(s.found, 'flag');
     // A first meeting is a small record; one that is not the right shape is
     // dropped on its own rather than costing the rest.
     if (!isPlain(s.firstMet)) s.firstMet = {};
@@ -4091,7 +4142,7 @@ window.WS = window.WS || {};
       maxHealth: 100, moveSpeed: 250, armor: 0, pickupRadius: 56, healthRegen: 0,
       perkSpeedMult: 1.10, perkCrit: 0.05,
       apply: (p, c) => { p.moveSpeed *= c.perkSpeedMult; p.critChance += c.perkCrit; },
-      unlockHint: 'Survive for 8 minutes in a single run.',
+      unlockHint: 'Held prisoner by the Kerchiefs.',
     },
     hunter: {
       name: 'Maeca Barefoot', title: 'Ranger of the Ashford Garrison', className: 'Hunter',
@@ -4101,7 +4152,7 @@ window.WS = window.WS || {};
       maxHealth: 115, moveSpeed: 230, armor: 0, pickupRadius: 60, healthRegen: 0,
       perkPickup: 30, perkSpeedMult: 1.05,
       apply: (p, c) => { p.pickupRadius += c.perkPickup; p.moveSpeed *= c.perkSpeedMult; },
-      unlockHint: 'Reach level 20 in a single run.',
+      unlockHint: 'Holding out against the pack.',
     },
     warrior: {
       name: 'AAAAAAAAA', title: 'The Fallen Hero', className: 'Warrior',
@@ -4111,7 +4162,7 @@ window.WS = window.WS || {};
       maxHealth: 160, moveSpeed: 210, armor: 3, pickupRadius: 54, healthRegen: 0,
       perkArmor: 2, perkHealth: 25,
       apply: (p, c) => { p.armor += c.perkArmor; p.maxHealth += c.perkHealth; p.health += c.perkHealth; },
-      unlockHint: 'Slay 2 bosses in a single run.',
+      unlockHint: 'Screaming under a cairn.',
     },
     warlock: {
       name: "Nim B'ladin", title: 'Exile of the Gloaming Grove', className: 'Warlock',
@@ -4121,7 +4172,7 @@ window.WS = window.WS || {};
       maxHealth: 115, moveSpeed: 215, armor: 0, pickupRadius: 58, healthRegen: 0,
       perkDamage: 0.10,
       apply: (p, c) => { p.damageMultiplier += c.perkDamage; },
-      unlockHint: 'Slay 750 enemies across all runs.',
+      unlockHint: 'Waiting at the edge of a slaughter.',
     },
     shaman: {
       name: 'Vonnra Hydrocheck', title: 'Far Seer of the Waystation', className: 'Shaman',
@@ -4131,7 +4182,7 @@ window.WS = window.WS || {};
       maxHealth: 125, moveSpeed: 215, armor: 1, pickupRadius: 58, healthRegen: 0,
       perkLuck: 0.15, perkArea: 0.08,
       apply: (p, c) => { p.luck += c.perkLuck; p.areaMultiplier += c.perkArea; },
-      unlockHint: 'Bank 500 gold across all runs.',
+      unlockHint: 'Reading fortunes in the storm.',
     },
     paladin: {
       name: 'Professor Keegan', title: 'Knight of the Argent Vigil (Probationary)', className: 'Paladin',
@@ -4141,7 +4192,7 @@ window.WS = window.WS || {};
       maxHealth: 145, moveSpeed: 210, armor: 2, pickupRadius: 56, healthRegen: 0,
       perkArmor: 1, perkHealing: 0.20,
       apply: (p, c) => { p.armor += c.perkArmor; p.healingMult += c.perkHealing; },
-      unlockHint: 'Somewhere in Thornhollow, an adequate knight lies buried...',
+      unlockHint: 'Buried in Thornhollow, by mistake.',
     },
     graveblade: {
       name: 'DZ', title: 'Who Could Not Stay Buried', className: 'Graveblade',
@@ -4160,7 +4211,7 @@ window.WS = window.WS || {};
          edge here, and like Ruinseeker's felBonus it is inert until Blood
          Rite (or anything else that sets curdled) actually turns the system on. */
       apply: (p, c) => { p.curdleShare += c.perkShare; },
-      unlockHint: 'Let healing curdle. When enough Light has rotted in one run, a blade will answer.',
+      unlockHint: 'Where the Light has curdled.',
     },
     ruinseeker: {
       name: 'Nerosus', title: 'The Spineless One', className: 'Ruinseeker',
@@ -4186,7 +4237,7 @@ window.WS = window.WS || {};
         p.felBonus += c.perkFel;
         p.dodgeChance += c.perkDodge;
       },
-      unlockHint: 'Waste enough killing. Take the ruinform again and again, and the glaives will find you.',
+      unlockHint: 'Where the ruin has taken enough.',
     },
   };
 
@@ -5618,34 +5669,34 @@ window.WS = window.WS || {};
 
     /* ------------------------------------------------ survivor unlocks --- */
     nightfall_survivor: {
-      name: 'Nightfall Survivor', art: 'moon',
-      description: 'Survive for 8 minutes in a single run.',
+      name: 'Cut Loose', art: 'dagger',
+      description: 'Free the Kerchiefs\' prisoner.',
       reward: { type: 'character', id: 'rogue' },
-      test: (db) => db.statistics.bestRunTime >= 480,
+      test: (db) => !!(db.statistics.found && db.statistics.found.rogue),
     },
     giant_slayer: {
-      name: 'Giant Slayer', art: 'skull',
-      description: 'Slay 2 bosses in a single run.',
+      name: 'The Screaming Cairn', art: 'axe',
+      description: 'Dig the fallen hero out of his cairn.',
       reward: { type: 'character', id: 'warrior' },
-      test: (db) => db.statistics.bestBossesInRun >= 2,
+      test: (db) => !!(db.statistics.found && db.statistics.found.warrior),
     },
     seasoned_veteran: {
-      name: 'Seasoned Veteran', art: 'book',
-      description: 'Reach level 20 in a single run.',
+      name: 'Last Quiver', art: 'arrow',
+      description: 'Stand with the last ranger of Ashford against the pack.',
       reward: { type: 'character', id: 'hunter' },
-      test: (db) => db.statistics.bestLevel >= 20,
+      test: (db) => !!(db.statistics.found && db.statistics.found.hunter),
     },
     bane_of_the_masses: {
       name: 'Bane of the Masses', art: 'blade',
-      description: 'Slay 750 enemies across all runs.',
+      description: 'Draw the exile of the Gloaming Grove out with a slaughter.',
       reward: { type: 'character', id: 'warlock' },
-      test: (db) => db.statistics.totalKills >= 750,
+      test: (db) => !!(db.statistics.found && db.statistics.found.warlock),
     },
     fortune_seeker: {
       name: 'Fortune Seeker', art: 'coin',
-      description: 'Bank 500 gold across all runs.',
+      description: 'Have your fortune read in the far seer\'s storm.',
       reward: { type: 'character', id: 'shaman' },
-      test: (db) => db.statistics.totalGold >= 500,
+      test: (db) => !!(db.statistics.found && db.statistics.found.shaman),
     },
     /* These three were filed under "challenge" with a gold reward instead of
        here, which is why paladin, graveblade and ruinseeker could never
@@ -5956,6 +6007,133 @@ window.WS = window.WS || {};
       stormbreaker: 'Grimtunnel\'s walking fortress: forty tons of stolen ember and very confident engineering. Its shield hangs off the pylons; bring down the pylons and the shield goes with them.',
       heart_drill: 'Grimtunnel\'s last machine, sunk into the Pale Wastes to reach the heart of the dark. He reached it. It was awake.',
       pale_lord: 'Marrowfrost, the Pale Lord: the dark itself, woken at the bottom of the world and crowned in rime. Every ember the Watch has ever burned was taken from him, and tonight he came for all of it.',
+    },
+
+    /* The watchers: the Watch's record of each of its own. Rendered in the
+     * survivor's record page and on the roster.
+     *   record  the entry, a few short paragraphs, in the Watch's voice
+     *   says    a line in their own
+     *   rumor   what the Watch has heard of one not yet found - where to look,
+     *           and what it will take. Templated against Config.encounters.
+     *   found   for the five met on the field: the banner when they appear,
+     *           what you are doing while you stand with them, and the banner
+     *           when they join. */
+    watchers: {
+      mage: {
+        record: [
+          'Zul is a baron of a barony that is, by his own account, mostly bog. He sold the dry half to pay his tuition at the Low Cloister, where mages are taught in the cellars and promoted by the stair.',
+          'He has been an apprentice for eleven years. The Cloister will not pass him until he has done field work, and the only field left with any work in it is the one the Watch stands in.',
+          'He never did learn to aim. His motes find their own way, and he has decided to call that a technique.',
+        ],
+        says: 'I am told the field work counts double if I survive it.',
+      },
+      priest: {
+        record: [
+          'The Order of the Morning Light named him the Fool as an insult - he blessed a well that had already run dry, and it filled. He took the name as a rank and has signed it that way ever since.',
+          'Chid heals because nobody has ever managed to explain to him why he should not be able to. The Light seems to have given up arguing.',
+          'He was the first to sit down at the Watch\'s fire and the last to leave it, every night, for as long as anyone there can remember.',
+        ],
+        says: 'The dark is only the Light, waiting for somebody to be foolish enough.',
+      },
+      rogue: {
+        record: [
+          'The doctorate is self-awarded. So is most of Rav\'s history, which changes depending on who is buying.',
+          'What the Watch can confirm: he was the Kerchiefs\' quartermaster for six years, and the winter they raided a Watch fire for its ember, and a village froze for it, he walked out on them with their payroll and every knife in the armoury.',
+          'The Kerchiefs caught him on the road and tied him up in the open, as a lesson to the others. The Watch cut him loose. He has been teaching lessons of his own since.',
+        ],
+        says: 'I did not steal the knives. I liberated them. There is paperwork. Somewhere.',
+        rumor: 'The Kerchiefs have one of their own tied up somewhere, and they want it seen. Put down {kerchiefs} of them in a single night and you will find where they keep him.',
+        found: {
+          arrive: ['The Kerchiefs have a prisoner', 'One of their own, tied up in the open. Get to him.'],
+          hold: 'Cutting him loose',
+          joined: ['Dr. Rav McBreathless joins the Watch', 'He has already been through your pockets. Out of habit.'],
+        },
+      },
+      hunter: {
+        record: [
+          'Ashford Garrison held the eastern woods for forty years. It held out against the Snarlpack for eleven days. Maeca was out on patrol when it fell, and she has been hunting the pack that took it ever since.',
+          'She walks barefoot to feel the ground, and she never wastes an arrow, because most nights she has only a few.',
+          'The Watch found her treed by wolves in Thornhollow, down to her last quiver and still counting shots. She accepted help on the understanding that it was a temporary arrangement. It has not ended.',
+        ],
+        says: 'Count your arrows before you count their wolves.',
+        rumor: 'A ranger has been hunting the beasts of these woods alone, and they have started hunting her back. Put down {beasts} beasts in a single night and you will hear where she is holding out.',
+        found: {
+          arrive: ['A ranger is holding off a pack', 'Last quiver, back to a tree. Stand with her.'],
+          hold: 'Standing with her',
+          joined: ['Maeca Barefoot joins the Watch', 'She counts your arrows before she thanks you.'],
+        },
+      },
+      warrior: {
+        record: [
+          'He fell at the Battle of the Low Ford, a hundred years ago, in the middle of a charge and the middle of a battle cry. They raised a cairn over him where he lay. The cry never stopped.',
+          'For a century, travellers on the ford road heard the ground screaming and walked a little faster. Then the Watch put down enough of the night\'s worst in one night to wake him, and he came out of the cairn still charging.',
+          'When the Watch asked for his name for the book, that is what he said. It has been written down exactly.',
+        ],
+        says: 'AAAAAAAAA!',
+        rumor: 'Somewhere under a cairn, a hero is still screaming the battle cry he died on. He answers to a fight worth waking for: put down {bosses} of the night\'s worst in a single night.',
+        found: {
+          arrive: ['The ground is screaming', 'A cairn, and something under it still in the middle of a charge. Dig.'],
+          hold: 'Digging',
+          joined: ['AAAAAAAAA joins the Watch', 'He is still screaming. That is fine. That is just his name.'],
+        },
+      },
+      warlock: {
+        record: [
+          'When the blight came to the Gloaming Grove, Nim saved it the only way he knew: he drank the sickness out of it, and a great deal of the grove along with it. The grove lived. The druids exiled him for how.',
+          'The hunger never left his hands. It goes quiet only when there is a great deal to drink at once - which is why he is always found at the edge of a slaughter, watching.',
+          'He joined the Watch on the reasoning that the Watch would never run out of things for him to drink. So far he has been right.',
+        ],
+        says: 'The grove forgave the blight. It never forgave the cure.',
+        rumor: 'Someone in the dark follows the worst of the killing, and waits at its edge. Put {slaughter} of them down inside a breath or two, and he will come to see who did it.',
+        found: {
+          arrive: ['Something in the dark enjoyed that', 'A hooded figure at the edge of the slaughter. He will not wait long.'],
+          hold: 'Hearing him out',
+          joined: ['Nim B\'ladin joins the Watch', 'He thanks you for the meal.'],
+          left: ['Nim B\'ladin steps back into the dark', 'He will come again for a slaughter worth watching.'],
+        },
+      },
+      shaman: {
+        record: [
+          'Vonnra keeps the Waystation, where the last three roads meet and nothing gets through without paying her toll. She reads fortunes in the storm, and the storm has never once been wrong about who can afford her.',
+          'She saw the Watch in the lightning years ago and has been sending it invoices ever since, for services she had not yet rendered.',
+          'She came to the field herself the night a watcher finally had enough gold to be worth the trip. She has not left, and the invoices have not stopped.',
+        ],
+        says: 'I have seen how this ends. The fee is the same either way.',
+        rumor: 'A far seer reads fortunes in the storm, and only for those who can pay. Carry {gold} gold in a single night and her storm will find you - but she will not wait for it to pass.',
+        found: {
+          arrive: ['A storm gathers around a stranger', 'The far seer has come to read your fortune. She will not wait.'],
+          hold: 'Having your fortune read',
+          joined: ['Vonnra Hydrocheck joins the Watch', 'Your fortune is excellent. Her rates have gone up.'],
+          left: ['The storm moves on', 'Vonnra will read for you another night, if you can still pay.'],
+        },
+      },
+      paladin: {
+        record: [
+          'Professor Keegan fainted during his own knighting and was declared dead by a clerk who wanted to go home. He was buried in Thornhollow with full honours and the wrong paperwork.',
+          'He dug himself out three days later, walked to the Argent Vigil and filed a complaint, which is still under review. Until it is resolved his knighthood remains probationary.',
+          'He kept the shield. He says he has earned it twice.',
+        ],
+        says: 'I have been buried once already. I did not care for it.',
+        rumor: 'Somewhere in Thornhollow, an adequate knight lies buried by mistake. Hold the woods long enough and his coffin will come up.',
+      },
+      graveblade: {
+        record: [
+          'DZ was a healer once, and a good one. He healed past the point where anyone should, and the Light in him curdled into something colder that did not want to mend.',
+          'He was buried with his blade the first time. He did not stay. He has not stayed buried since, and he has stopped expecting to.',
+          'He keeps the Watch because it is the only place where what he has become is useful.',
+        ],
+        says: 'The Light rots, if you ask too much of it. Mine did.',
+        rumor: 'Heal past the point of healing. When enough Light has curdled in one night, a blade will break the ground where it fell.',
+      },
+      ruinseeker: {
+        record: [
+          'Nerosus burned out both eyes to see the ruin clearly. He says it was worth it. He has not blinked since, which the others find harder to live with than the eyes.',
+          'The ruin is what is left when a thing has been used past its end, and he sees it in everything: in the horde, in the Watch, in the fire itself. He has decided it is beautiful.',
+          'The twin glaives found him the night he gave himself to the fel for the last time and came back. He has been giving himself to it ever since.',
+        ],
+        says: 'Everything ends. I only want to be there when it does.',
+        rumor: 'Give yourself to the ruin, again and again in one night. When it has taken enough of you, two glaives will be waiting.',
+      },
     },
   };
 
@@ -17803,6 +17981,7 @@ window.WS = window.WS || {};
     WS.XP.spawnGem(e.x, e.y, e.xp);
     WS.Pickup.onKill(e);
     WS.Save.recordKill(t, e.id);
+    WS.Encounters.onKill(t);
     run.kills++;
     WS.Audio.play('enemyHit', e.x);
 
@@ -19316,6 +19495,8 @@ window.WS = window.WS || {};
     graveblade: { art: 'graveblade', tint: [0.85, 0.20, 0.25], size: 30, noMagnet: true },
     twinglaive: { art: 'twinglaive', tint: [0.55, 1.0, 0.25], size: 30, noMagnet: true },
     merchant: { art: 'beans', tint: [0.90, 0.52, 0.22], size: 56, noMagnet: true },
+    // A watcher, met on the field - see src/game/encounters.js. Tinted per person.
+    watcher: { art: 'rune', tint: [1.0, 0.85, 0.5], size: 46, noMagnet: true },
   };
 
   /* HOW EXPENDABLE EACH KIND IS when the field is full and something has to
@@ -19334,7 +19515,7 @@ window.WS = window.WS || {};
     chest: 2, cache: 2,
     potion: 1,
   };
-  const KEEP = { coffin: 1, graveblade: 1, twinglaive: 1, merchant: 1 };
+  const KEEP = { coffin: 1, graveblade: 1, twinglaive: 1, merchant: 1, watcher: 1 };
   const BAND = 150;          // how much nearer a coin has to be to outrank
 
   const Pickup = { pool: null, TYPES, EXPENDABLE, KEEP };
@@ -19486,8 +19667,8 @@ window.WS = window.WS || {};
     } else if (kind === 'coffin') {
       WS.Save.stats.coffinsOpened = (WS.Save.stats.coffinsOpened || 0) + 1;
       WS.Save.save();
-      WS.Game.announce('Bartholomew the Adequate rises!',
-        'He files a complaint, then hands you the shield.', 3.5);
+      WS.Game.announce('Professor Keegan rises!',
+        'Buried by mistake. He files a complaint, then takes up his shield.', 3.5);
       WS.Game.addGold(WS.floor(80 * run.goldMult), p.x, p.y);
       WS.Achievements.check();
       WS.Audio.play('evolve');
@@ -19542,6 +19723,8 @@ window.WS = window.WS || {};
         this.pool.releaseAt(i);
         continue;
       }
+      // A watcher is not collected: you stand with them (Encounters.tend).
+      if (pickup.kind === 'watcher') { i++; continue; }
       const [dx, dy, distance] = WS.normalize(player.x - pickup.x, player.y - pickup.y);
 
       if (!pickup.type.noMagnet && distance < player.pickupRadius) {
@@ -20034,7 +20217,7 @@ window.WS = window.WS || {};
       }
     }
 
-    /* ---- the coffin of Bartholomew the Adequate -------------------------- */
+    /* ---- the coffin of Professor Keegan, buried by mistake ---------------- */
     if (!this.coffinDone && !WS.Save.db.unlocks.characters.paladin) {
       this.coffinTimer -= dt;
       if (this.coffinTimer <= 0) {
@@ -20126,6 +20309,205 @@ window.WS = window.WS || {};
   };
 
   WS.WaveManager = Wave;
+
+})(window.WS);
+
+/* ===== src/game/encounters.js ===== */
+/* The watchers, found on the field.
+ *
+ * Five of the survivors used to unlock from a number crossing a line - eight
+ * minutes survived, level twenty, seven hundred and fifty kills - with a toast
+ * in the corner to say so. Nobody met anyone. The other three were already
+ * found in the world (a coffin, a blade, two glaives), and those were the
+ * ones players talked about.
+ *
+ * So these five are met too. Each answers something you did in the run, in
+ * the way that suits who they are:
+ *
+ *   Rav     the Kerchiefs have him tied up; put enough of them down and you
+ *           find where, with his guards around him. Cut him loose.
+ *   Maeca   a ranger treed by a wolf pack; put enough beasts down and you
+ *           find her. Stand with her while the pack comes in.
+ *   AAAAAAAAA  a hero's cairn starts screaming once you have slain enough of
+ *           the night's worst. Dig him out while the dead rise around it.
+ *   Nim     drawn out by a slaughter - enough kills inside a breath - and
+ *           waits at its edge. He will not wait long.
+ *   Vonnra  her storm finds whoever carries enough gold. She reads your
+ *           fortune, if you reach her before the storm moves on.
+ *
+ * Bringing one in is standing beside them for a few seconds; stepping away
+ * lets the progress drain back, not reset. The record of it is
+ * `statistics.found[id]`, which is what the unlocking achievement reads, so a
+ * save from before this change keeps every survivor it had.
+ *
+ * Everything here is tunable in Config.encounters, and every word is in
+ * WS.Lore.watchers.
+ */
+'use strict';
+(function (WS) {
+
+  const ORDER = ['rogue', 'hunter', 'warrior', 'warlock', 'shaman'];
+
+  /** What the run has to have done for each to come out. */
+  const TRIGGER = {
+    rogue: (E, run, c) => E.kills.kerchief >= c.kerchiefs,
+    hunter: (E, run, c) => E.kills.beast >= c.beasts,
+    warrior: (E, run, c) => run.bossesSlain >= c.bosses,
+    warlock: (E) => E.slaughtered,
+    shaman: (E, run, c) => run.gold >= c.gold,
+  };
+
+  /** Who comes with them. */
+  const GUARDS = {
+    rogue: [['kerchief', 4], ['bruiser', 2]],
+    hunter: [['wolf', 8]],
+    warrior: [['skeleton', 6]],
+  };
+
+  /** The ones not in danger wait for you, and then they do not. */
+  const WAITS = { warlock: 1, shaman: 1 };
+
+  const Encounters = { run: null, active: null };
+
+  Encounters.reset = function (run) {
+    this.run = run;
+    this.active = null;
+    this.done = {};
+    this.kills = { kerchief: 0, beast: 0 };
+    this.recent = [];
+    this.slaughtered = false;
+    this.cooldown = 8;
+  };
+
+  function wanted(id) {
+    return !WS.Save.isCharacterUnlocked(id) && !(WS.Save.stats.found && WS.Save.stats.found[id]);
+  }
+
+  Encounters.onKill = function (t) {
+    const run = this.run;
+    if (!run || run !== WS.Game.run) return;
+    if (t && t.family && this.kills[t.family] !== undefined) this.kills[t.family]++;
+    // A slaughter is many kills inside one breath. Only counted while Nim is
+    // still out there to be drawn by it.
+    if (!this.slaughtered && wanted('warlock')) {
+      const c = WS.Config.encounters, now = run.time;
+      this.recent.push(now);
+      while (this.recent.length && this.recent[0] < now - c.slaughterWindow) this.recent.shift();
+      if (this.recent.length >= c.slaughter) this.slaughtered = true;
+    }
+  };
+
+  Encounters.update = function (dt, run) {
+    if (!this.run || run !== this.run) return;
+    if (this.active) { this.tend(dt); return; }
+    // Nothing new walks onto a field that is busy being something else.
+    if (run.map.arena || (WS.Finale && WS.Finale.running())) return;
+    this.cooldown -= dt;
+    if (this.cooldown > 0) return;
+    const c = WS.Config.encounters;
+    for (const id of ORDER) {
+      if (this.done[id] || !wanted(id)) continue;
+      if (TRIGGER[id](this, run, c)) { this.begin(id); return; }
+    }
+  };
+
+  Encounters.begin = function (id) {
+    const c = WS.Config.encounters, p = WS.Game.player, W = WS.CONST.WORLD_WIDTH, H = WS.CONST.WORLD_HEIGHT;
+    const a = WS.random() * WS.TAU;
+    // Clear of the edges, and further clear of the top, where the HUD sits
+    // over the field and would cover their name.
+    const x = WS.clamp(p.x + WS.cos(a) * c.distance, 140, W - 140);
+    const y = WS.clamp(p.y + WS.sin(a) * c.distance, 190, H - 150);
+    const pk = WS.Pickup.spawn('watcher', x, y);
+    if (!pk) { this.cooldown = 5; return; }      // the field is full; ask again shortly
+    const ch = WS.Characters[id];
+    pk.who = id;
+    pk.type = Object.assign({}, WS.Pickup.TYPES.watcher, { tint: ch.color });
+    pk.hold = 0;
+    pk.stay = WAITS[id] ? c.stay : 0;
+    this.active = { id, pk, hold: 0 };
+    this.done[id] = true;
+
+    const lore = WS.Lore.watchers && WS.Lore.watchers[id];
+    const f = lore && lore.found;
+    if (f) WS.Game.announce(f.arrive[0], f.arrive[1], 4.0);
+    WS.Audio.play(GUARDS[id] ? 'boss' : 'level');
+    WS.FX.flash(x, y, 120, ch.color, 0.45);
+
+    const scale = WS.WaveManager.enemyScale ? WS.WaveManager.enemyScale(this.run.time) * 1.4 : 1;
+    const guards = GUARDS[id] || [];
+    let n = 0;
+    const total = guards.reduce((s, g) => s + g[1], 0);
+    for (const [kind, count] of guards) {
+      for (let i = 0; i < count; i++, n++) {
+        const g = (n / total) * WS.TAU;
+        WS.Enemy.spawn(kind, x + WS.cos(g) * 80, y + WS.sin(g) * 80, scale);
+      }
+    }
+  };
+
+  /** Standing with them, or not. */
+  Encounters.tend = function (dt) {
+    const A = this.active, pk = A.pk, c = WS.Config.encounters;
+    // The pool reuses its slots: make sure this is still them.
+    if (pk.kind !== 'watcher' || pk.who !== A.id) { this.active = null; return; }
+    const p = WS.Game.player;
+    const near = WS.dist(p.x, p.y, pk.x, pk.y) < c.holdRadius;
+    A.hold = near ? A.hold + dt : WS.max(0, A.hold - dt * 0.6);
+    pk.hold = WS.clamp(A.hold / c.hold, 0, 1);
+    pk.near = near;
+    if (A.hold >= c.hold) { this.bringIn(); return; }
+    if (pk.stay && pk.life >= pk.stay && !near) this.lose();
+    // Vonnra's storm: now and then it strikes the ground around her.
+    if (A.id === 'shaman' && WS.random() < dt * 1.3) {
+      const g = WS.random() * WS.TAU, r = 60 + WS.random() * 90;
+      WS.FX.flash(pk.x + WS.cos(g) * r, pk.y + WS.sin(g) * r, 50, [0.6, 0.85, 1.0], 0.5);
+    }
+  };
+
+  function release(pk) {
+    const pool = WS.Pickup.pool;
+    const i = pool.active.indexOf(pk);
+    if (i >= 0) pool.releaseAt(i);
+  }
+
+  Encounters.bringIn = function () {
+    const A = this.active, id = A.id, pk = A.pk, run = this.run;
+    this.active = null;
+    this.cooldown = WS.Config.encounters.gap;
+    WS.FX.burst(pk.x, pk.y, 26, WS.hex(WS.Characters[id].color), 220, 0.8, 4);
+    WS.FX.flash(pk.x, pk.y, 160, WS.Characters[id].color, 0.6);
+    release(pk);
+    WS.Save.stats.found = WS.Save.stats.found || {};
+    WS.Save.stats.found[id] = true;
+    WS.Game.addGold(WS.floor(100 * run.goldMult), pk.x, pk.y);
+    WS.Achievements.check();
+    WS.Save.save();
+    const f = WS.Lore.watchers[id].found;
+    WS.Game.announce(f.joined[0], f.joined[1], 4.0, { kind: 'glory' });
+    WS.Audio.play('evolve');
+  };
+
+  Encounters.lose = function () {
+    const A = this.active, pk = A.pk;
+    this.active = null;
+    WS.FX.burst(pk.x, pk.y, 12, '#9aa0b8', 120, 0.6, 3);
+    release(pk);
+    const f = WS.Lore.watchers[A.id].found;
+    if (f && f.left) WS.Game.toast(f.left[0], f.left[1]);
+    // The trigger fired once; a second one this run can bring them back.
+    this.done[A.id] = false;
+    if (A.id === 'warlock') { this.slaughtered = false; this.recent.length = 0; }
+    this.cooldown = WS.Config.encounters.gap / 2;
+  };
+
+  /** The words for what you are doing while you stand there. */
+  Encounters.holdText = function (id) {
+    const l = WS.Lore.watchers && WS.Lore.watchers[id];
+    return (l && l.found && l.found.hold) || '';
+  };
+
+  WS.Encounters = Encounters;
 
 })(window.WS);
 
@@ -22693,6 +23075,7 @@ window.WS = window.WS || {};
     WS.Finale.reset();
     this.player = WS.Player.create(characterId);
     WS.WaveManager.reset(this.run.map);
+    WS.Encounters.reset(this.run);
     WS.Renderer.buildScenery(this.run.map);
 
     WS.Save.stats.totalRuns++;
@@ -23186,6 +23569,7 @@ window.WS = window.WS || {};
     else if (WS.Finale.running()) WS.Finale.update(dt);
     else WS.WaveManager.update(dt, run);
     if (!this.running) return;
+    WS.Encounters.update(dt, run);
 
     WS.Enemy.update(dt);
     if (!this.running) return;
@@ -24666,6 +25050,14 @@ window.WS = window.WS || {};
     side.addColorStop(0.9, 'rgba(6,8,16,.55)');
     lg.fillStyle = side;
     lg.fillRect(0, 0, lit.width, lit.height);
+    if (o.shadow) {
+      // Not yet found: a shape at the edge of the firelight, lit only along
+      // the rim that faces the flames.
+      lg.globalCompositeOperation = 'source-over';
+      lg.clearRect(0, 0, lit.width, lit.height);
+      lg.drawImage(sil(hero, `rgba(255,150,70,${(0.55 * flick).toFixed(3)})`), -2, 0);
+      lg.drawImage(sil(hero, '#050508'), 0, 0);
+    }
 
     // Shadows first: a contact shadow, and the long one the fire throws.
     g.save();
@@ -25191,8 +25583,8 @@ window.WS = window.WS || {};
 
   WS.Vignette = {
     /** The survivor, on watch. */
-    survivor(id, tint, rank) {
-      return mount('s:' + id, watchFire, { key: 's:' + id, id, tint, rank });
+    survivor(id, tint, rank, shadow) {
+      return mount('s:' + id, watchFire, { key: 's:' + id, id, tint, rank, shadow: !!shadow });
     },
     /** A battlefield, in its own weather. */
     battlefield(id) {
@@ -30086,6 +30478,82 @@ window.WS = window.WS || {};
    * colour distance across THIRTY-FOUR PIXELS: a bright speck, not a landmark. */
   const CALLOUT = { bomb: 1, stone: 1, hourglass: 1, chest: 1, cache: 1 };
 
+  /** A watcher, met on the field (src/game/encounters.js): the survivor
+   *  themselves, drawn through the hero rig - or, for the fallen hero, the
+   *  cairn he is still screaming under - with the ground you must stand on
+   *  marked around them, and how far along you are. */
+  R.drawWatcher = function (ctx, p, y, size, time) {
+    const who = p.who, ch = WS.Characters[who];
+    if (!ch) return;
+    const c = WS.Config.encounters;
+    const k = p.hold || 0;
+    if (who === 'warrior' && k < 1) {
+      // The cairn: stones heaped on a mound, shaking harder as you dig.
+      const shake = (0.6 + k * 2.4) * WS.sin(time * 38);
+      ctx.save();
+      ctx.translate(p.x + shake, p.y);
+      ctx.fillStyle = '#1a1714';
+      ctx.beginPath(); ctx.ellipse(0, 4, size * 0.62, size * 0.26, 0, 0, WS.TAU); ctx.fill();
+      const rock = WS.Sprites.prop('rock', WS.round(size * 0.55));
+      for (const [dx, dy, s] of [[-0.3, -0.05, 0.9], [0.28, -0.02, 0.85], [0, -0.3, 1.0], [-0.12, 0.12, 0.8], [0.18, 0.14, 0.75]]) {
+        const w = size * 0.55 * s;
+        ctx.drawImage(rock, dx * size - w / 2, dy * size - w * 0.7, w, w);
+      }
+      ctx.restore();
+    } else {
+      const hs = WS.round(size * 1.2);
+      const spr = WS.Sprites.hero(who, ch.color, hs);
+      ctx.drawImage(spr, p.x - hs / 2, y - hs * 0.72 + size * 0.2, hs, hs);
+      if (who === 'rogue') {
+        // Bound: two turns of rope around the middle, loosening as you cut.
+        ctx.save();
+        ctx.globalAlpha = 1 - k;
+        ctx.strokeStyle = '#b8955a'; ctx.lineWidth = 2;
+        for (const dy of [-0.18, -0.06]) {
+          ctx.beginPath(); ctx.ellipse(p.x, y + dy * hs + size * 0.05, hs * 0.2, hs * 0.05, 0, 0, WS.TAU); ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+    // The ground to stand on: a dashed ring, lit while you are on it.
+    ctx.save();
+    ctx.setLineDash([6, 7]);
+    ctx.lineDashOffset = -time * 12;
+    ctx.globalAlpha = p.near ? 0.85 : 0.45;
+    ctx.strokeStyle = WS.rgb(WS.mix(ch.color, [1, 1, 1], 0.4), 1);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(p.x, p.y, c.holdRadius, 0, WS.TAU); ctx.stroke();
+    ctx.setLineDash([]);
+    // How far along, clockwise from twelve.
+    if (k > 0) {
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.arc(p.x, p.y, c.holdRadius, 0, WS.TAU); ctx.stroke();
+      ctx.strokeStyle = WS.rgb(WS.mix(ch.color, [1, 0.9, 0.6], 0.3), 1); ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(p.x, p.y, c.holdRadius, -WS.PI / 2, -WS.PI / 2 + WS.TAU * k); ctx.stroke();
+    }
+    // A name over them, and what you are doing once you are doing it.
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.lineJoin = 'round'; ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(4,6,10,.9)';
+    const label = p.near && k > 0 ? WS.Encounters.holdText(who) : (who === 'warrior' && k < 1 ? 'A screaming cairn' : ch.name);
+    ctx.font = `700 15px ${VOICE_FONT}`;
+    ctx.strokeText(label, p.x, p.y - size * 1.05);
+    ctx.fillStyle = '#f4ecdc';
+    ctx.fillText(label, p.x, p.y - size * 1.05);
+    // The ones who will not wait say how long they will.
+    if (p.stay) {
+      const left = WS.max(0, p.stay - p.life);
+      ctx.font = `italic 500 13px ${VOICE_FONT}`;
+      ctx.textBaseline = 'top';
+      const t = WS.formatTime(left);
+      ctx.strokeText(t, p.x, p.y + c.holdRadius + 4);
+      ctx.fillStyle = left < 10 ? '#ffcf7a' : '#cfc6b6';
+      ctx.fillText(t, p.x, p.y + c.holdRadius + 4);
+    }
+    ctx.restore();
+  };
+
   R.drawPickups = function (ctx, time) {
     const pool = WS.Pickup.pool;
     for (let i = 0; i < pool.count; i++) {
@@ -30138,6 +30606,8 @@ window.WS = window.WS || {};
         // above her head), so the blit offset is tuned to her, not shared.
         const spr = WS.Sprites.creature('beans', p.type.tint, size);
         ctx.drawImage(spr, p.x - size * 0.50, y - size * 0.60, size, size);
+      } else if (p.kind === 'watcher') {
+        this.drawWatcher(ctx, p, y, size, time);
       } else if (p.kind === 'cache') {
         // A parachute is never quite still - a small, slow sway says the
         // crate only just landed, rather than having always sat here.
@@ -33193,6 +33663,25 @@ window.WS = window.WS || {};
     return img;
   }
 
+  const watcherLore = (id) => (WS.Lore && WS.Lore.watchers && WS.Lore.watchers[id]) || {};
+
+  /** A watcher not yet found: a shape at the fire, and what the Watch has heard. */
+  function fillUnfoundCartouche(node, id) {
+    const c = WS.Characters[id];
+    node.innerHTML = '';
+    node.classList.remove('map');
+    node.style.setProperty('--q', '#8a90a4');
+    const art = el('div', 'art');
+    art.append(WS.Vignette ? WS.Vignette.survivor(id, WS.Characters[id].color, 0, true) : el('div'), el('i', 'frame'));
+    const body = el('div');
+    body.append(el('h3', 'unfound', 'Not yet found'));
+    body.append(el('div', 'label role', c.className));
+    const rumor = watcherLore(id).rumor;
+    body.append(el('p', 'flavour', rumor ? WS.template(rumor, WS.Config.encounters) : (c.unlockHint || '')));
+    body.append(perk('Rumor', 'The Watch keeps a place at the fire for them.'));
+    node.append(art, body);
+  }
+
   function fillSurvivorCartouche(node, id) {
     const c = WS.Characters[id];
     node.innerHTML = '';
@@ -33204,7 +33693,15 @@ window.WS = window.WS || {};
     node.style.setProperty('--q', WS.hex(c.color));
 
     const body = el('div');
-    body.append(el('h3', null, c.name));
+    const head = el('div', 'cart-head');
+    head.append(el('h3', null, c.name));
+    if (watcherLore(id).record) {
+      const rec = el('button', 'btn small record-btn', 'Their record');
+      rec.type = 'button';
+      rec.addEventListener('click', () => { WS.Audio.play('page'); UI.openRecord(id); });
+      head.append(rec);
+    }
+    body.append(head);
     body.append(el('div', 'label role', `${c.className} · ${c.title}`));
     body.append(el('p', 'flavour', WS.template(c.description, c)));
 
@@ -33291,9 +33788,18 @@ window.WS = window.WS || {};
         node.addEventListener('click', () => {
           WS.Game.selection.character = id;
           WS.Audio.play('select');
-          for (const n of grid.children) n.classList.remove('selected');
+          for (const n of grid.children) n.classList.remove('selected', 'peek');
           node.classList.add('selected');
           fillSurvivorCartouche(detail, id);
+        });
+      } else {
+        // Not yet found: hear what the Watch knows of them. The selection
+        // stays with whoever you had.
+        node.addEventListener('click', () => {
+          WS.Audio.play('page');
+          for (const n of grid.children) n.classList.remove('peek');
+          node.classList.add('peek');
+          fillUnfoundCartouche(detail, id);
         });
       }
       grid.append(node);
@@ -34247,6 +34753,30 @@ window.WS = window.WS || {};
   };
 
   /** The manual as its own overlay, for the menu button and the first run. */
+  /** A watcher's page in the Watch's book: who they are and how they came. */
+  UI.openRecord = function (id) {
+    const c = WS.Characters[id], L = watcherLore(id);
+    const s = shell(c.name, `${c.className} · ${c.title}`);
+    const page = el('div', 'record-page');
+    page.style.setProperty('--q', WS.hex(c.color));
+    const art = el('div', 'art rp-art');
+    art.append(WS.Vignette ? WS.Vignette.survivor(id, c.color) : el('div'), el('i', 'frame'));
+    const words = el('div', 'rp-words');
+    if (L.says) words.append(el('q', 'rp-says', L.says));
+    for (const para of (L.record || [])) words.append(el('p', 'rp-para', para));
+    const seen = el('div', 'bp-ledger');
+    const line = (k, v) => { const r = el('div', 'kv'); r.append(el('span', null, k), el('span', null, v)); seen.append(r); };
+    line('Carries', WS.Weapons[c.weapon].name);
+    line('Knack', WS.template(c.perk, c));
+    words.append(seen);
+    page.append(art, words);
+    s.body.append(page);
+    const back = el('button', 'btn primary', 'Back');
+    back.addEventListener('click', () => { WS.Audio.play('page'); UI.openMenu(); });
+    s.foot.append(el('div', 'spacer'), back);
+    this.show(s.inner);
+  };
+
   UI.openManual = function (onClose) {
     const m = manual();
     const s = shell(m.title || 'How to play',

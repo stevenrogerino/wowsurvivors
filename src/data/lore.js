@@ -224,6 +224,133 @@
       heart_drill: 'Grimtunnel\'s last machine, sunk into the Pale Wastes to reach the heart of the dark. He reached it. It was awake.',
       pale_lord: 'Marrowfrost, the Pale Lord: the dark itself, woken at the bottom of the world and crowned in rime. Every ember the Watch has ever burned was taken from him, and tonight he came for all of it.',
     },
+
+    /* The watchers: the Watch's record of each of its own. Rendered in the
+     * survivor's record page and on the roster.
+     *   record  the entry, a few short paragraphs, in the Watch's voice
+     *   says    a line in their own
+     *   rumor   what the Watch has heard of one not yet found - where to look,
+     *           and what it will take. Templated against Config.encounters.
+     *   found   for the five met on the field: the banner when they appear,
+     *           what you are doing while you stand with them, and the banner
+     *           when they join. */
+    watchers: {
+      mage: {
+        record: [
+          'Zul is a baron of a barony that is, by his own account, mostly bog. He sold the dry half to pay his tuition at the Low Cloister, where mages are taught in the cellars and promoted by the stair.',
+          'He has been an apprentice for eleven years. The Cloister will not pass him until he has done field work, and the only field left with any work in it is the one the Watch stands in.',
+          'He never did learn to aim. His motes find their own way, and he has decided to call that a technique.',
+        ],
+        says: 'I am told the field work counts double if I survive it.',
+      },
+      priest: {
+        record: [
+          'The Order of the Morning Light named him the Fool as an insult - he blessed a well that had already run dry, and it filled. He took the name as a rank and has signed it that way ever since.',
+          'Chid heals because nobody has ever managed to explain to him why he should not be able to. The Light seems to have given up arguing.',
+          'He was the first to sit down at the Watch\'s fire and the last to leave it, every night, for as long as anyone there can remember.',
+        ],
+        says: 'The dark is only the Light, waiting for somebody to be foolish enough.',
+      },
+      rogue: {
+        record: [
+          'The doctorate is self-awarded. So is most of Rav\'s history, which changes depending on who is buying.',
+          'What the Watch can confirm: he was the Kerchiefs\' quartermaster for six years, and the winter they raided a Watch fire for its ember, and a village froze for it, he walked out on them with their payroll and every knife in the armoury.',
+          'The Kerchiefs caught him on the road and tied him up in the open, as a lesson to the others. The Watch cut him loose. He has been teaching lessons of his own since.',
+        ],
+        says: 'I did not steal the knives. I liberated them. There is paperwork. Somewhere.',
+        rumor: 'The Kerchiefs have one of their own tied up somewhere, and they want it seen. Put down {kerchiefs} of them in a single night and you will find where they keep him.',
+        found: {
+          arrive: ['The Kerchiefs have a prisoner', 'One of their own, tied up in the open. Get to him.'],
+          hold: 'Cutting him loose',
+          joined: ['Dr. Rav McBreathless joins the Watch', 'He has already been through your pockets. Out of habit.'],
+        },
+      },
+      hunter: {
+        record: [
+          'Ashford Garrison held the eastern woods for forty years. It held out against the Snarlpack for eleven days. Maeca was out on patrol when it fell, and she has been hunting the pack that took it ever since.',
+          'She walks barefoot to feel the ground, and she never wastes an arrow, because most nights she has only a few.',
+          'The Watch found her treed by wolves in Thornhollow, down to her last quiver and still counting shots. She accepted help on the understanding that it was a temporary arrangement. It has not ended.',
+        ],
+        says: 'Count your arrows before you count their wolves.',
+        rumor: 'A ranger has been hunting the beasts of these woods alone, and they have started hunting her back. Put down {beasts} beasts in a single night and you will hear where she is holding out.',
+        found: {
+          arrive: ['A ranger is holding off a pack', 'Last quiver, back to a tree. Stand with her.'],
+          hold: 'Standing with her',
+          joined: ['Maeca Barefoot joins the Watch', 'She counts your arrows before she thanks you.'],
+        },
+      },
+      warrior: {
+        record: [
+          'He fell at the Battle of the Low Ford, a hundred years ago, in the middle of a charge and the middle of a battle cry. They raised a cairn over him where he lay. The cry never stopped.',
+          'For a century, travellers on the ford road heard the ground screaming and walked a little faster. Then the Watch put down enough of the night\'s worst in one night to wake him, and he came out of the cairn still charging.',
+          'When the Watch asked for his name for the book, that is what he said. It has been written down exactly.',
+        ],
+        says: 'AAAAAAAAA!',
+        rumor: 'Somewhere under a cairn, a hero is still screaming the battle cry he died on. He answers to a fight worth waking for: put down {bosses} of the night\'s worst in a single night.',
+        found: {
+          arrive: ['The ground is screaming', 'A cairn, and something under it still in the middle of a charge. Dig.'],
+          hold: 'Digging',
+          joined: ['AAAAAAAAA joins the Watch', 'He is still screaming. That is fine. That is just his name.'],
+        },
+      },
+      warlock: {
+        record: [
+          'When the blight came to the Gloaming Grove, Nim saved it the only way he knew: he drank the sickness out of it, and a great deal of the grove along with it. The grove lived. The druids exiled him for how.',
+          'The hunger never left his hands. It goes quiet only when there is a great deal to drink at once - which is why he is always found at the edge of a slaughter, watching.',
+          'He joined the Watch on the reasoning that the Watch would never run out of things for him to drink. So far he has been right.',
+        ],
+        says: 'The grove forgave the blight. It never forgave the cure.',
+        rumor: 'Someone in the dark follows the worst of the killing, and waits at its edge. Put {slaughter} of them down inside a breath or two, and he will come to see who did it.',
+        found: {
+          arrive: ['Something in the dark enjoyed that', 'A hooded figure at the edge of the slaughter. He will not wait long.'],
+          hold: 'Hearing him out',
+          joined: ['Nim B\'ladin joins the Watch', 'He thanks you for the meal.'],
+          left: ['Nim B\'ladin steps back into the dark', 'He will come again for a slaughter worth watching.'],
+        },
+      },
+      shaman: {
+        record: [
+          'Vonnra keeps the Waystation, where the last three roads meet and nothing gets through without paying her toll. She reads fortunes in the storm, and the storm has never once been wrong about who can afford her.',
+          'She saw the Watch in the lightning years ago and has been sending it invoices ever since, for services she had not yet rendered.',
+          'She came to the field herself the night a watcher finally had enough gold to be worth the trip. She has not left, and the invoices have not stopped.',
+        ],
+        says: 'I have seen how this ends. The fee is the same either way.',
+        rumor: 'A far seer reads fortunes in the storm, and only for those who can pay. Carry {gold} gold in a single night and her storm will find you - but she will not wait for it to pass.',
+        found: {
+          arrive: ['A storm gathers around a stranger', 'The far seer has come to read your fortune. She will not wait.'],
+          hold: 'Having your fortune read',
+          joined: ['Vonnra Hydrocheck joins the Watch', 'Your fortune is excellent. Her rates have gone up.'],
+          left: ['The storm moves on', 'Vonnra will read for you another night, if you can still pay.'],
+        },
+      },
+      paladin: {
+        record: [
+          'Professor Keegan fainted during his own knighting and was declared dead by a clerk who wanted to go home. He was buried in Thornhollow with full honours and the wrong paperwork.',
+          'He dug himself out three days later, walked to the Argent Vigil and filed a complaint, which is still under review. Until it is resolved his knighthood remains probationary.',
+          'He kept the shield. He says he has earned it twice.',
+        ],
+        says: 'I have been buried once already. I did not care for it.',
+        rumor: 'Somewhere in Thornhollow, an adequate knight lies buried by mistake. Hold the woods long enough and his coffin will come up.',
+      },
+      graveblade: {
+        record: [
+          'DZ was a healer once, and a good one. He healed past the point where anyone should, and the Light in him curdled into something colder that did not want to mend.',
+          'He was buried with his blade the first time. He did not stay. He has not stayed buried since, and he has stopped expecting to.',
+          'He keeps the Watch because it is the only place where what he has become is useful.',
+        ],
+        says: 'The Light rots, if you ask too much of it. Mine did.',
+        rumor: 'Heal past the point of healing. When enough Light has curdled in one night, a blade will break the ground where it fell.',
+      },
+      ruinseeker: {
+        record: [
+          'Nerosus burned out both eyes to see the ruin clearly. He says it was worth it. He has not blinked since, which the others find harder to live with than the eyes.',
+          'The ruin is what is left when a thing has been used past its end, and he sees it in everything: in the horde, in the Watch, in the fire itself. He has decided it is beautiful.',
+          'The twin glaives found him the night he gave himself to the fel for the last time and came back. He has been giving himself to it ever since.',
+        ],
+        says: 'Everything ends. I only want to be there when it does.',
+        rumor: 'Give yourself to the ruin, again and again in one night. When it has taken enough of you, two glaives will be waiting.',
+      },
+    },
   };
 
 })(window.WS);

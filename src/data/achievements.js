@@ -63,34 +63,34 @@
 
     /* ------------------------------------------------ survivor unlocks --- */
     nightfall_survivor: {
-      name: 'Nightfall Survivor', art: 'moon',
-      description: 'Survive for 8 minutes in a single run.',
+      name: 'Cut Loose', art: 'dagger',
+      description: 'Free the Kerchiefs\' prisoner.',
       reward: { type: 'character', id: 'rogue' },
-      test: (db) => db.statistics.bestRunTime >= 480,
+      test: (db) => !!(db.statistics.found && db.statistics.found.rogue),
     },
     giant_slayer: {
-      name: 'Giant Slayer', art: 'skull',
-      description: 'Slay 2 bosses in a single run.',
+      name: 'The Screaming Cairn', art: 'axe',
+      description: 'Dig the fallen hero out of his cairn.',
       reward: { type: 'character', id: 'warrior' },
-      test: (db) => db.statistics.bestBossesInRun >= 2,
+      test: (db) => !!(db.statistics.found && db.statistics.found.warrior),
     },
     seasoned_veteran: {
-      name: 'Seasoned Veteran', art: 'book',
-      description: 'Reach level 20 in a single run.',
+      name: 'Last Quiver', art: 'arrow',
+      description: 'Stand with the last ranger of Ashford against the pack.',
       reward: { type: 'character', id: 'hunter' },
-      test: (db) => db.statistics.bestLevel >= 20,
+      test: (db) => !!(db.statistics.found && db.statistics.found.hunter),
     },
     bane_of_the_masses: {
       name: 'Bane of the Masses', art: 'blade',
-      description: 'Slay 750 enemies across all runs.',
+      description: 'Draw the exile of the Gloaming Grove out with a slaughter.',
       reward: { type: 'character', id: 'warlock' },
-      test: (db) => db.statistics.totalKills >= 750,
+      test: (db) => !!(db.statistics.found && db.statistics.found.warlock),
     },
     fortune_seeker: {
       name: 'Fortune Seeker', art: 'coin',
-      description: 'Bank 500 gold across all runs.',
+      description: 'Have your fortune read in the far seer\'s storm.',
       reward: { type: 'character', id: 'shaman' },
-      test: (db) => db.statistics.totalGold >= 500,
+      test: (db) => !!(db.statistics.found && db.statistics.found.shaman),
     },
     /* These three were filed under "challenge" with a gold reward instead of
        here, which is why paladin, graveblade and ruinseeker could never

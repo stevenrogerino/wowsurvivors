@@ -17,6 +17,8 @@
     graveblade: { art: 'graveblade', tint: [0.85, 0.20, 0.25], size: 30, noMagnet: true },
     twinglaive: { art: 'twinglaive', tint: [0.55, 1.0, 0.25], size: 30, noMagnet: true },
     merchant: { art: 'beans', tint: [0.90, 0.52, 0.22], size: 56, noMagnet: true },
+    // A watcher, met on the field - see src/game/encounters.js. Tinted per person.
+    watcher: { art: 'rune', tint: [1.0, 0.85, 0.5], size: 46, noMagnet: true },
   };
 
   /* HOW EXPENDABLE EACH KIND IS when the field is full and something has to
@@ -35,7 +37,7 @@
     chest: 2, cache: 2,
     potion: 1,
   };
-  const KEEP = { coffin: 1, graveblade: 1, twinglaive: 1, merchant: 1 };
+  const KEEP = { coffin: 1, graveblade: 1, twinglaive: 1, merchant: 1, watcher: 1 };
   const BAND = 150;          // how much nearer a coin has to be to outrank
 
   const Pickup = { pool: null, TYPES, EXPENDABLE, KEEP };
@@ -187,8 +189,8 @@
     } else if (kind === 'coffin') {
       WS.Save.stats.coffinsOpened = (WS.Save.stats.coffinsOpened || 0) + 1;
       WS.Save.save();
-      WS.Game.announce('Bartholomew the Adequate rises!',
-        'He files a complaint, then hands you the shield.', 3.5);
+      WS.Game.announce('Professor Keegan rises!',
+        'Buried by mistake. He files a complaint, then takes up his shield.', 3.5);
       WS.Game.addGold(WS.floor(80 * run.goldMult), p.x, p.y);
       WS.Achievements.check();
       WS.Audio.play('evolve');
@@ -243,6 +245,8 @@
         this.pool.releaseAt(i);
         continue;
       }
+      // A watcher is not collected: you stand with them (Encounters.tend).
+      if (pickup.kind === 'watcher') { i++; continue; }
       const [dx, dy, distance] = WS.normalize(player.x - pickup.x, player.y - pickup.y);
 
       if (!pickup.type.noMagnet && distance < player.pickupRadius) {

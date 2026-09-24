@@ -599,6 +599,7 @@
     WS.XP.spawnGem(e.x, e.y, e.xp);
     WS.Pickup.onKill(e);
     WS.Save.recordKill(t, e.id);
+    WS.Encounters.onKill(t);
     run.kills++;
     WS.Audio.play('enemyHit', e.x);
 

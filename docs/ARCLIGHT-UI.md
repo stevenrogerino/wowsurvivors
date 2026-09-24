@@ -247,3 +247,11 @@ The interface is only half of it; the other half is how the world answers.
   far into the night), where it walks (from the battlefields' own
   schedules), how it fights (from what its template actually does), and its
   measure. An unmet page is a shape against its sky and says where it walks.
+- **The watchers are met, not unlocked.** Five survivors are found on the
+  field (`src/game/encounters.js`): Rav tied up by the Kerchiefs, Maeca
+  holding off a pack, AAAAAAAAA screaming under a cairn, Nim drawn out by a
+  slaughter, Vonnra in her storm. Each answers something done in that run
+  (Config.encounters), and is brought in by standing with them a few seconds.
+  Every watcher has a record in `WS.Lore.watchers` - their story, a line in
+  their own voice, and for the unfound a rumor of where to look - shown on
+  the roster and in a record page.
