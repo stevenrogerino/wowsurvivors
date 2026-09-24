@@ -5,6 +5,50 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
 
 <!-- new entries go directly below -->
 
+## 2026-09-24 — Ruinform nerf; catching up on 22–23 Sept
+
+Not a bench session — applied directly to the shipped data files. The
+Ruinform nerf is today's; everything after it shipped on 22–23 Sept without a
+changelog entry and is recorded here.
+
+**Ruinform (24 Sept):**
+- Steroid: `Config.metaDamageMult` 2.00→1.85 (with `metaCooldownMult` 0.60,
+  output while transformed goes from ×3.33 to ×3.08).
+- Recovery window after each form (the "cooldown"), which is what caps uptime
+  at duration / (duration + recovery):
+  - Ruinseeker who takes the Ruinous Pact: `metaRecoveryBorn` 2.5→3.5s,
+    `metaRecoveryBornFloor` 1.5→2.5s. Max uptime (Ruin Hunger 5) 89.7%→83.9%.
+  - Everyone else with the Pact: `metaRecovery` 4.0→5.0s,
+    `metaRecoveryFloor` 3.4→4.5s. Max uptime 79.3%→74.3%.
+  - Measured over a 90s siege (`tools/check-ruin.js`): Ruinseeker 64.0%→80.1%
+    from rank 0 to 5, Pact paladin 56.4%→72.2%.
+- Net: average damage multiplier from the form at max rank falls about 11%
+  for the Ruinseeker and about 10% for everyone else.
+
+**Ruinform and class identity (22 Sept, not logged at the time):**
+- The Ruinseeker no longer starts with Ruinform; the Ruinous Pact is always
+  offered to them, and taking it makes them ruinborn. Recovery floors went
+  from 0s (ruinborn) / 1.5s (everyone else) to 1.5s / 3.4s: permanent uptime
+  for the class became 89.7%, everyone else 79.3%.
+
+**Curdled Light (22 Sept, not logged at the time):**
+- `curdleRadius` 110→140, `curdleCoefficient` 1.00→2.15: a dedicated
+  Graveblade healing build lands near 500 DPS on the dummy, other classes a
+  little under.
+
+**Finales (23 Sept):**
+- Each finale names its own damage scale (`Finales.<map>.tuning.damage`):
+  8 / 9 / 10.5 / 11.5 / 12, under one dial `Config.finaleDamage` (1.0). A
+  heavy telegraphed hit takes about a quarter of an 840-health, 16-armour bar
+  on Thornhollow, rising to about half on the Pale Wastes.
+- Finale charges lock their aim 0.3s before they fire; the Admiral's chained
+  dashes wind up in 0.5s (was 0.385s); the Candlecrawler marks where it will
+  surface for 1s (was 0.05s).
+
+**Beans (23 Sept):**
+- `Config.eggVendorStay` 90: Beans packs up 90s after arriving instead of
+  waiting on the field indefinitely.
+
 ## 2026-09-22 — Section Q buffs, Ruinform nerf, scale-constant renormalization
 
 Not a bench session — applied directly to the shipped data files, following up

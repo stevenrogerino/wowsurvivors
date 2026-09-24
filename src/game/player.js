@@ -423,8 +423,8 @@
    *
    *  Ruin Hunger shortens it for everyone, and the ruinborn always close it
    *  further: at max rank the Ruinseeker's window floors at
-   *  metaRecoveryBornFloor (89.7% uptime) while a Ruinous Pact on any other
-   *  class floors at metaRecoveryFloor (79.3%). Neither reaches permanent any
+   *  metaRecoveryBornFloor (83.9% uptime) while a Ruinous Pact on any other
+   *  class floors at metaRecoveryFloor (74.3%). Neither reaches permanent any
    *  more - the gap is real and holds at any level of overkill, but it is a
    *  ten-point edge now, not the difference between mortal and unkillable. */
   Player.ruinRecovery = function (p) {

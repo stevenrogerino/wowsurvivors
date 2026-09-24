@@ -2254,19 +2254,21 @@ window.WS = window.WS || {};
        instead of a cycle. For anyone holding the Ruinous Pact it bottoms out
        at metaRecoveryFloor and never reaches zero, so max Ruin Hunger off
        the class gets close to permanent and cannot be permanent. */
-    metaRecovery: 4.0,
-    metaRecoveryBorn: 2.5,
+    metaRecovery: 5.0,
+    metaRecoveryBorn: 3.5,
     metaRecoveryPerRank: 0.5,
     /* At max Ruin Hunger (rank 5) with metaDuration+metaDurationPerRank*5 = 13s
-     * of uptime per form: metaRecoveryBornFloor gives the ruinborn 13/14.5 =
-     * 89.7% uptime, never fully permanent any more. metaRecoveryFloor gives
-     * everyone else 13/16.4 = 79.3% - the same ~10.4-point gap, so the
-     * ruinborn is reliably ahead but never unkillable-while-transformed the
-     * way 0 recovery made it. */
-    metaRecoveryBornFloor: 1.5,
-    metaRecoveryFloor: 3.4,
+     * of uptime per form: metaRecoveryBornFloor gives the ruinborn 13/15.5 =
+     * 83.9% uptime, and metaRecoveryFloor gives everyone else 13/17.5 = 74.3%
+     * - about ten points apart, so the ruinborn is reliably ahead but never
+     * unkillable-while-transformed. (Was 89.7% / 79.3% at floors 1.5 / 3.4;
+     * lowered on playtest, "Ruinform is still too good".) */
+    metaRecoveryBornFloor: 2.5,
+    metaRecoveryFloor: 4.5,
     metaDuration: 8.0,
-    metaDamageMult: 2.00,
+    /* The steroid: x1.85 damage and x0.60 cooldown while transformed, about
+       x3.1 output (was x2.00, x3.3). */
+    metaDamageMult: 1.85,
     metaCooldownMult: 0.60,
     metaDurationPerRank: 1.0,
     glaiveMetas: 3,
@@ -17337,8 +17339,8 @@ window.WS = window.WS || {};
    *
    *  Ruin Hunger shortens it for everyone, and the ruinborn always close it
    *  further: at max rank the Ruinseeker's window floors at
-   *  metaRecoveryBornFloor (89.7% uptime) while a Ruinous Pact on any other
-   *  class floors at metaRecoveryFloor (79.3%). Neither reaches permanent any
+   *  metaRecoveryBornFloor (83.9% uptime) while a Ruinous Pact on any other
+   *  class floors at metaRecoveryFloor (74.3%). Neither reaches permanent any
    *  more - the gap is real and holds at any level of overkill, but it is a
    *  ten-point edge now, not the difference between mortal and unkillable. */
   Player.ruinRecovery = function (p) {

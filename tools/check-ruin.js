@@ -27,7 +27,8 @@
  * moved the measured uptime by 0.0 points at every rank on every class. A
  * window the bar cannot move in gives a hard ceiling of
  * duration / (duration + recovery) whatever the overkill. Ruin Hunger buys it
- * down; only the ruinborn can close it entirely.
+ * down, and the ruinborn (a Ruinseeker who takes the Ruinous Pact) get a
+ * shorter window than anyone else - a few points of uptime, never permanent.
  *
  * NEGATIVE TESTS, all confirmed against a build with the fix removed:
  *   - restoring the `health < maxHealth` gate on regen gives "a survivor at
@@ -36,8 +37,8 @@
  *     "lifesteal at full health recorded 0 overheal"
  *   - returning 0 from ruinRecovery for everyone gives "paladin held Ruinform
  *     for 93.2% of the siege on 1 entry - that is permanent"
- *   - giving the ruinborn the same floor as everyone else gives "ruinseeker
- *     could not hold Ruinform at max Ruin Hunger (84.7%, 6 entries)"
+ *   - giving the ruinborn the same recovery as everyone else gives "the
+ *     ruinborn edge at max Ruin Hunger is 0.0 points"
  *
  *   node tools/check-ruin.js
  *
@@ -134,11 +135,15 @@ function setup(WS, id, opts) {
   }
 
   /* ------------------------------------------------------ ruinform uptime -- */
+  /* Everyone reaches Ruinform through the Ruinous Pact now - the Ruinseeker
+     is offered it rather than born with it - and taking it is what makes the
+     Ruinseeker ruinborn. So every case takes it the way a player does, by
+     the blessing's own apply. */
   const CASES = [
-    { id: 'ruinseeker', pact: false, rank: 5 },
-    { id: 'ruinseeker', pact: false, rank: 0 },
-    { id: 'paladin', pact: true, rank: 5 },
-    { id: 'paladin', pact: true, rank: 0 },
+    { id: 'ruinseeker', rank: 5 },
+    { id: 'ruinseeker', rank: 0 },
+    { id: 'paladin', rank: 5 },
+    { id: 'paladin', rank: 0 },
   ];
   const ruin = [];
   for (const c of CASES) {
@@ -147,7 +152,7 @@ function setup(WS, id, opts) {
       const p = eval('(' + src + ')')(WS, c.id, { weapons:
         ['seeking_motes', 'cinderfall', 'rimeshard', 'arcweb', 'dawnpulse', 'verdant_lance'] });
       p.damageMultiplier *= 6;
-      if (c.pact) { p.felAttuned += 1; p.felBonus += WS.Blessings.ruinous_pact.felGain; }
+      WS.Blessings.ruinous_pact.apply(p, WS.Blessings.ruinous_pact);
       p.soulRending = c.rank;
       const script = window.WSSim.siegeScript();
       let next = 0, t = 0, inForm = 0, ticks = 0, entries = 0, wasIn = false;
@@ -165,8 +170,10 @@ function setup(WS, id, opts) {
         if (now) inForm++;
         ticks++; t += STEP;
       }
+      const dur = WS.Config.metaDuration + WS.Config.metaDurationPerRank * c.rank;
+      const rec = WS.Player.ruinRecovery(p);
       return { uptime: ticks ? inForm / ticks : 0, entries,
-        recovery: WS.Player.ruinRecovery(p), ruinborn: p.ruinborn };
+        recovery: rec, ruinborn: p.ruinborn, ceiling: dur / (dur + rec) };
     }, { c, src: setup.toString() });
     ruin.push({ ...c, ...r });
   }
@@ -175,40 +182,39 @@ function setup(WS, id, opts) {
   const born5 = by('ruinseeker', 5), born0 = by('ruinseeker', 0);
   const pact5 = by('paladin', 5), pact0 = by('paladin', 0);
 
-  /* The Ruinseeker at max Ruin Hunger holds it. "Holds it" is ONE entry, not a
-     high percentage: a cycle that happens to be fast is still a cycle, and the
-     percentage is dragged down by the seconds before the first entry however
-     seamless the rest is. */
-  if (born5.entries !== 1 || born5.recovery > 0) {
-    fail.push(`ruinseeker could not hold Ruinform at max Ruin Hunger `
-      + `(${(born5.uptime * 100).toFixed(1)}%, ${born5.entries} entries, `
-      + `${born5.recovery}s of recovery) - that is the one build it is for`);
-  }
-  // and cannot hold it without the investment
-  if (born0.entries <= 1) {
-    fail.push('ruinseeker held Ruinform unbroken with no Ruin Hunger at all - '
-      + 'the ranks have to buy something on the class they belong to');
-  }
-  // nobody else holds it, at any rank
-  for (const r of [pact5, pact0]) {
+  /* The current design, in the four rules it rests on:
+       - nobody holds it forever: every case cycles, with a recovery window
+         it cannot shed, the ruinborn included;
+       - the ceiling is real: measured uptime never beats
+         duration / (duration + recovery), whatever the overkill;
+       - the ruinborn edge is small and real: ahead of any other class at
+         the same rank, by a few points, not by a different game;
+       - Ruin Hunger is felt on both. */
+  for (const r of ruin) {
     if (r.entries <= 1) {
-      fail.push(`${r.id} held Ruinform for ${(r.uptime * 100).toFixed(1)}% of the siege `
-        + `on ${r.entries} entry - that is permanent, and the Ruinous Pact is not `
-        + 'supposed to hand another class the Ruinseeker\'s whole identity');
+      fail.push(`${r.id} (rank ${r.rank}) held Ruinform on ${r.entries} entry `
+        + `(${(r.uptime * 100).toFixed(1)}%) - nobody holds it permanently any more`);
     }
-    if (r.recovery <= 0) {
-      fail.push(`${r.id}'s recovery window is ${r.recovery}s - without one there is no `
-        + 'ceiling on uptime at all, whatever the rate');
+    if (r.recovery <= 0) fail.push(`${r.id} (rank ${r.rank}) has no recovery window`);
+    if (r.uptime > r.ceiling + 0.02) {
+      fail.push(`${r.id} (rank ${r.rank}) held Ruinform ${(r.uptime * 100).toFixed(1)}% of the `
+        + `siege, above its ${(r.ceiling * 100).toFixed(1)}% ceiling`);
     }
   }
-  // but max Ruin Hunger must get them CLOSE, or the ranks are not worth taking
-  if (!(pact5.uptime > 0.75)) {
-    fail.push(`max Ruin Hunger off-class reached only ${(pact5.uptime * 100).toFixed(1)}% `
-      + 'uptime - it should come close to permanent without being permanent');
+  if (born5.ruinborn <= 0) fail.push('the Ruinous Pact did not make the Ruinseeker ruinborn');
+  if (!(born5.uptime - pact5.uptime > 0.03)) {
+    fail.push(`the ruinborn edge at max Ruin Hunger is ${((born5.uptime - pact5.uptime) * 100).toFixed(1)} `
+      + 'points - the class it belongs to has to be ahead');
   }
-  if (!(pact5.uptime - pact0.uptime > 0.10)) {
-    fail.push(`Ruin Hunger moved off-class uptime from ${(pact0.uptime * 100).toFixed(1)}% `
-      + `to only ${(pact5.uptime * 100).toFixed(1)}% - five ranks have to be felt`);
+  if (!(pact5.uptime > 0.6)) {
+    fail.push(`max Ruin Hunger off-class reached only ${(pact5.uptime * 100).toFixed(1)}% - `
+      + 'the Pact has to stay worth building for everyone');
+  }
+  for (const [lo, hi] of [[born0, born5], [pact0, pact5]]) {
+    if (!(hi.uptime - lo.uptime > 0.05)) {
+      fail.push(`Ruin Hunger moved ${hi.id} from ${(lo.uptime * 100).toFixed(1)}% to only `
+        + `${(hi.uptime * 100).toFixed(1)}% - five ranks have to be felt`);
+    }
   }
 
   await browser.close();
@@ -220,11 +226,9 @@ function setup(WS, id, opts) {
   console.log('ok: at full health a survivor still regenerates '
     + `(${Math.round(heal.regen)} overheal in 10s) and still lifesteals `
     + `(${Math.round(heal.lifesteal)}), both attributed by source, with the healing meter `
-    + 'left at 0 because none of it landed; and over a 90s siege the Ruinseeker holds '
-    + `Ruinform unbroken at max Ruin Hunger (${(born5.uptime * 100).toFixed(1)}%, one entry, `
-    + 'no recovery window) but not without it '
-    + `(${(born0.uptime * 100).toFixed(1)}%, ${born0.entries} entries), while a Ruinous Pact `
-    + `paladin gets close and no further (${(pact0.uptime * 100).toFixed(1)}% at no ranks, `
-    + `${(pact5.uptime * 100).toFixed(1)}% at five, ${pact5.entries} entries, `
-    + `${pact5.recovery}s of recovery it can never shed)`);
+    + 'left at 0 because none of it landed; and over a 90s siege Ruinform cycles for everyone - '
+    + `the Ruinseeker ${(born0.uptime * 100).toFixed(1)}% -> ${(born5.uptime * 100).toFixed(1)}% `
+    + `(ceiling ${(born5.ceiling * 100).toFixed(1)}%, ${born5.recovery}s recovery), a Pact paladin `
+    + `${(pact0.uptime * 100).toFixed(1)}% -> ${(pact5.uptime * 100).toFixed(1)}% `
+    + `(ceiling ${(pact5.ceiling * 100).toFixed(1)}%, ${pact5.recovery}s)`);
 })();
