@@ -1352,7 +1352,9 @@
             { style: 'stomp', tint: [0.9, 0.75, 0.5] });
         }
         if (F.every('sweep', dt, 10)) this.beam(F, 1);
-        if (F.every('missile', dt, 7)) this.missiles(F, 4);
+        if (F.every('missile', dt, 5.5)) this.missiles(F, 5);
+        // Standing clear of its feet is not standing clear of it.
+        if (F.every('shock', dt, T.shockEvery)) this.shockwave(F);
         if (F.every('karrash', dt, 13)) F.addsRing('karrash', T.karrash, 700);
         return;
       }
@@ -1367,12 +1369,20 @@
       }
 
       if (s.mode === 'fortress') {
-        w.dmgTaken = 1;
         s.pylons = s.pylons.filter((q) => F.live(q));
-        s.label = s.pylons.length ? `Fortress · ${s.pylons.length} pylons` : 'Fortress · fences down';
-        if (!s.pylons.length && !s.reraised && hp < 0.5) {
+        /* The pylons are the fortress: while any stands, the hull is behind
+           their shield. They used to be scenery with fences strung between,
+           and the hull took full damage through them. */
+        const shielded = s.pylons.length > 0;
+        w.dmgTaken = shielded ? T.pylonShield : 1;
+        w.displayName = shielded ? 'The Stormbreaker · Shielded' : 'The Stormbreaker · Fortress';
+        s.label = shielded ? `Break the pylons · ${s.pylons.length}` : 'Fortress · shield down';
+        if (!shielded && !s.reraised && hp <= T.reraiseAt + 1e-6) {
           s.reraised = true;
+          // Past the re-raise, nothing stops it short of its last breath.
+          w.hpFloor = T.destructAt * w.maxHealth;
           this.pylons(F);
+          this.shockwave(F);
         }
         if (F.every('sweep', dt, 9)) this.beam(F, 2);
         if (F.every('missile', dt, 5)) this.missiles(F, 5);
@@ -1418,6 +1428,13 @@
       }
       WS.Audio.play('warn', w.x);
     },
+    shockwave(F) {
+      const T = F.def.tuning, w = F.s.core;
+      F.ring(w.x, w.y + 90, { speed: 230, gaps: 3, gapWidth: 42, dmg: T.stompDamage,
+        name: 'Shockwave', tint: [0.9, 0.75, 0.5] });
+      WS.FX.shake(5, 0.3);
+      WS.Audio.play('explode', w.x);
+    },
     missiles(F, n) {
       const T = F.def.tuning, w = F.s.core;
       const p = WS.Game.player;
@@ -1440,10 +1457,12 @@
       F.say('pylons');
     },
     fortress(F) {
-      const s = F.s, w = s.core;
+      const s = F.s, w = s.core, T = F.def.tuning;
       s.mode = 'fortress';
-      w.dmgTaken = 1;
-      w.displayName = 'The Stormbreaker · Fortress';
+      w.dmgTaken = T.pylonShield;
+      w.displayName = 'The Stormbreaker · Shielded';
+      // It re-raises its pylons at reraiseAt; it cannot be burned past it first.
+      w.hpFloor = T.reraiseAt * w.maxHealth;
       this.pylons(F);
       s.tm.sweep = 3; s.tm.missile = 2; s.tm.bolts = 4;
     },
@@ -1452,6 +1471,7 @@
       s.mode = 'destruct';
       s.destructT = T.destructTime;
       w.untargetable = true;
+      w.hpFloor = 0;
       w.windup = 0; w.chargeTimer = 0; w.telegraph = null;
       for (const l of s.legs || []) F.remove(l);
       for (const q of s.pylons || []) F.remove(q);
@@ -1493,6 +1513,9 @@
           F.marks.length = 0;
           WS.FX.shake(12, 0.8);
           F.eruption(w.x, w.y + 80, 160, [0.8, 0.7, 0.5]);
+          // It comes down hard, and it calls for help on the way.
+          this.shockwave(F);
+          F.addsRing('karrash', T.karrash, 700);
           WS.Game.toast('It is down', 'Staggered - it takes extra damage until it recovers.');
         }
       }

@@ -5,6 +5,22 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
 
 <!-- new entries go directly below -->
 
+## 2026-09-24 — The Stormbreaker (Ochre Plains finale) gets teeth
+
+Playtest: "too easy, very fun though".
+- Walk phase: a stomp shockwave (a ring with three gaps) every
+  `shockEvery` 8s; missiles 4 every 7s → 5 every 5.5s.
+- Kneel: `kneelStagger` 10→8s, `kneelVuln` 1.3→1.2; it comes down with a
+  shockwave and calls in Karrash.
+- Fortress: the pylons now shield the hull (`pylonShield` 0.30 damage
+  taken while any stands) instead of being scenery. It cannot be burned
+  past `reraiseAt` (50%) before the pylons come back, nor past
+  `destructAt` (15%) after, so the self-destruct always plays.
+- Damage scale 11.5→12.5, and the Pale Wastes 12→13.5 so the last fight
+  stays the hardest.
+- Measured: harness build 235→274s; a 135k-DPS build 86→102s; a
+  dodging bot takes ~1430/min (was ~960).
+
 ## 2026-09-24 — Ruinform nerf; catching up on 22–23 Sept
 
 Not a bench session — applied directly to the shipped data files. The

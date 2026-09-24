@@ -268,8 +268,10 @@
       ],
       epilogue: ['The Stormbreaker is scrap', 'Grimtunnel flees north, into the Pale Wastes.'],
       tuning: {
-        damage: 11.5,   // x difficulty x Hyper x Config.finaleDamage
-        standingArmor: 0.35, kneelVuln: 1.3, kneelStagger: 10, destructAt: 0.15,
+        damage: 12.5,   // x difficulty x Hyper x Config.finaleDamage
+        standingArmor: 0.35, kneelVuln: 1.2, kneelStagger: 8, destructAt: 0.15,
+        // The fortress: the pylons shield the hull, and they come back once.
+        pylonShield: 0.30, reraiseAt: 0.50, shockEvery: 8,
         // Near-lethal on Ochre's 30:00 curve (x8.3): hide, or be carried out.
         destructTime: 7, destructDamage: 90,
         stompDamage: 46, stompRadius: 76, stompTele: 0.9,
@@ -303,7 +305,7 @@
       ],
       epilogue: ['The dark is broken', 'The Ember Watch holds. Dawn comes, and this time it stays.'],
       tuning: {
-        damage: 12,   // x difficulty x Hyper x Config.finaleDamage
+        damage: 13.5,   // x difficulty x Hyper x Config.finaleDamage
         pipeBreak: 0.15, debrisDamage: 48, debrisRadius: 70, debrisTele: 1.1,
         ventDamage: 44, ventSpin: 0.7, ventTele: 1.2,
         shardReduce: 0.40, shardEvery: 30, winterAt: 0.40, winterEnrage: 100,
