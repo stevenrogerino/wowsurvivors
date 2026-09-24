@@ -111,6 +111,15 @@
         const a = Tip.anchor;
         if (!a) { Tip.watching = false; return; }
         if (!a.isConnected || !a.getClientRects().length) { hideTip(); Tip.watching = false; return; }
+        /* And a tip opened by the pointer goes when the pointer is no longer
+           over its anchor, whether or not a leave event said so - a pane
+           rebuilt or scrolled under a still pointer never sends one. */
+        if (Tip.byPointer && Tip.px !== undefined) {
+          const r = a.getBoundingClientRect();
+          if (Tip.px < r.left - 2 || Tip.px > r.right + 2 || Tip.py < r.top - 2 || Tip.py > r.bottom + 2) {
+            hideTip(); Tip.watching = false; return;
+          }
+        }
         requestAnimationFrame(watch);
       };
       requestAnimationFrame(watch);
@@ -118,8 +127,18 @@
   }
 
   function hideTip(anchor) {
-    if (anchor && Tip.anchor !== anchor) return;
+    /* Leaving something whose tip has not opened YET must still cancel it.
+       This returned early whenever the tip on screen belonged to someone
+       else - including when nothing was on screen and this node's own delay
+       was still counting - so skimming the pointer across a row left a timer
+       behind that opened a tip for a tile the pointer had already left, and
+       with no leave left to come, it hung there. */
+    if (anchor && Tip.anchor !== anchor) {
+      if (Tip.pending === anchor) { clearTimeout(Tip.timer); Tip.pending = null; }
+      return;
+    }
     clearTimeout(Tip.timer);
+    Tip.pending = null;
     Tip.anchor = null;
     if (Tip.node) { Tip.node.classList.remove('shown'); Tip.node.classList.add('hidden'); }
   }
@@ -129,14 +148,20 @@
   function tipOn(node, build, opts) {
     const o = opts || {};
     node.removeAttribute('title');
-    const open = () => {
+    const open = (byPointer) => {
       clearTimeout(Tip.timer);
-      Tip.timer = setTimeout(() => { if (node.isConnected) showTip(node, build, o.prefer); }, o.delay || 90);
+      Tip.pending = node;
+      Tip.timer = setTimeout(() => {
+        Tip.pending = null;
+        if (node.isConnected) { showTip(node, build, o.prefer); Tip.byPointer = byPointer; }
+      }, o.delay || 90);
     };
-    node.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') open(); });
+    node.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') open(true); });
     node.addEventListener('pointerleave', () => hideTip(node));
     if (o.focus !== false) {
-      node.addEventListener('focus', open);
+      // Keyboard focus only: a click focuses too, and a tip that opened on
+      // the click stayed up after the pointer had gone.
+      node.addEventListener('focus', () => { if (node.matches(':focus-visible')) open(false); });
       node.addEventListener('blur', () => hideTip(node));
     }
     node.addEventListener('pointerdown', () => hideTip(node));
@@ -157,12 +182,16 @@
 
   /* Anything carrying data-tip gets a plain tip, read when it opens - several
      of these change their text as the player toggles them. */
+  document.addEventListener('pointermove', (e) => { Tip.px = e.clientX; Tip.py = e.clientY; }, { passive: true });
+
   (function delegate() {
     const find = (t) => (t && t.closest ? t.closest('[data-tip]') : null);
     const open = (n) => {
       clearTimeout(Tip.timer);
+      Tip.pending = n;
       Tip.timer = setTimeout(() => {
-        if (n.isConnected && n.dataset.tip) showTip(n, tipText(n.dataset.tip), ['above', 'below']);
+        Tip.pending = null;
+        if (n.isConnected && n.dataset.tip) { showTip(n, tipText(n.dataset.tip), ['above', 'below']); Tip.byPointer = true; }
       }, 160);
     };
     document.addEventListener('pointerover', (e) => {
@@ -805,7 +834,7 @@
       node.setAttribute('role', 'status');
       const mark = el('div', 't-mark');
       const img = document.createElement('img');
-      img.alt = ''; img.src = WS.Icons.glyph(t.art || k.art, tint, 36).toDataURL();
+      img.alt = ''; img.src = WS.Sprites.dataURL(WS.Icons.glyph(t.art || k.art, tint, 36));
       mark.append(img);
       const text = el('div', 't-text');
       text.append(el('div', 't-title', t.title));
@@ -1160,8 +1189,10 @@
     const tabs = el('div', 'tabs');
     const panes = el('div');
     const TABS = [
-      ['roster', 'Survivor'],
-      ['battlefields', 'Battlefield'],
+      /* Who and where, on one page: they are one decision - the run you are
+         about to start - and splitting them across two tabs meant two trips
+         and a tab strip longer than it needed to be. */
+      ['roster', 'Prepare'],
       ['trainer', 'Trainer'],
       ['codex', 'Codex'],
       ['bestiary', 'Bestiary'],
@@ -1207,8 +1238,10 @@
        Navigation belongs with the header, not the content - it should still
        be there after you have scrolled. */
     s.inner.insertBefore(tabs, s.body);
+    s.inner.classList.add('main-menu');
     s.body.append(panes);
     render();
+    UI.warmPanes();
 
     const begin = el('button', 'btn primary', 'Begin Run');
     begin.addEventListener('click', () => {
@@ -1297,9 +1330,46 @@
     this.show(s.inner);
   };
 
+  /** Draw, while the menu sits idle, what the heavy panes will need.
+   *
+   *  The first visit to the Bestiary drew seventy-odd creatures - each as a
+   *  coloured sprite and a silhouette - inside the click that opened it:
+   *  measured at 190 to 300ms, the lag felt on the tab. It is the same work
+   *  done early, a few creatures per idle slice so the menu never stalls,
+   *  and then the Codex built once and thrown away for its icons. Once per
+   *  session; everything it makes lands in the sprite and icon caches. */
+  UI.warmPanes = function () {
+    if (UI._warmed) return;
+    UI._warmed = true;
+    const idle = window.requestIdleCallback || ((f) => setTimeout(() => f({ timeRemaining: () => 8 }), 60));
+    const todo = [];
+    for (const table of [WS.Enemies, WS.Elites, WS.Bosses]) {
+      for (const t of Object.values(table)) todo.push(t);
+    }
+    /* At least a few per call: the menu animates every frame, so the browser
+       is rarely truly idle and the callback mostly arrives by its timeout,
+       with no time "remaining" - a loop that only ran on spare time ran
+       never, and rescheduled itself forever. */
+    const step = (dl) => {
+      let n = 0;
+      while (todo.length && (n++ < 3 || dl.timeRemaining() > 4)) {
+        const t = todo.shift();
+        try {
+          WS.Sprites.dataURL(WS.Sprites.creature(t.art, t.tint, 44, t.bossKit));
+          WS.Sprites.dataURL(WS.Sprites.silhouette(t.art, 44, t.bossKit));
+        } catch (e) { /* a creature that cannot be drawn is drawn when asked */ }
+      }
+      if (todo.length) idle(step, { timeout: 120 });
+    };
+    // The Codex first - one slice, for its icons - then the creatures.
+    idle(() => {
+      if (UI.tab !== 'codex') { try { UI.paneCodex(); } catch (e) { /* built when opened */ } }
+      idle(step, { timeout: 120 });
+    }, { timeout: 400 });
+  };
+
   UI.buildPane = function (tab, rerender) {
-    if (tab === 'roster') return this.paneRoster();
-    if (tab === 'battlefields') return this.paneMaps();
+    if (tab === 'roster' || tab === 'battlefields') return this.panePrepare();
     if (tab === 'trainer') return this.paneTrainer(rerender);
     if (tab === 'codex') return this.paneCodex();
     if (tab === 'bestiary') return this.paneBestiary();
@@ -1458,7 +1528,7 @@
       // is built out of the same parts as the ability icons.
       const seat = el('span', 'pick-seat');
       const img = new Image();
-      img.src = WS.Sprites.hero(id, unlocked ? c.color : [0.18, 0.19, 0.24], 44).toDataURL();
+      img.src = WS.Sprites.dataURL(WS.Sprites.hero(id, unlocked ? c.color : [0.18, 0.19, 0.24], 44));
       img.width = img.height = 44;
       if (!unlocked) img.style.filter = 'brightness(.55) contrast(.7)';
       seat.append(img);
@@ -1530,6 +1600,23 @@
       grid.append(node);
     }
     wrap.append(detail, grid);
+    return wrap;
+  };
+
+  /** Survivor and battlefield together. The two cartouches stand side by
+   *  side, so the whole run is in front of you at once; the survivors fill
+   *  the grid under them and the battlefields take one row beneath that.
+   *  Built from the two single panes, so every pick behaves as it did. */
+  UI.panePrepare = function () {
+    const who = this.paneRoster(), where = this.paneMaps();
+    const [whoCard, whoGrid] = who.children, [whereCard, whereGrid] = where.children;
+    const wrap = el('div', 'prepare');
+    const top = el('div', 'prep-top');
+    top.append(whoCard, whereCard);
+    whereGrid.classList.add('prep-maps');
+    wrap.append(top,
+      el('div', 'prep-label', 'Who stands watch'), whoGrid,
+      el('div', 'prep-label', 'And where'), whereGrid);
     return wrap;
   };
 
@@ -1826,7 +1913,10 @@
         const tile = el('button', 'book-tab' + (known ? '' : ' unknown') + ' ' + kind.toLowerCase());
         tile.type = 'button';
         const img = new Image();
-        img.src = WS.Sprites.creature(e.t.art, known ? e.t.tint : [0.16, 0.17, 0.21], 44, e.t.bossKit).toDataURL();
+        // Not yet met: a shape, as the page beside it shows one - a coloured
+        // sprite in the index gave away what the page was keeping back.
+        img.src = WS.Sprites.dataURL(known ? WS.Sprites.creature(e.t.art, e.t.tint, 44, e.t.bossKit)
+          : WS.Sprites.silhouette(e.t.art, 44, e.t.bossKit));
         img.width = img.height = 44;
         tile.append(img);
         tile.setAttribute('aria-label', known ? e.t.name : 'Not yet met');
@@ -1941,7 +2031,7 @@
       const card = el('div', 'record' + (time ? '' : ' unset'));
       card.style.setProperty('--q', placeHue(m));
       const img = new Image();
-      img.src = WS.Sprites.zoneCard(m, 'rune', 92).toDataURL();
+      img.src = WS.Sprites.dataURL(WS.Sprites.zoneCard(m, 'rune', 92));
       img.width = img.height = 92;
       const art = el('span', 'record-art');
       art.append(img, el('i', 'frame'));

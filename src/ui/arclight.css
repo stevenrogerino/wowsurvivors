@@ -2688,3 +2688,37 @@ body.hud-rail #hud-passives { gap: 9px; }
    pass beside the middle of the field instead - 27vw is short of where the
    middle begins (29vw of an unletterboxed field) by a margin. */
 body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
+
+/* ===================================================== THE STEADY CARD ====
+ * The menu card was centred, and its height followed whatever pane was open
+ * - so a short pane (Statistics, the old Survivor tab) dropped the title and
+ * the tab strip down the screen and a tall one pulled them back up. Moving
+ * the mouse along the tabs meant chasing them. The card is one height now,
+ * the Bestiary's - the one that sat right - or the screen, whichever is
+ * smaller; the pane scrolls inside it and the footer stays at the foot. */
+.overlay-inner.main-menu { height: min(1024px, 100%); }
+.overlay-inner.main-menu > .overlay-body { flex: 1 1 auto; }
+
+/* -- prepare: who and where on one page ------------------------------ */
+.prepare { margin-top: 14px; }
+.prep-top { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.prep-top .cartouche { grid-template-columns: 150px 1fr; gap: 18px; padding: 16px; margin-bottom: 0; }
+.prep-top .cartouche .art, .prep-top .cartouche .art img { width: 150px; height: 150px; }
+.prep-top .cartouche h3 { font-size: 21px; }
+.prep-top .cartouche .flavour { font-size: 14px; margin-top: 6px; }
+.prep-top .cartouche .stat-line { gap: 4px 14px; margin-top: 8px; }
+.prep-top .cartouche .perk { margin-top: 8px; padding: 7px 10px; font-size: 14px; }
+.prep-label {
+  margin: 16px 0 8px; font-family: var(--voice); font-style: italic; font-weight: 700;
+  font-size: 16px; color: var(--arc);
+}
+.pick-grid.prep-maps { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+@media (max-width: 900px) { .prep-top { grid-template-columns: 1fr; } }
+.prep-maps .pick-name { white-space: normal; overflow: visible; text-overflow: clip; }
+
+/* The menu's backdrop blur is gone. At 1.5px it barely showed, and over a
+   scene that animates every frame it had to be redone every frame: measured,
+   it was 50ms of an 87ms frame on the menu, more than everything else there
+   put together - the lag in every tab switch and every tip. The scrim above
+   it carries the separation on its own. */
+#overlay.scene { backdrop-filter: none; }

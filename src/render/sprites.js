@@ -10,6 +10,7 @@
 (function (WS) {
 
   const cache = new Map();
+  const urls = new WeakMap();
   const SS = 2;   // supersample factor: rasterise at 2x, draw down
 
   function make(w, h) {
@@ -944,37 +945,108 @@
     },
 
     mongrel(g, s, p) {
-      /* HUNCHED, and narrow. Half the bestiary was the same three ellipses -
-         a round body this wide, an arm blob each side, a head on top - and
-         measured on a common grid the mongrel shared 79% of its silhouette
-         with the moonwretch, 78% with the bristlekin and 75% with the golem.
-         Nothing was wrong with any one of them; they were all the same
-         animal. This one is a scavenger: narrow, tall, leaning forward over
-         its own feet, with the head thrust out in front of the chest rather
-         than balanced on top of it. */
-      const cx = s / 2, cy = s * 0.58, u = s / 100;
-      legs(g, p, cx, cy + 26 * u, u, [-8, 7], 8, 4.4);
-      shaded(g, cx + 2 * u, cy + 6 * u, 15 * u, 22 * u, p, 0.12);  // narrow trunk
-      /* Mangy fur down the trunk - every mass on this one was a plain
-         gradient fill and nothing else, which measured 36.1% interior
-         detail against a 41% average. A scavenger is unkempt; the coat
-         should look like it, not like the boar's or the brute's. */
-      pelt(g, p, cx + 2 * u, cy + 6 * u, 15 * u, 22 * u, 0.12, 5, 0.5, 0.36);
-      // the hunch: a shoulder mass standing proud of the back
-      shaded(g, cx + 5 * u, cy - 12 * u, 14 * u, 10 * u, p, 0.3);
-      pelt(g, p, cx + 5 * u, cy - 12 * u, 14 * u, 10 * u, 0.3, 4, 0.4, 0.32);
-      shaded(g, cx - 16 * u, cy + 4 * u, 6 * u, 14 * u, p, -0.5);  // arms, long
-      shaded(g, cx + 17 * u, cy + 2 * u, 6 * u, 14 * u, p, 0.5);
-      shaded(g, cx - 10 * u, cy - 17 * u, 12 * u, 10 * u, p, -0.18); // head, forward
-      pelt(g, p, cx - 10 * u, cy - 17 * u, 12 * u, 10 * u, -0.18, 4, 0.4, 0.3);
-      poly(g, [[cx - 14 * u, cy - 21 * u], [cx - 24 * u, cy - 36 * u],
-        [cx - 9 * u, cy - 26 * u]], p.mid, p.line, u);
-      poly(g, [[cx - 4 * u, cy - 22 * u], [cx + 4 * u, cy - 36 * u],
-        [cx - 1 * u, cy - 25 * u]], p.mid, p.line, u);
-      poly(g, [[cx - 19 * u, cy - 15 * u], [cx - 26 * u, cy - 11 * u],
-        [cx - 16 * u, cy - 9 * u]], p.hi, p.line, u);              // snout, out front
-      eyes(g, cx - 12 * u, cy - 19 * u, 4.5 * u, 1.9 * u, '#ffb347');
-      blade(g, cx + 22 * u, cy + 2 * u, 26 * u, 5 * u, 0.5, '#c8ccd8', '#6a7080');
+      /* THE SNARLPACK: hyena-men, not an egg with ears. What reads as a
+         scavenger pack is the hyena's own shape - shoulders high and hips
+         low so the back slopes away, a bristling mane down it, a spotted
+         coat, round ears, and a long grinning snout thrust out in front on a
+         thick neck. They stand, just, on bent legs, with a rag of a
+         loincloth and a cleaver made of a bone and a piece of iron. The
+         Bonesnapper and Gnarlfang wear this body too. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+      const spots = (cx, cy, rx, ry, rot, n, seed) => {
+        g.save();
+        g.beginPath(); g.ellipse(X(cx), Y(cy), X(rx), X(ry), rot, 0, WS.TAU); g.clip();
+        g.fillStyle = p.dark; g.globalAlpha = 0.45;
+        for (let i = 0; i < n; i++) {
+          const h = Math.sin((i + seed) * 91.7) * 43758.5; const r = h - Math.floor(h);
+          const h2 = Math.sin((i + seed) * 17.3) * 12345.6; const r2 = h2 - Math.floor(h2);
+          g.beginPath();
+          g.ellipse(X(cx - rx + r * rx * 2), Y(cy - ry + r2 * ry * 2), X(1.2 + r * 1.4), X(0.9 + r2), r * 3, 0, WS.TAU);
+          g.fill();
+        }
+        g.restore();
+      };
+      // far leg, far arm with the cleaver held back
+      shaded(g, X(60), Y(74), X(4.6), X(8), far, -0.3);
+      shaded(g, X(63), Y(83), X(2.6), X(5.4), far, 0.35);
+      poly(g, P([[58, 86.4], [64, 86.4], [64.6, 89.6], [55.6, 89.8]]), far.mid, far.line, u * 0.6);
+      // the cleaver: a long bone for a haft, a slab of iron lashed to it
+      g.save();
+      g.lineCap = 'round';
+      g.strokeStyle = '#3d392f'; g.lineWidth = u * 3.2;
+      g.beginPath(); g.moveTo(X(70), Y(58)); g.lineTo(X(78), Y(30)); g.stroke();
+      g.strokeStyle = '#d8d0bd'; g.lineWidth = u * 2;
+      g.beginPath(); g.moveTo(X(70), Y(58)); g.lineTo(X(78), Y(30)); g.stroke();
+      g.restore();
+      shaded(g, X(78.4), Y(29.4), X(2.4), X(2.2), { hi: '#f2ede0', mid: '#d8d0bd', lo: '#9a9280', dark: '#5e594c', line: '#3d392f', glow: '#fff' });
+      poly(g, P([[74, 32], [86, 26], [89, 36], [78, 42]]), '#8a8f98', '#2a2e36', u * 0.8);
+      g.fillStyle = 'rgba(140,70,30,.5)';
+      g.beginPath(); g.ellipse(X(84), Y(33), X(2.4), X(1.6), 0.4, 0, WS.TAU); g.fill();
+      g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = u * 0.6;
+      g.beginPath(); g.moveTo(X(86.2), Y(27)); g.lineTo(X(88.6), Y(35)); g.stroke();
+      g.strokeStyle = '#4a3a28'; g.lineWidth = u * 1.1;
+      for (const t of [0.2, 0.34]) { g.beginPath(); g.moveTo(X(74.6 + t * 4), Y(38 - t * 16)); g.lineTo(X(78.6 + t * 4), Y(36 - t * 16)); g.stroke(); }
+      shaded(g, X(64), Y(52), X(3.8), X(9), far, -0.7);
+      shaded(g, X(69.4), Y(57.4), X(2.8), X(2.6), far);
+      // the body: high shoulders, the back sloping down to low hips
+      shaded(g, X(56), Y(66), X(10), X(9), p, 0.3);
+      shaded(g, X(45), Y(52), X(15), X(13), p, -0.5);
+      spots(45, 52, 15, 13, -0.5, 12, 3);
+      spots(56, 66, 10, 9, 0.3, 6, 11);
+      // the pale throat and belly
+      g.save();
+      g.beginPath(); g.ellipse(X(45), Y(52), X(15), X(13), -0.5, 0, WS.TAU); g.clip();
+      g.fillStyle = 'rgba(255,248,232,.16)';
+      g.beginPath(); g.ellipse(X(36), Y(58), X(6), X(10), -0.4, 0, WS.TAU); g.fill();
+      g.restore();
+      // the loincloth, and a belt of trinkets
+      poly(g, P([[48, 64], [64, 66], [63, 72], [58, 78], [55, 71], [50, 76], [47, 70]]), '#4a3a2a', '#1a1208', u * 0.6);
+      g.strokeStyle = '#2a1e14'; g.lineWidth = u * 1.6;
+      g.beginPath(); g.moveTo(X(47), Y(65)); g.lineTo(X(64), Y(67)); g.stroke();
+      for (const [tx, ty] of [[52, 66.4], [58, 67.2]]) {
+        g.fillStyle = '#e6dcc0';
+        g.beginPath(); g.moveTo(X(tx - 0.8), Y(ty)); g.lineTo(X(tx), Y(ty + 3.4)); g.lineTo(X(tx + 0.8), Y(ty)); g.fill();
+      }
+      // near leg: bent, a long foot, claws
+      shaded(g, X(49), Y(74), X(5.2), X(8.4), p, -0.35);
+      shaded(g, X(46.4), Y(83), X(3), X(5.6), p, 0.25);
+      poly(g, P([[43, 86], [50, 86.2], [50.4, 89.6], [39, 89.8], [39.6, 88]]), p.mid, p.line, u * 0.6);
+      for (let i = 0; i < 3; i++) poly(g, P([[39.6 + i * 1.6, 88.6], [37.6 + i * 1.6, 90], [40.4 + i * 1.6, 89.6]]), '#e9edf5', '#6a7080', u * 0.4);
+      // the mane: a ridge of bristles from the crown down the slope of the back
+      for (let i = 0; i < 10; i++) {
+        const t = i / 9, bx = 38 + t * 24, by = 36 + t * 22 - Math.sin(t * WS.PI) * 4;
+        const len = 5 + Math.sin(t * WS.PI) * 4;
+        poly(g, P([[bx - 1.8, by + 1.6], [bx + 1.8 - len * 0.1, by - len], [bx + 2.2, by + 1.6]]), i % 2 ? p.dark : p.lo, p.line, u * 0.5);
+      }
+      // the near arm, long, reaching forward with the claws out
+      shaded(g, X(37), Y(56), X(3.8), X(9), p, 0.5);
+      shaded(g, X(31), Y(66), X(3.2), X(7), p, 0.15);
+      for (let i = 0; i < 3; i++) {
+        const cx = 28.4 + i * 1.8;
+        poly(g, P([[cx - 0.8, 71.6], [cx - 1.6, 75.4], [cx + 0.6, 72]]), '#e9edf5', '#6a7080', u * 0.4);
+      }
+      // the neck, thick, and the head thrust out in front
+      shaded(g, X(33), Y(38), X(7), X(8), p, -0.8);
+      shaded(g, X(24), Y(33), X(8.4), X(7.4), p);
+      spots(24, 33, 8.4, 7.4, 0, 4, 21);
+      // round ears, one cocked
+      poly(g, P([[25.6, 28], [27.4, 20.6], [29.6, 19.8], [31, 22], [29.6, 28.6]]), p.lo, p.line, u * 0.6);
+      poly(g, P([[20, 27.4], [20.6, 21.2], [22.6, 20.4], [23.8, 22.6], [23.4, 27.8]]), p.mid, p.line, u * 0.6);
+      g.fillStyle = 'rgba(40,20,20,.5)';
+      g.beginPath(); g.ellipse(X(28.6), Y(23.8), X(0.9), X(2.2), 0.3, 0, WS.TAU); g.fill();
+      // the snout: long, dark at the muzzle, grinning
+      poly(g, P([[18, 29], [6, 32], [5, 35.6], [9, 37], [18, 37]]), p.mid, p.line, u * 0.8);
+      poly(g, P([[9, 33], [5.2, 32.6], [5, 35.6], [9, 36.4]]), '#1e1614', '#0a0706', u * 0.5);
+      g.fillStyle = '#0a0706';
+      g.beginPath(); g.ellipse(X(5.8), Y(33.4), X(1.2), X(1), 0, 0, WS.TAU); g.fill();
+      g.strokeStyle = '#1e1414'; g.lineWidth = u * 0.8; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(X(7), Y(36.2)); g.quadraticCurveTo(X(13), Y(38), X(19), Y(35.4)); g.stroke();
+      for (let i = 0; i < 4; i++) poly(g, P([[9 + i * 2.4, 36.4], [9.7 + i * 2.4, 38.4], [10.4 + i * 2.4, 36.6]]), '#fff', '#8a8a8a', u * 0.3);
+      eyes(g, X(21), Y(30.4), X(0.01), X(1.7), '#ffb347');
+      g.strokeStyle = p.line; g.lineWidth = u * 1; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(X(17.6), Y(28.6)); g.lineTo(X(23.6), Y(28)); g.stroke();
     },
 
     bandit(g, s, p) {
@@ -1630,51 +1702,79 @@
 
     /* --- undead ----------------------------------------------------------- */
     skeleton(g, s, p) {
-      /* A SKELETON, all of it. This was a spine, four stick ribs, two stick
-         arms and a skull - no legs, no pelvis, nothing it could have walked
-         on. It is the most-drawn undead in the game (two common ones and two
-         champions wear it) so it gets the anatomy: bones with a body and a
-         knob at each end, a ribcage that is a cage, a pelvis, legs, a skull
-         with its jaw hanging a little loose, and a sword gone to rust. */
+      /* A SKELETON THAT CRAWLS. The first one had no legs, and the player
+         said what that made it: something hauling itself at you on its arms.
+         So that is what it is, drawn properly - the ribcage held up off the
+         ground, the spine trailing behind it vertebra by vertebra with a
+         rag still knotted round it, both arms planted and pulling, the bony
+         hands splayed on the ground, and the rusted sword driven in point
+         first as a crutch. Two common undead and two champions wear it. */
       const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
       const BONE = { hi: p.hi, mid: p.mid, lo: p.lo, dark: p.dark, line: p.line, glow: p.glow };
-      /** A bone: tapered shaft, a knob at each end, lit down one side. */
       const bone = (x0, y0, x1, y1, w) => {
         const dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
         const q = (t, k) => [X(x0 + dx * t + nx * w * k), Y(y0 + dy * t + ny * w * k)];
         poly(g, [q(0.1, -0.8), q(0.5, -0.55), q(0.9, -0.8), q(0.9, 0.8), q(0.5, 0.55), q(0.1, 0.8)], BONE.mid, BONE.line, u * 0.6);
-        for (const [t, sx] of [[0.04, 1], [0.96, 1]]) {
+        for (const t of [0.04, 0.96]) {
           const cx0 = x0 + dx * t, cy0 = y0 + dy * t;
-          shaded(g, X(cx0 + nx * w * 0.45), Y(cy0 + ny * w * 0.45), X(w * 0.62 * sx), X(w * 0.62), BONE);
-          shaded(g, X(cx0 - nx * w * 0.45), Y(cy0 - ny * w * 0.45), X(w * 0.62 * sx), X(w * 0.62), BONE);
+          shaded(g, X(cx0 + nx * w * 0.45), Y(cy0 + ny * w * 0.45), X(w * 0.62), X(w * 0.62), BONE);
+          shaded(g, X(cx0 - nx * w * 0.45), Y(cy0 - ny * w * 0.45), X(w * 0.62), X(w * 0.62), BONE);
         }
         g.strokeStyle = BONE.hi; g.globalAlpha = 0.6; g.lineWidth = u * 0.5; g.lineCap = 'round';
         const a = q(0.15, -0.35), b = q(0.85, -0.35);
         g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
         g.globalAlpha = 1;
       };
-      // legs: femur, knee, shin, and a foot of little bones
-      for (const [hx, kx, fx] of [[44, 41, 40], [56, 59, 61]]) {
-        bone(hx, 64, kx, 76, 2.4);
-        bone(kx, 76, fx, 87, 2.1);
-        poly(g, [[X(fx - 4), Y(86.4)], [X(fx + 3), Y(86)], [X(fx + 3.4), Y(89)], [X(fx - 5), Y(89.4)]], BONE.lo, BONE.line, u * 0.6);
-      }
-      // a rag of cloth still knotted round the hips
-      poly(g, [[X(39), Y(60)], [X(61), Y(60)], [X(63), Y(66)], [X(57), Y(71)], [X(52), Y(67)], [X(46), Y(72)], [X(38), Y(67)]],
-        '#3a3028', '#15100c', u * 0.7);
-      // the pelvis
-      for (const d of [-1, 1]) shaded(g, X(50 + d * 4.4), Y(59.6), X(5), X(3.6), BONE, d * 0.35);
-      g.fillStyle = BONE.line; g.globalAlpha = 0.7;
-      for (const d of [-1, 1]) { g.beginPath(); g.ellipse(X(50 + d * 4.6), Y(61), X(1.6), X(1.2), 0, 0, WS.TAU); g.fill(); }
-      g.globalAlpha = 1;
-      // the spine, vertebra by vertebra
-      for (let i = 0; i < 7; i++) {
-        const y = 56 - i * 3.6;
-        shaded(g, X(50), Y(y), X(2.2), X(1.5), BONE);
-      }
-      // the ribcage: pairs of ribs curving round from the spine, and a sternum
+      /* Leaning forward over its arms: everything above the hips is sheared
+         toward the survivor, the way a thing pulling itself along carries
+         its weight out in front. K() is that lean, for the joints that have
+         to meet the unleaned arms and the ground. */
+      const LEAN = 0.3, HIP = 62;
+      const K = (x, y) => [x + LEAN * (y - HIP), y];
+      const lean = () => { g.save(); g.transform(1, 0, LEAN, 1, -LEAN * Y(HIP), 0); };
+      // the skull is carried, not sheared: it moves with the lean and keeps its shape
+      const carry = (y) => { g.save(); g.translate(X(LEAN * (y - HIP)), 0); };
+      /** A hand of bone, flat on the ground, the fingers splayed and dug in. */
+      const hand = (x, y, dir) => {
+        shaded(g, X(x), Y(y), X(2.6), X(1.8), BONE);
+        g.lineCap = 'round';
+        for (let i = 0; i < 4; i++) {
+          const a = WS.PI / 2 + dir * (0.9 - i * 0.45);
+          const k1x = x + Math.cos(a) * 2.6 - dir * 1.4, k1y = y + Math.sin(a) * 1.4 + 1.2;
+          const tx = k1x - dir * 2.2 + (i - 1.5) * 0.6, ty = k1y + 1.6;
+          g.strokeStyle = BONE.line; g.lineWidth = u * 1.5;
+          g.beginPath(); g.moveTo(X(x), Y(y)); g.lineTo(X(k1x), Y(k1y)); g.lineTo(X(tx), Y(ty)); g.stroke();
+          g.strokeStyle = BONE.mid; g.lineWidth = u * 0.8;
+          g.beginPath(); g.moveTo(X(x), Y(y)); g.lineTo(X(k1x), Y(k1y)); g.lineTo(X(tx), Y(ty)); g.stroke();
+        }
+      };
+      // the scrape it leaves: dirt thrown up behind the dragging spine
+      g.fillStyle = 'rgba(40,32,24,.35)';
+      g.beginPath(); g.ellipse(X(64), Y(86), X(16), X(3), 0, 0, WS.TAU); g.fill();
+      // the spine, trailing behind and down to the ground, a rag round it
+      const trail = [[50, 61], [54, 65.5], [58.5, 70], [63, 74.5], [67.5, 78.5], [72, 82], [76.5, 85]];
+      trail.forEach(([x, y], i) => shaded(g, X(x), Y(y), X(2.3 - i * 0.18), X(1.6 - i * 0.12), BONE));
+      poly(g, [[X(48), Y(60)], [X(57), Y(61)], [X(62), Y(70)], [X(56), Y(74)], [X(54), Y(68)], [X(50), Y(71)]], '#3a3028', '#15100c', u * 0.6);
+      // the sword, point down in the ground, the far hand on its hilt
+      g.save();
+      g.translate(X(74), Y(88)); g.rotate(0.12);
+      poly(g, [[-X(1.6), -Y(22)], [X(1.6), -Y(22)], [X(1.4), -Y(3)], [0, 0], [-X(1.4), -Y(3)]], '#9aa0a8', '#3a3e46', u * 0.6);
+      g.fillStyle = 'rgba(140,70,30,.55)';
+      g.beginPath(); g.ellipse(X(0.4), -Y(9), X(1.1), X(2.6), 0, 0, WS.TAU); g.fill();
+      g.fillStyle = '#3a3e46';
+      for (const y of [6, 14]) { g.beginPath(); g.moveTo(X(1.6), -Y(y)); g.lineTo(X(0.6), -Y(y + 1)); g.lineTo(X(1.5), -Y(y + 2)); g.fill(); }
+      g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = u * 0.5;
+      g.beginPath(); g.moveTo(-X(0.6), -Y(20)); g.lineTo(-X(0.6), -Y(4)); g.stroke();
+      poly(g, [[-X(5), -Y(23)], [X(5), -Y(23)], [X(5), -Y(21.2)], [-X(5), -Y(21.2)]], '#6a5a40', '#2a2010', u * 0.5);
+      poly(g, [[-X(1), -Y(29)], [X(1), -Y(29)], [X(1), -Y(23)], [-X(1), -Y(23)]], '#4a3a2a', '#1a1208', u * 0.5);
+      g.restore();
+      // the far arm: shoulder to elbow, forearm down to the hilt
+      { const [ex, ey] = K(70, 54); lean(); bone(61, 43, 70, 54, 1.8); g.restore(); bone(ex, ey, 73, 63, 1.6); }
+      shaded(g, X(73.4), Y(64), X(2.4), X(2.2), BONE);
+      // the ribcage, leaning out over its arms
+      lean();
       for (let i = 0; i < 5; i++) {
-        const y = 37 + i * 3.8, w = 11.5 - i * 1.1, drop = 3.4 - i * 0.2;
+        const y = 42 + i * 3.6, w = 11 - i * 1, drop = 3.2 - i * 0.2;
         for (const d of [-1, 1]) {
           g.lineCap = 'round';
           g.strokeStyle = BONE.line; g.lineWidth = u * 2.6;
@@ -1685,48 +1785,35 @@
           g.beginPath(); g.moveTo(X(50 + d * 1.5), Y(y - 0.5)); g.quadraticCurveTo(X(50 + d * (w - 1)), Y(y - 1.8), X(50 + d * (w - 1.2)), Y(y + drop - 1.4)); g.stroke();
         }
       }
-      poly(g, [[X(48.6), Y(35)], [X(51.4), Y(35)], [X(51), Y(49)], [X(49), Y(49)]], BONE.hi, BONE.line, u * 0.5);
-      // collarbones and shoulders
-      bone(38, 34, 49, 33, 1.6); bone(51, 33, 62, 34, 1.6);
-      // the far arm, hanging, and the near arm up with the sword
-      bone(63, 35, 66, 48, 1.8); bone(66, 48, 64, 58, 1.6);
-      shaded(g, X(64), Y(60), X(2.2), X(2.6), BONE);
-      bone(37, 35, 31, 46, 1.8); bone(31, 46, 24, 52, 1.6);
-      // the sword: a notched, rusted blade in the near hand
-      g.save();
-      g.translate(X(23), Y(52)); g.rotate(-2.3);
-      const bl = [[-X(1.6), 0], [X(1.6), 0], [X(1.4), Y(26)], [0, Y(30)], [-X(1.4), Y(26)]];
-      poly(g, bl, '#9aa0a8', '#3a3e46', u * 0.6);
-      g.fillStyle = 'rgba(140,70,30,.55)';
-      g.beginPath(); g.ellipse(X(0.4), Y(9), X(1.2), X(3), 0, 0, WS.TAU); g.fill();
-      g.beginPath(); g.ellipse(-X(0.6), Y(19), X(1), X(2), 0, 0, WS.TAU); g.fill();
-      g.fillStyle = '#3a3e46';
-      for (const y of [7, 15, 22]) { g.beginPath(); g.moveTo(X(1.6), Y(y)); g.lineTo(X(0.6), Y(y + 1)); g.lineTo(X(1.5), Y(y + 2)); g.fill(); }
-      g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = u * 0.5;
-      g.beginPath(); g.moveTo(-X(0.6), Y(2)); g.lineTo(-X(0.6), Y(25)); g.stroke();
-      poly(g, [[-X(5), -Y(1)], [X(5), -Y(1)], [X(5), Y(0.8)], [-X(5), Y(0.8)]], '#6a5a40', '#2a2010', u * 0.5);
-      poly(g, [[-X(1), -Y(7)], [X(1), -Y(7)], [X(1), -Y(1)], [-X(1), -Y(1)]], '#4a3a2a', '#1a1208', u * 0.5);
+      for (let i = 0; i < 6; i++) shaded(g, X(50 + i * 0.4), Y(41 + i * 3.6), X(2), X(1.4), BONE);
+      poly(g, [[X(48.6), Y(40)], [X(51.4), Y(40)], [X(51), Y(54)], [X(49), Y(54)]], BONE.hi, BONE.line, u * 0.5);
+      bone(38, 39, 49, 38, 1.6); bone(51, 38, 62, 39, 1.6);
+      bone(38, 41, 29, 55, 1.9);
       g.restore();
-      shaded(g, X(23), Y(52.4), X(2.4), X(2.2), BONE);
-      // the skull, and the jaw hanging a little loose under it
-      shaded(g, X(50), Y(26.4), X(5.6), X(3), BONE);
+      // the near forearm, from the leaned elbow down to the planted hand
+      { const [ex, ey] = K(29, 55); bone(ex, ey, 21, 80, 1.7); }
+      hand(20, 82, -1);
+      // the skull, low and forward, the jaw hanging open as it comes
+      carry(30);
+      shaded(g, X(44), Y(34), X(5.4), X(3), BONE, 0.15);
       g.fillStyle = BONE.line;
-      for (let i = -2; i <= 2; i++) g.fillRect(X(49.4 + i * 2), Y(25), X(1.1), Y(1.6));
-      shaded(g, X(50), Y(17), X(9.6), X(9), BONE);
+      for (let i = -2; i <= 2; i++) g.fillRect(X(43.4 + i * 1.9), Y(32.6), X(1.1), Y(1.6));
+      shaded(g, X(45), Y(24.4), X(9.4), X(8.8), BONE);
       g.save();
-      g.beginPath(); g.ellipse(X(50), Y(17), X(9.6), X(9), 0, 0, WS.TAU); g.clip();
+      g.beginPath(); g.ellipse(X(45), Y(24.4), X(9.4), X(8.8), 0, 0, WS.TAU); g.clip();
       g.fillStyle = BONE.lo; g.globalAlpha = 0.5;
-      g.beginPath(); g.ellipse(X(50), Y(24), X(6), X(3), 0, 0, WS.TAU); g.fill();
+      g.beginPath(); g.ellipse(X(45), Y(31.4), X(6), X(3), 0, 0, WS.TAU); g.fill();
       g.globalAlpha = 1;
       g.strokeStyle = 'rgba(255,255,255,.22)'; g.lineWidth = 0.9 * u; g.lineCap = 'round';
-      g.beginPath(); g.moveTo(X(44), Y(10)); g.quadraticCurveTo(X(47), Y(14), X(45.6), Y(19)); g.stroke();
+      g.beginPath(); g.moveTo(X(39), Y(17.6)); g.quadraticCurveTo(X(42), Y(21.6), X(40.6), Y(26.6)); g.stroke();
       g.restore();
       g.fillStyle = '#101018';
-      g.beginPath(); g.ellipse(X(46), Y(17.4), X(2.8), X(3.2), 0, 0, WS.TAU); g.fill();
-      g.beginPath(); g.ellipse(X(54), Y(17.4), X(2.8), X(3.2), 0, 0, WS.TAU); g.fill();
-      g.beginPath(); g.moveTo(X(50), Y(20.4)); g.lineTo(X(48.6), Y(23.4)); g.lineTo(X(51.4), Y(23.4)); g.closePath(); g.fill();
-      for (let i = -2; i <= 2; i++) g.fillRect(X(49.4 + i * 2), Y(23.8), X(1.1), Y(1.5));
-      eyes(g, X(50), Y(17.6), X(4), X(1.3), '#8fe6ff');
+      g.beginPath(); g.ellipse(X(41), Y(24.8), X(2.8), X(3.2), 0, 0, WS.TAU); g.fill();
+      g.beginPath(); g.ellipse(X(49), Y(24.8), X(2.8), X(3.2), 0, 0, WS.TAU); g.fill();
+      g.beginPath(); g.moveTo(X(45), Y(27.8)); g.lineTo(X(43.6), Y(30.8)); g.lineTo(X(46.4), Y(30.8)); g.closePath(); g.fill();
+      for (let i = -2; i <= 2; i++) g.fillRect(X(44.4 + i * 2), Y(31.2), X(1.1), Y(1.5));
+      eyes(g, X(45), Y(25), X(4), X(1.3), '#8fe6ff');
+      g.restore();
     },
 
     ghoul(g, s, p) {
@@ -3899,6 +3986,44 @@
       c = make(res, res);
       const draw = PROPS[kind] || PROPS.rock;
       draw(c.getContext('2d'), res);
+      c.displaySize = size;
+      cache.set(key, c);
+      return c;
+    },
+
+    /** A canvas as a data URL, encoded once.
+     *
+     *  Every tile in the menu - the roster's faces, the bestiary's sixty-odd
+     *  creatures, the icons - was re-encoded as a PNG each time its pane was
+     *  built, which is every tab switch. Measured: the Bestiary spent 190 to
+     *  300ms of a click just on that. The canvases are already cached, so
+     *  their encodings can be too, keyed on the canvas itself. */
+    dataURL(canvas) {
+      let u = urls.get(canvas);
+      if (!u) { u = canvas.toDataURL(); urls.set(canvas, u); }
+      return u;
+    },
+
+    /** A creature as a shape and nothing else - for what has not been met.
+     *  The sprite's alpha, flooded with one colour and a faint cold rim, so
+     *  it reads as something out there without giving away what. */
+    silhouette(art, size, kit) {
+      const key = `sil:${art}:${size}:${kit ? kit.join('') : ''}`;
+      let c = cache.get(key);
+      if (c) return c;
+      const src = this.creature(art, [0.5, 0.5, 0.5], size, kit);
+      const flood = (colour) => {
+        const f = make(src.width, src.height), fg = f.getContext('2d');
+        fg.drawImage(src, 0, 0);
+        fg.globalCompositeOperation = 'source-in';
+        fg.fillStyle = colour; fg.fillRect(0, 0, f.width, f.height);
+        return f;
+      };
+      c = make(src.width, src.height);
+      const g = c.getContext('2d');
+      const k = WS.max(1, src.width / 90);
+      g.drawImage(flood('rgba(150,176,220,.75)'), -k, -k);   // the moon catching its edge
+      g.drawImage(flood('#12141c'), 0, 0);
       c.displaySize = size;
       cache.set(key, c);
       return c;

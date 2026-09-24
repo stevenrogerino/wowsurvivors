@@ -133,7 +133,7 @@ const path = require('path');
 
   await page.evaluate(() => { WS.Save.unlockAll(); WS.UI.openMenu(); });
   await page.waitForTimeout(250);
-  for (const t of ['roster', 'battlefields', 'trainer', 'codex', 'bestiary', 'stats', 'settings']) {
+  for (const t of ['roster', 'trainer', 'codex', 'bestiary', 'stats', 'settings']) {
     await page.evaluate((x) => { WS.UI.tab = x; WS.UI.openMenu(); }, t);
     await page.waitForTimeout(120);
     await check('menu/' + t);
@@ -197,7 +197,7 @@ const path = require('path');
     Object.keys(WS.Bosses).forEach((id) => { WS.Save.stats.bosses[id] = 12; });
     WS.MapOrder.forEach((id) => { WS.Save.stats.bestTime[id] = 1800; });
   });
-  for (const t of ['roster', 'battlefields', 'trainer', 'codex', 'bestiary', 'stats', 'settings']) {
+  for (const t of ['roster', 'trainer', 'codex', 'bestiary', 'stats', 'settings']) {
     await page.evaluate((x) => { WS.UI.tab = x; WS.UI.openMenu(); }, t);
     await page.waitForTimeout(160);
     (await scanProgress('maxed/' + t)).forEach((x) => seen.add(x));

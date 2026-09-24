@@ -58,8 +58,12 @@ const path = require('path');
     const a = document.activeElement;
     if (!a || a === document.body) return null;
     const r = a.getBoundingClientRect();
+    /* In the page's own coordinates, not the screen's: moving focus scrolls
+       the pane to keep the tile in view, and a tile a row down that has been
+       scrolled up to meet you is still a row down. */
+    const sc = a.closest('.overlay-body');
     return { name: (a.textContent || '').trim().split('\n')[0].slice(0, 26),
-      cls: a.className, x: Math.round(r.x), y: Math.round(r.y) };
+      cls: a.className, x: Math.round(r.x), y: Math.round(r.y + (sc ? sc.scrollTop : 0)) };
   });
 
   // Focus the first roster tile, then walk the grid.
@@ -117,7 +121,7 @@ const path = require('path');
      * can reach from the menu or mid-run is here; if a screen is added to the
      * game and not to this list, that is the gap this tool exists to close. */
     const SCREENS = {};
-    for (const tab of ['roster', 'battlefields', 'trainer', 'codex', 'bestiary',
+    for (const tab of ['roster', 'trainer', 'codex', 'bestiary',
       'stats', 'settings']) {
       SCREENS['menu/' + tab] = () => { WS.UI.tab = tab; WS.UI.openMenu(); };
     }

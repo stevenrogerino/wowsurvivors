@@ -1142,8 +1142,10 @@
       return c;
     },
 
-    /** Data URL for CSS/img elements (the DOM-side UI). */
-    url(art, color, size) { return this.get(art, color, size).toDataURL(); },
+    /** Data URL for CSS/img elements (the DOM-side UI). Cached: encoding a
+     *  PNG is the slow part of drawing an icon, and the menu used to pay for
+     *  it again for every icon on every pane it rebuilt. */
+    url(art, color, size) { return WS.Sprites.dataURL(this.get(art, color, size)); },
 
     /** The old machined plate, for anything that still wants the diagram. */
     plated(art, color, size) {
