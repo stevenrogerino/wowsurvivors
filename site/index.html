@@ -11358,60 +11358,73 @@ window.WS = window.WS || {};
     },
 
     bandit(g, s, p) {
-      const cx = s / 2, cy = s * 0.58, u = s / 100;
-      legs(g, p, cx, cy + 24 * u, u, [-8, 8], 9, 5);
-      shaded(g, cx, cy + 4 * u, 18 * u, 24 * u, p);
-      // The coat skirt, shaded and cut rather than a flat dark disc laid
-      // over the body.
-      shaded(g, cx, cy + 12 * u, 19 * u, 12 * u,
-        { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow });
-      /* Buttons and a lapel. The bandit is a person in a coat and the coat
-         had no fastenings on it at all - and a row of buttons is the cheapest
-         hard-edged thing a garment can carry. */
+      /* A KERCHIEF: a cutthroat, lean and quick, not an egg in a coat. The
+         family colour is the kerchief up over the face and the sash round
+         the waist - the Admiral's men dress like him on a smaller budget -
+         with a leather vest over a loose shirt, breeches into boots, a
+         hood pushed back, and a curved knife held low. Captain Redcowl is
+         drawn on this, so the hat and plate he wears land on a person. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const SKIN = { hi: '#e2c7a8', mid: '#bf9d7c', lo: '#7c604a', dark: '#5e4b3c', line: '#46362a', glow: '#fff' };
+      const LEATHER = { hi: '#8a6a4a', mid: '#5e4430', lo: '#35261a', dark: '#2a1e14', line: '#1a120c', glow: '#fff' };
+      const SHIRT = '#d9d0bc', SHIRT_LO = '#9c927e';
+      const BOOT = '#241a14';
+      // legs: breeches into boots, a stride
+      for (const [hx, fx, far] of [[55, 60, 1], [45, 39, 0]]) {
+        poly(g, P([[hx - 4, 62], [hx + 4, 62], [fx + 3.6, 76], [fx - 3.6, 76]]), far ? LEATHER.lo : LEATHER.mid, LEATHER.line, u * 0.7);
+        poly(g, P([[fx - 3.8, 74], [fx + 3.8, 74], [fx + 3.6, 86], [fx - 3.6, 86]]), BOOT, '#0a0604', u * 0.7);
+        poly(g, P([[fx - 4.4, 73], [fx + 4.4, 73], [fx + 4, 76], [fx - 4, 76]]), '#3a2a1e', '#0a0604', u * 0.6);
+        poly(g, P([[fx - 3.6, 85], [fx + 3.6, 85], [fx + 3.2, 89], [fx - 8, 89.4], [fx - 7.6, 87]]), BOOT, '#0a0604', u * 0.6);
+      }
+      // the body: a shirt under an open leather vest
+      poly(g, P([[38, 36], [62, 36], [64, 62], [36, 62]]), SHIRT, SHIRT_LO, u * 0.8);
       g.save();
-      g.beginPath(); g.ellipse(cx, cy + 4 * u, 18 * u, 24 * u, 0, 0, WS.TAU); g.clip();
-      g.strokeStyle = p.line; g.globalAlpha = 0.5; g.lineWidth = 1.2 * u;
-      g.beginPath();
-      g.moveTo(cx - 8 * u, cy - 16 * u);
-      g.quadraticCurveTo(cx - 2 * u, cy - 8 * u, cx - 3 * u, cy + 18 * u);
-      g.stroke();
-      /* The lapel was one fold on one side of a symmetric coat, and the
-         skirt below the buttons - the widest, lowest part of the mass - had
-         nothing on it at all. Measured at 36.2% interior detail against a
-         41% average: a matching fold on the near side, a belt at the waist,
-         and a couple of the same creases the skirt would actually gather
-         into when a coat this heavy is cinched. */
-      g.beginPath();
-      g.moveTo(cx + 9 * u, cy - 15 * u);
-      g.quadraticCurveTo(cx + 5 * u, cy - 6 * u, cx + 6 * u, cy + 17 * u);
-      g.stroke();
-      g.lineWidth = 1.6 * u;
-      g.beginPath();
-      g.moveTo(cx - 16 * u, cy + 8 * u); g.lineTo(cx + 16 * u, cy + 8 * u);
-      g.stroke();
-      g.lineWidth = 1 * u; g.globalAlpha = 0.34;
-      for (const dx of [-9, 9]) {
-        g.beginPath();
-        g.moveTo(cx + dx * u, cy + 9 * u);
-        g.quadraticCurveTo(cx + dx * 1.2 * u, cy + 16 * u, cx + dx * 0.7 * u, cy + 23 * u);
-        g.stroke();
-      }
-      g.globalAlpha = 1;
-      for (let i = 0; i < 4; i++) {
-        const by = cy + (-10 + i * 7) * u;
-        g.fillStyle = p.line;
-        g.beginPath(); g.ellipse(cx + 1 * u, by + 0.6 * u, 1.9 * u, 1.7 * u, 0, 0, WS.TAU); g.fill();
-        g.fillStyle = p.hi;
-        g.beginPath(); g.ellipse(cx + 0.7 * u, by, 1.3 * u, 1.2 * u, 0, 0, WS.TAU); g.fill();
-      }
+      g.beginPath(); P([[38, 36], [62, 36], [64, 62], [36, 62]]).forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.clip();
+      g.strokeStyle = 'rgba(80,70,56,.45)'; g.lineWidth = u * 0.8;
+      for (const x of [44, 50, 56]) { g.beginPath(); g.moveTo(X(x), Y(38)); g.quadraticCurveTo(X(x + 1), Y(50), X(x - 1), Y(62)); g.stroke(); }
       g.restore();
-      shaded(g, cx, cy - 20 * u, 11 * u, 11 * u, { hi: '#d6c2a8', mid: '#b89b7c', lo: '#7a6350', dark: '#5e4b3c', line: '#4a3b2f', glow: '#fff' });
-      g.fillStyle = p.mid;                                        // red bandana
-      g.beginPath(); g.ellipse(cx, cy - 18 * u, 11.5 * u, 5 * u, 0, WS.PI, WS.TAU); g.fill();
-      g.fillStyle = p.lo;
-      g.fillRect(cx - 12 * u, cy - 20 * u, 24 * u, 4 * u);
-      eyes(g, cx, cy - 22 * u, 4 * u, 1.5 * u, '#fff0d0');
-      blade(g, cx + 20 * u, cy + 4 * u, 26 * u, 4 * u, 0.7, '#d7dbe6', '#767c8c');
+      for (const d of [-1, 1]) {
+        poly(g, P([[50 + d * 3, 36], [50 + d * 13, 36], [50 + d * 14.6, 62], [50 + d * 6, 62], [50 + d * 4, 46]]), d > 0 ? LEATHER.lo : LEATHER.mid, LEATHER.line, u * 0.8);
+      }
+      g.strokeStyle = LEATHER.hi; g.lineWidth = u * 0.6;
+      g.beginPath(); g.moveTo(X(46), Y(37)); g.lineTo(X(45.4), Y(46)); g.stroke();
+      // the sash, red, knotted at the hip with the ends hanging
+      poly(g, P([[35, 56], [65, 56], [65.6, 62], [34.4, 62]]), p.mid, p.line, u * 0.7);
+      g.strokeStyle = p.hi; g.lineWidth = u * 0.6; g.globalAlpha = 0.5;
+      g.beginPath(); g.moveTo(X(35), Y(57.4)); g.lineTo(X(65), Y(57.4)); g.stroke(); g.globalAlpha = 1;
+      poly(g, P([[60, 60], [64, 61], [63, 72], [60.6, 70]]), p.lo, p.line, u * 0.6);
+      poly(g, P([[62.6, 60], [66, 61], [67, 69], [64.6, 68]]), p.mid, p.line, u * 0.6);
+      // arms: the far one back, the near one forward and low with the knife
+      poly(g, P([[62, 37], [67, 39], [69, 52], [65, 53], [63, 44]]), SHIRT, SHIRT_LO, u * 0.7);
+      shaded(g, X(67), Y(55), X(2.6), X(2.4), SKIN);
+      poly(g, P([[38, 37], [33, 40], [28, 52], [32, 54], [36, 45]]), SHIRT, SHIRT_LO, u * 0.7);
+      poly(g, P([[27.6, 50], [32.6, 52.4], [31.6, 55], [27, 53]]), LEATHER.mid, LEATHER.line, u * 0.6);   // bracer
+      shaded(g, X(28.4), Y(56), X(2.8), X(2.6), SKIN);
+      // the knife: curved, held low and forward
+      g.save();
+      g.translate(X(27), Y(57)); g.rotate(-0.6);
+      poly(g, [[-X(0.8), 0], [X(0.8), 0], [X(1.6), -Y(9)], [-X(2.6), -Y(15)], [-X(0.8), -Y(8)]], '#d7dbe6', '#4a5160', u * 0.5);
+      g.strokeStyle = 'rgba(255,255,255,.8)'; g.lineWidth = u * 0.4;
+      g.beginPath(); g.moveTo(X(0.4), -Y(1)); g.lineTo(-X(1.6), -Y(13)); g.stroke();
+      poly(g, [[-X(2.4), -Y(0.4)], [X(2.4), -Y(0.4)], [X(2.4), Y(0.8)], [-X(2.4), Y(0.8)]], '#8a6118', '#3a2606', u * 0.4);
+      poly(g, [[-X(0.9), Y(0.8)], [X(0.9), Y(0.8)], [X(0.9), Y(5)], [-X(0.9), Y(5)]], LEATHER.lo, LEATHER.line, u * 0.4);
+      g.restore();
+      // the head: a hood pushed back, the kerchief up over the face
+      poly(g, P([[39, 36], [42, 21], [53, 17], [61, 23], [62, 36]]), LEATHER.lo, LEATHER.line, u * 0.8);
+      shaded(g, X(49), Y(27), X(8.4), X(9), SKIN);
+      poly(g, P([[40.4, 20], [49, 17.4], [57.4, 20.4], [57, 24.6], [49, 22.6], [41, 24.4]]), '#2a1e18', '#0f0a08', u * 0.6);   // hair
+      poly(g, P([[40.2, 27.6], [57.8, 27], [57, 33], [49, 37.6], [41.2, 33.4]]), p.mid, p.line, u * 0.8);                 // kerchief
+      g.save();
+      g.beginPath(); P([[40.2, 27.6], [57.8, 27], [57, 33], [49, 37.6], [41.2, 33.4]]).forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.clip();
+      g.fillStyle = 'rgba(255,230,220,.5)';
+      for (let i = 0; i < 5; i++) { g.beginPath(); g.arc(X(42.6 + i * 3.4), Y(30.4 + (i % 2)), X(0.5), 0, WS.TAU); g.fill(); }
+      g.fillStyle = 'rgba(0,0,0,.2)'; g.beginPath(); g.ellipse(X(53), Y(33), X(5), X(3.4), 0, 0, WS.TAU); g.fill();
+      g.restore();
+      poly(g, P([[57.4, 27.6], [62, 29.4], [60.6, 31.6], [57.6, 30.6]]), p.lo, p.line, u * 0.6);
+      eyes(g, X(47.6), Y(25.2), X(3.6), X(1.3), '#fff0d0');
+      g.strokeStyle = SKIN.line; g.lineWidth = u * 0.8; g.lineCap = 'round';
+      for (const d of [-1, 1]) { g.beginPath(); g.moveTo(X(47.6 + d * 1.6), Y(23)); g.lineTo(X(47.6 + d * 5.6), Y(22.2)); g.stroke(); }
     },
 
     brute(g, s, p) {
@@ -12175,47 +12188,98 @@ window.WS = window.WS || {};
     },
 
     geist(g, s, p) {
-      const cx = s / 2, cy = s * 0.62, u = s / 100;
-      shaded(g, cx, cy, 15 * u, 14 * u, p);
-      g.strokeStyle = p.lo; g.lineWidth = 3.5 * u; g.lineCap = 'round';
-      for (const dir of [-1, 1]) {
-        g.beginPath();
-        g.moveTo(cx + dir * 10 * u, cy - 2 * u);
-        g.quadraticCurveTo(cx + dir * 30 * u, cy - 16 * u, cx + dir * 24 * u, cy + 16 * u);
-        g.stroke();
-      }
-      shaded(g, cx, cy - 16 * u, 11 * u, 10 * u, p);
-      /* Wrappings. A geist is a bound thing and this was a smooth pale ball -
-         the cloth it is wound in is the whole of what it wears. */
+      /* A HUNGRY THING, wound in its grave-cloth and floating. It was a pale
+         ball with two strokes for arms and a bar across its face. Now: a
+         body that tapers away to nothing, wrapped in strips of linen that
+         have come loose and trail behind it, two long arms reaching with
+         the fingers hooked, and the mouth that was sewn shut torn open.
+         It bursts where it dies, so it should look full of something. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const hexA = (hex, a) => `rgba(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(',')},${a})`;
+      // the cold it is full of, showing through
       g.save();
-      g.beginPath(); g.ellipse(cx, cy, 15 * u, 14 * u, 0, 0, WS.TAU); g.clip();
+      g.globalCompositeOperation = 'lighter';
+      const gl = g.createRadialGradient(X(50), Y(52), 0, X(50), Y(52), X(30));
+      gl.addColorStop(0, hexA(p.glow, 0.3)); gl.addColorStop(1, hexA(p.glow, 0));
+      g.fillStyle = gl; g.beginPath(); g.arc(X(50), Y(52), X(30), 0, WS.TAU); g.fill();
+      g.restore();
+      // loose wrappings trailing behind, fading out
+      g.save();
       g.lineCap = 'round';
-      for (let i = 0; i < 5; i++) {
-        const y = cy + (-10 + i * 5.5) * u;
-        g.strokeStyle = p.line; g.globalAlpha = 0.4; g.lineWidth = 1.4 * u;
-        g.beginPath();
-        g.moveTo(cx - 17 * u, y);
-        g.quadraticCurveTo(cx, y + 2.6 * u, cx + 17 * u, y - 1 * u);
-        g.stroke();
-        g.strokeStyle = p.hi; g.globalAlpha = 0.24; g.lineWidth = 1.1 * u;
-        g.beginPath();
-        g.moveTo(cx - 17 * u, y + 1.8 * u);
-        g.quadraticCurveTo(cx, y + 4.4 * u, cx + 17 * u, y + 0.8 * u);
-        g.stroke();
+      for (const [x0, y0, x1, y1, x2, y2] of [[58, 64, 72, 74, 80, 86], [52, 70, 58, 80, 54, 92], [44, 66, 36, 78, 40, 90]]) {
+        const tg = g.createLinearGradient(X(x0), Y(y0), X(x2), Y(y2));
+        tg.addColorStop(0, p.mid); tg.addColorStop(1, hexA(p.mid, 0));
+        g.strokeStyle = tg; g.lineWidth = u * 3.4;
+        g.beginPath(); g.moveTo(X(x0), Y(y0)); g.quadraticCurveTo(X(x1), Y(y1), X(x2), Y(y2)); g.stroke();
       }
       g.restore();
-      g.fillStyle = '#141a20';                                     // stitched mask
-      g.fillRect(cx - 11 * u, cy - 19 * u, 22 * u, 6 * u);
-      g.save();                                                    // and its stitches
-      g.strokeStyle = 'rgba(214,222,232,.7)'; g.lineWidth = 0.9 * u;
-      for (let i = -3; i <= 3; i++) {
+      // the body, tapering to a tail of cloth
+      const body = [[38, 40], [50, 32], [62, 40], [64, 56], [58, 70], [52, 82], [48, 72], [40, 60]];
+      poly(g, P(body), p.mid, p.line, u * 0.8);
+      g.save();
+      g.beginPath(); P(body).forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.clip();
+      // the wrappings, each strip its own band, wound on the slant
+      for (let i = 0; i < 8; i++) {
+        const y = 38 + i * 5.4, tilt = i % 2 ? 2.4 : -2;
+        g.fillStyle = i % 2 ? p.hi : p.mid;
         g.beginPath();
-        g.moveTo(cx + i * 3 * u - 1.2 * u, cy - 19 * u);
-        g.lineTo(cx + i * 3 * u + 1.2 * u, cy - 13 * u);
-        g.stroke();
+        g.moveTo(X(34), Y(y - tilt)); g.lineTo(X(66), Y(y + tilt)); g.lineTo(X(66), Y(y + tilt + 4)); g.lineTo(X(34), Y(y - tilt + 4));
+        g.closePath(); g.fill();
+        g.strokeStyle = p.line; g.globalAlpha = 0.45; g.lineWidth = u * 0.7;
+        g.beginPath(); g.moveTo(X(34), Y(y - tilt)); g.lineTo(X(66), Y(y + tilt)); g.stroke();
+        g.globalAlpha = 1;
+      }
+      // a gap in the wrappings, and the light inside
+      g.globalCompositeOperation = 'lighter';
+      const gap = g.createRadialGradient(X(53), Y(56), 0, X(53), Y(56), X(6));
+      gap.addColorStop(0, hexA(p.glow, 0.9)); gap.addColorStop(1, hexA(p.glow, 0));
+      g.fillStyle = gap; g.beginPath(); g.arc(X(53), Y(56), X(6), 0, WS.TAU); g.fill();
+      g.restore();
+      // arms: long, wrapped, reaching out and down, fingers hooked
+      for (const d of [-1, 1]) {
+        const sx = 50 + d * 11, sy = 42, ex = 50 + d * 24, ey = 50, hx = 50 + d * 29, hy = 58;
+        g.save();
+        g.lineCap = 'round';
+        g.strokeStyle = p.line; g.lineWidth = u * 4.4;
+        g.beginPath(); g.moveTo(X(sx), Y(sy)); g.lineTo(X(ex), Y(ey)); g.lineTo(X(hx), Y(hy)); g.stroke();
+        g.strokeStyle = p.mid; g.lineWidth = u * 3.2;
+        g.beginPath(); g.moveTo(X(sx), Y(sy)); g.lineTo(X(ex), Y(ey)); g.lineTo(X(hx), Y(hy)); g.stroke();
+        g.strokeStyle = p.hi; g.lineWidth = u * 0.8;
+        for (let k = 1; k < 5; k++) {
+          const t = k / 5, mx = sx + (ex - sx) * t, my = sy + (ey - sy) * t;
+          g.beginPath(); g.moveTo(X(mx - 1), Y(my - 1.6)); g.lineTo(X(mx + 1), Y(my + 1.6)); g.stroke();
+        }
+        for (let f = 0; f < 3; f++) {
+          const a = WS.PI / 2 + d * (0.2 - f * 0.35);
+          const k1x = hx + Math.cos(a) * 3.2, k1y = hy + Math.sin(a) * 3.2;
+          g.strokeStyle = p.line; g.lineWidth = u * 1.3;
+          g.beginPath(); g.moveTo(X(hx), Y(hy)); g.lineTo(X(k1x), Y(k1y)); g.lineTo(X(k1x - d * 1.6), Y(k1y + 1.8)); g.stroke();
+          g.strokeStyle = p.hi; g.lineWidth = u * 0.6;
+          g.beginPath(); g.moveTo(X(hx), Y(hy)); g.lineTo(X(k1x), Y(k1y)); g.lineTo(X(k1x - d * 1.6), Y(k1y + 1.8)); g.stroke();
+        }
+        g.restore();
+      }
+      // the head, wrapped too, and the mouth torn open through the stitches
+      shaded(g, X(50), Y(28), X(10), X(10), p);
+      g.save();
+      g.beginPath(); g.ellipse(X(50), Y(28), X(10), X(10), 0, 0, WS.TAU); g.clip();
+      for (let i = 0; i < 4; i++) {
+        const y = 20 + i * 5;
+        g.strokeStyle = p.line; g.globalAlpha = 0.4; g.lineWidth = u * 0.8;
+        g.beginPath(); g.moveTo(X(38), Y(y + (i % 2 ? 1.5 : -1))); g.lineTo(X(62), Y(y + (i % 2 ? -1 : 1.5))); g.stroke();
       }
       g.restore();
-      eyes(g, cx, cy - 16 * u, 4.5 * u, 1.8 * u, '#9ff5ff');
+      g.fillStyle = '#10141a';
+      g.beginPath(); g.ellipse(X(50), Y(33), X(5), X(3.4), 0, 0, WS.TAU); g.fill();
+      g.fillStyle = hexA(p.glow, 0.7);
+      g.beginPath(); g.ellipse(X(50), Y(33.6), X(3), X(1.6), 0, 0, WS.TAU); g.fill();
+      g.strokeStyle = 'rgba(214,222,232,.8)'; g.lineWidth = u * 0.6;
+      for (let i = -2; i <= 2; i++) {
+        g.beginPath(); g.moveTo(X(50 + i * 2), Y(29.4)); g.lineTo(X(50 + i * 2.2), Y(30.8)); g.stroke();
+        g.beginPath(); g.moveTo(X(50 + i * 2), Y(35.6)); g.lineTo(X(50 + i * 2.2), Y(37)); g.stroke();
+      }
+      eyes(g, X(50), Y(25.4), X(3.8), X(1.5), '#9ff5ff');
     },
 
     abomination(g, s, p) {
@@ -12995,45 +13059,86 @@ window.WS = window.WS || {};
     },
 
     strider(g, s, p) {
-      const cx = s / 2, cy = s * 0.55, u = s / 100;
-      /* Legs with a backward knee, which is what a running bird has, and a
-         foot to stand on. Two straight strokes with round caps were neither. */
-      for (const [hx, kx, fx] of [[-6, -13, -9], [6, 13, 11]]) {
-        g.strokeStyle = p.lo; g.lineWidth = 5 * u; g.lineCap = 'round';
-        g.beginPath();
-        g.moveTo(cx + hx * u, cy + 10 * u);
-        g.quadraticCurveTo(cx + kx * u, cy + 16 * u, cx + kx * u, cy + 22 * u);
-        g.stroke();
-        g.strokeStyle = p.dark; g.lineWidth = 3 * u;
-        g.beginPath();
-        g.moveTo(cx + kx * u, cy + 22 * u);
-        g.quadraticCurveTo(cx + kx * u, cy + 28 * u, cx + fx * u, cy + 33 * u);
-        g.stroke();
-        g.fillStyle = p.lo;
-        g.beginPath(); g.ellipse(cx + kx * u, cy + 21 * u, 3 * u, 2.6 * u, 0, 0, WS.TAU); g.fill();
-        g.fillStyle = p.dark;
-        g.beginPath(); g.ellipse(cx + fx * u, cy + 34 * u, 5 * u, 2.4 * u, 0, 0, WS.TAU); g.fill();
+      /* A TERROR-BIRD, not a balloon on stilts. Long scaled legs with the
+         backward knee and three toes; a body of layered feathers with a
+         folded wing and a plumed tail held up behind; a long neck with a
+         crest down the back of it; and a hooked beak made for tearing. The
+         Stormhide Colossus wears this body, so it has to carry plate. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const SCALE = { hi: '#d9c9a0', mid: '#a08a5c', lo: '#5e4e30', line: '#2a2214' };
+      const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+      // legs: thigh in the feathers, a long scaled shank, three toes
+      const leg = (hx, kx, ky, fx, col) => {
+        shaded(g, X(hx), Y(62), X(5), X(8), col, 0.2);
+        g.save(); g.lineCap = 'round';
+        g.strokeStyle = SCALE.line; g.lineWidth = u * 3.6;
+        g.beginPath(); g.moveTo(X(hx + 1), Y(66)); g.lineTo(X(kx), Y(ky)); g.lineTo(X(fx), Y(86)); g.stroke();
+        g.strokeStyle = SCALE.mid; g.lineWidth = u * 2.4;
+        g.beginPath(); g.moveTo(X(hx + 1), Y(66)); g.lineTo(X(kx), Y(ky)); g.lineTo(X(fx), Y(86)); g.stroke();
+        g.strokeStyle = SCALE.line; g.lineWidth = u * 0.5;
+        for (let k = 1; k < 6; k++) {
+          const t = k / 6, sx = kx + (fx - kx) * t, sy = ky + (86 - ky) * t;
+          g.beginPath(); g.moveTo(X(sx - 1.2), Y(sy)); g.lineTo(X(sx + 1.2), Y(sy - 0.4)); g.stroke();
+        }
+        g.restore();
+        for (const [dx, dy] of [[-6, 1.6], [-3, 3], [3, 2.4]]) {
+          g.save(); g.lineCap = 'round';
+          g.strokeStyle = SCALE.line; g.lineWidth = u * 1.8;
+          g.beginPath(); g.moveTo(X(fx), Y(86)); g.lineTo(X(fx + dx), Y(86 + dy)); g.stroke();
+          g.strokeStyle = '#e9edf5'; g.lineWidth = u * 0.8;
+          g.beginPath(); g.moveTo(X(fx + dx * 0.8), Y(86 + dy * 0.8)); g.lineTo(X(fx + dx * 1.15), Y(86 + dy * 1.1)); g.stroke();
+          g.restore();
+        }
+      };
+      leg(58, 64, 74, 60, far);
+      // the tail: a fan of plumes held up behind
+      for (let i = 0; i < 5; i++) {
+        const a = -0.9 + i * 0.28, len = 20 - Math.abs(i - 2) * 2;
+        const bx = 66, by = 50, tx = bx + Math.cos(a) * len, ty = by + Math.sin(a) * len;
+        poly(g, P([[bx, by - 1.6], [tx, ty], [bx, by + 1.6]]), i % 2 ? p.mid : p.lo, p.line, u * 0.6);
       }
-      shaded(g, cx, cy, 20 * u, 17 * u, p);
-      /* Measured at 36.6% interior detail against a 41% average - the
-         plainest body in the bestiary before this, one soft ring of down
-         and three faint coverts on top of it. Both strengthened. */
-      pelt(g, p, cx, cy, 20 * u, 17 * u, 0, 7, 0.4, 0.4);
-      // plumage: three overlapping coverts down the flank
+      // the body: layered feathers
+      shaded(g, X(52), Y(54), X(17), X(13), p, 0.15);
       g.save();
-      g.beginPath(); g.ellipse(cx, cy, 20 * u, 17 * u, 0, 0, WS.TAU); g.clip();
-      g.strokeStyle = p.line; g.globalAlpha = 0.48; g.lineWidth = 1.3 * u;
-      for (let i = 0; i < 3; i++) {
-        g.beginPath();
-        g.arc(cx + (10 - i * 7) * u, cy - 6 * u, (14 + i * 3) * u, 0.15, 1.5);
-        g.stroke();
+      g.beginPath(); g.ellipse(X(52), Y(54), X(17), X(13), 0.15, 0, WS.TAU); g.clip();
+      for (let row = 0; row < 4; row++) {
+        for (let i = 0; i < 6; i++) {
+          const x = 38 + i * 6 + (row % 2) * 3, y = 44 + row * 5;
+          g.strokeStyle = p.line; g.globalAlpha = 0.4; g.lineWidth = u * 0.8;
+          g.beginPath(); g.arc(X(x), Y(y), X(3.2), 0.2, WS.PI - 0.2); g.stroke();
+          g.strokeStyle = p.hi; g.globalAlpha = 0.25;
+          g.beginPath(); g.arc(X(x), Y(y - 0.8), X(3.2), 0.4, WS.PI - 0.6); g.stroke();
+        }
       }
+      g.globalAlpha = 1;
       g.restore();
-      g.strokeStyle = p.lo; g.lineWidth = 5 * u;                   // long neck
-      g.beginPath(); g.moveTo(cx - 8 * u, cy - 10 * u); g.quadraticCurveTo(cx - 22 * u, cy - 30 * u, cx - 14 * u, cy - 40 * u); g.stroke();
-      shaded(g, cx - 14 * u, cy - 42 * u, 9 * u, 8 * u, p);
-      poly(g, [[cx - 22 * u, cy - 42 * u], [cx - 34 * u, cy - 40 * u], [cx - 22 * u, cy - 36 * u]], p.hi, p.line, u);
-      eyes(g, cx - 14 * u, cy - 44 * u, 3.5 * u, 1.5 * u, '#ffe9a8');
+      // the folded wing along the flank
+      poly(g, P([[42, 48], [60, 46], [70, 54], [62, 60], [48, 58]]), p.lo, p.line, u * 0.8);
+      g.strokeStyle = p.line; g.globalAlpha = 0.5; g.lineWidth = u * 0.7;
+      for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(X(48 + i * 4), Y(50)); g.lineTo(X(56 + i * 4), Y(58.6 - i * 0.6)); g.stroke(); }
+      g.globalAlpha = 1;
+      leg(46, 42, 72, 44, p);
+      // the neck, long and curved, and a crest down it
+      g.save(); g.lineCap = 'round';
+      g.strokeStyle = p.line; g.lineWidth = u * 7.4;
+      g.beginPath(); g.moveTo(X(42), Y(48)); g.quadraticCurveTo(X(30), Y(34), X(34), Y(20)); g.stroke();
+      g.strokeStyle = p.mid; g.lineWidth = u * 6;
+      g.beginPath(); g.moveTo(X(42), Y(48)); g.quadraticCurveTo(X(30), Y(34), X(34), Y(20)); g.stroke();
+      g.strokeStyle = p.hi; g.lineWidth = u * 1.2; g.globalAlpha = 0.6;
+      g.beginPath(); g.moveTo(X(39), Y(46)); g.quadraticCurveTo(X(28.6), Y(34), X(32), Y(22)); g.stroke();
+      g.restore();
+      for (let i = 0; i < 5; i++) {
+        const t = i / 4, bx = 38 - t * 3 + Math.sin(t * 2) * 1, by = 22 + t * 20;
+        poly(g, P([[bx, by - 1.6], [bx + 6 - t * 2, by - 3 - t], [bx + 0.6, by + 1.6]]), p.lo, p.line, u * 0.5);
+      }
+      // the head, the hooked beak, the eye
+      shaded(g, X(33), Y(18), X(6.6), X(5.8), p);
+      poly(g, P([[28, 15.6], [16, 17.4], [13.4, 21], [16, 20.6], [28, 21]]), '#e8c878', '#4a3a14', u * 0.7);
+      g.strokeStyle = '#4a3a14'; g.lineWidth = u * 0.6;
+      g.beginPath(); g.moveTo(X(27.6), Y(19)); g.lineTo(X(17), Y(19.2)); g.stroke();
+      poly(g, P([[34, 12.6], [42, 6], [39, 13], [44, 10], [38, 16]]), p.hi, p.line, u * 0.6);   // head plumes
+      eyes(g, X(31.4), Y(17), X(0.01), X(1.5), '#ffe9a8');
     },
 
     vulture(g, s, p) {
