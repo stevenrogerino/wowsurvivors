@@ -219,7 +219,7 @@
     mourneholt: {
       script: 'mordecai',
       title: 'Mordecai, Lantern-Bound', subtitle: 'paid in stolen ember',
-      art: 'necromancer', tint: [0.55, 0.92, 0.72],
+      art: 'mordecai', tint: [0.55, 0.92, 0.72],
       intro: [
         ['mordecai', 'Death is a door. The foreman sold me the key.'],
         ['mordecai', 'Four lanterns, four lives. You have one.'],

@@ -7,7 +7,7 @@ site/
   index.html       <- the game (dist/the-ember-watch.html, renamed)
   wiki/
     index.html     <- the companion codex/wiki
-    img/*.png       <- its rendered sprite images
+    img/            <- its pictures, drawn by the game's own painters
 ```
 
 Netlify replaces the *entire* published site with whatever folder you deploy -
@@ -32,4 +32,14 @@ node tools/bundle.js
 cp dist/the-ember-watch.html site/index.html
 ```
 
-`site/wiki/` does not need touching unless the wiki content itself changes.
+**Keeping the wiki current:** it is generated, not written. After a change a
+player would read about - a new creature, a retuned number, a redrawn
+sprite, new lore - regenerate it from the game:
+
+```
+node tools/wiki.js
+```
+
+That loads the game headless, reads every table it ships, runs the text
+through the game's own templates so the numbers are the live ones, redraws
+every picture with the game's own painters, and rewrites `site/wiki/`.
