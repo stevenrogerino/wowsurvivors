@@ -2693,6 +2693,86 @@ body.hud-rail #hud-passives { gap: 9px; }
 @media (max-width: 1100px) { .sheet.three { grid-template-columns: 1fr 1fr; } .sheet.three > .panel:last-child { grid-column: 1 / -1; } }
 @media (max-width: 900px) { .sheet.three { grid-template-columns: 1fr; } }
 
+/* ======================================================== THE NOTICE =======
+ * The corner toast was the last machined thing on the field: a flat slate
+ * bar, a ruled gold stripe down its left, a title in the sans at small caps.
+ * It is now a small inked card like the tip - the drawn frame, handled slate
+ * - with the news painted beside it (a chest, an egg, a crown, a skull), its
+ * name in the voice and in its own colour, and a wick along the foot that
+ * burns down for as long as it will stay. It comes in off the arsenal and
+ * leaves the way it came. */
+.toast {
+  position: relative;
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 15px 13px 11px;
+  border: 1px solid transparent; border-left-width: 1px;
+  border-image: var(--frame-quiet) 24 / 12px stretch;
+  border-radius: 0;
+  background: var(--mottle, none) 0 0 / 320px 320px,
+    radial-gradient(90% 140% at 0% 50%, color-mix(in srgb, var(--q) 14%, transparent), transparent 62%),
+    linear-gradient(180deg, rgba(24,22,31,.94), rgba(12,11,17,.9));
+  backdrop-filter: none;
+  box-shadow: 0 10px 24px rgba(0,0,0,.55);
+  animation: notice-in .34s var(--ease-out) both;
+}
+.toast.leaving { animation: notice-out .18s ease-in both; }
+@keyframes notice-in {
+  from { opacity: 0; transform: translateX(-14px) rotate(-.6deg); }
+  60% { opacity: 1; }
+  to { opacity: 1; transform: none; }
+}
+@keyframes notice-out { to { opacity: 0; transform: translateX(-8px); } }
+.toast .t-mark {
+  flex: none; width: 40px; height: 40px; display: grid; place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--q) 22%, #16141c) 0%, #0b0a10 72%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--q) 38%, transparent),
+    inset 0 -3px 6px rgba(0,0,0,.6), 0 0 14px -4px var(--q);
+}
+.toast .t-mark img { width: 36px; height: 36px; display: block; animation: notice-mark .6s var(--ease-out) both; }
+@keyframes notice-mark {
+  from { transform: scale(.5) rotate(-18deg); filter: brightness(2.2); }
+  55% { transform: scale(1.12); filter: brightness(1.5); }
+  to { transform: none; filter: none; }
+}
+.toast .t-text { min-width: 0; flex: 1; }
+.toast .t-title {
+  font-family: var(--voice); font-weight: 700; font-size: 17px; line-height: 1.15;
+  letter-spacing: .005em; text-transform: none;
+  color: color-mix(in oklab, var(--q) 62%, #f4ecdc);
+  text-shadow: 0 1px 0 rgba(0,0,0,.6);
+}
+.toast .t-body {
+  font-family: var(--voice); font-size: 14.5px; line-height: 1.35;
+  color: #cfc5b2; margin-top: 2px;
+}
+/* The wick: a thread of the notice's colour along the foot, burning from
+   the right, with its lit end glowing. */
+.toast .t-wick {
+  position: absolute; left: 14px; width: calc(100% - 30px); bottom: 6px; height: 2px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--q) 70%, transparent), color-mix(in srgb, var(--q) 30%, transparent));
+  border-radius: 1px; opacity: .6;
+  animation: notice-wick var(--wick, 4.5s) linear both;
+}
+.toast .t-wick::after {
+  content: ''; position: absolute; right: -2px; top: -2px; width: 6px; height: 6px; border-radius: 50%;
+  background: #fff3d6; box-shadow: 0 0 6px 2px var(--q);
+}
+@keyframes notice-wick { from { width: calc(100% - 30px); } to { width: 0; } }
+/* News that asks something of you is set warmer and a touch heavier. */
+.toast.k-warn { box-shadow: 0 10px 24px rgba(0,0,0,.55), 0 0 26px -12px var(--q); }
+.toast.k-glory .t-mark, .toast.k-discovery .t-mark { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--q) 55%, transparent), inset 0 -3px 6px rgba(0,0,0,.6), 0 0 20px -2px var(--q); }
+.toast.k-merchant .t-body { font-style: italic; }
+@media (prefers-reduced-motion: reduce) {
+  .toast, .toast.leaving, .toast .t-mark img { animation: none; }
+  .toast .t-wick { animation: none; opacity: .35; }
+}
+/* The seal made the notice taller, and with the arsenal stood up the left
+   edge the stack starts low and climbs; so there it stays narrow enough to
+   pass beside the middle of the field instead - 27vw is short of where the
+   middle begins (29vw of an unletterboxed field) by a margin. */
+body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
+
 </style>
 <div id="stage">
     <canvas id="game-canvas"></canvas>
@@ -20150,7 +20230,7 @@ window.WS = window.WS || {};
       WS.Game.addGold(total, pickup.x, pickup.y);
       WS.Audio.play('chest');
       if (rolls > 1) {
-        WS.Game.toast(rolls === 5 ? 'JACKPOT!' : 'Treasure!', `The chest pays out ${rolls}x.`);
+        WS.Game.toast(rolls === 5 ? 'JACKPOT!' : 'Treasure!', `The chest pays out ${rolls}x.`, { kind: 'loot' });
         WS.FX.flash(pickup.x, pickup.y, 90, WS.CONST.COLORS.gold, 0.5);
       }
 
@@ -20213,12 +20293,12 @@ window.WS = window.WS || {};
       const cost = WS.Config.eggVendorCost;
       const affordable = WS.floor(run.gold / cost);
       if (affordable <= 0) {
-        WS.Game.toast('Beans', `You cannot afford an egg (${cost}g each).`);
+        WS.Game.toast('Beans', `You cannot afford an egg (${cost}g each).`, { kind: 'merchant', art: 'coin' });
         return false;   // leave her standing
       }
       run.gold -= affordable * cost;
       WS.Player.grantRunEggs(p, affordable);
-      WS.Game.toast('Beans', `Bought ${affordable} curious egg${affordable === 1 ? '' : 's'}.`);
+      WS.Game.toast('Beans', `Bought ${affordable} curious egg${affordable === 1 ? '' : 's'}.`, { kind: 'merchant' });
       WS.Audio.play('chest');
     }
     return true;
@@ -20234,7 +20314,7 @@ window.WS = window.WS || {};
       if (pickup.kind === 'merchant' && pickup.life >= WS.Config.eggVendorStay) {
         WS.FX.burst(pickup.x, pickup.y, 14, '#e0a850', 150, 0.6, 3);
         WS.FX.flash(pickup.x, pickup.y, 50, WS.hex(pickup.type.tint), 0.35);
-        WS.Game.toast('Beans packs up', '"Eggs don\'t keep, friend. See you next time."');
+        WS.Game.toast('Beans packs up', '"Eggs don\'t keep, friend. See you next time."', { kind: 'merchant' });
         this.pool.releaseAt(i);
         continue;
       }
@@ -20532,7 +20612,8 @@ window.WS = window.WS || {};
       const fresh = WS.Save.discoverCombo(id);
       WS.Game.toast(
         (fresh ? 'Discovery: ' : 'Synergy: ') + combo.name,
-        WS.template(combo.description, combo));
+        WS.template(combo.description, combo),
+        { kind: 'discovery', art: fresh ? 'book' : 'arcane' });
       WS.Audio.play('evolve');
     }
   };
@@ -20566,7 +20647,7 @@ window.WS = window.WS || {};
         else if (a.reward.type === 'character') db.unlocks.characters[a.reward.id] = true;
         else if (a.reward.type === 'map') db.unlocks.maps[a.reward.id] = true;
       }
-      WS.Game.toast('Achievement: ' + a.name, Achievements.rewardText(a));
+      WS.Game.toast('Achievement: ' + a.name, Achievements.rewardText(a), { kind: 'glory' });
       WS.Audio.play('level');
     }
     if (earned) WS.Save.save();
@@ -20730,7 +20811,7 @@ window.WS = window.WS || {};
         WS.clamp(player.x + WS.cos(a) * 400, 80, WS.CONST.WORLD_WIDTH - 80),
         WS.clamp(player.y + WS.sin(a) * 400, 80, WS.CONST.WORLD_HEIGHT - 80))) {
         WS.Game.toast('Beans sets up shop', '"COME GET SOME BEANS... I MEAN EGGS!" Walk over to spend your coin - she leaves in '
-          + WS.formatTime(WS.Config.eggVendorStay) + '.');
+          + WS.formatTime(WS.Config.eggVendorStay) + '.', { kind: 'merchant' });
       }
     }
 
@@ -21011,7 +21092,8 @@ window.WS = window.WS || {};
     WS.FX.burst(pk.x, pk.y, 12, '#9aa0b8', 120, 0.6, 3);
     release(pk);
     const f = WS.Lore.watchers[A.id].found;
-    if (f && f.left) WS.Game.toast(f.left[0], f.left[1]);
+    if (f && f.left) WS.Game.toast(f.left[0], f.left[1],
+      { kind: 'watcher', tint: WS.Characters[A.id].color });
     // The trigger fired once; a second one this run can bring them back.
     this.done[A.id] = false;
     if (A.id === 'warlock') { this.slaughtered = false; this.recent.length = 0; }
@@ -21470,7 +21552,7 @@ window.WS = window.WS || {};
         });
       }
     }
-    WS.Game.toast('Sunfall Spears', 'Find the ground that is not marked.');
+    WS.Game.toast('Sunfall Spears', 'Find the ground that is not marked.', { kind: 'warn', art: 'sun' });
   };
 
   Arena.cutter = function () {
@@ -21480,7 +21562,7 @@ window.WS = window.WS || {};
       half: 0.12, len: 900, damage: this.tuning.cutterDamage,
       telegraph: this.tuning.cutterTele, life: this.tuning.cutterTele + 7, hitTimer: 0,
     });
-    WS.Game.toast('Eclipse Cross', 'Stay inside a turning quadrant.');
+    WS.Game.toast('Eclipse Cross', 'Stay inside a turning quadrant.', { kind: 'warn', art: 'moon' });
   };
 
   Arena.chains = function () {
@@ -21495,7 +21577,7 @@ window.WS = window.WS || {};
       });
     }
     this.pullTimer = 0;
-    WS.Game.toast('Umbral Chains', 'Run through the anchors to break them.');
+    WS.Game.toast('Umbral Chains', 'Run through the anchors to break them.', { kind: 'warn', art: 'command' });
     WS.Audio.play('warn');
   };
 
@@ -21547,7 +21629,7 @@ window.WS = window.WS || {};
         this.ring(WS.random() * WS.TAU, t.ringGapP1 * 2, t.ringDamage, t.ringSpeed, 1, 0, 0.6);
         this.ring(WS.random() * WS.TAU, t.ringGapP1, t.ringDamage, t.ringSpeed, 1, 0, 0.6 + t.ringDelay);
       }
-      WS.Game.toast('Solar Flare', 'Stand in the opening.');
+      WS.Game.toast('Solar Flare', 'Stand in the opening.', { kind: 'warn', art: 'sun' });
     }
 
     this.trackB -= dt;
@@ -21632,7 +21714,7 @@ window.WS = window.WS || {};
             this.anchors.splice(i, 1);
             WS.FX.burst(an.x, an.y, 12, '#b34ff2', 200, 0.5, 3);
             WS.Audio.play('hit');
-            if (!this.anchors.length) WS.Game.toast('Umbral Chains', 'The pull relents.');
+            if (!this.anchors.length) WS.Game.toast('Umbral Chains', 'The pull relents.', { kind: 'system', art: 'command' });
           }
           continue;
         }
@@ -22044,7 +22126,7 @@ window.WS = window.WS || {};
     if (WS.Pickup.spawn('merchant',
       WS.clamp(p.x + WS.cos(a) * 220, 100, W() - 100),
       WS.clamp(p.y + WS.sin(a) * 160, 100, H() - 100))) {
-      WS.Game.toast('Beans sets up shop', '"Big fight? Eggs help. Probably."');
+      WS.Game.toast('Beans sets up shop', '"Big fight? Eggs help. Probably."', { kind: 'merchant' });
     }
     WS.Game.offerBlessing('third');
   }
@@ -22072,7 +22154,8 @@ window.WS = window.WS || {};
     // tougher boss just looks like a bug, or like a build that got weaker.
     if (F.power > 1.05) {
       WS.Game.toast('It has taken your measure',
-        `Your damage at dawn: this fight brings ×${F.power.toFixed(1)} the health.`);
+        `Your damage at dawn: this fight brings ×${F.power.toFixed(1)} the health.`,
+        { kind: 'warn', art: 'sovereign', tint: [0.9, 0.55, 1.0] });
     }
   }
 
@@ -22646,7 +22729,7 @@ window.WS = window.WS || {};
           s.label = 'Overheating - cockpit open!';
           F.say('turretsDown');
           WS.FX.flash(c.x, c.y, 150, [1.0, 0.4, 0.2], 0.6);
-          WS.Game.toast('Cockpit exposed', 'It takes extra damage while it overheats.');
+          WS.Game.toast('Cockpit exposed', 'It takes extra damage while it overheats.', { kind: 'warn', art: 'crosshair', tint: [1.0, 0.72, 0.36] });
         }
       }
     },
@@ -22986,7 +23069,7 @@ window.WS = window.WS || {};
           m.displayName = 'Mordecai, Lantern-Bound · Exposed';
           F.darkTarget = 0.7;
           F.sayOnce('exposed');
-          WS.Game.toast('Mordecai is exposed', 'Every lantern is out. Hit him before he relights them.');
+          WS.Game.toast('Mordecai is exposed', 'Every lantern is out. Hit him before he relights them.', { kind: 'warn', art: 'crosshair', tint: [1.0, 0.72, 0.36] });
         }
       }
     },
@@ -23213,7 +23296,7 @@ window.WS = window.WS || {};
           // It comes down hard, and it calls for help on the way.
           this.shockwave(F);
           F.addsRing('karrash', T.karrash, 700);
-          WS.Game.toast('It is down', 'Staggered - it takes extra damage until it recovers.');
+          WS.Game.toast('It is down', 'Staggered - it takes extra damage until it recovers.', { kind: 'warn', art: 'crosshair', tint: [1.0, 0.72, 0.36] });
         }
       }
     },
@@ -23336,7 +23419,7 @@ window.WS = window.WS || {};
         }
         if (F.every('grid', dt, 14)) {
           F.grid(F.bounds, 5, 4, 4, T.gridTele, T.gridDamage, 'Glacial spikes');
-          WS.Game.toast('Glacial spikes', 'Find the ground that is not marked.');
+          WS.Game.toast('Glacial spikes', 'Find the ground that is not marked.', { kind: 'warn', art: 'frostaura', tint: [0.6, 0.85, 1.0] });
         }
         if (F.every('spike', dt, 5)) {
           F.radial(L.x, L.y, 14, 190, T.spikeDamage, 'frost', 'Ice lance', F.t, L);
@@ -23531,6 +23614,7 @@ window.WS = window.WS || {};
     timeScale: 1,          // ramps down into a level-up and back out of it
     banner: null,
     toasts: [],
+    toastSeq: 0,
     levelChoices: null,
     blessingChoices: null,
     selection: { character: null, map: null },
@@ -23738,8 +23822,17 @@ window.WS = window.WS || {};
     };
   };
 
-  Game.toast = function (title, body) {
-    this.toasts.push({ title, body, life: 4.5 });
+  /** A notice in the corner. `opts` says what kind of news it is:
+   *   art   the painted mark beside it (an Icons glyph name)
+   *   tint  that mark's colour, [r,g,b]
+   *   kind  loot, merchant, glory, discovery, warn, watcher, system
+   * All optional; a bare toast is a plain one with a rune. */
+  Game.toast = function (title, body, opts) {
+    const o = opts || {};
+    this.toasts.push({
+      title, body, life: 4.5, maxLife: 4.5,
+      art: o.art, tint: o.tint, kind: o.kind || 'plain', id: ++this.toastSeq,
+    });
     if (this.toasts.length > 3) this.toasts.shift();
   };
 
@@ -33673,15 +33766,50 @@ window.WS = window.WS || {};
     }
   };
 
+  /* What each kind of notice looks like when the caller did not say. */
+  const TOAST_KIND = {
+    plain: { art: 'rune', tint: [0.96, 0.77, 0.42] },
+    loot: { art: 'chest', tint: [1.0, 0.8, 0.38] },
+    merchant: { art: 'egg', tint: [1.0, 0.66, 0.5] },
+    glory: { art: 'crown', tint: [1.0, 0.84, 0.45] },
+    discovery: { art: 'arcane', tint: [0.78, 0.6, 1.0] },
+    warn: { art: 'skull', tint: [1.0, 0.45, 0.32] },
+    watcher: { art: 'hourglass', tint: [0.7, 0.74, 0.9] },
+    system: { art: 'book', tint: [0.8, 0.76, 0.66] },
+  };
+
+  /* Keyed by the toast's id, so a new one arriving does not rebuild - and
+     restart the entrance of - the ones already standing; and one leaving
+     fades rather than blinking out. */
   UI.updateToasts = function () {
     const wrap = this.els.toasts;
     const live = WS.Game.toasts;
-    if (wrap.childElementCount === live.length) return;
-    wrap.innerHTML = '';
+    const sig = live.map(t => t.id).join(',');
+    if (sig === this._toastSig) return;
+    this._toastSig = sig;
+    const keep = new Set(live.map(t => String(t.id)));
+    for (const node of Array.from(wrap.children)) {
+      if (keep.has(node.dataset.id) || node.classList.contains('leaving')) continue;
+      node.classList.add('leaving');
+      setTimeout(() => node.remove(), this.leaveMs());
+    }
     for (const t of live) {
-      const node = el('div', 'toast');
-      node.append(el('div', 't-title', t.title));
-      if (t.body) node.append(el('div', 't-body', t.body));
+      if (wrap.querySelector(`[data-id="${t.id}"]`)) continue;
+      const k = TOAST_KIND[t.kind] || TOAST_KIND.plain;
+      const tint = t.tint || k.tint;
+      const node = el('div', 'toast k-' + t.kind);
+      node.dataset.id = t.id;
+      node.style.setProperty('--q', WS.hex(tint));
+      node.style.setProperty('--wick', Math.max(0.2, t.life) + 's');
+      node.setAttribute('role', 'status');
+      const mark = el('div', 't-mark');
+      const img = document.createElement('img');
+      img.alt = ''; img.src = WS.Icons.glyph(t.art || k.art, tint, 36).toDataURL();
+      mark.append(img);
+      const text = el('div', 't-text');
+      text.append(el('div', 't-title', t.title));
+      if (t.body) text.append(el('div', 't-body', t.body));
+      node.append(mark, text, el('i', 't-wick'));
       wrap.append(node);
     }
   };
@@ -35768,14 +35896,14 @@ window.WS = window.WS || {};
          unlocks that no longer exist. */
       if (WS.Game.player && WS.Game.state !== 'menu') {
         return WS.Game.toast('Not while a run is going',
-          'Finish or abandon it first, then drop the file again.');
+          'Finish or abandon it first, then drop the file again.', { kind: 'system' });
       }
       let text = '';
       try { text = await file.text(); } catch (err) {
-        return WS.Game.toast('That file could not be read', file.name);
+        return WS.Game.toast('That file could not be read', file.name, { kind: 'system' });
       }
       const r = WS.Save.parseImport(await WS.Save.unpack(text));
-      if (!r.ok) return WS.Game.toast('That is not an account', r.error);
+      if (!r.ok) return WS.Game.toast('That is not an account', r.error, { kind: 'system' });
       this.openImportOffer(r, file.name);
     });
   };
@@ -35813,7 +35941,7 @@ window.WS = window.WS || {};
       UI.tab = 'roster';
       UI.openMenu();
       WS.Game.toast('Account loaded', `${i.gold.toLocaleString()} gold, `
-        + `${i.characters} survivors, ${i.runs} runs.`);
+        + `${i.characters} survivors, ${i.runs} runs.`, { kind: 'system' });
     });
     const cancel = el('button', 'btn', 'Keep what I have');
     cancel.addEventListener('click', () => UI.openMenu());
@@ -35910,7 +36038,8 @@ window.WS = window.WS || {};
       faults.notified = true;
       try {
         WS.Game.toast('Something went wrong',
-          'The game hit a repeated error and is running rough. Esc to pause - quitting to the menu keeps your gold.');
+          'The game hit a repeated error and is running rough. Esc to pause - quitting to the menu keeps your gold.',
+          { kind: 'warn', art: 'rune' });
       } catch (e) { /* the UI is the thing that is broken; nothing else to try */ }
     }
   }

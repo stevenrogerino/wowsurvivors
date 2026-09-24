@@ -47,7 +47,8 @@
       faults.notified = true;
       try {
         WS.Game.toast('Something went wrong',
-          'The game hit a repeated error and is running rough. Esc to pause - quitting to the menu keeps your gold.');
+          'The game hit a repeated error and is running rough. Esc to pause - quitting to the menu keeps your gold.',
+          { kind: 'warn', art: 'rune' });
       } catch (e) { /* the UI is the thing that is broken; nothing else to try */ }
     }
   }

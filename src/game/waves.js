@@ -138,7 +138,7 @@
         WS.clamp(player.x + WS.cos(a) * 400, 80, WS.CONST.WORLD_WIDTH - 80),
         WS.clamp(player.y + WS.sin(a) * 400, 80, WS.CONST.WORLD_HEIGHT - 80))) {
         WS.Game.toast('Beans sets up shop', '"COME GET SOME BEANS... I MEAN EGGS!" Walk over to spend your coin - she leaves in '
-          + WS.formatTime(WS.Config.eggVendorStay) + '.');
+          + WS.formatTime(WS.Config.eggVendorStay) + '.', { kind: 'merchant' });
       }
     }
 

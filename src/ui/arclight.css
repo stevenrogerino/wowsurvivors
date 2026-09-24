@@ -2608,3 +2608,83 @@ body.hud-rail #hud-passives { gap: 9px; }
 .sheet.three { grid-template-columns: 1.15fr 1fr 1fr; }
 @media (max-width: 1100px) { .sheet.three { grid-template-columns: 1fr 1fr; } .sheet.three > .panel:last-child { grid-column: 1 / -1; } }
 @media (max-width: 900px) { .sheet.three { grid-template-columns: 1fr; } }
+
+/* ======================================================== THE NOTICE =======
+ * The corner toast was the last machined thing on the field: a flat slate
+ * bar, a ruled gold stripe down its left, a title in the sans at small caps.
+ * It is now a small inked card like the tip - the drawn frame, handled slate
+ * - with the news painted beside it (a chest, an egg, a crown, a skull), its
+ * name in the voice and in its own colour, and a wick along the foot that
+ * burns down for as long as it will stay. It comes in off the arsenal and
+ * leaves the way it came. */
+.toast {
+  position: relative;
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 15px 13px 11px;
+  border: 1px solid transparent; border-left-width: 1px;
+  border-image: var(--frame-quiet) 24 / 12px stretch;
+  border-radius: 0;
+  background: var(--mottle, none) 0 0 / 320px 320px,
+    radial-gradient(90% 140% at 0% 50%, color-mix(in srgb, var(--q) 14%, transparent), transparent 62%),
+    linear-gradient(180deg, rgba(24,22,31,.94), rgba(12,11,17,.9));
+  backdrop-filter: none;
+  box-shadow: 0 10px 24px rgba(0,0,0,.55);
+  animation: notice-in .34s var(--ease-out) both;
+}
+.toast.leaving { animation: notice-out .18s ease-in both; }
+@keyframes notice-in {
+  from { opacity: 0; transform: translateX(-14px) rotate(-.6deg); }
+  60% { opacity: 1; }
+  to { opacity: 1; transform: none; }
+}
+@keyframes notice-out { to { opacity: 0; transform: translateX(-8px); } }
+.toast .t-mark {
+  flex: none; width: 40px; height: 40px; display: grid; place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--q) 22%, #16141c) 0%, #0b0a10 72%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--q) 38%, transparent),
+    inset 0 -3px 6px rgba(0,0,0,.6), 0 0 14px -4px var(--q);
+}
+.toast .t-mark img { width: 36px; height: 36px; display: block; animation: notice-mark .6s var(--ease-out) both; }
+@keyframes notice-mark {
+  from { transform: scale(.5) rotate(-18deg); filter: brightness(2.2); }
+  55% { transform: scale(1.12); filter: brightness(1.5); }
+  to { transform: none; filter: none; }
+}
+.toast .t-text { min-width: 0; flex: 1; }
+.toast .t-title {
+  font-family: var(--voice); font-weight: 700; font-size: 17px; line-height: 1.15;
+  letter-spacing: .005em; text-transform: none;
+  color: color-mix(in oklab, var(--q) 62%, #f4ecdc);
+  text-shadow: 0 1px 0 rgba(0,0,0,.6);
+}
+.toast .t-body {
+  font-family: var(--voice); font-size: 14.5px; line-height: 1.35;
+  color: #cfc5b2; margin-top: 2px;
+}
+/* The wick: a thread of the notice's colour along the foot, burning from
+   the right, with its lit end glowing. */
+.toast .t-wick {
+  position: absolute; left: 14px; width: calc(100% - 30px); bottom: 6px; height: 2px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--q) 70%, transparent), color-mix(in srgb, var(--q) 30%, transparent));
+  border-radius: 1px; opacity: .6;
+  animation: notice-wick var(--wick, 4.5s) linear both;
+}
+.toast .t-wick::after {
+  content: ''; position: absolute; right: -2px; top: -2px; width: 6px; height: 6px; border-radius: 50%;
+  background: #fff3d6; box-shadow: 0 0 6px 2px var(--q);
+}
+@keyframes notice-wick { from { width: calc(100% - 30px); } to { width: 0; } }
+/* News that asks something of you is set warmer and a touch heavier. */
+.toast.k-warn { box-shadow: 0 10px 24px rgba(0,0,0,.55), 0 0 26px -12px var(--q); }
+.toast.k-glory .t-mark, .toast.k-discovery .t-mark { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--q) 55%, transparent), inset 0 -3px 6px rgba(0,0,0,.6), 0 0 20px -2px var(--q); }
+.toast.k-merchant .t-body { font-style: italic; }
+@media (prefers-reduced-motion: reduce) {
+  .toast, .toast.leaving, .toast .t-mark img { animation: none; }
+  .toast .t-wick { animation: none; opacity: .35; }
+}
+/* The seal made the notice taller, and with the arsenal stood up the left
+   edge the stack starts low and climbs; so there it stays narrow enough to
+   pass beside the middle of the field instead - 27vw is short of where the
+   middle begins (29vw of an unletterboxed field) by a margin. */
+body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }

@@ -34,7 +34,8 @@
       const fresh = WS.Save.discoverCombo(id);
       WS.Game.toast(
         (fresh ? 'Discovery: ' : 'Synergy: ') + combo.name,
-        WS.template(combo.description, combo));
+        WS.template(combo.description, combo),
+        { kind: 'discovery', art: fresh ? 'book' : 'arcane' });
       WS.Audio.play('evolve');
     }
   };

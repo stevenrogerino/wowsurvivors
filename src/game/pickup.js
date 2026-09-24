@@ -157,7 +157,7 @@
       WS.Game.addGold(total, pickup.x, pickup.y);
       WS.Audio.play('chest');
       if (rolls > 1) {
-        WS.Game.toast(rolls === 5 ? 'JACKPOT!' : 'Treasure!', `The chest pays out ${rolls}x.`);
+        WS.Game.toast(rolls === 5 ? 'JACKPOT!' : 'Treasure!', `The chest pays out ${rolls}x.`, { kind: 'loot' });
         WS.FX.flash(pickup.x, pickup.y, 90, WS.CONST.COLORS.gold, 0.5);
       }
 
@@ -220,12 +220,12 @@
       const cost = WS.Config.eggVendorCost;
       const affordable = WS.floor(run.gold / cost);
       if (affordable <= 0) {
-        WS.Game.toast('Beans', `You cannot afford an egg (${cost}g each).`);
+        WS.Game.toast('Beans', `You cannot afford an egg (${cost}g each).`, { kind: 'merchant', art: 'coin' });
         return false;   // leave her standing
       }
       run.gold -= affordable * cost;
       WS.Player.grantRunEggs(p, affordable);
-      WS.Game.toast('Beans', `Bought ${affordable} curious egg${affordable === 1 ? '' : 's'}.`);
+      WS.Game.toast('Beans', `Bought ${affordable} curious egg${affordable === 1 ? '' : 's'}.`, { kind: 'merchant' });
       WS.Audio.play('chest');
     }
     return true;
@@ -241,7 +241,7 @@
       if (pickup.kind === 'merchant' && pickup.life >= WS.Config.eggVendorStay) {
         WS.FX.burst(pickup.x, pickup.y, 14, '#e0a850', 150, 0.6, 3);
         WS.FX.flash(pickup.x, pickup.y, 50, WS.hex(pickup.type.tint), 0.35);
-        WS.Game.toast('Beans packs up', '"Eggs don\'t keep, friend. See you next time."');
+        WS.Game.toast('Beans packs up', '"Eggs don\'t keep, friend. See you next time."', { kind: 'merchant' });
         this.pool.releaseAt(i);
         continue;
       }

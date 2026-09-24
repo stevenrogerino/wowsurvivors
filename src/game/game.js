@@ -17,6 +17,7 @@
     timeScale: 1,          // ramps down into a level-up and back out of it
     banner: null,
     toasts: [],
+    toastSeq: 0,
     levelChoices: null,
     blessingChoices: null,
     selection: { character: null, map: null },
@@ -224,8 +225,17 @@
     };
   };
 
-  Game.toast = function (title, body) {
-    this.toasts.push({ title, body, life: 4.5 });
+  /** A notice in the corner. `opts` says what kind of news it is:
+   *   art   the painted mark beside it (an Icons glyph name)
+   *   tint  that mark's colour, [r,g,b]
+   *   kind  loot, merchant, glory, discovery, warn, watcher, system
+   * All optional; a bare toast is a plain one with a rune. */
+  Game.toast = function (title, body, opts) {
+    const o = opts || {};
+    this.toasts.push({
+      title, body, life: 4.5, maxLife: 4.5,
+      art: o.art, tint: o.tint, kind: o.kind || 'plain', id: ++this.toastSeq,
+    });
     if (this.toasts.length > 3) this.toasts.shift();
   };
 

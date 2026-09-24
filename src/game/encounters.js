@@ -179,7 +179,8 @@
     WS.FX.burst(pk.x, pk.y, 12, '#9aa0b8', 120, 0.6, 3);
     release(pk);
     const f = WS.Lore.watchers[A.id].found;
-    if (f && f.left) WS.Game.toast(f.left[0], f.left[1]);
+    if (f && f.left) WS.Game.toast(f.left[0], f.left[1],
+      { kind: 'watcher', tint: WS.Characters[A.id].color });
     // The trigger fired once; a second one this run can bring them back.
     this.done[A.id] = false;
     if (A.id === 'warlock') { this.slaughtered = false; this.recent.length = 0; }

@@ -373,7 +373,7 @@
     if (WS.Pickup.spawn('merchant',
       WS.clamp(p.x + WS.cos(a) * 220, 100, W() - 100),
       WS.clamp(p.y + WS.sin(a) * 160, 100, H() - 100))) {
-      WS.Game.toast('Beans sets up shop', '"Big fight? Eggs help. Probably."');
+      WS.Game.toast('Beans sets up shop', '"Big fight? Eggs help. Probably."', { kind: 'merchant' });
     }
     WS.Game.offerBlessing('third');
   }
@@ -401,7 +401,8 @@
     // tougher boss just looks like a bug, or like a build that got weaker.
     if (F.power > 1.05) {
       WS.Game.toast('It has taken your measure',
-        `Your damage at dawn: this fight brings ×${F.power.toFixed(1)} the health.`);
+        `Your damage at dawn: this fight brings ×${F.power.toFixed(1)} the health.`,
+        { kind: 'warn', art: 'sovereign', tint: [0.9, 0.55, 1.0] });
     }
   }
 
@@ -975,7 +976,7 @@
           s.label = 'Overheating - cockpit open!';
           F.say('turretsDown');
           WS.FX.flash(c.x, c.y, 150, [1.0, 0.4, 0.2], 0.6);
-          WS.Game.toast('Cockpit exposed', 'It takes extra damage while it overheats.');
+          WS.Game.toast('Cockpit exposed', 'It takes extra damage while it overheats.', { kind: 'warn', art: 'crosshair', tint: [1.0, 0.72, 0.36] });
         }
       }
     },
@@ -1315,7 +1316,7 @@
           m.displayName = 'Mordecai, Lantern-Bound · Exposed';
           F.darkTarget = 0.7;
           F.sayOnce('exposed');
-          WS.Game.toast('Mordecai is exposed', 'Every lantern is out. Hit him before he relights them.');
+          WS.Game.toast('Mordecai is exposed', 'Every lantern is out. Hit him before he relights them.', { kind: 'warn', art: 'crosshair', tint: [1.0, 0.72, 0.36] });
         }
       }
     },
@@ -1542,7 +1543,7 @@
           // It comes down hard, and it calls for help on the way.
           this.shockwave(F);
           F.addsRing('karrash', T.karrash, 700);
-          WS.Game.toast('It is down', 'Staggered - it takes extra damage until it recovers.');
+          WS.Game.toast('It is down', 'Staggered - it takes extra damage until it recovers.', { kind: 'warn', art: 'crosshair', tint: [1.0, 0.72, 0.36] });
         }
       }
     },
@@ -1665,7 +1666,7 @@
         }
         if (F.every('grid', dt, 14)) {
           F.grid(F.bounds, 5, 4, 4, T.gridTele, T.gridDamage, 'Glacial spikes');
-          WS.Game.toast('Glacial spikes', 'Find the ground that is not marked.');
+          WS.Game.toast('Glacial spikes', 'Find the ground that is not marked.', { kind: 'warn', art: 'frostaura', tint: [0.6, 0.85, 1.0] });
         }
         if (F.every('spike', dt, 5)) {
           F.radial(L.x, L.y, 14, 190, T.spikeDamage, 'frost', 'Ice lance', F.t, L);

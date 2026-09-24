@@ -767,15 +767,50 @@
     }
   };
 
+  /* What each kind of notice looks like when the caller did not say. */
+  const TOAST_KIND = {
+    plain: { art: 'rune', tint: [0.96, 0.77, 0.42] },
+    loot: { art: 'chest', tint: [1.0, 0.8, 0.38] },
+    merchant: { art: 'egg', tint: [1.0, 0.66, 0.5] },
+    glory: { art: 'crown', tint: [1.0, 0.84, 0.45] },
+    discovery: { art: 'arcane', tint: [0.78, 0.6, 1.0] },
+    warn: { art: 'skull', tint: [1.0, 0.45, 0.32] },
+    watcher: { art: 'hourglass', tint: [0.7, 0.74, 0.9] },
+    system: { art: 'book', tint: [0.8, 0.76, 0.66] },
+  };
+
+  /* Keyed by the toast's id, so a new one arriving does not rebuild - and
+     restart the entrance of - the ones already standing; and one leaving
+     fades rather than blinking out. */
   UI.updateToasts = function () {
     const wrap = this.els.toasts;
     const live = WS.Game.toasts;
-    if (wrap.childElementCount === live.length) return;
-    wrap.innerHTML = '';
+    const sig = live.map(t => t.id).join(',');
+    if (sig === this._toastSig) return;
+    this._toastSig = sig;
+    const keep = new Set(live.map(t => String(t.id)));
+    for (const node of Array.from(wrap.children)) {
+      if (keep.has(node.dataset.id) || node.classList.contains('leaving')) continue;
+      node.classList.add('leaving');
+      setTimeout(() => node.remove(), this.leaveMs());
+    }
     for (const t of live) {
-      const node = el('div', 'toast');
-      node.append(el('div', 't-title', t.title));
-      if (t.body) node.append(el('div', 't-body', t.body));
+      if (wrap.querySelector(`[data-id="${t.id}"]`)) continue;
+      const k = TOAST_KIND[t.kind] || TOAST_KIND.plain;
+      const tint = t.tint || k.tint;
+      const node = el('div', 'toast k-' + t.kind);
+      node.dataset.id = t.id;
+      node.style.setProperty('--q', WS.hex(tint));
+      node.style.setProperty('--wick', Math.max(0.2, t.life) + 's');
+      node.setAttribute('role', 'status');
+      const mark = el('div', 't-mark');
+      const img = document.createElement('img');
+      img.alt = ''; img.src = WS.Icons.glyph(t.art || k.art, tint, 36).toDataURL();
+      mark.append(img);
+      const text = el('div', 't-text');
+      text.append(el('div', 't-title', t.title));
+      if (t.body) text.append(el('div', 't-body', t.body));
+      node.append(mark, text, el('i', 't-wick'));
       wrap.append(node);
     }
   };
@@ -2862,14 +2897,14 @@
          unlocks that no longer exist. */
       if (WS.Game.player && WS.Game.state !== 'menu') {
         return WS.Game.toast('Not while a run is going',
-          'Finish or abandon it first, then drop the file again.');
+          'Finish or abandon it first, then drop the file again.', { kind: 'system' });
       }
       let text = '';
       try { text = await file.text(); } catch (err) {
-        return WS.Game.toast('That file could not be read', file.name);
+        return WS.Game.toast('That file could not be read', file.name, { kind: 'system' });
       }
       const r = WS.Save.parseImport(await WS.Save.unpack(text));
-      if (!r.ok) return WS.Game.toast('That is not an account', r.error);
+      if (!r.ok) return WS.Game.toast('That is not an account', r.error, { kind: 'system' });
       this.openImportOffer(r, file.name);
     });
   };
@@ -2907,7 +2942,7 @@
       UI.tab = 'roster';
       UI.openMenu();
       WS.Game.toast('Account loaded', `${i.gold.toLocaleString()} gold, `
-        + `${i.characters} survivors, ${i.runs} runs.`);
+        + `${i.characters} survivors, ${i.runs} runs.`, { kind: 'system' });
     });
     const cancel = el('button', 'btn', 'Keep what I have');
     cancel.addEventListener('click', () => UI.openMenu());

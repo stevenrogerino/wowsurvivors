@@ -111,7 +111,7 @@
         });
       }
     }
-    WS.Game.toast('Sunfall Spears', 'Find the ground that is not marked.');
+    WS.Game.toast('Sunfall Spears', 'Find the ground that is not marked.', { kind: 'warn', art: 'sun' });
   };
 
   Arena.cutter = function () {
@@ -121,7 +121,7 @@
       half: 0.12, len: 900, damage: this.tuning.cutterDamage,
       telegraph: this.tuning.cutterTele, life: this.tuning.cutterTele + 7, hitTimer: 0,
     });
-    WS.Game.toast('Eclipse Cross', 'Stay inside a turning quadrant.');
+    WS.Game.toast('Eclipse Cross', 'Stay inside a turning quadrant.', { kind: 'warn', art: 'moon' });
   };
 
   Arena.chains = function () {
@@ -136,7 +136,7 @@
       });
     }
     this.pullTimer = 0;
-    WS.Game.toast('Umbral Chains', 'Run through the anchors to break them.');
+    WS.Game.toast('Umbral Chains', 'Run through the anchors to break them.', { kind: 'warn', art: 'command' });
     WS.Audio.play('warn');
   };
 
@@ -188,7 +188,7 @@
         this.ring(WS.random() * WS.TAU, t.ringGapP1 * 2, t.ringDamage, t.ringSpeed, 1, 0, 0.6);
         this.ring(WS.random() * WS.TAU, t.ringGapP1, t.ringDamage, t.ringSpeed, 1, 0, 0.6 + t.ringDelay);
       }
-      WS.Game.toast('Solar Flare', 'Stand in the opening.');
+      WS.Game.toast('Solar Flare', 'Stand in the opening.', { kind: 'warn', art: 'sun' });
     }
 
     this.trackB -= dt;
@@ -273,7 +273,7 @@
             this.anchors.splice(i, 1);
             WS.FX.burst(an.x, an.y, 12, '#b34ff2', 200, 0.5, 3);
             WS.Audio.play('hit');
-            if (!this.anchors.length) WS.Game.toast('Umbral Chains', 'The pull relents.');
+            if (!this.anchors.length) WS.Game.toast('Umbral Chains', 'The pull relents.', { kind: 'system', art: 'command' });
           }
           continue;
         }

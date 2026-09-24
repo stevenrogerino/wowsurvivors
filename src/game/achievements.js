@@ -22,7 +22,7 @@
         else if (a.reward.type === 'character') db.unlocks.characters[a.reward.id] = true;
         else if (a.reward.type === 'map') db.unlocks.maps[a.reward.id] = true;
       }
-      WS.Game.toast('Achievement: ' + a.name, Achievements.rewardText(a));
+      WS.Game.toast('Achievement: ' + a.name, Achievements.rewardText(a), { kind: 'glory' });
       WS.Audio.play('level');
     }
     if (earned) WS.Save.save();
