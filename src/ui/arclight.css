@@ -2044,3 +2044,94 @@ input[type=range]::-moz-range-thumb {
   .cartouche { padding: 10px; gap: 14px; margin-bottom: 8px; }
   .cartouche .art { height: 96px; }
 }
+
+/* ======================================================== THE HAND ========
+ * Frames are drawn, not ruled. src/ui/frames.js builds the pictures - an
+ * outer line and an inner one, wandering slightly, worn through in places,
+ * with chipped corners - and hands them over as --frame-* custom properties.
+ * They go on as border-image over the existing one-pixel border, so nothing
+ * moves; the picture paints 12px inward over the padding. Where the script
+ * did not run the variable is unset, border-image falls back to none, and
+ * the old ruled border is what shows.
+ *
+ * The fourteen-pixel corner ticks and the card's four corner marks are
+ * retired: a frame that is visibly made by hand does not need a mark in its
+ * corner to say it is a frame.
+ */
+.panel, .cartouche, .card, .pick, .row, .stat, .record, .bank, .beast, .setting, .btn {
+  border-image-source: var(--frame);
+  border-image-slice: 24;
+  border-image-width: 12px;
+  border-image-repeat: stretch;
+}
+.panel, .cartouche { --frame: var(--frame-panel); }
+.card, .pick, .row, .stat, .record, .bank, .beast, .setting { --frame: var(--frame-a); }
+:is(.pick, .row, .stat, .record, .beast, .setting):nth-child(3n+2) { --frame: var(--frame-b); }
+:is(.pick, .row, .stat, .record, .beast, .setting):nth-child(3n) { --frame: var(--frame-c); }
+:is(.card, .pick, .row, .beast):is(:hover, :focus-visible):not(.locked) { --frame: var(--frame-lit); }
+.pick.selected, .card.chosen { --frame: var(--frame-gilt); }
+.btn { --frame: var(--frame-btn); }
+.btn:is(:hover, :focus-visible):not(:disabled) { --frame: var(--frame-btn-lit); }
+.btn.primary { --frame: var(--frame-btn-gilt); }
+/* Rows laid inside a panel are lines in it, not boxes of their own. */
+.sheet .row, .panel .row { border-image: none; }
+
+.bracketed::before, .bracketed::after { content: none; }
+.card .card-inlay, .panel > .inlay { border-color: transparent; }
+.card .card-inlay i { display: none; }
+/* The chamfer on a pick tile cut the drawn corner off. The seat keeps it. */
+.pick { clip-path: none; }
+.pick::after { top: 12px; bottom: 12px; left: 3px; border-radius: 1px; }
+
+/* Material. The mottle sits over each surface's own gradient: slate that
+   has been handled, not a flat fill. */
+.panel, .cartouche, .card, .pick, .row, .stat, .record, .bank, .beast, .setting {
+  background-image: var(--mottle, none), var(--surface, none);
+  background-size: 320px 320px, 100% 100%;
+}
+.panel, .cartouche, .stat, .record, .bank, .setting, .row {
+  --surface: linear-gradient(180deg, var(--obsidian-2), var(--obsidian));
+}
+.card {
+  --surface: radial-gradient(120% 80% at 50% -10%, rgba(255,248,236,.05), transparent 60%),
+    linear-gradient(180deg, var(--obsidian-2), var(--obsidian));
+}
+.pick {
+  --surface: linear-gradient(100deg, color-mix(in srgb, var(--q, var(--arc)) 9%, transparent), transparent 46%),
+    linear-gradient(180deg, var(--obsidian-2), var(--obsidian));
+}
+.beast { --surface: linear-gradient(180deg, var(--obsidian-2), var(--obsidian)); }
+
+/* The active tab is marked with a stroke of the brush. */
+.tab { border-bottom-color: transparent !important; position: relative; }
+.tab.active {
+  background: var(--brush) center bottom 1px / calc(100% - 18px) 7px no-repeat;
+}
+.beast {
+  clip-path: none;
+  --surface: radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--q, var(--arc)) 10%, transparent), transparent 62%),
+    linear-gradient(180deg, var(--obsidian-2), var(--obsidian));
+}
+.row:hover { background-image: var(--mottle, none), linear-gradient(180deg, var(--obsidian-2), var(--obsidian-2)); }
+/* The ruled bevel - a perfect highlight along the top, a perfect shadow
+   along the bottom - is exactly the machined edge the drawn frame replaces. */
+.panel, .cartouche, .card, .pick, .row, .stat, .record, .bank, .beast, .setting, .btn {
+  --bevel: 0 0 0 transparent; --bevel-deep: 0 0 0 transparent;
+}
+.pick.selected { box-shadow: 0 0 34px -14px var(--q, var(--arc)); }
+.verdict, .maxed-tag {
+  border-image-source: var(--frame); border-image-slice: 24;
+  border-image-width: 12px; border-image-repeat: stretch;
+}
+.verdict { --frame: var(--frame-panel); }
+.maxed-tag { --frame: var(--frame-btn-gilt); }
+.card { --frame: var(--frame-card); }
+.card:is(:hover, :focus-visible):not(.locked) { --frame: var(--frame-card-lit); }
+.beast, .beast:nth-child(n) { --frame: var(--frame-quiet); }
+.beast:hover { --frame: var(--frame-quiet-lit); }
+/* The hotkey on a card is a numeral in the corner, not a ruled box. */
+.card .card-key {
+  border: 0; background: none; padding: 0;
+  font-family: var(--voice); font-style: italic; font-weight: 700; font-size: 15px;
+  color: var(--ink-faint);
+}

@@ -192,3 +192,13 @@ The interface is only half of it; the other half is how the world answers.
   lighting the panels from underneath.
 - **Short screens.** Under 520px of height the header drops to one line and
   the footer to one row, so a phone on its side still has a pane to read.
+- **Frames drawn by hand** (`src/ui/frames.js`). Surfaces are edged with
+  generated pictures, not ruled borders: an outer and an inner ink stroke that
+  bow slightly, swell and thin along their length, taper at their ends, cross
+  or chip at the corners, and wear through here and there. They go on as
+  `border-image` over the existing 1px border, so layout does not move. The
+  strokes are geometry, not a displacement filter: a filter samples without
+  interpolation and a stretched edge shows its steps. Three wear patterns
+  alternate down a list; hover lights the line, selection gilds it and adds
+  nails. The corner ticks, the card's corner marks and the ruled bevels are
+  retired, and a faint mottle gives each surface a material.
