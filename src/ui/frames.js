@@ -192,6 +192,9 @@
     // Small tiles in a dense grid: one line only, or the grid turns to lace.
     '--frame-quiet': frame({ seed: 13, outer: 'rgba(255,232,196,.24)', chips: [6, 3, 7, 3], wear: 0.25 }),
     '--frame-quiet-lit': frame({ seed: 13, outer: LIT, chips: [6, 3, 7, 3], wear: 0.1 }),
+    // A picture hung in a panel: a firmer line with a dark mat inside it.
+    '--frame-picture': frame({ seed: 47, outer: 'rgba(255,232,196,.46)', inner: 'rgba(255,232,196,.14)',
+      chips: [6, 3, 7, 4], wear: 0.2, cross: [3, 5, 2, 4], nails: 'rgba(245,197,107,.55)' }),
     // Big surfaces - the cartouche and the sheet panels - carry nails.
     '--frame-panel': frame({ seed: 31, outer: RIM, inner: RIM_IN, chips: [10, 4, 12, 6], wear: 0.5,
       nails: 'rgba(245,197,107,.45)' }),

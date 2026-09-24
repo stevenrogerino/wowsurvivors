@@ -2218,6 +2218,32 @@ input[type=range]::-moz-range-thumb {
   color: var(--ink-faint);
 }
 
+/* The picture in the cartouche (and the little ones on the Statistics
+   records) is hung in the same drawn frame as everything around it, not cut
+   to a machined chamfer with a coloured inlay. */
+.cartouche .art, .record .record-art { clip-path: none; }
+.cartouche .art .frame, .record .record-art .frame {
+  clip-path: none; box-sizing: border-box;
+  border: 1px solid transparent;
+  border-image: var(--frame-picture) 24 / 12px stretch;
+  box-shadow: inset 0 0 22px rgba(0,0,0,.6);
+}
+.record .record-art .frame { border-image-width: 8px; box-shadow: inset 0 0 10px rgba(0,0,0,.6); }
+
+/* Whose colour a tile is lives in its name now, not in a bar down its edge.
+   Survivors wear their class colour; battlefields, whose colours are their
+   ground and so run dark, are lifted further toward the ink. */
+.pick::after { display: none; }
+.pick .pick-name, .cartouche h3 {
+  color: color-mix(in oklab, var(--q, var(--ink)) var(--q-mix, 62%), #f4ecdc);
+}
+.pick.map .pick-name, .cartouche.map h3 { --q-mix: 72%; }
+.pick.locked .pick-name { color: var(--ink-faint); }
+/* The stat tile's corner tick goes the way of the others. */
+.stat::after { display: none; }
+.record .record-name { color: color-mix(in oklab, var(--q, var(--ink)) 72%, #f4ecdc); }
+.record.unset .record-name { color: var(--ink-dim); }
+
 </style>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%230b0d12'/><circle cx='50' cy='50' r='30' fill='none' stroke='%23f5c56b' stroke-width='8' stroke-dasharray='120 60'/></svg>">
 </head>
@@ -30893,6 +30919,9 @@ window.WS = window.WS || {};
     // Small tiles in a dense grid: one line only, or the grid turns to lace.
     '--frame-quiet': frame({ seed: 13, outer: 'rgba(255,232,196,.24)', chips: [6, 3, 7, 3], wear: 0.25 }),
     '--frame-quiet-lit': frame({ seed: 13, outer: LIT, chips: [6, 3, 7, 3], wear: 0.1 }),
+    // A picture hung in a panel: a firmer line with a dark mat inside it.
+    '--frame-picture': frame({ seed: 47, outer: 'rgba(255,232,196,.46)', inner: 'rgba(255,232,196,.14)',
+      chips: [6, 3, 7, 4], wear: 0.2, cross: [3, 5, 2, 4], nails: 'rgba(245,197,107,.55)' }),
     // Big surfaces - the cartouche and the sheet panels - carry nails.
     '--frame-panel': frame({ seed: 31, outer: RIM, inner: RIM_IN, chips: [10, 4, 12, 6], wear: 0.5,
       nails: 'rgba(245,197,107,.45)' }),
@@ -31860,6 +31889,13 @@ window.WS = window.WS || {};
     return p;
   }
 
+  /** A battlefield's own colour for its name. Its palette is its ground,
+   *  which is dark by design and reads as mud when set in type; this is the
+   *  colour of the thing you remember about the place instead. */
+  const PLACE_HUES = { forest: '#a8d69a', plains: '#e6c47e', haunted: '#bcaeea',
+    savannah: '#f0a06e', glacier: '#a6d8f2', arena: '#d6a4f0' };
+  function placeHue(m) { return PLACE_HUES[m.art] || WS.hex(m.groundAlt); }
+
   /** The old still, for a build without the living pictures. */
   function stillArt(canvas) {
     const img = new Image();
@@ -31875,6 +31911,8 @@ window.WS = window.WS || {};
     art.append(WS.Vignette ? WS.Vignette.survivor(id, c.color) : stillArt(WS.Sprites.portrait(id, c.color, 184)),
       el('i', 'frame'));
     art.style.setProperty('--q', WS.hex(c.color));
+    node.classList.remove('map');
+    node.style.setProperty('--q', WS.hex(c.color));
 
     const body = el('div');
     body.append(el('h3', null, c.name));
@@ -31902,6 +31940,8 @@ window.WS = window.WS || {};
     art.append(WS.Vignette ? WS.Vignette.battlefield(id) : stillArt(WS.Sprites.zoneCard(m, key, 184)),
       el('i', 'frame'));
     art.style.setProperty('--q', WS.hex(m.groundAlt));
+    node.classList.add('map');
+    node.style.setProperty('--q', placeHue(m));
 
     const body = el('div');
     body.append(el('h3', null, m.name));
@@ -31983,10 +32023,10 @@ window.WS = window.WS || {};
     for (const id of WS.MapOrder) {
       const m = WS.Maps[id];
       const unlocked = WS.Save.isMapUnlocked(id);
-      const node = el('button', 'pick' + (unlocked ? '' : ' locked')
+      const node = el('button', 'pick map' + (unlocked ? '' : ' locked')
         + (WS.Game.selection.map === id ? ' selected' : ''));
       node.type = 'button';
-      node.style.setProperty('--q', WS.hex(unlocked ? m.groundAlt : [0.3, 0.32, 0.4]));
+      node.style.setProperty('--q', unlocked ? placeHue(m) : WS.hex([0.3, 0.32, 0.4]));
       const art = { forest: 'leaf', plains: 'wheat', haunted: 'deadtree', savannah: 'sun', glacier: 'crystal', arena: 'sovereign' }[m.art] || 'rune';
       const seat = el('span', 'pick-seat');
       const img = icon(art, unlocked ? m.groundAlt : [0.22, 0.23, 0.28], 44);
@@ -32308,7 +32348,7 @@ window.WS = window.WS || {};
       const m = WS.Maps[id];
       const time = s.bestTime[id] || 0;
       const card = el('div', 'record' + (time ? '' : ' unset'));
-      card.style.setProperty('--q', WS.hex(m.groundAlt));
+      card.style.setProperty('--q', placeHue(m));
       const img = new Image();
       img.src = WS.Sprites.zoneCard(m, 'rune', 92).toDataURL();
       img.width = img.height = 92;

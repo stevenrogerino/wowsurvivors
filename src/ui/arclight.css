@@ -2135,3 +2135,29 @@ input[type=range]::-moz-range-thumb {
   font-family: var(--voice); font-style: italic; font-weight: 700; font-size: 15px;
   color: var(--ink-faint);
 }
+
+/* The picture in the cartouche (and the little ones on the Statistics
+   records) is hung in the same drawn frame as everything around it, not cut
+   to a machined chamfer with a coloured inlay. */
+.cartouche .art, .record .record-art { clip-path: none; }
+.cartouche .art .frame, .record .record-art .frame {
+  clip-path: none; box-sizing: border-box;
+  border: 1px solid transparent;
+  border-image: var(--frame-picture) 24 / 12px stretch;
+  box-shadow: inset 0 0 22px rgba(0,0,0,.6);
+}
+.record .record-art .frame { border-image-width: 8px; box-shadow: inset 0 0 10px rgba(0,0,0,.6); }
+
+/* Whose colour a tile is lives in its name now, not in a bar down its edge.
+   Survivors wear their class colour; battlefields, whose colours are their
+   ground and so run dark, are lifted further toward the ink. */
+.pick::after { display: none; }
+.pick .pick-name, .cartouche h3 {
+  color: color-mix(in oklab, var(--q, var(--ink)) var(--q-mix, 62%), #f4ecdc);
+}
+.pick.map .pick-name, .cartouche.map h3 { --q-mix: 72%; }
+.pick.locked .pick-name { color: var(--ink-faint); }
+/* The stat tile's corner tick goes the way of the others. */
+.stat::after { display: none; }
+.record .record-name { color: color-mix(in oklab, var(--q, var(--ink)) 72%, #f4ecdc); }
+.record.unset .record-name { color: var(--ink-dim); }

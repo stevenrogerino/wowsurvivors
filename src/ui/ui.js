@@ -945,6 +945,13 @@
     return p;
   }
 
+  /** A battlefield's own colour for its name. Its palette is its ground,
+   *  which is dark by design and reads as mud when set in type; this is the
+   *  colour of the thing you remember about the place instead. */
+  const PLACE_HUES = { forest: '#a8d69a', plains: '#e6c47e', haunted: '#bcaeea',
+    savannah: '#f0a06e', glacier: '#a6d8f2', arena: '#d6a4f0' };
+  function placeHue(m) { return PLACE_HUES[m.art] || WS.hex(m.groundAlt); }
+
   /** The old still, for a build without the living pictures. */
   function stillArt(canvas) {
     const img = new Image();
@@ -960,6 +967,8 @@
     art.append(WS.Vignette ? WS.Vignette.survivor(id, c.color) : stillArt(WS.Sprites.portrait(id, c.color, 184)),
       el('i', 'frame'));
     art.style.setProperty('--q', WS.hex(c.color));
+    node.classList.remove('map');
+    node.style.setProperty('--q', WS.hex(c.color));
 
     const body = el('div');
     body.append(el('h3', null, c.name));
@@ -987,6 +996,8 @@
     art.append(WS.Vignette ? WS.Vignette.battlefield(id) : stillArt(WS.Sprites.zoneCard(m, key, 184)),
       el('i', 'frame'));
     art.style.setProperty('--q', WS.hex(m.groundAlt));
+    node.classList.add('map');
+    node.style.setProperty('--q', placeHue(m));
 
     const body = el('div');
     body.append(el('h3', null, m.name));
@@ -1068,10 +1079,10 @@
     for (const id of WS.MapOrder) {
       const m = WS.Maps[id];
       const unlocked = WS.Save.isMapUnlocked(id);
-      const node = el('button', 'pick' + (unlocked ? '' : ' locked')
+      const node = el('button', 'pick map' + (unlocked ? '' : ' locked')
         + (WS.Game.selection.map === id ? ' selected' : ''));
       node.type = 'button';
-      node.style.setProperty('--q', WS.hex(unlocked ? m.groundAlt : [0.3, 0.32, 0.4]));
+      node.style.setProperty('--q', unlocked ? placeHue(m) : WS.hex([0.3, 0.32, 0.4]));
       const art = { forest: 'leaf', plains: 'wheat', haunted: 'deadtree', savannah: 'sun', glacier: 'crystal', arena: 'sovereign' }[m.art] || 'rune';
       const seat = el('span', 'pick-seat');
       const img = icon(art, unlocked ? m.groundAlt : [0.22, 0.23, 0.28], 44);
@@ -1393,7 +1404,7 @@
       const m = WS.Maps[id];
       const time = s.bestTime[id] || 0;
       const card = el('div', 'record' + (time ? '' : ' unset'));
-      card.style.setProperty('--q', WS.hex(m.groundAlt));
+      card.style.setProperty('--q', placeHue(m));
       const img = new Image();
       img.src = WS.Sprites.zoneCard(m, 'rune', 92).toDataURL();
       img.width = img.height = 92;
