@@ -392,6 +392,12 @@
     WS.Audio.playMusic('eclipse');
     WS.FX.shake(8, 0.6);
     for (const l of def.intro) F.speak(l[0], l[1]);
+    // Say it when the fight has sized itself to the build - otherwise a
+    // tougher boss just looks like a bug, or like a build that got weaker.
+    if (F.power > 1.05) {
+      WS.Game.toast('It has taken your measure',
+        `Your damage at dawn: this fight brings ×${F.power.toFixed(1)} the health.`);
+    }
   }
 
   /** The encounter is won: clear the field and let the story finish. */
@@ -1566,6 +1572,11 @@
         }
         d.drillSpin = (d.drillSpin || 0) + dt * 9;
         s.pipes = s.pipes.filter((q) => F.live(q));
+        /* The coolant is what keeps it turning: while a line stands the
+           drill shrugs most damage off and cannot be broken past
+           drillFloor. Cutting the lines is the fight, not a shortcut. */
+        d.dmgTaken = s.pipes.length ? T.pipeShield : 1;
+        d.hpFloor = s.pipes.length ? T.drillFloor * d.maxHealth : 0;
         s.label = s.pipes.length ? `Cut the coolant lines · ${s.pipes.length} left` : 'Break the drill';
         if (F.every('debris', dt, 4)) {
           for (let k = 0; k < 4; k++) {
@@ -1621,7 +1632,17 @@
           if (s.shardT <= 0) { this.shards(F); F.sayOnce('shards'); }
         }
         if (hp <= T.winterAt) { this.winter(F); return; }
+        // A ward line: the Pale closes round him again.
+        if (L.hpFloor > 0 && L.health <= L.hpFloor + 0.5 && s.lines[s.line] > T.winterAt) {
+          this.ward(F);
+          return;
+        }
         if (F.every('nova', dt, 9)) this.nova(F);
+        if (F.every('cross', dt, 15)) {
+          s.ventDir = -s.ventDir;
+          F.sweep(L.x, L.y, WS.random() * WS.TAU, s.ventDir * 0.45, 900, 34, 1.2, 6,
+            T.ventDamage, 'Frost cross', { arms: 2, follow: L, tint: [0.7, 0.92, 1.0] });
+        }
         if (F.every('grid', dt, 14)) {
           F.grid(F.bounds, 5, 4, 4, T.gridTele, T.gridDamage, 'Glacial spikes');
           WS.Game.toast('Glacial spikes', 'Find the ground that is not marked.');
@@ -1638,9 +1659,27 @@
 
       if (s.mode === 'winter') {
         s.enrage -= dt;
-        s.label = `Heart of Winter · ${WS.max(0, WS.ceil(s.enrage))}`;
         L.x += (640 - L.x) * WS.min(1, dt * 0.8);
         L.y += (250 - L.y) * WS.min(1, dt * 0.8);
+        // The last of the Pale: shards may ward him one final time.
+        s.orbit += dt * 1.2;
+        s.shards = s.shards.filter((q) => F.live(q));
+        s.shards.forEach((q, i) => {
+          const a = s.orbit + (i / 4) * WS.TAU;
+          q.x = L.x + WS.cos(a) * 130; q.y = L.y + WS.sin(a) * 100;
+        });
+        L.dmgTaken = s.shards.length ? T.shardReduce : 1;
+        s.label = s.shards.length ? `The last of the Pale · ${s.shards.length}`
+          : `Heart of Winter · ${WS.max(0, WS.ceil(s.enrage))}`;
+        if (L.hpFloor > 0 && L.health <= L.hpFloor + 0.5) {
+          this.nextLine(F);
+          this.shards(F);
+          this.nova(F);
+          F.grid(F.bounds, 5, 4, 4, T.gridTele, T.gridDamage, 'Glacial spikes');
+          WS.Game.announce('The last of the Pale', 'Shatter it. There is nothing after this.', 2.8,
+            { kind: 'dread', art: 'lich', tint: L.template.tint });
+          WS.FX.screen('rgba(170,220,255,.3)', 0.8);
+        }
         if (F.every('cross', dt, 8)) {
           s.ventDir = -s.ventDir;
           F.sweep(L.x, L.y, WS.random() * WS.TAU, s.ventDir * 0.5, 900, 36, 1.0, 8.2,
@@ -1663,6 +1702,22 @@
       F.ring(L.x, L.y, { speed: T.novaSpeed, gaps: 3, gapWidth: T.novaGap, spin: -0.35, delay: 1.3,
         dmg: T.novaDamage, name: 'Frost nova', tint: [0.7, 0.92, 1.0] });
     },
+    nextLine(F) {
+      const s = F.s, L = s.lord;
+      s.line++;
+      L.hpFloor = s.line < s.lines.length ? s.lines[s.line] * L.maxHealth : 0;
+    },
+    /** A ward line in the lord phase: shards back, a nova, the next line. */
+    ward(F) {
+      const s = F.s, L = s.lord;
+      this.nextLine(F);
+      for (const q of s.shards) F.remove(q);
+      this.shards(F);
+      this.nova(F);
+      F.say('shards');
+      WS.FX.flash(L.x, L.y, 200, [0.7, 0.92, 1.0], 0.7);
+      WS.FX.shake(7, 0.5);
+    },
     shards(F) {
       const s = F.s, L = s.lord;
       s.shards = [];
@@ -1681,6 +1736,12 @@
       WS.Game.arenaBounds = F.bounds;
       const L = s.lord = F.unit('pale_lord', 640, 240);
       F.darkTarget = 0.15;
+      /* His lines: the wards at wardLines, then the winter (which cannot be
+         skipped past), then the last of the Pale inside it. */
+      const T = F.def.tuning;
+      s.lines = T.wardLines.concat([T.winterAt], T.lastWardAt ? [T.lastWardAt] : []);
+      s.line = 0;
+      if (L) L.hpFloor = s.lines[0] * L.maxHealth;
       if (L) {
         F.eruption(L.x, L.y, 200, [0.7, 0.92, 1.0]);
         WS.Game.announce('Marrowfrost, the Pale Lord', 'The dark itself, awake', 4.0,
@@ -1695,6 +1756,9 @@
       s.mode = 'winter';
       for (const q of s.shards) F.remove(q);
       s.shards = [];
+      // Past the winter line: the next is the last of the Pale.
+      while (s.line < s.lines.length && s.lines[s.line] >= T.winterAt) s.line++;
+      L.hpFloor = s.line < s.lines.length ? s.lines[s.line] * L.maxHealth : 0;
       L.dmgTaken = 1;
       L.spriteSize *= 1.3;
       L.displayName = 'The Heart of Winter';

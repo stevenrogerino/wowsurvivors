@@ -98,7 +98,7 @@
     pale_lord: {
       bossKit: ['crown', 'pauldrons'],
       name: 'Marrowfrost, the Pale Lord', family: 'undead', art: 'lich',
-      tint: [0.62, 0.88, 1.00], health: 560000, speed: 0, damage: 64, xp: 3000, radius: 56,
+      tint: [0.62, 0.88, 1.00], health: 700000, speed: 0, damage: 64, xp: 3000, radius: 56,
       spriteScale: 1.25,
       gold: 1500, interval: 99, finale: true, stationary: true, school: 'frost',
       yell: 'Every night your kind burns my ember. Tonight I take it back.',
@@ -306,9 +306,14 @@
       epilogue: ['The dark is broken', 'The Ember Watch holds. Dawn comes, and this time it stays.'],
       tuning: {
         damage: 13.5,   // x difficulty x Hyper x Config.finaleDamage
+        // While a coolant line stands the drill takes pipeShield and cannot
+        // be broken below drillFloor. Marrowfrost re-wards at wardLines and
+        // cannot be taken past winterAt before the winter; the last of the
+        // Pale wards him once more at lastWardAt inside it.
+        pipeShield: 0.35, drillFloor: 0.45, wardLines: [0.80, 0.60], lastWardAt: 0.20,
         pipeBreak: 0.15, debrisDamage: 48, debrisRadius: 70, debrisTele: 1.1,
         ventDamage: 44, ventSpin: 0.7, ventTele: 1.2,
-        shardReduce: 0.40, shardEvery: 30, winterAt: 0.40, winterEnrage: 100,
+        shardReduce: 0.40, shardEvery: 30, winterAt: 0.40, winterEnrage: 130,
         novaDamage: 50, novaSpeed: 200, novaGap: 30,
         gridDamage: 56, gridTele: 1.35, spikeDamage: 44,
         ghouls: 10,

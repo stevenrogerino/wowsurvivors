@@ -5,6 +5,23 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
 
 <!-- new entries go directly below -->
 
+## 2026-09-24 — Marrowfrost (Pale Wastes finale) holds the end of the story
+
+Playtest: "looked awesome but again too easy and died too fast".
+- Heart-Drill: while a coolant line stands it takes `pipeShield` (35%)
+  and cannot be broken below `drillFloor` (45%).
+- Marrowfrost: `pale_lord` health 560k→700k. His Pale Shards re-form at
+  `wardLines` 80% and 60% (with a nova), and he cannot be taken past
+  `winterAt` (40%) before the Heart of Winter. Inside it, the last of the
+  Pale wards him once more at `lastWardAt` (20%) with a nova and spikes.
+- A two-armed frost cross every 15s in the lord phase (it was winter-only).
+- `winterEnrage` 100→130s: with the extra ward the harness build finished
+  with 10.8s on the clock.
+- Any finale that has sized itself to the build says so on arrival
+  ("It has taken your measure · ×10 the health").
+- Measured: harness build 136→~330s; a 135k-DPS build 138→172s; every
+  ward, the winter and the last ward play at both.
+
 ## 2026-09-24 — The Stormbreaker (Ochre Plains finale) gets teeth
 
 Playtest: "too easy, very fun though".
