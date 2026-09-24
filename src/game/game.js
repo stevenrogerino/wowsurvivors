@@ -541,6 +541,12 @@
       run.hps = span > 0 ? hs / span : 0;
       run.ohps = span > 0 ? os / span : 0;
     }
+    /* What the build is doing in the last stretch before dawn - the finale
+       sizes itself to it (Finale.power). Two minutes, not the HUD's ten
+       seconds, so one lucky screen-clear does not set the boss's health. */
+    if (!run.dawnMark && run.time >= WS.Config.deathTime - WS.Config.finalePowerWindow) {
+      run.dawnMark = { t: run.time, d: run.damageDone };
+    }
 
     run.noHitStreak += dt;
     run.bestNoHitStreak = WS.max(run.bestNoHitStreak, run.noHitStreak);

@@ -2159,6 +2159,17 @@ window.WS = window.WS || {};
     /* One dial over every finale's damage (each also names its own scale,
        tuning.damage in data/finales.js). */
     finaleDamage: 1.0,
+    /* The finales size their health to the build that reaches them. The
+       fights were tuned against a build doing finaleRefDps; a real 30:00
+       build was measured at 130k+ (27 times that) and deleted Mordecai in
+       his first window. Health grows by (dps / ref) ^ finalePowerExp, so a
+       stronger build still wins faster - 27x the damage ends the fight
+       about 2.7x sooner, not 27x - and is capped at finalePowerCap. dps is
+       the average over the last finalePowerWindow seconds before dawn. */
+    finaleRefDps: 5000,
+    finalePowerExp: 0.7,
+    finalePowerCap: 40,
+    finalePowerWindow: 120,
 
     endlessBossInterval: 75,
     endlessBossMinInterval: 30,
@@ -5051,7 +5062,7 @@ window.WS = window.WS || {};
       epilogue: ['Grimtunnel escapes', 'His pod drifts south, toward the Dustreach.'],
       tuning: {
         damage: 8,   // x difficulty x Hyper x Config.finaleDamage
-        turretHpGrowth: 0.18, overheat: 10, overheatVuln: 1.5,
+        turretHpGrowth: 0.18, overheat: 10, overheatLines: [0.85, 0.70], overheatVuln: 1.5,
         burrowAt: 0.60, burrowTime: 12, meltdownAt: 0.25,
         bombDamage: 34, bombRadius: 64, bombTele: 1.1,
         drillDamage: 42, drillWindup: 1.1, drillChainWindup: 0.75, surfaceTele: 1.0, drillTime: 0.9, drillRange: 560,
@@ -5117,6 +5128,8 @@ window.WS = window.WS || {};
       tuning: {
         damage: 10.5,   // x difficulty x Hyper x Config.finaleDamage
         lanternBond: 0.05, exposedTime: 14, exposedVuln: 1.4, relight: 3,
+        // His four lives: an exposed window cannot take him below the next.
+        lives: [0.70, 0.45, 0.20],
         riseAt: 0.30, handDamage: 44, handRadius: 58, handTele: 1.0,
         knellDamage: 38, knellSpeed: 200, knellGap: 34,
         lanceDamage: 30, raise: 6,
@@ -15578,6 +15591,7 @@ window.WS = window.WS || {};
     e.untargetable = false;
     e.hidden = false;
     e.dmgTaken = 1;
+    e.hpFloor = 0;   // a finale phase gate: health cannot fall below this
     e.host = null;
     e.displayName = null;
     e.finaleAdd = false;
@@ -15989,6 +16003,9 @@ window.WS = window.WS || {};
       WS.Player.gainFel(player, amount - WS.max(0, e.health));
     }
     e.health -= amount;
+    // A finale boss between lives: the blow lands, the phase ends, nothing
+    // past the line is taken.
+    if (e.hpFloor > 0 && e.health < e.hpFloor) e.health = e.hpFloor;
     e.flash = 0.09;
     e.flashCrit = isCrit;
     const run = WS.Game.run;
@@ -19052,7 +19069,7 @@ window.WS = window.WS || {};
     stage: 'idle',        // idle | purge | breather | fight | outro | done
     def: null, mapId: null, script: null, s: null,
     t: 0, timer: 0, purgeR: 0,
-    hpScale: 1, dmgScale: 1,
+    hpScale: 1, dmgScale: 1, power: 1,
     units: [], marks: [], queue: [], line: null,
     wrecks: [], pods: [], booms: [],
     darkness: 0, darkTarget: 0,
@@ -19094,7 +19111,8 @@ window.WS = window.WS || {};
     this.mapId = run.mapId;
     this.script = SCRIPTS[def.script];
     const hyper = run.hyper ? WS.Config.hyperScale : 1;
-    this.hpScale = run.diffScale * hyper;
+    this.power = F.powerFor(run);
+    this.hpScale = run.diffScale * hyper * this.power;
     /* The fight hits like the thirty minutes before it. Damage used to be
        difficulty times Hyper and nothing more, so a heavy telegraphed hit on
        Thornhollow did 44 while a common Kerchief at 30:00 touched for 134.
@@ -19120,6 +19138,16 @@ window.WS = window.WS || {};
     WS.FX.screen('rgba(255,236,190,.55)', 1.2);
     WS.FX.shake(7, 0.6);
     return true;
+  };
+
+  /** How much more health this fight brings for the build that reached it -
+   *  see Config.finaleRefDps. 1 for anything at or below the reference. */
+  F.powerFor = function (run) {
+    const cfg = WS.Config;
+    const m = run.dawnMark;
+    const dps = m && run.time - m.t > 10 ? (run.damageDone - m.d) / (run.time - m.t) : run.dps;
+    const ratio = WS.max(1, (dps || 0) / cfg.finaleRefDps);
+    return WS.min(cfg.finalePowerCap, Math.pow(ratio, cfg.finalePowerExp));
   };
 
   /* ------------------------------------------------------------ helpers -- */
@@ -19768,6 +19796,14 @@ window.WS = window.WS || {};
       const c = s.core = F.unit('candlecrawler', 640, 280);
       c.untargetable = true;
       c.rise = 0;
+      /* Its lines: an overheat can open it down to the next and no further,
+         then the turrets come back; then the burrow; then the meltdown. A
+         build that hits hard gets through each window fast - it still sees
+         every window. */
+      const T = F.def.tuning;
+      s.lines = T.overheatLines.concat([T.burrowAt, T.meltdownAt]);
+      s.line = 0;
+      c.hpFloor = s.lines[0] * c.maxHealth;
       F.eruption(640, 280, 160, [1.0, 0.7, 0.35]);
       s.tm = { bomb: 4.5, drill: 8, hatch: 7, ring: 9, trail: 0 };
     },
@@ -19800,6 +19836,7 @@ window.WS = window.WS || {};
       // The two thresholds, checked in whatever mode the fight is in.
       if (!s.burrowed && hp <= T.burrowAt && s.mode !== 'burrow') {
         s.burrowed = true;
+        this.nextLine(F);
         for (const t of s.turrets) F.remove(t);
         s.turrets = [];
         s.mode = 'burrow'; s.burrowT = T.burrowTime;
@@ -19815,6 +19852,7 @@ window.WS = window.WS || {};
       }
       if (!s.melt && hp <= T.meltdownAt && s.mode === 'stripped') {
         s.melt = true;
+        c.hpFloor = 0;
         F.say('meltdown');
         s.label = 'Meltdown';
         c.displayName = 'The Candlecrawler · Meltdown';
@@ -19867,6 +19905,13 @@ window.WS = window.WS || {};
 
       if (s.mode === 'overheat') {
         s.heat -= dt;
+        // Opened as far as this window goes: the turrets come straight back.
+        if (s.lines[s.line] > T.burrowAt && c.health <= c.hpFloor + 0.5) {
+          this.nextLine(F);
+          s.heat = 0;
+          WS.FX.flash(c.x, c.y, 140, [1.0, 0.75, 0.35], 0.6);
+          WS.FX.shake(6, 0.4);
+        }
         if (WS.random() < dt * 10) {
           WS.FX.burst(c.x + WS.randRange(-40, 40), c.y - 30, 1, '#d8d4cc', 70, 1.0, 5);
         }
@@ -19920,6 +19965,11 @@ window.WS = window.WS || {};
         F.ring(c.x, c.y, { speed: T.ringSpeed, gaps: 2, gapWidth: 50, dmg: T.ringDamage,
           name: 'Candle-fire ring', tint: [1.0, 0.55, 0.2] });
       }
+    },
+    nextLine(F) {
+      const s = F.s, c = s.core;
+      s.line++;
+      c.hpFloor = s.line < s.lines.length ? s.lines[s.line] * c.maxHealth : 0;
     },
     onDead(F, e) {
       const s = F.s;
@@ -20140,6 +20190,12 @@ window.WS = window.WS || {};
       s.cycle = 0; s.hands = 0; s.grave = 0;
       const m = s.core = F.unit('mordecai_bound', 640, 250);
       m.fade = 0;
+      /* "I said four lives." He meant it: each exposed window can take him
+         down to his next life and no further, and reaching it relights the
+         lanterns at once. However hard a build hits, every relight is seen;
+         a hard-hitting build just gets through each window faster. */
+      s.life = 0;
+      m.hpFloor = F.def.tuning.lives[0] * m.maxHealth;
       s.introT = 0;
       this.light(F, 4);
       // The lanterns catch one at a time, and he is there when the last does.
@@ -20200,7 +20256,14 @@ window.WS = window.WS || {};
       if (s.mode === 'exposed') {
         s.exposed -= dt;
         s.label = `Exposed · ${WS.max(0, WS.ceil(s.exposed))}`;
-        if (s.exposed <= 0) {
+        const lifeLost = m.hpFloor > 0 && m.health <= m.hpFloor + 0.5;
+        if (lifeLost) {
+          this.nextLife(F);
+          WS.FX.flash(m.x, m.y, 150, [0.55, 1.0, 0.75], 0.7);
+          WS.FX.shake(6, 0.4);
+          WS.Audio.play('boss');
+        }
+        if (s.exposed <= 0 || lifeLost) {
           s.cycle++;
           this.light(F, T.relight);
           F.say('relight');
@@ -20238,6 +20301,11 @@ window.WS = window.WS || {};
         WS.Audio.play('boss');
       }
     },
+    nextLife(F) {
+      const s = F.s, m = s.core, lives = F.def.tuning.lives;
+      s.life++;
+      m.hpFloor = s.life < lives.length ? lives[s.life] * m.maxHealth : 0;
+    },
     onDead(F, e) {
       const s = F.s, T = F.def.tuning, m = s.core;
       if (e === m) {
@@ -20257,6 +20325,9 @@ window.WS = window.WS || {};
         WS.FX.flash(m.x, m.y, 90, [0.55, 1.0, 0.75], 0.5);
         if (!F.live(m)) return;
         if (!s.lanterns.length) {
+          // The bonds alone took him to his line: that life is spent, and
+          // this window is against the next one.
+          if (m.hpFloor > 0 && m.health <= m.hpFloor + 0.5) this.nextLife(F);
           s.mode = 'exposed'; s.exposed = T.exposedTime;
           m.untargetable = false; m.dmgTaken = T.exposedVuln;
           m.displayName = 'Mordecai, Lantern-Bound · Exposed';
@@ -21248,6 +21319,12 @@ window.WS = window.WS || {};
       run.dps = span > 0 ? ds / span : 0;
       run.hps = span > 0 ? hs / span : 0;
       run.ohps = span > 0 ? os / span : 0;
+    }
+    /* What the build is doing in the last stretch before dawn - the finale
+       sizes itself to it (Finale.power). Two minutes, not the HUD's ten
+       seconds, so one lucky screen-clear does not set the boss's health. */
+    if (!run.dawnMark && run.time >= WS.Config.deathTime - WS.Config.finalePowerWindow) {
+      run.dawnMark = { t: run.time, d: run.damageDone };
     }
 
     run.noHitStreak += dt;

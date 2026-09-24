@@ -26,7 +26,7 @@
     stage: 'idle',        // idle | purge | breather | fight | outro | done
     def: null, mapId: null, script: null, s: null,
     t: 0, timer: 0, purgeR: 0,
-    hpScale: 1, dmgScale: 1,
+    hpScale: 1, dmgScale: 1, power: 1,
     units: [], marks: [], queue: [], line: null,
     wrecks: [], pods: [], booms: [],
     darkness: 0, darkTarget: 0,
@@ -68,7 +68,8 @@
     this.mapId = run.mapId;
     this.script = SCRIPTS[def.script];
     const hyper = run.hyper ? WS.Config.hyperScale : 1;
-    this.hpScale = run.diffScale * hyper;
+    this.power = F.powerFor(run);
+    this.hpScale = run.diffScale * hyper * this.power;
     /* The fight hits like the thirty minutes before it. Damage used to be
        difficulty times Hyper and nothing more, so a heavy telegraphed hit on
        Thornhollow did 44 while a common Kerchief at 30:00 touched for 134.
@@ -94,6 +95,16 @@
     WS.FX.screen('rgba(255,236,190,.55)', 1.2);
     WS.FX.shake(7, 0.6);
     return true;
+  };
+
+  /** How much more health this fight brings for the build that reached it -
+   *  see Config.finaleRefDps. 1 for anything at or below the reference. */
+  F.powerFor = function (run) {
+    const cfg = WS.Config;
+    const m = run.dawnMark;
+    const dps = m && run.time - m.t > 10 ? (run.damageDone - m.d) / (run.time - m.t) : run.dps;
+    const ratio = WS.max(1, (dps || 0) / cfg.finaleRefDps);
+    return WS.min(cfg.finalePowerCap, Math.pow(ratio, cfg.finalePowerExp));
   };
 
   /* ------------------------------------------------------------ helpers -- */
@@ -742,6 +753,14 @@
       const c = s.core = F.unit('candlecrawler', 640, 280);
       c.untargetable = true;
       c.rise = 0;
+      /* Its lines: an overheat can open it down to the next and no further,
+         then the turrets come back; then the burrow; then the meltdown. A
+         build that hits hard gets through each window fast - it still sees
+         every window. */
+      const T = F.def.tuning;
+      s.lines = T.overheatLines.concat([T.burrowAt, T.meltdownAt]);
+      s.line = 0;
+      c.hpFloor = s.lines[0] * c.maxHealth;
       F.eruption(640, 280, 160, [1.0, 0.7, 0.35]);
       s.tm = { bomb: 4.5, drill: 8, hatch: 7, ring: 9, trail: 0 };
     },
@@ -774,6 +793,7 @@
       // The two thresholds, checked in whatever mode the fight is in.
       if (!s.burrowed && hp <= T.burrowAt && s.mode !== 'burrow') {
         s.burrowed = true;
+        this.nextLine(F);
         for (const t of s.turrets) F.remove(t);
         s.turrets = [];
         s.mode = 'burrow'; s.burrowT = T.burrowTime;
@@ -789,6 +809,7 @@
       }
       if (!s.melt && hp <= T.meltdownAt && s.mode === 'stripped') {
         s.melt = true;
+        c.hpFloor = 0;
         F.say('meltdown');
         s.label = 'Meltdown';
         c.displayName = 'The Candlecrawler · Meltdown';
@@ -841,6 +862,13 @@
 
       if (s.mode === 'overheat') {
         s.heat -= dt;
+        // Opened as far as this window goes: the turrets come straight back.
+        if (s.lines[s.line] > T.burrowAt && c.health <= c.hpFloor + 0.5) {
+          this.nextLine(F);
+          s.heat = 0;
+          WS.FX.flash(c.x, c.y, 140, [1.0, 0.75, 0.35], 0.6);
+          WS.FX.shake(6, 0.4);
+        }
         if (WS.random() < dt * 10) {
           WS.FX.burst(c.x + WS.randRange(-40, 40), c.y - 30, 1, '#d8d4cc', 70, 1.0, 5);
         }
@@ -894,6 +922,11 @@
         F.ring(c.x, c.y, { speed: T.ringSpeed, gaps: 2, gapWidth: 50, dmg: T.ringDamage,
           name: 'Candle-fire ring', tint: [1.0, 0.55, 0.2] });
       }
+    },
+    nextLine(F) {
+      const s = F.s, c = s.core;
+      s.line++;
+      c.hpFloor = s.line < s.lines.length ? s.lines[s.line] * c.maxHealth : 0;
     },
     onDead(F, e) {
       const s = F.s;
@@ -1114,6 +1147,12 @@
       s.cycle = 0; s.hands = 0; s.grave = 0;
       const m = s.core = F.unit('mordecai_bound', 640, 250);
       m.fade = 0;
+      /* "I said four lives." He meant it: each exposed window can take him
+         down to his next life and no further, and reaching it relights the
+         lanterns at once. However hard a build hits, every relight is seen;
+         a hard-hitting build just gets through each window faster. */
+      s.life = 0;
+      m.hpFloor = F.def.tuning.lives[0] * m.maxHealth;
       s.introT = 0;
       this.light(F, 4);
       // The lanterns catch one at a time, and he is there when the last does.
@@ -1174,7 +1213,14 @@
       if (s.mode === 'exposed') {
         s.exposed -= dt;
         s.label = `Exposed · ${WS.max(0, WS.ceil(s.exposed))}`;
-        if (s.exposed <= 0) {
+        const lifeLost = m.hpFloor > 0 && m.health <= m.hpFloor + 0.5;
+        if (lifeLost) {
+          this.nextLife(F);
+          WS.FX.flash(m.x, m.y, 150, [0.55, 1.0, 0.75], 0.7);
+          WS.FX.shake(6, 0.4);
+          WS.Audio.play('boss');
+        }
+        if (s.exposed <= 0 || lifeLost) {
           s.cycle++;
           this.light(F, T.relight);
           F.say('relight');
@@ -1212,6 +1258,11 @@
         WS.Audio.play('boss');
       }
     },
+    nextLife(F) {
+      const s = F.s, m = s.core, lives = F.def.tuning.lives;
+      s.life++;
+      m.hpFloor = s.life < lives.length ? lives[s.life] * m.maxHealth : 0;
+    },
     onDead(F, e) {
       const s = F.s, T = F.def.tuning, m = s.core;
       if (e === m) {
@@ -1231,6 +1282,9 @@
         WS.FX.flash(m.x, m.y, 90, [0.55, 1.0, 0.75], 0.5);
         if (!F.live(m)) return;
         if (!s.lanterns.length) {
+          // The bonds alone took him to his line: that life is spent, and
+          // this window is against the next one.
+          if (m.hpFloor > 0 && m.health <= m.hpFloor + 0.5) this.nextLife(F);
           s.mode = 'exposed'; s.exposed = T.exposedTime;
           m.untargetable = false; m.dmgTaken = T.exposedVuln;
           m.displayName = 'Mordecai, Lantern-Bound · Exposed';

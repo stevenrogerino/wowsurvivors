@@ -21,6 +21,8 @@
  *   node tools/check-finale.js                  every map
  *   node tools/check-finale.js --only ochre     one
  *   node tools/check-finale.js --shots out/     and save screenshots
+ *   node tools/check-finale.js --strong         with a 135k-DPS build: the fight
+ *                                               sizes itself up and every phase plays
  *
  * Set CHROME to point at an existing Chromium binary. */
 'use strict';
@@ -32,6 +34,11 @@ const GAME = 'file://' + path.resolve(__dirname, '..', 'index.html');
 const MAPS = ['thornhollow', 'dustreach', 'mourneholt', 'ochre', 'palewastes'];
 const only = process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1] : null;
 const shotDir = process.argv.includes('--shots') ? process.argv[process.argv.indexOf('--shots') + 1] : null;
+/* --strong: the build that deleted Mordecai in one window. The harness build
+   does ~5k DPS through a fight; a real 30:00 build was filmed at 130k+. This
+   gives the harness 27x the damage and a two-minute dawn reading to match,
+   so the finale has to size itself up - and every phase still has to play. */
+const STRONG = process.argv.includes('--strong') ? 27 : 1;
 const BUILD = ['seeking_motes', 'umbral_bolt', 'cinderfall', 'arcweb', 'hallowed_ring', 'knifestorm'];
 const fail = [];
 
@@ -50,7 +57,7 @@ const fail = [];
     await page.waitForFunction(() => window.WS && WS.Game && WS.Finale);
     await page.waitForTimeout(300);
 
-    const dawn = await page.evaluate(({ map, build }) => {
+    const dawn = await page.evaluate(({ map, build, strong }) => {
       if (WS.Prologue && WS.Prologue.active) WS.Prologue.finish();
       WS.UI.closeOverlay();
       WS.Save.db.seenManual = true;
@@ -72,12 +79,17 @@ const fail = [];
       p.damageMultiplier += 0.5; p.cooldownMultiplier *= 0.75; p.areaMultiplier += 0.3;
       p.projectileBonus += 1; p.critChance += 0.15;
       p.maxHealth = 1e7; p.health = 1e7;
+      p.damageMultiplier *= strong;
       WS.Game.run.secondBlessing = true;
       WS.Game.run.time = WS.Config.deathTime - 0.5;
+      if (strong > 1) {
+        WS.Game.run.dawnMark = { t: WS.Game.run.time - 120,
+          d: WS.Game.run.damageDone - 5000 * strong * 120 };
+      }
       for (let i = 0; i < 120 && WS.Game.state === 'playing'; i++) WS.Game.update(1 / 60);
       const buttons = [...document.querySelectorAll('#overlay button')].map((b) => b.textContent);
       return { state: WS.Game.state, victorious: WS.Game.run.victorious, buttons };
-    }, { map, build: BUILD });
+    }, { map, build: BUILD, strong: STRONG });
 
     if (!dawn.victorious) fail.push(`${map}: reaching 30:00 did not bank the win`);
     for (const gone of ['Fight to the end', 'True Endless']) {
@@ -159,7 +171,13 @@ const fail = [];
     if (!r.cleared) fail.push(`${map}: the finale never finished (stuck in ${r.stages.slice(-1)[0]})`);
     if (!r.blessing) fail.push(`${map}: no third blessing was offered`);
     if (r.purged > 0) fail.push(`${map}: ${r.purged} enemies survived first light`);
-    if (r.fight !== null && (r.fight < 45 || r.fight > 420)) {
+    const power = await page.evaluate(() => WS.Finale.power || 1);
+    if (STRONG > 1) console.log(`  power  : boss health x${power.toFixed(1)} for a ${5 * STRONG}k-DPS build`);
+    /* A stronger build is meant to win faster - health grows sub-linearly
+       with its damage - so the strong pass asks for a real fight with every
+       phase in it, not the same length as the harness build's. */
+    const minFight = STRONG > 1 ? 30 : 45;
+    if (r.fight !== null && (r.fight < minFight || r.fight > 420)) {
       fail.push(`${map}: the fight took ${r.fight.toFixed(0)}s with a finished build`);
     }
     if (r.taken < 150) fail.push(`${map}: a survivor standing in it took only ${Math.round(r.taken)}`);

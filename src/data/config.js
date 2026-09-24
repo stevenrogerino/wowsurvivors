@@ -89,6 +89,17 @@
     /* One dial over every finale's damage (each also names its own scale,
        tuning.damage in data/finales.js). */
     finaleDamage: 1.0,
+    /* The finales size their health to the build that reaches them. The
+       fights were tuned against a build doing finaleRefDps; a real 30:00
+       build was measured at 130k+ (27 times that) and deleted Mordecai in
+       his first window. Health grows by (dps / ref) ^ finalePowerExp, so a
+       stronger build still wins faster - 27x the damage ends the fight
+       about 2.7x sooner, not 27x - and is capped at finalePowerCap. dps is
+       the average over the last finalePowerWindow seconds before dawn. */
+    finaleRefDps: 5000,
+    finalePowerExp: 0.7,
+    finalePowerCap: 40,
+    finalePowerWindow: 120,
 
     endlessBossInterval: 75,
     endlessBossMinInterval: 30,

@@ -174,7 +174,7 @@
       epilogue: ['Grimtunnel escapes', 'His pod drifts south, toward the Dustreach.'],
       tuning: {
         damage: 8,   // x difficulty x Hyper x Config.finaleDamage
-        turretHpGrowth: 0.18, overheat: 10, overheatVuln: 1.5,
+        turretHpGrowth: 0.18, overheat: 10, overheatLines: [0.85, 0.70], overheatVuln: 1.5,
         burrowAt: 0.60, burrowTime: 12, meltdownAt: 0.25,
         bombDamage: 34, bombRadius: 64, bombTele: 1.1,
         drillDamage: 42, drillWindup: 1.1, drillChainWindup: 0.75, surfaceTele: 1.0, drillTime: 0.9, drillRange: 560,
@@ -240,6 +240,8 @@
       tuning: {
         damage: 10.5,   // x difficulty x Hyper x Config.finaleDamage
         lanternBond: 0.05, exposedTime: 14, exposedVuln: 1.4, relight: 3,
+        // His four lives: an exposed window cannot take him below the next.
+        lives: [0.70, 0.45, 0.20],
         riseAt: 0.30, handDamage: 44, handRadius: 58, handTele: 1.0,
         knellDamage: 38, knellSpeed: 200, knellGap: 34,
         lanceDamage: 30, raise: 6,

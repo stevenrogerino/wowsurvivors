@@ -25,6 +25,22 @@ changelog entry and is recorded here.
 - Net: average damage multiplier from the form at max rank falls about 11%
   for the Ruinseeker and about 10% for everyone else.
 
+**Finales size themselves to the build (24 Sept):**
+- The fights were tuned against a test build doing ~5k DPS; a real 30:00
+  build was filmed at 130k+ and killed Mordecai in his first exposed window.
+  Finale health (bosses and parts) now scales by
+  `(dawn DPS / Config.finaleRefDps) ^ Config.finalePowerExp`, capped at
+  `finalePowerCap` — 5000 / 0.7 / 40. Dawn DPS is the average over the last
+  `finalePowerWindow` (120s) before 30:00. A 135k build gets ×10 health:
+  27× the damage ends a fight about 2.7× sooner, not 27×.
+- Phase lines: Mordecai's "four lives" (`lives: [0.70, 0.45, 0.20]`) — an
+  exposed window cannot take him past the next, and reaching it relights the
+  lanterns at once. The Candlecrawler's overheat windows stop at 85% and 70%
+  (`overheatLines`), then the burrow at 60%, then the meltdown at 25%.
+- Measured with a 135k-DPS build (`tools/check-finale.js --strong`): every
+  phase of every finale plays; fights run 39–143s. The harness build's
+  fights are unchanged.
+
 **Ruinform and class identity (22 Sept, not logged at the time):**
 - The Ruinseeker no longer starts with Ruinform; the Ruinous Pact is always
   offered to them, and taking it makes them ruinborn. Recovery floors went

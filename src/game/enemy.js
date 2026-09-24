@@ -85,6 +85,7 @@
     e.untargetable = false;
     e.hidden = false;
     e.dmgTaken = 1;
+    e.hpFloor = 0;   // a finale phase gate: health cannot fall below this
     e.host = null;
     e.displayName = null;
     e.finaleAdd = false;
@@ -496,6 +497,9 @@
       WS.Player.gainFel(player, amount - WS.max(0, e.health));
     }
     e.health -= amount;
+    // A finale boss between lives: the blow lands, the phase ends, nothing
+    // past the line is taken.
+    if (e.hpFloor > 0 && e.health < e.hpFloor) e.health = e.hpFloor;
     e.flash = 0.09;
     e.flashCrit = isCrit;
     const run = WS.Game.run;
