@@ -162,34 +162,37 @@
     },
   };
 
-  /* Elite champions: bigger, gold-glowing, name-plated, always drop a chest. */
+  /* Elite champions: bigger, gold-glowing, name-plated, always drop a chest.
+     Each wears ONE piece of regalia (`bossKit`, drawn by sprites.js) - a
+     boss wears two - so a champion reads as one across a crowd of its own
+     kind, and as lesser than the boss of the same family. */
   WS.Elites = {
     snarlpack_bonesnapper: {
-      name: 'Snarlpack Bonesnapper', family: 'mongrel', elite: true, art: 'mongrel',
+      name: 'Snarlpack Bonesnapper', family: 'mongrel', elite: true, art: 'mongrel', bossKit: ['spines'],
       tint: [1.00, 0.72, 0.15], health: 367, speed: 62, damage: 24, xp: 34, radius: 28,
     },
     kerchief_enforcer: {
-      name: 'Kerchief Enforcer', family: 'kerchief', elite: true, art: 'brute',
+      name: 'Kerchief Enforcer', family: 'kerchief', elite: true, art: 'brute', bossKit: ['pauldrons'],
       tint: [1.00, 0.45, 0.30], health: 518, speed: 72, damage: 28, xp: 44, radius: 28,
       spriteScale: 1.2,
       lunge: { range: 300, cooldown: 5.0, windup: 0.55, time: 0.45 },
     },
     bone_sentinel: {
-      name: 'Bone Sentinel', family: 'undead', elite: true, art: 'skeleton',
+      name: 'Bone Sentinel', family: 'undead', elite: true, art: 'skeleton', bossKit: ['horns'],
       tint: [0.90, 0.95, 1.00], health: 670, speed: 58, damage: 32, xp: 56, radius: 30,
     },
     karrash_battlelord: {
-      name: 'Karrash Battlelord', family: 'karrash', elite: true, art: 'karrash',
+      name: 'Karrash Battlelord', family: 'karrash', elite: true, art: 'karrash', bossKit: ['horns'],
       tint: [1.00, 0.62, 0.20], health: 842, speed: 78, damage: 37, xp: 68, radius: 30,
       lunge: { range: 340, cooldown: 4.4, windup: 0.55, time: 0.5 },
     },
     deathbound_vanguard: {
-      name: 'Deathbound Vanguard', family: 'undead', elite: true, art: 'skeleton',
+      name: 'Deathbound Vanguard', family: 'undead', elite: true, art: 'skeleton', bossKit: ['spines', 'brand'],
       tint: [0.55, 0.80, 1.00], health: 1026, speed: 62, damage: 41, xp: 80, radius: 32,
     },
     // Eclipse Arena: a stationary channeler that drags you toward the chasm.
     shadow_weaver: {
-      name: 'Shadow-Weaver', family: 'void', elite: true, stationary: true, art: 'wraith',
+      name: 'Shadow-Weaver', family: 'void', elite: true, stationary: true, art: 'wraith', bossKit: ['spines'],
       tint: [0.70, 0.40, 0.98], health: 6480, speed: 0, damage: 6, xp: 0, radius: 26,
     },
   };
