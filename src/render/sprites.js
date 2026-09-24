@@ -3463,6 +3463,10 @@
     },
 
     has(art) { return !!CREATURES[art]; },
+    /** The house brushes, for painters that live outside this file - the
+     *  finale's villains (src/render/villains.js) are drawn with the same
+     *  shaded masses, cut polygons and socketed eyes as everything here. */
+    paint: { palette, shaded, poly, eyes, ellipse, blade, legs, pelt, STONE },
     /** Adds an art from outside this file - the finale's machines are drawn
      *  by src/render/finale-art.js and their portraits come through here. */
     define(art, painter) { CREATURES[art] = painter; },

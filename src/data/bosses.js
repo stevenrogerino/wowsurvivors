@@ -8,8 +8,8 @@
   WS.Bosses = {
     /* ------------------------------------------------------ Thornhollow ---- */
     grimtunnel: {
-      bossKit: ['crown', 'trophies'],
-      name: 'Foreman Grimtunnel', family: 'lampling', art: 'lampling', tint: [1.00, 0.90, 0.55],
+      // His own art (src/render/villains.js): the hard hat is his crown.
+      name: 'Foreman Grimtunnel', family: 'lampling', art: 'grimtunnel', tint: [1.00, 0.86, 0.50],
       health: 2052, speed: 55, damage: 32, xp: 160, radius: 40, gold: 35, interval: 4.0,
       patterns: [{ type: 'summon', id: 'lampling', count: 7 }, { type: 'charge' }],
       yell: 'Mine! My light! MINE!',
@@ -55,8 +55,8 @@
       yell: 'CROPS. REQUIRE. BLOOD.',
     },
     masked_admiral: {
-      bossKit: ['pauldrons', 'banner'],
-      name: 'The Masked Admiral', family: 'kerchief', art: 'bandit', tint: [0.90, 0.20, 0.25],
+      // His own art (src/render/villains.js), coat, plume and all.
+      name: 'The Masked Admiral', family: 'kerchief', art: 'admiral', tint: [0.90, 0.20, 0.25],
       health: 11880, speed: 72, damage: 59, xp: 800, radius: 52, gold: 110,
       interval: 2.9, school: 'physical',
       patterns: [{ type: 'volley', bolts: 9 }, { type: 'summon', id: 'kerchief', count: 8 }, { type: 'charge' }],
@@ -79,8 +79,8 @@
       yell: '*a chittering shriek echoes from the dark*',
     },
     mordecai: {
-      bossKit: ['spines', 'trophies'],
-      name: 'Mordecai the Unburied', family: 'undead', art: 'necromancer', tint: [0.75, 0.90, 0.80],
+      // His own art (src/render/villains.js): collar, lantern and his dead.
+      name: 'Mordecai the Unburied', family: 'undead', art: 'mordecai', tint: [0.75, 0.90, 0.80],
       health: 8424, speed: 56, damage: 52, xp: 420, radius: 50, gold: 60,
       interval: 3.3, school: 'shadow',
       patterns: [{ type: 'summon', id: 'skeleton', count: 7 }, { type: 'volley', bolts: 7 }],

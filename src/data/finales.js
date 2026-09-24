@@ -44,11 +44,11 @@
   /* Who is talking. The survivor is not in this list: their lines are
      written with {name} and take the colour of their own class. */
   WS.FinaleSpeakers = {
-    grimtunnel: { name: 'Grimtunnel', colour: '#ffd36b', art: 'lampling', tint: [1.0, 0.86, 0.5] },
-    admiral: { name: 'The Masked Admiral', colour: '#ff8a7a', art: 'bandit',
-      tint: [0.92, 0.22, 0.28], kit: ['plumehat', 'pauldrons'] },
-    mordecai: { name: 'Mordecai', colour: '#9fe6c0', art: 'necromancer',
-      tint: [0.55, 0.92, 0.72], kit: ['spines', 'trophies'] },
+    grimtunnel: { name: 'Grimtunnel', colour: '#ffd36b', art: 'grimtunnel_face', tint: [1.0, 0.86, 0.5] },
+    admiral: { name: 'The Masked Admiral', colour: '#ff8a7a', art: 'admiral_face',
+      tint: [0.92, 0.22, 0.28] },
+    mordecai: { name: 'Mordecai', colour: '#9fe6c0', art: 'mordecai_face',
+      tint: [0.55, 0.92, 0.72] },
     marrowfrost: { name: 'Marrowfrost', colour: '#a9dcff', art: 'marrowfrost_face',
       tint: [0.62, 0.88, 1.0] },
     narrator: { name: '', colour: '#e8dcc4' },
@@ -70,15 +70,13 @@
       yell: 'Run out the guns!',
     },
     admiral_ashore: {
-      bossKit: ['plumehat', 'pauldrons'],
-      name: 'The Masked Admiral, Ashore', family: 'kerchief', art: 'bandit',
+      name: 'The Masked Admiral, Ashore', family: 'kerchief', art: 'admiral',
       tint: [0.92, 0.22, 0.28], health: 230000, speed: 0, damage: 42, xp: 700, radius: 34,
       gold: 300, interval: 99, finale: true, stationary: true, school: 'physical',
       yell: 'Fine. I will do it myself.',
     },
     mordecai_bound: {
-      bossKit: ['spines', 'trophies'],
-      name: 'Mordecai, Lantern-Bound', family: 'undead', art: 'necromancer',
+      name: 'Mordecai, Lantern-Bound', family: 'undead', art: 'mordecai',
       tint: [0.55, 0.92, 0.72], health: 420000, speed: 0, damage: 44, xp: 1200, radius: 42,
       gold: 500, interval: 99, finale: true, stationary: true, school: 'shadow',
       yell: 'Four lanterns, four lives. You have one.',

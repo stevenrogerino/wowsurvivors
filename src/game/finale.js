@@ -1062,7 +1062,7 @@
           const a = s.adm = F.unit('admiral_ashore', s.wx, s.wy + 110);
           if (a) {
             WS.Game.announce('The Masked Admiral', 'Ashore, and furious', 3.4,
-              { kind: 'dread', art: 'bandit', tint: a.template.tint });
+              { kind: 'dread', art: 'admiral_face', tint: a.template.tint });
             F.eruption(a.x, a.y, 80, [0.9, 0.3, 0.3]);
           }
           F.say('duel');

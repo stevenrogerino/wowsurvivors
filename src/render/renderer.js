@@ -591,7 +591,7 @@
       ctx.save();
       ctx.globalAlpha = (1 - t) * 0.85;
       ctx.translate(c.x, c.y + c.size * 0.18 * t);
-      ctx.scale(c.facing < 0 ? -(1 + t * 0.3) : (1 + t * 0.3), 1 - t * 0.55);
+      ctx.scale(c.facing > 0 ? -(1 + t * 0.3) : (1 + t * 0.3), 1 - t * 0.55);
       const sprite = WS.Sprites.creature(c.art, c.tint, c.size, c.kit);
       ctx.drawImage(sprite, -c.size / 2, -c.size * 0.62, c.size, c.size);
       ctx.restore();
@@ -657,7 +657,12 @@
       const k = 1 - e.windup / (e.windupMax || WS.Config.chargeWindup);
       ctx.scale(1 + k * 0.14, 1 - k * 0.12);
     }
-    if (e.facing < 0) ctx.scale(-1, 1);
+    /* The bestiary is drawn looking LEFT - every animal in profile has its
+       head on the left of its tile - and `facing` is +1 when the survivor is
+       to the right. This flipped on -1, so every wolf, boar, cat, raptor and
+       mongrel ran at the survivor tail first, looking away; measured with one
+       either side, both were facing out. Mirror when the prey is right. */
+    if (e.facing > 0) ctx.scale(-1, 1);
     ctx.drawImage(sprite, -size / 2, -size * 0.62, size, size);
     ctx.restore();
 
