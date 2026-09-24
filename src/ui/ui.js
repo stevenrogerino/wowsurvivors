@@ -229,22 +229,18 @@
     const wrap = this.els.weapons;
     wrap.innerHTML = '';
     this.els.weaponSlots.clear();
-    const ns = 'http://www.w3.org/2000/svg';
     for (const w of WS.Game.player.weapons) {
       const slot = el('div', 'wslot');
       if (w.evolved) slot.classList.add('evolved');
       const img = icon(w.data.art, WS.Weapon.colour(w), 54);
       img.width = img.height = 54;
-      const svg = document.createElementNS(ns, 'svg');
-      svg.setAttribute('viewBox', '0 0 64 64');
-      const track = svgArc(29, 3, 'cd-track');
-      const arc = svgArc(29, 3, 'cd-arc');
-      const circ = 2 * Math.PI * 29;
-      arc.style.strokeDasharray = circ;
-      svg.append(track, arc);
-      const rank = el('div', 'rank', w.evolved ? 'MAX' : String(w.level));
+      /* The cooldown is a swipe across the face of the icon, not a ring
+         around it: the dark wedge is the time still owed, and it is taken
+         away clockwise from twelve, with a bright hairline on the hand. */
+      const swipe = el('div', 'swipe');
+      const rank = el('div', 'rank', w.evolved ? '\u2726' : String(w.level));
       const flash = el('div', 'flash');
-      slot.append(img, svg, rank, flash);
+      slot.append(img, swipe, flash, el('div', 'rim'), rank);
 
       /* THE SLOT SAYS WHEN THIS ONE IS READY TO REACT.
        *
@@ -266,12 +262,12 @@
         + (reacts.length ? '\n\n' + reacts.map((r) => (r.ready ? '\u25c6 ' : '\u25c7 ')
           + r.text).join('\n') : '');
       wrap.append(slot);
-      this.els.weaponSlots.set(w.id, { arc, circ, rank, slot, lastCd: 0 });
+      this.els.weaponSlots.set(w.id, { swipe, rank, slot, lastCd: 0, lastA: -1 });
     }
     // Empty scabbards keep the strip a fixed six, so a filling build reads.
     for (let i = WS.Game.player.weapons.length; i < WS.MAX_WEAPONS; i++) {
       const slot = el('div', 'wslot empty');
-      slot.append(el('div', 'scabbard'));
+      slot.append(el('div', 'scabbard'), el('div', 'rim'));
       wrap.append(slot);
     }
   };
@@ -285,7 +281,7 @@
       if (!rank) continue;
       const up = WS.Upgrades[id];
       const slot = el('div', 'pslot');
-      slot.append(icon(up.art, qualityColour(up.quality), 34), el('div', 'rank', String(rank)));
+      slot.append(icon(up.art, qualityColour(up.quality), 34), el('div', 'rim'), el('div', 'rank', String(rank)));
       slot.title = `${up.name} - rank ${rank}/${up.max}`
         + `\n${WS.template(up.description, up)}`;
       wrap.append(slot);
@@ -365,7 +361,8 @@
       if (!slot) { this.rebuildWeapons(); break; }
       const total = WS.Weapon.cooldown(p, w);
       const k = WS.clamp(1 - w.cooldown / total, 0, 1);
-      slot.arc.style.strokeDashoffset = slot.circ * (1 - k);
+      const a = k >= 0.999 ? 360 : WS.round(k * 360);
+      if (a !== slot.lastA) { slot.lastA = a; slot.swipe.style.setProperty('--a', a + 'deg'); }
       // The cooldown jumping back up means the weapon just went off.
       if (w.cooldown > slot.lastCd + 0.01) {
         slot.slot.classList.remove('fired');
@@ -373,7 +370,7 @@
         slot.slot.classList.add('fired');
       }
       slot.lastCd = w.cooldown;
-      const label = w.evolved ? 'MAX' : String(w.level);
+      const label = w.evolved ? '\u2726' : String(w.level);
       if (slot.rank.textContent !== label) {
         slot.rank.textContent = label;
         slot.slot.classList.toggle('evolved', !!w.evolved);
@@ -730,14 +727,6 @@
   }
 
   /* ---------------------------------------------------------- main menu -- */
-  const SAYINGS = [
-    'Thirty minutes until dawn',
-    'Keep the fire lit. Keep your feet moving.',
-    'Nobody is coming. That is why we are here.',
-    'Every light you keep is one he cannot count',
-    'The dark is patient. Be more patient.',
-    'Dawn has never once been late',
-  ];
   UI.openMenu = function () {
     this.hud.classList.add('hidden');
     const s = shell('The Ember Watch', 'Arclight');
@@ -763,11 +752,8 @@
     }
     ember.append(sparks);
     h.append(el('span', 'art', 'The'), ember, el('span', 'wm', 'Watch'));
-    /* The Watch has more than one thing it says to itself. One is chosen
-       per visit to the menu, from Math.random rather than the game's stream,
-       which a menu has no business drawing from. */
-    if (!UI.saying) UI.saying = SAYINGS[Math.floor(Math.random() * SAYINGS.length)];
-    const sub = el('div', 'game-sub', UI.saying);
+    // The premise, in five words: what you are doing and for how long.
+    const sub = el('div', 'game-sub', 'Thirty minutes until dawn');
     title.append(h, sub, el('div', 'title-arc'));
     s.head.replaceChildren(title);
 

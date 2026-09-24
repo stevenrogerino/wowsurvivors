@@ -907,6 +907,189 @@
      */
   }
 
+  /* ------------------------------------------------------------ painted -- */
+  /* The ability tile, as a small painting rather than a symbol on a plate.
+   *
+   * The octagon plate above was a machined tile: flat glyph, accent inlay,
+   * pool of light. Every icon in the set read as the same diagram in a
+   * different colour. This paints the same glyphs as objects - lit from the
+   * upper left, shaded toward the foot, with a highlight along the edges that
+   * face the light, a shadow cast onto the ground behind them, and a glow in
+   * their own colour - on a dark ground brushed in that colour, cut to a
+   * square whose corners were trimmed by hand and not all by the same amount.
+   *
+   * The glyph geometry is untouched, so the grid, the density target and
+   * check-icons all still hold. The plate is kept for anything that asks for
+   * it by name.
+   */
+  function hashArt(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h >>> 0;
+  }
+  function rng(seed) {
+    let t = seed >>> 0;
+    return function () {
+      t = (t + 0x6D2B79F5) >>> 0;
+      let r = Math.imul(t ^ (t >>> 15), t | 1);
+      r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
+      return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function rgbOf(hex) {
+    return [1, 3, 5].map((i) => parseInt(hex.substr(i, 2), 16));
+  }
+  function mixHex(hex, to, k) {
+    const a = rgbOf(hex), b = rgbOf(to);
+    return '#' + a.map((v, i) => WS.round(v + (b[i] - v) * k).toString(16).padStart(2, '0')).join('');
+  }
+
+  /** A square with each corner trimmed by its own small amount. */
+  function tile(g, s, cuts) {
+    const [a, b, c, d] = cuts;
+    g.beginPath();
+    g.moveTo(a, 0); g.lineTo(s - b, 0); g.lineTo(s, b);
+    g.lineTo(s, s - c); g.lineTo(s - c, s); g.lineTo(d, s);
+    g.lineTo(0, s - d); g.lineTo(0, a); g.closePath();
+  }
+
+  function layer(w) {
+    const c = document.createElement('canvas');
+    c.width = c.height = w;
+    return c;
+  }
+
+  function painted(size, accent, art) {
+    const res = size * SS;
+    const out = layer(res);
+    const g = out.getContext('2d');
+    const r = rng(hashArt(art + accent));
+    const cut = res * 0.07;
+    const cuts = [cut * (0.6 + r() * 0.6), cut * (0.3 + r() * 0.5), cut * (0.7 + r() * 0.6), cut * (0.35 + r() * 0.5)];
+
+    g.save();
+    tile(g, res, cuts);
+    g.clip();
+
+    /* The ground: dark, in the accent, lighter where the light falls. */
+    const deep = mixHex(accent, '#05060a', 0.9);
+    const mid = mixHex(accent, '#0a0c12', 0.7);
+    const bg = g.createRadialGradient(res * 0.38, res * 0.3, 0, res * 0.5, res * 0.5, res * 0.78);
+    bg.addColorStop(0, mid);
+    bg.addColorStop(0.55, deep);
+    bg.addColorStop(1, '#030305');
+    g.fillStyle = bg;
+    g.fillRect(0, 0, res, res);
+
+    /* Brushwork: soft dabs laid on at an angle, some in the accent and some
+       in shadow, so the ground has a hand in it rather than a gradient. */
+    for (let i = 0; i < 18; i++) {
+      const x = r() * res, y = r() * res;
+      const rw = res * (0.12 + r() * 0.25), rh = rw * (0.12 + r() * 0.2);
+      g.globalAlpha = 0.03 + r() * 0.05;
+      g.fillStyle = r() < 0.55 ? mixHex(accent, '#ffffff', 0.2 * r()) : '#000000';
+      g.beginPath();
+      g.ellipse(x, y, rw, rh, -0.7 + (r() - 0.5) * 0.5, 0, WS.TAU);
+      g.fill();
+    }
+    g.globalAlpha = 1;
+    // A halo behind where the subject stands, so it separates from the ground.
+    const halo = g.createRadialGradient(res * 0.5, res * 0.47, 0, res * 0.5, res * 0.47, res * 0.46);
+    halo.addColorStop(0, accent + '55');
+    halo.addColorStop(0.5, accent + '1c');
+    halo.addColorStop(1, accent + '00');
+    g.fillStyle = halo;
+    g.fillRect(0, 0, res, res);
+
+    /* The subject, on its own layer so it can be lit. */
+    const L = layer(res);
+    const lg = L.getContext('2d');
+    lg.scale(SS, SS);
+    const inset = size * 0.035;
+    lg.translate(inset, inset);
+    lg.scale((size - inset * 2) / 100, (size - inset * 2) / 100);
+    (G[art] || G.rune)(lg, mixHex(accent, '#ffffff', 0.12));
+
+    // Shading: brighter where it faces the light, heavier toward the foot.
+    const shade = layer(res), sg = shade.getContext('2d');
+    sg.drawImage(L, 0, 0);
+    sg.globalCompositeOperation = 'source-atop';
+    const sh = sg.createLinearGradient(0, res * 0.12, res * 0.3, res * 0.95);
+    sh.addColorStop(0, 'rgba(255,250,238,.55)');
+    sh.addColorStop(0.4, 'rgba(255,250,238,0)');
+    sh.addColorStop(0.62, 'rgba(0,0,0,0)');
+    sh.addColorStop(1, 'rgba(0,0,0,.55)');
+    sg.fillStyle = sh;
+    sg.fillRect(0, 0, res, res);
+
+    // Edges: what the subject is not, one step up and left, is its lit rim;
+    // one step down and right, its shadowed one.
+    const d = WS.max(1, res * 0.018);
+    const rim = (dx, dy, colour) => {
+      const e = layer(res), eg = e.getContext('2d');
+      eg.drawImage(L, 0, 0);
+      eg.globalCompositeOperation = 'destination-out';
+      eg.drawImage(L, dx, dy);
+      eg.globalCompositeOperation = 'source-in';
+      eg.fillStyle = colour;
+      eg.fillRect(0, 0, res, res);
+      return e;
+    };
+    const lit = rim(d, d, 'rgba(255,250,236,.75)');
+    const dark = rim(-d, -d, 'rgba(0,0,0,.45)');
+
+    // Cast shadow, then the glow in its own colour, then the subject.
+    g.save();
+    g.filter = `blur(${(res * 0.03).toFixed(1)}px)`;
+    g.globalAlpha = 0.75;
+    g.globalCompositeOperation = 'source-over';
+    const sil = layer(res), silg = sil.getContext('2d');
+    silg.drawImage(L, 0, 0);
+    silg.globalCompositeOperation = 'source-in';
+    silg.fillStyle = '#000';
+    silg.fillRect(0, 0, res, res);
+    g.drawImage(sil, res * 0.03, res * 0.05);
+    g.restore();
+
+    g.save();
+    g.shadowColor = accent;
+    g.shadowBlur = res * 0.16;
+    g.drawImage(shade, 0, 0);
+    g.restore();
+    g.drawImage(shade, 0, 0);
+    g.drawImage(lit, 0, 0);
+    g.drawImage(dark, 0, 0);
+
+    /* Close it: a vignette into the corners, a sheen across the top, and the
+       cut edge itself - dark, with a lit lip where the light catches it. */
+    const vg = g.createRadialGradient(res * 0.45, res * 0.4, res * 0.3, res * 0.5, res * 0.5, res * 0.75);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(1, 'rgba(0,0,0,.55)');
+    g.fillStyle = vg;
+    g.fillRect(0, 0, res, res);
+    const sheen = g.createLinearGradient(0, 0, 0, res * 0.45);
+    sheen.addColorStop(0, 'rgba(255,255,255,.07)');
+    sheen.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = sheen;
+    g.fillRect(0, 0, res, res * 0.45);
+    g.restore();
+
+    g.save();
+    tile(g, res, cuts);
+    g.clip();
+    tile(g, res, cuts);
+    g.lineWidth = res * 0.05;
+    g.strokeStyle = 'rgba(0,0,0,.6)';
+    g.stroke();
+    g.lineWidth = WS.max(1, res * 0.012);
+    g.strokeStyle = mixHex(accent, '#fff4dc', 0.6) + '40';
+    g.stroke();
+    g.restore();
+
+    out.displaySize = size;
+    return out;
+  }
+
   /* ----------------------------------------------------------------- API -- */
   const SS = 2;    // rasterise at 2x and draw down
 
@@ -941,7 +1124,7 @@
       const key = `i:${art}:${accent}:${size}`;
       let c = cache.get(key);
       if (c) return c;
-      c = render(size, accent, art, true);
+      c = painted(size, accent, art);
       cache.set(key, c);
       return c;
     },
@@ -961,6 +1144,18 @@
 
     /** Data URL for CSS/img elements (the DOM-side UI). */
     url(art, color, size) { return this.get(art, color, size).toDataURL(); },
+
+    /** The old machined plate, for anything that still wants the diagram. */
+    plated(art, color, size) {
+      size = WS.round(size || 64);
+      const accent = WS.hex(color || WS.CONST.COLORS.arc);
+      const key = `p:${art}:${accent}:${size}`;
+      let c = cache.get(key);
+      if (c) return c;
+      c = render(size, accent, art, true);
+      cache.set(key, c);
+      return c;
+    },
 
     has(art) { return !!G[art]; },
     names() { return Object.keys(G); },

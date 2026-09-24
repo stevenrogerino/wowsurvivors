@@ -195,6 +195,14 @@
     // A picture hung in a panel: a firmer line with a dark mat inside it.
     '--frame-picture': frame({ seed: 47, outer: 'rgba(255,232,196,.46)', inner: 'rgba(255,232,196,.14)',
       chips: [6, 3, 7, 4], wear: 0.2, cross: [3, 5, 2, 4], nails: 'rgba(245,197,107,.55)' }),
+    // The HUD's ability bezels: a firm warm line and a faint inner one, barely
+    // worn - these are read at a glance mid-fight, so they stay whole.
+    '--frame-slot': frame({ seed: 53, outer: 'rgba(226,204,166,.62)', inner: 'rgba(226,204,166,.16)',
+      chips: [5, 2, 6, 3], wear: 0.08, w: 3, cross: [2, 3, 1, 2] }),
+    '--frame-slot-gilt': frame({ seed: 53, outer: 'rgba(245,197,107,.95)', inner: 'rgba(245,197,107,.35)',
+      chips: [5, 2, 6, 3], wear: 0, w: 3.2, cross: [2, 3, 1, 2], nails: 'rgba(255,220,150,.95)' }),
+    '--frame-slot-empty': frame({ seed: 59, outer: 'rgba(226,204,166,.18)', chips: [5, 2, 6, 3], wear: 0.3, w: 2.4 }),
+    '--frame-pip': frame({ seed: 61, outer: 'rgba(226,204,166,.5)', chips: [4, 2, 5, 2], wear: 0.05, w: 3.4 }),
     // Big surfaces - the cartouche and the sheet panels - carry nails.
     '--frame-panel': frame({ seed: 31, outer: RIM, inner: RIM_IN, chips: [10, 4, 12, 6], wear: 0.5,
       nails: 'rgba(245,197,107,.45)' }),

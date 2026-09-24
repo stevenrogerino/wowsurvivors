@@ -2161,3 +2161,75 @@ input[type=range]::-moz-range-thumb {
 .stat::after { display: none; }
 .record .record-name { color: color-mix(in oklab, var(--q, var(--ink)) 72%, #f4ecdc); }
 .record.unset .record-name { color: var(--ink-dim); }
+
+/* ===================================================== THE ARSENAL ========
+ * The ability strip, redone around the painted icons.
+ *
+ * Each slot is the icon, a swipe across its face, and a drawn bezel over the
+ * top. The bezel is the same hand as every frame in the menus, heavier and
+ * almost unworn: this is read at a glance in the middle of a fight. An
+ * evolved weapon's bezel is gilt and nailed.
+ *
+ * The cooldown was a gold ring around the slot with a bright arc riding it.
+ * It measured the right thing and looked like a loading spinner. It is now a
+ * swipe: a dark wedge over the icon for the time still owed, taken away
+ * clockwise from twelve, with a warm hairline on the leading edge - the
+ * convention every player of this kind of game already reads without
+ * thinking. --a is set from ui.js, in degrees of the cooldown already paid.
+ */
+.wslot::before, .wslot.evolved::before, .wslot.evolved::after { display: none; }
+.wslot img, .pslot img { position: relative; }
+.wslot .rim, .pslot .rim {
+  position: absolute; inset: -4px; pointer-events: none; z-index: 2;
+  border: 1px solid transparent;
+  border-image: var(--frame-slot) 24 / 11px stretch;
+}
+.wslot.evolved .rim { border-image-source: var(--frame-slot-gilt); }
+.wslot.ready .rim { border-image-source: var(--frame-slot-gilt); opacity: .9; }
+.wslot.evolved { filter: drop-shadow(0 0 10px rgba(245,197,107,.28)); }
+.wslot.empty .rim { border-image-source: var(--frame-slot-empty); }
+
+.wslot .swipe {
+  position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  background: conic-gradient(
+    transparent 0deg var(--a, 360deg),
+    rgba(255,228,176,.55) var(--a, 360deg) calc(var(--a, 360deg) + 1.6deg),
+    rgba(4,5,9,.58) calc(var(--a, 360deg) + 1.6deg) 360deg);
+}
+/* The discharge: a quick bloom of light over the icon when it fires. */
+.wslot .flash {
+  inset: 0; border-radius: 0; z-index: 1;
+  background: radial-gradient(circle at 50% 45%, rgba(255,246,222,.6), rgba(255,246,222,0) 70%);
+}
+@keyframes slot-fire { from { opacity: .85; transform: none; } to { opacity: 0; transform: none; } }
+
+/* Rank: a numeral set in the corner of the painting, not a boxed digit. */
+.wslot .rank, .pslot .rank {
+  position: absolute; z-index: 3; background: none; border: 0; padding: 0;
+  font-family: var(--voice); font-style: italic; font-weight: 700;
+  color: #f4ecdc; letter-spacing: 0;
+  text-shadow: 0 0 3px #000, 0 1px 2px #000, 0 0 6px rgba(0,0,0,.8);
+}
+.wslot .rank { right: 3px; bottom: 0; font-size: 16px; line-height: 1; }
+.wslot.evolved .rank { color: var(--arc-hot); font-style: normal; font-size: 14px; bottom: 2px; }
+.pslot .rank { right: 2px; bottom: -1px; font-size: 12px; line-height: 1; color: #e9dfcc; }
+.wslot .slot-pip { z-index: 4; top: -6px; right: -6px; }
+
+/* An empty slot is a dark recess waiting for something to hang in it. */
+.wslot .scabbard {
+  clip-path: none;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(255,240,214,.035), transparent 70%),
+    linear-gradient(180deg, rgba(0,0,0,.38), rgba(0,0,0,.55));
+  box-shadow: inset 0 2px 8px rgba(0,0,0,.6);
+}
+
+.pslot .rim { inset: -3px; border-image: var(--frame-pip) 24 / 8px stretch; }
+.pslot img { opacity: 1; }
+#hud-passives { gap: 9px; }
+body.hud-rail #hud-passives { gap: 9px; }
+/* The card's icon hangs in the same bezel as the slot it is about to fill. */
+.card .icon-plate {
+  border: 1px solid transparent;
+  border-image: var(--frame-slot) 24 / 12px / 5px stretch;
+}

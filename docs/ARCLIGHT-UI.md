@@ -202,3 +202,13 @@ The interface is only half of it; the other half is how the world answers.
   alternate down a list; hover lights the line, selection gilds it and adds
   nails. The corner ticks, the card's corner marks and the ruled bevels are
   retired, and a faint mottle gives each surface a material.
+- **Painted icons** (`WS.Icons.get`). The glyphs keep their grid, but the
+  tile is now a small painting: a square with hand-trimmed corners, a dark
+  ground brushed in the accent, a halo, and the subject lit from the upper
+  left - shaded toward its foot, a lit rim on the edges facing the light, a
+  cast shadow and a glow. The old machined plate is `WS.Icons.plated`.
+- **The arsenal.** Weapon and passive slots hang in drawn bezels (gilt and
+  nailed once evolved or ready to evolve). The cooldown is a swipe across the
+  icon's face - a dark wedge for the time still owed, taken away clockwise
+  from twelve with a warm hairline on the hand - not a ring around it. Ranks
+  are italic serif numerals in the corner; an evolved weapon wears a ✦.
