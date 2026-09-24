@@ -1677,7 +1677,7 @@
           this.nova(F);
           F.grid(F.bounds, 5, 4, 4, T.gridTele, T.gridDamage, 'Glacial spikes');
           WS.Game.announce('The last of the Pale', 'Shatter it. There is nothing after this.', 2.8,
-            { kind: 'dread', art: 'lich', tint: L.template.tint });
+            { kind: 'dread', art: 'marrowfrost_face', tint: L.template.tint });
           WS.FX.screen('rgba(170,220,255,.3)', 0.8);
         }
         if (F.every('cross', dt, 8)) {
@@ -1745,7 +1745,7 @@
       if (L) {
         F.eruption(L.x, L.y, 200, [0.7, 0.92, 1.0]);
         WS.Game.announce('Marrowfrost, the Pale Lord', 'The dark itself, awake', 4.0,
-          { kind: 'dread', art: 'lich', tint: L.template.tint });
+          { kind: 'dread', art: 'marrowfrost_face', tint: L.template.tint });
         this.shards(F);
       }
       F.say('lord');
@@ -1767,7 +1767,7 @@
       F.clearAdds();
       F.say('winter');
       WS.Game.announce('The Heart of Winter', 'Break him before the cold does.', 3.4,
-        { kind: 'dread', art: 'lich', tint: L.template.tint });
+        { kind: 'dread', art: 'marrowfrost_face', tint: L.template.tint });
       WS.FX.screen('rgba(170,220,255,.35)', 1.0);
       s.tm = { cross: 1.5, nova: 5, grid: 8, spike: 2.5 };
     },

@@ -1481,6 +1481,26 @@
       mNoise(b, t + 0.3, { freq: 150, to: 420, decay: 3.0, gain: 0.070,
         filter: 'lowpass', q: 0.7, attack: 1.5 });
     } },
+    // Someone out on the ridge, working a machine: a slow ratchet and a drip.
+    'pro:thief': { at: 0.12, play(b, t) {
+      for (let i = 0; i < 6; i++) {
+        mNoise(b, t + i * 0.33, { freq: 1900, to: 900, decay: 0.07, gain: 0.050,
+          filter: 'bandpass', q: 2.2 });
+      }
+      mTone(b, t + 0.2, { wave: 'triangle', freq: 311.1, cut: 1200, gain: 0.045,
+        attack: 0.6, decay: 2.8 });
+      chord(b, t + 0.4, 77.78, [0, 6], { wave: 'sawtooth', cut: 380, gain: 0.050,
+        attack: 1.2, decay: 3.4 });
+    } },
+    // The Pale: wind, a glassy high cluster, and the ground dropping a tritone.
+    'pro:pale': { at: 0.08, play(b, t) {
+      mNoise(b, t, { freq: 2600, to: 900, decay: 5.2, gain: 0.050,
+        filter: 'bandpass', q: 1.4, attack: 2.0 });
+      chord(b, t + 0.5, 1244.5, [0, 1, 6], { wave: 'sine', gain: 0.022,
+        attack: 1.6, decay: 4.2 });
+      mTone(b, t + 1.2, { wave: 'sawtooth', freq: 58.27, to: 41.2, slide: 3.0,
+        cut: 260, gain: 0.12, attack: 1.4, decay: 4.4 });
+    } },
     // You will not kill your way out of this. Three strikes, and standing.
     'pro:stand': { at: 0.86, play(b, t) {
       for (let i = 0; i < 3; i++) {

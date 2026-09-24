@@ -49,8 +49,8 @@
       tint: [0.92, 0.22, 0.28], kit: ['plumehat', 'pauldrons'] },
     mordecai: { name: 'Mordecai', colour: '#9fe6c0', art: 'necromancer',
       tint: [0.55, 0.92, 0.72], kit: ['spines', 'trophies'] },
-    marrowfrost: { name: 'Marrowfrost', colour: '#a9dcff', art: 'lich',
-      tint: [0.62, 0.88, 1.0], kit: ['crown', 'pauldrons'] },
+    marrowfrost: { name: 'Marrowfrost', colour: '#a9dcff', art: 'marrowfrost_face',
+      tint: [0.62, 0.88, 1.0] },
     narrator: { name: '', colour: '#e8dcc4' },
   };
 
@@ -96,8 +96,8 @@
       yell: 'One more meter and it is ALL mine!',
     },
     pale_lord: {
-      bossKit: ['crown', 'pauldrons'],
-      name: 'Marrowfrost, the Pale Lord', family: 'undead', art: 'lich',
+      // His own art (sprites.js), crown and all - no borrowed regalia.
+      name: 'Marrowfrost, the Pale Lord', family: 'undead', art: 'marrowfrost',
       tint: [0.62, 0.88, 1.00], health: 700000, speed: 0, damage: 64, xp: 3000, radius: 56,
       spriteScale: 1.25,
       gold: 1500, interval: 99, finale: true, stationary: true, school: 'frost',

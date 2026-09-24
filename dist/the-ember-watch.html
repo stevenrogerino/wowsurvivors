@@ -4837,28 +4837,50 @@ window.WS = window.WS || {};
       begin: 'press any key to begin',
       title: 'The Ember Watch',
       subtitle: 'Thirty minutes until dawn',
+      /* Rewritten once the story had villains in it. The first draft said
+         what ember is and never who wants it, so the piece ended on a
+         mechanic rather than a threat. It still teaches the loop - the dead
+         leave stones, you take the light, the light draws them - and then it
+         names the two things the finales are about: the thief on the ridges
+         who is selling the light (Grimtunnel), and the thing in the Pale
+         that wants all of it back (Marrowfrost) - and only then brings the
+         horde in, as his. "It wants them back" is
+         set up here so that "Tonight I take it back" lands at the end, and
+         so that "the ember was never mine either" can turn it over. */
       scenes: [
-        { beat: 'night', hold: 5.0, lines: [
-          'Every night, the dark comes up out of the ground.'] },
         { beat: 'night', hold: 4.6, lines: [
-          'It has taken every watch before this one.'] },
-        { beat: 'ember', hold: 5.4, lines: [
-          'What holds it back is ember.',
-          'and ember will not burn on its own.'] },
-        { beat: 'ember', hold: 5.0, lines: [
-          'It sleeps in the stones the dead leave behind.'] },
+          'The dark does not fall here.',
+          'It climbs.'] },
+        { beat: 'night', hold: 5.0, lines: [
+          'Up through the furrows and the graves,',
+          'every night, until the morning.'] },
+        { beat: 'ember', hold: 5.8, lines: [
+          'The dead leave a stone behind, with a light still in it.',
+          'We call it ember.'] },
         { beat: 'draw', hold: 5.6, lines: [
-          'Break the stone. Take the light out of it.',
-          'While you carry it, you burn.'] },
-        { beat: 'horde', hold: 5.2, lines: [
-          'They can smell a light from a long way off.'] },
-        { beat: 'stand', hold: 5.4, lines: [
-          'You will not kill your way out of this.',
-          'Nobody ever has.'] },
-        { beat: 'stand', hold: 4.6, lines: [
-          'You will out-burn it, and you will keep moving.'] },
-        { beat: 'dawn', hold: 6.5, lines: [
-          'Hold until the light comes back.'] },
+          'Break the stone. Take the light.',
+          'For as long as you carry it, you burn.'] },
+        { beat: 'thief', hold: 5.8, lines: [
+          'Out on the ridges, someone is digging up the stones',
+          'and selling the light by the pound.'] },
+        { beat: 'pale', hold: 6.0, lines: [
+          'And far to the north, in the Pale,',
+          'something older is counting every light we burn.'] },
+        { beat: 'pale', hold: 5.4, lines: [
+          'Its name is Marrowfrost.',
+          'It wants them back.'] },
+        { beat: 'horde', hold: 5.4, lines: [
+          'Everything that climbs out of the ground is his,',
+          'and every one of them can see you burning.'] },
+        { beat: 'horde', hold: 5.0, lines: [
+          'Every watch before yours carried a light.',
+          'Every light went out.'] },
+        { beat: 'stand', hold: 5.6, lines: [
+          'You will not kill your way to morning.',
+          'You will burn brighter, and you will keep moving.'] },
+        { beat: 'dawn', hold: 6.4, lines: [
+          'Thirty minutes until dawn.',
+          'Hold the line until the light comes back.'] },
         { beat: 'title', hold: 5.0, lines: [] },
       ],
     },
@@ -4947,8 +4969,8 @@ window.WS = window.WS || {};
       tint: [0.92, 0.22, 0.28], kit: ['plumehat', 'pauldrons'] },
     mordecai: { name: 'Mordecai', colour: '#9fe6c0', art: 'necromancer',
       tint: [0.55, 0.92, 0.72], kit: ['spines', 'trophies'] },
-    marrowfrost: { name: 'Marrowfrost', colour: '#a9dcff', art: 'lich',
-      tint: [0.62, 0.88, 1.0], kit: ['crown', 'pauldrons'] },
+    marrowfrost: { name: 'Marrowfrost', colour: '#a9dcff', art: 'marrowfrost_face',
+      tint: [0.62, 0.88, 1.0] },
     narrator: { name: '', colour: '#e8dcc4' },
   };
 
@@ -4994,8 +5016,8 @@ window.WS = window.WS || {};
       yell: 'One more meter and it is ALL mine!',
     },
     pale_lord: {
-      bossKit: ['crown', 'pauldrons'],
-      name: 'Marrowfrost, the Pale Lord', family: 'undead', art: 'lich',
+      // His own art (sprites.js), crown and all - no borrowed regalia.
+      name: 'Marrowfrost, the Pale Lord', family: 'undead', art: 'marrowfrost',
       tint: [0.62, 0.88, 1.00], health: 700000, speed: 0, damage: 64, xp: 3000, radius: 56,
       spriteScale: 1.25,
       gold: 1500, interval: 99, finale: true, stationary: true, school: 'frost',
@@ -10175,6 +10197,279 @@ window.WS = window.WS || {};
 
     warlock(g, s, p) { CREATURES.necromancer(g, s, p); },
 
+    /* MARROWFROST, THE PALE LORD - the last thing in the story, and the one
+     * creature here drawn to be looked at rather than recognised at 40px.
+     * He used to be the lich with a bigger collar, which is to say a
+     * necromancer in a hat; the villain the whole game points at cannot
+     * share a silhouette with trash.
+     *
+     * Read from the outline in: a mantle that flares wider than anything on
+     * the field, ice pauldrons that break the shoulder line, a crown taller
+     * than his head, a staff that stands above him. Then the story in the
+     * details: a stolen ember caged in ice in his chest, and more of it
+     * trapped in the crystal on his staff - "every night your kind burns MY
+     * ember" is on him before he says it. Fixed colours rather than the
+     * palette, because he is not a tint of anything. Deterministic: this is
+     * baked lazily mid-run, and drawing from WS.random would move the
+     * game's own stream. */
+    marrowfrost(g, s, p) {
+      const u = s / 100;
+      const X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const hash = (n) => { const v = Math.sin(n * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
+      const ICE_LIT = '#e8f7ff', ICE_MID = '#9fd0ee', ICE_SHADE = '#5f9cc6', ICE_EDGE = '#2c5a80';
+      const ROBE_HI = '#2b4266', ROBE = '#18263f', ROBE_LO = '#0a1120';
+      const BONE_HI = '#f1f4f2', BONE = '#c9d2d6', BONE_LO = '#7d8b94';
+      const EMBER = '#7cf0a0';
+
+      /** A crystal in two facets, one turned to the light and one away. */
+      const crystal = (x, y, w, h, rot) => {
+        g.save();
+        g.translate(X(x), Y(y)); g.rotate(rot || 0);
+        const hw = X(w) / 2, hh = Y(h) / 2;
+        poly(g, [[0, -hh], [hw, -hh * 0.15], [0, hh], [0, -hh]], ICE_SHADE, ICE_EDGE, u * 0.7);
+        poly(g, [[0, -hh], [-hw, -hh * 0.15], [0, hh], [0, -hh]], ICE_LIT, ICE_EDGE, u * 0.7);
+        g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = u * 0.6;
+        g.beginPath(); g.moveTo(0, -hh * 0.85); g.lineTo(-hw * 0.45, -hh * 0.1); g.stroke();
+        g.restore();
+      };
+      const glowAt = (x, y, r, rgba) => {
+        g.save();
+        g.globalCompositeOperation = 'lighter';
+        const gr = g.createRadialGradient(X(x), Y(y), 0, X(x), Y(y), X(r));
+        gr.addColorStop(0, rgba); gr.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = gr;
+        g.beginPath(); g.arc(X(x), Y(y), X(r), 0, WS.TAU); g.fill();
+        g.restore();
+      };
+
+      // 1. the cold he stands in
+      glowAt(50, 42, 40, 'rgba(120,190,255,.20)');
+
+      // 2. shards of the Pale, circling behind him
+      crystal(14, 36, 6, 15, -0.35);
+      crystal(86, 36, 6, 15, 0.35);
+      crystal(11, 62, 4.5, 11, -0.6);
+      crystal(89, 62, 4.5, 11, 0.6);
+
+      // 3. the mantle: wider than anything on the field, torn at the hem
+      const hem = [];
+      for (let i = 0; i <= 12; i++) {
+        const x = 9 + i * (82 / 12);
+        hem.push([x, 90 + (i % 2 ? -4 - hash(i) * 4 : 1.5)]);
+      }
+      const mantle = [[34, 30], [66, 30], [80, 52], [91, 90]].concat(hem.reverse(), [[20, 52]]);
+      g.save();
+      const mg = g.createLinearGradient(0, Y(30), 0, Y(92));
+      mg.addColorStop(0, ROBE_HI); mg.addColorStop(0.5, ROBE); mg.addColorStop(1, ROBE_LO);
+      g.beginPath();
+      P(mantle).forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+      g.closePath();
+      g.fillStyle = mg; g.fill();
+      g.clip();
+      // folds falling from the shoulders
+      for (const [x0, x1] of [[36, 16], [41, 28], [59, 72], [64, 84]]) {
+        const fg = g.createLinearGradient(X(x1 - 4), 0, X(x1 + 4), 0);
+        fg.addColorStop(0, 'rgba(0,0,0,.35)'); fg.addColorStop(0.6, 'rgba(160,210,255,.10)');
+        fg.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = fg;
+        g.beginPath(); g.moveTo(X(x0 - 1), Y(32)); g.lineTo(X(x0 + 1), Y(32));
+        g.lineTo(X(x1 + 4), Y(92)); g.lineTo(X(x1 - 4), Y(92)); g.closePath(); g.fill();
+      }
+      // rim light down the lit edge: the aurora is behind him
+      g.strokeStyle = 'rgba(170,225,255,.55)'; g.lineWidth = u * 1.2;
+      g.beginPath(); g.moveTo(X(66), Y(30)); g.lineTo(X(80), Y(52)); g.lineTo(X(91), Y(90)); g.stroke();
+      g.restore();
+      // rime crusted along the torn hem
+      for (let i = 0; i < 14; i++) {
+        const x = 12 + i * 5.6, y = 86 - hash(i + 20) * 3;
+        poly(g, P([[x - 1.4, y + 3], [x, y - 2 - hash(i) * 3], [x + 1.4, y + 3]]),
+          'rgba(210,240,255,.85)', 'rgba(90,150,200,.8)', u * 0.5);
+      }
+
+      // 4. the robe in front, and the runes down it
+      const robe = [[39, 38], [61, 38], [69, 90], [31, 90]];
+      poly(g, P(robe), ROBE, ROBE_LO, u);
+      g.save();
+      g.beginPath(); P(robe).forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+      g.closePath(); g.clip();
+      const pg = g.createLinearGradient(X(44), 0, X(56), 0);
+      pg.addColorStop(0, '#101a2e'); pg.addColorStop(0.5, '#1f3152'); pg.addColorStop(1, '#101a2e');
+      g.fillStyle = pg; g.fillRect(X(44), Y(56), X(12), Y(36));
+      g.strokeStyle = 'rgba(150,225,255,.75)'; g.lineWidth = u * 0.7; g.lineCap = 'round';
+      for (let i = 0; i < 5; i++) {
+        const y = 66 + i * 5;
+        g.beginPath();
+        g.moveTo(X(48), Y(y)); g.lineTo(X(50), Y(y - 2)); g.lineTo(X(52), Y(y));
+        if (i % 2) { g.moveTo(X(50), Y(y - 2)); g.lineTo(X(50), Y(y + 2)); }
+        g.stroke();
+      }
+      g.restore();
+      glowAt(50, 76, 8, 'rgba(120,210,255,.18)');
+
+      // 5. the belt, and a clasp of ice
+      poly(g, P([[38, 60], [62, 60], [63, 64], [37, 64]]), '#0c1424', '#050910', u * 0.8);
+      crystal(50, 62, 4, 6, 0);
+
+      // 6. the stolen ember, caged in ice in his chest
+      glowAt(50, 49, 11, 'rgba(124,240,160,.45)');
+      g.save();
+      g.fillStyle = EMBER; g.shadowColor = EMBER; g.shadowBlur = X(3);
+      g.beginPath();
+      g.moveTo(X(50), Y(45)); g.lineTo(X(53), Y(49)); g.lineTo(X(50), Y(53)); g.lineTo(X(47), Y(49));
+      g.closePath(); g.fill();
+      g.shadowBlur = 0;
+      g.fillStyle = 'rgba(255,255,255,.8)';
+      g.beginPath(); g.arc(X(49.4), Y(48), X(0.9), 0, WS.TAU); g.fill();
+      g.strokeStyle = 'rgba(200,238,255,.9)'; g.lineWidth = u * 0.8;
+      for (const [x0, y0, x1, y1] of [[45, 43, 50, 55], [55, 43, 50, 55], [44, 49, 56, 49], [50, 42, 50, 56]]) {
+        g.beginPath(); g.moveTo(X(x0), Y(y0)); g.lineTo(X(x1), Y(y1)); g.stroke();
+      }
+      g.restore();
+
+      // 7. the staff: black iron, taller than he is, and a crystal full of stolen light
+      g.save();
+      g.lineCap = 'round';
+      g.strokeStyle = '#070b14'; g.lineWidth = u * 3.2;
+      g.beginPath(); g.moveTo(X(21), Y(20)); g.lineTo(X(24), Y(93)); g.stroke();
+      g.strokeStyle = '#3a4a66'; g.lineWidth = u * 1.1;
+      g.beginPath(); g.moveTo(X(20.6), Y(22)); g.lineTo(X(23.4), Y(90)); g.stroke();
+      for (const y of [34, 52, 72]) {
+        g.strokeStyle = '#9fd0ee'; g.lineWidth = u * 1.2;
+        g.beginPath(); g.moveTo(X(19.2), Y(y)); g.lineTo(X(23.8 + (y - 34) * 0.03), Y(y + 1)); g.stroke();
+      }
+      g.restore();
+      // the prongs that hold the crystal
+      g.strokeStyle = '#0a0f1a'; g.lineWidth = u * 1.6; g.lineCap = 'round';
+      for (const d of [-1, 1]) {
+        g.beginPath(); g.moveTo(X(21), Y(21)); g.quadraticCurveTo(X(21 + d * 6), Y(17), X(21 + d * 3.5), Y(9)); g.stroke();
+      }
+      glowAt(21, 13, 11, 'rgba(124,240,160,.40)');
+      crystal(21, 13, 8, 15, 0.08);
+      g.save();
+      g.fillStyle = EMBER; g.shadowColor = EMBER; g.shadowBlur = X(2.5);
+      g.beginPath(); g.arc(X(21), Y(14), X(1.6), 0, WS.TAU); g.fill();
+      g.restore();
+
+      // 8. arms: the near one down the staff, the far one raised and trailing frost
+      poly(g, P([[37, 36], [31, 40], [24, 55], [28, 58], [36, 46]]), ROBE_HI, ROBE_LO, u);
+      poly(g, P([[63, 36], [70, 38], [80, 47], [77, 51], [67, 45]]), ROBE_HI, ROBE_LO, u);
+      // hands of bone
+      g.save();
+      g.strokeStyle = BONE; g.lineCap = 'round'; g.lineWidth = u * 1.3;
+      for (let i = 0; i < 4; i++) {                 // gripping the staff
+        g.beginPath(); g.moveTo(X(26), Y(55 + i * 1.3)); g.lineTo(X(21.5), Y(56.5 + i * 1.3)); g.stroke();
+      }
+      // open and raised: four long jointed fingers, not a glove
+      g.lineWidth = u * 0.75;
+      for (let i = 0; i < 4; i++) {
+        const a = -1.35 + i * 0.3;
+        const k1x = 80 + Math.cos(a) * 3.4, k1y = 48 + Math.sin(a) * 3.4;
+        const a2 = a - 0.35;
+        const tx = k1x + Math.cos(a2) * 3.6, ty = k1y + Math.sin(a2) * 3.6;
+        g.strokeStyle = BONE;
+        g.beginPath(); g.moveTo(X(80), Y(48)); g.lineTo(X(k1x), Y(k1y)); g.lineTo(X(tx), Y(ty)); g.stroke();
+        g.fillStyle = BONE_HI;
+        g.beginPath(); g.arc(X(k1x), Y(k1y), X(0.55), 0, WS.TAU); g.fill();
+      }
+      g.lineWidth = u * 0.9; g.strokeStyle = BONE;
+      g.beginPath(); g.moveTo(X(78), Y(50)); g.lineTo(X(80.5), Y(47.5)); g.stroke();
+      g.restore();
+      // frost wisps off the raised hand
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      g.strokeStyle = 'rgba(170,225,255,.55)'; g.lineWidth = u * 0.9; g.lineCap = 'round';
+      for (let i = 0; i < 3; i++) {
+        g.beginPath(); g.moveTo(X(82 + i), Y(42 - i * 2));
+        g.bezierCurveTo(X(86 + i * 2), Y(36 - i * 3), X(80 + i), Y(32 - i * 2), X(85 + i * 2), Y(26 - i * 3));
+        g.stroke();
+      }
+      g.restore();
+
+      // 9. pauldrons of ice, breaking the shoulder line
+      for (const d of [-1, 1]) {
+        const bx = 50 + d * 15, by = 33;
+        poly(g, P([[bx - 7, by + 4], [bx + 7, by + 4], [bx + d * 9, by - 2], [bx - d * 2, by - 4]]),
+          ICE_MID, ICE_EDGE, u * 0.8);
+        crystal(bx + d * 6, by - 6, 4, 11, d * 0.55);
+        crystal(bx + d * 11, by - 2, 3.5, 9, d * 1.0);
+        crystal(bx + d * 1, by - 7, 3, 8, d * 0.2);
+      }
+
+      // 10. the hood, and the skull in it
+      g.save();
+      const hg = g.createRadialGradient(X(50), Y(26), X(2), X(50), Y(29), X(14));
+      hg.addColorStop(0, '#05080f'); hg.addColorStop(0.7, ROBE); hg.addColorStop(1, ROBE_HI);
+      g.fillStyle = hg;
+      g.beginPath();
+      g.moveTo(X(38), Y(38)); g.quadraticCurveTo(X(37), Y(18), X(50), Y(16));
+      g.quadraticCurveTo(X(63), Y(18), X(62), Y(38)); g.closePath(); g.fill();
+      // rime along the hood's edge
+      g.strokeStyle = 'rgba(190,232,255,.6)'; g.lineWidth = u * 0.8;
+      g.beginPath(); g.moveTo(X(38.6), Y(37)); g.quadraticCurveTo(X(37.8), Y(18.8), X(50), Y(16.8));
+      g.quadraticCurveTo(X(62.2), Y(18.8), X(61.4), Y(37)); g.stroke();
+      g.restore();
+      // the skull: long, narrow at the jaw, and in the hood's shadow
+      g.save();
+      const sg = g.createLinearGradient(0, Y(21), 0, Y(37));
+      sg.addColorStop(0, BONE_HI); sg.addColorStop(0.55, BONE); sg.addColorStop(1, BONE_LO);
+      g.fillStyle = sg;
+      g.beginPath();
+      g.moveTo(X(44), Y(27)); g.quadraticCurveTo(X(44), Y(21), X(50), Y(21));
+      g.quadraticCurveTo(X(56), Y(21), X(56), Y(27));
+      g.quadraticCurveTo(X(56), Y(32), X(53.5), Y(34.5)); g.lineTo(X(52.5), Y(37));
+      g.lineTo(X(47.5), Y(37)); g.lineTo(X(46.5), Y(34.5));
+      g.quadraticCurveTo(X(44), Y(32), X(44), Y(27)); g.closePath(); g.fill();
+      // the hood's shadow across the top of it
+      const hs = g.createLinearGradient(0, Y(21), 0, Y(27));
+      hs.addColorStop(0, 'rgba(5,8,15,.75)'); hs.addColorStop(1, 'rgba(5,8,15,0)');
+      g.fillStyle = hs; g.fillRect(X(43), Y(20), X(14), Y(7));
+      g.restore();
+      // a heavy brow, hollow cheeks, a crack through the temple
+      g.strokeStyle = 'rgba(12,18,28,.8)'; g.lineWidth = u * 0.9; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(X(45.2), Y(26.6)); g.lineTo(X(48.8), Y(27.6)); g.stroke();
+      g.beginPath(); g.moveTo(X(54.8), Y(26.6)); g.lineTo(X(51.2), Y(27.6)); g.stroke();
+      g.fillStyle = 'rgba(20,28,40,.6)';
+      g.beginPath(); g.ellipse(X(46.2), Y(32.2), X(1.1), X(2.2), 0.25, 0, WS.TAU); g.fill();
+      g.beginPath(); g.ellipse(X(53.8), Y(32.2), X(1.1), X(2.2), -0.25, 0, WS.TAU); g.fill();
+      g.strokeStyle = 'rgba(20,28,40,.7)'; g.lineWidth = u * 0.45;
+      g.beginPath(); g.moveTo(X(54.5), Y(22.5)); g.lineTo(X(53.2), Y(24.6)); g.lineTo(X(54), Y(26)); g.stroke();
+      g.fillStyle = '#0c1018';
+      g.beginPath(); g.moveTo(X(50), Y(31)); g.lineTo(X(48.8), Y(33.6)); g.lineTo(X(51.2), Y(33.6)); g.closePath(); g.fill();
+      g.strokeStyle = '#2a3036'; g.lineWidth = u * 0.6;
+      for (let i = -2; i <= 2; i++) {
+        g.beginPath(); g.moveTo(X(50 + i * 1.3), Y(35)); g.lineTo(X(50 + i * 1.3), Y(36.6)); g.stroke();
+      }
+      eyes(g, X(50), Y(29), X(2.7), X(1.15), '#bfeaff');
+      // the beard: icicles hanging from the jaw
+      for (let i = 0; i < 5; i++) {
+        const x = 46.4 + i * 1.8, len = 4 + (i === 2 ? 4 : hash(i + 7) * 3);
+        poly(g, P([[x - 0.8, 36.8], [x + 0.8, 36.8], [x, 36.8 + len]]), ICE_LIT, ICE_SHADE, u * 0.5);
+      }
+
+      // 11. the crown: taller than his head, and lit from inside
+      glowAt(50, 14, 14, 'rgba(160,220,255,.35)');
+      const spikes = [[-9, 7], [-6, 10], [-3, 14], [0, 18], [3, 14], [6, 10], [9, 7]];
+      for (const [dx, h] of spikes) {
+        const x = 50 + dx;
+        poly(g, P([[x - 1.6, 21], [x, 21 - h], [x, 21]]), ICE_LIT, ICE_EDGE, u * 0.6);
+        poly(g, P([[x, 21 - h], [x + 1.6, 21], [x, 21]]), ICE_SHADE, ICE_EDGE, u * 0.6);
+      }
+      poly(g, P([[39.5, 20], [60.5, 20], [59.5, 23.4], [40.5, 23.4]]), ICE_MID, ICE_EDGE, u * 0.7);
+      g.save();
+      g.fillStyle = EMBER; g.shadowColor = EMBER; g.shadowBlur = X(2);
+      g.beginPath(); g.arc(X(50), Y(21.7), X(1.1), 0, WS.TAU); g.fill();
+      g.restore();
+
+      // 12. snow in the air round him
+      g.fillStyle = 'rgba(235,246,255,.85)';
+      for (let i = 0; i < 16; i++) {
+        const side = i % 2 ? 1 : -1;
+        const x = 50 + side * (32 + hash(i + 40) * 14), y = 8 + hash(i + 80) * 60;
+        g.beginPath(); g.arc(X(x), Y(y), X(0.4 + hash(i) * 0.3), 0, WS.TAU); g.fill();
+      }
+    },
+
     /* --- undead ----------------------------------------------------------- */
     skeleton(g, s, p) {
       const cx = s / 2, cy = s * 0.58, u = s / 100;
@@ -14611,6 +14906,26 @@ window.WS = window.WS || {};
       }
       mNoise(b, t + 0.3, { freq: 150, to: 420, decay: 3.0, gain: 0.070,
         filter: 'lowpass', q: 0.7, attack: 1.5 });
+    } },
+    // Someone out on the ridge, working a machine: a slow ratchet and a drip.
+    'pro:thief': { at: 0.12, play(b, t) {
+      for (let i = 0; i < 6; i++) {
+        mNoise(b, t + i * 0.33, { freq: 1900, to: 900, decay: 0.07, gain: 0.050,
+          filter: 'bandpass', q: 2.2 });
+      }
+      mTone(b, t + 0.2, { wave: 'triangle', freq: 311.1, cut: 1200, gain: 0.045,
+        attack: 0.6, decay: 2.8 });
+      chord(b, t + 0.4, 77.78, [0, 6], { wave: 'sawtooth', cut: 380, gain: 0.050,
+        attack: 1.2, decay: 3.4 });
+    } },
+    // The Pale: wind, a glassy high cluster, and the ground dropping a tritone.
+    'pro:pale': { at: 0.08, play(b, t) {
+      mNoise(b, t, { freq: 2600, to: 900, decay: 5.2, gain: 0.050,
+        filter: 'bandpass', q: 1.4, attack: 2.0 });
+      chord(b, t + 0.5, 1244.5, [0, 1, 6], { wave: 'sine', gain: 0.022,
+        attack: 1.6, decay: 4.2 });
+      mTone(b, t + 1.2, { wave: 'sawtooth', freq: 58.27, to: 41.2, slide: 3.0,
+        cut: 260, gain: 0.12, attack: 1.4, decay: 4.4 });
     } },
     // You will not kill your way out of this. Three strikes, and standing.
     'pro:stand': { at: 0.86, play(b, t) {
@@ -20737,7 +21052,7 @@ window.WS = window.WS || {};
           this.nova(F);
           F.grid(F.bounds, 5, 4, 4, T.gridTele, T.gridDamage, 'Glacial spikes');
           WS.Game.announce('The last of the Pale', 'Shatter it. There is nothing after this.', 2.8,
-            { kind: 'dread', art: 'lich', tint: L.template.tint });
+            { kind: 'dread', art: 'marrowfrost_face', tint: L.template.tint });
           WS.FX.screen('rgba(170,220,255,.3)', 0.8);
         }
         if (F.every('cross', dt, 8)) {
@@ -20805,7 +21120,7 @@ window.WS = window.WS || {};
       if (L) {
         F.eruption(L.x, L.y, 200, [0.7, 0.92, 1.0]);
         WS.Game.announce('Marrowfrost, the Pale Lord', 'The dark itself, awake', 4.0,
-          { kind: 'dread', art: 'lich', tint: L.template.tint });
+          { kind: 'dread', art: 'marrowfrost_face', tint: L.template.tint });
         this.shards(F);
       }
       F.say('lord');
@@ -20827,7 +21142,7 @@ window.WS = window.WS || {};
       F.clearAdds();
       F.say('winter');
       WS.Game.announce('The Heart of Winter', 'Break him before the cold does.', 3.4,
-        { kind: 'dread', art: 'lich', tint: L.template.tint });
+        { kind: 'dread', art: 'marrowfrost_face', tint: L.template.tint });
       WS.FX.screen('rgba(170,220,255,.35)', 1.0);
       s.tm = { cross: 1.5, nova: 5, grid: 8, spike: 2.5 };
     },
@@ -22172,6 +22487,217 @@ window.WS = window.WS || {};
     ctx.restore();
   }
 
+  /* ------------------------------------------------------- the villains -- *
+   * The two pictures the prologue grew when it started naming its enemies.
+   * Both are painted over a cut's own night, so the two cuts share them:
+   * `back` goes between the sky and the land, `front` over everything but
+   * the near wood. k runs 0 -> 1 across the scene.
+   *
+   * THE THIEF: out on the far ridge, a drilling rig with a lamp on it, and
+   * the ember coming up out of the ground and into its tank instead of into
+   * anybody's hands. Grimtunnel is never shown full-size here - he is a
+   * lantern-eyed shape beside his machine - because the first boss fight is
+   * where you meet him. */
+  function thiefFront(ctx, t, k) {
+    const bx = W * 0.70, by = GROUND + 30;
+    const h = 230, spread = 70;
+    ctx.save();
+    // the rig: two legs, a crossbar, a wheel turning at the top
+    ctx.strokeStyle = '#05070c'; ctx.fillStyle = '#05070c';
+    ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(bx - spread, by); ctx.lineTo(bx, by - h); ctx.lineTo(bx + spread, by);
+    ctx.moveTo(bx - spread * 0.55, by - h * 0.45); ctx.lineTo(bx + spread * 0.55, by - h * 0.45);
+    ctx.stroke();
+    const wr = 24, wy = by - h - 4, spin = t * 2.4;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(bx, wy, wr, 0, WS.TAU); ctx.stroke();
+    for (let i = 0; i < 4; i++) {
+      const a = spin + i * WS.PI / 2;
+      ctx.beginPath(); ctx.moveTo(bx, wy);
+      ctx.lineTo(bx + WS.cos(a) * wr, wy + WS.sin(a) * wr); ctx.stroke();
+    }
+    // the lamp's light caught on the legs, so the rig is a shape and not a gap
+    const lampLit = 0.55 + 0.25 * WS.sin(t * 5);
+    ctx.strokeStyle = `rgba(255,205,120,${(0.45 * lampLit).toFixed(3)})`; ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(bx + 2, by - h + 4); ctx.lineTo(bx + spread + 2, by);
+    ctx.moveTo(bx - 1, by - h + 4); ctx.lineTo(bx - spread + 3, by);
+    ctx.moveTo(bx - spread * 0.55, by - h * 0.45 - 2.5); ctx.lineTo(bx + spread * 0.55, by - h * 0.45 - 2.5);
+    ctx.stroke();
+    // the drill itself, biting into the ground under the rig
+    const bite = (t * 7) % 1;
+    ctx.strokeStyle = '#05070c'; ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.moveTo(bx, by - h * 0.45); ctx.lineTo(bx, by + 10); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,205,120,.35)'; ctx.lineWidth = 1.5;
+    for (let i = 0; i < 5; i++) {
+      const y = by - h * 0.4 + ((i / 5 + bite) % 1) * h * 0.42;
+      ctx.beginPath(); ctx.moveTo(bx - 3.5, y); ctx.lineTo(bx + 3.5, y + 5); ctx.stroke();
+    }
+    for (let i = 0; i < 7; i++) {                 // sparks where it bites
+      const a = -WS.PI / 2 + (i - 3) * 0.35 + WS.sin(t * 13 + i) * 0.2;
+      const r = 6 + ((t * 40 + i * 7) % 22);
+      ctx.fillStyle = `rgba(255,${190 + i * 8},110,${(1 - r / 28).toFixed(3)})`;
+      ctx.fillRect(bx + WS.cos(a) * r, by + 8 + WS.sin(a) * r * 0.6, 2, 2);
+    }
+    // the tank the light goes into: glass, and filling
+    const tw = 60, th = 54, tx = bx + spread + 18, ty = by - th;
+    const round = (x, y, w, hh, r) => {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + hh - r); ctx.quadraticCurveTo(x + w, y + hh, x + w - r, y + hh);
+      ctx.lineTo(x + r, y + hh); ctx.quadraticCurveTo(x, y + hh, x, y + hh - r);
+      ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+    };
+    ctx.fillStyle = '#070a12'; round(tx - 3, ty - 3, tw + 6, th + 6, 10); ctx.fill();
+    const fill = 0.25 + 0.6 * k;
+    const fh = (th - 8) * fill;
+    ctx.save();
+    round(tx + 3, ty + 3, tw - 6, th - 6, 7); ctx.clip();
+    const lg = ctx.createLinearGradient(0, ty + th - fh, 0, ty + th);
+    lg.addColorStop(0, 'rgba(160,255,190,.85)'); lg.addColorStop(1, 'rgba(60,170,100,.8)');
+    ctx.fillStyle = lg; ctx.fillRect(tx, ty + th - 4 - fh, tw, fh + 4);
+    for (let i = 0; i < 6; i++) {                 // it bubbles
+      const bp = ((t * 0.6) + i / 6) % 1;
+      ctx.fillStyle = `rgba(230,255,235,${(0.7 * (1 - bp)).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(tx + 10 + (i * 9) % (tw - 20), ty + th - 6 - bp * fh, 1.6, 0, WS.TAU); ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.fillRect(tx + 7, ty + 5, 5, th - 12);
+    ctx.restore();
+    const tank = ctx.createRadialGradient(tx + tw / 2, ty + th / 2, 4, tx + tw / 2, ty + th / 2, 70);
+    tank.addColorStop(0, 'rgba(124,240,160,.22)'); tank.addColorStop(1, 'rgba(124,240,160,0)');
+    ctx.fillStyle = tank; ctx.beginPath(); ctx.arc(tx + tw / 2, ty + th / 2, 70, 0, WS.TAU); ctx.fill();
+    // a hose from the rig to the tank
+    ctx.strokeStyle = '#05070c'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(bx + 4, by - h * 0.3);
+    ctx.quadraticCurveTo(bx + spread + 10, by - h * 0.38, tx + tw / 2, ty - 1); ctx.stroke();
+    // the lamp on the rig, which is the only warm thing in the picture
+    const lamp = 0.7 + 0.3 * WS.sin(t * 5);
+    const g = ctx.createRadialGradient(bx, wy, 0, bx, wy, 150);
+    g.addColorStop(0, `rgba(255,211,107,${(0.5 * lamp).toFixed(3)})`);
+    g.addColorStop(1, 'rgba(255,211,107,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(bx, wy, 150, 0, WS.TAU); ctx.fill();
+    ctx.fillStyle = '#ffe0a0';
+    ctx.beginPath(); ctx.arc(bx, wy, 5, 0, WS.TAU); ctx.fill();
+    // and the light it throws down the rig, so the rig reads as a thing
+    ctx.strokeStyle = `rgba(255,211,107,${(0.28 * lamp).toFixed(3)})`; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(bx + 2, wy + wr); ctx.lineTo(bx + spread + 2, by); ctx.stroke();
+    // ember coming up out of the ground and down the pipe into the tank
+    for (let i = 0; i < 34; i++) {
+      const p = ((t * 0.45) + i / 34) % 1;
+      const sx = bx - 330 + (i * 37) % 260, sy = by + 10 + (i % 3) * 10;
+      // into the ground where the drill bites, and up out of it toward the tank
+      const x = sx + (bx - sx) * p;
+      const y = sy + (by + 6 - sy) * p - WS.sin(p * WS.PI) * 24;
+      ctx.globalAlpha = WS.sin(p * WS.PI) * 0.8;
+      ctx.fillStyle = '#7cf0a0';
+      ctx.beginPath(); ctx.arc(x, y, 2.4, 0, WS.TAU); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    // and the one working it: a small shape with a lamp for a face
+    const fx = bx - spread - 44, size = 74;
+    const sil = creatureSil('lampling', size, '#05070c');
+    ctx.drawImage(sil, fx - size / 2, by - size * 0.9, size, size);
+    ctx.fillStyle = `rgba(255,211,107,${(0.7 + 0.3 * WS.sin(t * 3.3)).toFixed(3)})`;
+    ctx.beginPath(); ctx.arc(fx - 6, by - size * 0.55, 2.6, 0, WS.TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(fx + 6, by - size * 0.55, 2.6, 0, WS.TAU); ctx.fill();
+    ctx.restore();
+  }
+
+  /* THE PALE: north, past every range, the cold rises into the sky and there
+   * is a shape in it. Every mote of ember in the land is drifting toward it.
+   * He is never lit - two pale eyes and an outline against an aurora - and he
+   * grows into the frame across the scene, the way something you did not see
+   * at first turns out to have been there the whole time. */
+  let paleCache = null;
+  let paleAt = null;      // where on the screen a point on him is, for the motes
+  function paleBack(ctx, t, k) {
+    ctx.save();
+    // the cold, washing down the sky
+    const wash = ctx.createLinearGradient(0, 0, 0, GROUND);
+    wash.addColorStop(0, `rgba(120,170,230,${(0.04 + 0.05 * k).toFixed(3)})`);
+    wash.addColorStop(1, 'rgba(120,170,230,0)');
+    ctx.fillStyle = wash;
+    ctx.fillRect(0, 0, W, GROUND);
+    // aurora: three slow ribbons
+    for (let r = 0; r < 3; r++) {
+      ctx.beginPath();
+      for (let x = 0; x <= W; x += 20) {
+        const y = 90 + r * 38 + WS.sin(x * 0.004 + t * 0.35 + r * 1.7) * 30
+          + WS.sin(x * 0.011 - t * 0.2 + r) * 10;
+        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = `rgba(150,230,210,${(0.045 + 0.03 * k).toFixed(3)})`;
+      ctx.lineWidth = 26 - r * 6;
+      ctx.stroke();
+    }
+    // him, beyond the ranges: his own figure, deep in shadow, lit from behind
+    // Baked once at full size and drawn scaled: he grows every frame.
+    const size = 380 + 90 * k;
+    if (!paleCache) {
+      const full = WS.Sprites.creature('marrowfrost', [0.62, 0.88, 1.0], 470);
+      const c = document.createElement('canvas');
+      c.width = full.width; c.height = full.height;
+      const cg = c.getContext('2d');
+      cg.drawImage(full, 0, 0);
+      cg.globalCompositeOperation = 'source-atop';
+      const shade = cg.createLinearGradient(0, 0, 0, c.height);
+      shade.addColorStop(0, 'rgba(6,12,26,.62)');
+      shade.addColorStop(1, 'rgba(4,8,16,.9)');
+      cg.fillStyle = shade; cg.fillRect(0, 0, c.width, c.height);
+      paleCache = { img: c };
+    }
+    const cx = W * 0.5, foot = GROUND + 10;
+    const left = cx - size / 2, top = foot - size * 0.94;
+    const at = (ux, uy) => [left + ux / 100 * size, top + uy / 100 * size];
+    paleAt = at;
+    ctx.globalAlpha = 0.35 + 0.6 * k;
+    ctx.drawImage(paleCache.img, left, top, size, size);
+    // what is still lit in the dark: the eyes first, then the stolen light
+    ctx.globalCompositeOperation = 'lighter';
+    const burn = (ux, uy, r, rgb, a) => {
+      const [x, y] = at(ux, uy);
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `rgba(${rgb},${a.toFixed(3)})`);
+      g.addColorStop(1, `rgba(${rgb},0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, WS.TAU); ctx.fill();
+    };
+    const eye = WS.clamp(0.35 + k * 1.2, 0, 1) * (0.8 + 0.2 * WS.sin(t * 1.3));
+    ctx.globalAlpha = 1;
+    burn(50 - 2.7, 29, size * 0.035, '200,236,255', 0.95 * eye);
+    burn(50 + 2.7, 29, size * 0.035, '200,236,255', 0.95 * eye);
+    const hoard = 0.5 + 0.5 * k;
+    burn(50, 49, size * 0.09, '124,240,160', 0.55 * hoard * (0.85 + 0.15 * WS.sin(t * 2.1)));
+    burn(21, 13, size * 0.07, '124,240,160', 0.45 * hoard);
+    burn(50, 21.7, size * 0.04, '124,240,160', 0.45 * hoard);
+    ctx.restore();
+  }
+  function paleFront(ctx, t, k) {
+    ctx.save();
+    // every light in the land, drifting north - into the ember in his chest
+    const [cx, ty] = paleAt ? paleAt(50, 49) : [W * 0.5, GROUND - 200];
+    for (let i = 0; i < 30; i++) {
+      const p = ((t * 0.12) + i / 30) % 1;
+      const sx = (i * 97) % W, sy = GROUND + 30 + (i % 5) * 14;
+      const x = sx + (cx - sx) * p * p;
+      const y = sy + (ty - sy) * p;
+      ctx.globalAlpha = (1 - p) * 0.75 * (0.4 + 0.6 * k);
+      ctx.fillStyle = '#7cf0a0';
+      ctx.beginPath(); ctx.arc(x, y, 1.7, 0, WS.TAU); ctx.fill();
+    }
+    // snow, falling slantwise
+    ctx.fillStyle = '#dfefff';
+    for (let i = 0; i < 70; i++) {
+      const x = ((i * 131 + t * 38) % (W + 40)) - 20;
+      const y = ((i * 71 + t * (26 + (i % 5) * 7)) % (H + 20)) - 10;
+      ctx.globalAlpha = 0.25 + (i % 4) * 0.12;
+      ctx.fillRect(x, y, 2, 2);
+    }
+    ctx.restore();
+  }
+
   /* ---------------------------------------------------------------- API -- */
   const Scene = {
     W, H, GROUND,
@@ -22186,6 +22712,9 @@ window.WS = window.WS || {};
     mist(ctx, t, lift) { ensure(); mist(ctx, t, lift); },
     drift(ctx, t, amount, warm) { ensure(); drift(ctx, t, amount, warm); },
     sunrise(ctx, light) { sunrise(ctx, light); },
+    thief(ctx, t, k) { ensure(); thiefFront(ctx, t, k); },
+    paleBack(ctx, t, k) { ensure(); paleBack(ctx, t, k); },
+    paleFront(ctx, t, k) { ensure(); paleFront(ctx, t, k); },
 
     /* The two tree bands, by lift rather than by colour, so a caller cannot
        put the far wood in front of the near one by getting the palette the
@@ -22560,6 +23089,19 @@ window.WS = window.WS || {};
         ctx.beginPath(); ctx.arc(x + c.s * 0.09, c.y - c.s * 0.30, 1.6, 0, WS.TAU); ctx.fill();
       }
       ctx.restore();
+    },
+
+    thief(ctx, t, k) {
+      sky(ctx, t, 0); ground(ctx, 0); treeline(ctx, 0);
+      WS.Scene.thief(ctx, t, k);
+    },
+
+    pale(ctx, t, k) {
+      sky(ctx, t, 0);
+      WS.Scene.paleBack(ctx, t, k);
+      ground(ctx, 0);
+      WS.Scene.paleFront(ctx, t, k);
+      treeline(ctx, 0);
     },
 
     stand(ctx, t, k) {
@@ -23337,6 +23879,32 @@ window.WS = window.WS || {};
       S.woodNear(ctx, 0);
       S.mist(ctx, t, l);
       S.drift(ctx, t, 0.6, 1);
+    },
+
+    /* Out on the far ridge, someone is taking the light for himself. */
+    thief(ctx, t, k, env) {
+      ensure();
+      const l = lightOf(env, 0);
+      S.sky(ctx, t, l); S.ranges(ctx, l);
+      S.woodFar(ctx, 0);
+      S.ground(ctx, l);
+      S.woodNear(ctx, 0);
+      S.mist(ctx, t, l);
+      S.thief(ctx, t, k);
+    },
+
+    /* And north, in the Pale, the one it all goes back to. */
+    pale(ctx, t, k, env) {
+      ensure();
+      const l = lightOf(env, 0);
+      S.sky(ctx, t, l);
+      S.paleBack(ctx, t, k);
+      S.ranges(ctx, l);
+      S.woodFar(ctx, 0);
+      S.ground(ctx, l);
+      S.paleFront(ctx, t, k);
+      S.woodNear(ctx, 0);
+      S.mist(ctx, t, l);
     },
 
     stand(ctx, t, k, env) {
@@ -25720,6 +26288,14 @@ window.WS = window.WS || {};
   WS.Sprites.define('stormbreaker', portrait('stormbreaker', [0.62, 0.70, 0.82], 0.22, 0.44));
   WS.Sprites.define('heartdrill', portrait('heartdrill', [0.86, 0.52, 0.26], 0.23, 0.56));
   WS.Sprites.define('turret', portrait('turret', [1.0, 0.78, 0.38], 0.3, 0.62));
+  /* Marrowfrost's portrait is his own sprite, cropped to the skull and the
+     crown: the full figure in a dialogue circle is a face three pixels
+     wide, and he is the one speaker whose face has to land. */
+  WS.Sprites.define('marrowfrost_face', function (g, s) {
+    const full = WS.Sprites.creature('marrowfrost', [0.62, 0.88, 1.0], WS.round(s));
+    const z = 2.3;
+    g.drawImage(full, s / 2 - s * z * 0.5, s * 0.50 - s * z * 0.27, s * z, s * z);
+  });
 
   A.machines = M;
   WS.FinaleArt = A;

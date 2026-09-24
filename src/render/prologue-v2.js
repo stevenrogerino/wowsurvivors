@@ -465,6 +465,32 @@
       S.drift(ctx, t, 0.6, 1);
     },
 
+    /* Out on the far ridge, someone is taking the light for himself. */
+    thief(ctx, t, k, env) {
+      ensure();
+      const l = lightOf(env, 0);
+      S.sky(ctx, t, l); S.ranges(ctx, l);
+      S.woodFar(ctx, 0);
+      S.ground(ctx, l);
+      S.woodNear(ctx, 0);
+      S.mist(ctx, t, l);
+      S.thief(ctx, t, k);
+    },
+
+    /* And north, in the Pale, the one it all goes back to. */
+    pale(ctx, t, k, env) {
+      ensure();
+      const l = lightOf(env, 0);
+      S.sky(ctx, t, l);
+      S.paleBack(ctx, t, k);
+      S.ranges(ctx, l);
+      S.woodFar(ctx, 0);
+      S.ground(ctx, l);
+      S.paleFront(ctx, t, k);
+      S.woodNear(ctx, 0);
+      S.mist(ctx, t, l);
+    },
+
     stand(ctx, t, k, env) {
       /* The last scene before dawn, and the light is already on its way: this
          is where the horizon starts to warm, under the ring, while she is

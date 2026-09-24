@@ -272,6 +272,19 @@
       ctx.restore();
     },
 
+    thief(ctx, t, k) {
+      sky(ctx, t, 0); ground(ctx, 0); treeline(ctx, 0);
+      WS.Scene.thief(ctx, t, k);
+    },
+
+    pale(ctx, t, k) {
+      sky(ctx, t, 0);
+      WS.Scene.paleBack(ctx, t, k);
+      ground(ctx, 0);
+      WS.Scene.paleFront(ctx, t, k);
+      treeline(ctx, 0);
+    },
+
     stand(ctx, t, k) {
       sky(ctx, t, 0); ground(ctx, 0); treeline(ctx, 0);
       const cx = W * 0.5, cy = GROUND - 56;

@@ -70,28 +70,50 @@
       begin: 'press any key to begin',
       title: 'The Ember Watch',
       subtitle: 'Thirty minutes until dawn',
+      /* Rewritten once the story had villains in it. The first draft said
+         what ember is and never who wants it, so the piece ended on a
+         mechanic rather than a threat. It still teaches the loop - the dead
+         leave stones, you take the light, the light draws them - and then it
+         names the two things the finales are about: the thief on the ridges
+         who is selling the light (Grimtunnel), and the thing in the Pale
+         that wants all of it back (Marrowfrost) - and only then brings the
+         horde in, as his. "It wants them back" is
+         set up here so that "Tonight I take it back" lands at the end, and
+         so that "the ember was never mine either" can turn it over. */
       scenes: [
-        { beat: 'night', hold: 5.0, lines: [
-          'Every night, the dark comes up out of the ground.'] },
         { beat: 'night', hold: 4.6, lines: [
-          'It has taken every watch before this one.'] },
-        { beat: 'ember', hold: 5.4, lines: [
-          'What holds it back is ember.',
-          'and ember will not burn on its own.'] },
-        { beat: 'ember', hold: 5.0, lines: [
-          'It sleeps in the stones the dead leave behind.'] },
+          'The dark does not fall here.',
+          'It climbs.'] },
+        { beat: 'night', hold: 5.0, lines: [
+          'Up through the furrows and the graves,',
+          'every night, until the morning.'] },
+        { beat: 'ember', hold: 5.8, lines: [
+          'The dead leave a stone behind, with a light still in it.',
+          'We call it ember.'] },
         { beat: 'draw', hold: 5.6, lines: [
-          'Break the stone. Take the light out of it.',
-          'While you carry it, you burn.'] },
-        { beat: 'horde', hold: 5.2, lines: [
-          'They can smell a light from a long way off.'] },
-        { beat: 'stand', hold: 5.4, lines: [
-          'You will not kill your way out of this.',
-          'Nobody ever has.'] },
-        { beat: 'stand', hold: 4.6, lines: [
-          'You will out-burn it, and you will keep moving.'] },
-        { beat: 'dawn', hold: 6.5, lines: [
-          'Hold until the light comes back.'] },
+          'Break the stone. Take the light.',
+          'For as long as you carry it, you burn.'] },
+        { beat: 'thief', hold: 5.8, lines: [
+          'Out on the ridges, someone is digging up the stones',
+          'and selling the light by the pound.'] },
+        { beat: 'pale', hold: 6.0, lines: [
+          'And far to the north, in the Pale,',
+          'something older is counting every light we burn.'] },
+        { beat: 'pale', hold: 5.4, lines: [
+          'Its name is Marrowfrost.',
+          'It wants them back.'] },
+        { beat: 'horde', hold: 5.4, lines: [
+          'Everything that climbs out of the ground is his,',
+          'and every one of them can see you burning.'] },
+        { beat: 'horde', hold: 5.0, lines: [
+          'Every watch before yours carried a light.',
+          'Every light went out.'] },
+        { beat: 'stand', hold: 5.6, lines: [
+          'You will not kill your way to morning.',
+          'You will burn brighter, and you will keep moving.'] },
+        { beat: 'dawn', hold: 6.4, lines: [
+          'Thirty minutes until dawn.',
+          'Hold the line until the light comes back.'] },
         { beat: 'title', hold: 5.0, lines: [] },
       ],
     },

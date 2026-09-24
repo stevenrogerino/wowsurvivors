@@ -1268,6 +1268,14 @@
   WS.Sprites.define('stormbreaker', portrait('stormbreaker', [0.62, 0.70, 0.82], 0.22, 0.44));
   WS.Sprites.define('heartdrill', portrait('heartdrill', [0.86, 0.52, 0.26], 0.23, 0.56));
   WS.Sprites.define('turret', portrait('turret', [1.0, 0.78, 0.38], 0.3, 0.62));
+  /* Marrowfrost's portrait is his own sprite, cropped to the skull and the
+     crown: the full figure in a dialogue circle is a face three pixels
+     wide, and he is the one speaker whose face has to land. */
+  WS.Sprites.define('marrowfrost_face', function (g, s) {
+    const full = WS.Sprites.creature('marrowfrost', [0.62, 0.88, 1.0], WS.round(s));
+    const z = 2.3;
+    g.drawImage(full, s / 2 - s * z * 0.5, s * 0.50 - s * z * 0.27, s * z, s * z);
+  });
 
   A.machines = M;
   WS.FinaleArt = A;

@@ -1216,6 +1216,279 @@
 
     warlock(g, s, p) { CREATURES.necromancer(g, s, p); },
 
+    /* MARROWFROST, THE PALE LORD - the last thing in the story, and the one
+     * creature here drawn to be looked at rather than recognised at 40px.
+     * He used to be the lich with a bigger collar, which is to say a
+     * necromancer in a hat; the villain the whole game points at cannot
+     * share a silhouette with trash.
+     *
+     * Read from the outline in: a mantle that flares wider than anything on
+     * the field, ice pauldrons that break the shoulder line, a crown taller
+     * than his head, a staff that stands above him. Then the story in the
+     * details: a stolen ember caged in ice in his chest, and more of it
+     * trapped in the crystal on his staff - "every night your kind burns MY
+     * ember" is on him before he says it. Fixed colours rather than the
+     * palette, because he is not a tint of anything. Deterministic: this is
+     * baked lazily mid-run, and drawing from WS.random would move the
+     * game's own stream. */
+    marrowfrost(g, s, p) {
+      const u = s / 100;
+      const X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const hash = (n) => { const v = Math.sin(n * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
+      const ICE_LIT = '#e8f7ff', ICE_MID = '#9fd0ee', ICE_SHADE = '#5f9cc6', ICE_EDGE = '#2c5a80';
+      const ROBE_HI = '#2b4266', ROBE = '#18263f', ROBE_LO = '#0a1120';
+      const BONE_HI = '#f1f4f2', BONE = '#c9d2d6', BONE_LO = '#7d8b94';
+      const EMBER = '#7cf0a0';
+
+      /** A crystal in two facets, one turned to the light and one away. */
+      const crystal = (x, y, w, h, rot) => {
+        g.save();
+        g.translate(X(x), Y(y)); g.rotate(rot || 0);
+        const hw = X(w) / 2, hh = Y(h) / 2;
+        poly(g, [[0, -hh], [hw, -hh * 0.15], [0, hh], [0, -hh]], ICE_SHADE, ICE_EDGE, u * 0.7);
+        poly(g, [[0, -hh], [-hw, -hh * 0.15], [0, hh], [0, -hh]], ICE_LIT, ICE_EDGE, u * 0.7);
+        g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = u * 0.6;
+        g.beginPath(); g.moveTo(0, -hh * 0.85); g.lineTo(-hw * 0.45, -hh * 0.1); g.stroke();
+        g.restore();
+      };
+      const glowAt = (x, y, r, rgba) => {
+        g.save();
+        g.globalCompositeOperation = 'lighter';
+        const gr = g.createRadialGradient(X(x), Y(y), 0, X(x), Y(y), X(r));
+        gr.addColorStop(0, rgba); gr.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = gr;
+        g.beginPath(); g.arc(X(x), Y(y), X(r), 0, WS.TAU); g.fill();
+        g.restore();
+      };
+
+      // 1. the cold he stands in
+      glowAt(50, 42, 40, 'rgba(120,190,255,.20)');
+
+      // 2. shards of the Pale, circling behind him
+      crystal(14, 36, 6, 15, -0.35);
+      crystal(86, 36, 6, 15, 0.35);
+      crystal(11, 62, 4.5, 11, -0.6);
+      crystal(89, 62, 4.5, 11, 0.6);
+
+      // 3. the mantle: wider than anything on the field, torn at the hem
+      const hem = [];
+      for (let i = 0; i <= 12; i++) {
+        const x = 9 + i * (82 / 12);
+        hem.push([x, 90 + (i % 2 ? -4 - hash(i) * 4 : 1.5)]);
+      }
+      const mantle = [[34, 30], [66, 30], [80, 52], [91, 90]].concat(hem.reverse(), [[20, 52]]);
+      g.save();
+      const mg = g.createLinearGradient(0, Y(30), 0, Y(92));
+      mg.addColorStop(0, ROBE_HI); mg.addColorStop(0.5, ROBE); mg.addColorStop(1, ROBE_LO);
+      g.beginPath();
+      P(mantle).forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+      g.closePath();
+      g.fillStyle = mg; g.fill();
+      g.clip();
+      // folds falling from the shoulders
+      for (const [x0, x1] of [[36, 16], [41, 28], [59, 72], [64, 84]]) {
+        const fg = g.createLinearGradient(X(x1 - 4), 0, X(x1 + 4), 0);
+        fg.addColorStop(0, 'rgba(0,0,0,.35)'); fg.addColorStop(0.6, 'rgba(160,210,255,.10)');
+        fg.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = fg;
+        g.beginPath(); g.moveTo(X(x0 - 1), Y(32)); g.lineTo(X(x0 + 1), Y(32));
+        g.lineTo(X(x1 + 4), Y(92)); g.lineTo(X(x1 - 4), Y(92)); g.closePath(); g.fill();
+      }
+      // rim light down the lit edge: the aurora is behind him
+      g.strokeStyle = 'rgba(170,225,255,.55)'; g.lineWidth = u * 1.2;
+      g.beginPath(); g.moveTo(X(66), Y(30)); g.lineTo(X(80), Y(52)); g.lineTo(X(91), Y(90)); g.stroke();
+      g.restore();
+      // rime crusted along the torn hem
+      for (let i = 0; i < 14; i++) {
+        const x = 12 + i * 5.6, y = 86 - hash(i + 20) * 3;
+        poly(g, P([[x - 1.4, y + 3], [x, y - 2 - hash(i) * 3], [x + 1.4, y + 3]]),
+          'rgba(210,240,255,.85)', 'rgba(90,150,200,.8)', u * 0.5);
+      }
+
+      // 4. the robe in front, and the runes down it
+      const robe = [[39, 38], [61, 38], [69, 90], [31, 90]];
+      poly(g, P(robe), ROBE, ROBE_LO, u);
+      g.save();
+      g.beginPath(); P(robe).forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+      g.closePath(); g.clip();
+      const pg = g.createLinearGradient(X(44), 0, X(56), 0);
+      pg.addColorStop(0, '#101a2e'); pg.addColorStop(0.5, '#1f3152'); pg.addColorStop(1, '#101a2e');
+      g.fillStyle = pg; g.fillRect(X(44), Y(56), X(12), Y(36));
+      g.strokeStyle = 'rgba(150,225,255,.75)'; g.lineWidth = u * 0.7; g.lineCap = 'round';
+      for (let i = 0; i < 5; i++) {
+        const y = 66 + i * 5;
+        g.beginPath();
+        g.moveTo(X(48), Y(y)); g.lineTo(X(50), Y(y - 2)); g.lineTo(X(52), Y(y));
+        if (i % 2) { g.moveTo(X(50), Y(y - 2)); g.lineTo(X(50), Y(y + 2)); }
+        g.stroke();
+      }
+      g.restore();
+      glowAt(50, 76, 8, 'rgba(120,210,255,.18)');
+
+      // 5. the belt, and a clasp of ice
+      poly(g, P([[38, 60], [62, 60], [63, 64], [37, 64]]), '#0c1424', '#050910', u * 0.8);
+      crystal(50, 62, 4, 6, 0);
+
+      // 6. the stolen ember, caged in ice in his chest
+      glowAt(50, 49, 11, 'rgba(124,240,160,.45)');
+      g.save();
+      g.fillStyle = EMBER; g.shadowColor = EMBER; g.shadowBlur = X(3);
+      g.beginPath();
+      g.moveTo(X(50), Y(45)); g.lineTo(X(53), Y(49)); g.lineTo(X(50), Y(53)); g.lineTo(X(47), Y(49));
+      g.closePath(); g.fill();
+      g.shadowBlur = 0;
+      g.fillStyle = 'rgba(255,255,255,.8)';
+      g.beginPath(); g.arc(X(49.4), Y(48), X(0.9), 0, WS.TAU); g.fill();
+      g.strokeStyle = 'rgba(200,238,255,.9)'; g.lineWidth = u * 0.8;
+      for (const [x0, y0, x1, y1] of [[45, 43, 50, 55], [55, 43, 50, 55], [44, 49, 56, 49], [50, 42, 50, 56]]) {
+        g.beginPath(); g.moveTo(X(x0), Y(y0)); g.lineTo(X(x1), Y(y1)); g.stroke();
+      }
+      g.restore();
+
+      // 7. the staff: black iron, taller than he is, and a crystal full of stolen light
+      g.save();
+      g.lineCap = 'round';
+      g.strokeStyle = '#070b14'; g.lineWidth = u * 3.2;
+      g.beginPath(); g.moveTo(X(21), Y(20)); g.lineTo(X(24), Y(93)); g.stroke();
+      g.strokeStyle = '#3a4a66'; g.lineWidth = u * 1.1;
+      g.beginPath(); g.moveTo(X(20.6), Y(22)); g.lineTo(X(23.4), Y(90)); g.stroke();
+      for (const y of [34, 52, 72]) {
+        g.strokeStyle = '#9fd0ee'; g.lineWidth = u * 1.2;
+        g.beginPath(); g.moveTo(X(19.2), Y(y)); g.lineTo(X(23.8 + (y - 34) * 0.03), Y(y + 1)); g.stroke();
+      }
+      g.restore();
+      // the prongs that hold the crystal
+      g.strokeStyle = '#0a0f1a'; g.lineWidth = u * 1.6; g.lineCap = 'round';
+      for (const d of [-1, 1]) {
+        g.beginPath(); g.moveTo(X(21), Y(21)); g.quadraticCurveTo(X(21 + d * 6), Y(17), X(21 + d * 3.5), Y(9)); g.stroke();
+      }
+      glowAt(21, 13, 11, 'rgba(124,240,160,.40)');
+      crystal(21, 13, 8, 15, 0.08);
+      g.save();
+      g.fillStyle = EMBER; g.shadowColor = EMBER; g.shadowBlur = X(2.5);
+      g.beginPath(); g.arc(X(21), Y(14), X(1.6), 0, WS.TAU); g.fill();
+      g.restore();
+
+      // 8. arms: the near one down the staff, the far one raised and trailing frost
+      poly(g, P([[37, 36], [31, 40], [24, 55], [28, 58], [36, 46]]), ROBE_HI, ROBE_LO, u);
+      poly(g, P([[63, 36], [70, 38], [80, 47], [77, 51], [67, 45]]), ROBE_HI, ROBE_LO, u);
+      // hands of bone
+      g.save();
+      g.strokeStyle = BONE; g.lineCap = 'round'; g.lineWidth = u * 1.3;
+      for (let i = 0; i < 4; i++) {                 // gripping the staff
+        g.beginPath(); g.moveTo(X(26), Y(55 + i * 1.3)); g.lineTo(X(21.5), Y(56.5 + i * 1.3)); g.stroke();
+      }
+      // open and raised: four long jointed fingers, not a glove
+      g.lineWidth = u * 0.75;
+      for (let i = 0; i < 4; i++) {
+        const a = -1.35 + i * 0.3;
+        const k1x = 80 + Math.cos(a) * 3.4, k1y = 48 + Math.sin(a) * 3.4;
+        const a2 = a - 0.35;
+        const tx = k1x + Math.cos(a2) * 3.6, ty = k1y + Math.sin(a2) * 3.6;
+        g.strokeStyle = BONE;
+        g.beginPath(); g.moveTo(X(80), Y(48)); g.lineTo(X(k1x), Y(k1y)); g.lineTo(X(tx), Y(ty)); g.stroke();
+        g.fillStyle = BONE_HI;
+        g.beginPath(); g.arc(X(k1x), Y(k1y), X(0.55), 0, WS.TAU); g.fill();
+      }
+      g.lineWidth = u * 0.9; g.strokeStyle = BONE;
+      g.beginPath(); g.moveTo(X(78), Y(50)); g.lineTo(X(80.5), Y(47.5)); g.stroke();
+      g.restore();
+      // frost wisps off the raised hand
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      g.strokeStyle = 'rgba(170,225,255,.55)'; g.lineWidth = u * 0.9; g.lineCap = 'round';
+      for (let i = 0; i < 3; i++) {
+        g.beginPath(); g.moveTo(X(82 + i), Y(42 - i * 2));
+        g.bezierCurveTo(X(86 + i * 2), Y(36 - i * 3), X(80 + i), Y(32 - i * 2), X(85 + i * 2), Y(26 - i * 3));
+        g.stroke();
+      }
+      g.restore();
+
+      // 9. pauldrons of ice, breaking the shoulder line
+      for (const d of [-1, 1]) {
+        const bx = 50 + d * 15, by = 33;
+        poly(g, P([[bx - 7, by + 4], [bx + 7, by + 4], [bx + d * 9, by - 2], [bx - d * 2, by - 4]]),
+          ICE_MID, ICE_EDGE, u * 0.8);
+        crystal(bx + d * 6, by - 6, 4, 11, d * 0.55);
+        crystal(bx + d * 11, by - 2, 3.5, 9, d * 1.0);
+        crystal(bx + d * 1, by - 7, 3, 8, d * 0.2);
+      }
+
+      // 10. the hood, and the skull in it
+      g.save();
+      const hg = g.createRadialGradient(X(50), Y(26), X(2), X(50), Y(29), X(14));
+      hg.addColorStop(0, '#05080f'); hg.addColorStop(0.7, ROBE); hg.addColorStop(1, ROBE_HI);
+      g.fillStyle = hg;
+      g.beginPath();
+      g.moveTo(X(38), Y(38)); g.quadraticCurveTo(X(37), Y(18), X(50), Y(16));
+      g.quadraticCurveTo(X(63), Y(18), X(62), Y(38)); g.closePath(); g.fill();
+      // rime along the hood's edge
+      g.strokeStyle = 'rgba(190,232,255,.6)'; g.lineWidth = u * 0.8;
+      g.beginPath(); g.moveTo(X(38.6), Y(37)); g.quadraticCurveTo(X(37.8), Y(18.8), X(50), Y(16.8));
+      g.quadraticCurveTo(X(62.2), Y(18.8), X(61.4), Y(37)); g.stroke();
+      g.restore();
+      // the skull: long, narrow at the jaw, and in the hood's shadow
+      g.save();
+      const sg = g.createLinearGradient(0, Y(21), 0, Y(37));
+      sg.addColorStop(0, BONE_HI); sg.addColorStop(0.55, BONE); sg.addColorStop(1, BONE_LO);
+      g.fillStyle = sg;
+      g.beginPath();
+      g.moveTo(X(44), Y(27)); g.quadraticCurveTo(X(44), Y(21), X(50), Y(21));
+      g.quadraticCurveTo(X(56), Y(21), X(56), Y(27));
+      g.quadraticCurveTo(X(56), Y(32), X(53.5), Y(34.5)); g.lineTo(X(52.5), Y(37));
+      g.lineTo(X(47.5), Y(37)); g.lineTo(X(46.5), Y(34.5));
+      g.quadraticCurveTo(X(44), Y(32), X(44), Y(27)); g.closePath(); g.fill();
+      // the hood's shadow across the top of it
+      const hs = g.createLinearGradient(0, Y(21), 0, Y(27));
+      hs.addColorStop(0, 'rgba(5,8,15,.75)'); hs.addColorStop(1, 'rgba(5,8,15,0)');
+      g.fillStyle = hs; g.fillRect(X(43), Y(20), X(14), Y(7));
+      g.restore();
+      // a heavy brow, hollow cheeks, a crack through the temple
+      g.strokeStyle = 'rgba(12,18,28,.8)'; g.lineWidth = u * 0.9; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(X(45.2), Y(26.6)); g.lineTo(X(48.8), Y(27.6)); g.stroke();
+      g.beginPath(); g.moveTo(X(54.8), Y(26.6)); g.lineTo(X(51.2), Y(27.6)); g.stroke();
+      g.fillStyle = 'rgba(20,28,40,.6)';
+      g.beginPath(); g.ellipse(X(46.2), Y(32.2), X(1.1), X(2.2), 0.25, 0, WS.TAU); g.fill();
+      g.beginPath(); g.ellipse(X(53.8), Y(32.2), X(1.1), X(2.2), -0.25, 0, WS.TAU); g.fill();
+      g.strokeStyle = 'rgba(20,28,40,.7)'; g.lineWidth = u * 0.45;
+      g.beginPath(); g.moveTo(X(54.5), Y(22.5)); g.lineTo(X(53.2), Y(24.6)); g.lineTo(X(54), Y(26)); g.stroke();
+      g.fillStyle = '#0c1018';
+      g.beginPath(); g.moveTo(X(50), Y(31)); g.lineTo(X(48.8), Y(33.6)); g.lineTo(X(51.2), Y(33.6)); g.closePath(); g.fill();
+      g.strokeStyle = '#2a3036'; g.lineWidth = u * 0.6;
+      for (let i = -2; i <= 2; i++) {
+        g.beginPath(); g.moveTo(X(50 + i * 1.3), Y(35)); g.lineTo(X(50 + i * 1.3), Y(36.6)); g.stroke();
+      }
+      eyes(g, X(50), Y(29), X(2.7), X(1.15), '#bfeaff');
+      // the beard: icicles hanging from the jaw
+      for (let i = 0; i < 5; i++) {
+        const x = 46.4 + i * 1.8, len = 4 + (i === 2 ? 4 : hash(i + 7) * 3);
+        poly(g, P([[x - 0.8, 36.8], [x + 0.8, 36.8], [x, 36.8 + len]]), ICE_LIT, ICE_SHADE, u * 0.5);
+      }
+
+      // 11. the crown: taller than his head, and lit from inside
+      glowAt(50, 14, 14, 'rgba(160,220,255,.35)');
+      const spikes = [[-9, 7], [-6, 10], [-3, 14], [0, 18], [3, 14], [6, 10], [9, 7]];
+      for (const [dx, h] of spikes) {
+        const x = 50 + dx;
+        poly(g, P([[x - 1.6, 21], [x, 21 - h], [x, 21]]), ICE_LIT, ICE_EDGE, u * 0.6);
+        poly(g, P([[x, 21 - h], [x + 1.6, 21], [x, 21]]), ICE_SHADE, ICE_EDGE, u * 0.6);
+      }
+      poly(g, P([[39.5, 20], [60.5, 20], [59.5, 23.4], [40.5, 23.4]]), ICE_MID, ICE_EDGE, u * 0.7);
+      g.save();
+      g.fillStyle = EMBER; g.shadowColor = EMBER; g.shadowBlur = X(2);
+      g.beginPath(); g.arc(X(50), Y(21.7), X(1.1), 0, WS.TAU); g.fill();
+      g.restore();
+
+      // 12. snow in the air round him
+      g.fillStyle = 'rgba(235,246,255,.85)';
+      for (let i = 0; i < 16; i++) {
+        const side = i % 2 ? 1 : -1;
+        const x = 50 + side * (32 + hash(i + 40) * 14), y = 8 + hash(i + 80) * 60;
+        g.beginPath(); g.arc(X(x), Y(y), X(0.4 + hash(i) * 0.3), 0, WS.TAU); g.fill();
+      }
+    },
+
     /* --- undead ----------------------------------------------------------- */
     skeleton(g, s, p) {
       const cx = s / 2, cy = s * 0.58, u = s / 100;

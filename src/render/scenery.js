@@ -496,6 +496,217 @@
     ctx.restore();
   }
 
+  /* ------------------------------------------------------- the villains -- *
+   * The two pictures the prologue grew when it started naming its enemies.
+   * Both are painted over a cut's own night, so the two cuts share them:
+   * `back` goes between the sky and the land, `front` over everything but
+   * the near wood. k runs 0 -> 1 across the scene.
+   *
+   * THE THIEF: out on the far ridge, a drilling rig with a lamp on it, and
+   * the ember coming up out of the ground and into its tank instead of into
+   * anybody's hands. Grimtunnel is never shown full-size here - he is a
+   * lantern-eyed shape beside his machine - because the first boss fight is
+   * where you meet him. */
+  function thiefFront(ctx, t, k) {
+    const bx = W * 0.70, by = GROUND + 30;
+    const h = 230, spread = 70;
+    ctx.save();
+    // the rig: two legs, a crossbar, a wheel turning at the top
+    ctx.strokeStyle = '#05070c'; ctx.fillStyle = '#05070c';
+    ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(bx - spread, by); ctx.lineTo(bx, by - h); ctx.lineTo(bx + spread, by);
+    ctx.moveTo(bx - spread * 0.55, by - h * 0.45); ctx.lineTo(bx + spread * 0.55, by - h * 0.45);
+    ctx.stroke();
+    const wr = 24, wy = by - h - 4, spin = t * 2.4;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(bx, wy, wr, 0, WS.TAU); ctx.stroke();
+    for (let i = 0; i < 4; i++) {
+      const a = spin + i * WS.PI / 2;
+      ctx.beginPath(); ctx.moveTo(bx, wy);
+      ctx.lineTo(bx + WS.cos(a) * wr, wy + WS.sin(a) * wr); ctx.stroke();
+    }
+    // the lamp's light caught on the legs, so the rig is a shape and not a gap
+    const lampLit = 0.55 + 0.25 * WS.sin(t * 5);
+    ctx.strokeStyle = `rgba(255,205,120,${(0.45 * lampLit).toFixed(3)})`; ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(bx + 2, by - h + 4); ctx.lineTo(bx + spread + 2, by);
+    ctx.moveTo(bx - 1, by - h + 4); ctx.lineTo(bx - spread + 3, by);
+    ctx.moveTo(bx - spread * 0.55, by - h * 0.45 - 2.5); ctx.lineTo(bx + spread * 0.55, by - h * 0.45 - 2.5);
+    ctx.stroke();
+    // the drill itself, biting into the ground under the rig
+    const bite = (t * 7) % 1;
+    ctx.strokeStyle = '#05070c'; ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.moveTo(bx, by - h * 0.45); ctx.lineTo(bx, by + 10); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,205,120,.35)'; ctx.lineWidth = 1.5;
+    for (let i = 0; i < 5; i++) {
+      const y = by - h * 0.4 + ((i / 5 + bite) % 1) * h * 0.42;
+      ctx.beginPath(); ctx.moveTo(bx - 3.5, y); ctx.lineTo(bx + 3.5, y + 5); ctx.stroke();
+    }
+    for (let i = 0; i < 7; i++) {                 // sparks where it bites
+      const a = -WS.PI / 2 + (i - 3) * 0.35 + WS.sin(t * 13 + i) * 0.2;
+      const r = 6 + ((t * 40 + i * 7) % 22);
+      ctx.fillStyle = `rgba(255,${190 + i * 8},110,${(1 - r / 28).toFixed(3)})`;
+      ctx.fillRect(bx + WS.cos(a) * r, by + 8 + WS.sin(a) * r * 0.6, 2, 2);
+    }
+    // the tank the light goes into: glass, and filling
+    const tw = 60, th = 54, tx = bx + spread + 18, ty = by - th;
+    const round = (x, y, w, hh, r) => {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + hh - r); ctx.quadraticCurveTo(x + w, y + hh, x + w - r, y + hh);
+      ctx.lineTo(x + r, y + hh); ctx.quadraticCurveTo(x, y + hh, x, y + hh - r);
+      ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+    };
+    ctx.fillStyle = '#070a12'; round(tx - 3, ty - 3, tw + 6, th + 6, 10); ctx.fill();
+    const fill = 0.25 + 0.6 * k;
+    const fh = (th - 8) * fill;
+    ctx.save();
+    round(tx + 3, ty + 3, tw - 6, th - 6, 7); ctx.clip();
+    const lg = ctx.createLinearGradient(0, ty + th - fh, 0, ty + th);
+    lg.addColorStop(0, 'rgba(160,255,190,.85)'); lg.addColorStop(1, 'rgba(60,170,100,.8)');
+    ctx.fillStyle = lg; ctx.fillRect(tx, ty + th - 4 - fh, tw, fh + 4);
+    for (let i = 0; i < 6; i++) {                 // it bubbles
+      const bp = ((t * 0.6) + i / 6) % 1;
+      ctx.fillStyle = `rgba(230,255,235,${(0.7 * (1 - bp)).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(tx + 10 + (i * 9) % (tw - 20), ty + th - 6 - bp * fh, 1.6, 0, WS.TAU); ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.fillRect(tx + 7, ty + 5, 5, th - 12);
+    ctx.restore();
+    const tank = ctx.createRadialGradient(tx + tw / 2, ty + th / 2, 4, tx + tw / 2, ty + th / 2, 70);
+    tank.addColorStop(0, 'rgba(124,240,160,.22)'); tank.addColorStop(1, 'rgba(124,240,160,0)');
+    ctx.fillStyle = tank; ctx.beginPath(); ctx.arc(tx + tw / 2, ty + th / 2, 70, 0, WS.TAU); ctx.fill();
+    // a hose from the rig to the tank
+    ctx.strokeStyle = '#05070c'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(bx + 4, by - h * 0.3);
+    ctx.quadraticCurveTo(bx + spread + 10, by - h * 0.38, tx + tw / 2, ty - 1); ctx.stroke();
+    // the lamp on the rig, which is the only warm thing in the picture
+    const lamp = 0.7 + 0.3 * WS.sin(t * 5);
+    const g = ctx.createRadialGradient(bx, wy, 0, bx, wy, 150);
+    g.addColorStop(0, `rgba(255,211,107,${(0.5 * lamp).toFixed(3)})`);
+    g.addColorStop(1, 'rgba(255,211,107,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(bx, wy, 150, 0, WS.TAU); ctx.fill();
+    ctx.fillStyle = '#ffe0a0';
+    ctx.beginPath(); ctx.arc(bx, wy, 5, 0, WS.TAU); ctx.fill();
+    // and the light it throws down the rig, so the rig reads as a thing
+    ctx.strokeStyle = `rgba(255,211,107,${(0.28 * lamp).toFixed(3)})`; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(bx + 2, wy + wr); ctx.lineTo(bx + spread + 2, by); ctx.stroke();
+    // ember coming up out of the ground and down the pipe into the tank
+    for (let i = 0; i < 34; i++) {
+      const p = ((t * 0.45) + i / 34) % 1;
+      const sx = bx - 330 + (i * 37) % 260, sy = by + 10 + (i % 3) * 10;
+      // into the ground where the drill bites, and up out of it toward the tank
+      const x = sx + (bx - sx) * p;
+      const y = sy + (by + 6 - sy) * p - WS.sin(p * WS.PI) * 24;
+      ctx.globalAlpha = WS.sin(p * WS.PI) * 0.8;
+      ctx.fillStyle = '#7cf0a0';
+      ctx.beginPath(); ctx.arc(x, y, 2.4, 0, WS.TAU); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    // and the one working it: a small shape with a lamp for a face
+    const fx = bx - spread - 44, size = 74;
+    const sil = creatureSil('lampling', size, '#05070c');
+    ctx.drawImage(sil, fx - size / 2, by - size * 0.9, size, size);
+    ctx.fillStyle = `rgba(255,211,107,${(0.7 + 0.3 * WS.sin(t * 3.3)).toFixed(3)})`;
+    ctx.beginPath(); ctx.arc(fx - 6, by - size * 0.55, 2.6, 0, WS.TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(fx + 6, by - size * 0.55, 2.6, 0, WS.TAU); ctx.fill();
+    ctx.restore();
+  }
+
+  /* THE PALE: north, past every range, the cold rises into the sky and there
+   * is a shape in it. Every mote of ember in the land is drifting toward it.
+   * He is never lit - two pale eyes and an outline against an aurora - and he
+   * grows into the frame across the scene, the way something you did not see
+   * at first turns out to have been there the whole time. */
+  let paleCache = null;
+  let paleAt = null;      // where on the screen a point on him is, for the motes
+  function paleBack(ctx, t, k) {
+    ctx.save();
+    // the cold, washing down the sky
+    const wash = ctx.createLinearGradient(0, 0, 0, GROUND);
+    wash.addColorStop(0, `rgba(120,170,230,${(0.04 + 0.05 * k).toFixed(3)})`);
+    wash.addColorStop(1, 'rgba(120,170,230,0)');
+    ctx.fillStyle = wash;
+    ctx.fillRect(0, 0, W, GROUND);
+    // aurora: three slow ribbons
+    for (let r = 0; r < 3; r++) {
+      ctx.beginPath();
+      for (let x = 0; x <= W; x += 20) {
+        const y = 90 + r * 38 + WS.sin(x * 0.004 + t * 0.35 + r * 1.7) * 30
+          + WS.sin(x * 0.011 - t * 0.2 + r) * 10;
+        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = `rgba(150,230,210,${(0.045 + 0.03 * k).toFixed(3)})`;
+      ctx.lineWidth = 26 - r * 6;
+      ctx.stroke();
+    }
+    // him, beyond the ranges: his own figure, deep in shadow, lit from behind
+    // Baked once at full size and drawn scaled: he grows every frame.
+    const size = 380 + 90 * k;
+    if (!paleCache) {
+      const full = WS.Sprites.creature('marrowfrost', [0.62, 0.88, 1.0], 470);
+      const c = document.createElement('canvas');
+      c.width = full.width; c.height = full.height;
+      const cg = c.getContext('2d');
+      cg.drawImage(full, 0, 0);
+      cg.globalCompositeOperation = 'source-atop';
+      const shade = cg.createLinearGradient(0, 0, 0, c.height);
+      shade.addColorStop(0, 'rgba(6,12,26,.62)');
+      shade.addColorStop(1, 'rgba(4,8,16,.9)');
+      cg.fillStyle = shade; cg.fillRect(0, 0, c.width, c.height);
+      paleCache = { img: c };
+    }
+    const cx = W * 0.5, foot = GROUND + 10;
+    const left = cx - size / 2, top = foot - size * 0.94;
+    const at = (ux, uy) => [left + ux / 100 * size, top + uy / 100 * size];
+    paleAt = at;
+    ctx.globalAlpha = 0.35 + 0.6 * k;
+    ctx.drawImage(paleCache.img, left, top, size, size);
+    // what is still lit in the dark: the eyes first, then the stolen light
+    ctx.globalCompositeOperation = 'lighter';
+    const burn = (ux, uy, r, rgb, a) => {
+      const [x, y] = at(ux, uy);
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `rgba(${rgb},${a.toFixed(3)})`);
+      g.addColorStop(1, `rgba(${rgb},0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, WS.TAU); ctx.fill();
+    };
+    const eye = WS.clamp(0.35 + k * 1.2, 0, 1) * (0.8 + 0.2 * WS.sin(t * 1.3));
+    ctx.globalAlpha = 1;
+    burn(50 - 2.7, 29, size * 0.035, '200,236,255', 0.95 * eye);
+    burn(50 + 2.7, 29, size * 0.035, '200,236,255', 0.95 * eye);
+    const hoard = 0.5 + 0.5 * k;
+    burn(50, 49, size * 0.09, '124,240,160', 0.55 * hoard * (0.85 + 0.15 * WS.sin(t * 2.1)));
+    burn(21, 13, size * 0.07, '124,240,160', 0.45 * hoard);
+    burn(50, 21.7, size * 0.04, '124,240,160', 0.45 * hoard);
+    ctx.restore();
+  }
+  function paleFront(ctx, t, k) {
+    ctx.save();
+    // every light in the land, drifting north - into the ember in his chest
+    const [cx, ty] = paleAt ? paleAt(50, 49) : [W * 0.5, GROUND - 200];
+    for (let i = 0; i < 30; i++) {
+      const p = ((t * 0.12) + i / 30) % 1;
+      const sx = (i * 97) % W, sy = GROUND + 30 + (i % 5) * 14;
+      const x = sx + (cx - sx) * p * p;
+      const y = sy + (ty - sy) * p;
+      ctx.globalAlpha = (1 - p) * 0.75 * (0.4 + 0.6 * k);
+      ctx.fillStyle = '#7cf0a0';
+      ctx.beginPath(); ctx.arc(x, y, 1.7, 0, WS.TAU); ctx.fill();
+    }
+    // snow, falling slantwise
+    ctx.fillStyle = '#dfefff';
+    for (let i = 0; i < 70; i++) {
+      const x = ((i * 131 + t * 38) % (W + 40)) - 20;
+      const y = ((i * 71 + t * (26 + (i % 5) * 7)) % (H + 20)) - 10;
+      ctx.globalAlpha = 0.25 + (i % 4) * 0.12;
+      ctx.fillRect(x, y, 2, 2);
+    }
+    ctx.restore();
+  }
+
   /* ---------------------------------------------------------------- API -- */
   const Scene = {
     W, H, GROUND,
@@ -510,6 +721,9 @@
     mist(ctx, t, lift) { ensure(); mist(ctx, t, lift); },
     drift(ctx, t, amount, warm) { ensure(); drift(ctx, t, amount, warm); },
     sunrise(ctx, light) { sunrise(ctx, light); },
+    thief(ctx, t, k) { ensure(); thiefFront(ctx, t, k); },
+    paleBack(ctx, t, k) { ensure(); paleBack(ctx, t, k); },
+    paleFront(ctx, t, k) { ensure(); paleFront(ctx, t, k); },
 
     /* The two tree bands, by lift rather than by colour, so a caller cannot
        put the far wood in front of the near one by getting the palette the
