@@ -276,3 +276,29 @@ The interface is only half of it; the other half is how the world answers.
   Stormbreaker's zap and stamp, the Heart-Drill, Marrowfrost's ice and winter.
 - **Spells by school.** `cast` takes the weapon's school as a variant, with
   its own throttle per school.
+
+## The notice, the villains, the horde and the ground
+
+- **The notice.** Toasts are small inked cards: the drawn frame, a seal with
+  the news painted in it (`Game.toast(title, body, { kind, art, tint })`),
+  the title in the voice and its own colour, and a wick that burns down for
+  as long as it stays. Kinds: loot, merchant, glory, discovery, warn,
+  watcher, system. Keyed by id, so a new one never restarts the others.
+- **The villains are drawn as themselves** (`src/render/villains.js`, on the
+  house brushes `WS.Sprites.paint` exports): Grimtunnel, the Masked Admiral,
+  Mordecai and Death each have their own painter, the way Marrowfrost
+  always did, plus a `*_face` crop for dialogue portraits and banners.
+  Grimtunnel is the pilot in every cockpit bubble.
+- **Machines have material.** finale-art.js's `seam`, `bolt`, `wear` and
+  `drips` lay engraved plate lines, lit bolts, scratches, soot and runs
+  inside whatever is clipped, so nothing grows a silhouette.
+- **Regalia is plate, not a slab.** Thirteen bosses borrow a mob's body and
+  are told apart by `bossKit`. Elites wear one piece, bosses two.
+- **The horde faces you.** Every profile creature is drawn looking left; the
+  renderer mirrors it when the survivor is to its right.
+- **Faces.** An open-faced survivor has an iris in their own colour, a lid,
+  a catchlight, a half smile. Robed casters have a worked hem.
+- **The ground is made of something.** `map.terrain` (forest, road, grave,
+  crack, ice) picks a painter in renderer.js `TERRAIN`, run once into the
+  ground canvas on its own seed. Dark and light in balance: check-ground
+  pins each map's brightness and everything's visibility is measured on it.
