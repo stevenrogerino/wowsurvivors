@@ -2466,6 +2466,74 @@ body.hud-rail #hud-passives { gap: 9px; }
   .gauge-wrap .lvl { width: 22px; height: 22px; font-size: 12px; bottom: -4px; }
 }
 
+/* ============================================================ THE TIP =====
+ * A small inked card. Its name in its own colour, its rank in italics, what
+ * it does, its figures, and what it works with - each link marked by state:
+ *   ready  lit gold diamond: you can have this now
+ *   part   half-lit: you carry part of it
+ *   need   hollow: something you do not have yet
+ *   done   green: already yours
+ */
+.tip {
+  position: fixed; z-index: 80; pointer-events: none;
+  width: max-content; max-width: 320px;
+  padding: 12px 15px 13px;
+  background: var(--mottle, none) 0 0 / 320px 320px, linear-gradient(180deg, #16151f, #0c0b11);
+  border: 1px solid transparent;
+  border-image: var(--frame-card) 24 / 12px stretch;
+  box-shadow: 0 12px 30px rgba(0,0,0,.65), 0 0 0 1px rgba(0,0,0,.5);
+  color: var(--ink); font-family: var(--ui); font-size: 13px; line-height: 1.45;
+  opacity: 0; translate: 0 3px;
+  transition: opacity .12s var(--ease-out), translate .12s var(--ease-out);
+}
+.tip.hidden { display: none; }
+.tip.shown { opacity: 1; translate: none; }
+@media (prefers-reduced-motion: reduce) { .tip { transition: none; translate: none; } }
+.tip-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.tip-name {
+  font-family: var(--voice); font-weight: 700; font-size: 19px; line-height: 1.15;
+  color: color-mix(in oklab, var(--q, var(--ink)) 70%, #f4ecdc);
+}
+.tip-rank { font-family: var(--voice); font-style: italic; font-size: 14px; color: #bfb29c; white-space: nowrap; }
+.tip-kind { font-family: var(--voice); font-style: italic; font-size: 14px; color: #9d927f; margin-top: 1px; }
+.tip-desc { margin-top: 7px; color: #ddd6c8; }
+.tip-detail { margin-top: 5px; font-size: 12px; color: var(--ink-dim); }
+.tip-stats { display: flex; flex-wrap: wrap; gap: 2px 14px; margin-top: 8px; }
+.tip-stats b { font-family: var(--voice); font-weight: 700; font-size: 15px; font-variant-numeric: lining-nums tabular-nums; color: var(--ink); }
+.tip-stats i { font-family: var(--voice); font-style: italic; font-size: 14px; color: var(--ink-dim); }
+.tip-sec {
+  margin: 11px 0 5px; padding-top: 8px; border-top: 1px dotted rgba(245,226,190,.22);
+  font-family: var(--voice); font-style: italic; font-weight: 700; font-size: 14px; color: var(--arc);
+}
+.tip-link { display: flex; align-items: center; gap: 8px; margin-top: 5px; color: #cfc6b6; }
+.tip-link img { flex: none; border-radius: 1px; }
+.tip-link span { min-width: 0; }
+.tip-link b { font-weight: 700; color: var(--ink); }
+.tip-link em { font-family: var(--voice); font-style: italic; font-size: 14px; color: var(--arc-hot); }
+.tip-link small { display: block; font-size: 11px; color: var(--ink-faint); font-style: italic; margin-top: 1px; }
+.tip-mark {
+  flex: none; width: 7px; height: 7px; transform: rotate(45deg);
+  box-shadow: inset 0 0 0 1px rgba(232,212,176,.55);
+}
+.tip-link.ready .tip-mark { background: var(--arc); box-shadow: 0 0 7px rgba(245,197,107,.8); }
+.tip-link.part .tip-mark { background: linear-gradient(135deg, var(--arc) 50%, transparent 50%); }
+.tip-link.done .tip-mark { background: var(--verdant); box-shadow: none; }
+.tip-link.done { opacity: .75; }
+.tip-link.need { opacity: .8; }
+
+/* The HUD lets pointers through to the field - except over the slots, which
+   answer a hover with their tip. */
+.wslot:not(.empty), .pslot { pointer-events: auto; }
+
+/* The sheet's passives: a compact two-column list under the arsenal. */
+.sheet-passives { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px 14px; margin-top: 6px; }
+.sheet-passive { display: flex; align-items: center; gap: 10px; padding: 3px 0; }
+.sheet-passive img { flex: none; }
+.sheet-passive .sp-name { font-family: var(--voice); font-weight: 700; font-size: 15px; line-height: 1.2; }
+.sheet-passive .sp-rank { font-family: var(--voice); font-style: italic; font-size: 13px; color: var(--ink-dim); }
+.sheet-passive .sp-feeds { font-size: 11px; color: var(--arc); margin-top: 1px; }
+.sheet .row, .sheet-passive { cursor: default; }
+
 </style>
 <div id="stage">
     <canvas id="game-canvas"></canvas>
@@ -19813,6 +19881,34 @@ window.WS = window.WS || {};
   }
   LevelUp.reactionsFor = reactionsFor;
 
+  /* What a PASSIVE reacts with: the weapons it evolves. A passive card said
+   * what it does to your numbers and nothing about the one thing that makes
+   * most of them worth taking - that Ferocity is what turns a rank-8
+   * Knifestorm into Steel Flurry. Weapons you carry come first, and one that
+   * is already at its last rank is the reaction you can have by taking it. */
+  function passiveReactions(p, id, all) {
+    const out = [];
+    const has = (p.upgradeLevels[id] || 0) > 0;
+    for (const wid of WS.WeaponOrder) {
+      const d = WS.Weapons[wid];
+      if (!d || d.evolvePairing !== id) continue;
+      const w = WS.Player.getWeapon(p, wid);
+      if (w && w.evolved) continue;
+      if (w) {
+        const maxed = w.level >= WS.WEAPON_MAX_LEVEL;
+        out.push({ kind: 'evolve', carried: true, ready: maxed && !has, weapon: wid,
+          text: maxed ? (has ? 'Evolving ' : 'Evolves your ') + d.name + ' now - ' + d.evolveName
+            : 'Evolves your ' + d.name + ' at rank ' + WS.WEAPON_MAX_LEVEL + ' - ' + d.evolveName });
+      } else if (all) {
+        out.push({ kind: 'evolve', carried: false, ready: false, weapon: wid,
+          text: 'Evolves ' + d.name + ' - ' + d.evolveName });
+      }
+    }
+    out.sort((a, b) => (b.ready ? 2 : b.carried ? 1 : 0) - (a.ready ? 2 : a.carried ? 1 : 0));
+    return out;
+  }
+  LevelUp.passiveReactions = passiveReactions;
+
   LevelUp.buildChoices = function (p) {
     const candidates = [];
 
@@ -19884,6 +19980,7 @@ window.WS = window.WS || {};
           detail: WS.template(up.detail, up),
           rank: rank + 1, maxRank: up.max,
           note: `Rank ${rank + 1} of ${up.max}`,
+          reacts: passiveReactions(p, id, false).slice(0, 2),
         });
       }
     }
@@ -31408,6 +31505,265 @@ window.WS = window.WS || {};
     return qualityColour('uncommon');
   }
 
+  /* ============================================================ TIPS == */
+  /* Tooltips in the Watch's hand.
+   *
+   * Everything that explained itself on hover did it through the browser's
+   * native title: a grey system box, a second of delay, plain text only, and
+   * nothing at all for a controller. Worse, the HUD lets every pointer through
+   * to the field, so the titles on the weapon slots never showed at all.
+   *
+   * A tip here is a small inked card built on demand from a function, so it
+   * can carry what the title never could: the thing's own colour, its rank,
+   * its numbers, and above all WHAT IT WORKS WITH - the evolution a weapon is
+   * walking toward and how far along it is, the passive that gets it there,
+   * the weapons it makes a discovery with, the union it can become; and for a
+   * passive, the weapons it evolves. It shows on hover and on keyboard or pad
+   * focus, sits where there is room, and never takes a pointer itself.
+   */
+  const Tip = { node: null, anchor: null, timer: 0 };
+
+  function tipNode() {
+    if (!Tip.node) {
+      Tip.node = el('div', 'tip hidden');
+      Tip.node.setAttribute('role', 'tooltip');
+      document.body.append(Tip.node);
+    }
+    return Tip.node;
+  }
+
+  function placeTip(anchor, prefer) {
+    const n = Tip.node, r = anchor.getBoundingClientRect();
+    const w = n.offsetWidth, h = n.offsetHeight, gap = 10, pad = 8;
+    const vw = innerWidth, vh = innerHeight;
+    const spots = {
+      above: [r.left + r.width / 2 - w / 2, r.top - h - gap],
+      below: [r.left + r.width / 2 - w / 2, r.bottom + gap],
+      right: [r.right + gap, r.top + r.height / 2 - h / 2],
+      left: [r.left - w - gap, r.top + r.height / 2 - h / 2],
+    };
+    const fits = ([x, y]) => x >= pad && y >= pad && x + w <= vw - pad && y + h <= vh - pad;
+    let at = null;
+    for (const k of prefer || ['above', 'below', 'right', 'left']) {
+      if (fits(spots[k])) { at = spots[k]; break; }
+    }
+    if (!at) at = spots[(prefer && prefer[0]) || 'above'];
+    const x = WS.clamp(at[0], pad, vw - w - pad), y = WS.clamp(at[1], pad, vh - h - pad);
+    n.style.left = WS.round(x) + 'px';
+    n.style.top = WS.round(y) + 'px';
+  }
+
+  function showTip(anchor, build, prefer) {
+    const n = tipNode();
+    const body = build();
+    if (!body) return;
+    n.replaceChildren(body);
+    n.classList.remove('hidden');
+    Tip.anchor = anchor;
+    placeTip(anchor, prefer);
+    n.classList.add('shown');
+  }
+
+  function hideTip(anchor) {
+    if (anchor && Tip.anchor !== anchor) return;
+    clearTimeout(Tip.timer);
+    Tip.anchor = null;
+    if (Tip.node) { Tip.node.classList.remove('shown'); Tip.node.classList.add('hidden'); }
+  }
+  UI.hideTip = () => hideTip();
+
+  /** Attach a tip to a node. `build` returns the tip's contents, or null. */
+  function tipOn(node, build, opts) {
+    const o = opts || {};
+    node.removeAttribute('title');
+    const open = () => {
+      clearTimeout(Tip.timer);
+      Tip.timer = setTimeout(() => { if (node.isConnected) showTip(node, build, o.prefer); }, o.delay || 90);
+    };
+    node.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') open(); });
+    node.addEventListener('pointerleave', () => hideTip(node));
+    if (o.focus !== false) {
+      node.addEventListener('focus', open);
+      node.addEventListener('blur', () => hideTip(node));
+    }
+    node.addEventListener('pointerdown', () => hideTip(node));
+    return node;
+  }
+  UI.tipOn = tipOn;
+
+  /** A plain sentence, for buttons that used to carry a title. */
+  function tipText(text, heading) {
+    return () => {
+      const b = el('div', 'tip-body');
+      if (heading) b.append(el('div', 'tip-name', heading));
+      b.append(el('div', 'tip-desc', text));
+      return b;
+    };
+  }
+  UI.tipText = tipText;
+
+  /* Anything carrying data-tip gets a plain tip, read when it opens - several
+     of these change their text as the player toggles them. */
+  (function delegate() {
+    const find = (t) => (t && t.closest ? t.closest('[data-tip]') : null);
+    const open = (n) => {
+      clearTimeout(Tip.timer);
+      Tip.timer = setTimeout(() => {
+        if (n.isConnected && n.dataset.tip) showTip(n, tipText(n.dataset.tip), ['above', 'below']);
+      }, 160);
+    };
+    document.addEventListener('pointerover', (e) => {
+      const n = find(e.target);
+      if (n && n !== Tip.anchor && e.pointerType !== 'touch') open(n);
+    });
+    document.addEventListener('pointerout', (e) => {
+      const n = find(e.target);
+      if (n && !n.contains(e.relatedTarget)) hideTip(n);
+    });
+    document.addEventListener('focusin', (e) => { const n = find(e.target); if (n) open(n); });
+    document.addEventListener('focusout', (e) => { const n = find(e.target); if (n) hideTip(n); });
+  })();
+
+  function tipHead(name, colour, rank, kind) {
+    const head = el('div', 'tip-head');
+    const nm = el('div', 'tip-name', name);
+    if (colour) nm.style.setProperty('--q', WS.hex(colour));
+    head.append(nm);
+    if (rank) head.append(el('div', 'tip-rank', rank));
+    const frag = [head];
+    if (kind) frag.push(el('div', 'tip-kind', kind));
+    return frag;
+  }
+
+  /** One line of "works with": a mark for its state, a small icon, words. */
+  function tipLink(state, art, colour, html) {
+    const row = el('div', 'tip-link ' + state);
+    row.append(el('i', 'tip-mark'));
+    if (art) {
+      const im = icon(art, colour, 22);
+      im.width = im.height = 22;
+      row.append(im);
+    }
+    const t = el('span');
+    t.innerHTML = html;
+    row.append(t);
+    return row;
+  }
+  const b = (t) => '<b>' + t + '</b>';
+  const em = (t) => '<em>' + t + '</em>';
+
+  /** Everything a weapon works with, from where this survivor stands now. */
+  function weaponLinks(p, id, level, evolved) {
+    const d = WS.Weapons[id];
+    const out = [];
+    if (!d) return out;
+    // The evolution: rank, the passive, and what it becomes.
+    if (d.evolvePairing && WS.Upgrades[d.evolvePairing] && !evolved) {
+      const up = WS.Upgrades[d.evolvePairing];
+      const has = (p.upgradeLevels[d.evolvePairing] || 0) > 0;
+      const maxed = level >= WS.WEAPON_MAX_LEVEL;
+      const state = has && maxed ? 'ready' : has || maxed ? 'part' : 'need';
+      out.push(tipLink(state, up.art, qualityColour(up.quality),
+        `Rank ${WS.WEAPON_MAX_LEVEL} + ${b(up.name)}${has ? ' (learned)' : ''} → ${em(d.evolveName)}`
+        + (maxed ? '' : `<small>rank ${level || 0} of ${WS.WEAPON_MAX_LEVEL}</small>`)));
+    }
+    // Discoveries: the partner is always named; the result only once found.
+    for (const cid of WS.ComboOrder) {
+      const c = WS.Combos[cid];
+      if (c.weapons.indexOf(id) < 0) continue;
+      const other = c.weapons[0] === id ? c.weapons[1] : c.weapons[0];
+      const od = WS.Weapons[other];
+      if (!od) continue;
+      const found = !!(WS.Save.db.combos && WS.Save.db.combos[cid]);
+      const active = !!(p.combosActive && p.combosActive[cid]);
+      const held = !!WS.Player.getWeapon(p, other);
+      const state = active ? 'done' : held ? 'ready' : 'need';
+      out.push(tipLink(state, od.art, WS.CONST.COLORS[od.school],
+        `With ${b(od.name)} → ${found ? em(c.name) : em('a discovery')}`
+        + (active ? '<small>active</small>' : found ? '' : `<small>${c.hint}</small>`)));
+    }
+    // Unions: both evolved, made one.
+    for (const u of (WS.Unions || [])) {
+      if (u.from.indexOf(id) < 0) continue;
+      const other = u.from[0] === id ? u.from[1] : u.from[0];
+      const od = WS.Weapons[other], res = WS.Weapons[u.result];
+      if (!od || !res) continue;
+      const ow = WS.Player.getWeapon(p, other);
+      const state = evolved && ow && ow.evolved ? 'ready' : ow ? 'part' : 'need';
+      out.push(tipLink(state, od.art, WS.CONST.COLORS[od.school],
+        `Evolved, with ${b(od.name)} evolved → ${em(res.name)}<small>a union</small>`));
+    }
+    return out;
+  }
+
+  /** A weapon's tip: carried (`w`) or on offer (`id`, `level`). */
+  function tipWeapon(p, w, id, level, onlyLinks) {
+    return () => {
+      const wid = w ? w.id : id;
+      const d = WS.Weapons[wid];
+      if (!d) return null;
+      const evolved = !!(w && w.evolved);
+      const lvl = w ? w.level : (level || 1);
+      const body = el('div', 'tip-body');
+      const kind = (d.school ? d.school.charAt(0).toUpperCase() + d.school.slice(1) + ' ' : '')
+        + (d.isUnion ? 'union' : 'weapon');
+      body.append(...tipHead(evolved && d.evolveName ? d.evolveName : d.name, WS.CONST.COLORS[d.school],
+        d.isUnion ? 'Made one' : evolved ? 'Evolved' : `Rank ${lvl} of ${WS.WEAPON_MAX_LEVEL}`, kind));
+      body.append(el('div', 'tip-desc', evolved && d.evolveDescription
+        ? WS.template(d.evolveDescription, d) : WS.template(d.description, d)));
+      if (w) {
+        const stats = el('div', 'tip-stats');
+        for (const [k, v] of WS.Weapon.describe(p, w)) {
+          const s = el('span');
+          s.append(el('b', null, String(v)), el('i', null, ' ' + k.toLowerCase()));
+          stats.append(s);
+        }
+        body.append(stats);
+      }
+      const links = weaponLinks(p, wid, lvl, evolved);
+      if (onlyLinks && !links.length) return null;
+      if (links.length) {
+        body.append(el('div', 'tip-sec', 'Works with'));
+        for (const l of links) body.append(l);
+      }
+      return body;
+    };
+  }
+  UI.tipWeapon = tipWeapon;
+
+  /** A passive's tip: its rank, what it does, and the weapons it evolves. */
+  function tipPassive(p, id, rankShown, onlyLinks) {
+    return () => {
+      const up = WS.Upgrades[id];
+      if (!up) return null;
+      const rank = rankShown || p.upgradeLevels[id] || 0;
+      const body = el('div', 'tip-body');
+      const q = up.quality ? up.quality.charAt(0).toUpperCase() + up.quality.slice(1) + ' passive' : 'Passive';
+      body.append(...tipHead(up.name, qualityColour(up.quality), `Rank ${rank} of ${up.max}`, q));
+      body.append(el('div', 'tip-desc', WS.template(up.description, up)));
+      if (up.detail) body.append(el('div', 'tip-detail', WS.template(up.detail, up)));
+      const evo = [];
+      for (const wid of WS.WeaponOrder) {
+        const d = WS.Weapons[wid];
+        if (!d || d.evolvePairing !== id) continue;
+        const w = WS.Player.getWeapon(p, wid);
+        const state = w && w.evolved ? 'done' : w && w.level >= WS.WEAPON_MAX_LEVEL ? 'ready' : w ? 'part' : 'need';
+        evo.push([state, tipLink(state, d.art, WS.CONST.COLORS[d.school],
+          `${b(d.name)} at rank ${WS.WEAPON_MAX_LEVEL} → ${em(d.evolveName)}`
+          + (w ? (w.evolved ? '<small>evolved</small>' : `<small>carried, rank ${w.level}</small>`) : ''))]);
+      }
+      if (onlyLinks && !evo.length) return null;
+      const order = { ready: 0, part: 1, done: 2, need: 3 };
+      evo.sort((x, y) => order[x[0]] - order[y[0]]);
+      if (evo.length) {
+        body.append(el('div', 'tip-sec', 'Evolves'));
+        for (const [, l] of evo) body.append(l);
+      }
+      return body;
+    };
+  }
+  UI.tipPassive = tipPassive;
+
   function svgArc(radius, stroke, cls) {
     const ns = 'http://www.w3.org/2000/svg';
     const c = document.createElementNS(ns, 'circle');
@@ -31508,7 +31864,7 @@ window.WS = window.WS || {};
     autoBp.type = 'button';
     autoBp.setAttribute('role', 'switch');
     autoBp.append(el('span', 'switch'), el('span', 'hud-auto-label', 'Auto Breaking Point'));
-    autoBp.title = 'Once there is nothing left to choose, take Breaking Point without stopping.';
+    autoBp.dataset.tip = 'Once there is nothing left to choose, take Breaking Point without stopping.';
     // Steering starts on a pointerdown on the stage underneath: keep it there.
     autoBp.addEventListener('pointerdown', (e) => e.stopPropagation());
     autoBp.addEventListener('click', () => {
@@ -31676,10 +32032,11 @@ window.WS = window.WS || {};
         slot.classList.add('ready');
         slot.append(el('div', 'slot-pip'));
       }
-      slot.title = `${w.evolved ? w.data.evolveName : w.data.name}`
+      tipOn(slot, tipWeapon(WS.Game.player, w), { prefer: ['above', 'right'], focus: false });
+      slot.setAttribute('aria-label', `${w.evolved ? w.data.evolveName : w.data.name}`
         + `\n${WS.template(w.data.description, w.data)}`
         + (reacts.length ? '\n\n' + reacts.map((r) => (r.ready ? '\u25c6 ' : '\u25c7 ')
-          + r.text).join('\n') : '');
+          + r.text).join('\n') : ''));
       wrap.append(slot);
       this.els.weaponSlots.set(w.id, { swipe, rank, slot, lastCd: 0, lastA: -1 });
     }
@@ -31701,8 +32058,9 @@ window.WS = window.WS || {};
       const up = WS.Upgrades[id];
       const slot = el('div', 'pslot');
       slot.append(icon(up.art, qualityColour(up.quality), 34), el('div', 'rim'), el('div', 'rank', String(rank)));
-      slot.title = `${up.name} - rank ${rank}/${up.max}`
-        + `\n${WS.template(up.description, up)}`;
+      tipOn(slot, tipPassive(p, id), { prefer: ['above', 'left'], focus: false });
+      slot.setAttribute('aria-label', `${up.name} - rank ${rank}/${up.max}`
+        + `\n${WS.template(up.description, up)}`);
       wrap.append(slot);
     }
   };
@@ -31711,6 +32069,8 @@ window.WS = window.WS || {};
     const game = WS.Game;
     if (!game.player || !game.run) return;
     const p = game.player, run = game.run, e = this.els;
+    // A slot rebuilt under a tip (a rank-up, an evolution) takes the tip with it.
+    if (Tip.anchor && !Tip.anchor.isConnected) hideTip();
 
     const hpPct = WS.clamp(p.health / p.maxHealth, 0, 1);
     e.aHP.style.strokeDashoffset = e.hpCirc * (1 - hpPct);
@@ -31891,6 +32251,7 @@ window.WS = window.WS || {};
   UI._leaveToken = 0;
   UI._leaveTimer = null;
   UI.closeOverlay = function () {
+    hideTip();
     this.banishMode = false;
     this._levelUI = null;
     const o = this.overlay;
@@ -32052,6 +32413,7 @@ window.WS = window.WS || {};
   };
 
   UI.show = function (inner) {
+    hideTip();
     // Any leave still in flight belongs to a screen that is now gone.
     this._leaveToken++;
     if (this._leaveTimer) { clearTimeout(this._leaveTimer); this._leaveTimer = null; }
@@ -32157,7 +32519,20 @@ window.WS = window.WS || {};
       card.append(el('div', 'card-detail', choice.detail));
     }
     if (index !== undefined) card.append(el('div', 'card-key', String(index + 1)));
-    card.addEventListener('click', () => onPick(choice, card));
+    card.addEventListener('click', () => { hideTip(); onPick(choice, card); });
+
+    /* The card shows the two reactions that matter most; the tip shows all
+       of them - every evolution, discovery and union this choice is part of. */
+    const p = WS.Game.player;
+    if (p) {
+      let build = null;
+      // Only when it adds something: a card whose thing works with nothing
+      // would get a tip that repeats the card and covers its neighbour.
+      if (choice.type === 'weapon_rank' || choice.type === 'new_weapon') build = tipWeapon(p, null, choice.id, choice.rank, true);
+      else if (choice.type === 'evolve') build = tipWeapon(p, WS.Player.getWeapon(p, choice.id), null, null, true);
+      else if (choice.type === 'stat') build = tipPassive(p, choice.id, choice.rank, true);
+      if (build) tipOn(card, build, { prefer: ['below', 'above', 'right', 'left'], delay: 260 });
+    }
     return card;
   }
 
@@ -32292,7 +32667,7 @@ window.WS = window.WS || {};
       const map = WS.Maps[id];
       if (map && map.arena) {
         hyper.textContent = 'Hyper: —';
-        hyper.title = map.name + ' runs its own fight, so Hyper has nothing to scale.';
+        hyper.dataset.tip = map.name + ' runs its own fight, so Hyper has nothing to scale.';
         hyper.disabled = true;
         return;
       }
@@ -32301,7 +32676,7 @@ window.WS = window.WS || {};
       hyper.textContent = has
         ? 'Hyper: ' + (WS.Save.db.hyperArmed ? 'ON' : 'off')
         : 'Hyper: win here first';
-      hyper.title = has
+      hyper.dataset.tip = has
         ? 'Enemies and bosses 40% stronger, and waves a third more often.'
         : (map ? `Survive thirty minutes on ${map.name} to open Hyper there.` : '');
     };
@@ -32589,7 +32964,7 @@ window.WS = window.WS || {};
         const buy = el('button', 'btn buy', '');
         buy.append(el('b', null, WS.formatNumber(cost)), el('span', 'g', 'g'));
         buy.disabled = WS.Save.db.gold < cost;
-        buy.title = buy.disabled
+        buy.dataset.tip = buy.disabled
           ? `You have ${WS.formatNumber(WS.Save.db.gold)}g of the ${WS.formatNumber(cost)}g this costs.`
           : `Buy rank ${rank + 1} of ${m.max}.`;
         buy.addEventListener('click', () => {
@@ -32770,8 +33145,18 @@ window.WS = window.WS || {};
       cell.append(el('div', 'beast-name', known ? t.name : '???'));
       cell.append(el('div', 'beast-sub', known ? `${WS.formatNumber(kills)} slain` : kind));
       if (known) {
-        cell.title = `${t.name}\n${kind} · ${t.family} · ${t.health} health · ${t.damage} damage`
-          + `\n${WS.formatNumber(kills)} slain`;
+        tipOn(cell, () => {
+          const bdy = el('div', 'tip-body');
+          bdy.append(...tipHead(t.name, t.tint, WS.formatNumber(kills) + ' slain', `${kind} · ${t.family}`));
+          const st = el('div', 'tip-stats');
+          for (const [v, k] of [[t.health, 'health'], [t.damage, 'damage']]) {
+            const sp = el('span');
+            sp.append(el('b', null, WS.formatNumber(v)), el('i', null, ' ' + k));
+            st.append(sp);
+          }
+          bdy.append(st);
+          return bdy;
+        }, { prefer: ['above', 'below'] });
       }
       grid.append(cell);
     }
@@ -33236,7 +33621,7 @@ window.WS = window.WS || {};
       const bp = choices.find((c) => c.type === 'breaking_point');
       const spent = !!bp && !choices.some((c) => c.type === 'evolve' || c.type === 'union');
       ui.auto.hidden = !spent;
-      ui.auto.title = 'Take Breaking Point now and every level after, '
+      ui.auto.dataset.tip = 'Take Breaking Point now and every level after, '
         + 'without stopping. Turn it off with the switch under your portrait.';
     }
     this._committing = false;
@@ -33362,6 +33747,14 @@ window.WS = window.WS || {};
     return inside;
   }
 
+  /** "Evolves Knifestorm", for a passive in the build sheet - the weapon it
+   *  feeds that this survivor is carrying, if any. */
+  function LevelUpFeeds(p, id) {
+    const r = WS.LevelUp.passiveReactions ? WS.LevelUp.passiveReactions(p, id, false) : [];
+    if (!r.length) return '';
+    return 'evolves ' + r.map((x) => WS.Weapons[x.weapon].name).join(', ');
+  }
+
   function buildSheet() {
     const p = WS.Game.player, run = WS.Game.run;
     const sheet = el('div', 'sheet');
@@ -33386,7 +33779,31 @@ window.WS = window.WS || {};
           `Evolves with ${pair.name}${has ? ' (learned)' : ''} into ${w.data.evolveName}`));
       }
       row.append(main);
+      tipOn(row, tipWeapon(p, w), { prefer: ['right', 'below'], focus: false });
       left.append(row);
+    }
+
+    /* The passives, with what each is for. The sheet used to list the
+       arsenal and nothing else, so the half of a build that decides which
+       weapons evolve was invisible on the one screen made for reading it. */
+    const learned = WS.UpgradeOrder.filter((id) => p.upgradeLevels[id]);
+    if (learned.length) {
+      left.append(el('h3', null, 'Passives'));
+      const grid = el('div', 'sheet-passives');
+      for (const id of learned) {
+        const up = WS.Upgrades[id], r = p.upgradeLevels[id];
+        const item = el('div', 'sheet-passive');
+        const im = icon(up.art, qualityColour(up.quality), 32);
+        im.width = im.height = 32;
+        const t = el('div');
+        t.append(el('div', 'sp-name', up.name), el('div', 'sp-rank', `rank ${r} of ${up.max}`));
+        const feeds = LevelUpFeeds(p, id);
+        if (feeds) t.append(el('div', 'sp-feeds', feeds));
+        item.append(im, t);
+        tipOn(item, tipPassive(p, id), { prefer: ['right', 'below'], focus: false });
+        grid.append(item);
+      }
+      left.append(grid);
     }
 
     const right = panel();
@@ -33573,7 +33990,7 @@ window.WS = window.WS || {};
        were the same game under two labels and a player had to guess what
        the difference was. */
     const stay = el('button', 'btn', 'Stay for Death');
-    stay.title = 'Keep playing past dawn: the horde keeps climbing, bosses return faster '
+    stay.dataset.tip = 'Keep playing past dawn: the horde keeps climbing, bosses return faster '
       + 'and faster, and Death walks on every minute. The win is already banked.';
     stay.addEventListener('click', () => WS.Game.continueEndless());
     s.foot.append(el('div', 'spacer'), stay, claim);

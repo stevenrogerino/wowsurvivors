@@ -94,6 +94,34 @@
   }
   LevelUp.reactionsFor = reactionsFor;
 
+  /* What a PASSIVE reacts with: the weapons it evolves. A passive card said
+   * what it does to your numbers and nothing about the one thing that makes
+   * most of them worth taking - that Ferocity is what turns a rank-8
+   * Knifestorm into Steel Flurry. Weapons you carry come first, and one that
+   * is already at its last rank is the reaction you can have by taking it. */
+  function passiveReactions(p, id, all) {
+    const out = [];
+    const has = (p.upgradeLevels[id] || 0) > 0;
+    for (const wid of WS.WeaponOrder) {
+      const d = WS.Weapons[wid];
+      if (!d || d.evolvePairing !== id) continue;
+      const w = WS.Player.getWeapon(p, wid);
+      if (w && w.evolved) continue;
+      if (w) {
+        const maxed = w.level >= WS.WEAPON_MAX_LEVEL;
+        out.push({ kind: 'evolve', carried: true, ready: maxed && !has, weapon: wid,
+          text: maxed ? (has ? 'Evolving ' : 'Evolves your ') + d.name + ' now - ' + d.evolveName
+            : 'Evolves your ' + d.name + ' at rank ' + WS.WEAPON_MAX_LEVEL + ' - ' + d.evolveName });
+      } else if (all) {
+        out.push({ kind: 'evolve', carried: false, ready: false, weapon: wid,
+          text: 'Evolves ' + d.name + ' - ' + d.evolveName });
+      }
+    }
+    out.sort((a, b) => (b.ready ? 2 : b.carried ? 1 : 0) - (a.ready ? 2 : a.carried ? 1 : 0));
+    return out;
+  }
+  LevelUp.passiveReactions = passiveReactions;
+
   LevelUp.buildChoices = function (p) {
     const candidates = [];
 
@@ -165,6 +193,7 @@
           detail: WS.template(up.detail, up),
           rank: rank + 1, maxRank: up.max,
           note: `Rank ${rank + 1} of ${up.max}`,
+          reacts: passiveReactions(p, id, false).slice(0, 2),
         });
       }
     }

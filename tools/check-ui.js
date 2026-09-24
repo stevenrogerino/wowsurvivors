@@ -230,7 +230,7 @@ const path = require('path');
       const b = find();
       if (!b) { rows.push({ id, missing: true }); continue; }
       const row = { id, said: /\bON\b/.test(b.textContent), label: b.textContent,
-        disabled: b.disabled, tip: b.title };
+        disabled: b.disabled, tip: b.dataset.tip || b.title };
       WS.Game.startRun(id, 'mage');
       row.real = !!WS.Game.run.hyper;
       rows.push(row);

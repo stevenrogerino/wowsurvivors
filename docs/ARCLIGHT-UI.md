@@ -220,3 +220,15 @@ The interface is only half of it; the other half is how the world answers.
   gild once passed, and a sun at the end. The boss bar is a painted stroke in
   a drawn frame with a pale band that holds after a hit and drains to meet the
   health, and a seal on the bar at a finale boss's next phase gate.
+- **Tips.** No native `title` tooltips. A tip is a small inked card built on
+  demand (`tipOn(node, build, opts)` in ui.js; plain sentences use a
+  `data-tip` attribute and one delegated handler). Weapon tips carry the
+  numbers and everything the weapon works with - its evolution (rank, the
+  passive, the result), its discoveries (the partner always named, the result
+  only once found, its hint until then), and its union - each marked ready,
+  partly held, needed or done. Passive tips list the weapons they evolve.
+  They show on the HUD slots (which take a hover; the rest of the HUD still
+  lets pointers through), on level-up cards when there is more to say than
+  the card does, on the pause sheet's arsenal and new passives list, and in
+  the bestiary. Passive level-up cards now say which carried weapon they
+  evolve.

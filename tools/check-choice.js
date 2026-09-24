@@ -409,7 +409,7 @@ const note = [];
     WS.UI.rebuildWeapons();
     const s = [...document.querySelectorAll('.wslot')].slice(0, 2);
     return s.map((x) => ({ pip: !!x.querySelector('.slot-pip'),
-      says: /Ready to evolve/.test(x.title || '') }));
+      says: /Ready to evolve/.test(x.getAttribute('aria-label') || '') }));
   });
   if (!strip[0] || !strip[0].pip || !strip[0].says) {
     fail.push('a weapon at its last rank with its paired passive learned shows nothing on '
