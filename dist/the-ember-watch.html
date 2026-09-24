@@ -4999,6 +4999,7 @@ window.WS = window.WS || {};
 
   WS.Maps = {
     thornhollow: {
+      terrain: 'forest',   // what the ground is made of (renderer.js TERRAIN)
       name: 'Thornhollow',
       subtitle: 'The quiet woods beyond the last inn',
       description: 'Gentle hills, hungry lamplings, and a mongrel problem the town watch keeps ignoring.',
@@ -5031,6 +5032,7 @@ window.WS = window.WS || {};
     },
 
     dustreach: {
+      terrain: 'road',   // what the ground is made of (renderer.js TERRAIN)
       name: 'The Dustreach',
       subtitle: 'A wind-scoured, lawless frontier',
       description: 'The harvest reapers never stopped working. The Kerchiefs never stopped taking.',
@@ -5063,6 +5065,7 @@ window.WS = window.WS || {};
     },
 
     mourneholt: {
+      terrain: 'grave',   // what the ground is made of (renderer.js TERRAIN)
       name: 'Mourneholt',
       subtitle: 'Where the sun is only a rumor',
       description: 'The dead of Gallowmere do not rest, and something worse pads between the blackened trees.',
@@ -5095,6 +5098,7 @@ window.WS = window.WS || {};
     },
 
     ochre: {
+      terrain: 'crack',   // what the ground is made of (renderer.js TERRAIN)
       name: 'The Ochre Plains',
       subtitle: 'Red earth, white sun, no mercy',
       description: 'Everything on this savannah is hungry, armed, or both. The waystation sends its regards.',
@@ -5127,6 +5131,7 @@ window.WS = window.WS || {};
     },
 
     palewastes: {
+      terrain: 'ice',   // what the ground is made of (renderer.js TERRAIN)
       name: 'The Pale Wastes',
       subtitle: 'Under a sky that never thaws',
       description: 'The Pale does not sleep, does not tire, and does not care how many you have already slain.',
@@ -31959,6 +31964,260 @@ window.WS = window.WS || {};
     g.restore();
   }
 
+  /* ------------------------------------------------------------ terrain -- */
+  /* WHAT THE GROUND IS MADE OF.
+   *
+   * Every battlefield was the same ground in a different colour: noise at
+   * five scales, three worn paths and some tufts. That is enough to stop a
+   * field reading as a fill and not enough for it to read as a PLACE - a
+   * forest floor, a road, a graveyard, a baked plain and an ice sheet all
+   * came out as the same speckled carpet. This paints what each one is
+   * actually made of, once, into the ground canvas, so it costs nothing a
+   * frame.
+   *
+   * Two rules from the rest of this file hold here too. Everything is laid
+   * as soft or thin marks at low alpha, because the field is a stage and the
+   * horde has to stand off it. And the dark and the light are kept in
+   * balance, because check-ground pins each map's overall brightness and the
+   * visibility of every creature, survivor and gem is measured against it. */
+  const TERRAIN = {
+    forest(g, c) {
+      // dappled shade: the canopy nobody can see, overhead
+      for (let i = 0; i < 26; i++) {
+        c.blob(g, WS.randRange(0, W), WS.randRange(0, H), WS.randRange(110, 240), c.rgb(c.dark), 0.07, WS.randRange(0.6, 0.9));
+      }
+      for (let i = 0; i < 18; i++) {
+        c.blob(g, WS.randRange(0, W), WS.randRange(0, H), WS.randRange(50, 110), c.rgb(c.light), 0.05, 0.7);
+      }
+      // leaf litter, in the colours of a wood that is turning
+      const LEAF = [[0.42, 0.30, 0.12], [0.36, 0.22, 0.10], [0.30, 0.34, 0.14], [0.46, 0.38, 0.16]];
+      for (let i = 0; i < 1400; i++) {
+        const x = WS.random() * W, y = WS.random() * H, a = WS.random() * WS.PI;
+        g.save(); g.translate(x, y); g.rotate(a);
+        g.globalAlpha = WS.randRange(0.12, 0.3);
+        g.fillStyle = WS.hex(LEAF[WS.randInt(0, LEAF.length - 1)]);
+        g.beginPath(); g.ellipse(0, 0, WS.randRange(2.4, 4.6), WS.randRange(1, 1.8), 0, 0, WS.TAU); g.fill();
+        g.restore();
+      }
+      // fallen logs, mossed over, lying where they came down
+      for (let i = 0; i < 6; i++) {
+        const x = WS.randRange(80, W - 80), y = WS.randRange(60, H - 60), len = WS.randRange(70, 130), a = WS.randRange(-0.6, 0.6), r = WS.randRange(7, 11);
+        g.save(); g.translate(x, y); g.rotate(a);
+        g.globalAlpha = 0.5; g.fillStyle = '#000';
+        g.beginPath(); g.ellipse(4, r * 0.9, len * 0.52, r * 0.7, 0, 0, WS.TAU); g.fill();
+        g.globalAlpha = 0.6;
+        const bark = g.createLinearGradient(0, -r, 0, r);
+        bark.addColorStop(0, '#4a3a28'); bark.addColorStop(0.5, '#2e2216'); bark.addColorStop(1, '#16100a');
+        g.fillStyle = bark;
+        g.beginPath(); g.ellipse(0, 0, len / 2, r, 0, 0, WS.TAU); g.fill();
+        g.strokeStyle = 'rgba(12,8,4,.55)'; g.lineWidth = 1;
+        for (let k = 0; k < 6; k++) {
+          const bx = -len * 0.4 + WS.random() * len * 0.8;
+          g.beginPath(); g.moveTo(bx, -r * 0.8); g.quadraticCurveTo(bx + 4, 0, bx - 2, r * 0.8); g.stroke();
+        }
+        g.fillStyle = '#5a4430'; g.beginPath(); g.ellipse(len / 2, 0, r * 0.35, r * 0.95, 0, 0, WS.TAU); g.fill();
+        g.strokeStyle = 'rgba(30,20,10,.6)';
+        g.beginPath(); g.ellipse(len / 2, 0, r * 0.2, r * 0.55, 0, 0, WS.TAU); g.stroke();
+        g.fillStyle = 'rgba(70,110,40,.55)';
+        for (let k = 0; k < 5; k++) {
+          g.beginPath(); g.ellipse(-len * 0.35 + WS.random() * len * 0.6, -r * 0.5, WS.randRange(4, 10), WS.randRange(2, 4), 0, 0, WS.TAU); g.fill();
+        }
+        g.restore();
+      }
+      // pale caps in clusters at the foot of things
+      for (let i = 0; i < 9; i++) {
+        const x = WS.randRange(60, W - 60), y = WS.randRange(60, H - 60);
+        for (let k = 0; k < WS.randInt(3, 6); k++) {
+          const mx = x + WS.randRange(-9, 9), my = y + WS.randRange(-5, 5);
+          g.globalAlpha = 0.5; g.fillStyle = '#1a140e';
+          g.beginPath(); g.ellipse(mx + 1, my + 1.2, 2.6, 1.2, 0, 0, WS.TAU); g.fill();
+          g.globalAlpha = 0.75; g.fillStyle = '#d8c8a8';
+          g.beginPath(); g.ellipse(mx, my, 2.4, 1.6, 0, WS.PI, WS.TAU); g.fill();
+        }
+      }
+      g.globalAlpha = 1;
+    },
+
+    road(g, c) {
+      // a cart road across the reach: packed earth, two ruts, pebbles at its edges
+      const y0 = WS.randRange(H * 0.25, H * 0.75), bow = WS.randRange(-160, 160);
+      const at = (t) => {
+        const v = 1 - t;
+        return [v * v * -80 + 2 * v * t * (W * 0.5) + t * t * (W + 80),
+          v * v * y0 + 2 * v * t * (y0 + bow) + t * t * (y0 + WS.randRange(-2, 2))];
+      };
+      for (let i = 0; i <= 80; i++) {
+        const [x, y] = at(i / 80);
+        c.blob(g, x, y, 62, c.rgb(WS.shade(c.base, 0.68)), 0.16, 0.55, 0.6);
+      }
+      for (const off of [-16, 16]) {
+        g.save();
+        g.lineCap = 'round';
+        g.strokeStyle = WS.hex(WS.shade(c.base, 0.45)); g.globalAlpha = 0.16; g.lineWidth = 7;
+        g.beginPath();
+        for (let i = 0; i <= 80; i++) { const [x, y] = at(i / 80); if (i) g.lineTo(x, y + off); else g.moveTo(x, y + off); }
+        g.stroke();
+        g.strokeStyle = WS.hex(c.light); g.globalAlpha = 0.07; g.lineWidth = 2.4;
+        g.beginPath();
+        for (let i = 0; i <= 80; i++) { const [x, y] = at(i / 80); if (i) g.lineTo(x, y + off + 3); else g.moveTo(x, y + off + 3); }
+        g.stroke();
+        g.restore();
+      }
+      for (let i = 0; i < 160; i++) {
+        const [x, y] = at(WS.random());
+        const side = WS.random() < 0.5 ? -1 : 1;
+        c.stone(g, x + WS.randRange(-10, 10), y + side * WS.randRange(30, 46), WS.randRange(1.6, 3.6));
+      }
+      // ploughed ground, in patches: furrows running the same way
+      for (let i = 0; i < 5; i++) {
+        const x = WS.randRange(0, W), y = WS.randRange(0, H), w = WS.randRange(160, 300), h = WS.randRange(100, 180), a = WS.randRange(-0.3, 0.3);
+        g.save(); g.translate(x, y); g.rotate(a);
+        g.beginPath(); g.ellipse(0, 0, w / 2, h / 2, 0, 0, WS.TAU); g.clip();
+        for (let fy = -h / 2; fy < h / 2; fy += 9) {
+          const fade = 1 - Math.abs(fy) / (h / 2);
+          g.globalAlpha = 0.2 * fade; g.fillStyle = WS.hex(c.dark); g.fillRect(-w / 2, fy, w, 3.4);
+          g.globalAlpha = 0.1 * fade; g.fillStyle = WS.hex(c.light); g.fillRect(-w / 2, fy + 4, w, 1.4);
+        }
+        g.restore();
+      }
+      // straw blown about
+      g.lineCap = 'round';
+      for (let i = 0; i < 500; i++) {
+        const x = WS.random() * W, y = WS.random() * H, a = WS.random() * WS.PI, l = WS.randRange(3, 7);
+        g.globalAlpha = WS.randRange(0.12, 0.28); g.strokeStyle = '#c9a44a'; g.lineWidth = 1;
+        g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
+      }
+      g.globalAlpha = 1;
+    },
+
+    grave(g, c) {
+      // a flagstone path between the stones, broken and sinking
+      const y0 = WS.randRange(H * 0.2, H * 0.8), bow = WS.randRange(-200, 200);
+      for (let i = 0; i < 52; i++) {
+        const t = i / 52, v = 1 - t;
+        const x = v * v * -40 + 2 * v * t * (W * 0.5) + t * t * (W + 40) + WS.randRange(-8, 8);
+        const y = v * v * y0 + 2 * v * t * (y0 + bow) + t * t * y0 + WS.randRange(-10, 10);
+        if (WS.random() < 0.18) continue;              // a stone gone
+        const w = WS.randRange(18, 30), h = WS.randRange(12, 19), a = WS.randRange(-0.35, 0.35);
+        g.save(); g.translate(x, y); g.rotate(a);
+        g.globalAlpha = 0.5; g.fillStyle = '#000';
+        g.fillRect(-w / 2 + 1.5, -h / 2 + 2, w, h);
+        g.globalAlpha = 0.2; g.fillStyle = WS.hex(WS.mix(c.light, [0.5, 0.52, 0.56], 0.4));
+        g.fillRect(-w / 2, -h / 2, w, h);
+        g.globalAlpha = 0.14; g.fillStyle = '#ffffff'; g.fillRect(-w / 2, -h / 2, w, 1.2);
+        if (WS.random() < 0.4) {
+          g.globalAlpha = 0.5; g.strokeStyle = '#05060a'; g.lineWidth = 0.8;
+          g.beginPath(); g.moveTo(-w * 0.3, -h / 2); g.lineTo(0, 0); g.lineTo(w * 0.1, h / 2); g.stroke();
+        }
+        g.restore();
+      }
+      // sunken plots, in rough rows
+      for (let r = 0; r < 4; r++) {
+        const ry = WS.randRange(0, H), rx0 = WS.randRange(-100, W * 0.4), n = WS.randInt(4, 8);
+        for (let k = 0; k < n; k++) {
+          const x = rx0 + k * WS.randRange(60, 90), y = ry + WS.randRange(-10, 10);
+          g.save(); g.translate(x, y); g.rotate(WS.randRange(-0.08, 0.08));
+          g.globalAlpha = 0.42; g.fillStyle = '#020306';
+          g.beginPath(); g.ellipse(0, 0, 13, 26, 0, 0, WS.TAU); g.fill();
+          g.globalAlpha = 0.18; g.fillStyle = WS.hex(c.light);
+          g.beginPath(); g.ellipse(-2, -3, 10, 20, 0, WS.PI * 1.1, WS.PI * 1.9); g.fill();
+          g.restore();
+        }
+      }
+      // dead leaves, grey and brown
+      for (let i = 0; i < 900; i++) {
+        const x = WS.random() * W, y = WS.random() * H, a = WS.random() * WS.PI;
+        g.save(); g.translate(x, y); g.rotate(a);
+        g.globalAlpha = WS.randRange(0.1, 0.24); g.fillStyle = WS.random() < 0.5 ? '#4a4030' : '#3a3a40';
+        g.beginPath(); g.ellipse(0, 0, 3.4, 1.4, 0, 0, WS.TAU); g.fill();
+        g.restore();
+      }
+      g.globalAlpha = 1;
+    },
+
+    crack(g, c) {
+      // baked mud: patches of it cracked into plates
+      for (let p = 0; p < 9; p++) {
+        const cx = WS.randRange(0, W), cy = WS.randRange(0, H), R = WS.randRange(80, 170);
+        g.save();
+        g.beginPath(); g.ellipse(cx, cy, R, R * 0.7, 0, 0, WS.TAU); g.clip();
+        c.blob(g, cx, cy, R, c.rgb(c.light), 0.06, 0.7);
+        g.lineCap = 'round'; g.lineJoin = 'round';
+        for (let k = 0; k < 16; k++) {
+          let x = cx + WS.randRange(-R, R), y = cy + WS.randRange(-R * 0.7, R * 0.7);
+          let a = WS.random() * WS.TAU;
+          g.beginPath(); g.moveTo(x, y);
+          for (let s = 0; s < 6; s++) {
+            a += WS.randRange(-0.8, 0.8);
+            x += Math.cos(a) * WS.randRange(10, 22); y += Math.sin(a) * WS.randRange(8, 16);
+            g.lineTo(x, y);
+          }
+          g.globalAlpha = 0.36; g.strokeStyle = WS.hex(WS.shade(c.base, 0.4)); g.lineWidth = 2; g.stroke();
+          g.globalAlpha = 0.16; g.strokeStyle = WS.hex(c.light); g.lineWidth = 1;
+          g.translate(0.8, 1.2); g.stroke(); g.translate(-0.8, -1.2);
+        }
+        g.restore();
+      }
+      // wind-rippled sand between them
+      for (let p = 0; p < 10; p++) {
+        const cx = WS.randRange(0, W), cy = WS.randRange(0, H), w = WS.randRange(120, 240);
+        for (let k = 0; k < 7; k++) {
+          const y = cy + k * 7 - 21, fade = 1 - Math.abs(k - 3) / 4;
+          g.globalAlpha = 0.14 * fade; g.strokeStyle = WS.hex(c.dark); g.lineWidth = 1.4;
+          g.beginPath();
+          for (let s = 0; s <= 20; s++) {
+            const x = cx - w / 2 + (w * s) / 20;
+            const yy = y + Math.sin(s * 0.9 + k * 0.6) * 2.4;
+            if (s) g.lineTo(x, yy); else g.moveTo(x, yy);
+          }
+          g.stroke();
+        }
+      }
+      g.globalAlpha = 1;
+    },
+
+    ice(g, c) {
+      // sheets of ice: a smoother, cooler patch with cracks and a sheen across it
+      for (let p = 0; p < 7; p++) {
+        const cx = WS.randRange(0, W), cy = WS.randRange(0, H), R = WS.randRange(70, 150);
+        g.save();
+        const rot = WS.randRange(-0.4, 0.4);
+        g.beginPath();
+        g.ellipse(cx, cy, R, R * 0.62, rot, 0, WS.TAU);
+        g.ellipse(cx + R * 0.5, cy + R * 0.2, R * 0.6, R * 0.4, rot + 0.6, 0, WS.TAU);
+        g.ellipse(cx - R * 0.45, cy + R * 0.15, R * 0.55, R * 0.35, rot - 0.5, 0, WS.TAU);
+        g.globalAlpha = 0.07; g.fillStyle = '#6a8ab0'; g.fill();
+        g.clip();
+        g.lineCap = 'round';
+        for (let k = 0; k < 7; k++) {
+          let x = cx + WS.randRange(-R * 0.6, R * 0.6), y = cy + WS.randRange(-R * 0.3, R * 0.3), a = WS.random() * WS.TAU;
+          g.beginPath(); g.moveTo(x, y);
+          for (let s = 0; s < 5; s++) { a += WS.randRange(-0.6, 0.6); x += Math.cos(a) * 16; y += Math.sin(a) * 10; g.lineTo(x, y); }
+          g.globalAlpha = 0.2; g.strokeStyle = '#c8e4ff'; g.lineWidth = 0.8; g.stroke();
+        }
+        g.globalAlpha = 0.06; g.strokeStyle = '#ffffff'; g.lineWidth = 6;
+        g.beginPath(); g.moveTo(cx - R * 0.5, cy - R * 0.1); g.lineTo(cx + R * 0.2, cy - R * 0.36); g.stroke();
+        g.restore();
+      }
+      // drifts: a soft lit crest with its shadow on the lee side
+      for (let i = 0; i < 16; i++) {
+        const x = WS.randRange(0, W), y = WS.randRange(0, H), w = WS.randRange(40, 100);
+        g.save(); g.translate(x, y); g.rotate(WS.randRange(-0.3, 0.3));
+        g.globalAlpha = 0.1; g.fillStyle = '#050810';
+        g.beginPath(); g.ellipse(0, w * 0.08, w * 0.5, w * 0.2, 0, 0, WS.TAU); g.fill();
+        g.globalAlpha = 0.14; g.fillStyle = '#b8cce6';
+        g.beginPath(); g.ellipse(0, 0, w * 0.5, w * 0.18, 0, WS.PI, WS.TAU); g.fill();
+        g.restore();
+      }
+      // frost glints
+      for (let i = 0; i < 260; i++) {
+        g.globalAlpha = WS.randRange(0.15, 0.4); g.fillStyle = '#dff0ff';
+        g.fillRect(WS.random() * W, WS.random() * H, 1.2, 1.2);
+      }
+      g.globalAlpha = 1;
+    },
+  };
+
   R.buildScenery = function (map) {
     const rgb = (c) => `${WS.floor(c[0] * 255)},${WS.floor(c[1] * 255)},${WS.floor(c[2] * 255)}`;
     const base = map.ground, alt = map.groundAlt || map.ground;
@@ -32101,6 +32360,27 @@ window.WS = window.WS || {};
         g.stroke();
       }
       g.restore();
+    }
+
+    // 5d. What this ground is made of (TERRAIN, above).
+    const paint = TERRAIN[map.terrain];
+    if (paint) {
+      /* On its own seed, and the stream put back after: the props below are
+         placed from the same generator, and a terrain that drew from it
+         would move every tree, stone and bone on the map. */
+      const resume = WS.getSeed();
+      WS.setSeed((h ^ 0x9e3779b9) >>> 0);
+      g.save();
+      paint(g, { blob, rgb, base, alt, dark, light,
+        stone(gc, x, y, r) {
+          gc.globalAlpha = 0.45; gc.fillStyle = '#000';
+          gc.beginPath(); gc.ellipse(x + r * 0.3, y + r * 0.45, r, r * 0.6, 0, 0, WS.TAU); gc.fill();
+          gc.globalAlpha = 0.5; gc.fillStyle = WS.hex(WS.mix(light, [0.55, 0.55, 0.55], 0.3));
+          gc.beginPath(); gc.ellipse(x, y, r, r * 0.7, 0, 0, WS.TAU); gc.fill();
+          gc.globalAlpha = 1;
+        } });
+      g.restore();
+      WS.setSeed(resume);
     }
 
     // 6. A little more light at the top than the bottom, so the field has a

@@ -8,6 +8,7 @@
 
   WS.Maps = {
     thornhollow: {
+      terrain: 'forest',   // what the ground is made of (renderer.js TERRAIN)
       name: 'Thornhollow',
       subtitle: 'The quiet woods beyond the last inn',
       description: 'Gentle hills, hungry lamplings, and a mongrel problem the town watch keeps ignoring.',
@@ -40,6 +41,7 @@
     },
 
     dustreach: {
+      terrain: 'road',   // what the ground is made of (renderer.js TERRAIN)
       name: 'The Dustreach',
       subtitle: 'A wind-scoured, lawless frontier',
       description: 'The harvest reapers never stopped working. The Kerchiefs never stopped taking.',
@@ -72,6 +74,7 @@
     },
 
     mourneholt: {
+      terrain: 'grave',   // what the ground is made of (renderer.js TERRAIN)
       name: 'Mourneholt',
       subtitle: 'Where the sun is only a rumor',
       description: 'The dead of Gallowmere do not rest, and something worse pads between the blackened trees.',
@@ -104,6 +107,7 @@
     },
 
     ochre: {
+      terrain: 'crack',   // what the ground is made of (renderer.js TERRAIN)
       name: 'The Ochre Plains',
       subtitle: 'Red earth, white sun, no mercy',
       description: 'Everything on this savannah is hungry, armed, or both. The waystation sends its regards.',
@@ -136,6 +140,7 @@
     },
 
     palewastes: {
+      terrain: 'ice',   // what the ground is made of (renderer.js TERRAIN)
       name: 'The Pale Wastes',
       subtitle: 'Under a sky that never thaws',
       description: 'The Pale does not sleep, does not tire, and does not care how many you have already slain.',
