@@ -123,6 +123,9 @@
    *  the piece ends - baked here for the same reason the first one is. */
   function warmCast() {
     if (!cast) return;
+    // the lead, bare and earned, at the size the crest draws them
+    WS.Sprites.hero('warrior', [0.96, 0.77, 0.42], 146);
+    WS.Sprites.hero('warrior', [0.96, 0.77, 0.42], 146, false, undefined, null, WS.Hero.maxRank);
     for (const c of cast) {
       const ch = (WS.Characters || {})[c.id];
       if (!ch) continue;
@@ -168,10 +171,34 @@
   /** The survivor this piece is about: always the warrior, always lit by
    *  whatever ember they are carrying. A thin wrapper on Scene.figure, which
    *  the roster and the victory cinematic also draw through. */
-  function watcher(ctx, x, size, carry, t, alpha, backlit) {
+  function watcher(ctx, x, size, carry, t, alpha, backlit, rank) {
     S.figure(ctx, { id: 'warrior', tint: [0.96, 0.77, 0.42],
-      x, size, carry, alpha, backlit: backlit || 0 });
+      x, size, carry, alpha, backlit: backlit || 0, rank: rank || 0 });
     void t;
+  }
+
+  /** The flash into the fully-earned kit, over a figure already drawn.
+   *  Shared by the roster and the lead, so the one in the middle - the
+   *  survivor the whole piece has followed - becomes what they become in the
+   *  same beat as everyone beside them. It used to be the one who did not. */
+  function flashInto(ctx, id, tint, x, top, size, flash) {
+    if (flash <= 0.01) return;
+    const rgb = rgbOf(tint);
+    const maxed = WS.Sprites.hero(id, tint, WS.round(size), false, undefined, null, WS.Hero.maxRank);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const cy = top + size * 0.5;
+    const burst = ctx.createRadialGradient(x, cy, 0, x, cy, size * 0.85);
+    burst.addColorStop(0, `rgba(255,250,235,${(0.42 * flash).toFixed(3)})`);
+    burst.addColorStop(0.5, `rgba(${rgb},${(0.30 * flash).toFixed(3)})`);
+    burst.addColorStop(1, `rgba(${rgb},0)`);
+    ctx.fillStyle = burst;
+    ctx.beginPath(); ctx.arc(x, cy, size * 0.85, 0, WS.TAU); ctx.fill();
+    ctx.restore();
+    ctx.save();
+    ctx.globalAlpha *= flash * 0.95;
+    ctx.drawImage(maxed, x - size / 2, top, size, size);
+    ctx.restore();
   }
 
   /** The gem, drawn the way the field draws it. */
@@ -293,21 +320,7 @@
            and independent of `a`'s own decay so the pulse reads as light
            arriving rather than as the same fade dimmed twice. */
         const flash = WS.sin(WS.PI * WS.clamp((p - 0.78) / 0.22, 0, 1));
-        if (flash > 0.01) {
-          const maxed = WS.Sprites.hero(ch.art || c.id, ch.color, size, false, undefined, null, WS.Hero.maxRank);
-          ctx.save();
-          ctx.globalCompositeOperation = 'lighter';
-          const cy = top + size * 0.5;
-          const burst = ctx.createRadialGradient(c.x, cy, 0, c.x, cy, size * 0.85);
-          burst.addColorStop(0, `rgba(255,250,235,${(0.42 * flash).toFixed(3)})`);
-          burst.addColorStop(0.5, `rgba(${rgb},${(0.30 * flash).toFixed(3)})`);
-          burst.addColorStop(1, `rgba(${rgb},0)`);
-          ctx.fillStyle = burst;
-          ctx.beginPath(); ctx.arc(c.x, cy, size * 0.85, 0, WS.TAU); ctx.fill();
-          ctx.restore();
-          ctx.globalAlpha = flash * 0.95;
-          ctx.drawImage(maxed, c.x - size / 2, top, size, size);
-        }
+        flashInto(ctx, ch.art || c.id, ch.color, c.x, top, size, flash);
       } else {
         /* Still to be earned: the shape and the colour, not the person. Drawn
            in full they would be a promise the save cannot keep. */
@@ -455,7 +468,7 @@
         ctx.drawImage(sprite, x - c.s / 2, c.y - c.s * 0.62, c.s, c.s);
         // eyes, which is all you ever really see of them
         ctx.globalAlpha = 0.45 + 0.55 * WS.sin(t * 2 + c.lag * 6);
-        ctx.fillStyle = '#e2483d';
+        ctx.fillStyle = '#bfeaff';   // his colour: they are his
         ctx.beginPath(); ctx.arc(x - c.s * 0.09, c.y - c.s * 0.30, 1.6, 0, WS.TAU); ctx.fill();
         ctx.beginPath(); ctx.arc(x + c.s * 0.09, c.y - c.s * 0.30, 1.6, 0, WS.TAU); ctx.fill();
       }
@@ -578,8 +591,16 @@
       const out = ease(WS.clamp((crest - 0.78) / 0.22, 0, 1));
       /* Half-dusked, not blacked out. At 0.85 the survivor the whole piece has
          been about arrived at the title as an unreadable dark shape with two
-         glowing eyes, which is what the game's monsters look like. */
-      watcher(ctx, W * 0.5, 140, 0.55, t, 1 - out * 0.85, 0.45);
+         glowing eyes, which is what the game's monsters look like.
+         The same size as in the dawn (it was 140 against 146, so the lead
+         visibly shrank on the cut), and they flash into their earned kit in
+         the same beat as the rank beside them - then KEEP it, because they
+         are the one still standing under the title. */
+      const flash = WS.sin(WS.PI * WS.clamp((crest - 0.78) / 0.22, 0, 1));
+      const earned = crest >= 0.89;
+      watcher(ctx, W * 0.5, 146, 0.55, t, 1 - out * 0.12, 0.45 * (1 - out * 0.6),
+        earned ? WS.Hero.maxRank : 0);
+      flashInto(ctx, 'warrior', [0.96, 0.77, 0.42], W * 0.5, GROUND - 146 + 146 * 0.06, 146, flash);
     },
   };
 

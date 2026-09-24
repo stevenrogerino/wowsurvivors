@@ -77,31 +77,32 @@
          names the two things the finales are about: the thief on the ridges
          who is selling the light (Grimtunnel), and the thing in the Pale
          that wants all of it back (Marrowfrost) - and only then brings the
-         horde in, as his. "It wants them back" is
-         set up here so that "Tonight I take it back" lands at the end, and
-         so that "the ember was never mine either" can turn it over. */
+         horde in, as his. "He wants them back" is
+         set up here so that "Tonight I take it back" lands at the end - and
+         "every light we burn, he CALLS his" is a claim, not a fact, so that
+         "the ember was never mine either" can turn it over. */
       scenes: [
         { beat: 'night', hold: 4.6, lines: [
           'The dark does not fall here.',
           'It climbs.'] },
         { beat: 'night', hold: 5.0, lines: [
-          'Up through the furrows and the graves,',
-          'every night, until the morning.'] },
-        { beat: 'ember', hold: 5.8, lines: [
-          'The dead leave a stone behind, with a light still in it.',
+          'Up through the furrows and the open graves,',
+          'every night, until morning.'] },
+        { beat: 'ember', hold: 5.6, lines: [
+          'The dead leave a stone behind, with light still in it.',
           'We call it ember.'] },
         { beat: 'draw', hold: 5.6, lines: [
-          'Break the stone. Take the light.',
+          'Break the stone and take the light.',
           'For as long as you carry it, you burn.'] },
-        { beat: 'thief', hold: 5.8, lines: [
-          'Out on the ridges, someone is digging up the stones',
-          'and selling the light by the pound.'] },
+        { beat: 'thief', hold: 6.0, lines: [
+          'Out on the ridges, someone is digging up the dead for it',
+          'and selling their light by the pound.'] },
         { beat: 'pale', hold: 6.0, lines: [
           'And far to the north, in the Pale,',
-          'something older is counting every light we burn.'] },
-        { beat: 'pale', hold: 5.4, lines: [
-          'Its name is Marrowfrost.',
-          'It wants them back.'] },
+          'something older than the dark is keeping count.'] },
+        { beat: 'pale', hold: 6.2, lines: [
+          'His name is Marrowfrost. Every light we burn, he calls his.',
+          'He wants them back.'] },
         { beat: 'horde', hold: 5.4, lines: [
           'Everything that climbs out of the ground is his,',
           'and every one of them can see you burning.'] },
@@ -109,9 +110,9 @@
           'Every watch before yours carried a light.',
           'Every light went out.'] },
         { beat: 'stand', hold: 5.6, lines: [
-          'You will not kill your way to morning.',
-          'You will burn brighter, and you will keep moving.'] },
-        { beat: 'dawn', hold: 6.4, lines: [
+          'Nobody kills their way to morning.',
+          'Burn brighter than they can bear, and keep moving.'] },
+        { beat: 'dawn', hold: 7.2, lines: [
           'Thirty minutes until dawn.',
           'Hold the line until the light comes back.'] },
         { beat: 'title', hold: 5.0, lines: [] },

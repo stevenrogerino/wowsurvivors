@@ -1481,25 +1481,35 @@
       mNoise(b, t + 0.3, { freq: 150, to: 420, decay: 3.0, gain: 0.070,
         filter: 'lowpass', q: 0.7, attack: 1.5 });
     } },
-    // Someone out on the ridge, working a machine: a slow ratchet and a drip.
+    // Grave-robbing on the ridge: a ratchet, metal grinding on stone, and a
+    // drone a tritone wide under all of it.
     'pro:thief': { at: 0.12, play(b, t) {
-      for (let i = 0; i < 6; i++) {
-        mNoise(b, t + i * 0.33, { freq: 1900, to: 900, decay: 0.07, gain: 0.050,
-          filter: 'bandpass', q: 2.2 });
+      for (let i = 0; i < 8; i++) {
+        mNoise(b, t + i * 0.3, { freq: 2100, to: 800, decay: 0.08, gain: 0.052,
+          filter: 'bandpass', q: 2.4 });
       }
-      mTone(b, t + 0.2, { wave: 'triangle', freq: 311.1, cut: 1200, gain: 0.045,
-        attack: 0.6, decay: 2.8 });
-      chord(b, t + 0.4, 77.78, [0, 6], { wave: 'sawtooth', cut: 380, gain: 0.050,
-        attack: 1.2, decay: 3.4 });
+      mNoise(b, t + 0.4, { freq: 600, to: 2400, decay: 2.6, gain: 0.040,
+        filter: 'bandpass', q: 6.0, attack: 0.8 });
+      chord(b, t + 0.3, 69.3, [0, 6, 13], { wave: 'sawtooth', cut: 420, gain: 0.052,
+        attack: 1.4, decay: 3.8, detune: 9 });
     } },
-    // The Pale: wind, a glassy high cluster, and the ground dropping a tritone.
+    /* His name. Wind, a glassy cluster sinking out of tune, the ground
+       dropping a tritone - and a heartbeat under it, two beats and a rest,
+       in step with the frame's own. */
     'pro:pale': { at: 0.08, play(b, t) {
-      mNoise(b, t, { freq: 2600, to: 900, decay: 5.2, gain: 0.050,
+      mNoise(b, t, { freq: 2600, to: 700, decay: 5.6, gain: 0.052,
         filter: 'bandpass', q: 1.4, attack: 2.0 });
-      chord(b, t + 0.5, 1244.5, [0, 1, 6], { wave: 'sine', gain: 0.022,
-        attack: 1.6, decay: 4.2 });
+      for (const [iv, d] of [[0, -9], [1, 7], [6, -4]]) {
+        mTone(b, t + 0.5, { wave: 'sawtooth', freq: semitone(622.3, iv), to: semitone(587.3, iv),
+          slide: 4.0, detune: d, cut: 1800, gain: 0.020, attack: 1.8, decay: 4.2 });
+      }
       mTone(b, t + 1.2, { wave: 'sawtooth', freq: 58.27, to: 41.2, slide: 3.0,
         cut: 260, gain: 0.12, attack: 1.4, decay: 4.4 });
+      for (let i = 0; i < 4; i++) {
+        const at = t + 0.6 + i * (1 / 0.9);
+        mTone(b, at, { wave: 'sine', freq: 62, to: 38, decay: 0.28, gain: 0.20, attack: 0.005 });
+        mTone(b, at + 0.19, { wave: 'sine', freq: 56, to: 36, decay: 0.24, gain: 0.14, attack: 0.005 });
+      }
     } },
     // You will not kill your way out of this. Three strikes, and standing.
     'pro:stand': { at: 0.86, play(b, t) {

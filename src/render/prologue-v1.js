@@ -265,7 +265,7 @@
         ctx.drawImage(sprite, x - c.s / 2, c.y - c.s * 0.62, c.s, c.s);
         // eyes, which is all you ever really see of them
         ctx.globalAlpha = 0.5 + 0.5 * WS.sin(t * 2 + c.lag * 6);
-        ctx.fillStyle = '#e2483d';
+        ctx.fillStyle = '#bfeaff';   // his colour: they are his
         ctx.beginPath(); ctx.arc(x - c.s * 0.09, c.y - c.s * 0.30, 1.6, 0, WS.TAU); ctx.fill();
         ctx.beginPath(); ctx.arc(x + c.s * 0.09, c.y - c.s * 0.30, 1.6, 0, WS.TAU); ctx.fill();
       }

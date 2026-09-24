@@ -511,9 +511,66 @@
     const bx = W * 0.70, by = GROUND + 30;
     const h = 230, spread = 70;
     ctx.save();
+    /* The sky over the dig is the wrong colour: a sick red haze under the
+       lamp, and smoke going up out of it into the stars. */
+    const haze = ctx.createRadialGradient(bx, by - h * 0.6, 20, bx, by - h * 0.6, 420);
+    haze.addColorStop(0, `rgba(150,40,20,${(0.18 + 0.10 * k).toFixed(3)})`);
+    haze.addColorStop(1, 'rgba(150,40,20,0)');
+    ctx.fillStyle = haze;
+    ctx.beginPath(); ctx.arc(bx, by - h * 0.6, 420, 0, WS.TAU); ctx.fill();
+    for (let i = 0; i < 9; i++) {
+      const p = ((t * 0.06) + i / 9) % 1;
+      const x = bx + 10 + p * 160 + WS.sin(t * 0.5 + i) * 14;
+      const y = by - h - 10 - p * 260;
+      ctx.globalAlpha = (1 - p) * 0.55;
+      ctx.fillStyle = '#0b0a0d';
+      ctx.beginPath(); ctx.arc(x, y, 18 + p * 46, 0, WS.TAU); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    /* THE GRAVES. What he is digging up is the dead: a row of headstones on
+       the ridge, split and toppled, each with its light being dragged out of
+       it in a thin green thread toward the drill. */
+    const stones = [[-330, 0.00, 1], [-268, -0.30, 0], [-205, 0.22, 1], [-150, -0.08, 0], [-392, 0.55, 0]];
+    for (let i = 0; i < stones.length; i++) {
+      const [dx, tilt, split] = stones[i];
+      const sx = bx + dx, sy = by + 6;
+      ctx.save();
+      ctx.translate(sx, sy); ctx.rotate(tilt);
+      ctx.fillStyle = '#0a0c12';
+      ctx.beginPath();
+      ctx.moveTo(-11, 0); ctx.lineTo(-11, -26); ctx.quadraticCurveTo(0, -38, 11, -26);
+      ctx.lineTo(11, 0); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(160,150,140,.18)'; ctx.lineWidth = 1.2; ctx.stroke();
+      if (split) {                                  // cracked open
+        ctx.strokeStyle = 'rgba(124,240,160,.55)'; ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.moveTo(-2, -33); ctx.lineTo(3, -22); ctx.lineTo(-3, -12); ctx.lineTo(2, 0); ctx.stroke();
+      }
+      ctx.restore();
+      // the grave's light, pulled out of it and down the ridge into the drill
+      const gx = sx, gy = sy - 14;
+      ctx.strokeStyle = `rgba(124,240,160,${(0.10 + 0.12 * k).toFixed(3)})`; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(gx, gy);
+      ctx.quadraticCurveTo((gx + bx) / 2, gy - 40 - i * 8, bx, by + 4); ctx.stroke();
+      for (let j = 0; j < 5; j++) {
+        const q = ((t * 0.35) + j / 5 + i * 0.13) % 1;
+        const mx = gx + (bx - gx) * q;
+        const my = gy + (by + 4 - gy) * q - WS.sin(q * WS.PI) * (40 + i * 8) * (1 - Math.abs(q - 0.5));
+        ctx.globalAlpha = WS.sin(q * WS.PI) * 0.9;
+        ctx.fillStyle = '#9dffbe';
+        ctx.beginPath(); ctx.arc(mx, my, 2.2, 0, WS.TAU); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      // and a grave-glow where it is coming from, going out as it drains
+      const gg = ctx.createRadialGradient(gx, gy, 0, gx, gy, 26);
+      gg.addColorStop(0, `rgba(124,240,160,${(0.30 * (1 - k * 0.6)).toFixed(3)})`);
+      gg.addColorStop(1, 'rgba(124,240,160,0)');
+      ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(gx, gy, 26, 0, WS.TAU); ctx.fill();
+    }
+
     // the rig: two legs, a crossbar, a wheel turning at the top
     ctx.strokeStyle = '#05070c'; ctx.fillStyle = '#05070c';
-    ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.lineWidth = 6; ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(bx - spread, by); ctx.lineTo(bx, by - h); ctx.lineTo(bx + spread, by);
     ctx.moveTo(bx - spread * 0.55, by - h * 0.45); ctx.lineTo(bx + spread * 0.55, by - h * 0.45);
@@ -521,32 +578,49 @@
     const wr = 24, wy = by - h - 4, spin = t * 2.4;
     ctx.lineWidth = 3;
     ctx.beginPath(); ctx.arc(bx, wy, wr, 0, WS.TAU); ctx.stroke();
-    for (let i = 0; i < 4; i++) {
-      const a = spin + i * WS.PI / 2;
+    for (let i = 0; i < 6; i++) {
+      const a = spin + i * WS.PI / 3;
       ctx.beginPath(); ctx.moveTo(bx, wy);
       ctx.lineTo(bx + WS.cos(a) * wr, wy + WS.sin(a) * wr); ctx.stroke();
+      // teeth on the wheel
+      ctx.beginPath();
+      ctx.moveTo(bx + WS.cos(a) * wr, wy + WS.sin(a) * wr);
+      ctx.lineTo(bx + WS.cos(a + 0.12) * (wr + 7), wy + WS.sin(a + 0.12) * (wr + 7)); ctx.stroke();
+    }
+    // trophies: cages of stolen ember hung off the crossbar on chains
+    for (const [cx0, drop] of [[-0.42, 36], [0.38, 52]]) {
+      const cx1 = bx + cx0 * spread, cy0 = by - h * 0.45;
+      const sway = WS.sin(t * 1.3 + cx0 * 7) * 4;
+      ctx.strokeStyle = '#05070c'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(cx1, cy0); ctx.lineTo(cx1 + sway, cy0 + drop); ctx.stroke();
+      const cg = ctx.createRadialGradient(cx1 + sway, cy0 + drop + 9, 0, cx1 + sway, cy0 + drop + 9, 22);
+      cg.addColorStop(0, 'rgba(124,240,160,.55)'); cg.addColorStop(1, 'rgba(124,240,160,0)');
+      ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(cx1 + sway, cy0 + drop + 9, 22, 0, WS.TAU); ctx.fill();
+      ctx.strokeStyle = '#05070c'; ctx.lineWidth = 1.6;
+      ctx.strokeRect(cx1 + sway - 6, cy0 + drop, 12, 18);
+      ctx.beginPath(); ctx.moveTo(cx1 + sway, cy0 + drop); ctx.lineTo(cx1 + sway, cy0 + drop + 18); ctx.stroke();
     }
     // the lamp's light caught on the legs, so the rig is a shape and not a gap
     const lampLit = 0.55 + 0.25 * WS.sin(t * 5);
-    ctx.strokeStyle = `rgba(255,205,120,${(0.45 * lampLit).toFixed(3)})`; ctx.lineWidth = 1.6;
+    ctx.strokeStyle = `rgba(255,150,80,${(0.5 * lampLit).toFixed(3)})`; ctx.lineWidth = 1.6;
     ctx.beginPath();
     ctx.moveTo(bx + 2, by - h + 4); ctx.lineTo(bx + spread + 2, by);
     ctx.moveTo(bx - 1, by - h + 4); ctx.lineTo(bx - spread + 3, by);
-    ctx.moveTo(bx - spread * 0.55, by - h * 0.45 - 2.5); ctx.lineTo(bx + spread * 0.55, by - h * 0.45 - 2.5);
+    ctx.moveTo(bx - spread * 0.55, by - h * 0.45 - 3); ctx.lineTo(bx + spread * 0.55, by - h * 0.45 - 3);
     ctx.stroke();
     // the drill itself, biting into the ground under the rig
     const bite = (t * 7) % 1;
-    ctx.strokeStyle = '#05070c'; ctx.lineWidth = 7;
-    ctx.beginPath(); ctx.moveTo(bx, by - h * 0.45); ctx.lineTo(bx, by + 10); ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,205,120,.35)'; ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#05070c'; ctx.lineWidth = 8;
+    ctx.beginPath(); ctx.moveTo(bx, by - h * 0.45); ctx.lineTo(bx, by + 12); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,150,80,.4)'; ctx.lineWidth = 1.5;
     for (let i = 0; i < 5; i++) {
       const y = by - h * 0.4 + ((i / 5 + bite) % 1) * h * 0.42;
-      ctx.beginPath(); ctx.moveTo(bx - 3.5, y); ctx.lineTo(bx + 3.5, y + 5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx - 4, y); ctx.lineTo(bx + 4, y + 5); ctx.stroke();
     }
-    for (let i = 0; i < 7; i++) {                 // sparks where it bites
-      const a = -WS.PI / 2 + (i - 3) * 0.35 + WS.sin(t * 13 + i) * 0.2;
-      const r = 6 + ((t * 40 + i * 7) % 22);
-      ctx.fillStyle = `rgba(255,${190 + i * 8},110,${(1 - r / 28).toFixed(3)})`;
+    for (let i = 0; i < 9; i++) {                 // sparks where it bites
+      const a = -WS.PI / 2 + (i - 4) * 0.33 + WS.sin(t * 13 + i) * 0.2;
+      const r = 6 + ((t * 40 + i * 7) % 26);
+      ctx.fillStyle = `rgba(255,${150 + i * 10},90,${(1 - r / 32).toFixed(3)})`;
       ctx.fillRect(bx + WS.cos(a) * r, by + 8 + WS.sin(a) * r * 0.6, 2, 2);
     }
     // the tank the light goes into: glass, and filling
@@ -576,41 +650,34 @@
     const tank = ctx.createRadialGradient(tx + tw / 2, ty + th / 2, 4, tx + tw / 2, ty + th / 2, 70);
     tank.addColorStop(0, 'rgba(124,240,160,.22)'); tank.addColorStop(1, 'rgba(124,240,160,0)');
     ctx.fillStyle = tank; ctx.beginPath(); ctx.arc(tx + tw / 2, ty + th / 2, 70, 0, WS.TAU); ctx.fill();
-    // a hose from the rig to the tank
     ctx.strokeStyle = '#05070c'; ctx.lineWidth = 4;
     ctx.beginPath(); ctx.moveTo(bx + 4, by - h * 0.3);
     ctx.quadraticCurveTo(bx + spread + 10, by - h * 0.38, tx + tw / 2, ty - 1); ctx.stroke();
-    // the lamp on the rig, which is the only warm thing in the picture
+    // the lamp: harsh, hot, the colour of a furnace door
     const lamp = 0.7 + 0.3 * WS.sin(t * 5);
-    const g = ctx.createRadialGradient(bx, wy, 0, bx, wy, 150);
-    g.addColorStop(0, `rgba(255,211,107,${(0.5 * lamp).toFixed(3)})`);
-    g.addColorStop(1, 'rgba(255,211,107,0)');
+    const g = ctx.createRadialGradient(bx, wy, 0, bx, wy, 170);
+    g.addColorStop(0, `rgba(255,140,70,${(0.55 * lamp).toFixed(3)})`);
+    g.addColorStop(0.4, `rgba(200,60,30,${(0.18 * lamp).toFixed(3)})`);
+    g.addColorStop(1, 'rgba(200,60,30,0)');
     ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(bx, wy, 150, 0, WS.TAU); ctx.fill();
-    ctx.fillStyle = '#ffe0a0';
+    ctx.beginPath(); ctx.arc(bx, wy, 170, 0, WS.TAU); ctx.fill();
+    ctx.fillStyle = '#ffd0a0';
     ctx.beginPath(); ctx.arc(bx, wy, 5, 0, WS.TAU); ctx.fill();
-    // and the light it throws down the rig, so the rig reads as a thing
-    ctx.strokeStyle = `rgba(255,211,107,${(0.28 * lamp).toFixed(3)})`; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(bx + 2, wy + wr); ctx.lineTo(bx + spread + 2, by); ctx.stroke();
-    // ember coming up out of the ground and down the pipe into the tank
-    for (let i = 0; i < 34; i++) {
-      const p = ((t * 0.45) + i / 34) % 1;
-      const sx = bx - 330 + (i * 37) % 260, sy = by + 10 + (i % 3) * 10;
-      // into the ground where the drill bites, and up out of it toward the tank
-      const x = sx + (bx - sx) * p;
-      const y = sy + (by + 6 - sy) * p - WS.sin(p * WS.PI) * 24;
-      ctx.globalAlpha = WS.sin(p * WS.PI) * 0.8;
-      ctx.fillStyle = '#7cf0a0';
-      ctx.beginPath(); ctx.arc(x, y, 2.4, 0, WS.TAU); ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-    // and the one working it: a small shape with a lamp for a face
+    // and the one working it: a lantern for a face, and a pick over his shoulder
     const fx = bx - spread - 44, size = 74;
     const sil = creatureSil('lampling', size, '#05070c');
     ctx.drawImage(sil, fx - size / 2, by - size * 0.9, size, size);
-    ctx.fillStyle = `rgba(255,211,107,${(0.7 + 0.3 * WS.sin(t * 3.3)).toFixed(3)})`;
-    ctx.beginPath(); ctx.arc(fx - 6, by - size * 0.55, 2.6, 0, WS.TAU); ctx.fill();
-    ctx.beginPath(); ctx.arc(fx + 6, by - size * 0.55, 2.6, 0, WS.TAU); ctx.fill();
+    ctx.strokeStyle = '#05070c'; ctx.lineWidth = 3.5;
+    ctx.beginPath(); ctx.moveTo(fx + 8, by - size * 0.35); ctx.lineTo(fx + 26, by - size * 0.95); ctx.stroke();
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(fx + 12, by - size * 0.98); ctx.quadraticCurveTo(fx + 27, by - size * 1.06, fx + 40, by - size * 0.9); ctx.stroke();
+    const eyeA = 0.75 + 0.25 * WS.sin(t * 3.3);
+    for (const ex of [-6, 6]) {
+      const eg = ctx.createRadialGradient(fx + ex, by - size * 0.55, 0, fx + ex, by - size * 0.55, 9);
+      eg.addColorStop(0, `rgba(255,170,80,${eyeA.toFixed(3)})`); eg.addColorStop(1, 'rgba(255,120,40,0)');
+      ctx.fillStyle = eg; ctx.beginPath(); ctx.arc(fx + ex, by - size * 0.55, 9, 0, WS.TAU); ctx.fill();
+      ctx.fillStyle = '#ffe2b0'; ctx.beginPath(); ctx.arc(fx + ex, by - size * 0.55, 2.4, 0, WS.TAU); ctx.fill();
+    }
     ctx.restore();
   }
 
@@ -641,6 +708,24 @@
       ctx.lineWidth = 26 - r * 6;
       ctx.stroke();
     }
+    /* The night goes out around him. Stars near him are swallowed by a dark
+       that spreads from where he stands, and the moon frosts over and dies:
+       whatever light there was, he is taking it. */
+    const hx = W * 0.5, hy = GROUND - 200;
+    const swallow = ctx.createRadialGradient(hx, hy, 40, hx, hy, 260 + 520 * k);
+    swallow.addColorStop(0, `rgba(1,2,5,${(0.35 + 0.45 * k).toFixed(3)})`);
+    swallow.addColorStop(0.7, `rgba(1,2,5,${(0.18 + 0.3 * k).toFixed(3)})`);
+    swallow.addColorStop(1, 'rgba(1,2,5,0)');
+    ctx.fillStyle = swallow;
+    ctx.fillRect(0, 0, W, GROUND);
+    const mx = W * 0.185, my = GROUND * 0.30;
+    const frostMoon = WS.clamp(k * 1.3, 0, 1);
+    ctx.fillStyle = `rgba(8,14,26,${(0.25 + 0.7 * frostMoon).toFixed(3)})`;
+    ctx.beginPath(); ctx.arc(mx, my, 40, 0, WS.TAU); ctx.fill();
+    // a thin cold ring where its edge was - a dead moon, not a missing one
+    ctx.strokeStyle = `rgba(170,220,255,${(0.28 * frostMoon).toFixed(3)})`; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(mx, my, 40, 0, WS.TAU); ctx.stroke();
+
     // him, beyond the ranges: his own figure, deep in shadow, lit from behind
     // Baked once at full size and drawn scaled: he grows every frame.
     const size = 380 + 90 * k;
@@ -677,6 +762,21 @@
     ctx.globalAlpha = 1;
     burn(50 - 2.7, 29, size * 0.035, '200,236,255', 0.95 * eye);
     burn(50 + 2.7, 29, size * 0.035, '200,236,255', 0.95 * eye);
+    // and when he has seen you, they flare: a glare that crosses the sky
+    const glare = WS.clamp((k - 0.45) / 0.55, 0, 1);
+    if (glare > 0.01) {
+      for (const ex of [-2.7, 2.7]) {
+        const [x, y] = at(50 + ex, 29);
+        const len = 60 + 520 * glare * glare;
+        const gl = ctx.createLinearGradient(x - len, y, x + len, y);
+        gl.addColorStop(0, 'rgba(180,225,255,0)');
+        gl.addColorStop(0.5, `rgba(210,240,255,${(0.55 * glare).toFixed(3)})`);
+        gl.addColorStop(1, 'rgba(180,225,255,0)');
+        ctx.fillStyle = gl;
+        ctx.fillRect(x - len, y - 1.2, len * 2, 2.4);
+        burn(50 + ex, 29, size * (0.035 + 0.05 * glare), '160,215,255', 0.5 * glare);
+      }
+    }
     const hoard = 0.5 + 0.5 * k;
     burn(50, 49, size * 0.09, '124,240,160', 0.55 * hoard * (0.85 + 0.15 * WS.sin(t * 2.1)));
     burn(21, 13, size * 0.07, '124,240,160', 0.45 * hoard);
@@ -685,16 +785,37 @@
   }
   function paleFront(ctx, t, k) {
     ctx.save();
+    /* The frost comes for you. Cracks open across the land from under him
+       and run toward the camera, glowing, further every second. */
+    const ox = W * 0.5, oy = GROUND + 4;
+    const reach = 60 + 360 * k;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 9; i++) {
+      const spread = (i - 4) * 0.34;
+      let x = ox + (i - 4) * 14, y = oy, len = 0;
+      ctx.beginPath(); ctx.moveTo(x, y);
+      for (let j = 0; j < 14 && len < reach; j++) {
+        const jag = WS.sin(i * 7.1 + j * 2.3) * 0.5;
+        const a = WS.PI / 2 + spread + jag;
+        const step = 24 + (j % 3) * 6;
+        x += WS.cos(a) * step * 1.4; y += WS.sin(a) * step * 0.28;
+        len += step;
+        ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = 'rgba(150,215,255,.12)'; ctx.lineWidth = 7; ctx.stroke();
+      ctx.strokeStyle = `rgba(200,238,255,${(0.35 + 0.35 * k).toFixed(3)})`; ctx.lineWidth = 1.6; ctx.stroke();
+    }
     // every light in the land, drifting north - into the ember in his chest
     const [cx, ty] = paleAt ? paleAt(50, 49) : [W * 0.5, GROUND - 200];
-    for (let i = 0; i < 30; i++) {
-      const p = ((t * 0.12) + i / 30) % 1;
+    const pull = 0.12 + 0.18 * k;
+    for (let i = 0; i < 36; i++) {
+      const p = ((t * pull) + i / 36) % 1;
       const sx = (i * 97) % W, sy = GROUND + 30 + (i % 5) * 14;
       const x = sx + (cx - sx) * p * p;
       const y = sy + (ty - sy) * p;
-      ctx.globalAlpha = (1 - p) * 0.75 * (0.4 + 0.6 * k);
+      ctx.globalAlpha = (1 - p) * 0.8 * (0.4 + 0.6 * k);
       ctx.fillStyle = '#7cf0a0';
-      ctx.beginPath(); ctx.arc(x, y, 1.7, 0, WS.TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, 1.8, 0, WS.TAU); ctx.fill();
     }
     // snow, falling slantwise
     ctx.fillStyle = '#dfefff';
@@ -704,8 +825,19 @@
       ctx.globalAlpha = 0.25 + (i % 4) * 0.12;
       ctx.fillRect(x, y, 2, 2);
     }
+    /* A heartbeat at the edges of the frame: two beats, a rest. Not his -
+       yours, the moment you are told his name. */
+    ctx.globalAlpha = 1;
+    const ph = (t * 0.9) % 1;
+    const beat = WS.max(0, 1 - Math.abs(ph - 0.05) / 0.06) + 0.7 * WS.max(0, 1 - Math.abs(ph - 0.22) / 0.06);
+    const vig = ctx.createRadialGradient(W / 2, H * 0.45, H * 0.35, W / 2, H * 0.45, H * 0.95);
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, `rgba(0,2,8,${(0.45 + 0.25 * k + 0.12 * beat * k).toFixed(3)})`);
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, W, H);
     ctx.restore();
   }
+
 
   /* ---------------------------------------------------------------- API -- */
   const Scene = {
