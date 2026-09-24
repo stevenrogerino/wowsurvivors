@@ -158,6 +158,16 @@
         }
         poly(g, [[x - wr, y - 1 * u], [x + wr, y - 1 * u],
           [x + wr * 0.92, y + 4 * u], [x - wr * 0.92, y + 4 * u]], gold.hi, gold.line, u);
+        // a finial on every point, and a line engraved along the band
+        for (let i = -2; i <= 2; i++) {
+          const h = (i === 0 ? 15 : Math.abs(i) === 1 ? 11 : 7) * u;
+          const fx = x + i * 0.42 * wr, fy = y - h;
+          g.fillStyle = gold.line; g.beginPath(); g.arc(fx, fy, 1.6 * u, 0, WS.TAU); g.fill();
+          g.fillStyle = gold.hi; g.beginPath(); g.arc(fx - 0.3 * u, fy - 0.3 * u, 1.05 * u, 0, WS.TAU); g.fill();
+        }
+        g.strokeStyle = gold.lo; g.lineWidth = 0.6 * u;
+        g.beginPath(); g.moveTo(x - wr * 0.9, y - 0.1 * u); g.lineTo(x + wr * 0.9, y - 0.1 * u); g.stroke();
+        g.beginPath(); g.moveTo(x - wr * 0.86, y + 3.3 * u); g.lineTo(x + wr * 0.86, y + 3.3 * u); g.stroke();
         // stones set in the band - a crown without them is a paper hat
         for (let i = -1; i <= 1; i++) {
           const sx = x + i * wr * 0.52;
@@ -250,20 +260,51 @@
            plates outside anything narrow - the lich and the strider wore them
            hovering in the air beside themselves. If the creature is thin
            there, the pauldrons are close in, which is what a pauldron does. */
+        /* Plate, not a slab. They were one grey quad with a row of teeth
+           under it - read at boss size as a filing cabinet on each shoulder.
+           A pauldron is three lames lapped over each other, a rolled and
+           gilded edge, rivets where they are hung, and a spike to say what
+           it is for. */
         const y = b.top + b.h * 0.40;
         const wr = b.width(y) * 0.46;
         for (const dir of [-1, 1]) {
           const x = b.mid(y) + dir * wr;
-          poly(g, [[x - dir * 9 * u, y - 7 * u], [x + dir * 9 * u, y - 2 * u],
-            [x + dir * 8 * u, y + 8 * u], [x - dir * 9 * u, y + 6 * u]],
-            iron.mid, iron.line, u);
-          poly(g, [[x - dir * 7 * u, y - 4 * u], [x + dir * 7 * u, y],
-            [x + dir * 6 * u, y + 3 * u], [x - dir * 7 * u, y + 1 * u]],
-            iron.hi, iron.line, u * 0.8);
-          for (let i = 0; i < 3; i++) {
-            poly(g, [[x + dir * (3 + i * 3) * u, y + 7 * u],
-              [x + dir * (5 + i * 3) * u, y + 14 * u],
-              [x + dir * (6 + i * 3) * u, y + 7 * u]], iron.lo, iron.line, u * 0.7);
+          // tilted down and out over the shoulder, and a touch smaller
+          const tc = Math.cos(0.42), ts = Math.sin(0.42), sc = 0.86;
+          const at = (dx, dy) => {
+            const rx = dx * tc - dy * ts, ry = dx * ts + dy * tc;
+            return [x + dir * rx * sc * u, y + ry * sc * u];
+          };
+          // the spike, behind the plates
+          poly(g, [at(-1, -6), at(3, -17), at(5, -6)], iron.hi, iron.line, u * 0.8);
+          // three lames, each a dome lapped over the one below it
+          const dome = (cy, rx, ry) => {
+            const pts = [];
+            for (let i = 0; i <= 10; i++) {
+              const a = WS.PI + (i / 10) * WS.PI;
+              pts.push(at(1 + Math.cos(a) * rx, cy + Math.sin(a) * ry));
+            }
+            pts.push(at(1 + rx * 0.9, cy + 2.2), at(1 - rx * 0.9, cy + 2.2));
+            return pts;
+          };
+          for (let k = 2; k >= 0; k--) {
+            const cy = 0 + k * 3.2, rx = 10.5 - k * 1.2, ry = 6 - k * 1.4;
+            poly(g, dome(cy, rx, ry), k ? iron.mid : iron.hi, iron.line, u * 0.8);
+            const l = at(1 - rx * 0.9, cy + 2), r = at(1 + rx * 0.9, cy + 2);
+            g.strokeStyle = gold.mid; g.lineWidth = 1.3 * u; g.lineCap = 'round';
+            g.beginPath(); g.moveTo(l[0], l[1]); g.lineTo(r[0], r[1]); g.stroke();
+            g.strokeStyle = gold.hi; g.lineWidth = 0.5 * u;
+            g.beginPath(); g.moveTo(l[0], l[1] - 0.5 * u); g.lineTo(r[0], r[1] - 0.5 * u); g.stroke();
+          }
+          // light along the crown of the top plate
+          g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = 0.9 * u;
+          g.beginPath();
+          const c0 = at(-5.5, -4.6), c1 = at(-1, -7.2), c2 = at(3.5, -7);
+          g.moveTo(c0[0], c0[1]); g.quadraticCurveTo(c1[0], c1[1], c2[0], c2[1]); g.stroke();
+          for (const [rx, ry] of [[-5.5, 0.2], [7.4, 0.2]]) {
+            const [px, py] = at(rx, ry);
+            g.fillStyle = iron.line; g.beginPath(); g.arc(px, py + 0.3 * u, 1.1 * u, 0, WS.TAU); g.fill();
+            g.fillStyle = gold.hi; g.beginPath(); g.arc(px - 0.2 * u, py, 0.7 * u, 0, WS.TAU); g.fill();
           }
         }
 
@@ -274,6 +315,13 @@
         poly(g, [[x, y0 + 3 * u], [x + b.w * 0.24, y0 + 7 * u],
           [x + b.w * 0.19, y0 + b.h * 0.24], [x - 1 * u, y0 + b.h * 0.3]],
           p.mid, p.line, u);
+        // a gold fringe along the fly and the foot
+        g.strokeStyle = gold.mid; g.lineWidth = 0.8 * u;
+        for (let k = 0; k < 6; k++) {
+          const t = k / 5;
+          const fx = x + b.w * 0.19 * t - 1 * u * (1 - t), fy = y0 + b.h * (0.3 - 0.06 * t);
+          g.beginPath(); g.moveTo(fx, fy); g.lineTo(fx - 0.5 * u, fy + 3 * u); g.stroke();
+        }
         poly(g, [[x + b.w * 0.05, y0 + b.h * 0.13], [x + b.w * 0.17, y0 + b.h * 0.15],
           [x + b.w * 0.12, y0 + b.h * 0.22]], gold.mid, gold.line, u * 0.8);
         poly(g, [[x - 4 * u, y0 - 4 * u], [x + 4 * u, y0 - 4 * u], [x, y0 - 12 * u]],
@@ -293,26 +341,50 @@
           g.fillStyle = bone.line;
           g.beginPath(); g.arc(x - 1.6 * u, y + drop + 3.6 * u, 1.1 * u, 0, WS.TAU); g.fill();
           g.beginPath(); g.arc(x + 1.6 * u, y + drop + 3.6 * u, 1.1 * u, 0, WS.TAU); g.fill();
+          // the nose, the teeth, and the crack a trophy gets from being taken
+          g.beginPath(); g.moveTo(x, y + drop + 4.8 * u); g.lineTo(x - 0.6 * u, y + drop + 5.9 * u);
+          g.lineTo(x + 0.6 * u, y + drop + 5.9 * u); g.closePath(); g.fill();
+          g.strokeStyle = bone.line; g.lineWidth = 0.5 * u;
+          for (let k = -1; k <= 1; k++) {
+            g.beginPath(); g.moveTo(x + k * 1.2 * u, y + drop + 6.6 * u); g.lineTo(x + k * 1.2 * u, y + drop + 7.8 * u); g.stroke();
+          }
+          g.beginPath(); g.moveTo(x + 1 * u, y + drop + 0.4 * u); g.lineTo(x + 0.2 * u, y + drop + 1.8 * u);
+          g.lineTo(x + 0.9 * u, y + drop + 2.6 * u); g.stroke();
         }
 
       } else if (mark === 'brand') {
+        /* A sigil burned into the chest, in the creature's OWN light. It was
+           one gold triangle with a circle in it on four very different
+           bosses - a harvest golem, a wraith, a colossus and Death - which is
+           a logo, not a mark. Now a ring with its ticks, a star of four
+           points inside it, and a hot centre, all in the creature's glow. */
         const y = b.top + b.h * 0.52, x = b.mid(y), r = WS.max(b.width(y) * 0.22, b.w * 0.1);
+        const glowHex = p.glow;
         g.save();
         g.globalCompositeOperation = 'lighter';
         const gl = g.createRadialGradient(x, y, 1, x, y, r * 2.2);
-        gl.addColorStop(0, WS.rgb([1, 0.86, 0.5], 0.5));
-        gl.addColorStop(1, WS.rgb([1, 0.86, 0.5], 0));
+        gl.addColorStop(0, glowHex + '80');
+        gl.addColorStop(1, glowHex + '00');
         g.fillStyle = gl;
         g.beginPath(); g.arc(x, y, r * 2.2, 0, WS.TAU); g.fill();
-        g.strokeStyle = '#ffe9b0'; g.lineWidth = 1.8 * u; g.lineJoin = 'round';
-        g.beginPath();
-        for (let i = 0; i < 3; i++) {
-          const a = -WS.PI / 2 + i * (WS.TAU / 3);
-          const bx = x + WS.cos(a) * r, by = y + WS.sin(a) * r;
-          if (i) g.lineTo(bx, by); else g.moveTo(bx, by);
+        g.restore();
+        g.save();
+        g.shadowColor = glowHex; g.shadowBlur = 4 * u;
+        g.strokeStyle = glowHex; g.lineWidth = 1.3 * u; g.lineCap = 'round';
+        g.beginPath(); g.arc(x, y, r, 0, WS.TAU); g.stroke();
+        for (let i = 0; i < 12; i++) {
+          const a = i * WS.TAU / 12, r0 = r * 1.08, r1 = r * (i % 3 ? 1.2 : 1.34);
+          g.beginPath(); g.moveTo(x + WS.cos(a) * r0, y + WS.sin(a) * r0); g.lineTo(x + WS.cos(a) * r1, y + WS.sin(a) * r1); g.stroke();
         }
-        g.closePath(); g.stroke();
-        g.beginPath(); g.arc(x, y, r * 0.42, 0, WS.TAU); g.stroke();
+        g.fillStyle = glowHex;
+        g.beginPath();
+        for (let i = 0; i < 8; i++) {
+          const a = -WS.PI / 2 + i * WS.PI / 4, rr = i % 2 ? r * 0.22 : r * 0.78;
+          if (i) g.lineTo(x + WS.cos(a) * rr, y + WS.sin(a) * rr); else g.moveTo(x + WS.cos(a) * rr, y + WS.sin(a) * rr);
+        }
+        g.closePath(); g.fill();
+        g.fillStyle = '#ffffff';
+        g.beginPath(); g.arc(x, y, r * 0.16, 0, WS.TAU); g.fill();
         g.restore();
 
       } else if (mark === 'plumehat') {
@@ -1915,6 +1987,36 @@
         g.moveTo(x1, y1);
         g.quadraticCurveTo(mx, my, x2, y2);
         g.stroke();
+      }
+      g.restore();
+      /* A BAND OF RUNES round the face, cut into the crust and lit from
+         behind like the fissures: the sovereign is a made thing, a crown
+         the size of a sun, and it carries the script of whoever made it.
+         Two engraved rings and twelve glyphs between them, no two alike. */
+      g.save();
+      g.beginPath(); g.arc(cx, cy, R, 0, WS.TAU); g.clip();
+      for (const rr of [0.5, 0.72]) {
+        g.strokeStyle = 'rgba(5,3,12,.6)'; g.lineWidth = 1.2 * u;
+        g.beginPath(); g.arc(cx, cy - 1 * u, R * rr, 0, WS.TAU); g.stroke();
+        g.strokeStyle = 'rgba(255,214,150,.22)'; g.lineWidth = 0.5 * u;
+        g.beginPath(); g.arc(cx, cy - 1 * u + 0.6 * u, R * rr, 0, WS.TAU); g.stroke();
+      }
+      g.globalCompositeOperation = 'lighter';
+      g.strokeStyle = 'rgba(255,222,160,.55)'; g.lineWidth = 0.7 * u; g.lineCap = 'round';
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * WS.TAU + 0.26, rm = R * 0.61;
+        const gx = cx + WS.cos(a) * rm, gy = cy - 1 * u + WS.sin(a) * rm;
+        const k = (i * 7) % 5, h = 2.2 * u, w = 1.3 * u;
+        g.save(); g.translate(gx, gy); g.rotate(a + WS.PI / 2);
+        g.beginPath();
+        g.moveTo(0, -h); g.lineTo(0, h);
+        if (k === 0) { g.moveTo(-w, -h * 0.4); g.lineTo(w, h * 0.2); }
+        else if (k === 1) { g.moveTo(0, -h * 0.2); g.lineTo(w, -h); g.moveTo(0, h * 0.3); g.lineTo(-w, h * 0.9); }
+        else if (k === 2) { g.moveTo(-w, -h); g.lineTo(0, -h * 0.2); g.lineTo(w, -h); }
+        else if (k === 3) { g.moveTo(-w, 0); g.lineTo(w, 0); g.moveTo(-w * 0.6, h); g.lineTo(w * 0.6, h); }
+        else { g.moveTo(0, -h * 0.5); g.lineTo(w, 0); g.lineTo(0, h * 0.5); }
+        g.stroke();
+        g.restore();
       }
       g.restore();
       // and the face inside it

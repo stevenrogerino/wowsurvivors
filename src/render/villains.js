@@ -678,6 +678,184 @@
   }
   WS.Sprites.define('grimtunnel_face', face('grimtunnel', [1.0, 0.86, 0.5], 1.9, 0.46, 0.33));
 
+  /* ======================================================== DEATH ITSELF ====
+   * Who comes for you at the end of the night if you are still standing.
+   * It was the Pale Wraith's body with a scythe stood beside it, which is
+   * a costume. Death is taller than anything on the field, and narrow; a
+   * robe that does not reach the ground so much as stop being there, a
+   * skull at the back of a peaked hood, hands of bone - one on the haft,
+   * one reaching for you - and at the belt an hourglass with the sand
+   * nearly through. The scythe is the silhouette: a blade that sweeps back
+   * over the hood, wider than Death is. */
+  function reaper(g, s, p) {
+    const { u, X, Y, P, hash, glowAt, trace, ramp, line, dot } = rig(g, s);
+    const ROBE = { hi: '#39435a', mid: '#161b28', lo: '#07090e' };
+    const BONE = { hi: '#f4f6f4', mid: '#cdd4d6', lo: '#7f8a92', line: '#2c3238' };
+    const COLD = p.glow;
+    const coldRGB = [1, 3, 5].map((i) => parseInt(COLD.slice(i, i + 2), 16));
+    const cold = (a) => `rgba(${coldRGB.join(',')},${a})`;
+
+    // 1. the cold it brings with it
+    glowAt(48, 52, 46, cold(0.16));
+
+    // 2. the scythe's haft, behind the body: dark wood, iron-shod
+    line([[70, 93], [62, 12]], '#0b0a0c', 3.4);
+    line([[70, 93], [62, 12]], '#3a2e26', 2.2);
+    line([[69.3, 91], [61.4, 14]], '#6a5646', 0.6);
+    for (const t of [0.12, 0.72]) {
+      const x = 70 - 8 * t, y = 93 - 81 * t;
+      line([[x - 1.8, y + 0.4], [x + 1.8, y - 0.4]], '#8b95a2', 1.4);
+    }
+
+    // 3. the robe: tall, narrow at the shoulder, frayed into nothing at the foot
+    const strips = [];
+    for (let i = 0; i <= 12; i++) {
+      const x = 26 + i * (48 / 12);
+      strips.push([x, 80 + (i % 2 ? 10 + hash(i + 3) * 5 : 2 + hash(i) * 3)]);
+    }
+    const robe = [[40, 30], [58, 30], [66, 52], [74, 80]].concat(strips.reverse(), [[22, 80], [32, 52]]);
+    g.save();
+    trace(robe);
+    g.fillStyle = ramp(30, 94, [ROBE.hi, ROBE.mid, ROBE.lo]); g.fill();
+    g.clip();
+    for (const [x0, x1] of [[43, 31], [47, 41], [53, 57], [56, 67]]) {
+      const fg = g.createLinearGradient(X(x1 - 3), 0, X(x1 + 3), 0);
+      fg.addColorStop(0, 'rgba(0,0,0,.5)'); fg.addColorStop(0.6, cold(0.1)); fg.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = fg;
+      g.beginPath(); g.moveTo(X(x0 - 1), Y(32)); g.lineTo(X(x0 + 1), Y(32));
+      g.lineTo(X(x1 + 3), Y(95)); g.lineTo(X(x1 - 3), Y(95)); g.closePath(); g.fill();
+    }
+    // the hem is not there: the robe fades as it goes down
+    const fade = g.createLinearGradient(0, Y(70), 0, Y(95));
+    fade.addColorStop(0, 'rgba(0,0,0,0)'); fade.addColorStop(1, cold(0.35));
+    g.globalCompositeOperation = 'lighter';
+    g.fillStyle = fade; g.fillRect(X(20), Y(70), X(60), Y(26));
+    g.globalCompositeOperation = 'source-over';
+    g.strokeStyle = cold(0.4); g.lineWidth = u * 1;
+    g.beginPath(); g.moveTo(X(40), Y(30)); g.lineTo(X(32), Y(52)); g.lineTo(X(22), Y(80)); g.stroke();
+    g.restore();
+    // mist curling off the frayed strips
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    g.lineCap = 'round';
+    for (let i = 0; i < 6; i++) {
+      const x = 28 + i * 8.4;
+      const mg = g.createLinearGradient(0, Y(86), 0, Y(95));
+      mg.addColorStop(0, cold(0.16)); mg.addColorStop(1, cold(0));
+      g.strokeStyle = mg; g.lineWidth = u * (2.4 - i * 0.15);
+      g.beginPath(); g.moveTo(X(x), Y(86)); g.quadraticCurveTo(X(x - 2.4), Y(90), X(x + 0.6), Y(95)); g.stroke();
+    }
+    g.restore();
+
+    // 4. the belt: a cord, and the hourglass on it
+    line([[33, 56], [48, 58.6], [63, 56]], '#2a2622', 1.4);
+    const hx = 58, hy = 63;
+    poly(g, P([[hx - 3.6, hy - 5.4], [hx + 3.6, hy - 5.4], [hx + 3.6, hy - 4.4], [hx - 3.6, hy - 4.4]]), '#c9a24a', '#3a2606', u * 0.5);
+    poly(g, P([[hx - 3.6, hy + 4.4], [hx + 3.6, hy + 4.4], [hx + 3.6, hy + 5.4], [hx - 3.6, hy + 5.4]]), '#c9a24a', '#3a2606', u * 0.5);
+    g.save();
+    trace([[hx - 2.8, hy - 4.4], [hx + 2.8, hy - 4.4], [hx + 0.5, hy], [hx + 2.8, hy + 4.4], [hx - 2.8, hy + 4.4], [hx - 0.5, hy]]);
+    g.fillStyle = 'rgba(200,230,255,.25)'; g.fill();
+    g.clip();
+    g.fillStyle = '#e8c070';
+    g.fillRect(X(hx - 3), Y(hy + 2), X(6), Y(3));                // nearly all through
+    g.fillRect(X(hx - 0.35), Y(hy - 0.8), X(0.7), Y(3));          // the last of it falling
+    g.fillRect(X(hx - 1.2), Y(hy - 1.6), X(2.4), Y(0.8));
+    g.restore();
+    trace([[hx - 2.8, hy - 4.4], [hx + 2.8, hy - 4.4], [hx + 0.5, hy], [hx + 2.8, hy + 4.4], [hx - 2.8, hy + 4.4], [hx - 0.5, hy]]);
+    g.strokeStyle = 'rgba(210,235,255,.7)'; g.lineWidth = u * 0.5; g.stroke();
+    for (const d of [-1, 1]) line([[hx + d * 3.3, hy - 4.6], [hx + d * 3.3, hy + 4.6]], '#8a6118', 0.7);
+
+    // 5. the far arm, up to the haft, and the hand of bone on it
+    poly(g, P([[57, 32], [63, 35], [66, 46], [62, 48], [58, 40]]), ROBE.hi, '#05070a', u * 0.8);
+    g.save();
+    g.strokeStyle = BONE.mid; g.lineCap = 'round'; g.lineWidth = u * 1.1;
+    for (let i = 0; i < 4; i++) {
+      g.beginPath(); g.moveTo(X(62), Y(45 + i * 1.3)); g.lineTo(X(66.6), Y(44.4 + i * 1.3)); g.stroke();
+    }
+    g.restore();
+
+    // 6. the near arm: out toward you, the hand open
+    poly(g, P([[41, 32], [34, 35], [24, 43], [27, 47], [36, 41]]), ROBE.hi, '#05070a', u * 0.8);
+    poly(g, P([[22, 40.6], [28.6, 44.6], [26, 48.2], [20.4, 44.6]]), ROBE.mid, '#05070a', u * 0.6);   // ragged cuff
+    g.save();
+    g.lineCap = 'round';
+    for (let i = 0; i < 4; i++) {
+      const a = 2.6 + i * 0.24;
+      const k1x = 21 + Math.cos(a) * 4, k1y = 44 + Math.sin(a) * 4;
+      const tx = k1x + Math.cos(a + 0.5) * 3.6, ty = k1y + Math.sin(a + 0.5) * 3.6;
+      g.strokeStyle = BONE.mid; g.lineWidth = u * 0.8;
+      g.beginPath(); g.moveTo(X(21.4), Y(44)); g.lineTo(X(k1x), Y(k1y)); g.lineTo(X(tx), Y(ty)); g.stroke();
+      dot(k1x, k1y, 0.55, BONE.hi);
+    }
+    line([[21.6, 45.6], [18.6, 48.6]], BONE.mid, 0.8);          // the thumb
+    g.restore();
+
+    // 7. the hood: tall, peaked, falling to the shoulders
+    g.save();
+    g.beginPath();
+    g.moveTo(X(36), Y(40)); g.quadraticCurveTo(X(33), Y(19), X(47), Y(9));
+    g.quadraticCurveTo(X(52), Y(8), X(55), Y(12));
+    g.quadraticCurveTo(X(63), Y(21), X(61), Y(40)); g.quadraticCurveTo(X(49), Y(35), X(36), Y(40));
+    const hg = g.createRadialGradient(X(47), Y(27), X(2), X(48), Y(26), X(17));
+    hg.addColorStop(0, '#020305'); hg.addColorStop(0.55, ROBE.mid); hg.addColorStop(1, ROBE.hi);
+    g.fillStyle = hg; g.fill();
+    g.strokeStyle = '#05070a'; g.lineWidth = u * 0.8; g.stroke();
+    g.restore();
+    line([[36.8, 39], [34.4, 20], [47, 9.8]], cold(0.45), 0.8);
+    // the skull, back in the dark
+    g.save();
+    g.beginPath();
+    g.moveTo(X(42), Y(25)); g.quadraticCurveTo(X(42), Y(18.6), X(47.4), Y(18.4));
+    g.quadraticCurveTo(X(52.8), Y(18.6), X(52.8), Y(25));
+    g.quadraticCurveTo(X(52.6), Y(29), X(50.6), Y(31)); g.lineTo(X(50), Y(33.4));
+    g.lineTo(X(45), Y(33.4)); g.lineTo(X(44.4), Y(31));
+    g.quadraticCurveTo(X(42), Y(29), X(42), Y(25)); g.closePath();
+    g.fillStyle = ramp(18, 33, [BONE.hi, BONE.mid, BONE.lo]); g.fill();
+    g.clip();
+    const shade = g.createLinearGradient(0, Y(18), 0, Y(25));
+    shade.addColorStop(0, 'rgba(2,3,5,.85)'); shade.addColorStop(1, 'rgba(2,3,5,0)');
+    g.fillStyle = shade; g.fillRect(X(41), Y(17), X(13), Y(9));
+    g.restore();
+    for (const d of [-1, 1]) {
+      g.fillStyle = '#05070a';
+      g.beginPath(); g.ellipse(X(47.4 + d * 2.6), Y(25.4), X(1.9), X(1.7), 0, 0, WS.TAU); g.fill();
+    }
+    eyes(g, X(47.4), Y(25.6), X(2.6), X(0.7), COLD);
+    g.fillStyle = '#05070a';
+    g.beginPath(); g.moveTo(X(47.4), Y(27.6)); g.lineTo(X(46.4), Y(29.6)); g.lineTo(X(48.4), Y(29.6)); g.closePath(); g.fill();
+    line([[44.8, 31.4], [50.2, 31.4]], BONE.line, 0.5);
+    for (let i = -2; i <= 2; i++) line([[47.5 + i * 1.05, 30.6], [47.5 + i * 1.05, 32.8]], BONE.line, 0.35);
+
+    // 8. the blade: the widest thing about Death, sweeping back over the hood
+    const top = [62, 12];
+    g.save();
+    const bladePts = [[62.6, 9.6], [52, 4.4], [36, 3.8], [22, 7.6], [11, 15], [7.4, 21], [14, 16.4], [25, 12], [38, 9.4], [51, 10.6], [61.6, 14.4]];
+    const bg = g.createLinearGradient(X(10), Y(4), X(20), Y(22));
+    bg.addColorStop(0, '#f2f8ff'); bg.addColorStop(0.5, '#a9b6c8'); bg.addColorStop(1, '#4a5566');
+    poly(g, P(bladePts), bg, '#1d2330', u * 0.8);
+    // the edge, honed bright, and the cold running along it
+    g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineWidth = u * 0.7; g.lineCap = 'round';
+    trace([[61.6, 14.4], [51, 10.6], [38, 9.4], [25, 12], [14, 16.4], [7.4, 21]], false); g.stroke();
+    g.globalCompositeOperation = 'lighter';
+    g.strokeStyle = cold(0.5); g.lineWidth = u * 1.8;
+    trace([[50, 11.2], [38, 10.2], [25, 12.8], [14, 17.2]], false); g.stroke();
+    g.globalCompositeOperation = 'source-over';
+    // the fuller, and the tang where it meets the haft
+    line([[58, 10.8], [46, 7.6], [32, 7.4]], 'rgba(40,50,66,.5)', 0.8);
+    poly(g, P([[59.6, 8.4], [64.4, 9.6], [64.2, 15], [59.8, 14.6]]), '#6d7580', '#1d2330', u * 0.6);
+    dot(62, 11.8, 0.8, '#c9d2dc');
+    g.restore();
+    void top;
+
+    // 9. the air round it, which has gone cold
+    for (let i = 0; i < 14; i++) {
+      const x = 12 + hash(i + 70) * 76, y = 26 + hash(i + 110) * 62;
+      if (x > 30 && x < 68) continue;
+      dot(x, y, 0.4 + hash(i + 3) * 0.4, cold(0.8));
+    }
+  }
+  WS.Sprites.define('reaper', reaper);
+
   WS.Villains = { face };
 
 })(window.WS);
