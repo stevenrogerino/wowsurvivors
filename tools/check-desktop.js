@@ -61,11 +61,13 @@ const fail = [];
 const ARGS = process.getuid && process.getuid() === 0 ? ['--no-sandbox'] : [];
 
 (async () => {
-  // Test what a player would get: the bundle as it is built today.
-  execFileSync(process.execPath, [path.join(REPO, 'tools', 'bundle.js')], { stdio: 'ignore' });
-  fs.mkdirSync(path.join(DESKTOP, 'game'), { recursive: true });
-  fs.copyFileSync(path.join(REPO, 'dist', 'the-ember-watch.html'),
-    path.join(DESKTOP, 'game', 'the-ember-watch.html'));
+  /* Test what a player would get: the bundle as it is built today, written
+     straight into desktop/game/ (which git ignores). It used to rebuild
+     dist/ first and copy from there, and dist/ is tracked - so every run
+     left a modified file behind, and the next `git pull` refused to update
+     until it was thrown away. */
+  execFileSync(process.execPath, [path.join(REPO, 'tools', 'bundle.js'),
+    path.join(DESKTOP, 'game', 'the-ember-watch.html')], { stdio: 'ignore' });
 
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'emberwatch-check-'));
   const launch = () => _electron.launch({

@@ -60,5 +60,6 @@ if (artifact) {
 }
 
 fs.mkdirSync(path.dirname(out), { recursive: true });
+fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
 fs.writeFileSync(out, result);
 console.log(`bundled ${scripts.length} scripts + ${sheets.length} stylesheets -> ${path.relative(root, out)} (${(result.length / 1024).toFixed(0)} KB)`);

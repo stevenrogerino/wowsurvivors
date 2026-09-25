@@ -7,7 +7,7 @@
   "main": "main.js",
   "private": true,
   "scripts": {
-    "sync": "node ../tools/bundle.js && mkdir -p game && cp ../dist/the-ember-watch.html game/",
+    "sync": "node ../tools/bundle.js game/the-ember-watch.html",
     "start": "npm run sync && electron .",
     "check": "node ../tools/check-desktop.js",
     "dist": "npm run sync && electron-builder",
