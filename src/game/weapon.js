@@ -8,7 +8,8 @@
 
   // One scratch spec per shot; fields are copied out by launchBolt.
   const spec = {};
-  const RETRY_COOLDOWN = 0.25;   // nothing in range - look again shortly
+  // Nothing in range: look again this soon (Config.weaponRetry).
+  const retry = () => WS.Config.weaponRetry;
 
   /* --------------------------------------------------------- derivation -- */
   function damageOf(player, w) {
@@ -206,10 +207,10 @@
       ax * speed, ay * speed, spec);
   }
 
-  /* Radiant Gyre's opening pulse: a share of the weapon's own damage, and one
-     re-used ledger so the two passes cannot strike the same creature twice.
-     Sized by measurement - see the discovery's note below. */
-  const NOVA_PULSE = 0.8;
+  /* Radiant Gyre's opening pulse: a share of the weapon's own damage
+     (Config.gyrePulseDamage), and one re-used ledger so the two passes
+     cannot strike the same creature twice. Sized by measurement - see the
+     discovery's note below. */
   const novaHits = new Map();
 
   /* Where a shot LEAVES the survivor.
@@ -232,7 +233,7 @@
   Weapon.behaviors.aimed = function (player, w) {
     const d = w.data;
     const target = WS.Enemy.findNearest(player.x, player.y, d.range || 560);
-    if (!target) { w.cooldown = RETRY_COOLDOWN; return false; }
+    if (!target) { w.cooldown = retry(); return false; }
     const count = countOf(player, w);
     if (d.burst) {
       // Magic-missile style: the rest of the volley trickles out one at a time,
@@ -263,7 +264,7 @@
   Weapon.behaviors.spray = function (player, w) {
     const d = w.data;
     const target = WS.Enemy.findNearest(player.x, player.y, d.range || 560);
-    if (!target) { w.cooldown = RETRY_COOLDOWN; return false; }
+    if (!target) { w.cooldown = retry(); return false; }
     fillSpec(player, w);
     const speed = speedOf(player, w);
     const count = countOf(player, w);
@@ -390,7 +391,7 @@
    * projectile and it is counted like one now. */
   function chainCount(player, w) {
     const d = w.data, cfg = WS.Config;
-    let n = (d.chains || 4) + player.projectileBonus + (w.evolved ? 2 : 0);
+    let n = (d.chains || 4) + player.projectileBonus + (w.evolved ? cfg.evolveChains : 0);
     if (w.level >= (d.projRankA || cfg.projRankA)) n++;
     if (w.level >= (d.projRankB || cfg.projRankB)) n++;
     return n;
@@ -399,8 +400,8 @@
   Weapon.behaviors.chain = function (player, w) {
     const d = w.data;
     const range = areaOf(player, w, d.range || 250);
-    const first = WS.Enemy.findNearest(player.x, player.y, range * 1.6);
-    if (!first) { w.cooldown = RETRY_COOLDOWN; return false; }
+    const first = WS.Enemy.findNearest(player.x, player.y, range * WS.Config.chainFirstReach);
+    if (!first) { w.cooldown = retry(); return false; }
     const chains = chainCount(player, w);
     const [cdx, cdy] = WS.normalize(first.x - player.x, first.y - player.y);
     Weapon.chainFrom(muzzleX(player, cdx), muzzleY(player, cdy),
@@ -426,7 +427,7 @@
       const link = WS.Projectile.spawnBeam(px, py, target.x, target.y, 4 * heavy, colour, 0.16);
       if (link) link.arc = true;
       if (w) mark(WS.Projectile.beams, w);
-      WS.Enemy.hit(target, damage * (1 - i * 0.06), source);
+      WS.Enemy.hit(target, damage * WS.max(0, 1 - i * WS.Config.chainFalloff), source);
       WS.FX.flash(target.x, target.y, 22 * heavy, colour, 0.18);
       px = target.x; py = target.y;
       if (target._dead) continue;
@@ -457,18 +458,18 @@
          and does. The shove still reads on screen - it is the crowd walking
          in that gets it, which is where a shove is worth something anyway -
          and it no longer empties the weapon it was meant to open. */
-      const r = 130 * player.areaMultiplier;
+      const r = cfg.gyrePulseRadius * player.areaMultiplier;
       const inner = areaOf(player, w, d.orbitRadius || 85);
-      const pulse = damageOf(player, w) * NOVA_PULSE;
+      const pulse = damageOf(player, w) * cfg.gyrePulseDamage;
       novaHits.clear();
       WS.Enemy.damageArea(player.x, player.y, inner, pulse, novaHits, null, w.id);
-      WS.Enemy.damageArea(player.x, player.y, r, pulse, novaHits, 20, w.id);
+      WS.Enemy.damageArea(player.x, player.y, r, pulse, novaHits, cfg.gyrePulseKnock, w.id);
       WS.FX.flash(player.x, player.y, r, WS.CONST.COLORS.holy, 0.3);
     }
 
     WS.Projectile.spawnOrbit(player, count,
       areaOf(player, w, d.orbitRadius || 85), speed,
-      damageOf(player, w) * 0.5,             // orbits re-hit often, so per-tick is lower
+      damageOf(player, w) * cfg.orbitTickPct,   // orbits re-hit often, so per-tick is lower
       areaOf(player, w, d.radius || 20),
       durationOf(player, w, d.duration || 3.2),
       schoolColour(w), w.id, d.procChain || w.mods.procChain || 0);
@@ -479,8 +480,8 @@
   };
 
   Weapon.behaviors.storm = function (player, w) {
-    const d = w.data;
-    const strikes = (d.strikes || 5) + player.projectileBonus + (w.evolved ? 2 : 0);
+    const d = w.data, cfg = WS.Config;
+    const strikes = (d.strikes || 5) + player.projectileBonus + (w.evolved ? cfg.evolveStrikes : 0);
     const radius = areaOf(player, w, d.stormRadius || 230);
     const splash = areaOf(player, w, d.splash || 60);
     const damage = damageOf(player, w);
@@ -490,9 +491,9 @@
       const target = WS.Enemy.findNearest(player.x, player.y, radius,
         null);
       let sx, sy;
-      if (target && WS.random() < 0.85) {
-        sx = target.x + WS.randRange(-30, 30);
-        sy = target.y + WS.randRange(-30, 30);
+      if (target && WS.random() < cfg.stormAccuracy) {
+        sx = target.x + WS.randRange(-cfg.stormJitter, cfg.stormJitter);
+        sy = target.y + WS.randRange(-cfg.stormJitter, cfg.stormJitter);
       } else {
         const a = WS.random() * WS.TAU, r = WS.random() * radius;
         sx = player.x + WS.cos(a) * r;
@@ -510,10 +511,10 @@
   Weapon.behaviors.bounce = function (player, w) {
     const d = w.data;
     const target = WS.Enemy.findNearest(player.x, player.y, d.range || 600);
-    if (!target) { w.cooldown = RETRY_COOLDOWN; return false; }
+    if (!target) { w.cooldown = retry(); return false; }
     fillSpec(player, w);
     spec.bounces = (d.bounces || 3) + (w.mods.extraBounces || 0)
-      + player.projectileBonus + (w.evolved ? 3 : 0);
+      + player.projectileBonus + (w.evolved ? WS.Config.evolveBounces : 0);
     spec.spinRate = 16;
     const speed = speedOf(player, w);
     const count = 1 + (w.evolved ? 1 : 0);
@@ -528,7 +529,7 @@
   Weapon.behaviors.beam = function (player, w) {
     const d = w.data;
     const target = WS.Enemy.findNearest(player.x, player.y, d.range || 620);
-    if (!target) { w.cooldown = RETRY_COOLDOWN; return false; }
+    if (!target) { w.cooldown = retry(); return false; }
     const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
     const range = areaOf(player, w, d.range || 620);
     let width = areaOf(player, w, d.beamWidth || 26);
@@ -595,7 +596,7 @@
     /* One disc per count, ricocheting between bounces+1 targets. */
     bounce: (p, w, crowd, q) => {
       const hits = Math.min((w.data.bounces || 3) + p.projectileBonus
-        + (w.evolved ? 3 : 0) + 1, crowd);
+        + (w.evolved ? WS.Config.evolveBounces : 0) + 1, crowd);
       const n = 1 + (w.evolved ? 1 : 0);
       return { per: n * hits, why: `${n} disc(s) x ${hits} target(s)` };
     },

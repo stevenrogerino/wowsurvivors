@@ -161,7 +161,7 @@
         { at: 1080, interval: 0.35, count: 8, roster: [{ id: 'crypt_fiend', weight: 35 }, { id: 'necromancer', weight: 35 }, { id: 'abomination', weight: 30 }], elite: 'deathbound_vanguard', eliteChance: 0.13 },
       ],
       events: [
-        { at: 300, text: 'The frozen earth splits - ghouls claw free!', id: 'pale_ghoul', count: 24 },
+        { at: 300, text: 'The frozen earth splits, and ghouls claw free!', id: 'pale_ghoul', count: 24 },
         { at: 620, text: 'Geists swarm from the spires!', id: 'geist', count: 22 },
         { at: 920, text: 'The cult chants as one. Necromancers converge!', id: 'necromancer', count: 16 },
       ],
@@ -177,7 +177,7 @@
     boss_arena: {
       name: 'Eclipse Arena',
       subtitle: 'A duel with Aethelgard',
-      description: 'No horde, no timer. A bounded arena and one scripted boss: Aethelgard, the Eclipse Sovereign. You arrive with a ready-made kit - survive the telegraphs and break the eclipse.',
+      description: 'No horde, no timer. A bounded arena and one scripted boss: Aethelgard, the Eclipse Sovereign. You arrive with a ready-made kit. Survive the telegraphs and break the eclipse.',
       art: 'arena',
       ground: [0.06, 0.05, 0.11], groundAlt: [0.10, 0.08, 0.16],
       fog: [0.04, 0.03, 0.08],

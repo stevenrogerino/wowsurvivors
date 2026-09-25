@@ -21,8 +21,10 @@ game's own data at runtime**, not written out by hand. It reads `WS.Config`,
 `WS.Weapons`, `WS.Enemies`, `WS.Bosses`, `WS.Maps`, `WS.Characters`,
 `WS.Upgrades`, `WS.MetaUpgrades`, `WS.Blessings`, `WS.Combos`, `WS.Unions`,
 `WS.Elites`, `WS.Achievements`, `WS.CONST` (the global damage/speed scalars and
-pool ceilings), `WS.Arena.tuning` (the entire Eclipse Arena fight) and `WS.Lore`
-(every line of the prologue), walks whatever it finds, and builds a control per
+pool ceilings), `WS.Arena.tuning` (the entire Eclipse Arena fight),
+`WS.Familiar.tuning` (the summons), `WS.Finales` (all five finale fights, down
+to every attack's timing), `WS.FinaleUnits`, `WS.FinaleSpeakers` and
+`WS.Lore` (every line of the prologue), walks whatever it finds, and builds a control per
 field from the shape of the value:
 
 | what it finds | what you get |
@@ -54,6 +56,54 @@ correctly, with its shipped value already known. Add a weapon and its card is
 there. Nothing has to be told about it. `tools/check-bench.js` enforces this
 by inventing a field on a live object and failing if no control appears for
 it.
+
+## Boss mechanics, and the numbers that used to live in code
+
+The bench can only show what is in a data table. Until this pass, a good
+share of the game's balance was written into the code instead, where no
+table could see it:
+
+- **Finales.** Every finale's `tuning` block (bench: *Finales*) now carries
+  its whole fight, not only damage, radii and telegraphs. That covers how
+  often each attack comes (`every`), when each one first comes (`opening`,
+  and one per later phase, such as `fortOpening` and `duelOpening`), and the
+  counts, spreads, speeds, beam lengths and arcs, add waves, meltdown and
+  enrage paces, and hazard trails. All 42 attack timers across the five
+  fights are in there. What stays in code is layout: where a lantern stands
+  or where the machine kneels.
+- **The finale engine** (bench: *Global rules*): `finaleBreather`,
+  `finalePurgeSpeed`, `finaleEpilogue`, `finaleRehit` (how often a beam or
+  fence can hit you again while you stand in it), `finaleFenceReach` and
+  `finaleChargeLock`.
+- **Boss patterns** (Global rules): `bossInterval`, `bossVolleySpread` /
+  `Speed` / `Damage`, `bossRingSpeed` / `Damage`, `bossSummonNear` / `Far` /
+  `ScaleTime` and `bossChargeGirth`. Any single pattern entry in *Bosses* can
+  also override these for that boss alone, for example
+  `{ type: 'volley', bolts: 8, speed: 320, spread: 0.12, damage: 0.8 }` or
+  `{ type: 'charge', windup: 0.9, range: 520, girth: 2.6 }`.
+- **The wave director** (Global rules): the first spawn, the spawn, swarm
+  and boss rings, the supply cache's first drop, spacing, jitter and
+  distance, Beans's first visit and distance, when the coffin surfaces,
+  Death's warning, and overtime's ramp start, first boss, first surge and
+  surge size.
+- **Weapon mechanics that belong to no one weapon** (Global rules): what
+  evolving adds to chains, storms and ricochets, chain falloff and first
+  reach, an orbit blade's share per touch, the Radiant Gyre pulse, storm
+  accuracy and scatter, and the retry when nothing is in range.
+- **Loot and rewards** (Global rules): coin and chest values, the chest
+  jackpot odds, a bomb's bite out of a boss, the story objects' gold, and
+  Second Wind's heal, grace and burst. Watcher encounters gained their guard
+  parties, guard strength, reward and drain under `encounters`.
+- **Familiars** are their own section now: speed, bite, leash, the summon
+  cap and the leash thresholds.
+
+One fix came with this. `Arena.tuning` and `Familiar.tuning` are tables
+inside systems that load after the tuning layer applies its overrides, so a
+*saved* change to either was dropped as "stale" on the next load (the bench
+applied it live, so it looked fine until you reloaded). Overrides aimed at a
+table that is not loaded yet are now held and applied once every script has
+run, before the game boots. `check-bench` saves one of each and fails if
+they do not survive a reload.
 
 ## How it saves
 

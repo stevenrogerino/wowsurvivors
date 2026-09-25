@@ -507,7 +507,7 @@
         try {
           raw = decodeURIComponent(escape(atob(raw.replace(/^EMBERWATCH\d*:/i, '').replace(/\s+/g, ''))));
         } catch (e) {
-          return { ok: false, error: 'That code is damaged - it looks like part of it '
+          return { ok: false, error: 'That code is damaged. It looks like part of it '
             + 'is missing. Copy the whole thing and try again.' };
         }
       }
@@ -522,11 +522,11 @@
       let warn = null;
       if (outer.sum) {
         if (this.digest(JSON.stringify(inner)) !== outer.sum) {
-          return { ok: false, error: 'That save did not survive the trip - its checksum '
+          return { ok: false, error: 'That save did not survive the trip: its checksum '
             + 'does not match. Export it again and copy the whole thing.' };
         }
       } else if (!isPlain(outer.save)) {
-        warn = 'No checksum on this one, so it cannot be verified - it will still be '
+        warn = 'No checksum on this one, so it cannot be verified. It will still be '
           + 'repaired and loaded.';
       }
       /* Through the SAME path a stored save takes, so an imported account gets

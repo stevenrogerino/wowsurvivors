@@ -104,13 +104,13 @@
     const luck = player.luck;
 
     if (enemy.elite) {
-      this.spawn('chest', enemy.x, enemy.y, WS.floor((18 + WS.randInt(0, 26)) * WS.Game.run.goldMult));
+      this.spawn('chest', enemy.x, enemy.y, WS.floor((cfg.chestMin + WS.randInt(0, cfg.chestSpread)) * WS.Game.run.goldMult));
       return;
     }
     if (enemy.boss) return;   // bosses pay out directly in Enemy.kill
 
     if (WS.random() < cfg.dropChanceGold * luck) {
-      this.spawn('coin', enemy.x, enemy.y, WS.floor((3 + WS.randInt(0, 4)) * WS.Game.run.goldMult));
+      this.spawn('coin', enemy.x, enemy.y, WS.floor((cfg.coinMin + WS.randInt(0, cfg.coinSpread)) * WS.Game.run.goldMult));
     } else if (WS.random() < cfg.dropChancePotion * luck) {
       this.spawn('potion', enemy.x, enemy.y);
     } else if (WS.random() < cfg.dropChanceBomb * luck) {
@@ -132,7 +132,7 @@
     for (let i = enemies.length - 1; i >= 0; i--) {
       const e = enemies[i];
       if (!e || e.untargetable) continue;
-      if (e.boss || e.part) WS.Enemy.hit(e, e.maxHealth * 0.08, 'bomb');
+      if (e.boss || e.part) WS.Enemy.hit(e, e.maxHealth * WS.Config.bombBossPct, 'bomb');
       else WS.Enemy.damage(e, e.health + 1, false, 'bomb');
     }
   };
@@ -152,8 +152,9 @@
     } else if (kind === 'chest') {
       // Chests roll for a jackpot: one, three, or five payouts.
       const roll = WS.random();
-      const rolls = roll < 0.03 ? 5 : roll < 0.15 ? 3 : 1;
-      const total = WS.floor(pickup.value * p.goldMultiplier * (rolls === 1 ? 1 : rolls * 0.8));
+      const cfg = WS.Config;
+      const rolls = roll < cfg.goldJackpot ? 5 : roll < cfg.goldLucky ? 3 : 1;
+      const total = WS.floor(pickup.value * p.goldMultiplier * (rolls === 1 ? 1 : rolls * cfg.goldMultiRoll));
       WS.Game.addGold(total, pickup.x, pickup.y);
       WS.Audio.play('chest');
       if (rolls > 1) {
@@ -191,7 +192,7 @@
       WS.Save.save();
       WS.Game.announce('Professor Keegan rises!',
         'Buried by mistake. He files a complaint, then takes up his shield.', 3.5);
-      WS.Game.addGold(WS.floor(80 * run.goldMult), p.x, p.y);
+      WS.Game.addGold(WS.floor(WS.Config.coffinGold * run.goldMult), p.x, p.y);
       WS.Achievements.check();
       WS.Audio.play('evolve');
 
@@ -200,7 +201,7 @@
       WS.Save.save();
       WS.Game.announce('The graveblade answers.', 'Something colder takes the hilt.', 3.5,
         { kind: 'glory' });
-      WS.Game.addGold(WS.floor(120 * run.goldMult), p.x, p.y);
+      WS.Game.addGold(WS.floor(WS.Config.gravebladeGold * run.goldMult), p.x, p.y);
       WS.Player.addWeapon(p, 'reaving_arc');
       WS.Achievements.check();
       WS.Audio.play('evolve');
@@ -210,7 +211,7 @@
       WS.Save.save();
       WS.Game.announce('The twin glaives find you.', 'You were never going to refuse.', 3.5,
         { kind: 'glory' });
-      WS.Game.addGold(WS.floor(120 * run.goldMult), p.x, p.y);
+      WS.Game.addGold(WS.floor(WS.Config.glaiveGold * run.goldMult), p.x, p.y);
       WS.Player.addWeapon(p, 'verdant_lance');
       WS.Achievements.check();
       WS.Audio.play('evolve');

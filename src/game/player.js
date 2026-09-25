@@ -515,10 +515,12 @@
     if (p.health <= 0) {
       if (p.revives > 0) {
         p.revives--;
-        p.health = WS.floor(p.maxHealth * 0.5);
-        p.invulnerable = 2.5;
+        const cfg = WS.Config;
+        p.health = WS.floor(p.maxHealth * cfg.secondWindHeal);
+        p.invulnerable = cfg.secondWindGrace;
         WS.FX.flash(p.x, p.y, 130, WS.CONST.COLORS.nature, 0.6);
-        WS.Enemy.damageArea(p.x, p.y, 170, 200, null, 90, 'second_wind');
+        WS.Enemy.damageArea(p.x, p.y, cfg.secondWindRadius, cfg.secondWindDamage, null,
+          cfg.secondWindKnock, 'second_wind');
         WS.Game.announce('Second Wind!', 'The ancestors are not done with you.', 2.5,
           { kind: 'glory' });
         WS.Audio.play('level');

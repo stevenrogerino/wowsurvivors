@@ -100,6 +100,16 @@
     finalePowerExp: 0.7,
     finalePowerCap: 40,
     finalePowerWindow: 120,
+    // The finale engine: the breather before the boss, how fast the purge
+    // clears the field, how long the epilogue holds, how often a beam or a
+    // fence can hit again while you stand in it, how close a fence reaches,
+    // and how long before a charge goes that its lane stops following you.
+    finaleBreather: 30,
+    finalePurgeSpeed: 1150,
+    finaleEpilogue: 3.6,
+    finaleRehit: 0.7,
+    finaleFenceReach: 12,
+    finaleChargeLock: 0.3,
 
     endlessBossInterval: 75,
     endlessBossMinInterval: 30,
@@ -108,6 +118,96 @@
     endlessRampTime: 240,
     endlessEventInterval: 90,
     endlessEnemyRampTime: 300,
+    // Overtime's ramps start here (27:00), and its first boss and first
+    // horde surge come this long after dawn; each surge brings this many.
+    endlessRampStart: 1620,
+    endlessFirstBoss: 120,
+    endlessFirstEvent: 100,
+    endlessSurgeCount: 22,
+
+    /* The wave director. The first ambient spawn; the rings the horde, an
+       elite, a scripted swarm and a boss arrive on (px from the survivor);
+       the supply cache's first drop, spacing (every + up to jitter more) and
+       distance; Beans's first visit and distance; when Keegan's coffin
+       surfaces; and how much warning Death gives. */
+    firstSpawn: 0.75,
+    spawnRing: 700,
+    spawnRingJitter: 160,
+    swarmRing: 620,
+    bossSpawnDistance: 520,
+    cacheFirst: 60,
+    cacheEvery: 75,
+    cacheJitter: 45,
+    cacheDistance: 320,
+    eggVendorFirst: 150,
+    eggVendorDistance: 400,
+    coffinTime: 120,
+    deathWarning: 15,
+
+    /* Boss patterns, for every boss that does not name its own on the
+       pattern entry: how far a summon lands, how summons scale with the
+       clock, a volley's spread, speed and share of the boss's damage, the
+       same for a ring, and how wide a charge's lane is (x radius). */
+    bossInterval: 3.6,
+    bossSummonNear: 60,
+    bossSummonFar: 130,
+    bossSummonScaleTime: 600,
+    bossVolleySpread: 0.16,
+    bossVolleySpeed: 260,
+    bossVolleyDamage: 0.7,
+    bossRingSpeed: 220,
+    bossRingDamage: 0.6,
+    bossChargeGirth: 2.2,
+    // A ranged creature's bolt is this share of its body's damage, and it
+    // fires from up to rangedReach x its range. A lunge's lane is lungeGirth
+    // x its radius wide.
+    /* Second Wind: the health it comes back with, its grace, and the burst
+       that clears room (reach, damage, shove). */
+    secondWindHeal: 0.5,
+    secondWindGrace: 2.5,
+    secondWindRadius: 170,
+    secondWindDamage: 200,
+    secondWindKnock: 90,
+
+    /* What things are worth. A coin is coinMin plus up to coinSpread, a chest
+       chestMin plus up to chestSpread (x the run's gold multiplier); an
+       opened chest pays five times at goldJackpot odds and three times below
+       goldLucky, goldMultiRoll of its value each; a bomb takes bombBossPct of
+       a boss's health; and the story objects pay what they pay. */
+    coinMin: 3,
+    coinSpread: 4,
+    chestMin: 18,
+    chestSpread: 26,
+    goldJackpot: 0.03,
+    goldLucky: 0.15,
+    goldMultiRoll: 0.8,
+    bombBossPct: 0.08,
+    coffinGold: 80,
+    gravebladeGold: 120,
+    glaiveGold: 120,
+    rangedDamagePct: 0.75,
+    rangedReach: 1.15,
+    lungeGirth: 2.0,
+
+    /* Weapon mechanics that are not any one weapon's: what evolving adds to
+       a chain, a storm and a ricochet; how much each hop of a chain loses;
+       how far past its range a chain looks for its first target; an orbit
+       blade's share of the weapon's damage per touch; the Radiant Gyre's
+       opening pulse (reach, share of damage, shove); how often a storm bolt
+       finds a target and how far off it lands; and how soon a weapon with
+       nothing in range looks again. */
+    evolveChains: 2,
+    evolveStrikes: 2,
+    evolveBounces: 3,
+    chainFalloff: 0.06,
+    chainFirstReach: 1.6,
+    orbitTickPct: 0.5,
+    gyrePulseRadius: 130,
+    gyrePulseDamage: 0.8,
+    gyrePulseKnock: 20,
+    stormAccuracy: 0.85,
+    stormJitter: 30,
+    weaponRetry: 0.25,
 
     bossTimes: [300, 630, 960, 1320, 1620],
     spawnIntervalMult: 1.0,
@@ -179,6 +279,15 @@
       // Seconds after one meeting ends before the next can begin, so they
       // arrive as moments in a run rather than a queue.
       gap: 120,
+      // The first look, a run's first few seconds in; the gold for bringing
+      // one in; how fast progress drains when you step away (x the fill
+      // rate); how much tougher than the horde their guards are, and who.
+      firstCheck: 8, reward: 100, drain: 0.6, guardScale: 1.4,
+      guards: {
+        rogue: [['kerchief', 4], ['bruiser', 2]],
+        hunter: [['wolf', 8]],
+        warrior: [['skeleton', 6]],
+      },
     },
 
     // Fel / Ruinform: overkill harvested into a burst transformation.
@@ -269,6 +378,8 @@
       /* Once the upgrade pool is exhausted, every level-up is the same card.
          Off by default and only ever offered once that has happened. */
       autoBreakingPoint: false,
+      // Countdown bars for what comes next; shown only once a dawn is won.
+      bossTimers: true,
       /* Which cut of the prologue plays. Two exist while the author decides
          which one to keep; see src/render/cinematic.js. */
       cinematic: 2,

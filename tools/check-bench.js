@@ -541,6 +541,19 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       fail.push('the patch notes do not describe the change: ' + live.notes.slice(0, 90));
     }
 
+    /* Two roots are tables inside systems that load AFTER the tuning layer
+       applies its overrides (Arena.tuning, Familiar.tuning). A saved change
+       to either used to be dropped as stale on the next load - the bench
+       applied it live and the game never saw it again. Saved with the rest,
+       and checked below after the reload. */
+    const late = await page.evaluate(() => {
+      const game = document.querySelector('#frame').contentWindow.WS;
+      const was = { enrage: game.Arena.tuning.enrageTime, dash: game.Familiar.tuning.dashSpeed };
+      game.Tuning.set('Arena.tuning.enrageTime', was.enrage + 7);
+      game.Tuning.set('Familiar.tuning.dashSpeed', was.dash + 13);
+      return was;
+    });
+
     /* ---- writes --------------------------------------------------------- */
     await page.fill('#label', 'Bench self-check');
     await page.click('#save');
@@ -572,6 +585,8 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       shipped: WS.Tuning.shippedValue('Weapons.cinderfall.damage'),
       stale: (WS.Tuning.stale || []).length,
       overrides: Object.keys(WS.Tuning.overrides).length,
+      enrage: WS.Arena.tuning.enrageTime,
+      dash: WS.Familiar.tuning.dashSpeed,
       // and a path a tuning file must never be able to reach
       hostile: WS.Tuning.set('__proto__.polluted', 1)
         || WS.Tuning.set('Weapons.__proto__.polluted', 1)
@@ -587,7 +602,11 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
         + 'be put back');
     }
     if (reloaded.stale) fail.push(`${reloaded.stale} saved override(s) no longer resolve`);
-    if (reloaded.overrides !== 2) fail.push(`${reloaded.overrides} overrides loaded, expected 2`);
+    if (reloaded.overrides !== 4) fail.push(`${reloaded.overrides} overrides loaded, expected 4`);
+    if (reloaded.enrage !== late.enrage + 7 || reloaded.dash !== late.dash + 13) {
+      fail.push(`a saved change to a late-loading table did not survive the reload `
+        + `(arena enrage ${reloaded.enrage}, familiar dash ${reloaded.dash})`);
+    }
     if (reloaded.hostile || reloaded.polluted !== undefined) {
       fail.push('a tuning path reached outside the data tables - prototype pollution or '
         + 'a write into the save');

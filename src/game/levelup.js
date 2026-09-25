@@ -60,7 +60,7 @@
       const held = !!WS.Player.getWeapon(p, other);
       out.push({ kind: 'discovery', ready: held && kind === 'new_weapon',
         text: held ? 'Discovery: ' + c.name
-          : c.name + ' - needs ' + (WS.Weapons[other] ? WS.Weapons[other].name : other) });
+          : c.name + ' needs ' + (WS.Weapons[other] ? WS.Weapons[other].name : other) });
     }
 
     // The evolution this weapon is walking toward.
@@ -72,7 +72,7 @@
         out.push({ kind: 'evolve', ready: has && maxed,
           text: has
             ? (maxed ? 'Ready to evolve: ' + d.evolveName
-              : 'Evolves at rank ' + WS.WEAPON_MAX_LEVEL + ' - ' + d.evolveName)
+              : 'Evolves into ' + d.evolveName + ' at rank ' + WS.WEAPON_MAX_LEVEL)
             : 'Evolves with ' + passive });
       }
     }
@@ -84,8 +84,8 @@
       const ow = WS.Player.getWeapon(p, other);
       const res = WS.Weapons[u.result];
       out.push({ kind: 'union', ready: !!(ow && ow.evolved),
-        text: (res ? res.name : 'Union') + ' - with '
-          + (WS.Weapons[other] ? WS.Weapons[other].name : other) + ' evolved' });
+        text: (res ? res.name : 'Union') + ' once '
+          + (WS.Weapons[other] ? WS.Weapons[other].name : other) + ' evolves' });
     }
     /* Two at most, and what is achievable first. A card that lists every
        future it could have is a wall of text, not an aid. */
@@ -110,11 +110,11 @@
       if (w) {
         const maxed = w.level >= WS.WEAPON_MAX_LEVEL;
         out.push({ kind: 'evolve', carried: true, ready: maxed && !has, weapon: wid,
-          text: maxed ? (has ? 'Evolving ' : 'Evolves your ') + d.name + ' now - ' + d.evolveName
-            : 'Evolves your ' + d.name + ' at rank ' + WS.WEAPON_MAX_LEVEL + ' - ' + d.evolveName });
+          text: maxed ? (has ? 'Evolving ' : 'Evolves your ') + d.name + ' into ' + d.evolveName + ' now'
+            : 'Evolves your ' + d.name + ' into ' + d.evolveName + ' at rank ' + WS.WEAPON_MAX_LEVEL });
       } else if (all) {
         out.push({ kind: 'evolve', carried: false, ready: false, weapon: wid,
-          text: 'Evolves ' + d.name + ' - ' + d.evolveName });
+          text: 'Evolves ' + d.name + ' into ' + d.evolveName });
       }
     }
     out.sort((a, b) => (b.ready ? 2 : b.carried ? 1 : 0) - (a.ready ? 2 : a.carried ? 1 : 0));

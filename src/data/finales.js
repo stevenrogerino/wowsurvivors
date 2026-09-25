@@ -177,8 +177,19 @@
         bombDamage: 34, bombRadius: 64, bombTele: 1.1,
         drillDamage: 42, drillWindup: 1.1, drillChainWindup: 0.75, surfaceTele: 1.0, drillTime: 0.9, drillRange: 560,
         eruptDamage: 44, eruptRadius: 90, eruptTele: 1.3,
-        ringDamage: 30, ringSpeed: 190,
-        lamplings: 10,
+        ringDamage: 30, ringSpeed: 190, ringGaps: 2, ringGapWidth: 50,
+        lamplings: 10, burrowLamplings: 16,
+        riseTime: 1.8, burrowSpeed: 150, meltdownPace: 1.55,
+        // It hunts from keepAway px, faster once it melts down.
+        keepAway: 250, huntSpeed: 55, meltSpeed: 80, drillGirth: 1.5,
+        bombs: 2, bombsStripped: 3, bombScatter: 150, bombStagger: 0.15, bombBurn: 2, meltBurn: 3,
+        // The burning track a meltdown drill leaves behind it.
+        trailRadius: 34, trailLife: 3.2, trailDamage: 12, trailTick: 0.45,
+        // Seconds between each attack, and before the first of each.
+        every: { erupt: 3.3, trail: 0.1, drill: 8, drillStripped: 6, bomb: 3.4, bombStripped: 4,
+          hatch: 10, hatchStripped: 12, ring: 9 },
+        opening: { bomb: 4.5, drill: 8, hatch: 7, ring: 9 },
+        afterSurface: { drill: 3, ring: 5 },
       },
     },
 
@@ -213,6 +224,20 @@
         // reaction plus a step - below ~0.5s a lane this wide cannot be left.
         dashChainWindup: 0.5,
         pistolDamage: 30, boarders: 8, rally: 4,
+        sailInSpeed: 260, crashTime: 2.6,
+        // Broadsides fire straight down until the ship falls below aimBelow,
+        // then at you; each port a broadsideStagger later than the last.
+        aimBelow: 0.7, broadsideLength: 800, broadsideActive: 0.35, broadsideStagger: 0.3,
+        grapeCount: 7, grapeSpread: 0.14, grapeSpeed: 300,
+        kegs: 3, kegScatter: 120, kegStagger: 0.2, boardBruisers: 3,
+        wreckFireDamage: 14, wreckFireRadius: 46, wreckFireTick: 0.5,
+        // The duel: the Admiral circles at duelRange and hurries below duelLowAt.
+        duelRange: 210, duelSpeed: 170, duelCircle: 0.9, duelLowAt: 0.3, duelLowPace: 1.35,
+        dashChain: 2, dashGirth: 1.8, pistolCount: 5, pistolSpread: 0.12, pistolSpeed: 340,
+        duelKegRing: 4, duelKegRange: 110, duelKegScale: 0.8, duelKegDelay: 0.3,
+        every: { broadside: 6.5, grape: 4.2, keg: 7, board: 12, dash: 5.5, pistol: 2.6, duelKeg: 8, rally: 14 },
+        opening: { broadside: 3.5, grape: 5, keg: 6.5, board: 8 },
+        duelOpening: { dash: 3, pistol: 2, keg: 6, rally: 10 },
       },
     },
 
@@ -243,6 +268,11 @@
         riseAt: 0.30, handDamage: 44, handRadius: 58, handTele: 1.0,
         knellDamage: 38, knellSpeed: 200, knellGap: 34,
         lanceDamage: 30, raise: 6,
+        lanternHpGrowth: 0.15, lanternAdds: 2, riseSkeletons: 12, riseGhouls: 10, risenPace: 1.35,
+        hands: 3, lanceCount: 5, lanceSpread: 0.16, lanceSpeed: 260, knellGaps: 3,
+        // knellFast once he is exposed or risen; handStep between the hands of one volley.
+        every: { spawn: 9, blink: 8, hand: 5, handStep: 0.45, lance: 4, knell: 11, knellFast: 7.5 },
+        opening: { hand: 3, lance: 4, knell: 7, blink: 8, spawn: 6 },
       },
     },
 
@@ -256,7 +286,7 @@
       ],
       say: {
         legDown: ['grimtunnel', 'Is that a LEG? That was a leg!'],
-        kneel: ['grimtunnel', 'Knees! Why does it have KNEES? Fine - fortress mode!'],
+        kneel: ['grimtunnel', 'Knees! Why does it have KNEES? Fine. FORTRESS MODE!'],
         pylons: ['grimtunnel', 'Pylons up! Let us see you walk through THAT!'],
         destruct: ['grimtunnel', 'You want the ember? HAVE ALL OF IT!'],
       },
@@ -269,7 +299,7 @@
         damage: 12.5,   // x difficulty x Hyper x Config.finaleDamage
         standingArmor: 0.35, kneelVuln: 1.2, kneelStagger: 8, destructAt: 0.15,
         // The fortress: the pylons shield the hull, and they come back once.
-        pylonShield: 0.30, reraiseAt: 0.50, shockEvery: 8,
+        pylonShield: 0.30, reraiseAt: 0.50,
         // Near-lethal on Ochre's 30:00 curve (x8.3): hide, or be carried out.
         destructTime: 7, destructDamage: 90,
         stompDamage: 46, stompRadius: 76, stompTele: 0.9,
@@ -277,9 +307,21 @@
         /* The fortress's lighthouse: two back-to-back beams, each through ~210
            degrees, so every bearing is crossed at least once. 0.52 rad/s is
            ~175 px/s at the cage's rim - a survivor can keep ahead of it, just. */
-        fortSpin: 0.52, fortBeamTime: 7.0, fortEvery: 10.5,
+        fortSpin: 0.52, fortBeamTime: 7.0, fortBeamLength: 1400,
+        // Each volley opens fortLead radians behind you, turning your way.
+        fortLead: 0.85,
+        // The walking cannon: starts beamArc off straight down, sweeping in.
+        beamArc: 1.25, beamLength: 900,
         fenceDamage: 30, missileDamage: 40, missileRadius: 70, missileTele: 1.05,
+        missiles: 5, missileScatter: 170, missileStagger: 0.12,
+        boltCount: 16, boltSpeed: 200, boltDamage: 28,
+        shockSpeed: 230, shockGaps: 3, shockGapWidth: 42,
+        enterSpeed: 120, walkSpeed: 38,
         karrash: 5,
+        every: { step: 1.3, sweep: 10, missile: 5.5, shock: 8, karrash: 13,
+          lighthouse: 10.5, fortMissile: 5, bolts: 6.5, fortKarrash: 15 },
+        opening: { step: 1.3, sweep: 6, missile: 5, karrash: 9 },
+        fortOpening: { sweep: 3, missile: 2, bolts: 4 },
       },
     },
 
@@ -319,6 +361,21 @@
         novaDamage: 50, novaSpeed: 200, novaGap: 30,
         gridDamage: 56, gridTele: 1.35, spikeDamage: 44,
         ghouls: 10,
+        dropGravity: 1100, breachTime: 7.4,
+        debris: 4, debrisScatter: 190, debrisStagger: 0.15,
+        ventLength: 900, ventWidth: 40, ventTime: 6, ventArms: 4,
+        // Marrowfrost's frost cross, and the faster, wider one in the winter.
+        crossSpin: 0.45, crossWidth: 34, crossTele: 1.2, crossTime: 6, crossArms: 2,
+        winterCrossSpin: 0.5, winterCrossWidth: 36, winterCrossTele: 1.0, winterCrossTime: 8.2, winterCrossArms: 4,
+        // The glacial grid: cols x rows, of which gridSafe cells are safe.
+        gridCols: 5, gridRows: 4, gridSafe: 4,
+        spikes: 14, spikeSpeed: 190, winterSpikes: 16, winterSpikeSpeed: 200,
+        novaGaps: 3, novaSpin: 0.35, novaDelay: 1.3,
+        shardCount: 4, tideSkeletons: 6, tideGhouls: 6,
+        every: { debris: 4, vent: 11, ghoul: 12, nova: 9, cross: 15, grid: 14, spike: 5, tide: 16,
+          winterCross: 8, winterNova: 7, winterGrid: 12, winterSpike: 4, winterEnd: 3 },
+        opening: { debris: 3, vent: 7, ghoul: 6 },
+        lordOpening: { nova: 4, grid: 9, spike: 3, tide: 8 },
       },
     },
   };

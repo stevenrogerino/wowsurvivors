@@ -5,17 +5,19 @@
 'use strict';
 (function (WS) {
 
-  const MAX = 6;   // shared cap across every summon kind
-  /* A leashed summon is only released once it is back inside this fraction of
-     the leash, and it only takes marks inside this fraction of it. Both exist
-     to keep the come-home and the go-hunt decisions from meeting at a single
-     pixel and arguing there forever. */
-  const RECALL = 0.55;
-  const HUNT_IN = 0.90;
+  /* The shared cap across every summon kind (tuning.max), and the leash's
+     two thresholds: a leashed summon is only released once it is back inside
+     tuning.recall of the leash, and it only takes marks inside tuning.huntIn
+     of it. Both exist to keep the come-home and the go-hunt decisions from
+     meeting at a single pixel and arguing there forever. All of it is on the
+     tuning bench, under Familiars. */
 
   const Familiar = {
     list: [],
     tuning: {
+      max: 6,
+      recall: 0.55,
+      huntIn: 0.90,
       dashSpeed: 340,
       biteRadius: 46,
       biteCooldown: 0.55,
@@ -43,7 +45,7 @@
   Familiar.reset = function () { this.list.length = 0; };
 
   Familiar.add = function (kind) {
-    if (this.list.length >= MAX) return;
+    if (this.list.length >= this.tuning.max) return;
     const player = WS.Game.player;
     const spec = this.KINDS[kind] || this.KINDS.wolf;
     this.list.push({
@@ -88,14 +90,14 @@
          invites you to do - and nothing breaks it. */
       const homeDist = WS.dist(fam.x, fam.y, player.x, player.y);
       if (homeDist > t.leash) fam.leashed = true;
-      else if (homeDist < t.leash * RECALL) fam.leashed = false;
+      else if (homeDist < t.leash * t.recall) fam.leashed = false;
 
       /* Hunt around the SURVIVOR, not around the summon. Measured from the
          summon, a wolf already out at the leash could commit to a mark another
          huntRange beyond it - a mark it is structurally forbidden to reach.
          Bounded by the leash, everything it can see is something it can get
          to. */
-      const reachable = WS.min(t.huntRange, t.leash * HUNT_IN);
+      const reachable = WS.min(t.huntRange, t.leash * t.huntIn);
       if (fam.leashed) {
         fam.target = null;
       } else if (!fam.target || fam.target._dead

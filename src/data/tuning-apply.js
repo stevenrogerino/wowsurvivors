@@ -33,7 +33,7 @@
    * system rather than only at the top level. */
   const ROOTS = ['Config', 'CONST', 'Characters', 'Weapons', 'Unions', 'Enemies',
     'Elites', 'Bosses', 'Maps', 'Upgrades', 'MetaUpgrades', 'Blessings',
-    'Combos', 'Achievements', 'Lore', 'Arena.tuning',
+    'Combos', 'Achievements', 'Lore', 'Arena.tuning', 'Familiar.tuning',
     // The map finales: each fight's tuning and script, its parts, its cast.
     'Finales', 'FinaleUnits', 'FinaleSpeakers'];
   /* A Set, not an object literal. `{ __proto__: 1 }` does not create a key
@@ -49,6 +49,11 @@
   /** path -> the value that was there before any override touched it. */
   T.shipped = Object.create(null);
 
+  /** The table a root names, or undefined if it is not loaded yet. */
+  function resolveRoot(root) {
+    return root.split('.').reduce((o, k) => (o == null ? o : o[k]), WS);
+  }
+
   /** Walks a dotted path to its owning container. Returns null for anything
    *  that is not a real, reachable, permitted location. */
   function locate(path) {
@@ -62,7 +67,7 @@
     if (!root) return null;
     const parts = [root].concat(path.slice(root.length + 1).split('.'));
     if (parts.length < 2 || parts[1] === '') return null;
-    let node = root.split('.').reduce((o, k) => (o == null ? o : o[k]), WS);
+    let node = resolveRoot(root);
     for (let i = 1; i < parts.length - 1; i++) {
       const k = parts[i];
       if (FORBIDDEN.has(k)) return null;
@@ -138,11 +143,32 @@
       if (!this.set(path, wanted[path])) stale.push(path);
     }
     this.stale = stale;
-    if (stale.length && window.console) {
-      console.warn('tuning: ' + stale.length + ' override(s) point at paths that no '
-        + 'longer exist and were skipped: ' + stale.slice(0, 6).join(', '));
-    }
+    /* Two roots are tables that live inside a system - Arena.tuning and
+       Familiar.tuning - and those systems load after this file. An override
+       aimed at one is not stale, it is early: it is held and tried again
+       once every script has run, before boot reads anything. Without this a
+       saved arena or familiar change applied in the bench and was quietly
+       dropped on the next load. */
+    const late = stale.filter((path) => {
+      const root = ROOTS.find((r) => r.includes('.') && path.startsWith(r + '.'));
+      return root && !resolveRoot(root);
+    });
+    if (late.length && document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        for (const path of late) {
+          if (this.set(path, wanted[path])) this.stale.splice(this.stale.indexOf(path), 1);
+        }
+        this.report();
+      });
+    } else this.report();
     return stale;
+  };
+
+  T.report = function () {
+    if (this.stale.length && window.console) {
+      console.warn('tuning: ' + this.stale.length + ' override(s) point at paths that no '
+        + 'longer exist and were skipped: ' + this.stale.slice(0, 6).join(', '));
+    }
   };
 
   /* Applied here, at load, rather than from boot(). Every data file is in

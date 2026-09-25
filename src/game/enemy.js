@@ -270,7 +270,7 @@
             && distance > e.radius + player.radius) {
           e.lungeTimer = t.lunge.cooldown;
           this.beginCharge(e, dx, dy, t.lunge.windup || cfg.lungeWindup,
-            t.lunge.time || cfg.lungeTime, t.lunge.range, 2.0);
+            t.lunge.time || cfg.lungeTime, t.lunge.range, cfg.lungeGirth);
         }
       }
 
@@ -377,11 +377,11 @@
 
       if (e.rangedTimer !== null && !frozen) {
         e.rangedTimer -= dt;
-        if (e.rangedTimer <= 0 && distance <= t.ranged.range * 1.15) {
+        if (e.rangedTimer <= 0 && distance <= t.ranged.range * cfg.rangedReach) {
           e.rangedTimer = t.ranged.cooldown;
           const r = t.ranged;
           WS.Projectile.spawnHostile(e.x, e.y, dx * r.speed, dy * r.speed,
-            e.damage * 0.75, r.school, t.name, e, r.slowFactor, r.slowDuration);
+            e.damage * cfg.rangedDamagePct, r.school, t.name, e, r.slowFactor, r.slowDuration);
         }
       }
 
@@ -389,7 +389,7 @@
         e.attackTimer -= dt;
         if (e.attackTimer <= 0) {
           this.bossAttack(e, dx, dy);
-          e.attackTimer = t.interval || 3.6;
+          e.attackTimer = t.interval || cfg.bossInterval;
         }
       }
 
@@ -438,39 +438,48 @@
     const pattern = t.patterns[e.patternIndex];
     e.patternIndex = (e.patternIndex + 1) % t.patterns.length;
     const school = t.school || 'shadow';
+    /* Every figure here is a Config dial (bossVolleySpeed and the rest), and
+       any one pattern entry may carry its own - { type: 'volley', bolts: 8,
+       speed: 300 } - which wins over the dial for that boss alone. */
+    const cfg = WS.Config;
+    const opt = (k, dial) => (pattern[k] !== undefined ? pattern[k] : dial);
 
     if (pattern.type === 'summon') {
-      const scale = 1 + WS.Game.run.time / 600;
+      const scale = 1 + WS.Game.run.time / cfg.bossSummonScaleTime;
+      const near = opt('near', cfg.bossSummonNear), far = opt('far', cfg.bossSummonFar);
       for (let n = 0; n < (pattern.count || 6); n++) {
         const a = WS.random() * WS.TAU;
-        const range = 60 + WS.random() * 70;
+        const range = near + WS.random() * (far - near);
         this.spawn(pattern.id, e.x + WS.cos(a) * range, e.y + WS.sin(a) * range, scale);
       }
       WS.FX.flash(e.x, e.y, e.radius * 2.4, WS.CONST.COLORS.shadow, 0.4);
       e.telegraph = { kind: 'ring', life: 0.4, maxLife: 0.4, radius: e.radius * 3 };
     } else if (pattern.type === 'volley') {
       const bolts = pattern.bolts || 7;
+      const step = opt('spread', cfg.bossVolleySpread), v = opt('speed', cfg.bossVolleySpeed);
+      const dmg = e.damage * opt('damage', cfg.bossVolleyDamage);
       for (let s = 1; s <= bolts; s++) {
-        const spread = (s - (bolts + 1) / 2) * 0.16;
+        const spread = (s - (bolts + 1) / 2) * step;
         const c = WS.cos(spread), sn = WS.sin(spread);
         WS.Projectile.spawnHostile(e.x, e.y,
-          (dx * c - dy * sn) * 260, (dx * sn + dy * c) * 260,
-          e.damage * 0.7, school, t.name, e);
+          (dx * c - dy * sn) * v, (dx * sn + dy * c) * v,
+          dmg, school, t.name, e);
       }
     } else if (pattern.type === 'ring') {
       const bolts = pattern.bolts || 10;
+      const v = opt('speed', cfg.bossRingSpeed), dmg = e.damage * opt('damage', cfg.bossRingDamage);
       for (let s = 0; s < bolts; s++) {
         const a = (s / bolts) * WS.TAU;
         WS.Projectile.spawnHostile(e.x, e.y,
-          WS.cos(a) * 220, WS.sin(a) * 220, e.damage * 0.6, school, t.name, e);
+          WS.cos(a) * v, WS.sin(a) * v, dmg, school, t.name, e);
       }
     } else if (pattern.type === 'charge') {
       /* Plant, mark the ground, then run down it. `live` says the lane is
        * still being aimed; the update loop turns that off the moment the
        * charge commits, and the same lane stays on screen while it happens so
        * the player can see the promise kept. */
-      const cfg = WS.Config;
-      this.beginCharge(e, dx, dy, cfg.chargeWindup, cfg.chargeTime, cfg.chargeRange, 2.2);
+      this.beginCharge(e, dx, dy, opt('windup', cfg.chargeWindup), opt('time', cfg.chargeTime),
+        opt('range', cfg.chargeRange), opt('girth', cfg.bossChargeGirth));
       WS.FX.flash(e.x, e.y, e.radius * 1.6, WS.CONST.COLORS.enemy, 0.5);
     }
   };

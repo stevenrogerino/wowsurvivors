@@ -457,7 +457,13 @@
       UI.paintAutoBreaking();
       autoBp.blur();   // or the next Space/Enter in a fight flips it again
     });
-    portraitWrap.append(gauge, vitals, autoBp);
+    /* The Watch's timers, boss-mod style: what comes next and how long
+       until it does. A veteran's tool - unlocked by a first dawn - so it
+       hangs under the portrait beside the other switch, not in the field. */
+    const timers = el('div'); timers.id = 'hud-timers';
+    const under = el('div', 'hud-under');
+    under.append(autoBp, timers);
+    portraitWrap.append(gauge, vitals, under);
 
     /* -- timer rail ------------------------------------------------------- */
     const timer = el('div'); timer.id = 'hud-timer';
@@ -519,7 +525,8 @@
     hud.append(portraitWrap, timer, boss, stats, weapons, passives, toasts);
 
     this.els = {
-      gauge, aHP, aXP, portrait, lvl, name, hpText, meters, autoBp,
+      gauge, aHP, aXP, portrait, lvl, name, hpText, meters, autoBp, timers,
+      timerRows: new Map(), timerOrder: '', timerAt: 0,
       timeText, railFill, railHead, rail, mode,
       boss, bossName, bFill, bDrain, bGate, bossPct,
       goldV, killV, dpsV, hpsV, weapons, passives, toasts,
@@ -547,6 +554,72 @@
       b.classList.toggle('on', on);
       b.firstChild.classList.toggle('on', on);
       b.setAttribute('aria-checked', String(on));
+    }
+  };
+
+  /** The timers are earned: a first night held to dawn. */
+  UI.timersUnlocked = function () {
+    return (WS.Save.stats.totalVictories || 0) > 0;
+  };
+
+  const clockOf = (s) => (s >= 60 ? WS.formatTime(s) : s < 10 ? s.toFixed(1) : String(WS.floor(s)));
+  const timerIcons = new Map();
+  function timerIcon(e) {
+    const key = e.kind + ':' + (e.id || '');
+    let url = timerIcons.get(key);
+    if (url) return url;
+    const tpl = e.id && (WS.Bosses[e.id] || WS.Enemies[e.id]);
+    const met = e.id && ((WS.Save.stats.bestiary[e.id] || WS.Save.stats.bosses[e.id] || 0) > 0);
+    url = tpl && met ? WS.Sprites.dataURL(WS.Sprites.creature(tpl.art, tpl.tint, 40, tpl.bossKit))
+      : WS.Icons.url(e.art, e.tint, 40);
+    timerIcons.set(key, url);
+    return url;
+  }
+
+  /** Ten times a second is plenty for a countdown, and keeps the DOM quiet:
+   *  a row is built once per timer and only its width and figures change. */
+  UI.paintTimers = function (force) {
+    const E = this.els;
+    if (!E || !E.timers) return;
+    const now = performance.now();
+    if (!force && now - E.timerAt < 100) return;
+    E.timerAt = now;
+    const run = WS.Game.run;
+    const on = run && this.timersUnlocked() && WS.Save.settings.bossTimers !== false;
+    const list = on ? WS.WaveManager.timers(run).slice(0, 4) : [];
+    const keep = new Set();
+    for (const e of list) {
+      const key = e.kind;
+      keep.add(key);
+      let r = E.timerRows.get(key);
+      if (!r) {
+        const row = el('div', 'bm-bar');
+        row.dataset.kind = e.kind;
+        const img = new Image(); img.className = 'bm-icon'; img.width = img.height = 20; img.alt = '';
+        const track = el('div', 'bm-track');
+        const fill = el('div', 'bm-fill');
+        const name = el('span', 'bm-name');
+        const time = el('span', 'bm-time');
+        track.append(fill, name, time);
+        row.append(img, track);
+        r = { row, img, fill, name, time, label: '', icon: '', soon: false };
+        E.timerRows.set(key, r);
+      }
+      if (r.label !== e.label) { r.label = e.label; r.name.textContent = e.label; }
+      const icon = timerIcon(e);
+      if (r.icon !== icon) { r.icon = icon; r.img.src = icon; }
+      r.fill.style.transform = `scaleX(${WS.clamp(e.left / e.total, 0, 1).toFixed(4)})`;
+      r.time.textContent = clockOf(e.left);
+      const soon = e.left < 5;
+      if (r.soon !== soon) { r.soon = soon; r.row.classList.toggle('soon', soon); }
+    }
+    for (const [key, r] of E.timerRows) {
+      if (!keep.has(key)) { r.row.remove(); E.timerRows.delete(key); }
+    }
+    const order = list.map((e) => e.kind).join(',');
+    if (order !== E.timerOrder) {
+      E.timerOrder = order;
+      for (const e of list) E.timers.append(E.timerRows.get(e.kind).row);
     }
   };
 
@@ -641,7 +714,7 @@
       const slot = el('div', 'pslot');
       slot.append(icon(up.art, qualityColour(up.quality), 34), el('div', 'rim'), el('div', 'rank', String(rank)));
       tipOn(slot, tipPassive(p, id), { prefer: ['above', 'left'], focus: false });
-      slot.setAttribute('aria-label', `${up.name} - rank ${rank}/${up.max}`
+      slot.setAttribute('aria-label', `${up.name}, rank ${rank}/${up.max}`
         + `\n${WS.template(up.description, up)}`);
       wrap.append(slot);
     }
@@ -681,6 +754,7 @@
     if (WS.Finale.running()) modeBits.push(WS.Finale.hudLabel());
     e.mode.textContent = modeBits.join(' · ');
     this.paintAutoBreaking();
+    this.paintTimers();
 
     /* Cheap: a number compared once a frame, and a repaint only on the few
        moments in a run when it actually changes. */
@@ -1289,7 +1363,7 @@
       const id = WS.Game.selection.map;
       const map = WS.Maps[id];
       if (map && map.arena) {
-        hyper.textContent = 'Hyper: —';
+        hyper.textContent = 'Hyper: n/a';
         hyper.dataset.tip = map.name + ' runs its own fight, so Hyper has nothing to scale.';
         hyper.disabled = true;
         return;
@@ -1800,7 +1874,7 @@
       const main = el('div', 'row-main');
       main.append(el('div', 'row-name', found ? c.name : '? ? ?'));
       main.append(el('div', 'row-sub', found
-        ? `${WS.Weapons[c.weapons[0]].name} + ${WS.Weapons[c.weapons[1]].name} - ${WS.template(c.description, c)}`
+        ? `${WS.Weapons[c.weapons[0]].name} + ${WS.Weapons[c.weapons[1]].name}: ${WS.template(c.description, c)}`
         : c.hint));
       row.append(main);
       comboRows.append(row);
@@ -1850,7 +1924,7 @@
       main.append(el('div', 'row-name', d.evolveName));
       main.append(el('div', 'row-sub',
         `${d.name} at its last rank, with ${up ? up.name : d.evolvePairing}`
-        + (d.evolveDescription ? ' - ' + WS.template(d.evolveDescription, d) : '')));
+        + (d.evolveDescription ? '. ' + WS.template(d.evolveDescription, d) : '')));
       row.append(main);
       evoRows.append(row);
     }
@@ -2206,6 +2280,18 @@
     toggle('victoryCinematic', 'Victory cinematic',
       'Twenty-three seconds at thirty minutes, starring the survivor you ran, '
       + 'before the results. Off puts you straight on the numbers.');
+    if (UI.timersUnlocked()) {
+      toggle('bossTimers', 'The Watch\u2019s timers',
+        'Countdown bars under your portrait for the next supply cache, Beans, '
+        + 'boss and swarm, soonest first.');
+    } else {
+      const row = el('div', 'setting locked');
+      const main = el('div');
+      main.append(el('div', 's-name', 'The Watch\u2019s timers'),
+        el('div', 's-desc', 'Hold one night to dawn and the Watch will tell you what comes next, and when.'));
+      row.append(main, el('div', 'switch disabled'));
+      wrap.append(row);
+    }
     toggle('mouseSteer', 'Steer with the mouse',
       'Hold the left button anywhere on the field and drag, the same as touch. '
       + 'Play one-handed, or keep both on the keys.');
@@ -2224,7 +2310,7 @@
     const sum = WS.Save.describe(WS.Save.db);
     desc.textContent = `${sum.gold.toLocaleString()} gold, ${sum.characters} survivors, `
       + `${sum.maps} battlefields, ${sum.runs} runs. Your progress lives in this browser `
-      + 'only - copy it somewhere safe, or move it to another machine.';
+      + 'only. Copy it somewhere safe, or move it to another machine.';
     amain.append(desc);
     const note = el('div', 's-desc');
     note.style.marginTop = '6px';
@@ -2244,11 +2330,11 @@
       if (!code) return say('This browser would not encode the save.', true);
       try {
         await navigator.clipboard.writeText(code);
-        say(`Copied - ${code.length.toLocaleString()} characters. Paste it somewhere you `
+        say(`Copied: ${code.length.toLocaleString()} characters. Paste it somewhere you `
           + 'will still have next year.');
       } catch (e) {
         // Clipboard is gated in plenty of contexts; the file always works.
-        say('The clipboard is blocked here - use Save to file instead.', true);
+        say('The clipboard is blocked here. Use Save to file instead.', true);
       }
     });
 
@@ -2264,7 +2350,7 @@
         a.href = url; a.download = `ember-watch-${day}.json`;
         document.body.append(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 4000);
-        say('Saved. It is plain JSON - you can read it, and so can a future you.');
+        say('Saved. It is plain JSON: you can read it, and so can a future you.');
       } catch (e) { say('This browser would not hand over a file.', true); }
     });
 
@@ -2991,11 +3077,11 @@
     } else if (canFace) {
       s.body.append(verdict('win', 'Dawn, and not the end',
         `You held ${run.map.name} for thirty minutes and the win is banked. `
-        + `${def.title} is still out there - or wait for Death, who always comes.`,
+        + `${def.title} is still out there. Or wait for Death, who always comes.`,
         runFigures(run, WS.Game.player), logEntry(run, WS.Game.player, 'dawn')));
     } else {
       s.body.append(verdict('win', 'The night broke first',
-        `You held ${run.map.name} for thirty minutes. Death is on the field now — it always is.`,
+        `You held ${run.map.name} for thirty minutes. Death is on the field now. It always is.`,
         runFigures(run, WS.Game.player), logEntry(run, WS.Game.player, 'dawn')));
     }
     s.body.classList.add('fitted');

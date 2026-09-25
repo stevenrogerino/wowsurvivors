@@ -33,6 +33,14 @@ const esc = (s) => String(s === undefined || s === null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const clock = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
 const num = (n) => Math.round(n).toLocaleString('en-US');
+/* A boss's yell, in quotes - unless it is a stage direction written between
+   asterisks (*a chittering shriek echoes from the dark*), which is a sound
+   and not a line, and is set in italics without them. */
+const yellHtml = (y) => {
+  const m = /^\*(.+)\*$/.exec(String(y).trim());
+  return m ? `<blockquote class="yell cue">${esc(m[1])}</blockquote>`
+    : `<blockquote class="yell">${esc(y)}</blockquote>`;
+};
 
 (async () => {
   const browser = await chromium.launch({
@@ -178,7 +186,7 @@ const num = (n) => Math.round(n).toLocaleString('en-US');
 
     const deeds = (WS.AchievementOrder || Object.keys(WS.Achievements)).map((k) => WS.Achievements[k])
       .filter((a) => a && a.name).map((a) => ({ name: a.name, art: a.art, how: T(a.description, enc),
-        reward: a.reward && WS.Achievements.rewardText ? WS.Achievements.rewardText(a) : '—' }));
+        reward: a.reward && WS.Achievements.rewardText ? WS.Achievements.rewardText(a) : '' }));
     const lessons = (WS.MetaUpgradeOrder || Object.keys(WS.MetaUpgrades)).map((k) => {
       const u = WS.MetaUpgrades[k];
       return { name: u.name, art: u.art, max: u.max, cost: u.cost, description: T(u.description, u) };
@@ -301,7 +309,7 @@ const num = (n) => Math.round(n).toLocaleString('en-US');
           </dl>
           ${s.record.length ? `<details><summary>Their record</summary>${s.record.map((p) => `<p>${esc(p)}</p>`).join('')}</details>` : ''}
           <div class="unlock${s.unlock ? '' : ' free'}">${s.unlock
-            ? `<b>${esc(s.unlock.name)}</b> — ${esc(s.rumor || s.unlock.how)}`
+            ? `<b>${esc(s.unlock.name)}</b>: ${esc(s.rumor || s.unlock.how)}`
             : 'On watch from the very first night.'}</div>
         </div>
       </article>`).join('');
@@ -341,7 +349,7 @@ const num = (n) => Math.round(n).toLocaleString('en-US');
         </article>`;
   const bestiary = D.regions.filter((r) => r.list.length || r.elites.length).map((r) => `
       <div class="region">
-        <h3>${esc(r.name)} <span>— ${esc(r.sub)}</span></h3>
+        <h3>${esc(r.name)} <span>${esc(r.sub)}</span></h3>
         <div class="grid g-beast">${r.list.map((e) => beastTile(e)).join('')}${r.elites.map((e) => beastTile(e, true)).join('')}</div>
       </div>`).join('');
 
@@ -352,7 +360,7 @@ const num = (n) => Math.round(n).toLocaleString('en-US');
             <h4>${esc(b.name)}</h4>
             <div class="tags">${tag(b.school)}<span class="tag">${esc(b.family)}</span></div>
             <div class="hp">${num(b.health)} health${where ? ` · ${where}` : ''}</div>
-            ${b.yell ? `<blockquote class="yell">${esc(b.yell)}</blockquote>` : ''}
+            ${b.yell ? yellHtml(b.yell) : ''}
             ${b.note ? `<p class="note">${esc(b.note)}</p>` : ''}
           </div>
         </article>`;
@@ -418,11 +426,12 @@ ${css}
 </head>
 <body>
 <nav class="top"><div class="bar wrap">
-  <a class="mark" href="../"><b>THE EMBER WATCH</b> — Codex</a>
+  <a class="mark" href="https://emberwatch.online/"><b>THE EMBER WATCH</b> · Codex</a>
   <div class="links">
     <a href="#vigil">The Vigil</a><a href="#survivors">Survivors</a><a href="#arsenal">Arsenal</a>
     <a href="#bestiary">Bestiary</a><a href="#bosses">Bosses</a><a href="#dawn">At Dawn</a>
     <a href="#battlefields">Battlefields</a><a href="#ledger">Ledger</a>
+    <a class="go" href="https://emberwatch.online/">Play</a>
   </div>
 </div></nav>
 
@@ -431,8 +440,8 @@ ${css}
   <h1>The Ember&nbsp;Watch</h1>
   <div class="sub">Thirty minutes until dawn</div>
   <p class="lede">${D.counts.survivors} survivors, ${D.counts.maps} battlefields, ${D.counts.weapons} weapons and ${D.counts.bosses} bosses,
-    and the light that holds the dark back. <b>You only move</b> — everything you carry fights on its own.
-    <a class="play" href="../">Play it in your browser →</a></p>
+    and the light that holds the dark back. <b>You only move.</b> Everything you carry fights on its own.</p>
+  <p class="cta"><a class="play" href="https://emberwatch.online/">Play it in your browser →</a></p>
 </header>
 
 <main class="wrap">
@@ -443,7 +452,7 @@ ${css}
       <div class="lore-lines">
         <p>Every night, the dark comes up out of the ground.</p>
         <p>It has taken every watch before this one.</p>
-        <p>What holds it back is ember — and ember will not burn on its own.</p>
+        <p>What holds it back is ember, and ember will not burn on its own.</p>
         <p>It sleeps in the stones the dead leave behind.</p>
         <p>Break the stone. Take the light out of it. While you carry it, you burn.</p>
         <p>They can smell a light from a long way off.</p>
@@ -469,7 +478,7 @@ ${css}
   <section id="survivors">
     <div class="kicker">Chapter Two</div>
     <h2 class="stitle">The watchers</h2>
-    <p class="sdesc">Two are on watch from the first night. The rest are found out there — most of them in trouble, all of them for a reason.</p>
+    <p class="sdesc">Two are on watch from the first night. The rest are found out there, most of them in trouble, all of them for a reason.</p>
     <div class="grid g-surv">${survivorCards}</div>
   </section>
 
@@ -491,21 +500,21 @@ ${css}
   <section id="bestiary">
     <div class="kicker">Chapter Four</div>
     <h2 class="stitle">The bestiary</h2>
-    <p class="sdesc">Every creature by the ground it walks, with the Watch's notes on each. Gold-rimmed tiles are champions — bigger, named, and always carrying a chest.</p>
+    <p class="sdesc">Every creature by the ground it walks, with the Watch's notes on each. Gold-rimmed tiles are champions: bigger, named, and always carrying a chest.</p>
     ${bestiary}
   </section>
 
   <section id="bosses">
     <div class="kicker">Chapter Five</div>
     <h2 class="stitle">The bosses</h2>
-    <p class="sdesc">Each battlefield sends five on a schedule. Each announces itself, then cycles its patterns — a volley, a ring, a charge, or a summons of its own kind.</p>
+    <p class="sdesc">Each battlefield sends five on a schedule. Each announces itself, then cycles its patterns: a volley, a ring, a charge, or a summons of its own kind.</p>
     ${bosses}
   </section>
 
   <section id="dawn">
     <div class="kicker">Chapter Six</div>
     <h2 class="stitle">At dawn</h2>
-    <p class="sdesc">Hold to 30:00 and the field is purged. Then the one behind the night comes out — a different one on every battlefield.</p>
+    <p class="sdesc">Hold to 30:00 and the field is purged. Then the one behind the night comes out, a different one on every battlefield.</p>
     <div class="finales">${finales}</div>
   </section>
 

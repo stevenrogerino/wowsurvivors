@@ -2774,3 +2774,72 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
    put together - the lag in every tab switch and every tip. The scrim above
    it carries the separation on its own. */
 #overlay.scene { backdrop-filter: none; }
+
+/* The roster's portraits hang in the same drawn frame as the cartouche's
+   picture and the records', not the machined chamfer they were cut to
+   before the frames were drawn by hand. The well keeps its own light. */
+.pick .pick-seat {
+  clip-path: none; box-sizing: border-box; width: 52px; height: 52px;
+  border: 1px solid transparent;
+  border-image: var(--frame-picture) 24 / 7px stretch;
+  box-shadow: inset 0 0 12px rgba(0,0,0,.65);
+}
+.pick .pick-seat img { width: 42px; height: 42px; }
+.pick.selected .pick-seat {
+  background:
+    radial-gradient(circle at 50% 34%, color-mix(in srgb, var(--q, var(--arc)) 34%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--obsidian-3), var(--void));
+}
+
+/* ============================================== THE WATCH'S TIMERS =====
+ * Boss-mod bars under the portrait: an icon, a bar that drains as the thing
+ * comes, its name inked on the bar and the seconds at the right. The
+ * soonest is on top. Under five seconds a bar lights and its figures go
+ * hot, the way a raid timer calls out what is about to land.
+ */
+.hud-under {
+  position: absolute; top: 100%; left: 0; margin-top: 10px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+  pointer-events: none;
+}
+.hud-under .hud-auto { position: static; margin-top: 0; }
+#hud-timers { display: flex; flex-direction: column; gap: 4px; width: 236px; }
+#hud-timers:empty { display: none; }
+.bm-bar { display: flex; align-items: center; gap: 6px; animation: bm-in .25s var(--ease) both; }
+@keyframes bm-in { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+.bm-icon {
+  flex: none; width: 22px; height: 22px; box-sizing: border-box; padding: 1px;
+  border: 1px solid transparent; border-image: var(--frame-pip) 24 / 4px / 1px stretch;
+  background: rgba(8,9,13,.8);
+}
+.bm-track {
+  position: relative; flex: 1; height: 20px; overflow: hidden;
+  background: rgba(8,9,13,.74);
+  border: 1px solid transparent; border-image: var(--frame-pip) 24 / 4px / 1px stretch;
+}
+.bm-fill {
+  position: absolute; inset: 0; transform-origin: left center;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bm) 62%, #fff4) 0%, var(--bm) 55%, color-mix(in srgb, var(--bm) 70%, #000) 100%);
+  opacity: .62; transition: transform .1s linear;
+}
+.bm-name, .bm-time {
+  position: absolute; top: 0; bottom: 0; display: flex; align-items: center;
+  color: #f4ecdc; text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 3px rgba(0,0,0,.7);
+  white-space: nowrap;
+}
+.bm-name {
+  left: 7px; right: 44px; overflow: hidden; text-overflow: ellipsis; display: block; line-height: 19px;
+  font-family: var(--voice); font-style: italic; font-weight: 500; font-size: 13.5px;
+}
+.bm-time { right: 7px; font-family: var(--fig); font-size: 13px; font-variant-numeric: tabular-nums; }
+.bm-bar[data-kind="cache"] { --bm: #b99a52; }
+.bm-bar[data-kind="beans"] { --bm: #c7773a; }
+.bm-bar[data-kind="boss"]  { --bm: #b2403a; }
+.bm-bar[data-kind="swarm"] { --bm: #6f7fa0; }
+.bm-bar.soon .bm-fill { opacity: .9; animation: bm-pulse .5s ease-in-out infinite alternate; }
+.bm-bar.soon .bm-time { color: #ffd98a; font-weight: 600; }
+@keyframes bm-pulse { from { filter: brightness(1); } to { filter: brightness(1.45); } }
+@media (prefers-reduced-motion: reduce) { .bm-bar, .bm-bar.soon .bm-fill { animation: none; } }
+@media (max-width: 720px) { #hud-timers { width: 190px; } .bm-name { font-size: 12px; } }
+.setting.locked { opacity: .6; }
+.switch.disabled { opacity: .4; pointer-events: none; }

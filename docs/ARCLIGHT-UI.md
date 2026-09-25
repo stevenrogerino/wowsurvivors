@@ -431,3 +431,54 @@ Fixes from a playthrough.
   - The run's figures move to the centre column under the survivor.
   - The third column holds only the damage and healing meters, which
     now fit at 1920x1080 without a scrollbar.
+
+## The Watch's timers, the new beasts, and the numbers on the bench
+
+- **The Watch's timers.** A boss-mod countdown stack under the portrait,
+  beside the Auto Breaking Point switch:
+  - It shows the next supply cache, Beans (arriving, and then leaving),
+    the next boss, and the next swarm. After dawn these become the
+    overtime boss and the horde surge.
+  - Soonest is on top. Each bar drains as its event comes, and under
+    five seconds it pulses and its figures go gold.
+  - A boss or swarm is named, with its portrait, only once the bestiary
+    has met it. Until then it reads "A boss" or "Swarm".
+  - It unlocks with the first night held to dawn. Settings has an on/off
+    switch, with a locked row explaining how to earn it.
+  - The feed is `WaveManager.timers(run)`. Each timer remembers its own
+    length (`cacheEvery`, `merchantEvery` and the rest) so a bar knows
+    what full is.
+- **Roster portraits** hang in the drawn `--frame-picture` frame the
+  cartouche and the records use. The old machined chamfer is gone.
+- **Six creatures redrawn.** The Karrash (Outrunner, Battlelord, Kazrok),
+  Sunhide Raptor, Savannah Prowler, Shrikewing Windcaller, Young
+  Fleshripper, and the Longtooth Wolf / Coyote Packrunner.
+  - Two new painters make them possible. `limb()` draws a leg as one
+    tapered, shaded form through its joints, instead of stacked ellipses
+    with a seam at every knee. `mass()` draws a body as one smooth
+    outline (a cat's shoulder blades, dip and hips), instead of three
+    overlapping ovals.
+  - The fleshripper is now side-on on the ground, so it no longer shares
+    the windcaller's front-on silhouette.
+  - `HEAD_AT` tells the regalia where a head and shoulders are when the
+    widest early row is not the head: spread wings, or a level spear.
+    The Windmatron's hat and the Battlelord's horns sit on the head, not
+    across the face.
+  - check-bestiary: 52.0% average interior detail, nothing touching its
+    frame, and every pair still distinct.
+- **Stage-direction yells** (`*a chittering shriek echoes from the
+  dark*`) show without their asterisks in the arrival banner, and are no
+  longer babbled as if they were words.
+- **Dashes.** Player-facing text no longer uses em dashes or spaced
+  hyphens as dashes. Each one was reworded rather than swapped for a
+  comma.
+- **The Codex.**
+  - Its play button and masthead go to emberwatch.online. They were
+    relative links, so they opened whatever sat beside the file.
+  - There is a Play link in the sticky nav.
+  - The hero's button sits on its own line instead of mid-sentence.
+- **Tuning.** See TUNING.md, "Boss mechanics, and the numbers that used to
+  live in code": every finale attack's timing and shape, the finale
+  engine, boss patterns, the wave director, loot, Second Wind, familiars
+  and shared weapon mechanics are on the bench. Saved arena and familiar
+  changes now survive a reload.

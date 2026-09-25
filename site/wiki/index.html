@@ -135,9 +135,12 @@
   /* ---------------- the voice ---------------- */
   .hero h1{font-family:var(--voice); font-weight:800; letter-spacing:0;}
   .hero .sub{font-family:var(--voice); font-style:italic; font-size:19px;}
-  .hero .lede a.play{display:inline-block; margin-top:14px; font-weight:700; text-decoration:none;
+  .hero .cta{margin:22px 0 0;}
+  .hero a.play{display:inline-block; font-weight:700; text-decoration:none;
     border:1px solid rgba(245,197,107,.45); border-radius:100px; padding:7px 16px;}
-  .hero .lede a.play:hover{background:rgba(245,197,107,.1);}
+  .hero a.play:hover{background:rgba(245,197,107,.1);}
+  nav.top .links a.go{color:var(--arc-hot); border:1px solid rgba(245,197,107,.45); margin-left:6px;}
+  nav.top .links a.go:hover{background:rgba(245,197,107,.1);}
   .stitle{font-family:var(--voice); font-weight:800; letter-spacing:0;}
   .sub-h{font-family:var(--voice); font-size:24px; color:var(--arc-hot); margin-top:56px;}
   nav.top .mark{text-decoration:none;}
@@ -182,6 +185,7 @@
   blockquote{margin:10px 0 0; padding-left:12px; border-left:2px solid color-mix(in srgb, var(--q, var(--arc)) 55%, transparent);
     font-family:var(--voice); font-weight:700; font-size:16px; color:color-mix(in oklab, var(--q, var(--arc)) 45%, #f4ecdc);}
   blockquote::before{content:'\201C';} blockquote::after{content:'\201D';}
+  blockquote.cue{font-style:italic; font-weight:500;} blockquote.cue::before, blockquote.cue::after{content:none;}
   details{margin-top:12px;}
   details summary{cursor:pointer; font-family:var(--voice); font-style:italic; font-weight:700; color:var(--arc); font-size:15px;}
   details p{font-family:var(--voice); font-size:15px; color:#d6ccb8; margin-top:8px; line-height:1.5;}
@@ -255,11 +259,12 @@
 </head>
 <body>
 <nav class="top"><div class="bar wrap">
-  <a class="mark" href="../"><b>THE EMBER WATCH</b> — Codex</a>
+  <a class="mark" href="https://emberwatch.online/"><b>THE EMBER WATCH</b> · Codex</a>
   <div class="links">
     <a href="#vigil">The Vigil</a><a href="#survivors">Survivors</a><a href="#arsenal">Arsenal</a>
     <a href="#bestiary">Bestiary</a><a href="#bosses">Bosses</a><a href="#dawn">At Dawn</a>
     <a href="#battlefields">Battlefields</a><a href="#ledger">Ledger</a>
+    <a class="go" href="https://emberwatch.online/">Play</a>
   </div>
 </div></nav>
 
@@ -268,8 +273,8 @@
   <h1>The Ember&nbsp;Watch</h1>
   <div class="sub">Thirty minutes until dawn</div>
   <p class="lede">10 survivors, 5 battlefields, 16 weapons and 27 bosses,
-    and the light that holds the dark back. <b>You only move</b> — everything you carry fights on its own.
-    <a class="play" href="../">Play it in your browser →</a></p>
+    and the light that holds the dark back. <b>You only move.</b> Everything you carry fights on its own.</p>
+  <p class="cta"><a class="play" href="https://emberwatch.online/">Play it in your browser →</a></p>
 </header>
 
 <main class="wrap">
@@ -280,7 +285,7 @@
       <div class="lore-lines">
         <p>Every night, the dark comes up out of the ground.</p>
         <p>It has taken every watch before this one.</p>
-        <p>What holds it back is ember — and ember will not burn on its own.</p>
+        <p>What holds it back is ember, and ember will not burn on its own.</p>
         <p>It sleeps in the stones the dead leave behind.</p>
         <p>Break the stone. Take the light out of it. While you carry it, you burn.</p>
         <p>They can smell a light from a long way off.</p>
@@ -306,7 +311,7 @@
   <section id="survivors">
     <div class="kicker">Chapter Two</div>
     <h2 class="stitle">The watchers</h2>
-    <p class="sdesc">Two are on watch from the first night. The rest are found out there — most of them in trouble, all of them for a reason.</p>
+    <p class="sdesc">Two are on watch from the first night. The rest are found out there, most of them in trouble, all of them for a reason.</p>
     <div class="grid g-surv">
       <article class="surv" style="--q:#69ccf0">
         <img class="art wide" src="img/surv_mage.webp" alt="Baron Zul at the watch fire" loading="lazy">
@@ -340,7 +345,7 @@
             <div><dt>Health</dt><dd>135</dd></div>
             <div><dt>Speed</dt><dd>205</dd></div>
           </dl>
-          <details><summary>Their record</summary><p>The Order of the Morning Light named him the Fool as an insult - he blessed a well that had already run dry, and it filled. He took the name as a rank and has signed it that way ever since.</p><p>Chid heals because nobody has ever managed to explain to him why he should not be able to. The Light seems to have given up arguing.</p><p>He was the first to sit down at the Watch's fire and the last to leave it, every night, for as long as anyone there can remember.</p></details>
+          <details><summary>Their record</summary><p>The Order of the Morning Light named him the Fool as an insult. He blessed a well that had already run dry, and it filled. He took the name as a rank and has signed it that way ever since.</p><p>Chid heals because nobody has ever managed to explain to him why he should not be able to. The Light seems to have given up arguing.</p><p>He was the first to sit down at the Watch's fire and the last to leave it, every night, for as long as anyone there can remember.</p></details>
           <div class="unlock free">On watch from the very first night.</div>
         </div>
       </article>
@@ -359,7 +364,7 @@
             <div><dt>Speed</dt><dd>250</dd></div>
           </dl>
           <details><summary>Their record</summary><p>The doctorate is self-awarded. So is most of Rav's history, which changes depending on who is buying.</p><p>What the Watch can confirm: he was the Kerchiefs' quartermaster for six years, and the winter they raided a Watch fire for its ember, and a village froze for it, he walked out on them with their payroll and every knife in the armoury.</p><p>The Kerchiefs caught him on the road and tied him up in the open, as a lesson to the others. The Watch cut him loose. He has been teaching lessons of his own since.</p></details>
-          <div class="unlock"><b>Cut Loose</b> — The Kerchiefs have one of their own tied up somewhere, and they want it seen. Put down 60 of them in a single night and you will find where they keep him.</div>
+          <div class="unlock"><b>Cut Loose</b>: The Kerchiefs have one of their own tied up somewhere, and they want it seen. Put down 60 of them in a single night and you will find where they keep him.</div>
         </div>
       </article>
       <article class="surv" style="--q:#abd473">
@@ -377,7 +382,7 @@
             <div><dt>Speed</dt><dd>230</dd></div>
           </dl>
           <details><summary>Their record</summary><p>Ashford Garrison held the eastern woods for forty years. It held out against the Snarlpack for eleven days. Maeca was out on patrol when it fell, and she has been hunting the pack that took it ever since.</p><p>She walks barefoot to feel the ground, and she never wastes an arrow, because most nights she has only a few.</p><p>The Watch found her treed by wolves in Thornhollow, down to her last quiver and still counting shots. She accepted help on the understanding that it was a temporary arrangement. It has not ended.</p></details>
-          <div class="unlock"><b>Last Quiver</b> — A ranger has been hunting the beasts of these woods alone, and they have started hunting her back. Put down 300 beasts in a single night and you will hear where she is holding out.</div>
+          <div class="unlock"><b>Last Quiver</b>: A ranger has been hunting the beasts of these woods alone, and they have started hunting her back. Put down 300 beasts in a single night and you will hear where she is holding out.</div>
         </div>
       </article>
       <article class="surv" style="--q:#c79c6e">
@@ -395,7 +400,7 @@
             <div><dt>Speed</dt><dd>210</dd></div>
           </dl>
           <details><summary>Their record</summary><p>He fell at the Battle of the Low Ford, a hundred years ago, in the middle of a charge and the middle of a battle cry. They raised a cairn over him where he lay. The cry never stopped.</p><p>For a century, travellers on the ford road heard the ground screaming and walked a little faster. Then the Watch put down enough of the night's worst in one night to wake him, and he came out of the cairn still charging.</p><p>When the Watch asked for his name for the book, that is what he said. It has been written down exactly.</p></details>
-          <div class="unlock"><b>The Screaming Cairn</b> — Somewhere under a cairn, a hero is still screaming the battle cry he died on. He answers to a fight worth waking for: put down 2 of the night's worst in a single night.</div>
+          <div class="unlock"><b>The Screaming Cairn</b>: Somewhere under a cairn, a hero is still screaming the battle cry he died on. He answers to a fight worth waking for: put down 2 of the night's worst in a single night.</div>
         </div>
       </article>
       <article class="surv" style="--q:#9482c9">
@@ -412,8 +417,8 @@
             <div><dt>Health</dt><dd>115</dd></div>
             <div><dt>Speed</dt><dd>215</dd></div>
           </dl>
-          <details><summary>Their record</summary><p>When the blight came to the Gloaming Grove, Nim saved it the only way he knew: he drank the sickness out of it, and a great deal of the grove along with it. The grove lived. The druids exiled him for how.</p><p>The hunger never left his hands. It goes quiet only when there is a great deal to drink at once - which is why he is always found at the edge of a slaughter, watching.</p><p>He joined the Watch on the reasoning that the Watch would never run out of things for him to drink. So far he has been right.</p></details>
-          <div class="unlock"><b>Bane of the Masses</b> — Someone in the dark follows the worst of the killing, and waits at its edge. Put 40 of them down inside a breath or two, and he will come to see who did it.</div>
+          <details><summary>Their record</summary><p>When the blight came to the Gloaming Grove, Nim saved it the only way he knew: he drank the sickness out of it, and a great deal of the grove along with it. The grove lived. The druids exiled him for how.</p><p>The hunger never left his hands. It goes quiet only when there is a great deal to drink at once, which is why he is always found at the edge of a slaughter, watching.</p><p>He joined the Watch on the reasoning that the Watch would never run out of things for him to drink. So far he has been right.</p></details>
+          <div class="unlock"><b>Bane of the Masses</b>: Someone in the dark follows the worst of the killing, and waits at its edge. Put 40 of them down inside a breath or two, and he will come to see who did it.</div>
         </div>
       </article>
       <article class="surv" style="--q:#0070de">
@@ -431,7 +436,7 @@
             <div><dt>Speed</dt><dd>215</dd></div>
           </dl>
           <details><summary>Their record</summary><p>Vonnra keeps the Waystation, where the last three roads meet and nothing gets through without paying her toll. She reads fortunes in the storm, and the storm has never once been wrong about who can afford her.</p><p>She saw the Watch in the lightning years ago and has been sending it invoices ever since, for services she had not yet rendered.</p><p>She came to the field herself the night a watcher finally had enough gold to be worth the trip. She has not left, and the invoices have not stopped.</p></details>
-          <div class="unlock"><b>Fortune Seeker</b> — A far seer reads fortunes in the storm, and only for those who can pay. Carry 600 gold in a single night and her storm will find you - but she will not wait for it to pass.</div>
+          <div class="unlock"><b>Fortune Seeker</b>: A far seer reads fortunes in the storm, and only for those who can pay. Carry 600 gold in a single night and her storm will find you. She will not wait for it to pass.</div>
         </div>
       </article>
       <article class="surv" style="--q:#f58cba">
@@ -449,7 +454,7 @@
             <div><dt>Speed</dt><dd>210</dd></div>
           </dl>
           <details><summary>Their record</summary><p>Professor Keegan fainted during his own knighting and was declared dead by a clerk who wanted to go home. He was buried in Thornhollow with full honours and the wrong paperwork.</p><p>He dug himself out three days later, walked to the Argent Vigil and filed a complaint, which is still under review. Until it is resolved his knighthood remains probationary.</p><p>He kept the shield. He says he has earned it twice.</p></details>
-          <div class="unlock"><b>Grave Robber</b> — Somewhere in Thornhollow, an adequate knight lies buried by mistake. Hold the woods long enough and his coffin will come up.</div>
+          <div class="unlock"><b>Grave Robber</b>: Somewhere in Thornhollow, an adequate knight lies buried by mistake. Hold the woods long enough and his coffin will come up.</div>
         </div>
       </article>
       <article class="surv" style="--q:#c41f3b">
@@ -467,7 +472,7 @@
             <div><dt>Speed</dt><dd>200</dd></div>
           </dl>
           <details><summary>Their record</summary><p>DZ was a healer once, and a good one. He healed past the point where anyone should, and the Light in him curdled into something colder that did not want to mend.</p><p>He was buried with his blade the first time. He did not stay. He has not stayed buried since, and he has stopped expecting to.</p><p>He keeps the Watch because it is the only place where what he has become is useful.</p></details>
-          <div class="unlock"><b>The Light Curdles</b> — Heal past the point of healing. When enough Light has curdled in one night, a blade will break the ground where it fell.</div>
+          <div class="unlock"><b>The Light Curdles</b>: Heal past the point of healing. When enough Light has curdled in one night, a blade will break the ground where it fell.</div>
         </div>
       </article>
       <article class="surv" style="--q:#a330c9">
@@ -485,7 +490,7 @@
             <div><dt>Speed</dt><dd>235</dd></div>
           </dl>
           <details><summary>Their record</summary><p>Nerosus burned out both eyes to see the ruin clearly. He says it was worth it. He has not blinked since, which the others find harder to live with than the eyes.</p><p>The ruin is what is left when a thing has been used past its end, and he sees it in everything: in the horde, in the Watch, in the fire itself. He has decided it is beautiful.</p><p>The twin glaives found him the night he gave himself to the fel for the last time and came back. He has been giving himself to it ever since.</p></details>
-          <div class="unlock"><b>You Were Warned</b> — Give yourself to the ruin, again and again in one night. When it has taken enough of you, two glaives will be waiting.</div>
+          <div class="unlock"><b>You Were Warned</b>: Give yourself to the ruin, again and again in one night. When it has taken enough of you, two glaives will be waiting.</div>
         </div>
       </article></div>
   </section>
@@ -677,7 +682,7 @@
       <div class="disc"><h4>Truestrike</h4><div class="pair">Volley + Seeking Motes</div><p>Enchanted arrows curve in flight to seek their prey.</p><p class="hint">“The finest rangers fletch their arrows with a whisper of magic.”</p></div>
       <div class="disc"><h4>Celestial Alignment</h4><div class="pair">Moonbrand + Dawnpulse</div><p>Sun and moon align: an extra moonbeam, and wider rings of Light.</p><p class="hint">“What happens when the moon rises on the light of dawn?”</p></div>
       <div class="disc"><h4>Verdict</h4><div class="pair">Judgement Disc + Hallowed Ring</div><p>The shield judges from hallowed ground: +1 ricochet and 10% more damage.</p><p class="hint">“A shield thrown from sacred ground carries a verdict.”</p></div>
-      <div class="disc"><h4>Curdle</h4><div class="pair">Dawnpulse + Hallowed Ring</div><p>Both hallowed rites mend you for 2 more - even unevolved. What your wounds cannot drink, rots.</p><p class="hint">“Two holy rites in one vessel. The Light has to go somewhere...”</p></div></div>
+      <div class="disc"><h4>Curdle</h4><div class="pair">Dawnpulse + Hallowed Ring</div><p>Both hallowed rites mend you for 2 more, even unevolved. What your wounds cannot drink, rots.</p><p class="hint">“Two holy rites in one vessel. The Light has to go somewhere...”</p></div></div>
     <h3 class="sub-h">Passives</h3>
     <div class="grid g-pas">
       <div class="pas"><img class="icon sm" src="img/icon_p_might.png" alt="Might" loading="lazy"><div><h4>Might <small>5 ranks</small></h4><p>+10% weapon damage</p><p class="detail">Multiplies the damage of every weapon you carry.</p></div></div>
@@ -685,35 +690,35 @@
       <div class="pas"><img class="icon sm" src="img/icon_p_fleetfoot.png" alt="Fleetfoot" loading="lazy"><div><h4>Fleetfoot <small>5 ranks</small></h4><p>+12% movement speed</p><p class="detail">You move faster.</p></div></div>
       <div class="pas"><img class="icon sm" src="img/icon_p_magnet.png" alt="Greed's Pull" loading="lazy"><div><h4>Greed's Pull <small>5 ranks</small></h4><p>+25 pickup radius</p><p class="detail">Gems, coins, and potions fly to you from farther away.</p></div></div>
       <div class="pas"><img class="icon sm" src="img/icon_p_vitality.png" alt="Vitality" loading="lazy"><div><h4>Vitality <small>5 ranks</small></h4><p>+25 maximum health (and heals it)</p><p class="detail">A bigger health pool, plus a free heal when taken.</p></div></div>
-      <div class="pas"><img class="icon sm" src="img/icon_p_armor.png" alt="Ironhide" loading="lazy"><div><h4>Ironhide <small>5 ranks</small></h4><p>+2 armor (diminishing damage reduction)</p><p class="detail">Every hit is cut by a share based on your armor - each point helps a little less than the last, and it never blocks a hit completely.</p></div></div>
+      <div class="pas"><img class="icon sm" src="img/icon_p_armor.png" alt="Ironhide" loading="lazy"><div><h4>Ironhide <small>5 ranks</small></h4><p>+2 armor (diminishing damage reduction)</p><p class="detail">Every hit is cut by a share based on your armor. Each point helps a little less than the last, and it never blocks a hit completely.</p></div></div>
       <div class="pas"><img class="icon sm" src="img/icon_p_precision.png" alt="Precision" loading="lazy"><div><h4>Precision <small>5 ranks</small></h4><p>+7% critical strike chance</p><p class="detail">Chance for any weapon hit to strike critically.</p></div></div>
       <div class="pas"><img class="icon sm" src="img/icon_p_ferocity.png" alt="Ferocity" loading="lazy"><div><h4>Ferocity <small>4 ranks</small></h4><p>+25% critical strike damage</p><p class="detail">Your critical strikes hit even harder.</p></div></div>
-      <div class="pas"><img class="icon sm" src="img/icon_p_area.png" alt="Expanse" loading="lazy"><div><h4>Expanse <small>5 ranks</small></h4><p>+12% effect area</p><p class="detail">Bigger auras, zones, orbits and novas. Chain and beam weapons gain REACH from this (longer leaps, longer lines), not damage - look to pierce or count for those instead.</p></div></div>
+      <div class="pas"><img class="icon sm" src="img/icon_p_area.png" alt="Expanse" loading="lazy"><div><h4>Expanse <small>5 ranks</small></h4><p>+12% effect area</p><p class="detail">Bigger auras, zones, orbits and novas. Chain and beam weapons gain REACH from this (longer leaps, longer lines), not damage. Look to pierce or count for those instead.</p></div></div>
       <div class="pas"><img class="icon sm" src="img/icon_p_quantity.png" alt="Duplicity" loading="lazy"><div><h4>Duplicity <small>3 ranks</small></h4><p>+1 projectile for volley weapons</p><p class="detail">Adds a projectile to bolts, knives, arrows, axes, shields, storm strikes, and chain leaps. Auras and beams are unaffected.</p></div></div>
-      <div class="pas"><img class="icon sm" src="img/icon_p_luck.png" alt="Fortune" loading="lazy"><div><h4>Fortune <small>4 ranks</small></h4><p>+15% luck (better and more drops)</p><p class="detail">Better odds of coins, potions, sapper charges, and lodestones - but every rank here is a rank not spent on clear speed, which is what actually keeps a build alive early. A strong late-game luxury, a weak early priority.</p></div></div>
+      <div class="pas"><img class="icon sm" src="img/icon_p_luck.png" alt="Fortune" loading="lazy"><div><h4>Fortune <small>4 ranks</small></h4><p>+15% luck (better and more drops)</p><p class="detail">Better odds of coins, potions, sapper charges, and lodestones, but every rank here is a rank not spent on clear speed, which is what actually keeps a build alive early. A strong late-game luxury, a weak early priority.</p></div></div>
       <div class="pas"><img class="icon sm" src="img/icon_p_wisdom.png" alt="Wisdom" loading="lazy"><div><h4>Wisdom <small>4 ranks</small></h4><p>+10% experience gained</p><p class="detail">Every gem is worth more experience.</p></div></div>
       <div class="pas"><img class="icon sm" src="img/icon_p_recovery.png" alt="Recovery" loading="lazy"><div><h4>Recovery <small>4 ranks</small></h4><p>+0.5 health regenerated per second</p><p class="detail">Steady healing, always ticking.</p></div></div>
       <div class="pas"><img class="icon sm" src="img/icon_p_velocity.png" alt="Velocity" loading="lazy"><div><h4>Velocity <small>3 ranks</small></h4><p>+15% projectile speed</p><p class="detail">Bolts, knives, arrows, and shields fly faster. No effect on chains, auras, gyres, or storms.</p></div></div>
       <div class="pas"><img class="icon sm" src="img/icon_p_dark_bargain.png" alt="Dark Bargain" loading="lazy"><div><h4>Dark Bargain <small>3 ranks</small></h4><p>The horde grows: +20% spawns, +8% enemy speed. You grow too: +15% XP and gold.</p><p class="detail">A curse you choose. More enemies means more gems, more gold, more danger. Stacks.</p></div></div>
       <div class="pas"><img class="icon sm" src="img/icon_p_warding_light.png" alt="Warding Light" loading="lazy"><div><h4>Warding Light <small>3 ranks</small></h4><p>Blocks the next single hit against you completely, then recharges.</p><p class="detail">Blocks one hit every 30 / 22 / 15 seconds by rank.</p></div></div>
       <div class="pas"><img class="icon sm" src="img/icon_p_chilling_presence.png" alt="Chilling Presence" loading="lazy"><div><h4>Chilling Presence <small>3 ranks</small></h4><p>Enemies near you are slowed by cold.</p><p class="detail">Slows non-boss enemies within a widening frost aura (stronger and wider per rank). The aura grows with effect area.</p></div></div>
-      <div class="pas"><img class="icon sm" src="img/icon_p_spirit_companion.png" alt="Spirit Companion" loading="lazy"><div><h4>Spirit Companion <small>3 ranks</small></h4><p>Summon a spirit wolf that hunts the horde.</p><p class="detail">Each rank calls another spirit wolf. They chase down the nearest enemies and maul them - bites deal area damage that scales with your damage and level.</p></div></div>
-      <div class="pas"><img class="icon sm" src="img/icon_p_thorns.png" alt="Thorns" loading="lazy"><div><h4>Thorns <small>5 ranks</small></h4><p>Attackers take damage back - melee and ranged.</p><p class="detail">Any enemy that hits you - a melee swing OR a ranged bolt - takes 10 + 40% of that damage back per rank (even if you dodge or block). Ranged bolts reflect to the caster that fired them.</p></div></div>
+      <div class="pas"><img class="icon sm" src="img/icon_p_spirit_companion.png" alt="Spirit Companion" loading="lazy"><div><h4>Spirit Companion <small>3 ranks</small></h4><p>Summon a spirit wolf that hunts the horde.</p><p class="detail">Each rank calls another spirit wolf. They chase down the nearest enemies and maul them. Bites deal area damage that scales with your damage and level.</p></div></div>
+      <div class="pas"><img class="icon sm" src="img/icon_p_thorns.png" alt="Thorns" loading="lazy"><div><h4>Thorns <small>5 ranks</small></h4><p>Attackers take damage back, melee and ranged.</p><p class="detail">Any enemy that hits you, with a melee swing OR a ranged bolt, takes 10 + 40% of that damage back per rank (even if you dodge or block). Ranged bolts reflect to the caster that fired them.</p></div></div>
       <div class="pas"><img class="icon sm" src="img/icon_p_searing.png" alt="Searing Aura" loading="lazy"><div><h4>Searing Aura <small>4 ranks</small></h4><p>A holy aura sears nearby enemies.</p><p class="detail">Burns enemies around you twice per second (damage and radius grow with rank, damage%, and effect area). Lets tanks deal damage while standing firm.</p></div></div>
       <div class="pas"><img class="icon sm" src="img/icon_p_dodge.png" alt="Evasion" loading="lazy"><div><h4>Evasion <small>4 ranks</small></h4><p>+8% chance to avoid a hit entirely.</p><p class="detail">Each rank adds a chance to completely dodge an incoming hit. Stacks with armor and blocks.</p></div></div>
       <div class="pas"><img class="icon sm" src="img/icon_p_curdled.png" alt="Curdled Light" loading="lazy"><div><h4>Curdled Light <small>5 ranks</small></h4><p>+15% of your healing lashes out as shadow damage</p><p class="detail">Healing you cannot use rots instead of going to waste: overheal erupts around you, and a growing share of the healing that does land strikes with it. Feeds on regeneration, lifesteal, and healing weapons.</p></div></div>
-      <div class="pas"><img class="icon sm" src="img/icon_p_ruin_hunger.png" alt="Ruin Hunger" loading="lazy"><div><h4>Ruin Hunger <small>5 ranks</small></h4><p>+25% fel from overkill, +1s of Ruinform, and a shorter wait before it can answer again</p><p class="detail">Every scrap of overkill feeds the ruin faster, the transformation holds a second longer per rank, and the recovery window after it ends shrinks too - though it never fully closes unless the ruin is already part of you.</p></div></div>
+      <div class="pas"><img class="icon sm" src="img/icon_p_ruin_hunger.png" alt="Ruin Hunger" loading="lazy"><div><h4>Ruin Hunger <small>5 ranks</small></h4><p>+25% fel from overkill, +1s of Ruinform, and a shorter wait before it can answer again</p><p class="detail">Every scrap of overkill feeds the ruin faster, the transformation holds a second longer per rank, and the recovery window after it ends shrinks too, though it never fully closes unless the ruin is already part of you.</p></div></div>
       <div class="pas"><img class="icon sm" src="img/icon_p_grave_call.png" alt="Grave Call" loading="lazy"><div><h4>Grave Call <small>3 ranks</small></h4><p>Raise a ghoul to shamble after the horde.</p><p class="detail">Each rank raises another ghoul. Slower than a spirit wolf and slower to swing, but it hits far harder and its claws sweep a wider arc.</p></div></div>
-      <div class="pas"><img class="icon sm" src="img/icon_p_dread_command.png" alt="Dread Command" loading="lazy"><div><h4>Dread Command <small>5 ranks</small></h4><p>+30% summon damage and +10% summon attack speed</p><p class="detail">Drives everything you have summoned - spirit wolves and ghouls alike - to strike harder and more often. Worthless without something to command.</p></div></div></div>
+      <div class="pas"><img class="icon sm" src="img/icon_p_dread_command.png" alt="Dread Command" loading="lazy"><div><h4>Dread Command <small>5 ranks</small></h4><p>+30% summon damage and +10% summon attack speed</p><p class="detail">Drives everything you have summoned, spirit wolves and ghouls alike, to strike harder and more often. Worthless without something to command.</p></div></div></div>
   </section>
 
   <section id="bestiary">
     <div class="kicker">Chapter Four</div>
     <h2 class="stitle">The bestiary</h2>
-    <p class="sdesc">Every creature by the ground it walks, with the Watch's notes on each. Gold-rimmed tiles are champions — bigger, named, and always carrying a chest.</p>
+    <p class="sdesc">Every creature by the ground it walks, with the Watch's notes on each. Gold-rimmed tiles are champions: bigger, named, and always carrying a chest.</p>
     
       <div class="region">
-        <h3>Thornhollow <span>— The quiet woods beyond the last inn</span></h3>
+        <h3>Thornhollow <span>The quiet woods beyond the last inn</span></h3>
         <div class="grid g-beast">
         <article class="beast">
           <img class="art" src="img/beast_lampling.webp" alt="Lampling Tunneler" loading="lazy">
@@ -798,7 +803,7 @@
         </article></div>
       </div>
       <div class="region">
-        <h3>The Dustreach <span>— A wind-scoured, lawless frontier</span></h3>
+        <h3>The Dustreach <span>A wind-scoured, lawless frontier</span></h3>
         <div class="grid g-beast">
         <article class="beast">
           <img class="art" src="img/beast_coyote.webp" alt="Coyote Packrunner" loading="lazy">
@@ -833,7 +838,7 @@
             <h4>Kerchief Pillager</h4>
             <div class="fm">kerchief · 43 health · from 1:30</div>
             <div class="traits">casts fire bolts</div>
-            <p class="note">The ones who throw. Firepots, bottles, once a boot - whatever the last farm had in it.</p>
+            <p class="note">The ones who throw. Firepots, bottles, once a boot: whatever the last farm had in it.</p>
           </div>
         </article>
         <article class="beast">
@@ -865,7 +870,7 @@
         </article></div>
       </div>
       <div class="region">
-        <h3>Mourneholt <span>— Where the sun is only a rumor</span></h3>
+        <h3>Mourneholt <span>Where the sun is only a rumor</span></h3>
         <div class="grid g-beast">
         <article class="beast">
           <img class="art" src="img/beast_skeleton.webp" alt="Skeletal Warrior" loading="lazy">
@@ -918,12 +923,12 @@
             <h4>Bone Sentinel</h4>
             <div class="fm">Champion · undead · 670 health · from 4:00</div>
             
-            <p class="note">A knight once, and still standing a knight's watch - over the wrong side.</p>
+            <p class="note">A knight once, and still standing a knight's watch, over the wrong side.</p>
           </div>
         </article></div>
       </div>
       <div class="region">
-        <h3>The Ochre Plains <span>— Red earth, white sun, no mercy</span></h3>
+        <h3>The Ochre Plains <span>Red earth, white sun, no mercy</span></h3>
         <div class="grid g-beast">
         <article class="beast">
           <img class="art" src="img/beast_longstrider.webp" alt="Greater Longstrider" loading="lazy">
@@ -990,7 +995,7 @@
         </article></div>
       </div>
       <div class="region">
-        <h3>The Pale Wastes <span>— Under a sky that never thaws</span></h3>
+        <h3>The Pale Wastes <span>Under a sky that never thaws</span></h3>
         <div class="grid g-beast">
         <article class="beast">
           <img class="art" src="img/beast_pale_ghoul.webp" alt="Palewaste Ghoul" loading="lazy">
@@ -1007,7 +1012,7 @@
             <h4>Hungering Geist</h4>
             <div class="fm">undead · 59 health · from 0:00</div>
             <div class="traits">bursts where it dies</div>
-            <p class="note">A hunger with nothing left around it. It bursts where it falls - do not be standing there.</p>
+            <p class="note">A hunger with nothing left around it. It bursts where it falls. Do not be standing there.</p>
           </div>
         </article>
         <article class="beast">
@@ -1057,7 +1062,7 @@
         </article></div>
       </div>
       <div class="region">
-        <h3>Eclipse Arena <span>— A duel with Aethelgard</span></h3>
+        <h3>Eclipse Arena <span>A duel with Aethelgard</span></h3>
         <div class="grid g-beast">
         <article class="beast">
           <img class="art" src="img/beast_lampling.webp" alt="Lampling Tunneler" loading="lazy">
@@ -1083,7 +1088,7 @@
   <section id="bosses">
     <div class="kicker">Chapter Five</div>
     <h2 class="stitle">The bosses</h2>
-    <p class="sdesc">Each battlefield sends five on a schedule. Each announces itself, then cycles its patterns — a volley, a ring, a charge, or a summons of its own kind.</p>
+    <p class="sdesc">Each battlefield sends five on a schedule. Each announces itself, then cycles its patterns: a volley, a ring, a charge, or a summons of its own kind.</p>
     
       <div class="region">
         <h3>Thornhollow</h3>
@@ -1212,7 +1217,7 @@
             <h4>Matriarch Silkfang</h4>
             <div class="tags"><span class="tag school-nature">nature</span><span class="tag">beast</span></div>
             <div class="hp">6,912 health · arrives at 10:30</div>
-            <blockquote class="yell">*a chittering shriek echoes from the dark*</blockquote>
+            <blockquote class="yell cue">a chittering shriek echoes from the dark</blockquote>
             <p class="note">Mother of every web in Mourneholt. She does not speak; the sound she makes instead is worse.</p>
           </div>
         </article>
@@ -1286,7 +1291,7 @@
             <h4>Matriarch Silkfang</h4>
             <div class="tags"><span class="tag school-nature">nature</span><span class="tag">beast</span></div>
             <div class="hp">6,912 health · arrives at 22:00</div>
-            <blockquote class="yell">*a chittering shriek echoes from the dark*</blockquote>
+            <blockquote class="yell cue">a chittering shriek echoes from the dark</blockquote>
             <p class="note">Mother of every web in Mourneholt. She does not speak; the sound she makes instead is worse.</p>
           </div>
         </article>
@@ -1296,7 +1301,7 @@
             <h4>Stormhide the Colossus</h4>
             <div class="tags"><span class="tag school-nature">nature</span><span class="tag">beast</span></div>
             <div class="hp">17,280 health · arrives at 27:00</div>
-            <blockquote class="yell">*thunder rolls across the savannah*</blockquote>
+            <blockquote class="yell cue">thunder rolls across the savannah</blockquote>
             <p class="note">When it walks, the plains thunder. When it charges, they do not have time to.</p>
           </div>
         </article></div>
@@ -1375,7 +1380,7 @@
             <div class="tags"><span class="tag school-holy">holy</span><span class="tag">celestial</span></div>
             <div class="hp">324,000 health · the Eclipse Arena</div>
             <blockquote class="yell">Witness the eclipse of all things.</blockquote>
-            <p class="note">The Eclipse Sovereign, who took the sun into its crown and would not give it back. The fight that ends in daylight - if it ends.</p>
+            <p class="note">The Eclipse Sovereign, who took the sun into its crown and would not give it back. The fight that ends in daylight, if it ends.</p>
           </div>
         </article></div>
       </div>
@@ -1384,7 +1389,7 @@
   <section id="dawn">
     <div class="kicker">Chapter Six</div>
     <h2 class="stitle">At dawn</h2>
-    <p class="sdesc">Hold to 30:00 and the field is purged. Then the one behind the night comes out — a different one on every battlefield.</p>
+    <p class="sdesc">Hold to 30:00 and the field is purged. Then the one behind the night comes out, a different one on every battlefield.</p>
     <div class="finales">
       <article class="finale">
         <img class="art fin" src="img/finale_thornhollow.webp" alt="Foreman Grimtunnel" loading="lazy">
@@ -1522,7 +1527,7 @@
         <div class="body">
           <h3 class="name">Eclipse Arena</h3>
           <div class="title">A duel with Aethelgard</div>
-          <p class="desc">No horde, no timer. A bounded arena and one scripted boss: Aethelgard, the Eclipse Sovereign. You arrive with a ready-made kit - survive the telegraphs and break the eclipse.</p>
+          <p class="desc">No horde, no timer. A bounded arena and one scripted boss: Aethelgard, the Eclipse Sovereign. You arrive with a ready-made kit. Survive the telegraphs and break the eclipse.</p>
           <dl class="facts">
             <div><dt>Difficulty</dt><dd>1×</dd></div>
             <div><dt>Gold</dt><dd>1×</dd></div>
@@ -1538,7 +1543,7 @@
     <div class="kicker">Chapter Eight</div>
     <h2 class="stitle">The ledger</h2>
     <h3 class="sub-h">Deeds</h3>
-    <table class="ledger"><thead><tr><th>Deed</th><th>How</th><th>Reward</th></tr></thead><tbody><tr><td><b>First Blood</b></td><td>Slay your first enemy.</td><td class="rw">—</td></tr><tr><td><b>Mine! My Light!</b></td><td>Defeat Foreman Grimtunnel.</td><td class="rw">+50 gold banked.</td></tr><tr><td><b>Bane of the Snarlpack</b></td><td>Defeat Gnarlfang the Ravager.</td><td class="rw">+100 gold banked.</td></tr><tr><td><b>Unmasked</b></td><td>Defeat the Masked Admiral.</td><td class="rw">+250 gold banked.</td></tr><tr><td><b>The Long Dark Ends</b></td><td>Break Marrowfrost, the Pale Lord, at the end of the last night.</td><td class="rw">+1000 gold banked.</td></tr><tr><td><b>Beyond the Forest</b></td><td>Survive for 10 minutes in Thornhollow.</td><td class="rw">The Dustreach is now open.</td></tr><tr><td><b>Into the Dark</b></td><td>Survive for 10 minutes in the Dustreach.</td><td class="rw">Mourneholt is now open.</td></tr><tr><td><b>Across the Great Sea</b></td><td>Survive for 10 minutes in Mourneholt.</td><td class="rw">The Ochre Plains is now open.</td></tr><tr><td><b>The Frozen North</b></td><td>Survive for 10 minutes in the Ochre Plains.</td><td class="rw">The Pale Wastes is now open.</td></tr><tr><td><b>Cut Loose</b></td><td>Free the Kerchiefs' prisoner.</td><td class="rw">Dr. Rav McBreathless is now playable.</td></tr><tr><td><b>The Screaming Cairn</b></td><td>Dig the fallen hero out of his cairn.</td><td class="rw">AAAAAAAAA is now playable.</td></tr><tr><td><b>Last Quiver</b></td><td>Stand with the last ranger of Ashford against the pack.</td><td class="rw">Maeca Barefoot is now playable.</td></tr><tr><td><b>Bane of the Masses</b></td><td>Draw the exile of the Gloaming Grove out with a slaughter.</td><td class="rw">Nim B'ladin is now playable.</td></tr><tr><td><b>Fortune Seeker</b></td><td>Have your fortune read in the far seer's storm.</td><td class="rw">Vonnra Hydrocheck is now playable.</td></tr><tr><td><b>Grave Robber</b></td><td>Open a weathered coffin found on the battlefield.</td><td class="rw">Professor Keegan is now playable.</td></tr><tr><td><b>The Light Curdles</b></td><td>Claim a graveblade drawn out by your own curdled Light.</td><td class="rw">DZ is now playable.</td></tr><tr><td><b>You Were Warned</b></td><td>Claim the twin glaives after giving yourself to the fel.</td><td class="rw">Nerosus is now playable.</td></tr><tr><td><b>Forbidden Knowledge</b></td><td>Evolve a weapon to its ultimate form.</td><td class="rw">+150 gold banked.</td></tr><tr><td><b>Light's Favor</b></td><td>Survive for 3 minutes straight without taking damage.</td><td class="rw">+150 gold banked.</td></tr><tr><td><b>Walking Armory</b></td><td>Wield 6 weapons at once.</td><td class="rw">+150 gold banked.</td></tr><tr><td><b>Blorp!</b></td><td>Slay 500 gilkin across all runs.</td><td class="rw">+200 gold banked.</td></tr><tr><td><b>Master Craftsman</b></td><td>Forge a weapon union.</td><td class="rw">+250 gold banked.</td></tr><tr><td><b>Survivor of the Long Dark</b></td><td>Achieve Victory on any battlefield.</td><td class="rw">+500 gold banked.</td></tr><tr><td><b>Eclipse Broken</b></td><td>Defeat Aethelgard in the Eclipse Arena.</td><td class="rw">+1500 gold banked.</td></tr></tbody></table>
+    <table class="ledger"><thead><tr><th>Deed</th><th>How</th><th>Reward</th></tr></thead><tbody><tr><td><b>First Blood</b></td><td>Slay your first enemy.</td><td class="rw"></td></tr><tr><td><b>Mine! My Light!</b></td><td>Defeat Foreman Grimtunnel.</td><td class="rw">+50 gold banked.</td></tr><tr><td><b>Bane of the Snarlpack</b></td><td>Defeat Gnarlfang the Ravager.</td><td class="rw">+100 gold banked.</td></tr><tr><td><b>Unmasked</b></td><td>Defeat the Masked Admiral.</td><td class="rw">+250 gold banked.</td></tr><tr><td><b>The Long Dark Ends</b></td><td>Break Marrowfrost, the Pale Lord, at the end of the last night.</td><td class="rw">+1000 gold banked.</td></tr><tr><td><b>Beyond the Forest</b></td><td>Survive for 10 minutes in Thornhollow.</td><td class="rw">The Dustreach is now open.</td></tr><tr><td><b>Into the Dark</b></td><td>Survive for 10 minutes in the Dustreach.</td><td class="rw">Mourneholt is now open.</td></tr><tr><td><b>Across the Great Sea</b></td><td>Survive for 10 minutes in Mourneholt.</td><td class="rw">The Ochre Plains is now open.</td></tr><tr><td><b>The Frozen North</b></td><td>Survive for 10 minutes in the Ochre Plains.</td><td class="rw">The Pale Wastes is now open.</td></tr><tr><td><b>Cut Loose</b></td><td>Free the Kerchiefs' prisoner.</td><td class="rw">Dr. Rav McBreathless is now playable.</td></tr><tr><td><b>The Screaming Cairn</b></td><td>Dig the fallen hero out of his cairn.</td><td class="rw">AAAAAAAAA is now playable.</td></tr><tr><td><b>Last Quiver</b></td><td>Stand with the last ranger of Ashford against the pack.</td><td class="rw">Maeca Barefoot is now playable.</td></tr><tr><td><b>Bane of the Masses</b></td><td>Draw the exile of the Gloaming Grove out with a slaughter.</td><td class="rw">Nim B'ladin is now playable.</td></tr><tr><td><b>Fortune Seeker</b></td><td>Have your fortune read in the far seer's storm.</td><td class="rw">Vonnra Hydrocheck is now playable.</td></tr><tr><td><b>Grave Robber</b></td><td>Open a weathered coffin found on the battlefield.</td><td class="rw">Professor Keegan is now playable.</td></tr><tr><td><b>The Light Curdles</b></td><td>Claim a graveblade drawn out by your own curdled Light.</td><td class="rw">DZ is now playable.</td></tr><tr><td><b>You Were Warned</b></td><td>Claim the twin glaives after giving yourself to the fel.</td><td class="rw">Nerosus is now playable.</td></tr><tr><td><b>Forbidden Knowledge</b></td><td>Evolve a weapon to its ultimate form.</td><td class="rw">+150 gold banked.</td></tr><tr><td><b>Light's Favor</b></td><td>Survive for 3 minutes straight without taking damage.</td><td class="rw">+150 gold banked.</td></tr><tr><td><b>Walking Armory</b></td><td>Wield 6 weapons at once.</td><td class="rw">+150 gold banked.</td></tr><tr><td><b>Blorp!</b></td><td>Slay 500 gilkin across all runs.</td><td class="rw">+200 gold banked.</td></tr><tr><td><b>Master Craftsman</b></td><td>Forge a weapon union.</td><td class="rw">+250 gold banked.</td></tr><tr><td><b>Survivor of the Long Dark</b></td><td>Achieve Victory on any battlefield.</td><td class="rw">+500 gold banked.</td></tr><tr><td><b>Eclipse Broken</b></td><td>Defeat Aethelgard in the Eclipse Arena.</td><td class="rw">+1500 gold banked.</td></tr></tbody></table>
     <h3 class="sub-h">The Trainer's lessons</h3>
     <table class="ledger"><thead><tr><th>Lesson</th><th>What it does</th><th>Cost</th></tr></thead><tbody><tr><td><b>Lessons: Strength</b></td><td>+2% weapon damage per rank</td><td class="rw">10 ranks · 200g</td></tr><tr><td><b>Lessons: Toughness</b></td><td>+10 maximum health per rank</td><td class="rw">10 ranks · 180g</td></tr><tr><td><b>Lessons: Swiftness</b></td><td>+2% movement speed per rank</td><td class="rw">8 ranks · 180g</td></tr><tr><td><b>Lessons: Defense</b></td><td>+1 armor per rank</td><td class="rw">5 ranks · 250g</td></tr><tr><td><b>Lessons: Greed</b></td><td>+10% gold found per rank</td><td class="rw">8 ranks · 150g</td></tr><tr><td><b>Lessons: Wisdom</b></td><td>+4% experience per rank</td><td class="rw">8 ranks · 150g</td></tr><tr><td><b>Lessons: Recovery</b></td><td>+0.2 health per second per rank</td><td class="rw">6 ranks · 250g</td></tr><tr><td><b>Lessons: Fortune</b></td><td>+5% luck per rank</td><td class="rw">6 ranks · 220g</td></tr><tr><td><b>Tactical Retreat</b></td><td>+1 level-up reroll per rank</td><td class="rw">3 ranks · 500g</td></tr><tr><td><b>Forbidden Words</b></td><td>+1 level-up banish per rank</td><td class="rw">3 ranks · 750g</td></tr><tr><td><b>Veteran's Instincts</b></td><td>Begin each run with 1 free level-up per rank</td><td class="rw">3 ranks · 750g</td></tr><tr><td><b>Ashen Ankh</b></td><td>Once per run, cheat death and return at half health</td><td class="rw">1 ranks · 2,500g</td></tr><tr><td><b>Curious Egg</b></td><td>+0.1% damage and +1 health per egg. Up to 100 eggs.</td><td class="rw">100 ranks · 100g</td></tr></tbody></table>
     <h3 class="sub-h">Blessings</h3>

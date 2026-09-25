@@ -124,9 +124,12 @@
   /* ---------------- the voice ---------------- */
   .hero h1{font-family:var(--voice); font-weight:800; letter-spacing:0;}
   .hero .sub{font-family:var(--voice); font-style:italic; font-size:19px;}
-  .hero .lede a.play{display:inline-block; margin-top:14px; font-weight:700; text-decoration:none;
+  .hero .cta{margin:22px 0 0;}
+  .hero a.play{display:inline-block; font-weight:700; text-decoration:none;
     border:1px solid rgba(245,197,107,.45); border-radius:100px; padding:7px 16px;}
-  .hero .lede a.play:hover{background:rgba(245,197,107,.1);}
+  .hero a.play:hover{background:rgba(245,197,107,.1);}
+  nav.top .links a.go{color:var(--arc-hot); border:1px solid rgba(245,197,107,.45); margin-left:6px;}
+  nav.top .links a.go:hover{background:rgba(245,197,107,.1);}
   .stitle{font-family:var(--voice); font-weight:800; letter-spacing:0;}
   .sub-h{font-family:var(--voice); font-size:24px; color:var(--arc-hot); margin-top:56px;}
   nav.top .mark{text-decoration:none;}
@@ -171,6 +174,7 @@
   blockquote{margin:10px 0 0; padding-left:12px; border-left:2px solid color-mix(in srgb, var(--q, var(--arc)) 55%, transparent);
     font-family:var(--voice); font-weight:700; font-size:16px; color:color-mix(in oklab, var(--q, var(--arc)) 45%, #f4ecdc);}
   blockquote::before{content:'\201C';} blockquote::after{content:'\201D';}
+  blockquote.cue{font-style:italic; font-weight:500;} blockquote.cue::before, blockquote.cue::after{content:none;}
   details{margin-top:12px;}
   details summary{cursor:pointer; font-family:var(--voice); font-style:italic; font-weight:700; color:var(--arc); font-size:15px;}
   details p{font-family:var(--voice); font-size:15px; color:#d6ccb8; margin-top:8px; line-height:1.5;}

@@ -73,7 +73,7 @@
     },
     curdle: {
       name: 'Curdle', weapons: ['dawnpulse', 'hallowed_ring'],
-      description: 'Both hallowed rites mend you for {healBonus} more - even unevolved. What your wounds cannot drink, rots.',
+      description: 'Both hallowed rites mend you for {healBonus} more, even unevolved. What your wounds cannot drink, rots.',
       hint: 'Two holy rites in one vessel. The Light has to go somewhere...',
       healBonus: 2,
       apply: (w1, w2, c) => {

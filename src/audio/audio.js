@@ -1880,6 +1880,22 @@
         mTone(b, at + 0.19, { wave: 'sine', freq: 56, to: 36, decay: 0.24, gain: 0.14, attack: 0.005 });
       }
     } },
+    /* Up through the furrows and the open graves. Earth giving way under
+       the stones in slow, uneven heaves; a low drone climbing a fourth as
+       the dead climb out; and a glassy point of cold for each pair of eyes
+       as they open, out of tune with each other. */
+    'pro:rise': { at: 0.12, play(b, t) {
+      for (const [dt, g] of [[0.2, 0.16], [1.1, 0.12], [1.7, 0.15], [2.6, 0.11], [3.3, 0.13]]) {
+        mTone(b, t + dt, { wave: 'sine', freq: 74, to: 40, decay: 0.55, gain: g, attack: 0.01 });
+        mNoise(b, t + dt, { freq: 420, to: 110, decay: 0.7, gain: 0.05, filter: 'lowpass', q: 0.6 });
+      }
+      chord(b, t + 0.4, 55, [0, 6], { wave: 'sawtooth', cut: 320, gain: 0.05, attack: 2.0, decay: 4.4, detune: 8 });
+      mTone(b, t + 0.6, { wave: 'sawtooth', freq: 55, to: 73.4, slide: 3.6, cut: 300, gain: 0.07,
+        attack: 1.6, decay: 4.2 });
+      for (const [dt, f, d] of [[1.4, 1318.5, -12], [2.2, 1396.9, 9], [2.9, 1244.5, -6], [3.5, 1480, 14]]) {
+        mTone(b, t + dt, { wave: 'sine', freq: f, detune: d, gain: 0.028, attack: 0.02, decay: 1.6 });
+      }
+    } },
     // You will not kill your way out of this. Three strikes, and standing.
     'pro:stand': { at: 0.86, play(b, t) {
       for (let i = 0; i < 3; i++) {

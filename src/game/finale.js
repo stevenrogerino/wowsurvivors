@@ -18,9 +18,10 @@
 
   const W = () => WS.CONST.WORLD_WIDTH;
   const H = () => WS.CONST.WORLD_HEIGHT;
-  const BREATHER = 30;
-  const PURGE_SPEED = 1150;
-  const EPILOGUE = 3.6;
+  /* The engine's own timings live in Config (finaleBreather and the rest)
+     so the tuning bench can reach them; these read them at the moment of
+     use, so a change on the bench lands in the very next finale. */
+  const C = () => WS.Config;
 
   const F = {
     stage: 'idle',        // idle | purge | breather | fight | outro | done
@@ -364,7 +365,7 @@
   function startBreather() {
     const p = WS.Game.player;
     F.stage = 'breather';
-    F.timer = BREATHER;
+    F.timer = C().finaleBreather;
     F.label = 'Breathe';
     p.health = p.maxHealth;
     WS.FX.flash(p.x, p.y, 120, WS.CONST.COLORS.heal, 0.6);
@@ -417,7 +418,7 @@
     this.queue.length = 0;
     this.line = null;
     for (const l of this.def.outro) this.speak(l[0], l[1]);
-    this.timer = this.linesLeft() + EPILOGUE;
+    this.timer = this.linesLeft() + C().finaleEpilogue;
     this.epilogueShown = false;
     this.cinema = 0; this.cinemaMax = 0;
     this.cine(this.timer);
@@ -459,7 +460,7 @@
     }
 
     if (this.stage === 'purge') {
-      this.purgeR += PURGE_SPEED * dt;
+      this.purgeR += C().finalePurgeSpeed * dt;
       const pool = WS.Enemy.pool;
       for (let i = pool.count - 1; i >= 0; i--) {
         const e = pool.active[i];
@@ -505,10 +506,10 @@
       p.invulnerable = WS.max(p.invulnerable, 0.2);
       if (this.script.outro) this.script.outro(this, dt);
       this.timer -= dt;
-      if (!this.epilogueShown && this.timer <= EPILOGUE) {
+      if (!this.epilogueShown && this.timer <= C().finaleEpilogue) {
         this.epilogueShown = true;
         const ep = this.def.epilogue;
-        if (ep) WS.Game.announce(ep[0], ep[1], EPILOGUE, { kind: 'glory' });
+        if (ep) WS.Game.announce(ep[0], ep[1], C().finaleEpilogue, { kind: 'glory' });
       }
       if (this.timer <= 0) finish();
     }
@@ -643,7 +644,7 @@
             for (let a = 0; a < m.arms; a++) {
               const ang = m.ang + (a / m.arms) * WS.TAU;
               const probe = { x: m.cx, y: m.cy, ang, len: m.len, w: m.w };
-              if (inLane(probe, p.x, p.y, pr)) { m.cd = 0.7; hurt(m, m.dmg); break; }
+              if (inLane(probe, p.x, p.y, pr)) { m.cd = C().finaleRehit; hurt(m, m.dmg); break; }
             }
           }
           if (m.dur <= 0) done = true;
@@ -671,8 +672,8 @@
         if (!F.live(m.a) || !F.live(m.b)) done = true;
         else {
           m.cd -= dt;
-          if (m.cd <= 0 && segDist(p.x, p.y, m.a.x, m.a.y, m.b.x, m.b.y) < 12 + pr * 0.6) {
-            m.cd = 0.7;
+          if (m.cd <= 0 && segDist(p.x, p.y, m.a.x, m.a.y, m.b.x, m.b.y) < C().finaleFenceReach + pr * 0.6) {
+            m.cd = C().finaleRehit;
             hurt(m, m.dmg);
           }
         }
@@ -753,14 +754,13 @@
 
   function busy(e) { return e.windup > 0 || e.chargeTimer > 0; }
 
-  /* Finale charges lock their lane CHARGE_LOCK seconds before they go: the
+  /* Finale charges lock their lane Config.finaleChargeLock seconds before they go: the
      tell tracks you, then stops, then the machine commits - and that last
      beat is the one a player reacts to. */
-  const CHARGE_LOCK = 0.3;
   function charge(e, windup, time, range, girth) {
     const p = WS.Game.player;
     const [dx, dy] = WS.normalize(p.x - e.x, p.y - e.y);
-    WS.Enemy.beginCharge(e, dx, dy, windup, time, range, girth, WS.min(CHARGE_LOCK, windup * 0.6));
+    WS.Enemy.beginCharge(e, dx, dy, windup, time, range, girth, WS.min(C().finaleChargeLock, windup * 0.6));
     WS.Audio.play('warn', e.x);
   }
 
@@ -774,7 +774,8 @@
   SCRIPTS.candlecrawler = {
     start(F) {
       const s = F.s;
-      s.mode = 'rise'; s.rise = 1.8; s.cycle = 0; s.turrets = []; s.chain = 0;
+      const T = F.def.tuning;
+      s.mode = 'rise'; s.rise = T.riseTime; s.cycle = 0; s.turrets = []; s.chain = 0;
       s.label = 'The Candlecrawler rises';
       const c = s.core = F.unit('candlecrawler', 640, 280);
       c.untargetable = true;
@@ -783,12 +784,11 @@
          then the turrets come back; then the burrow; then the meltdown. A
          build that hits hard gets through each window fast - it still sees
          every window. */
-      const T = F.def.tuning;
       s.lines = T.overheatLines.concat([T.burrowAt, T.meltdownAt]);
       s.line = 0;
       c.hpFloor = s.lines[0] * c.maxHealth;
       F.eruption(640, 280, 160, [1.0, 0.7, 0.35]);
-      s.tm = { bomb: 4.5, drill: 8, hatch: 7, ring: 9, trail: 0 };
+      s.tm = Object.assign({ trail: 0 }, T.opening);
     },
     deploy(F) {
       const s = F.s, T = F.def.tuning, c = s.core;
@@ -811,7 +811,7 @@
 
       if (s.mode === 'rise') {
         s.rise -= dt;
-        c.rise = WS.clamp(1 - s.rise / 1.8, 0, 1);
+        c.rise = WS.clamp(1 - s.rise / T.riseTime, 0, 1);
         if (s.rise <= 0) { c.rise = 1; this.deploy(F); }
         return;
       }
@@ -830,7 +830,7 @@
         F.say('burrow');
         s.label = 'Underground';
         c.displayName = 'The Candlecrawler · Burrowing';
-        F.addsRing('lampling', T.lamplings + 6, 700);
+        F.addsRing('lampling', T.burrowLamplings, 700);
         return;
       }
       if (!s.melt && hp <= T.meltdownAt && s.mode === 'stripped') {
@@ -841,7 +841,8 @@
         c.displayName = 'The Candlecrawler · Meltdown';
         WS.FX.screen('rgba(255,80,40,.2)', 0.8);
       }
-      const pace = s.melt ? 1.55 : 1;
+      const pace = s.melt ? T.meltdownPace : 1;
+      const E = T.every;
 
       if (s.mode === 'burrow') {
         // Coming up: the mound stops and the ground is marked where the hull
@@ -858,18 +859,18 @@
             s.label = 'Plating stripped';
             c.displayName = 'The Candlecrawler';
             F.say('surface');
-            s.tm.drill = 3; s.tm.ring = 5;
+            Object.assign(s.tm, T.afterSurface);
           }
           return;
         }
         const [dx, dy, d] = WS.normalize(p.x - s.mx, p.y - s.my);
-        const step = WS.min(d, 150 * dt);
+        const step = WS.min(d, T.burrowSpeed * dt);
         s.mx += dx * step; s.my += dy * step;
         s.burrowT -= dt;
         if (WS.random() < dt * 14) {
           WS.FX.burst(s.mx, s.my, 1, '#6b5238', 60, 0.8, 4);
         }
-        if (F.every('erupt', dt, 3.3)) {
+        if (F.every('erupt', dt, E.erupt)) {
           F.circle(s.mx, s.my, T.eruptRadius, T.eruptTele, T.eruptDamage, 'The Candlecrawler',
             { style: 'erupt', tint: [0.9, 0.6, 0.3] });
           s.erupts++;
@@ -910,42 +911,42 @@
       if (!busy(c)) {
         if (s.chain > 0) {
           s.chain--;
-          charge(c, T.drillChainWindup, T.drillTime, T.drillRange, 1.5);
+          charge(c, T.drillChainWindup, T.drillTime, T.drillRange, T.drillGirth);
         } else {
-          keepAway(F, c, 250, s.melt ? 80 : 55, dt, MACHINE_BOX);
+          keepAway(F, c, T.keepAway, s.melt ? T.meltSpeed : T.huntSpeed, dt, MACHINE_BOX);
         }
       }
       c.damage = F.dmg(busy(c) ? T.drillDamage : c.template.damage);
 
-      if (s.melt && c.chargeTimer > 0 && F.every('trail', dt, 0.1)) {
-        WS.Hazard.spawn(c.x, c.y, { radius: 34, fuse: 0.25, life: 3.2, damage: F.dmg(12),
-          interval: 0.45, tint: [1.0, 0.5, 0.2], name: 'Burning track' });
+      if (s.melt && c.chargeTimer > 0 && F.every('trail', dt, E.trail)) {
+        WS.Hazard.spawn(c.x, c.y, { radius: T.trailRadius, fuse: 0.25, life: T.trailLife, damage: F.dmg(T.trailDamage),
+          interval: T.trailTick, tint: [1.0, 0.5, 0.2], name: 'Burning track' });
       }
 
-      if (F.every('drill', dt, s.mode === 'stripped' ? 6 : 8, pace) && !busy(c)) {
-        charge(c, T.drillWindup, T.drillTime, T.drillRange, 1.5);
+      if (F.every('drill', dt, s.mode === 'stripped' ? E.drillStripped : E.drill, pace) && !busy(c)) {
+        charge(c, T.drillWindup, T.drillTime, T.drillRange, T.drillGirth);
         if (s.melt) s.chain = 1;
       }
 
-      if (F.every('bomb', dt, s.mode === 'stripped' ? 4 : 3.4, pace)) {
+      if (F.every('bomb', dt, s.mode === 'stripped' ? E.bombStripped : E.bomb, pace)) {
         const guns = s.mode === 'shielded' ? s.turrets.filter((t) => F.live(t)) : [c];
         for (const g of guns) {
-          const n = s.mode === 'stripped' ? 3 : 2;
+          const n = s.mode === 'stripped' ? T.bombsStripped : T.bombs;
           for (let k = 0; k < n; k++) {
-            const [x, y] = k === 0 ? [p.x, p.y] : F.near(150);
-            F.circle(x, y, T.bombRadius, T.bombTele + k * 0.15, T.bombDamage, 'Lantern bomb',
-              { from: { x: g.x, y: g.y - 10 }, burn: s.melt ? 3 : 2, tint: [1.0, 0.62, 0.22] });
+            const [x, y] = k === 0 ? [p.x, p.y] : F.near(T.bombScatter);
+            F.circle(x, y, T.bombRadius, T.bombTele + k * T.bombStagger, T.bombDamage, 'Lantern bomb',
+              { from: { x: g.x, y: g.y - 10 }, burn: s.melt ? T.meltBurn : T.bombBurn, tint: [1.0, 0.62, 0.22] });
           }
         }
       }
 
-      if (F.every('hatch', dt, s.mode === 'stripped' ? 12 : 10)) {
+      if (F.every('hatch', dt, s.mode === 'stripped' ? E.hatchStripped : E.hatch)) {
         F.adds('lampling', T.lamplings, c.x, c.y + 50, 100);
         WS.FX.flash(c.x, c.y + 40, 60, [1.0, 0.85, 0.5], 0.3);
       }
 
-      if (s.mode === 'stripped' && F.every('ring', dt, 9, pace)) {
-        F.ring(c.x, c.y, { speed: T.ringSpeed, gaps: 2, gapWidth: 50, dmg: T.ringDamage,
+      if (s.mode === 'stripped' && F.every('ring', dt, E.ring, pace)) {
+        F.ring(c.x, c.y, { speed: T.ringSpeed, gaps: T.ringGaps, gapWidth: T.ringGapWidth, dmg: T.ringDamage,
           name: 'Candle-fire ring', tint: [1.0, 0.55, 0.2] });
       }
     },
@@ -973,7 +974,7 @@
           c.untargetable = false; c.dmgTaken = F.def.tuning.overheatVuln;
           c.windup = 0; c.chargeTimer = 0; c.telegraph = null;
           c.displayName = 'The Candlecrawler · Overheating';
-          s.label = 'Overheating - cockpit open!';
+          s.label = 'Overheating · cockpit open!';
           F.say('turretsDown');
           WS.FX.flash(c.x, c.y, 150, [1.0, 0.4, 0.2], 0.6);
           WS.Game.toast('Cockpit exposed', 'It takes extra damage while it overheats.', { kind: 'warn', art: 'crosshair', tint: [1.0, 0.72, 0.36] });
@@ -1000,17 +1001,17 @@
         F.part('galleon_cannon', g, 78, 34),
       ].filter(Boolean);
       for (const port of s.ports) port.untargetable = true;
-      s.tm = { broadside: 3.5, grape: 5, keg: 6.5, board: 8 };
+      s.tm = Object.assign({}, F.def.tuning.opening);
     },
     update(F, dt) {
-      const s = F.s, T = F.def.tuning;
+      const s = F.s, T = F.def.tuning, E = T.every;
       const p = WS.Game.player;
 
       if (s.mode === 'sailin' || s.mode === 'sail') {
         const g = s.core;
         if (!F.live(g)) return;
         if (s.mode === 'sailin') {
-          g.x += 260 * dt;
+          g.x += T.sailInSpeed * dt;
           if (g.x >= 640) {
             s.mode = 'sail';
             g.untargetable = false;
@@ -1030,28 +1031,29 @@
         s.label = ports.length ? `Broadsides · ${ports.length} gun port${ports.length > 1 ? 's' : ''}`
           : 'Guns silenced';
 
-        if (F.every('broadside', dt, 6.5)) {
+        if (F.every('broadside', dt, E.broadside)) {
           ports.forEach((q, i) => {
-            const ang = hp > 0.7 ? WS.PI / 2 : WS.atan2(p.y - q.y, p.x - q.x);
-            F.lane(q.x, q.y + 8, ang, 800, T.broadsideWidth, T.broadsideTele + i * 0.3,
-              T.broadsideDamage, 'Broadside', { active: 0.35, tint: [1.0, 0.7, 0.35], sound: 'cannon' });
+            // Straight down while it is healthy; aimed at you once it is hurt.
+            const ang = hp > T.aimBelow ? WS.PI / 2 : WS.atan2(p.y - q.y, p.x - q.x);
+            F.lane(q.x, q.y + 8, ang, T.broadsideLength, T.broadsideWidth, T.broadsideTele + i * T.broadsideStagger,
+              T.broadsideDamage, 'Broadside', { active: T.broadsideActive, tint: [1.0, 0.7, 0.35], sound: 'cannon' });
           });
         }
-        if (ports.length && F.every('grape', dt, 4.2)) {
+        if (ports.length && F.every('grape', dt, E.grape)) {
           const q = ports[WS.randInt(0, ports.length - 1)];
-          F.fan(q.x, q.y + 10, F.aim(q), 7, 0.14, 300, T.grapeDamage, 'physical', 'Grapeshot', q);
+          F.fan(q.x, q.y + 10, F.aim(q), T.grapeCount, T.grapeSpread, T.grapeSpeed, T.grapeDamage, 'physical', 'Grapeshot', q);
         }
-        if (F.every('keg', dt, 7)) {
-          for (let k = 0; k < 3; k++) {
-            const [x, y] = k === 0 ? [p.x, p.y] : F.near(120);
-            F.circle(x, y, T.kegRadius, T.kegTele + k * 0.2, T.kegDamage, 'Powder keg',
+        if (F.every('keg', dt, E.keg)) {
+          for (let k = 0; k < T.kegs; k++) {
+            const [x, y] = k === 0 ? [p.x, p.y] : F.near(T.kegScatter);
+            F.circle(x, y, T.kegRadius, T.kegTele + k * T.kegStagger, T.kegDamage, 'Powder keg',
               { from: { x: g.x, y: g.y }, tint: [1.0, 0.5, 0.25] });
           }
         }
-        if (F.every('board', dt, 12)) {
+        if (F.every('board', dt, E.board)) {
           F.sayOnce('boarders');
-          F.adds('kerchief', T.boarders - 3, g.x, g.y + 80, 140);
-          F.adds('bruiser', 3, g.x, g.y + 80, 140);
+          F.adds('kerchief', WS.max(0, T.boarders - T.boardBruisers), g.x, g.y + 80, 140);
+          F.adds('bruiser', T.boardBruisers, g.x, g.y + 80, 140);
         }
         return;
       }
@@ -1068,7 +1070,7 @@
           F.say('duel');
           s.mode = 'duel'; s.dashes = 0;
           s.label = 'The duel';
-          s.tm = { dash: 3, pistol: 2, keg: 6, rally: 10 };
+          s.tm = Object.assign({}, T.duelOpening);
         }
         return;
       }
@@ -1077,46 +1079,47 @@
         const a = s.adm;
         if (!F.live(a)) return;
         const hp = a.health / a.maxHealth;
-        if (hp < 0.3) F.sayOnce('low');
-        const pace = hp < 0.3 ? 1.35 : 1;
+        if (hp < T.duelLowAt) F.sayOnce('low');
+        const pace = hp < T.duelLowAt ? T.duelLowPace : 1;
         a.damage = F.dmg(busy(a) ? T.dashDamage : a.template.damage);
 
         if (!busy(a)) {
           if (s.dashes > 0) {
             s.dashes--;
-            charge(a, T.dashChainWindup, T.dashTime, T.dashRange, 1.8);
+            charge(a, T.dashChainWindup, T.dashTime, T.dashRange, T.dashGirth);
           } else {
             // Circles you at a duelling distance.
             const [dx, dy, d] = WS.normalize(a.x - p.x, a.y - p.y);
-            const ang = WS.atan2(dy, dx) + 0.9 * dt;
-            const tx = WS.clamp(p.x + WS.cos(ang) * 210, 60, W() - 60);
-            const ty = WS.clamp(p.y + WS.sin(ang) * 210, 60, H() - 60);
+            const ang = WS.atan2(dy, dx) + T.duelCircle * dt;
+            const tx = WS.clamp(p.x + WS.cos(ang) * T.duelRange, 60, W() - 60);
+            const ty = WS.clamp(p.y + WS.sin(ang) * T.duelRange, 60, H() - 60);
             const [mx, my, md] = WS.normalize(tx - a.x, ty - a.y);
-            const step = WS.min(md, 170 * dt);
+            const step = WS.min(md, T.duelSpeed * dt);
             a.x += mx * step; a.y += my * step;
             a.facing = p.x < a.x ? -1 : 1;
             if (d < 1) a.x += 1;
           }
         }
-        if (F.every('dash', dt, 5.5, pace) && !busy(a)) {
-          s.dashes = 2;
-          charge(a, T.dashWindup, T.dashTime, T.dashRange, 1.8);
+        if (F.every('dash', dt, E.dash, pace) && !busy(a)) {
+          s.dashes = T.dashChain;
+          charge(a, T.dashWindup, T.dashTime, T.dashRange, T.dashGirth);
         }
-        if (!busy(a) && s.dashes === 0 && F.every('pistol', dt, 2.6, pace)) {
-          F.fan(a.x, a.y - 10, F.aim(a), 5, 0.12, 340, T.pistolDamage, 'fire', 'Pistol volley', a);
+        if (!busy(a) && s.dashes === 0 && F.every('pistol', dt, E.pistol, pace)) {
+          F.fan(a.x, a.y - 10, F.aim(a), T.pistolCount, T.pistolSpread, T.pistolSpeed, T.pistolDamage, 'fire', 'Pistol volley', a);
         }
-        if (F.every('keg', dt, 8, pace)) {
+        if (F.every('keg', dt, E.duelKeg, pace)) {
           F.circle(p.x, p.y, T.kegRadius, T.kegTele, T.kegDamage, 'Powder keg',
             { from: { x: a.x, y: a.y }, tint: [1.0, 0.5, 0.25] });
-          for (let k = 0; k < 4; k++) {
-            const ang = (k / 4) * WS.TAU + WS.random() * 0.5;
-            F.circle(WS.clamp(p.x + WS.cos(ang) * 110, 40, W() - 40),
-              WS.clamp(p.y + WS.sin(ang) * 110, 40, H() - 40),
-              T.kegRadius * 0.8, T.kegTele + 0.3, T.kegDamage, 'Powder keg',
+          // and a ring of smaller ones round you, a beat later
+          for (let k = 0; k < T.duelKegRing; k++) {
+            const ang = (k / T.duelKegRing) * WS.TAU + WS.random() * 0.5;
+            F.circle(WS.clamp(p.x + WS.cos(ang) * T.duelKegRange, 40, W() - 40),
+              WS.clamp(p.y + WS.sin(ang) * T.duelKegRange, 40, H() - 40),
+              T.kegRadius * T.duelKegScale, T.kegTele + T.duelKegDelay, T.kegDamage, 'Powder keg',
               { from: { x: a.x, y: a.y }, tint: [1.0, 0.5, 0.25] });
           }
         }
-        if (F.every('rally', dt, 14)) {
+        if (F.every('rally', dt, E.rally)) {
           F.adds('bruiser', T.rally, a.x, a.y, 160);
         }
       }
@@ -1137,11 +1140,12 @@
         WS.FX.stop(0.14);
         F.marks.length = 0;
         F.say('crash');
-        s.mode = 'crash'; s.crashT = 2.6;
+        s.mode = 'crash'; s.crashT = F.def.tuning.crashTime;
         s.label = 'Shipwreck';
         for (let k = 0; k < 4; k++) {
-          WS.Hazard.spawn(s.wx - 150 + k * 100, 302 + WS.randRange(-20, 20), { radius: 46, fuse: 1.4,
-            life: 600, damage: F.dmg(14), interval: 0.5, tint: [1.0, 0.5, 0.2], name: 'Burning wreck' });
+          const T = F.def.tuning;
+          WS.Hazard.spawn(s.wx - 150 + k * 100, 302 + WS.randRange(-20, 20), { radius: T.wreckFireRadius, fuse: 1.4,
+            life: 600, damage: F.dmg(T.wreckFireDamage), interval: T.wreckFireTick, tint: [1.0, 0.5, 0.2], name: 'Burning wreck' });
         }
         return;
       }
@@ -1183,11 +1187,11 @@
       this.light(F, 4);
       // The lanterns catch one at a time, and he is there when the last does.
       s.lanterns.forEach((l, i) => { l.fade = 0; l.lightAt = 0.5 + i * 0.55; l.untargetable = true; });
-      s.tm = { hand: 3, lance: 4, knell: 7, blink: 8, spawn: 6 };
+      s.tm = Object.assign({}, F.def.tuning.opening);
     },
     light(F, n) {
       const s = F.s, m = s.core;
-      const mult = 1 + 0.15 * s.cycle;
+      const mult = 1 + F.def.tuning.lanternHpGrowth * s.cycle;
       const spots = WS.shuffle(LANTERNS.slice()).slice(0, n);
       s.lanterns = spots.map(([x, y]) => {
         const l = F.unit('soul_lantern', x, y, mult);
@@ -1201,7 +1205,7 @@
       F.darkTarget = 0;
     },
     update(F, dt) {
-      const s = F.s, T = F.def.tuning, m = s.core;
+      const s = F.s, T = F.def.tuning, E = T.every, m = s.core;
       if (!F.live(m)) return;
       const p = WS.Game.player;
       if (s.introT !== undefined && s.introT < 3.4) {
@@ -1230,10 +1234,10 @@
       if (!s.risen && hp <= T.riseAt) {
         s.risen = true;
         F.say('rise');
-        F.addsRing('skeleton', 12, 640);
-        F.addsRing('ghoul', 10, 700);
+        F.addsRing('skeleton', T.riseSkeletons, 640);
+        F.addsRing('ghoul', T.riseGhouls, 700);
       }
-      const pace = s.risen ? 1.35 : 1;
+      const pace = s.risen ? T.risenPace : 1;
       m.facing = p.x < m.x ? -1 : 1;
 
       if (s.mode === 'exposed') {
@@ -1254,12 +1258,12 @@
       } else {
         s.lanterns = s.lanterns.filter((l) => F.live(l));
         s.label = `Break the soul lanterns · ${s.lanterns.length} lit`;
-        if (F.every('spawn', dt, 9)) {
-          for (const l of s.lanterns) F.adds(WS.random() < 0.5 ? 'skeleton' : 'ghoul', 2, l.x, l.y, 60);
+        if (F.every('spawn', dt, E.spawn)) {
+          for (const l of s.lanterns) F.adds(WS.random() < 0.5 ? 'skeleton' : 'ghoul', T.lanternAdds, l.x, l.y, 60);
         }
       }
 
-      if (F.every('blink', dt, 8)) {
+      if (F.every('blink', dt, E.blink)) {
         let i;
         do { i = WS.randInt(0, GRAVES.length - 1); } while (i === s.grave);
         s.grave = i;
@@ -1269,17 +1273,17 @@
         WS.Audio.play('cast', m.x, 'shadow');
       }
 
-      if (F.every('hand', dt, 5, pace)) s.hands = 3;
-      if (s.hands > 0 && F.every('handStep', dt, 0.45)) {
+      if (F.every('hand', dt, E.hand, pace)) s.hands = T.hands;
+      if (s.hands > 0 && F.every('handStep', dt, E.handStep)) {
         s.hands--;
         F.circle(p.x, p.y, T.handRadius, T.handTele, T.handDamage, 'Grasping dead',
           { style: 'hands', tint: [0.55, 1.0, 0.7] });
       }
-      if (F.every('lance', dt, 4, pace)) {
-        F.fan(m.x, m.y - 20, F.aim(m), 5, 0.16, 260, T.lanceDamage, 'shadow', 'Bone lance', m);
+      if (F.every('lance', dt, E.lance, pace)) {
+        F.fan(m.x, m.y - 20, F.aim(m), T.lanceCount, T.lanceSpread, T.lanceSpeed, T.lanceDamage, 'shadow', 'Bone lance', m);
       }
-      if (F.every('knell', dt, s.mode === 'exposed' || s.risen ? 7.5 : 11)) {
-        F.ring(m.x, m.y, { speed: T.knellSpeed, gaps: 3, gapWidth: T.knellGap, dmg: T.knellDamage,
+      if (F.every('knell', dt, s.mode === 'exposed' || s.risen ? E.knellFast : E.knell)) {
+        F.ring(m.x, m.y, { speed: T.knellSpeed, gaps: T.knellGaps, gapWidth: T.knellGap, dmg: T.knellDamage,
           name: 'Death knell', tint: [0.6, 1.0, 0.8] });
         WS.Audio.play('boss');
       }
@@ -1340,17 +1344,16 @@
       w.untargetable = true;
       s.legs = [F.part('walker_leg', w, -84, 96), F.part('walker_leg', w, 84, 96)].filter(Boolean);
       for (const l of s.legs) l.untargetable = true;
-      s.tm = { step: 1.3, sweep: 6, missile: 5, karrash: 9 };
+      s.tm = Object.assign({}, F.def.tuning.opening);
     },
     update(F, dt) {
-      const s = F.s, T = F.def.tuning, w = s.core;
+      const s = F.s, T = F.def.tuning, E = T.every, w = s.core;
       if (!F.live(w)) return;
-      const p = WS.Game.player;
       const hp = w.health / w.maxHealth;
       w.walkPhase = (w.walkPhase || 0) + dt * (s.mode === 'walk' ? 2.4 : 0);
 
       if (s.mode === 'enter') {
-        w.y += 120 * dt;
+        w.y += T.enterSpeed * dt;
         if (w.y >= 235) {
           w.y = 235; s.mode = 'walk';
           w.untargetable = false;
@@ -1369,21 +1372,21 @@
         w.dmgTaken = T.standingArmor;
         w.displayName = 'The Stormbreaker · Armoured';
         s.label = 'Break its legs';
-        w.x += s.dir * 38 * dt;
+        w.x += s.dir * T.walkSpeed * dt;
         if (w.x > 950) s.dir = -1;
         if (w.x < 330) s.dir = 1;
         w.facing = s.dir;
-        if (F.every('step', dt, 1.3)) {
+        if (F.every('step', dt, E.step)) {
           s.step = 1 - s.step;
           const fx = w.x + (s.step ? -84 : 84) + s.dir * 60;
           F.circle(fx, w.y + 130, T.stompRadius, T.stompTele, T.stompDamage, 'Stomp',
             { style: 'stomp', tint: [0.9, 0.75, 0.5] });
         }
-        if (F.every('sweep', dt, 10)) this.beam(F, 1);
-        if (F.every('missile', dt, 5.5)) this.missiles(F, 5);
+        if (F.every('sweep', dt, E.sweep)) this.beam(F, 1);
+        if (F.every('missile', dt, E.missile)) this.missiles(F, T.missiles);
         // Standing clear of its feet is not standing clear of it.
-        if (F.every('shock', dt, T.shockEvery)) this.shockwave(F);
-        if (F.every('karrash', dt, 13)) F.addsRing('karrash', T.karrash, 700);
+        if (F.every('shock', dt, E.shock)) this.shockwave(F);
+        if (F.every('karrash', dt, E.karrash)) F.addsRing('karrash', T.karrash, 700);
         return;
       }
 
@@ -1417,13 +1420,13 @@
           this.pylons(F);
           this.shockwave(F);
         }
-        if (F.every('sweep', dt, T.fortEvery)) this.lighthouse(F);
-        if (F.every('missile', dt, 5)) this.missiles(F, 5);
-        if (F.every('bolts', dt, 6.5)) {
-          F.radial(w.x, w.y + 30, 16, 200, T.missileDamage * 0.7, 'nature', 'Arc bolt',
+        if (F.every('sweep', dt, E.lighthouse)) this.lighthouse(F);
+        if (F.every('missile', dt, E.fortMissile)) this.missiles(F, T.missiles);
+        if (F.every('bolts', dt, E.bolts)) {
+          F.radial(w.x, w.y + 30, T.boltCount, T.boltSpeed, T.boltDamage, 'nature', 'Arc bolt',
             WS.random() * WS.TAU, w);
         }
-        if (F.every('karrash', dt, 15)) F.addsRing('karrash', T.karrash, 700);
+        if (F.every('karrash', dt, E.fortKarrash)) F.addsRing('karrash', T.karrash, 700);
         return;
       }
 
@@ -1455,7 +1458,7 @@
       const side = p.x < w.x ? -1 : 1;
       for (let k = 0; k < n; k++) {
         const sd = k === 0 ? side : -side;
-        F.sweep(w.x, w.y + 40, WS.PI / 2 + sd * 1.25, -sd * T.beamSpin, 900, T.beamWidth,
+        F.sweep(w.x, w.y + 40, WS.PI / 2 + sd * T.beamArc, -sd * T.beamSpin, T.beamLength, T.beamWidth,
           T.beamTele, T.beamTime, T.beamDamage, 'Lightning cannon',
           { follow: w, oy: 40, tint: [0.55, 0.85, 1.0] });
       }
@@ -1464,7 +1467,7 @@
     },
     shockwave(F) {
       const T = F.def.tuning, w = F.s.core;
-      F.ring(w.x, w.y + 90, { speed: 230, gaps: 3, gapWidth: 42, dmg: T.stompDamage,
+      F.ring(w.x, w.y + 90, { speed: T.shockSpeed, gaps: T.shockGaps, gapWidth: T.shockGapWidth, dmg: T.stompDamage,
         name: 'Shockwave', tint: [0.9, 0.75, 0.5] });
       WS.FX.shake(5, 0.3);
       WS.Audio.play('shock', w.x);
@@ -1473,8 +1476,8 @@
       const T = F.def.tuning, w = F.s.core;
       const p = WS.Game.player;
       for (let k = 0; k < n; k++) {
-        const [x, y] = k === 0 ? [p.x, p.y] : F.near(170);
-        F.circle(x, y, T.missileRadius, T.missileTele + k * 0.12, T.missileDamage, 'Ember missile',
+        const [x, y] = k === 0 ? [p.x, p.y] : F.near(T.missileScatter);
+        F.circle(x, y, T.missileRadius, T.missileTele + k * T.missileStagger, T.missileDamage, 'Ember missile',
           { from: { x: w.x, y: w.y - 30 }, tint: [1.0, 0.6, 0.3] });
       }
     },
@@ -1516,8 +1519,8 @@
       const dir = WS.random() < 0.5 ? -1 : 1;
       const toward = WS.atan2(p.y - (w.y + 20), p.x - w.x);
       // start a little behind the player in the direction it will turn
-      const start = toward - dir * 0.85;
-      F.sweep(w.x, w.y + 20, start, dir * T.fortSpin, 1400, T.beamWidth,
+      const start = toward - dir * T.fortLead;
+      F.sweep(w.x, w.y + 20, start, dir * T.fortSpin, T.fortBeamLength, T.beamWidth,
         T.beamTele, T.fortBeamTime, T.beamDamage, 'Lightning cannon',
         { follow: w, oy: 20, arms: 2, tint: [0.55, 0.85, 1.0] });
       WS.Audio.play('zap', w.x);
@@ -1531,7 +1534,7 @@
       // It re-raises its pylons at reraiseAt; it cannot be burned past it first.
       w.hpFloor = T.reraiseAt * w.maxHealth;
       this.pylons(F);
-      s.tm.sweep = 3; s.tm.missile = 2; s.tm.bolts = 4;
+      Object.assign(s.tm, T.fortOpening);
     },
     destruct(F) {
       const s = F.s, T = F.def.tuning, w = s.core;
@@ -1583,7 +1586,7 @@
           // It comes down hard, and it calls for help on the way.
           this.shockwave(F);
           F.addsRing('karrash', T.karrash, 700);
-          WS.Game.toast('It is down', 'Staggered - it takes extra damage until it recovers.', { kind: 'warn', art: 'crosshair', tint: [1.0, 0.72, 0.36] });
+          WS.Game.toast('It is down', 'Staggered. It takes extra damage until it recovers.', { kind: 'warn', art: 'crosshair', tint: [1.0, 0.72, 0.36] });
         }
       }
     },
@@ -1606,11 +1609,11 @@
       d.untargetable = true;
       s.dropping = true; s.vy = 0;
       s.pipes = [];
-      s.tm = { debris: 3, vent: 7, ghoul: 6 };
+      s.tm = Object.assign({}, F.def.tuning.opening);
       s.ventDir = 1;
     },
     update(F, dt) {
-      const s = F.s, T = F.def.tuning;
+      const s = F.s, T = F.def.tuning, E = T.every;
       const p = WS.Game.player;
 
       if (s.mode === 'drill') {
@@ -1618,7 +1621,7 @@
         if (!F.live(d)) return;
         if (s.dropping) {
           // It comes down out of the sky, and the Pale takes the hit.
-          s.vy += 1100 * dt;
+          s.vy += T.dropGravity * dt;
           d.y += s.vy * dt;
           if (d.y >= DRILL_Y) {
             d.y = DRILL_Y; s.dropping = false; d.untargetable = false;
@@ -1639,19 +1642,19 @@
         d.dmgTaken = s.pipes.length ? T.pipeShield : 1;
         d.hpFloor = s.pipes.length ? T.drillFloor * d.maxHealth : 0;
         s.label = s.pipes.length ? `Cut the coolant lines · ${s.pipes.length} left` : 'Break the drill';
-        if (F.every('debris', dt, 4)) {
-          for (let k = 0; k < 4; k++) {
-            const [x, y] = k === 0 ? [p.x, p.y] : F.near(190);
-            F.circle(x, y, T.debrisRadius, T.debrisTele + k * 0.15, T.debrisDamage, 'Falling ice',
+        if (F.every('debris', dt, E.debris)) {
+          for (let k = 0; k < T.debris; k++) {
+            const [x, y] = k === 0 ? [p.x, p.y] : F.near(T.debrisScatter);
+            F.circle(x, y, T.debrisRadius, T.debrisTele + k * T.debrisStagger, T.debrisDamage, 'Falling ice',
               { style: 'ice', tint: [0.7, 0.9, 1.0] });
           }
         }
-        if (F.every('vent', dt, 11)) {
+        if (F.every('vent', dt, E.vent)) {
           s.ventDir = -s.ventDir;
-          F.sweep(d.x, d.y + 20, WS.random() * WS.TAU, s.ventDir * T.ventSpin, 900, 40, T.ventTele,
-            6, T.ventDamage, 'Flame vent', { arms: 4, follow: d, oy: 20, tint: [1.0, 0.55, 0.25] });
+          F.sweep(d.x, d.y + 20, WS.random() * WS.TAU, s.ventDir * T.ventSpin, T.ventLength, T.ventWidth, T.ventTele,
+            T.ventTime, T.ventDamage, 'Flame vent', { arms: T.ventArms, follow: d, oy: 20, tint: [1.0, 0.55, 0.25] });
         }
-        if (F.every('ghoul', dt, 12)) F.adds('pale_ghoul', T.ghouls, d.x, d.y + 120, 170);
+        if (F.every('ghoul', dt, E.ghoul)) F.adds('pale_ghoul', T.ghouls, d.x, d.y + 120, 170);
         return;
       }
 
@@ -1666,7 +1669,7 @@
         if (WS.random() < dt * 5) {
           WS.FX.burst(640 + WS.randRange(-120, 120), 200, 2, '#bfe6ff', 120, 0.9, 3);
         }
-        if (s.breachT > 7.4) this.lord(F);
+        if (s.breachT > T.breachTime) this.lord(F);
         return;
       }
 
@@ -1698,22 +1701,22 @@
           this.ward(F);
           return;
         }
-        if (F.every('nova', dt, 9)) this.nova(F);
-        if (F.every('cross', dt, 15)) {
+        if (F.every('nova', dt, E.nova)) this.nova(F);
+        if (F.every('cross', dt, E.cross)) {
           s.ventDir = -s.ventDir;
-          F.sweep(L.x, L.y, WS.random() * WS.TAU, s.ventDir * 0.45, 900, 34, 1.2, 6,
-            T.ventDamage, 'Frost cross', { arms: 2, follow: L, tint: [0.7, 0.92, 1.0] });
+          F.sweep(L.x, L.y, WS.random() * WS.TAU, s.ventDir * T.crossSpin, 900, T.crossWidth, T.crossTele, T.crossTime,
+            T.ventDamage, 'Frost cross', { arms: T.crossArms, follow: L, tint: [0.7, 0.92, 1.0] });
         }
-        if (F.every('grid', dt, 14)) {
-          F.grid(F.bounds, 5, 4, 4, T.gridTele, T.gridDamage, 'Glacial spikes');
+        if (F.every('grid', dt, E.grid)) {
+          F.grid(F.bounds, T.gridCols, T.gridRows, T.gridSafe, T.gridTele, T.gridDamage, 'Glacial spikes');
           WS.Game.toast('Glacial spikes', 'Find the ground that is not marked.', { kind: 'warn', art: 'frostaura', tint: [0.6, 0.85, 1.0] });
         }
-        if (F.every('spike', dt, 5)) {
-          F.radial(L.x, L.y, 14, 190, T.spikeDamage, 'frost', 'Ice lance', F.t, L);
+        if (F.every('spike', dt, E.spike)) {
+          F.radial(L.x, L.y, T.spikes, T.spikeSpeed, T.spikeDamage, 'frost', 'Ice lance', F.t, L);
         }
-        if (F.every('tide', dt, 16)) {
-          F.addsRing('skeleton', 6, 560);
-          F.addsRing('pale_ghoul', T.ghouls - 4, 620);
+        if (F.every('tide', dt, E.tide)) {
+          F.addsRing('skeleton', T.tideSkeletons, 560);
+          F.addsRing('pale_ghoul', T.tideGhouls, 620);
         }
         return;
       }
@@ -1736,31 +1739,32 @@
           this.nextLine(F);
           this.shards(F);
           this.nova(F);
-          F.grid(F.bounds, 5, 4, 4, T.gridTele, T.gridDamage, 'Glacial spikes');
+          F.grid(F.bounds, T.gridCols, T.gridRows, T.gridSafe, T.gridTele, T.gridDamage, 'Glacial spikes');
           WS.Game.announce('The last of the Pale', 'Shatter it. There is nothing after this.', 2.8,
             { kind: 'dread', art: 'marrowfrost_face', tint: L.template.tint });
           WS.FX.screen('rgba(170,220,255,.3)', 0.8);
         }
-        if (F.every('cross', dt, 8)) {
+        if (F.every('cross', dt, E.winterCross)) {
           s.ventDir = -s.ventDir;
-          F.sweep(L.x, L.y, WS.random() * WS.TAU, s.ventDir * 0.5, 900, 36, 1.0, 8.2,
-            T.ventDamage, 'Frost cross', { arms: 4, follow: L, tint: [0.7, 0.92, 1.0] });
+          F.sweep(L.x, L.y, WS.random() * WS.TAU, s.ventDir * T.winterCrossSpin, 900, T.winterCrossWidth,
+            T.winterCrossTele, T.winterCrossTime,
+            T.ventDamage, 'Frost cross', { arms: T.winterCrossArms, follow: L, tint: [0.7, 0.92, 1.0] });
         }
-        if (F.every('nova', dt, 7)) this.nova(F);
-        if (F.every('grid', dt, 12)) F.grid(F.bounds, 5, 4, 4, T.gridTele, T.gridDamage, 'Glacial spikes');
-        if (F.every('spike', dt, 4)) {
-          F.radial(L.x, L.y, 16, 200, T.spikeDamage, 'frost', 'Ice lance', F.t, L);
+        if (F.every('nova', dt, E.winterNova)) this.nova(F);
+        if (F.every('grid', dt, E.winterGrid)) F.grid(F.bounds, T.gridCols, T.gridRows, T.gridSafe, T.gridTele, T.gridDamage, 'Glacial spikes');
+        if (F.every('spike', dt, E.winterSpike)) {
+          F.radial(L.x, L.y, T.winterSpikes, T.winterSpikeSpeed, T.spikeDamage, 'frost', 'Ice lance', F.t, L);
         }
-        if (s.enrage <= 0 && F.every('winterEnd', dt, 3)) {
+        if (s.enrage <= 0 && F.every('winterEnd', dt, E.winterEnd)) {
           WS.Player.takeDamage(p, 99999, 'The endless winter');
         }
       }
     },
     nova(F) {
       const T = F.def.tuning, L = F.s.lord;
-      F.ring(L.x, L.y, { speed: T.novaSpeed, gaps: 3, gapWidth: T.novaGap, spin: 0.35,
+      F.ring(L.x, L.y, { speed: T.novaSpeed, gaps: T.novaGaps, gapWidth: T.novaGap, spin: T.novaSpin,
         dmg: T.novaDamage, name: 'Frost nova', tint: [0.7, 0.92, 1.0] });
-      F.ring(L.x, L.y, { speed: T.novaSpeed, gaps: 3, gapWidth: T.novaGap, spin: -0.35, delay: 1.3,
+      F.ring(L.x, L.y, { speed: T.novaSpeed, gaps: T.novaGaps, gapWidth: T.novaGap, spin: -T.novaSpin, delay: T.novaDelay,
         dmg: T.novaDamage, name: 'Frost nova', tint: [0.7, 0.92, 1.0] });
     },
     nextLine(F) {
@@ -1782,7 +1786,7 @@
     shards(F) {
       const s = F.s, L = s.lord;
       s.shards = [];
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < F.def.tuning.shardCount; i++) {
         const q = F.unit('frost_shard', L.x, L.y);
         if (q) s.shards.push(q);
       }
@@ -1810,7 +1814,7 @@
         this.shards(F);
       }
       F.say('lord');
-      s.tm = { nova: 4, grid: 9, spike: 3, tide: 8 };
+      s.tm = Object.assign({}, T.lordOpening);
     },
     winter(F) {
       const s = F.s, T = F.def.tuning, L = s.lord;

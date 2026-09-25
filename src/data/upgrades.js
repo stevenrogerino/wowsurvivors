@@ -37,7 +37,7 @@
     armor: {
       name: 'Ironhide', art: 'shield', quality: 'common',
       description: '+{v} armor (diminishing damage reduction)', max: 5, v: 2,
-      detail: 'Every hit is cut by a share based on your armor - each point helps a little less than the last, and it never blocks a hit completely.',
+      detail: 'Every hit is cut by a share based on your armor. Each point helps a little less than the last, and it never blocks a hit completely.',
       apply: (p, up) => { p.armor += up.v; },
     },
     precision: {
@@ -56,7 +56,7 @@
       name: 'Expanse', art: 'expand', quality: 'uncommon',
       description: '+{v%}% effect area', max: 5, v: 0.12,
       detail: 'Bigger auras, zones, orbits and novas. Chain and beam weapons gain REACH from '
-        + 'this (longer leaps, longer lines), not damage - look to pierce or count for those instead.',
+        + 'this (longer leaps, longer lines), not damage. Look to pierce or count for those instead.',
       apply: (p, up) => { p.areaMultiplier += up.v; },
     },
     quantity: {
@@ -68,7 +68,7 @@
     luck: {
       name: 'Fortune', art: 'coin', quality: 'uncommon',
       description: '+{v%}% luck (better and more drops)', max: 4, v: 0.15,
-      detail: 'Better odds of coins, potions, sapper charges, and lodestones - but every rank here '
+      detail: 'Better odds of coins, potions, sapper charges, and lodestones, but every rank here '
         + 'is a rank not spent on clear speed, which is what actually keeps a build alive early. '
         + 'A strong late-game luxury, a weak early priority.',
       apply: (p, up) => { p.luck += up.v; },
@@ -118,7 +118,7 @@
     spirit_companion: {
       name: 'Spirit Companion', art: 'spiritwolf', quality: 'rare',
       description: 'Summon a spirit wolf that hunts the horde.', max: 3,
-      detail: 'Each rank calls another spirit wolf. They chase down the nearest enemies and maul them - bites deal area damage that scales with your damage and level.',
+      detail: 'Each rank calls another spirit wolf. They chase down the nearest enemies and maul them. Bites deal area damage that scales with your damage and level.',
       apply: () => { WS.Familiar.add('wolf'); },
     },
     grave_call: {
@@ -130,7 +130,7 @@
     dread_command: {
       name: 'Dread Command', art: 'command', quality: 'epic',
       description: '+{v%}% summon damage and +{haste%}% summon attack speed', max: 5,
-      detail: 'Drives everything you have summoned - spirit wolves and ghouls alike - to strike harder and more often. Worthless without something to command.',
+      detail: 'Drives everything you have summoned, spirit wolves and ghouls alike, to strike harder and more often. Worthless without something to command.',
       offer: (p) => (p.upgradeLevels.spirit_companion || 0) > 0 || (p.upgradeLevels.grave_call || 0) > 0,
       v: 0.30, haste: 0.10,
       apply: (p, up) => { p.summonDamage += up.v; p.summonHaste += up.haste; },
@@ -139,8 +139,8 @@
     /* ------------------------------------------------ tank / defensive --- */
     thorns: {
       name: 'Thorns', art: 'thorn', quality: 'uncommon',
-      description: 'Attackers take damage back - melee and ranged.', max: 5,
-      detail: 'Any enemy that hits you - a melee swing OR a ranged bolt - takes {Config.thornsFlat} + {Config.thornsDamagePct%}% of that damage back per rank (even if you dodge or block). Ranged bolts reflect to the caster that fired them.',
+      description: 'Attackers take damage back, melee and ranged.', max: 5,
+      detail: 'Any enemy that hits you, with a melee swing OR a ranged bolt, takes {Config.thornsFlat} + {Config.thornsDamagePct%}% of that damage back per rank (even if you dodge or block). Ranged bolts reflect to the caster that fired them.',
       apply: (p) => { p.thornsRank += 1; },
     },
     curdled: {
@@ -163,7 +163,7 @@
       description: '+{Config.felPerRank%}% fel from overkill, +{Config.metaDurationPerRank}s of Ruinform, '
         + 'and a shorter wait before it can answer again', max: 5,
       detail: 'Every scrap of overkill feeds the ruin faster, the transformation holds a second longer '
-        + 'per rank, and the recovery window after it ends shrinks too - though it never fully closes '
+        + 'per rank, and the recovery window after it ends shrinks too, though it never fully closes '
         + 'unless the ruin is already part of you.',
       offer: (p) => p.felAttuned > 0,
       apply: (p) => { p.soulRending += 1; },

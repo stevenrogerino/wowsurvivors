@@ -42,12 +42,8 @@
     shaman: (E, run, c) => run.gold >= c.gold,
   };
 
-  /** Who comes with them. */
-  const GUARDS = {
-    rogue: [['kerchief', 4], ['bruiser', 2]],
-    hunter: [['wolf', 8]],
-    warrior: [['skeleton', 6]],
-  };
+  /** Who comes with them: Config.encounters.guards. */
+  const GUARDS = () => WS.Config.encounters.guards;
 
   /** The ones not in danger wait for you, and then they do not. */
   const WAITS = { warlock: 1, shaman: 1 };
@@ -61,7 +57,7 @@
     this.kills = { kerchief: 0, beast: 0 };
     this.recent = [];
     this.slaughtered = false;
-    this.cooldown = 8;
+    this.cooldown = WS.Config.encounters.firstCheck;
   };
 
   function wanted(id) {
@@ -116,11 +112,11 @@
     const lore = WS.Lore.watchers && WS.Lore.watchers[id];
     const f = lore && lore.found;
     if (f) WS.Game.announce(f.arrive[0], f.arrive[1], 4.0);
-    WS.Audio.play(GUARDS[id] ? 'boss' : 'level');
+    WS.Audio.play(GUARDS()[id] ? 'boss' : 'level');
     WS.FX.flash(x, y, 120, ch.color, 0.45);
 
-    const scale = WS.WaveManager.enemyScale ? WS.WaveManager.enemyScale(this.run.time) * 1.4 : 1;
-    const guards = GUARDS[id] || [];
+    const scale = WS.WaveManager.enemyScale ? WS.WaveManager.enemyScale(this.run.time) * WS.Config.encounters.guardScale : 1;
+    const guards = GUARDS()[id] || [];
     let n = 0;
     const total = guards.reduce((s, g) => s + g[1], 0);
     for (const [kind, count] of guards) {
@@ -138,7 +134,7 @@
     if (pk.kind !== 'watcher' || pk.who !== A.id) { this.active = null; return; }
     const p = WS.Game.player;
     const near = WS.dist(p.x, p.y, pk.x, pk.y) < c.holdRadius;
-    A.hold = near ? A.hold + dt : WS.max(0, A.hold - dt * 0.6);
+    A.hold = near ? A.hold + dt : WS.max(0, A.hold - dt * c.drain);
     pk.hold = WS.clamp(A.hold / c.hold, 0, 1);
     pk.near = near;
     if (A.hold >= c.hold) { this.bringIn(); return; }
@@ -165,7 +161,7 @@
     release(pk);
     WS.Save.stats.found = WS.Save.stats.found || {};
     WS.Save.stats.found[id] = true;
-    WS.Game.addGold(WS.floor(100 * run.goldMult), pk.x, pk.y);
+    WS.Game.addGold(WS.floor(WS.Config.encounters.reward * run.goldMult), pk.x, pk.y);
     WS.Achievements.check();
     WS.Save.save();
     const f = WS.Lore.watchers[id].found;

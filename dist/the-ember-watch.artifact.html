@@ -2859,6 +2859,75 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
    it carries the separation on its own. */
 #overlay.scene { backdrop-filter: none; }
 
+/* The roster's portraits hang in the same drawn frame as the cartouche's
+   picture and the records', not the machined chamfer they were cut to
+   before the frames were drawn by hand. The well keeps its own light. */
+.pick .pick-seat {
+  clip-path: none; box-sizing: border-box; width: 52px; height: 52px;
+  border: 1px solid transparent;
+  border-image: var(--frame-picture) 24 / 7px stretch;
+  box-shadow: inset 0 0 12px rgba(0,0,0,.65);
+}
+.pick .pick-seat img { width: 42px; height: 42px; }
+.pick.selected .pick-seat {
+  background:
+    radial-gradient(circle at 50% 34%, color-mix(in srgb, var(--q, var(--arc)) 34%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--obsidian-3), var(--void));
+}
+
+/* ============================================== THE WATCH'S TIMERS =====
+ * Boss-mod bars under the portrait: an icon, a bar that drains as the thing
+ * comes, its name inked on the bar and the seconds at the right. The
+ * soonest is on top. Under five seconds a bar lights and its figures go
+ * hot, the way a raid timer calls out what is about to land.
+ */
+.hud-under {
+  position: absolute; top: 100%; left: 0; margin-top: 10px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+  pointer-events: none;
+}
+.hud-under .hud-auto { position: static; margin-top: 0; }
+#hud-timers { display: flex; flex-direction: column; gap: 4px; width: 236px; }
+#hud-timers:empty { display: none; }
+.bm-bar { display: flex; align-items: center; gap: 6px; animation: bm-in .25s var(--ease) both; }
+@keyframes bm-in { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+.bm-icon {
+  flex: none; width: 22px; height: 22px; box-sizing: border-box; padding: 1px;
+  border: 1px solid transparent; border-image: var(--frame-pip) 24 / 4px / 1px stretch;
+  background: rgba(8,9,13,.8);
+}
+.bm-track {
+  position: relative; flex: 1; height: 20px; overflow: hidden;
+  background: rgba(8,9,13,.74);
+  border: 1px solid transparent; border-image: var(--frame-pip) 24 / 4px / 1px stretch;
+}
+.bm-fill {
+  position: absolute; inset: 0; transform-origin: left center;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bm) 62%, #fff4) 0%, var(--bm) 55%, color-mix(in srgb, var(--bm) 70%, #000) 100%);
+  opacity: .62; transition: transform .1s linear;
+}
+.bm-name, .bm-time {
+  position: absolute; top: 0; bottom: 0; display: flex; align-items: center;
+  color: #f4ecdc; text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 3px rgba(0,0,0,.7);
+  white-space: nowrap;
+}
+.bm-name {
+  left: 7px; right: 44px; overflow: hidden; text-overflow: ellipsis; display: block; line-height: 19px;
+  font-family: var(--voice); font-style: italic; font-weight: 500; font-size: 13.5px;
+}
+.bm-time { right: 7px; font-family: var(--fig); font-size: 13px; font-variant-numeric: tabular-nums; }
+.bm-bar[data-kind="cache"] { --bm: #b99a52; }
+.bm-bar[data-kind="beans"] { --bm: #c7773a; }
+.bm-bar[data-kind="boss"]  { --bm: #b2403a; }
+.bm-bar[data-kind="swarm"] { --bm: #6f7fa0; }
+.bm-bar.soon .bm-fill { opacity: .9; animation: bm-pulse .5s ease-in-out infinite alternate; }
+.bm-bar.soon .bm-time { color: #ffd98a; font-weight: 600; }
+@keyframes bm-pulse { from { filter: brightness(1); } to { filter: brightness(1.45); } }
+@media (prefers-reduced-motion: reduce) { .bm-bar, .bm-bar.soon .bm-fill { animation: none; } }
+@media (max-width: 720px) { #hud-timers { width: 190px; } .bm-name { font-size: 12px; } }
+.setting.locked { opacity: .6; }
+.switch.disabled { opacity: .4; pointer-events: none; }
+
 </style>
 <div id="stage">
     <canvas id="game-canvas"></canvas>
@@ -3315,6 +3384,16 @@ window.WS = window.WS || {};
     finalePowerExp: 0.7,
     finalePowerCap: 40,
     finalePowerWindow: 120,
+    // The finale engine: the breather before the boss, how fast the purge
+    // clears the field, how long the epilogue holds, how often a beam or a
+    // fence can hit again while you stand in it, how close a fence reaches,
+    // and how long before a charge goes that its lane stops following you.
+    finaleBreather: 30,
+    finalePurgeSpeed: 1150,
+    finaleEpilogue: 3.6,
+    finaleRehit: 0.7,
+    finaleFenceReach: 12,
+    finaleChargeLock: 0.3,
 
     endlessBossInterval: 75,
     endlessBossMinInterval: 30,
@@ -3323,6 +3402,96 @@ window.WS = window.WS || {};
     endlessRampTime: 240,
     endlessEventInterval: 90,
     endlessEnemyRampTime: 300,
+    // Overtime's ramps start here (27:00), and its first boss and first
+    // horde surge come this long after dawn; each surge brings this many.
+    endlessRampStart: 1620,
+    endlessFirstBoss: 120,
+    endlessFirstEvent: 100,
+    endlessSurgeCount: 22,
+
+    /* The wave director. The first ambient spawn; the rings the horde, an
+       elite, a scripted swarm and a boss arrive on (px from the survivor);
+       the supply cache's first drop, spacing (every + up to jitter more) and
+       distance; Beans's first visit and distance; when Keegan's coffin
+       surfaces; and how much warning Death gives. */
+    firstSpawn: 0.75,
+    spawnRing: 700,
+    spawnRingJitter: 160,
+    swarmRing: 620,
+    bossSpawnDistance: 520,
+    cacheFirst: 60,
+    cacheEvery: 75,
+    cacheJitter: 45,
+    cacheDistance: 320,
+    eggVendorFirst: 150,
+    eggVendorDistance: 400,
+    coffinTime: 120,
+    deathWarning: 15,
+
+    /* Boss patterns, for every boss that does not name its own on the
+       pattern entry: how far a summon lands, how summons scale with the
+       clock, a volley's spread, speed and share of the boss's damage, the
+       same for a ring, and how wide a charge's lane is (x radius). */
+    bossInterval: 3.6,
+    bossSummonNear: 60,
+    bossSummonFar: 130,
+    bossSummonScaleTime: 600,
+    bossVolleySpread: 0.16,
+    bossVolleySpeed: 260,
+    bossVolleyDamage: 0.7,
+    bossRingSpeed: 220,
+    bossRingDamage: 0.6,
+    bossChargeGirth: 2.2,
+    // A ranged creature's bolt is this share of its body's damage, and it
+    // fires from up to rangedReach x its range. A lunge's lane is lungeGirth
+    // x its radius wide.
+    /* Second Wind: the health it comes back with, its grace, and the burst
+       that clears room (reach, damage, shove). */
+    secondWindHeal: 0.5,
+    secondWindGrace: 2.5,
+    secondWindRadius: 170,
+    secondWindDamage: 200,
+    secondWindKnock: 90,
+
+    /* What things are worth. A coin is coinMin plus up to coinSpread, a chest
+       chestMin plus up to chestSpread (x the run's gold multiplier); an
+       opened chest pays five times at goldJackpot odds and three times below
+       goldLucky, goldMultiRoll of its value each; a bomb takes bombBossPct of
+       a boss's health; and the story objects pay what they pay. */
+    coinMin: 3,
+    coinSpread: 4,
+    chestMin: 18,
+    chestSpread: 26,
+    goldJackpot: 0.03,
+    goldLucky: 0.15,
+    goldMultiRoll: 0.8,
+    bombBossPct: 0.08,
+    coffinGold: 80,
+    gravebladeGold: 120,
+    glaiveGold: 120,
+    rangedDamagePct: 0.75,
+    rangedReach: 1.15,
+    lungeGirth: 2.0,
+
+    /* Weapon mechanics that are not any one weapon's: what evolving adds to
+       a chain, a storm and a ricochet; how much each hop of a chain loses;
+       how far past its range a chain looks for its first target; an orbit
+       blade's share of the weapon's damage per touch; the Radiant Gyre's
+       opening pulse (reach, share of damage, shove); how often a storm bolt
+       finds a target and how far off it lands; and how soon a weapon with
+       nothing in range looks again. */
+    evolveChains: 2,
+    evolveStrikes: 2,
+    evolveBounces: 3,
+    chainFalloff: 0.06,
+    chainFirstReach: 1.6,
+    orbitTickPct: 0.5,
+    gyrePulseRadius: 130,
+    gyrePulseDamage: 0.8,
+    gyrePulseKnock: 20,
+    stormAccuracy: 0.85,
+    stormJitter: 30,
+    weaponRetry: 0.25,
 
     bossTimes: [300, 630, 960, 1320, 1620],
     spawnIntervalMult: 1.0,
@@ -3394,6 +3563,15 @@ window.WS = window.WS || {};
       // Seconds after one meeting ends before the next can begin, so they
       // arrive as moments in a run rather than a queue.
       gap: 120,
+      // The first look, a run's first few seconds in; the gold for bringing
+      // one in; how fast progress drains when you step away (x the fill
+      // rate); how much tougher than the horde their guards are, and who.
+      firstCheck: 8, reward: 100, drain: 0.6, guardScale: 1.4,
+      guards: {
+        rogue: [['kerchief', 4], ['bruiser', 2]],
+        hunter: [['wolf', 8]],
+        warrior: [['skeleton', 6]],
+      },
     },
 
     // Fel / Ruinform: overkill harvested into a burst transformation.
@@ -3484,6 +3662,8 @@ window.WS = window.WS || {};
       /* Once the upgrade pool is exhausted, every level-up is the same card.
          Off by default and only ever offered once that has happened. */
       autoBreakingPoint: false,
+      // Countdown bars for what comes next; shown only once a dawn is won.
+      bossTimers: true,
       /* Which cut of the prologue plays. Two exist while the author decides
          which one to keep; see src/render/cinematic.js. */
       cinematic: 2,
@@ -4028,7 +4208,7 @@ window.WS = window.WS || {};
         try {
           raw = decodeURIComponent(escape(atob(raw.replace(/^EMBERWATCH\d*:/i, '').replace(/\s+/g, ''))));
         } catch (e) {
-          return { ok: false, error: 'That code is damaged - it looks like part of it '
+          return { ok: false, error: 'That code is damaged. It looks like part of it '
             + 'is missing. Copy the whole thing and try again.' };
         }
       }
@@ -4043,11 +4223,11 @@ window.WS = window.WS || {};
       let warn = null;
       if (outer.sum) {
         if (this.digest(JSON.stringify(inner)) !== outer.sum) {
-          return { ok: false, error: 'That save did not survive the trip - its checksum '
+          return { ok: false, error: 'That save did not survive the trip: its checksum '
             + 'does not match. Export it again and copy the whole thing.' };
         }
       } else if (!isPlain(outer.save)) {
-        warn = 'No checksum on this one, so it cannot be verified - it will still be '
+        warn = 'No checksum on this one, so it cannot be verified. It will still be '
           + 'repaired and loaded.';
       }
       /* Through the SAME path a stored save takes, so an imported account gets
@@ -5228,7 +5408,7 @@ window.WS = window.WS || {};
         { at: 1080, interval: 0.35, count: 8, roster: [{ id: 'crypt_fiend', weight: 35 }, { id: 'necromancer', weight: 35 }, { id: 'abomination', weight: 30 }], elite: 'deathbound_vanguard', eliteChance: 0.13 },
       ],
       events: [
-        { at: 300, text: 'The frozen earth splits - ghouls claw free!', id: 'pale_ghoul', count: 24 },
+        { at: 300, text: 'The frozen earth splits, and ghouls claw free!', id: 'pale_ghoul', count: 24 },
         { at: 620, text: 'Geists swarm from the spires!', id: 'geist', count: 22 },
         { at: 920, text: 'The cult chants as one. Necromancers converge!', id: 'necromancer', count: 16 },
       ],
@@ -5244,7 +5424,7 @@ window.WS = window.WS || {};
     boss_arena: {
       name: 'Eclipse Arena',
       subtitle: 'A duel with Aethelgard',
-      description: 'No horde, no timer. A bounded arena and one scripted boss: Aethelgard, the Eclipse Sovereign. You arrive with a ready-made kit - survive the telegraphs and break the eclipse.',
+      description: 'No horde, no timer. A bounded arena and one scripted boss: Aethelgard, the Eclipse Sovereign. You arrive with a ready-made kit. Survive the telegraphs and break the eclipse.',
       art: 'arena',
       ground: [0.06, 0.05, 0.11], groundAlt: [0.10, 0.08, 0.16],
       fog: [0.04, 0.03, 0.08],
@@ -5303,7 +5483,7 @@ window.WS = window.WS || {};
     armor: {
       name: 'Ironhide', art: 'shield', quality: 'common',
       description: '+{v} armor (diminishing damage reduction)', max: 5, v: 2,
-      detail: 'Every hit is cut by a share based on your armor - each point helps a little less than the last, and it never blocks a hit completely.',
+      detail: 'Every hit is cut by a share based on your armor. Each point helps a little less than the last, and it never blocks a hit completely.',
       apply: (p, up) => { p.armor += up.v; },
     },
     precision: {
@@ -5322,7 +5502,7 @@ window.WS = window.WS || {};
       name: 'Expanse', art: 'expand', quality: 'uncommon',
       description: '+{v%}% effect area', max: 5, v: 0.12,
       detail: 'Bigger auras, zones, orbits and novas. Chain and beam weapons gain REACH from '
-        + 'this (longer leaps, longer lines), not damage - look to pierce or count for those instead.',
+        + 'this (longer leaps, longer lines), not damage. Look to pierce or count for those instead.',
       apply: (p, up) => { p.areaMultiplier += up.v; },
     },
     quantity: {
@@ -5334,7 +5514,7 @@ window.WS = window.WS || {};
     luck: {
       name: 'Fortune', art: 'coin', quality: 'uncommon',
       description: '+{v%}% luck (better and more drops)', max: 4, v: 0.15,
-      detail: 'Better odds of coins, potions, sapper charges, and lodestones - but every rank here '
+      detail: 'Better odds of coins, potions, sapper charges, and lodestones, but every rank here '
         + 'is a rank not spent on clear speed, which is what actually keeps a build alive early. '
         + 'A strong late-game luxury, a weak early priority.',
       apply: (p, up) => { p.luck += up.v; },
@@ -5384,7 +5564,7 @@ window.WS = window.WS || {};
     spirit_companion: {
       name: 'Spirit Companion', art: 'spiritwolf', quality: 'rare',
       description: 'Summon a spirit wolf that hunts the horde.', max: 3,
-      detail: 'Each rank calls another spirit wolf. They chase down the nearest enemies and maul them - bites deal area damage that scales with your damage and level.',
+      detail: 'Each rank calls another spirit wolf. They chase down the nearest enemies and maul them. Bites deal area damage that scales with your damage and level.',
       apply: () => { WS.Familiar.add('wolf'); },
     },
     grave_call: {
@@ -5396,7 +5576,7 @@ window.WS = window.WS || {};
     dread_command: {
       name: 'Dread Command', art: 'command', quality: 'epic',
       description: '+{v%}% summon damage and +{haste%}% summon attack speed', max: 5,
-      detail: 'Drives everything you have summoned - spirit wolves and ghouls alike - to strike harder and more often. Worthless without something to command.',
+      detail: 'Drives everything you have summoned, spirit wolves and ghouls alike, to strike harder and more often. Worthless without something to command.',
       offer: (p) => (p.upgradeLevels.spirit_companion || 0) > 0 || (p.upgradeLevels.grave_call || 0) > 0,
       v: 0.30, haste: 0.10,
       apply: (p, up) => { p.summonDamage += up.v; p.summonHaste += up.haste; },
@@ -5405,8 +5585,8 @@ window.WS = window.WS || {};
     /* ------------------------------------------------ tank / defensive --- */
     thorns: {
       name: 'Thorns', art: 'thorn', quality: 'uncommon',
-      description: 'Attackers take damage back - melee and ranged.', max: 5,
-      detail: 'Any enemy that hits you - a melee swing OR a ranged bolt - takes {Config.thornsFlat} + {Config.thornsDamagePct%}% of that damage back per rank (even if you dodge or block). Ranged bolts reflect to the caster that fired them.',
+      description: 'Attackers take damage back, melee and ranged.', max: 5,
+      detail: 'Any enemy that hits you, with a melee swing OR a ranged bolt, takes {Config.thornsFlat} + {Config.thornsDamagePct%}% of that damage back per rank (even if you dodge or block). Ranged bolts reflect to the caster that fired them.',
       apply: (p) => { p.thornsRank += 1; },
     },
     curdled: {
@@ -5429,7 +5609,7 @@ window.WS = window.WS || {};
       description: '+{Config.felPerRank%}% fel from overkill, +{Config.metaDurationPerRank}s of Ruinform, '
         + 'and a shorter wait before it can answer again', max: 5,
       detail: 'Every scrap of overkill feeds the ruin faster, the transformation holds a second longer '
-        + 'per rank, and the recovery window after it ends shrinks too - though it never fully closes '
+        + 'per rank, and the recovery window after it ends shrinks too, though it never fully closes '
         + 'unless the ruin is already part of you.',
       offer: (p) => p.felAttuned > 0,
       apply: (p) => { p.soulRending += 1; },
@@ -5755,7 +5935,7 @@ window.WS = window.WS || {};
     },
     curdle: {
       name: 'Curdle', weapons: ['dawnpulse', 'hallowed_ring'],
-      description: 'Both hallowed rites mend you for {healBonus} more - even unevolved. What your wounds cannot drink, rots.',
+      description: 'Both hallowed rites mend you for {healBonus} more, even unevolved. What your wounds cannot drink, rots.',
       hint: 'Two holy rites in one vessel. The Light has to go somewhere...',
       healBonus: 2,
       apply: (w1, w2, c) => {
@@ -5995,11 +6175,11 @@ window.WS = window.WS || {};
         { name: 'Walk over the gems',
           text: 'Everything you kill drops experience. Gather enough and you level, and a level is a choice of three: a new weapon, a rank on one you carry, or a passive.' },
         { name: '{Config.maxWeapons} weapons, and no more',
-          text: 'Take one more and you cannot. Ranking a weapon to {Config.weaponMaxLevel} and learning its paired passive evolves it into something far stronger - the card tells you which passive it wants.' },
+          text: 'Take one more and you cannot. Ranking a weapon to {Config.weaponMaxLevel} and learning its paired passive evolves it into something far stronger. The card tells you which passive it wants.' },
         { name: 'Two evolved weapons can become one',
           text: 'Some pairs merge into a single greater weapon and give you the slot back. The Codex remembers every pairing you find.' },
-        { name: 'Thirty minutes is the win - and then a choice',
-          text: 'Bosses arrive on a schedule and the horde never stops thickening. Survive to 30:00 and the win is banked. Then choose: face whatever has been driving the night - first light clears the field, you get thirty seconds and a third blessing, and the finale begins - or stay out for Death, who always comes.' },
+        { name: 'Thirty minutes is the win, and then a choice',
+          text: 'Bosses arrive on a schedule and the horde never stops thickening. Survive to 30:00 and the win is banked. Then choose. Face whatever has been driving the night: first light clears the field, you get thirty seconds and a third blessing, and the finale begins. Or stay out for Death, who always comes.' },
         { name: 'Gold outlives the run',
           text: 'You keep every coin whether you win, die or walk away. Spend it with the Trainer on permanent lessons that apply to every run after.' },
       ],
@@ -6116,7 +6296,7 @@ window.WS = window.WS || {};
       mongrel: 'Half dog, half grudge. The Snarlpack were somebody\'s hounds once, and nobody has come forward to claim them.',
       kerchief: 'Red cloth over the face and quick hands under it. They rob the dead first and the living second, which is at least an order.',
       // The Dustreach
-      kerchief_pillager: 'The ones who throw. Firepots, bottles, once a boot - whatever the last farm had in it.',
+      kerchief_pillager: 'The ones who throw. Firepots, bottles, once a boot: whatever the last farm had in it.',
       harvest_reaper: 'The threshing engines never stopped when the farmers did. They are still bringing in the harvest. Stand clear when one breaks: it takes its last swing on the way down.',
       fleshripper: 'Circles until you tire, then lands. The trick is not to tire.',
       coyote: 'You will hear them laughing before you see them. Keep walking.',
@@ -6139,11 +6319,11 @@ window.WS = window.WS || {};
       crypt_fiend: 'Too many legs for a thing that used to be a person.',
       necromancer: 'Throws the grave\'s own cold at you from behind its dead. Get past the dead.',
       abomination: 'Sewn together from what the cult had spare. It comes apart when it dies, and the parts still want you.',
-      geist: 'A hunger with nothing left around it. It bursts where it falls - do not be standing there.',
+      geist: 'A hunger with nothing left around it. It bursts where it falls. Do not be standing there.',
       // Elites
       snarlpack_bonesnapper: 'The Snarlpack\'s biggest, fed first and meanest for it.',
       kerchief_enforcer: 'Plants its feet, picks you, and comes straight down the line. Step off the line.',
-      bone_sentinel: 'A knight once, and still standing a knight\'s watch - over the wrong side.',
+      bone_sentinel: 'A knight once, and still standing a knight\'s watch, over the wrong side.',
       karrash_battlelord: 'Charges once it has chosen you: everything the Karrash believe about glory, in one straight line. Be somewhere else when it arrives.',
       deathbound_vanguard: 'The front rank of the Pale. It does not break, because there is nothing left in it to break.',
       shadow_weaver: 'A shape the dark makes when it wants hands.',
@@ -6167,12 +6347,12 @@ window.WS = window.WS || {};
       gorestitch: 'Every Stitched Horror that ever fell went into this one. It remembers all of them.',
       marrowfrost: 'The Pale Lord\'s herald, sent ahead to count the lights and put some out. Where it stands, the frost grows toward you.',
       death_itself: 'Walks when the night runs past its hour. It is not cruel, and it does not stop.',
-      aethelgard: 'The Eclipse Sovereign, who took the sun into its crown and would not give it back. The fight that ends in daylight - if it ends.',
+      aethelgard: 'The Eclipse Sovereign, who took the sun into its crown and would not give it back. The fight that ends in daylight, if it ends.',
       // The finales
       candlecrawler: 'Grimtunnel\'s digging engine: a mine on legs, hung with the lamps he stole. It burrows when it is losing, which is often. Break the lamps.',
-      dust_galleon: 'A warship that sails the Dustreach on wheels and spite, firing on anything that carries a light. Hired, not loyal - the Admiral will tell you so herself.',
+      dust_galleon: 'A warship that sails the Dustreach on wheels and spite, firing on anything that carries a light. Hired, not loyal. The Admiral will tell you so herself.',
       admiral_ashore: 'The Masked Admiral, off her ship and out of patience. She fights better than she sails.',
-      mordecai_bound: 'Mordecai again, bound into four lanterns of stolen ember - four lives to spend, one lantern each. Break the lanterns and he runs out.',
+      mordecai_bound: 'Mordecai again, bound into four lanterns of stolen ember: four lives to spend, one lantern each. Break the lanterns and he runs out.',
       stormbreaker: 'Grimtunnel\'s walking fortress: forty tons of stolen ember and very confident engineering. Its shield hangs off the pylons; bring down the pylons and the shield goes with them.',
       heart_drill: 'Grimtunnel\'s last machine, sunk into the Pale Wastes to reach the heart of the dark. He reached it. It was awake.',
       pale_lord: 'Marrowfrost, the Pale Lord: the dark itself, woken at the bottom of the world and crowned in rime. Every ember the Watch has ever burned was taken from him, and tonight he came for all of it.',
@@ -6198,7 +6378,7 @@ window.WS = window.WS || {};
       },
       priest: {
         record: [
-          'The Order of the Morning Light named him the Fool as an insult - he blessed a well that had already run dry, and it filled. He took the name as a rank and has signed it that way ever since.',
+          'The Order of the Morning Light named him the Fool as an insult. He blessed a well that had already run dry, and it filled. He took the name as a rank and has signed it that way ever since.',
           'Chid heals because nobody has ever managed to explain to him why he should not be able to. The Light seems to have given up arguing.',
           'He was the first to sit down at the Watch\'s fire and the last to leave it, every night, for as long as anyone there can remember.',
         ],
@@ -6249,7 +6429,7 @@ window.WS = window.WS || {};
       warlock: {
         record: [
           'When the blight came to the Gloaming Grove, Nim saved it the only way he knew: he drank the sickness out of it, and a great deal of the grove along with it. The grove lived. The druids exiled him for how.',
-          'The hunger never left his hands. It goes quiet only when there is a great deal to drink at once - which is why he is always found at the edge of a slaughter, watching.',
+          'The hunger never left his hands. It goes quiet only when there is a great deal to drink at once, which is why he is always found at the edge of a slaughter, watching.',
           'He joined the Watch on the reasoning that the Watch would never run out of things for him to drink. So far he has been right.',
         ],
         says: 'The grove forgave the blight. It never forgave the cure.',
@@ -6268,7 +6448,7 @@ window.WS = window.WS || {};
           'She came to the field herself the night a watcher finally had enough gold to be worth the trip. She has not left, and the invoices have not stopped.',
         ],
         says: 'I have seen how this ends. The fee is the same either way.',
-        rumor: 'A far seer reads fortunes in the storm, and only for those who can pay. Carry {gold} gold in a single night and her storm will find you - but she will not wait for it to pass.',
+        rumor: 'A far seer reads fortunes in the storm, and only for those who can pay. Carry {gold} gold in a single night and her storm will find you. She will not wait for it to pass.',
         found: {
           arrive: ['A storm gathers around a stranger', 'The far seer has come to read your fortune. She will not wait.'],
           hold: 'Having your fortune read',
@@ -6488,8 +6668,19 @@ window.WS = window.WS || {};
         bombDamage: 34, bombRadius: 64, bombTele: 1.1,
         drillDamage: 42, drillWindup: 1.1, drillChainWindup: 0.75, surfaceTele: 1.0, drillTime: 0.9, drillRange: 560,
         eruptDamage: 44, eruptRadius: 90, eruptTele: 1.3,
-        ringDamage: 30, ringSpeed: 190,
-        lamplings: 10,
+        ringDamage: 30, ringSpeed: 190, ringGaps: 2, ringGapWidth: 50,
+        lamplings: 10, burrowLamplings: 16,
+        riseTime: 1.8, burrowSpeed: 150, meltdownPace: 1.55,
+        // It hunts from keepAway px, faster once it melts down.
+        keepAway: 250, huntSpeed: 55, meltSpeed: 80, drillGirth: 1.5,
+        bombs: 2, bombsStripped: 3, bombScatter: 150, bombStagger: 0.15, bombBurn: 2, meltBurn: 3,
+        // The burning track a meltdown drill leaves behind it.
+        trailRadius: 34, trailLife: 3.2, trailDamage: 12, trailTick: 0.45,
+        // Seconds between each attack, and before the first of each.
+        every: { erupt: 3.3, trail: 0.1, drill: 8, drillStripped: 6, bomb: 3.4, bombStripped: 4,
+          hatch: 10, hatchStripped: 12, ring: 9 },
+        opening: { bomb: 4.5, drill: 8, hatch: 7, ring: 9 },
+        afterSurface: { drill: 3, ring: 5 },
       },
     },
 
@@ -6524,6 +6715,20 @@ window.WS = window.WS || {};
         // reaction plus a step - below ~0.5s a lane this wide cannot be left.
         dashChainWindup: 0.5,
         pistolDamage: 30, boarders: 8, rally: 4,
+        sailInSpeed: 260, crashTime: 2.6,
+        // Broadsides fire straight down until the ship falls below aimBelow,
+        // then at you; each port a broadsideStagger later than the last.
+        aimBelow: 0.7, broadsideLength: 800, broadsideActive: 0.35, broadsideStagger: 0.3,
+        grapeCount: 7, grapeSpread: 0.14, grapeSpeed: 300,
+        kegs: 3, kegScatter: 120, kegStagger: 0.2, boardBruisers: 3,
+        wreckFireDamage: 14, wreckFireRadius: 46, wreckFireTick: 0.5,
+        // The duel: the Admiral circles at duelRange and hurries below duelLowAt.
+        duelRange: 210, duelSpeed: 170, duelCircle: 0.9, duelLowAt: 0.3, duelLowPace: 1.35,
+        dashChain: 2, dashGirth: 1.8, pistolCount: 5, pistolSpread: 0.12, pistolSpeed: 340,
+        duelKegRing: 4, duelKegRange: 110, duelKegScale: 0.8, duelKegDelay: 0.3,
+        every: { broadside: 6.5, grape: 4.2, keg: 7, board: 12, dash: 5.5, pistol: 2.6, duelKeg: 8, rally: 14 },
+        opening: { broadside: 3.5, grape: 5, keg: 6.5, board: 8 },
+        duelOpening: { dash: 3, pistol: 2, keg: 6, rally: 10 },
       },
     },
 
@@ -6554,6 +6759,11 @@ window.WS = window.WS || {};
         riseAt: 0.30, handDamage: 44, handRadius: 58, handTele: 1.0,
         knellDamage: 38, knellSpeed: 200, knellGap: 34,
         lanceDamage: 30, raise: 6,
+        lanternHpGrowth: 0.15, lanternAdds: 2, riseSkeletons: 12, riseGhouls: 10, risenPace: 1.35,
+        hands: 3, lanceCount: 5, lanceSpread: 0.16, lanceSpeed: 260, knellGaps: 3,
+        // knellFast once he is exposed or risen; handStep between the hands of one volley.
+        every: { spawn: 9, blink: 8, hand: 5, handStep: 0.45, lance: 4, knell: 11, knellFast: 7.5 },
+        opening: { hand: 3, lance: 4, knell: 7, blink: 8, spawn: 6 },
       },
     },
 
@@ -6567,7 +6777,7 @@ window.WS = window.WS || {};
       ],
       say: {
         legDown: ['grimtunnel', 'Is that a LEG? That was a leg!'],
-        kneel: ['grimtunnel', 'Knees! Why does it have KNEES? Fine - fortress mode!'],
+        kneel: ['grimtunnel', 'Knees! Why does it have KNEES? Fine. FORTRESS MODE!'],
         pylons: ['grimtunnel', 'Pylons up! Let us see you walk through THAT!'],
         destruct: ['grimtunnel', 'You want the ember? HAVE ALL OF IT!'],
       },
@@ -6580,7 +6790,7 @@ window.WS = window.WS || {};
         damage: 12.5,   // x difficulty x Hyper x Config.finaleDamage
         standingArmor: 0.35, kneelVuln: 1.2, kneelStagger: 8, destructAt: 0.15,
         // The fortress: the pylons shield the hull, and they come back once.
-        pylonShield: 0.30, reraiseAt: 0.50, shockEvery: 8,
+        pylonShield: 0.30, reraiseAt: 0.50,
         // Near-lethal on Ochre's 30:00 curve (x8.3): hide, or be carried out.
         destructTime: 7, destructDamage: 90,
         stompDamage: 46, stompRadius: 76, stompTele: 0.9,
@@ -6588,9 +6798,21 @@ window.WS = window.WS || {};
         /* The fortress's lighthouse: two back-to-back beams, each through ~210
            degrees, so every bearing is crossed at least once. 0.52 rad/s is
            ~175 px/s at the cage's rim - a survivor can keep ahead of it, just. */
-        fortSpin: 0.52, fortBeamTime: 7.0, fortEvery: 10.5,
+        fortSpin: 0.52, fortBeamTime: 7.0, fortBeamLength: 1400,
+        // Each volley opens fortLead radians behind you, turning your way.
+        fortLead: 0.85,
+        // The walking cannon: starts beamArc off straight down, sweeping in.
+        beamArc: 1.25, beamLength: 900,
         fenceDamage: 30, missileDamage: 40, missileRadius: 70, missileTele: 1.05,
+        missiles: 5, missileScatter: 170, missileStagger: 0.12,
+        boltCount: 16, boltSpeed: 200, boltDamage: 28,
+        shockSpeed: 230, shockGaps: 3, shockGapWidth: 42,
+        enterSpeed: 120, walkSpeed: 38,
         karrash: 5,
+        every: { step: 1.3, sweep: 10, missile: 5.5, shock: 8, karrash: 13,
+          lighthouse: 10.5, fortMissile: 5, bolts: 6.5, fortKarrash: 15 },
+        opening: { step: 1.3, sweep: 6, missile: 5, karrash: 9 },
+        fortOpening: { sweep: 3, missile: 2, bolts: 4 },
       },
     },
 
@@ -6630,6 +6852,21 @@ window.WS = window.WS || {};
         novaDamage: 50, novaSpeed: 200, novaGap: 30,
         gridDamage: 56, gridTele: 1.35, spikeDamage: 44,
         ghouls: 10,
+        dropGravity: 1100, breachTime: 7.4,
+        debris: 4, debrisScatter: 190, debrisStagger: 0.15,
+        ventLength: 900, ventWidth: 40, ventTime: 6, ventArms: 4,
+        // Marrowfrost's frost cross, and the faster, wider one in the winter.
+        crossSpin: 0.45, crossWidth: 34, crossTele: 1.2, crossTime: 6, crossArms: 2,
+        winterCrossSpin: 0.5, winterCrossWidth: 36, winterCrossTele: 1.0, winterCrossTime: 8.2, winterCrossArms: 4,
+        // The glacial grid: cols x rows, of which gridSafe cells are safe.
+        gridCols: 5, gridRows: 4, gridSafe: 4,
+        spikes: 14, spikeSpeed: 190, winterSpikes: 16, winterSpikeSpeed: 200,
+        novaGaps: 3, novaSpin: 0.35, novaDelay: 1.3,
+        shardCount: 4, tideSkeletons: 6, tideGhouls: 6,
+        every: { debris: 4, vent: 11, ghoul: 12, nova: 9, cross: 15, grid: 14, spike: 5, tide: 16,
+          winterCross: 8, winterNova: 7, winterGrid: 12, winterSpike: 4, winterEnd: 3 },
+        opening: { debris: 3, vent: 7, ghoul: 6 },
+        lordOpening: { nova: 4, grid: 9, spike: 3, tide: 8 },
       },
     },
   };
@@ -6696,7 +6933,7 @@ window.WS = window.WS || {};
    * system rather than only at the top level. */
   const ROOTS = ['Config', 'CONST', 'Characters', 'Weapons', 'Unions', 'Enemies',
     'Elites', 'Bosses', 'Maps', 'Upgrades', 'MetaUpgrades', 'Blessings',
-    'Combos', 'Achievements', 'Lore', 'Arena.tuning',
+    'Combos', 'Achievements', 'Lore', 'Arena.tuning', 'Familiar.tuning',
     // The map finales: each fight's tuning and script, its parts, its cast.
     'Finales', 'FinaleUnits', 'FinaleSpeakers'];
   /* A Set, not an object literal. `{ __proto__: 1 }` does not create a key
@@ -6712,6 +6949,11 @@ window.WS = window.WS || {};
   /** path -> the value that was there before any override touched it. */
   T.shipped = Object.create(null);
 
+  /** The table a root names, or undefined if it is not loaded yet. */
+  function resolveRoot(root) {
+    return root.split('.').reduce((o, k) => (o == null ? o : o[k]), WS);
+  }
+
   /** Walks a dotted path to its owning container. Returns null for anything
    *  that is not a real, reachable, permitted location. */
   function locate(path) {
@@ -6725,7 +6967,7 @@ window.WS = window.WS || {};
     if (!root) return null;
     const parts = [root].concat(path.slice(root.length + 1).split('.'));
     if (parts.length < 2 || parts[1] === '') return null;
-    let node = root.split('.').reduce((o, k) => (o == null ? o : o[k]), WS);
+    let node = resolveRoot(root);
     for (let i = 1; i < parts.length - 1; i++) {
       const k = parts[i];
       if (FORBIDDEN.has(k)) return null;
@@ -6801,11 +7043,32 @@ window.WS = window.WS || {};
       if (!this.set(path, wanted[path])) stale.push(path);
     }
     this.stale = stale;
-    if (stale.length && window.console) {
-      console.warn('tuning: ' + stale.length + ' override(s) point at paths that no '
-        + 'longer exist and were skipped: ' + stale.slice(0, 6).join(', '));
-    }
+    /* Two roots are tables that live inside a system - Arena.tuning and
+       Familiar.tuning - and those systems load after this file. An override
+       aimed at one is not stale, it is early: it is held and tried again
+       once every script has run, before boot reads anything. Without this a
+       saved arena or familiar change applied in the bench and was quietly
+       dropped on the next load. */
+    const late = stale.filter((path) => {
+      const root = ROOTS.find((r) => r.includes('.') && path.startsWith(r + '.'));
+      return root && !resolveRoot(root);
+    });
+    if (late.length && document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        for (const path of late) {
+          if (this.set(path, wanted[path])) this.stale.splice(this.stale.indexOf(path), 1);
+        }
+        this.report();
+      });
+    } else this.report();
     return stale;
+  };
+
+  T.report = function () {
+    if (this.stale.length && window.console) {
+      console.warn('tuning: ' + this.stale.length + ' override(s) point at paths that no '
+        + 'longer exist and were skipped: ' + this.stale.slice(0, 6).join(', '));
+    }
   };
 
   /* Applied here, at load, rather than from boot(). Every data file is in
@@ -10605,6 +10868,13 @@ window.WS = window.WS || {};
    *  pauldrons, a banner - and it is hung on the creature where the creature
    *  actually is.
    */
+  /** Where the head (and the shoulders) are, in the 100-unit box, for arts
+   *  the crown line cannot find by width alone: [x, y, width] of each row. */
+  const HEAD_AT = {
+    shrikewing: { crown: [50, 20.6, 22] },
+    karrash: { crown: [36.6, 12.6, 13], shoulder: [39.4, 26.4, 17], plate: 0.58 },
+  };
+
   function regalia(g, res, p, kit, b) {
     const u = res / 100;
     const gold = { hi: '#ffe9b0', mid: '#e8b860', lo: '#a97c2f', dark: '#5e4416',
@@ -10616,7 +10886,7 @@ window.WS = window.WS || {};
 
     for (const mark of kit) {
       if (mark === 'crown') {
-        const y = b.crownY + 1 * u, x = b.mid(b.crownY), wr = WS.max(b.width(b.crownY) * 0.5, b.w * 0.14);
+        const y = b.crownY + 1 * u, x = b.mid(b.crownY), wr = WS.max(b.width(b.crownY) * 0.5, b.anchored ? 0 : b.w * 0.14);
         for (let i = -2; i <= 2; i++) {
           const h = (i === 0 ? 15 : Math.abs(i) === 1 ? 11 : 7) * u;
           poly(g, [[x + (i * 0.42 - 0.2) * wr, y], [x + i * 0.42 * wr, y - h],
@@ -10652,7 +10922,7 @@ window.WS = window.WS || {};
         g.restore();
 
       } else if (mark === 'horns') {
-        const y = b.crownY + 4 * u, x = b.mid(b.crownY), r = WS.max(b.width(b.crownY), b.w * 0.34) * 0.62;
+        const y = b.crownY + 4 * u, x = b.mid(b.crownY), r = WS.max(b.width(b.crownY), b.anchored ? 0 : b.w * 0.34) * 0.62;
         for (const dir of [-1, 1]) {
           // a swept cone, walked as a centreline with a half-width so the
           // taper actually reaches a point
@@ -10731,12 +11001,12 @@ window.WS = window.WS || {};
            A pauldron is three lames lapped over each other, a rolled and
            gilded edge, rivets where they are hung, and a spike to say what
            it is for. */
-        const y = b.top + b.h * 0.40;
+        const y = b.shoulderY !== undefined ? b.shoulderY : b.top + b.h * 0.40;
         const wr = b.width(y) * 0.46;
         for (const dir of [-1, 1]) {
           const x = b.mid(y) + dir * wr;
           // tilted down and out over the shoulder, and a touch smaller
-          const tc = Math.cos(0.42), ts = Math.sin(0.42), sc = 0.86;
+          const tc = Math.cos(0.42), ts = Math.sin(0.42), sc = 0.86 * (b.plateScale || 1);
           const at = (dx, dy) => {
             const rx = dx * tc - dy * ts, ry = dx * ts + dy * tc;
             return [x + dir * rx * sc * u, y + ry * sc * u];
@@ -10855,7 +11125,7 @@ window.WS = window.WS || {};
 
       } else if (mark === 'plumehat') {
         // A wide brim and a feather: a captain, not a private.
-        const y = b.crownY + 3 * u, x = b.mid(b.crownY), wr = WS.max(b.width(b.crownY) * 0.68, b.w * 0.2);
+        const y = b.crownY + 3 * u, x = b.mid(b.crownY), wr = WS.max(b.width(b.crownY) * 0.68, b.anchored ? 0 : b.w * 0.2);
         poly(g, [[x - wr, y], [x - wr * 0.5, y - 9 * u], [x + wr * 0.5, y - 9 * u],
           [x + wr, y], [x + wr * 0.6, y + 4 * u], [x - wr * 0.6, y + 4 * u]],
           p.lo, p.line, u);
@@ -11193,6 +11463,127 @@ window.WS = window.WS || {};
       }
     }
     g.restore();
+  }
+
+  /** A LIMB, as one tapered form from hip to foot.
+   *
+   *  The beasts' legs were stacks of ellipses - a thigh, a shin, a foot -
+   *  and a stack of ellipses has a seam at every joint: a waist where two
+   *  ovals meet, and a disc where the thigh sits on the body. A leg is one
+   *  surface that narrows and bends. So this walks a centreline through the
+   *  joints with a width at each, builds the outline either side of it, and
+   *  shades it across its own axis, lit on the left like everything else.
+   *  Coordinates and widths are in pixels; the ends are rounded.
+   */
+  function limb(g, pts, ws, p) {
+    const n = pts.length;
+    if (n < 2) return;
+    const L = [], R = [];
+    for (let i = 0; i < n; i++) {
+      const a = pts[WS.max(0, i - 1)], b = pts[WS.min(n - 1, i + 1)];
+      let dx = b[0] - a[0], dy = b[1] - a[1];
+      const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
+      const h = ws[i] / 2;
+      L.push([pts[i][0] + dy * h, pts[i][1] - dx * h]);
+      R.push([pts[i][0] - dy * h, pts[i][1] + dx * h]);
+    }
+    const trace = () => {
+      g.beginPath();
+      g.moveTo(L[0][0], L[0][1]);
+      for (let i = 1; i < n; i++) {
+        const m = [(L[i - 1][0] + L[i][0]) / 2, (L[i - 1][1] + L[i][1]) / 2];
+        if (i === 1) g.lineTo(m[0], m[1]); else g.quadraticCurveTo(L[i - 1][0], L[i - 1][1], m[0], m[1]);
+      }
+      g.lineTo(L[n - 1][0], L[n - 1][1]);
+      const e = pts[n - 1], ea = Math.atan2(L[n - 1][1] - e[1], L[n - 1][0] - e[0]);
+      g.arc(e[0], e[1], ws[n - 1] / 2, ea, ea + WS.PI, false);
+      for (let i = n - 1; i > 0; i--) {
+        const m = [(R[i - 1][0] + R[i][0]) / 2, (R[i - 1][1] + R[i][1]) / 2];
+        if (i === n - 1) g.lineTo(m[0], m[1]); else g.quadraticCurveTo(R[i][0], R[i][1], m[0], m[1]);
+      }
+      g.lineTo(R[0][0], R[0][1]);
+      const sa = Math.atan2(R[0][1] - pts[0][1], R[0][0] - pts[0][0]);
+      g.arc(pts[0][0], pts[0][1], ws[0] / 2, sa, sa + WS.PI, false);
+      g.closePath();
+    };
+    let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
+    for (const q of L.concat(R)) {
+      minX = WS.min(minX, q[0]); maxX = WS.max(maxX, q[0]); minY = WS.min(minY, q[1]); maxY = WS.max(maxY, q[1]);
+    }
+    const grd = g.createLinearGradient(minX, minY, maxX, minY + (maxX - minX) * 0.3);
+    grd.addColorStop(0, p.hi); grd.addColorStop(0.4, p.mid); grd.addColorStop(1, p.lo);
+    trace(); g.fillStyle = grd; g.fill();
+    g.save();
+    trace(); g.clip();
+    // the ground under it: the foot end is darker than the hip
+    const floor = g.createLinearGradient(0, minY, 0, maxY);
+    floor.addColorStop(0, 'rgba(0,0,0,0)'); floor.addColorStop(1, 'rgba(0,0,0,.3)');
+    g.fillStyle = floor; g.fillRect(minX - 2, minY - 2, maxX - minX + 4, maxY - minY + 4);
+    // an inner edge, and a lit line down the front of it
+    g.globalAlpha = 0.42; g.strokeStyle = p.line;
+    g.lineWidth = WS.max(1.2, ws[0] * 0.16) * 2;
+    trace(); g.stroke();
+    g.globalAlpha = 0.4; g.strokeStyle = p.hi; g.lineCap = 'round';
+    g.lineWidth = WS.max(0.8, ws[0] * 0.1);
+    g.beginPath();
+    for (let i = 0; i < n; i++) {
+      const x = pts[i][0] * 0.55 + L[i][0] * 0.45, y = pts[i][1] * 0.55 + L[i][1] * 0.45;
+      if (i) g.lineTo(x, y); else g.moveTo(x, y);
+    }
+    g.stroke();
+    g.restore();
+  }
+
+  /** A BODY, as one outline.
+   *
+   *  shaded() is an ellipse, and an animal built from ellipses has a seam
+   *  wherever two of them overlap - the inner edge each one draws is a ring
+   *  across whatever it is laid on. A stalking cat's back is not three
+   *  circles: it is one line that rises over the shoulder blades, dips at
+   *  the waist and rises again at the hips. This takes that line as points,
+   *  runs a smooth closed curve through them, and lights it the way shaded()
+   *  lights an ellipse - lit up and to the left, darker toward the ground,
+   *  an inner edge, and light along the top. Returns the tracer, so a coat
+   *  or markings can be clipped to exactly this outline.
+   */
+  function mass(g, pts, p) {
+    const n = pts.length;
+    const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    const trace = () => {
+      g.beginPath();
+      const m0 = mid(pts[n - 1], pts[0]);
+      g.moveTo(m0[0], m0[1]);
+      for (let i = 0; i < n; i++) {
+        const m = mid(pts[i], pts[(i + 1) % n]);
+        g.quadraticCurveTo(pts[i][0], pts[i][1], m[0], m[1]);
+      }
+      g.closePath();
+    };
+    let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
+    for (const q of pts) {
+      minX = WS.min(minX, q[0]); maxX = WS.max(maxX, q[0]); minY = WS.min(minY, q[1]); maxY = WS.max(maxY, q[1]);
+    }
+    const w = maxX - minX, h = maxY - minY;
+    const grd = g.createRadialGradient(minX + w * 0.32, minY + h * 0.22, WS.min(w, h) * 0.08,
+      minX + w * 0.45, minY + h * 0.45, WS.max(w, h) * 0.8);
+    grd.addColorStop(0, p.hi); grd.addColorStop(0.45, p.mid); grd.addColorStop(1, p.lo);
+    trace(); g.fillStyle = grd; g.fill();
+    g.save();
+    trace(); g.clip();
+    const floor = g.createLinearGradient(0, minY + h * 0.45, 0, maxY);
+    floor.addColorStop(0, 'rgba(0,0,0,0)'); floor.addColorStop(1, 'rgba(0,0,0,.34)');
+    g.fillStyle = floor; g.fillRect(minX - 2, minY - 2, w + 4, h + 4);
+    g.globalAlpha = 0.34; g.strokeStyle = p.line;
+    g.lineWidth = WS.max(1.4, WS.min(w, h) * 0.07) * 2;
+    trace(); g.stroke();
+    // light along the top of the form, fading down it
+    g.save();
+    g.beginPath(); g.rect(minX - 2, minY - 2, w + 4, h * 0.42); g.clip();
+    g.globalAlpha = 0.38; g.strokeStyle = p.hi; g.lineWidth = WS.max(1, WS.min(w, h) * 0.05) * 2;
+    trace(); g.stroke();
+    g.restore();
+    g.restore();
+    return trace;
   }
 
   /** A blade, and a blade is not a shard.
@@ -12818,94 +13209,204 @@ window.WS = window.WS || {};
 
     /* --- beasts ----------------------------------------------------------- */
     wolf(g, s, p) {
-      /* The wolf and the cat were the same drawing within a unit or two -
-         same body, same head at the same height, same four legs, and only the
-         tail to tell them apart: 80% of one silhouette shared with the other.
-         The CAT is what changed (see below - arched back, upright tail, head
-         carried high); the wolf keeps the shape that already read as a wolf,
-         and takes only what is true of one and not the other: it stands
-         taller, and its tail is a low straight brush rather than a curl.
-
-         An earlier attempt rebuilt this one instead, on hip-chest-shoulder
-         masses with the head slung into the chest. Three overlapping ellipses
-         read as SEGMENTS and it came out a caterpillar; burying the head took
-         away the neck, which is most of what says wolf at all. The number
-         improved and the drawing got worse, which is the wrong trade and the
-         reason the floor below is set from what the bestiary honestly is. */
-      const cx = s / 2, cy = s * 0.56, u = s / 100;
-      legs(g, p, cx, cy + 15 * u, u, [-16, -6, 8, 18], 17, 4.2);
-      shaded(g, cx - 2 * u, cy + 2 * u, 26 * u, 15 * u, p);        // long body
-      pelt(g, p, cx - 2 * u, cy + 2 * u, 26 * u, 15 * u, 0, 7, 0.5, 0.44);
-      /* THE BRUSH. Four points made a plank; a wolf's tail is thick at the
-         root, fuller in the middle and ragged at the tip, and it is the one
-         part of the animal that is pure fur. */
-      poly(g, [[cx + 21 * u, cy - 3 * u], [cx + 31 * u, cy - 10 * u],
-        [cx + 41 * u, cy - 9 * u], [cx + 45 * u, cy - 2 * u],
-        [cx + 40 * u, cy + 3 * u], [cx + 30 * u, cy + 4 * u],
-        [cx + 24 * u, cy + 7 * u]], p.lo, p.line, u);
+      /* THE LONGTOOTH WOLF, and the coyote packrunner in a paler coat.
+         It was a box on four pegs with a triangle for a face - the drawing
+         the rest of the beasts left behind when the mongrel and the
+         moonwretch were rebuilt. What says wolf is the NECK: the head held
+         forward and a little low on a thick one, ears up, a long muzzle, a
+         deep chest that tucks up to a narrow waist, and hind legs that bend
+         backward at the hock. The body is one long mass with the chest and
+         the haunch laid ON it rather than three equal lumps in a row - the
+         row is what made the last rebuild a caterpillar. The fang is the
+         name. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+      const CLAW = '#e9edf5', CLAW_LINE = '#6a7080';
+      const claws = (x, y, n) => {
+        for (let i = 0; i < n; i++) {
+          const ox = x - i * 1.5;
+          poly(g, P([[ox + 0.6, y - 0.6], [ox - 1.6, y + 1.2], [ox - 0.2, y + 0.6]]), CLAW, CLAW_LINE, u * 0.4);
+        }
+      };
+      // the brush: thick at the root, full, hanging low, ragged at the tip
+      const tail = P([[76, 47], [84, 50], [90, 57], [92.6, 66], [91, 73], [88.6, 70], [87, 75], [84.4, 69],
+        [82, 71], [81.4, 63], [77, 56]]);
+      poly(g, tail, p.lo, p.line, u * 0.8);
       g.save();
-      g.beginPath();
-      g.moveTo(cx + 21 * u, cy - 3 * u);
-      g.lineTo(cx + 31 * u, cy - 10 * u); g.lineTo(cx + 41 * u, cy - 9 * u);
-      g.lineTo(cx + 45 * u, cy - 2 * u); g.lineTo(cx + 40 * u, cy + 3 * u);
-      g.lineTo(cx + 30 * u, cy + 4 * u); g.lineTo(cx + 24 * u, cy + 7 * u);
-      g.closePath(); g.clip();
+      g.beginPath(); g.moveTo(tail[0][0], tail[0][1]); for (const q of tail) g.lineTo(q[0], q[1]); g.closePath(); g.clip();
       g.lineCap = 'round';
       for (let i = 0; i < 6; i++) {
-        const t = i / 5;
-        const x = cx + (23 + t * 20) * u, y = cy + (-7 + t * 3) * u;
-        g.globalAlpha = 0.34; g.strokeStyle = p.line; g.lineWidth = 1.1 * u;
-        g.beginPath();
-        g.moveTo(x, y); g.quadraticCurveTo(x + 5 * u, y + 4 * u, x + 8 * u, y + 9 * u);
-        g.stroke();
-        g.globalAlpha = 0.24; g.strokeStyle = p.hi;
-        g.beginPath();
-        g.moveTo(x + 1.4 * u, y); g.quadraticCurveTo(x + 6.4 * u, y + 4 * u, x + 9.4 * u, y + 9 * u);
-        g.stroke();
+        const t = i / 5, x = 79 + t * 10, y = 50 + t * 12;
+        g.globalAlpha = 0.4; g.strokeStyle = p.line; g.lineWidth = u;
+        g.beginPath(); g.moveTo(X(x), Y(y)); g.quadraticCurveTo(X(x + 2), Y(y + 5), X(x + 1), Y(y + 11)); g.stroke();
+        g.globalAlpha = 0.3; g.strokeStyle = p.hi;
+        g.beginPath(); g.moveTo(X(x + 1.2), Y(y)); g.quadraticCurveTo(X(x + 3.2), Y(y + 5), X(x + 2.2), Y(y + 10)); g.stroke();
       }
+      g.fillStyle = p.dark; g.globalAlpha = 0.7;
+      g.beginPath(); g.ellipse(X(89), Y(70), X(3), X(4.4), 0.3, 0, WS.TAU); g.fill();
       g.restore();
-      shaded(g, cx - 22 * u, cy - 6 * u, 13 * u, 11 * u, p);       // head
-      pelt(g, p, cx - 22 * u, cy - 6 * u, 13 * u, 11 * u, 0, 4, 0.4, 0.3);
-      poly(g, [[cx - 34 * u, cy - 6 * u], [cx - 44 * u, cy - 2 * u], [cx - 32 * u, cy + 2 * u]], p.hi, p.line, u);  // muzzle
-      poly(g, [[cx - 28 * u, cy - 14 * u], [cx - 30 * u, cy - 26 * u], [cx - 20 * u, cy - 16 * u]], p.lo, p.line, u);
-      poly(g, [[cx - 16 * u, cy - 14 * u], [cx - 14 * u, cy - 26 * u], [cx - 8 * u, cy - 15 * u]], p.lo, p.line, u);
-      eyes(g, cx - 26 * u, cy - 8 * u, 4 * u, 1.6 * u, '#ffe08a');
+      // far legs, in the shade of the body
+      limb(g, P([[73, 55], [75, 66], [79.4, 75.6], [77.6, 86.4]]), [11, 6.4, 4, 3.4].map(X), far);
+      shaded(g, X(75.8), Y(88.2), X(3.6), X(1.7), far);
+      limb(g, P([[47, 57], [47.4, 70], [47, 81], [46.4, 86.4]]), [8, 5, 3.6, 3.4].map(X), far);
+      shaded(g, X(44.8), Y(88.2), X(3.6), X(1.7), far);
+      // near hind leg: a heavy thigh, the hock bent back, a long foot
+      limb(g, P([[68, 55], [70.4, 66], [75, 76], [73.2, 86.6]]), [14, 8.4, 4.6, 3.8].map(X), p);
+      shaded(g, X(71.2), Y(88.6), X(4), X(1.9), p);
+      claws(68.4, 88.6, 3);
+      // near foreleg: straight, long, a paw that stands on something
+      limb(g, P([[41, 57], [40.4, 70], [39.8, 81.4], [38.8, 86.8]]), [10.4, 6.2, 4.2, 3.8].map(X), p);
+      shaded(g, X(37), Y(88.6), X(4), X(1.9), p);
+      claws(34.2, 88.8, 3);
+      /* The body, one line: the chest deep in front, the back level, the
+         waist tucked up underneath, the haunch rounding off into the tail. */
+      const body = mass(g, P([[31, 47], [38, 42.6], [48, 42], [60, 42.6], [70, 41.6], [77.4, 44],
+        [81.4, 50.6], [80.6, 58.6], [76.4, 64.6], [70, 66], [63, 62.6], [55, 61.8], [47, 65.4],
+        [40.6, 67.6], [34.4, 64.8], [30.2, 56.6]]), p);
+      g.save();
+      body(); g.clip();
+      pelt(g, p, X(56), Y(53), X(27), X(13), 0.02, 8, 0.55, 0.42);
+      // the pale underside, throat to belly; a dark saddle along the back
+      g.fillStyle = 'rgba(255,248,232,.2)';
+      g.beginPath(); g.ellipse(X(37), Y(62), X(7), X(8), -0.3, 0, WS.TAU); g.fill();
+      g.fillStyle = 'rgba(255,248,232,.12)';
+      g.beginPath(); g.ellipse(X(55), Y(63), X(12), X(3), 0, 0, WS.TAU); g.fill();
+      g.fillStyle = p.dark; g.globalAlpha = 0.34;
+      g.beginPath(); g.ellipse(X(60), Y(42), X(20), X(4.6), 0.02, 0, WS.TAU); g.fill();
+      // the muscle under the coat: haunch and shoulder
+      g.strokeStyle = p.lo; g.globalAlpha = 0.55; g.lineWidth = u * 1.2; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(X(66), Y(64)); g.quadraticCurveTo(X(63.6), Y(52), X(72), Y(46.4)); g.stroke();
+      g.beginPath(); g.moveTo(X(44), Y(65)); g.quadraticCurveTo(X(49), Y(55), X(46), Y(45)); g.stroke();
+      g.strokeStyle = p.hi; g.globalAlpha = 0.35; g.lineWidth = u * 0.9;
+      g.beginPath(); g.moveTo(X(67.2), Y(62)); g.quadraticCurveTo(X(65), Y(53), X(72.6), Y(48)); g.stroke();
+      g.restore();
+      // hackles up over the shoulders
+      for (let i = 0; i < 7; i++) {
+        const t = i / 6, bx = 37 + t * 20, by = 42.6 + t * 0.6 - Math.sin(t * WS.PI) * 2;
+        const len = 3.4 + Math.sin(t * WS.PI) * 2.6;
+        poly(g, P([[bx - 1.6, by + 1.6], [bx + 1.8 - len * 0.1, by - len], [bx + 2, by + 1.6]]), i % 2 ? p.dark : p.lo, p.line, u * 0.5);
+      }
+      // the neck, thick, carrying the head forward
+      shaded(g, X(32), Y(44), X(8.4), X(9.6), p, -0.8);
+      pelt(g, p, X(32), Y(44), X(8.4), X(9.6), -0.8, 3, 0.3, 0.32);
+      // a ruff at the cheek
+      poly(g, P([[27, 41], [25, 47.6], [28.4, 45.8], [28.6, 50], [31.6, 46], [33.4, 49], [34, 42]]), p.mid, p.line, u * 0.6);
+      // the head
+      shaded(g, X(23.4), Y(37.4), X(9.4), X(7.6), p, 0.12);
+      pelt(g, p, X(23.4), Y(37.4), X(9.4), X(7.6), 0.12, 3, 0.4, 0.26);
+      // ears, up and forward
+      poly(g, P([[20.4, 32], [21.2, 21.6], [26.4, 30.4]]), p.mid, p.line, u * 0.7);
+      poly(g, P([[25, 31.4], [28.6, 21], [31, 31.6]]), p.lo, p.line, u * 0.7);
+      g.fillStyle = 'rgba(30,14,14,.55)';
+      g.beginPath(); g.moveTo(X(26.6), Y(30.4)); g.lineTo(X(28.4), Y(24.4)); g.lineTo(X(29.6), Y(30.6)); g.closePath(); g.fill();
+      // the muzzle: long, tapering, dark at the nose; the jaw under it
+      poly(g, P([[17.6, 34.6], [6.6, 37.8], [5, 40.6], [7.6, 42.4], [18.4, 42.6]]), p.mid, p.line, u * 0.8);
+      poly(g, P([[18.4, 42.6], [8.6, 42.6], [9.6, 44.8], [18, 45.4]]), p.lo, p.line, u * 0.7);
+      g.fillStyle = 'rgba(255,248,232,.22)';
+      g.beginPath(); g.ellipse(X(12), Y(41.4), X(5), X(1.2), 0.1, 0, WS.TAU); g.fill();
+      g.fillStyle = '#141014';
+      g.beginPath(); g.ellipse(X(6.2), Y(38.8), X(1.6), X(1.3), 0, 0, WS.TAU); g.fill();
+      g.fillStyle = 'rgba(255,255,255,.45)';
+      g.beginPath(); g.arc(X(5.8), Y(38.2), X(0.5), 0, WS.TAU); g.fill();
+      g.strokeStyle = '#1e1414'; g.lineWidth = u * 0.7; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(X(8), Y(42.6)); g.quadraticCurveTo(X(13), Y(43.4), X(19), Y(42)); g.stroke();
+      // the long tooth, down over the lip
+      poly(g, P([[11.6, 42.4], [12.6, 47.2], [13.8, 42.6]]), '#fbf7ee', '#7a766c', u * 0.4);
+      poly(g, P([[15.4, 42.4], [16, 44.6], [16.8, 42.5]]), '#fbf7ee', '#7a766c', u * 0.3);
+      eyes(g, X(19.4), Y(35.4), X(0.01), X(1.6), '#ffe08a');
+      g.strokeStyle = p.line; g.lineWidth = u * 1; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(X(16.4), Y(33.8)); g.lineTo(X(22.4), Y(33.2)); g.stroke();
     },
 
     cat(g, s, p) {
-      /* And a CAT, on the opposite skeleton to the wolf above. Short legs, a
-         high ARCHED back rather than a level one, the head carried up and
-         tucked close instead of slung forward, and a tail straight up. The two
-         used to share 80% of a silhouette; nothing in this outline is a
-         wolf. */
-      const cx = s / 2, cy = s * 0.56, u = s / 100;
-      legs(g, p, cx, cy + 14 * u, u, [-13, -5, 7, 15], 9, 3.4);
-      // the tail, straight up with a hook - the one vertical on a low animal
-      g.strokeStyle = p.lo; g.lineWidth = 4 * u; g.lineCap = 'round';
-      g.beginPath();
-      g.moveTo(cx + 17 * u, cy + 2 * u);
-      g.quadraticCurveTo(cx + 30 * u, cy - 6 * u, cx + 28 * u, cy - 30 * u);
-      g.quadraticCurveTo(cx + 27 * u, cy - 38 * u, cx + 20 * u, cy - 36 * u);
-      g.stroke();
-      // the arch: a haunch behind, a dip at the waist, shoulders in front
-      shaded(g, cx + 10 * u, cy - 2 * u, 14 * u, 14 * u, p);       // haunch, high
-      shaded(g, cx - 2 * u, cy + 3 * u, 15 * u, 10 * u, p);        // the dip
-      shaded(g, cx - 13 * u, cy - 1 * u, 12 * u, 12 * u, p);       // shoulders
-      g.strokeStyle = p.dark; g.lineWidth = 2.6 * u;
-      for (let i = -1; i <= 2; i++) {                              // stripes
-        g.beginPath();
-        g.moveTo(cx + i * 8 * u, cy - 10 * u);
-        g.lineTo(cx + i * 8 * u + 3 * u, cy + 6 * u);
-        g.stroke();
+      /* THE SAVANNAH PROWLER: a big cat on the stalk, not three balls in a
+         row. Everything about it is the opposite of the wolf beside it: the
+         body long and LOW between short heavy legs, the shoulder blades
+         standing up out of the back as it creeps, the head round and carried
+         low in front of them with a short muzzle, round ears, and a long tail
+         that climbs behind it and hooks over at a dark tuft - the one
+         vertical on a low animal. One forepaw is lifted mid-step. The coat
+         is tawny, barred faintly along the flank, pale underneath, with a
+         dark tear-line from the eye. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+      // the tail: a tapered stroke climbing and hooking over, then the tuft
+      const tailPts = [[74, 54], [84, 55], [90, 47], [90, 36], [86, 28], [80.4, 27]];
+      limb(g, P(tailPts), [5.4, 4.6, 4, 3.6, 3.2, 2.8].map(X), p);
+      poly(g, P([[84.4, 25.8], [81.6, 23.2], [77.4, 23.6], [75, 26.8], [75.8, 30], [79.2, 31.2], [83, 29.8]]), p.dark, p.line, u * 0.6);
+      // far legs, in shade: the hind planted, the fore planted under the chest
+      limb(g, P([[70, 57], [72, 66], [75.6, 72], [74, 86.2]]), [12, 7.4, 5, 4.6].map(X), far);
+      shaded(g, X(72), Y(87.8), X(4.4), X(2), far);
+      limb(g, P([[45, 59], [46, 70], [46.4, 80], [45.6, 86.2]]), [9, 6.4, 5, 4.6].map(X), far);
+      shaded(g, X(43.8), Y(87.8), X(4.4), X(2), far);
+      // the near legs, their tops tucked under the body that follows
+      limb(g, P([[67, 58], [69, 67], [73.4, 74], [71.6, 86.6]]), [13.4, 8.2, 5.2, 4.8].map(X), p);
+      shaded(g, X(69.6), Y(88.4), X(4.6), X(2.1), p);
+      limb(g, P([[40, 60], [36, 69], [32.4, 75.6], [30, 79.6]]), [10.4, 6.6, 5.2, 5].map(X), p);
+      shaded(g, X(29.6), Y(80.4), X(3.4), X(2.2), p, 0.5);
+      /* The body, one line: up over the shoulder blades, down into the
+         waist, up over the hips, round the rump, and back along a belly
+         that sags a little between them. The neck comes down off the front
+         of it to the head. */
+      const body = mass(g, P([[31, 49], [37, 45], [44, 41.8], [50, 45.4], [57, 48.6], [64, 47.4],
+        [71, 45], [77.4, 47.6], [81, 54], [79.6, 62], [75, 67.4], [68, 69], [60, 68.4], [52, 70],
+        [44, 70], [37.6, 66.6], [32, 62.4], [28.6, 56]]), p);
+      g.save();
+      body(); g.clip();
+      pelt(g, p, X(56), Y(57), X(26), X(13), 0.03, 8, 0.5, 0.3);
+      // faint bars down the flank, the pale belly under them
+      g.strokeStyle = p.dark; g.lineCap = 'round';
+      for (let i = 0; i < 6; i++) {
+        const x = 47 + i * 5.2;
+        g.globalAlpha = 0.32; g.lineWidth = u * (1.8 - i * 0.12);
+        g.beginPath(); g.moveTo(X(x), Y(47)); g.quadraticCurveTo(X(x + 2.6), Y(53), X(x + 1), Y(59)); g.stroke();
       }
-      shaded(g, cx - 20 * u, cy - 13 * u, 11 * u, 10 * u, p);      // head, carried HIGH
-      poly(g, [[cx - 28 * u, cy - 20 * u], [cx - 29 * u, cy - 32 * u],
-        [cx - 20 * u, cy - 21 * u]], p.lo, p.line, u);
-      poly(g, [[cx - 16 * u, cy - 21 * u], [cx - 13 * u, cy - 32 * u],
-        [cx - 9 * u, cy - 20 * u]], p.lo, p.line, u);
-      poly(g, [[cx - 27 * u, cy - 11 * u], [cx - 33 * u, cy - 9 * u],
-        [cx - 27 * u, cy - 7 * u]], p.hi, p.line, u);              // short muzzle
-      eyes(g, cx - 22 * u, cy - 14 * u, 4.5 * u, 1.8 * u, '#c9f26b');
+      g.globalAlpha = 1;
+      g.fillStyle = 'rgba(255,246,226,.2)';
+      g.beginPath(); g.ellipse(X(54), Y(69), X(18), X(4.4), 0, 0, WS.TAU); g.fill();
+      // the muscle under the coat: the haunch, the shoulder, the blade
+      g.strokeStyle = p.lo; g.globalAlpha = 0.55; g.lineWidth = u * 1.2;
+      g.beginPath(); g.moveTo(X(64), Y(66)); g.quadraticCurveTo(X(62), Y(54), X(70), Y(49.6)); g.stroke();
+      g.beginPath(); g.moveTo(X(41), Y(66)); g.quadraticCurveTo(X(47), Y(57), X(45), Y(46)); g.stroke();
+      g.strokeStyle = p.hi; g.globalAlpha = 0.35; g.lineWidth = u * 0.9;
+      g.beginPath(); g.moveTo(X(65.2), Y(64)); g.quadraticCurveTo(X(63.4), Y(55), X(70.6), Y(51)); g.stroke();
+      g.beginPath(); g.moveTo(X(40), Y(62)); g.quadraticCurveTo(X(36), Y(52), X(41.6), Y(45.4)); g.stroke();
+      g.restore();
+      // round ears, set wide, with dark backs
+      poly(g, P([[18.6, 47.4], [19.2, 41.6], [22.4, 40.2], [24.6, 44.6]]), p.lo, p.line, u * 0.6);
+      poly(g, P([[26.4, 44.6], [28.6, 40], [32, 40.8], [32.4, 46]]), p.dark, p.line, u * 0.6);
+      g.fillStyle = 'rgba(255,240,220,.35)';
+      g.beginPath(); g.ellipse(X(21.4), Y(44), X(1.2), X(2), 0.3, 0, WS.TAU); g.fill();
+      // the head: round, broad at the cheek
+      const head = mass(g, P([[13.4, 50.8], [16.5, 45.6], [22.8, 43.1], [29.9, 44.7], [34.4, 50.1],
+        [33.3, 57.0], [27.7, 61.5], [20.1, 62.0], [14.5, 58.6]]), p);
+      g.save(); head(); g.clip();
+      pelt(g, p, X(24), Y(52), X(10), X(8.6), 0.08, 3, 0.3, 0.22);
+      // the ruff of the cheek
+      g.strokeStyle = p.lo; g.globalAlpha = 0.5; g.lineWidth = u;
+      g.beginPath(); g.moveTo(X(27.4), Y(49)); g.quadraticCurveTo(X(30.6), Y(54), X(26.4), Y(59.4)); g.stroke();
+      g.restore();
+      // the muzzle, short and pale, the nose, the mouth, the chin
+      shaded(g, X(17.6), Y(57.4), X(4.6), X(3.6), { hi: '#fff6e4', mid: p.glow, lo: p.hi, dark: p.mid, line: p.line, glow: '#fff' }, 0.1);
+      poly(g, P([[13.4, 54.6], [16.6, 54.2], [15.2, 56.4]]), '#3a2622', '#1a0f0d', u * 0.4);
+      g.strokeStyle = '#2a1a16'; g.lineWidth = u * 0.6; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(X(15), Y(56.4)); g.lineTo(X(15.2), Y(58.4)); g.quadraticCurveTo(X(17.4), Y(60), X(19.6), Y(58.8)); g.stroke();
+      g.beginPath(); g.moveTo(X(15.2), Y(58.4)); g.quadraticCurveTo(X(13.6), Y(59.6), X(12.6), Y(58.6)); g.stroke();
+      // whiskers, and the tear-line from the eye to the mouth
+      g.strokeStyle = 'rgba(255,250,240,.7)'; g.lineWidth = u * 0.35;
+      for (const [dx, dy] of [[-7, -1.6], [-7.4, 0.4], [-6.6, 2.2]]) {
+        g.beginPath(); g.moveTo(X(15.4), Y(57.4)); g.lineTo(X(15.4 + dx), Y(57.4 + dy)); g.stroke();
+      }
+      g.strokeStyle = p.dark; g.lineWidth = u * 1.1; g.globalAlpha = 0.7;
+      g.beginPath(); g.moveTo(X(19.4), Y(52.4)); g.quadraticCurveTo(X(18.4), Y(55), X(19.6), Y(57)); g.stroke();
+      g.globalAlpha = 1;
+      eyes(g, X(20), Y(50.6), X(0.01), X(1.8), '#c9f26b');
+      g.fillStyle = '#0a0806';
+      g.beginPath(); g.ellipse(X(20), Y(50.6), X(0.4), X(1.4), 0, 0, WS.TAU); g.fill();
+      g.strokeStyle = p.line; g.lineWidth = u * 0.9;
+      g.beginPath(); g.moveTo(X(17.4), Y(48.6)); g.lineTo(X(22.6), Y(48.2)); g.stroke();
     },
 
     beans(g, s, p) {
@@ -13192,42 +13693,99 @@ window.WS = window.WS || {};
     },
 
     raptor(g, s, p) {
-      const cx = s / 2, cy = s * 0.58, u = s / 100;
-      shaded(g, cx + 2 * u, cy, 20 * u, 14 * u, p, -0.15);
-      /* Scale banding, not fur: a raptor is a reptile and the bands run
-         ACROSS it. Same job as the pelt on the furred ones - break a smooth
-         mass - done in the surface the animal actually has. */
+      /* THE SUNHIDE RAPTOR. It was an egg with a beak on a single stick
+         leg. A raptor is a line: a long jaw, an S of a neck, a body slung
+         level between the hips, and a stiff tail held out straight behind
+         to balance it - and under the hips two legs that bend forward at
+         the knee and back at the ankle, walking on the toes with the
+         killing claw held up off the ground. Small clawed arms tucked at
+         the chest, a crest of quills, and the banding of a reptile running
+         across it rather than fur running along it. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+      const CLAW = '#f3efe4', CLAW_LINE = '#6a6458';
+      const foot = (x, y, pal) => {
+        // three toes forward on the ground, the sickle claw raised
+        for (const [dx, len] of [[-2, 5.6], [0.8, 7.2]]) {
+          limb(g, P([[x + dx + 1, y - 1.4], [x + dx - len, y]]), [3.2 * u, 2.4 * u], pal);
+          poly(g, P([[x + dx - len, y - 0.8], [x + dx - len - 2.2, y + 0.6], [x + dx - len + 0.2, y + 0.8]]), CLAW, CLAW_LINE, u * 0.4);
+        }
+        g.save();
+        g.strokeStyle = CLAW_LINE; g.lineWidth = u * 1.6; g.lineCap = 'round';
+        g.beginPath(); g.moveTo(X(x - 0.6), Y(y - 1.6)); g.quadraticCurveTo(X(x - 3.6), Y(y - 6), X(x - 6.4), Y(y - 4.4)); g.stroke();
+        g.strokeStyle = CLAW; g.lineWidth = u * 1.0;
+        g.beginPath(); g.moveTo(X(x - 0.6), Y(y - 1.6)); g.quadraticCurveTo(X(x - 3.6), Y(y - 6), X(x - 6.4), Y(y - 4.4)); g.stroke();
+        g.restore();
+      };
+      // the far leg, in shade
+      limb(g, P([[71, 48], [68.6, 61], [75, 73.4], [72.8, 85.6]]), [11, 6.4, 3.8, 3.2].map(X), far);
+      foot(72.8, 86.6, far);
+      /* The body and the tail, one line: up the back of the neck's root,
+         level along the spine, out along the tail to its point and back
+         under it, round the belly and the chest. */
+      const body = mass(g, P([[35, 42], [42, 38.6], [52, 38.4], [62, 39.4], [72, 39.4], [83, 36.8],
+        [93.4, 34.2], [93.4, 36.4], [84, 41.6], [74, 47], [67, 54.6], [58, 57.8], [47, 57.4],
+        [39.4, 53.4], [34.4, 47.6]]), p);
       g.save();
-      g.beginPath(); g.ellipse(cx + 2 * u, cy, 20 * u, 14 * u, -0.15, 0, WS.TAU); g.clip();
-      for (let i = 0; i < 5; i++) {
-        const x = cx + (-12 + i * 7) * u;
-        g.globalAlpha = 0.4; g.strokeStyle = p.line; g.lineWidth = 2.4 * u;
-        g.beginPath();
-        g.moveTo(x, cy - 14 * u);
-        g.quadraticCurveTo(x + 3 * u, cy, x - 1 * u, cy + 14 * u);
-        g.stroke();
-        g.globalAlpha = 0.28; g.strokeStyle = p.hi; g.lineWidth = 1.6 * u;
-        g.beginPath();
-        g.moveTo(x + 2 * u, cy - 14 * u);
-        g.quadraticCurveTo(x + 5 * u, cy, x + 1 * u, cy + 14 * u);
-        g.stroke();
+      body(); g.clip();
+      // bands across the back and down the tail
+      g.strokeStyle = p.dark; g.lineCap = 'round';
+      for (let i = 0; i < 9; i++) {
+        const x = 42 + i * 6, top = 36 - WS.max(0, i - 4) * 1.2;
+        g.globalAlpha = 0.5; g.lineWidth = u * (2.4 - i * 0.14);
+        g.beginPath(); g.moveTo(X(x), Y(top)); g.quadraticCurveTo(X(x + 2.6), Y(top + 6), X(x + 0.6), Y(top + 12 - i * 0.6)); g.stroke();
+      }
+      // the pale belly and throat
+      g.globalAlpha = 1;
+      g.fillStyle = 'rgba(255,244,214,.26)';
+      g.beginPath(); g.ellipse(X(50), Y(57), X(14), X(4.6), 0.05, 0, WS.TAU); g.fill();
+      g.restore();
+      // the arm, small, folded at the chest, three claws
+      limb(g, P([[44, 50], [45.4, 57], [40, 61]]), [4.6, 3, 2.6].map(X), p);
+      for (let i = 0; i < 3; i++) {
+        const cx = 39.6 - i * 1.2;
+        poly(g, P([[cx, 60], [cx - 1.8, 63.4], [cx + 0.6, 61.4]]), CLAW, CLAW_LINE, u * 0.35);
+      }
+      poly(g, P([[44, 53], [41, 55], [45.4, 57.6], [43, 59.6], [47, 58.6]]), p.hi, p.line, u * 0.4);
+      // the near leg: the drumstick of a thigh, the shin forward, the ankle back
+      limb(g, P([[62, 50], [58, 63], [64.6, 75], [62.4, 86]]), [12.4, 7.2, 4.2, 3.6].map(X), p);
+      shaded(g, X(61), Y(53.4), X(7.6), X(10.6), p, -0.4);
+      g.save();
+      g.beginPath(); g.ellipse(X(61), Y(53.4), X(7.6), X(10.6), -0.4, 0, WS.TAU); g.clip();
+      g.strokeStyle = p.dark; g.globalAlpha = 0.45; g.lineWidth = u * 1.6;
+      for (const y of [47, 52, 57]) { g.beginPath(); g.moveTo(X(53), Y(y)); g.quadraticCurveTo(X(61), Y(y + 3), X(69), Y(y - 1)); g.stroke(); }
+      g.restore();
+      foot(62.4, 87, p);
+      // the neck and the head, one long line from the chest to the snout
+      const head = mass(g, P([[36, 50], [33.6, 42], [30, 35.6], [24, 31.4], [16, 31.2], [8, 33.4],
+        [3.8, 36], [5, 38.4], [11, 38.6], [8, 41], [16, 42.2], [22.4, 41.6], [27.4, 44], [30.6, 51]]), p);
+      g.save(); head(); g.clip();
+      g.strokeStyle = p.dark; g.globalAlpha = 0.45; g.lineCap = 'round';
+      for (let i = 0; i < 3; i++) {
+        g.lineWidth = u * 1.6;
+        g.beginPath(); g.moveTo(X(26 + i * 3.6), Y(33 + i * 2)); g.quadraticCurveTo(X(29 + i * 3.6), Y(38 + i * 2), X(26.6 + i * 3.6), Y(43 + i * 2)); g.stroke();
       }
       g.restore();
-      g.strokeStyle = p.lo; g.lineWidth = 5 * u; g.lineCap = 'round';
-      g.beginPath(); g.moveTo(cx + 16 * u, cy - 2 * u); g.quadraticCurveTo(cx + 40 * u, cy - 8 * u, cx + 44 * u, cy - 24 * u); g.stroke();
-      g.strokeStyle = p.dark; g.lineWidth = 4 * u;                 // raised legs
-      g.beginPath(); g.moveTo(cx, cy + 8 * u); g.lineTo(cx - 6 * u, cy + 22 * u); g.lineTo(cx + 4 * u, cy + 26 * u); g.stroke();
-      g.fillStyle = p.dark;
-      g.beginPath(); g.ellipse(cx + 4 * u, cy + 27 * u, 5 * u, 2.4 * u, 0, 0, WS.TAU); g.fill();
-      g.strokeStyle = p.hi; g.lineWidth = 1.4 * u;                 // the killing claw
-      g.beginPath();
-      g.moveTo(cx + 1 * u, cy + 22 * u);
-      g.quadraticCurveTo(cx + 6 * u, cy + 19 * u, cx + 7 * u, cy + 14 * u);
-      g.stroke();
-      shaded(g, cx - 20 * u, cy - 14 * u, 12 * u, 9 * u, p, -0.3);
-      poly(g, [[cx - 30 * u, cy - 14 * u], [cx - 42 * u, cy - 10 * u], [cx - 28 * u, cy - 6 * u]], p.hi, p.line, u);
-      poly(g, [[cx - 20 * u, cy - 22 * u], [cx - 12 * u, cy - 34 * u], [cx - 10 * u, cy - 20 * u]], p.lo, p.line, u); // crest
-      eyes(g, cx - 23 * u, cy - 16 * u, 3.5 * u, 1.6 * u, '#ffe066');
+      // the mouth: a long line and a row of teeth
+      g.fillStyle = '#2a0e0a';
+      g.beginPath(); g.moveTo(X(5), Y(38.2)); g.lineTo(X(20), Y(39)); g.lineTo(X(20), Y(40)); g.lineTo(X(9.4), Y(40.4)); g.closePath(); g.fill();
+      for (let i = 0; i < 5; i++) {
+        const x = 7 + i * 2.6;
+        poly(g, P([[x, 38.1], [x + 0.7, 40], [x + 1.4, 38.2]]), '#fffaf0', '#8a847a', u * 0.3);
+      }
+      g.fillStyle = '#1a0e0a';
+      g.beginPath(); g.ellipse(X(6.4), Y(34.8), X(0.9), X(0.6), 0.3, 0, WS.TAU); g.fill();
+      // the crest: quills swept back off the skull and down the neck
+      const Q = [[22, 31.6, 30, 22.4], [25.6, 32.4, 34.6, 25], [28.4, 34, 37.6, 29], [31, 37, 40, 33.6], [34, 40.6, 42, 38]];
+      Q.forEach(([x0, y0, x1, y1], i) => {
+        poly(g, P([[x0 - 1.4, y0 + 0.6], [x1, y1], [x0 + 1.8, y0 + 1]]), i % 2 ? p.hi : '#e8503a', p.line, u * 0.5);
+      });
+      eyes(g, X(17), Y(34.4), X(0.01), X(1.5), '#ffe066');
+      g.fillStyle = '#0a0806';
+      g.beginPath(); g.ellipse(X(17), Y(34.4), X(0.35), X(1.1), 0, 0, WS.TAU); g.fill();
+      g.strokeStyle = p.line; g.lineWidth = u * 1; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(X(14), Y(32.6)); g.lineTo(X(19.6), Y(32.4)); g.stroke();
     },
 
     strider(g, s, p) {
@@ -13314,54 +13872,112 @@ window.WS = window.WS || {};
     },
 
     vulture(g, s, p) {
-      const cx = s / 2, cy = s * 0.58, u = s / 100;
-      for (const dir of [-1, 1]) {                                 // layered wings
-        poly(g, [[cx + dir * 5 * u, cy - 8 * u], [cx + dir * 46 * u, cy - 26 * u],
-        [cx + dir * 40 * u, cy - 2 * u], [cx + dir * 14 * u, cy + 8 * u]], p.lo, p.line, u);
-        poly(g, [[cx + dir * 8 * u, cy - 4 * u], [cx + dir * 38 * u, cy - 10 * u],
-        [cx + dir * 20 * u, cy + 10 * u]], p.dark, p.line, u * 0.8);
-        /* PRIMARIES. The wings were two flat slabs, and a wing is made of
-           separate feathers - at the trailing edge especially, where they
-           part. Five splits along the back of each wing is the whole of what
-           tells a wing from a cape. */
+      /* THE FLESHRIPPER, on the ground and over something. It was an egg
+         with two slabs for wings, facing the camera like the windcaller -
+         two birds with one outline. A vulture is known by its SHAPE ON THE
+         GROUND: hunched, wings half-raised and mantled over whatever it has
+         found, a bare pink head on a thin neck coming out of a white ruff,
+         a heavy hooked beak, and grey scaled shanks. So it is side-on, and
+         the windcaller is the one in the air. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+      const skin = palette([0.88, 0.46, 0.44]);
+      const shank = palette([0.62, 0.6, 0.58]);
+      const CLAW = '#2a2420', CLAW_LINE = '#0e0b09';
+      const feathers = (pts, pal, splits) => {
+        poly(g, P(pts), pal.lo, pal.line, u * 0.7);
         g.save();
-        g.beginPath();
-        g.moveTo(cx + dir * 5 * u, cy - 8 * u);
-        g.lineTo(cx + dir * 46 * u, cy - 26 * u);
-        g.lineTo(cx + dir * 40 * u, cy - 2 * u);
-        g.lineTo(cx + dir * 14 * u, cy + 8 * u);
-        g.closePath(); g.clip();
-        g.strokeStyle = p.line; g.globalAlpha = 0.45; g.lineWidth = 1.1 * u;
-        for (let i = 1; i <= 5; i++) {
-          const t = i / 6;
-          g.beginPath();
-          g.moveTo(cx + dir * (10 + t * 30) * u, cy + (-9 - t * 14) * u);
-          g.lineTo(cx + dir * (14 + t * 26) * u, cy + (8 - t * 8) * u);
-          g.stroke();
-        }
-        g.globalAlpha = 0.22;
-        g.strokeStyle = p.hi;
-        for (let i = 1; i <= 5; i++) {
-          const t = i / 6;
-          g.beginPath();
-          g.moveTo(cx + dir * (11 + t * 30) * u, cy + (-9 - t * 14) * u);
-          g.lineTo(cx + dir * (15 + t * 26) * u, cy + (8 - t * 8) * u);
-          g.stroke();
+        g.beginPath(); P(pts).forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.clip();
+        g.lineCap = 'round';
+        for (const [x0, y0, x1, y1] of splits) {
+          g.globalAlpha = 0.55; g.strokeStyle = pal.line; g.lineWidth = u * 0.9;
+          g.beginPath(); g.moveTo(X(x0), Y(y0)); g.lineTo(X(x1), Y(y1)); g.stroke();
+          g.globalAlpha = 0.3; g.strokeStyle = pal.hi; g.lineWidth = u * 0.6;
+          g.beginPath(); g.moveTo(X(x0 + 0.8), Y(y0)); g.lineTo(X(x1 + 0.8), Y(y1)); g.stroke();
         }
         g.restore();
+      };
+      const talons = (x, y, pal) => {
+        for (const [dx, len] of [[-1, 4.4], [0.6, 5.6], [2.2, 3.6]]) {
+          limb(g, P([[x + dx + 1, y - 1], [x + dx - len * 0.8, y + 0.6]]), [2.4 * u, 1.8 * u], pal);
+          poly(g, P([[x + dx - len * 0.8, y], [x + dx - len * 0.8 - 1.8, y + 1.8], [x + dx - len * 0.8 + 0.4, y + 1.2]]), CLAW, CLAW_LINE, u * 0.3);
+        }
+      };
+      // the far wing, raised and back, fingered at the tip
+      feathers([[50, 44], [60, 26], [70, 16], [82, 11], [90, 14], [87.6, 19], [92, 22], [87, 25.6], [91, 30],
+        [85, 32], [88, 38], [81, 39], [82, 46], [72, 50], [60, 54]], far,
+        [[70, 22, 86, 17], [72, 27, 88, 24], [72, 32, 87, 30], [70, 37, 85, 36], [68, 42, 80, 43]]);
+      // the tail, a short dark wedge
+      poly(g, P([[70, 58], [86, 68], [84, 71.4], [80, 70.6], [78, 73], [68, 66]]), p.dark, p.line, u * 0.6);
+      // the far leg
+      limb(g, P([[62, 64], [62.6, 76], [61.6, 85.4]]), [5.4, 3.2, 3].map(X), { hi: shank.mid, mid: shank.lo, lo: shank.dark, dark: shank.dark, line: shank.line });
+      talons(61.6, 86.2, shank);
+      // the body: hunched, round-shouldered, over its own feet
+      const body = mass(g, P([[41, 50], [46, 43], [56, 40.6], [66, 44], [73, 51], [75, 59], [71, 66.4],
+        [62, 70], [52, 69], [45, 64], [41.4, 57]]), p);
+      g.save(); body(); g.clip();
+      pelt(g, p, X(58), Y(56), X(18), X(15), -0.3, 6, 0.3, 0.4);
+      g.restore();
+      // the near leg: feathered trousers, then a bare scaled shank
+      limb(g, P([[55, 66], [54.4, 77], [53, 86]]), [5.6, 3.4, 3.2].map(X), shank);
+      g.save();
+      g.strokeStyle = shank.line; g.globalAlpha = 0.4; g.lineWidth = u * 0.5;
+      for (let i = 0; i < 4; i++) { const y = 76 + i * 2.4; g.beginPath(); g.moveTo(X(52.4), Y(y)); g.lineTo(X(56), Y(y + 0.6)); g.stroke(); }
+      g.restore();
+      poly(g, P([[50.6, 62], [60, 62], [60.4, 70], [57.4, 72.6], [55, 70.4], [52.4, 73], [50, 69]]), p.lo, p.line, u * 0.6);
+      talons(53, 86.8, shank);
+      // the near wing, half-open over the back, coverts in rows, fingers at the end
+      feathers([[46, 46], [54, 34], [62, 28], [72, 29], [82, 33], [89, 38], [84.6, 40], [89.4, 44],
+        [83, 45.6], [86.6, 50], [79.6, 51], [81, 56], [72, 60], [60, 62], [49, 58]], p,
+        [[70, 40, 86, 40], [70, 45, 85, 47], [68, 50, 80, 53], [64, 54, 76, 58]]);
+      g.save();
+      g.beginPath(); g.moveTo(X(46), Y(46)); g.lineTo(X(54), Y(34)); g.lineTo(X(62), Y(28)); g.lineTo(X(72), Y(29));
+      g.lineTo(X(70), Y(56)); g.lineTo(X(49), Y(58)); g.closePath(); g.clip();
+      g.strokeStyle = p.line; g.lineWidth = u * 0.8; g.globalAlpha = 0.45;
+      for (let r = 0; r < 3; r++) {
+        for (let i = 0; i < 5; i++) {
+          const x = 52 + i * 4.2 + r * 1.6, y = 38 + r * 6 + i * 0.4;
+          g.beginPath(); g.arc(X(x), Y(y), X(2.6), 0.1, WS.PI - 0.1); g.stroke();
+        }
       }
-      legs(g, p, cx, cy + 16 * u, u, [-6, 6], 9, 3.4);
-      shaded(g, cx, cy + 2 * u, 14 * u, 16 * u, p);
-      // A neck. Without one the head sat inside the body and the bird read as
-      // a torso with wings - no beak, no direction, no animal.
-      g.strokeStyle = p.lo; g.lineWidth = 6 * u; g.lineCap = 'round';
-      g.beginPath();
-      g.moveTo(cx + 2 * u, cy - 8 * u);
-      g.quadraticCurveTo(cx - 4 * u, cy - 20 * u, cx - 1 * u, cy - 26 * u);
-      g.stroke();
-      shaded(g, cx - 1 * u, cy - 28 * u, 8 * u, 8 * u, p);
-      poly(g, [[cx - 7 * u, cy - 28 * u], [cx - 22 * u, cy - 24 * u], [cx - 7 * u, cy - 21 * u]], '#e8b455', '#8a6420', u);
-      eyes(g, cx, cy - 30 * u, 3 * u, 1.5 * u, '#ffd166');
+      g.restore();
+      // the ruff: a collar of white down where the bare neck comes out
+      const ruff = [];
+      for (let i = 0; i < 18; i++) {
+        const a = (i / 18) * WS.TAU, r = i % 2 ? 5.2 : 7;
+        ruff.push([43.4 + Math.cos(a) * r, 45.4 + Math.sin(a) * r * 0.78]);
+      }
+      poly(g, P(ruff), '#efe9dd', '#6e685e', u * 0.5);
+      g.save();
+      g.strokeStyle = 'rgba(110,104,94,.5)'; g.lineWidth = u * 0.5; g.lineCap = 'round';
+      for (let i = 0; i < 9; i++) {
+        const a = (i / 9) * WS.TAU + 0.2;
+        g.beginPath(); g.moveTo(X(43.4 + Math.cos(a) * 2), Y(45.4 + Math.sin(a) * 1.6));
+        g.lineTo(X(43.4 + Math.cos(a) * 5), Y(45.4 + Math.sin(a) * 3.9)); g.stroke();
+      }
+      g.restore();
+      // the neck: bare, thin, and bent down toward whatever it has found
+      limb(g, P([[43, 44], [38, 36], [33.6, 30.6], [30, 28]]), [5.4, 4, 3.6, 3.6].map(X), skin);
+      // the head, bald and wrinkled
+      const head = mass(g, P([[22.6, 25.6], [26.4, 21.6], [32, 21.6], [35.4, 25.4], [34, 30.4], [29, 32.4], [23.6, 31.4]]), skin);
+      g.save(); head(); g.clip();
+      g.strokeStyle = skin.dark; g.globalAlpha = 0.45; g.lineWidth = u * 0.6;
+      for (const [x0, y0, x1, y1] of [[27, 23, 33, 24], [28, 29.6, 33.4, 28.4], [30, 26, 34.4, 26.6]]) {
+        g.beginPath(); g.moveTo(X(x0), Y(y0)); g.quadraticCurveTo(X((x0 + x1) / 2), Y(y0 + 1.2), X(x1), Y(y1)); g.stroke();
+      }
+      g.restore();
+      // the beak: heavy, hooked, a fleshy cere at its root
+      poly(g, P([[24, 24.6], [15.4, 25.6], [11.4, 28], [11.2, 32], [13.2, 30.6], [15.6, 30.4], [24.2, 30.8]]), '#e2d2a2', '#5e5030', u * 0.6);
+      poly(g, P([[11.4, 28], [11.2, 32], [13.2, 30.6], [13.6, 28.4]]), '#3a3226', '#16120c', u * 0.4);
+      g.strokeStyle = '#5e5030'; g.lineWidth = u * 0.6; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(X(14), Y(29.2)); g.lineTo(X(23.6), Y(29)); g.stroke();
+      poly(g, P([[22, 24], [25.6, 23.6], [25.6, 31], [22, 30.8]]), skin.lo, skin.line, u * 0.4);
+      g.fillStyle = '#1a1410';
+      g.beginPath(); g.ellipse(X(19.4), Y(27), X(0.9), X(0.55), 0, 0, WS.TAU); g.fill();
+      eyes(g, X(27.6), Y(25.6), X(0.01), X(1.3), '#ffd166');
+      g.strokeStyle = skin.line; g.lineWidth = u * 0.9;
+      g.beginPath(); g.moveTo(X(25.4), Y(24.2)); g.lineTo(X(30), Y(23.6)); g.stroke();
     },
 
     spider(g, s, p) {
@@ -13588,65 +14204,232 @@ window.WS = window.WS || {};
     },
 
     shrikewing(g, s, p) {
-      const cx = s / 2, cy = s * 0.58, u = s / 100;
-      for (const dir of [-1, 1]) {                                 // feathered wings
-        for (let i = 0; i < 4; i++) {
-          poly(g, [
-            [cx + dir * 8 * u, cy - 8 * u],
-            [cx + dir * (24 + i * 8) * u, cy - (26 - i * 5) * u],
-            [cx + dir * (18 + i * 7) * u, cy - (10 - i * 4) * u],
-          ], i % 2 ? p.mid : p.lo, p.line, u * 0.8);
+      /* THE WINDCALLER, in the air. It was an egg with a fan of triangles
+         either side. A shrike is known by three things - the black MASK
+         through the eye, the hooked beak, and black wings with a white flash
+         across them - and a caster of the wind should be seen holding
+         itself up on it: wings spread and fingered, the tail fanned, talons
+         drawn up, and the air turning round it. Front-on, so the
+         fleshripper on the ground and this one in the sky do not share a
+         silhouette. The wing tips stay below the crown of the head, where
+         the Windmatron's hat and crown are hung. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const wing = { hi: p.lo, mid: p.dark, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+      const WHITE = '#f3f6fa', WHITE_LINE = '#5a6470';
+      // the wind, behind everything: two currents curling up round it
+      g.save();
+      g.lineCap = 'round'; g.strokeStyle = p.glow;
+      for (const [dir, al] of [[-1, 0.45], [1, 0.35]]) {
+        g.globalAlpha = al; g.lineWidth = u * 1.6;
+        g.beginPath();
+        g.moveTo(X(50 + dir * 8), Y(86));
+        g.bezierCurveTo(X(50 + dir * 30), Y(84), X(50 + dir * 32), Y(66), X(50 + dir * 20), Y(60));
+        g.stroke();
+        g.globalAlpha = al * 0.6; g.lineWidth = u;
+        g.beginPath();
+        g.moveTo(X(50 + dir * 14), Y(80));
+        g.quadraticCurveTo(X(50 + dir * 25), Y(74), X(50 + dir * 22), Y(66));
+        g.stroke();
+      }
+      g.restore();
+      // the tail, fanned: black feathers edged white
+      for (let i = -2; i <= 2; i++) {
+        const a = WS.PI / 2 + i * 0.2, len = 22 - Math.abs(i) * 2;
+        const x0 = 50 + i * 1.2, y0 = 64;
+        const x1 = x0 + Math.cos(a) * len, y1 = y0 + Math.sin(a) * len;
+        const nx = -Math.sin(a) * 2.4, ny = Math.cos(a) * 2.4;
+        poly(g, P([[x0 - nx * 0.6, y0 - ny * 0.6], [x1 - nx, y1 - ny], [x1, y1 + 1.2], [x1 + nx, y1 + ny], [x0 + nx * 0.6, y0 + ny * 0.6]]),
+          Math.abs(i) === 2 ? WHITE : p.dark, Math.abs(i) === 2 ? WHITE_LINE : p.line, u * 0.5);
+      }
+      // the wings: coverts at the arm, primaries fingered out past the wrist
+      for (const dir of [-1, 1]) {
+        const wx = 50 + dir * 25, wy = 38;
+        for (let k = 5; k >= 0; k--) {
+          const a = (dir < 0 ? WS.PI : 0) + dir * (-0.42 + k * 0.2);
+          const len = 21 - k * 1.6;
+          const x1 = wx + Math.cos(a) * len, y1 = wy + Math.sin(a) * len;
+          const nx = -Math.sin(a) * 2.6, ny = Math.cos(a) * 2.6;
+          poly(g, P([[wx - nx, wy - ny], [x1 - nx * 0.7, y1 - ny * 0.7], [x1 + Math.cos(a) * 1.6, y1 + Math.sin(a) * 1.6],
+            [x1 + nx * 0.7, y1 + ny * 0.7], [wx + nx, wy + ny]]), k % 2 ? p.dark : wing.hi, p.line, u * 0.5);
+        }
+        // the white flash across the primaries' roots
+        poly(g, P([[wx + dir * 3, wy - 4.6], [wx + dir * 6.4, wy - 5.4], [wx + dir * 7.4, wy + 4.2], [wx + dir * 4, wy + 5]]), '#e8edf3', WHITE_LINE, u * 0.5);
+        // the arm of the wing, and its coverts
+        const arm = [[50 + dir * 7, 44], [50 + dir * 16, 34.6], [wx + dir * 2, 32.6], [wx + dir * 3, 40], [50 + dir * 16, 48], [50 + dir * 8, 54]];
+        poly(g, P(arm), p.mid, p.line, u * 0.6);
+        g.save();
+        g.beginPath(); P(arm).forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.clip();
+        g.strokeStyle = p.line; g.globalAlpha = 0.45; g.lineWidth = u * 0.7;
+        for (let r = 0; r < 3; r++) {
+          for (let i = 0; i < 4; i++) {
+            const x = 50 + dir * (10 + i * 4.6 + r * 1.4), y = 38 + r * 4.4 + i * 0.4;
+            g.beginPath(); g.arc(X(x), Y(y), X(2.2), 0.15, WS.PI - 0.15); g.stroke();
+          }
+        }
+        g.restore();
+      }
+      // the talons, drawn up under it
+      for (const dir of [-1, 1]) {
+        limb(g, P([[50 + dir * 4, 62], [50 + dir * 5, 70], [50 + dir * 3.6, 74]]), [3.6, 2.4, 2.2].map(X), palette([0.86, 0.76, 0.52]));
+        for (let i = -1; i <= 1; i++) {
+          poly(g, P([[50 + dir * 3.6 + i * 1.4, 74], [50 + dir * 3.6 + i * 1.8, 77.4], [50 + dir * 3.6 + i * 1.4 + 0.8, 74.4]]), '#1e1a16', '#0a0806', u * 0.3);
         }
       }
-      shaded(g, cx, cy + 4 * u, 13 * u, 18 * u, p);
-      shaded(g, cx, cy - 16 * u, 10 * u, 9 * u, p);
-      poly(g, [[cx - 4 * u, cy - 16 * u], [cx - 16 * u, cy - 12 * u], [cx - 4 * u, cy - 10 * u]], '#f0c469', '#8a6420', u);
-      eyes(g, cx + 1 * u, cy - 18 * u, 3.5 * u, 1.5 * u, '#d9f4ff');
-      g.strokeStyle = '#e8c98f'; g.lineWidth = 2.5 * u;
-      g.beginPath(); g.moveTo(cx - 5 * u, cy + 20 * u); g.lineTo(cx - 9 * u, cy + 30 * u); g.stroke();
-      g.beginPath(); g.moveTo(cx + 5 * u, cy + 20 * u); g.lineTo(cx + 9 * u, cy + 30 * u); g.stroke();
+      // the body: a pale breast under a grey back
+      const body = mass(g, P([[50, 39], [57.4, 42.4], [61, 51], [59, 60.6], [54, 66.6], [50, 67.6], [46, 66.6],
+        [41, 60.6], [39, 51], [42.6, 42.4]]), p);
+      g.save(); body(); g.clip();
+      g.fillStyle = 'rgba(248,250,252,.5)';
+      g.beginPath(); g.ellipse(X(50), Y(58), X(7.4), X(10), 0, 0, WS.TAU); g.fill();
+      g.strokeStyle = p.lo; g.globalAlpha = 0.4; g.lineWidth = u * 0.6;
+      for (let r = 0; r < 4; r++) {
+        for (let i = -1; i <= 1; i++) {
+          g.beginPath(); g.arc(X(50 + i * 3.4 + (r % 2) * 1.7), Y(50 + r * 3.8), X(1.8), 0.2, WS.PI - 0.2); g.stroke();
+        }
+      }
+      g.restore();
+      // the head
+      const head = mass(g, P([[50, 22.4], [56.6, 24.6], [59.6, 31], [57.4, 37.4], [50, 40], [42.6, 37.4], [40.4, 31], [43.4, 24.6]]), p);
+      // a small crest
+      poly(g, P([[47, 24], [48.6, 17.6], [50.4, 22], [52.4, 17], [53.4, 24]]), p.mid, p.line, u * 0.5);
+      // the MASK: a black band through both eyes, swept back at the ends
+      poly(g, P([[39.6, 29.4], [45, 28.6], [50, 30.2], [55, 28.6], [60.4, 29.4], [59, 33.4], [54, 34], [50, 33.4], [46, 34], [41, 33.4]]),
+        '#14161c', '#050608', u * 0.5);
+      g.save(); head(); g.clip();
+      g.fillStyle = 'rgba(250,252,255,.4)';
+      g.beginPath(); g.ellipse(X(50), Y(38), X(5.4), X(2.6), 0, 0, WS.TAU); g.fill();
+      g.restore();
+      eyes(g, X(50), Y(31.2), X(4.4), X(1.4), '#d9f4ff');
+      // the beak: short, black, hooked at the tip
+      poly(g, P([[47.4, 33.4], [52.6, 33.4], [51.4, 38], [50, 40.4], [48.8, 38.6]]), '#23252c', '#08090b', u * 0.5);
+      poly(g, P([[49.4, 38.6], [50, 40.4], [50.8, 38.4]]), '#3e424c', '#08090b', u * 0.3);
     },
 
     karrash(g, s, p) {
-      const cx = s / 2, cy = s * 0.60, u = s / 100;
-      shaded(g, cx + 4 * u, cy + 8 * u, 26 * u, 15 * u, p);        // horse barrel
-      /* Measured at 37.9% interior detail against a 41% average - the
-         barrel's coat was the faintest pelt call in the bestiary. */
-      pelt(g, p, cx + 4 * u, cy + 8 * u, 26 * u, 15 * u, 0, 7, 0.45, 0.4);
-      // Four legs with feet on them, like every other quadruped here. These
-      // were four bare round-capped strokes - the only limbs in the bestiary
-      // that did not stand on anything.
-      legs(g, p, cx, cy + 18 * u, u, [-14, -4, 12, 22], 14, 4);
-      poly(g, [[cx + 28 * u, cy + 4 * u], [cx + 44 * u, cy - 6 * u], [cx + 30 * u, cy + 12 * u]], p.lo, p.line, u);
-      shaded(g, cx - 12 * u, cy - 14 * u, 13 * u, 16 * u, p);      // humanoid torso
-      pelt(g, p, cx - 12 * u, cy - 14 * u, 13 * u, 16 * u, 0, 4, 0.3, 0.42);
-      shaded(g, cx - 12 * u, cy - 32 * u, 10 * u, 9 * u, p);
-      pelt(g, p, cx - 12 * u, cy - 32 * u, 10 * u, 9 * u, 0, 4, 0.4, 0.3);
-      eyes(g, cx - 12 * u, cy - 33 * u, 4 * u, 1.6 * u, '#ffd98f');
-      /* A SPEAR, not a scratch. This was one 3u white stroke of constant width
-         from hip to point with a flat triangle stuck on the end - no haft, no
-         grip, no material, and at any size it read as a line somebody had
-         drawn across the drawing. A haft is wood, it is bound where the hand
-         closes on it, and the head is steel with an edge. */
-      const bx = cx - 30 * u, by = cy + 20 * u, tx = cx + 4 * u, ty = cy - 34 * u;
+      /* THE KARRASH: centaurs of the plains, and they were drawn as a ball
+         on a ball on a barrel. A centaur is two animals joined at the
+         waist, and each half has to read as what it is: a horse's body in
+         stride - deep chest, level back, a round rump and a tail of hair,
+         legs that bend at the knee and the hock and stand on hooves - and,
+         rising out of its shoulders, a man's torso leaning into the charge.
+         The Karrash are not men, though: a heavy brow, a jaw that juts,
+         tusks, a mane of braids down the back, and war paint across the
+         flank. The spear is carried level, couched for the run. The
+         Battlelord's horns and Kazrok's pauldrons hang on the head and
+         shoulders named in HEAD_AT above. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+      const HOOF = '#2a2420', HOOF_LINE = '#0c0a08';
+      const hoof = (x, y, pal) => {
+        poly(g, P([[x - 2.4, y - 2.4], [x + 2.2, y - 2.4], [x + 2.8, y + 1.2], [x - 3, y + 1.2]]), HOOF, HOOF_LINE, u * 0.5);
+        // the feathering of hair over it
+        poly(g, P([[x - 2.6, y - 4.4], [x + 2.4, y - 4.4], [x + 2.8, y - 2], [x + 1.2, y - 1.4], [x, y - 2.2], [x - 1.4, y - 1.4], [x - 3, y - 2]]), pal.lo, pal.line, u * 0.4);
+      };
+      // the tail: a fall of hair from the rump
+      const tail = P([[80, 48], [86, 49], [91, 56], [93.4, 66], [92, 76], [89.4, 72], [88, 78], [86, 70], [84, 60], [80.6, 54]]);
+      poly(g, tail, p.dark, p.line, u * 0.6);
       g.save();
-      g.lineCap = 'round';
-      const haft = g.createLinearGradient(bx, by, tx, ty);
-      haft.addColorStop(0, '#6d5233');
-      haft.addColorStop(0.5, '#9c7b4d');
-      haft.addColorStop(1, '#6d5233');
-      g.strokeStyle = haft; g.lineWidth = 3.4 * u;
-      g.beginPath(); g.moveTo(bx, by); g.lineTo(tx, ty); g.stroke();
-      // the binding, across the haft where the hand is
-      g.strokeStyle = '#4c3721'; g.lineWidth = 0.9 * u;
-      const dx = tx - bx, dy = ty - by, len = Math.hypot(dx, dy) || 1;
-      const nx = -dy / len * 1.9 * u, ny = dx / len * 1.9 * u;
-      for (const t of [0.30, 0.36, 0.42, 0.48]) {
-        const mx = bx + dx * t, my = by + dy * t;
-        g.beginPath(); g.moveTo(mx - nx, my - ny); g.lineTo(mx + nx, my + ny); g.stroke();
+      g.beginPath(); tail.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.clip();
+      g.strokeStyle = p.lo; g.globalAlpha = 0.6; g.lineWidth = u * 0.7; g.lineCap = 'round';
+      for (let i = 0; i < 5; i++) {
+        g.beginPath(); g.moveTo(X(82 + i * 1.6), Y(50)); g.quadraticCurveTo(X(88 + i * 1.2), Y(60), X(86 + i * 1.6), Y(76)); g.stroke();
       }
       g.restore();
-      blade(g, tx, ty, 16 * u, 3.4 * u, Math.atan2(dx, -dy), '#e7ecf5', '#8a90a0');
+      // the far legs: the fore lifted mid-stride, the hind driving
+      limb(g, P([[41, 60], [37, 70], [40, 77.6], [36.4, 81.6]]), [8, 4.6, 3.4, 3.2].map(X), far);
+      poly(g, P([[33.8, 80], [37.6, 79], [38.6, 83], [34.2, 83.8]]), HOOF, HOOF_LINE, u * 0.5);
+      limb(g, P([[77, 58], [79, 68], [83.4, 76], [81.4, 85.2]]), [11, 6, 3.6, 3.2].map(X), far);
+      hoof(81.4, 86.6, far);
+      // the near legs, their tops under the body
+      limb(g, P([[47, 60], [46.4, 72], [46, 80.6], [45.6, 85.2]]), [9, 5, 3.6, 3.4].map(X), p);
+      hoof(45.6, 86.8, p);
+      limb(g, P([[72, 58], [74.6, 68], [79, 76.4], [76.8, 85.4]]), [13, 7, 3.8, 3.4].map(X), p);
+      hoof(76.8, 87, p);
+      // the horse: deep chest, level back, round rump, the belly tucked
+      const body = mass(g, P([[37, 52], [42, 46.6], [52, 45.6], [63, 46.2], [73, 44.4], [80.6, 46.6], [84.4, 52.6],
+        [83.4, 60.4], [78.6, 65.4], [70, 66], [61, 63.4], [52, 64.6], [44, 64], [38, 59.4]]), p);
+      g.save(); body(); g.clip();
+      pelt(g, p, X(60), Y(55), X(26), X(11), 0, 8, 0.5, 0.38);
+      g.fillStyle = 'rgba(255,246,226,.16)';
+      g.beginPath(); g.ellipse(X(56), Y(64), X(16), X(3.4), 0, 0, WS.TAU); g.fill();
+      // war paint: three pale slashes across the flank, a hand on the haunch
+      g.strokeStyle = 'rgba(244,236,214,.78)'; g.lineCap = 'round'; g.lineWidth = u * 1.5;
+      for (let i = 0; i < 3; i++) {
+        g.beginPath(); g.moveTo(X(55 + i * 4), Y(49)); g.lineTo(X(52 + i * 4), Y(58)); g.stroke();
+      }
+      g.fillStyle = 'rgba(190,60,40,.7)';
+      g.beginPath(); g.ellipse(X(76), Y(53), X(2.6), X(3), 0.2, 0, WS.TAU); g.fill();
+      for (let i = 0; i < 4; i++) {
+        g.beginPath(); g.ellipse(X(74 + i * 1.6), Y(49.4 - (i % 3 ? 1 : 0)), X(0.7), X(1.8), 0.2, 0, WS.TAU); g.fill();
+      }
+      g.strokeStyle = p.lo; g.globalAlpha = 0.55; g.lineWidth = u * 1.2;
+      g.beginPath(); g.moveTo(X(69), Y(64)); g.quadraticCurveTo(X(67), Y(53), X(74), Y(47.6)); g.stroke();
+      g.restore();
+      // the braids, falling down the back behind the torso
+      poly(g, P([[38, 14], [44, 16], [49, 24], [52, 34], [50.6, 40], [48, 36], [46.6, 42], [44.6, 34], [42, 26], [37, 22]]), p.dark, p.line, u * 0.6);
+      for (const [x, y] of [[48.4, 33], [46, 39]]) {
+        g.fillStyle = '#c9a25a'; g.beginPath(); g.ellipse(X(x), Y(y), X(1.1), X(0.8), 0.4, 0, WS.TAU); g.fill();
+      }
+      poly(g, P([[49.6, 38], [54, 46], [52.4, 46.4], [48.4, 40]]), '#e9e2d0', '#6a6254', u * 0.4);   // a feather in the braid
+      // the far arm, reaching across to the spear
+      limb(g, P([[44, 28], [44, 36], [37, 40]]), [5, 4, 3.6].map(X), far);
+      // the torso: a man's, leaning into the run, rising out of the chest
+      const torso = mass(g, P([[35, 50], [32.4, 42], [31.4, 33], [33.4, 26], [38.6, 23], [44.4, 24.4], [47.6, 30],
+        [47, 38], [46.6, 46], [44, 52]]), p);
+      g.save(); torso(); g.clip();
+      g.strokeStyle = p.lo; g.globalAlpha = 0.5; g.lineWidth = u; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(X(34), Y(33.4)); g.quadraticCurveTo(X(39), Y(36), X(44.6), Y(33)); g.stroke();   // the chest
+      for (const y of [38.6, 42.4]) { g.beginPath(); g.moveTo(X(35), Y(y)); g.lineTo(X(42), Y(y + 0.4)); g.stroke(); }
+      g.beginPath(); g.moveTo(X(38.4), Y(34.6)); g.lineTo(X(38.6), Y(45.6)); g.stroke();
+      // a band of paint across the ribs
+      g.strokeStyle = 'rgba(244,236,214,.7)'; g.globalAlpha = 1; g.lineWidth = u * 1.3;
+      g.beginPath(); g.moveTo(X(32.6), Y(29.6)); g.lineTo(X(46), Y(31.6)); g.stroke();
+      g.restore();
+      // the belt where the man becomes the horse, and a hide apron
+      poly(g, P([[33.4, 46], [46.8, 47.6], [46.4, 50.6], [33.8, 49.4]]), '#5a3e26', '#1e140a', u * 0.5);
+      poly(g, P([[35, 49.4], [42, 50.2], [41, 56], [38.4, 54], [36, 56.4]]), '#7a5a3a', '#2a1c10', u * 0.5);
+      for (const x of [36.6, 43.4]) { g.fillStyle = '#d8c89a'; g.beginPath(); g.arc(X(x), Y(48), X(0.9), 0, WS.TAU); g.fill(); }
+      // the head: brow, jutting jaw, tusks, a pointed ear
+      poly(g, P([[40.6, 16], [45.6, 11.6], [43.4, 18.2]]), p.lo, p.line, u * 0.5);
+      const head = mass(g, P([[31.6, 16.6], [33.6, 12.4], [38.4, 11.4], [42.4, 14], [42.8, 19.6], [40.6, 24],
+        [35.6, 25.4], [31.2, 23.4], [30, 20.6]]), p);
+      g.save(); head(); g.clip();
+      g.fillStyle = p.dark; g.globalAlpha = 0.45;
+      g.beginPath(); g.ellipse(X(34.6), Y(16.4), X(4.2), X(1.4), -0.1, 0, WS.TAU); g.fill();
+      g.restore();
+      poly(g, P([[29.4, 18.6], [31.8, 17.8], [31.6, 21.2]]), p.mid, p.line, u * 0.4);           // the nose
+      for (const [x, y] of [[31.6, 23.4], [34.4, 24.2]]) {
+        poly(g, P([[x - 0.7, y], [x - 0.2, y - 3.2], [x + 0.7, y]]), '#f4efe2', '#6a665c', u * 0.35);
+      }
+      eyes(g, X(33.6), Y(18), X(0.01), X(1.3), '#ffd98f');
+      g.strokeStyle = p.line; g.lineWidth = u * 1.1; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(X(31), Y(16.2)); g.lineTo(X(36.4), Y(15.6)); g.stroke();
+      // the spear, level, couched for the charge
+      const bx = 60, by = 28.6, tx = 15, ty = 41.4;
+      g.save();
+      g.lineCap = 'round';
+      const haft = g.createLinearGradient(X(bx), Y(by), X(tx), Y(ty));
+      haft.addColorStop(0, '#6d5233'); haft.addColorStop(0.5, '#a6845a'); haft.addColorStop(1, '#6d5233');
+      g.strokeStyle = haft; g.lineWidth = u * 2.6;
+      g.beginPath(); g.moveTo(X(bx), Y(by)); g.lineTo(X(tx), Y(ty)); g.stroke();
+      g.strokeStyle = '#4c3721'; g.lineWidth = u * 0.8;
+      const dx = tx - bx, dy = ty - by, len = Math.hypot(dx, dy);
+      const nx = -dy / len * 1.6, ny = dx / len * 1.6;
+      for (const t of [0.62, 0.66, 0.70, 0.84, 0.88]) {
+        const mx = bx + dx * t, my = by + dy * t;
+        g.beginPath(); g.moveTo(X(mx - nx), Y(my - ny)); g.lineTo(X(mx + nx), Y(my + ny)); g.stroke();
+      }
+      g.restore();
+      // feathers tied under the head of it
+      poly(g, P([[18, 40], [16.6, 47.4], [15.4, 47], [16.6, 40.6]]), '#b3402e', '#3a120c', u * 0.4);
+      poly(g, P([[20, 39.6], [19.6, 46], [18.4, 45.8], [18.8, 40]]), '#e9e2d0', '#6a6254', u * 0.4);
+      blade(g, X(tx), Y(ty), X(12), X(2.8), Math.atan2(dx, -dy), '#e7ecf5', '#8a90a0');
+      // the near arm: shoulder, elbow down, the fist closed on the haft
+      limb(g, P([[36, 27], [31.6, 35], [26.6, 38.6]]), [6, 4.6, 4].map(X), p);
+      shaded(g, X(26), Y(38.8), X(2.6), X(2.4), p);
+      shaded(g, X(36.4), Y(27.4), X(4.4), X(3.8), p, -0.3);
     },
 
     golem(g, s, p) {
@@ -14232,6 +15015,21 @@ window.WS = window.WS || {};
          rather than as a sticker on a sprite. */
       if (marks) {
         const b = bounds(body, res);
+        /* A creature whose widest early row is not its head - a bird with
+           its wings spread level with its eyes - says where the head is,
+           rather than the crown being hung across its face. */
+        const at = HEAD_AT[art];
+        if (b && at) {
+          const uu = res / 100, w0 = b.width, m0 = b.mid;
+          const rows = [at.crown, at.shoulder].filter(Boolean).map(([x, y, w]) => [x * uu, y * uu, w * uu]);
+          const row = (y) => rows.find((r) => Math.abs(y - r[1]) < 0.5);
+          b.crownY = rows[0][1];
+          b.anchored = true;
+          b.plateScale = at.plate || 1;
+          if (at.shoulder) b.shoulderY = rows[1][1];
+          b.mid = (y) => { const r = row(y); return r ? r[0] : m0(y); };
+          b.width = (y) => { const r = row(y); return r ? r[2] : w0(y); };
+        }
         if (b) regalia(body.getContext('2d'), res, p, marks, b);
       }
       c = outline(body, res, p);
@@ -19085,6 +19883,22 @@ window.WS = window.WS || {};
         mTone(b, at + 0.19, { wave: 'sine', freq: 56, to: 36, decay: 0.24, gain: 0.14, attack: 0.005 });
       }
     } },
+    /* Up through the furrows and the open graves. Earth giving way under
+       the stones in slow, uneven heaves; a low drone climbing a fourth as
+       the dead climb out; and a glassy point of cold for each pair of eyes
+       as they open, out of tune with each other. */
+    'pro:rise': { at: 0.12, play(b, t) {
+      for (const [dt, g] of [[0.2, 0.16], [1.1, 0.12], [1.7, 0.15], [2.6, 0.11], [3.3, 0.13]]) {
+        mTone(b, t + dt, { wave: 'sine', freq: 74, to: 40, decay: 0.55, gain: g, attack: 0.01 });
+        mNoise(b, t + dt, { freq: 420, to: 110, decay: 0.7, gain: 0.05, filter: 'lowpass', q: 0.6 });
+      }
+      chord(b, t + 0.4, 55, [0, 6], { wave: 'sawtooth', cut: 320, gain: 0.05, attack: 2.0, decay: 4.4, detune: 8 });
+      mTone(b, t + 0.6, { wave: 'sawtooth', freq: 55, to: 73.4, slide: 3.6, cut: 300, gain: 0.07,
+        attack: 1.6, decay: 4.2 });
+      for (const [dt, f, d] of [[1.4, 1318.5, -12], [2.2, 1396.9, 9], [2.9, 1244.5, -6], [3.5, 1480, 14]]) {
+        mTone(b, t + dt, { wave: 'sine', freq: f, detune: d, gain: 0.028, attack: 0.02, decay: 1.6 });
+      }
+    } },
     // You will not kill your way out of this. Three strikes, and standing.
     'pro:stand': { at: 0.86, play(b, t) {
       for (let i = 0; i < 3; i++) {
@@ -20573,7 +21387,7 @@ window.WS = window.WS || {};
             && distance > e.radius + player.radius) {
           e.lungeTimer = t.lunge.cooldown;
           this.beginCharge(e, dx, dy, t.lunge.windup || cfg.lungeWindup,
-            t.lunge.time || cfg.lungeTime, t.lunge.range, 2.0);
+            t.lunge.time || cfg.lungeTime, t.lunge.range, cfg.lungeGirth);
         }
       }
 
@@ -20680,11 +21494,11 @@ window.WS = window.WS || {};
 
       if (e.rangedTimer !== null && !frozen) {
         e.rangedTimer -= dt;
-        if (e.rangedTimer <= 0 && distance <= t.ranged.range * 1.15) {
+        if (e.rangedTimer <= 0 && distance <= t.ranged.range * cfg.rangedReach) {
           e.rangedTimer = t.ranged.cooldown;
           const r = t.ranged;
           WS.Projectile.spawnHostile(e.x, e.y, dx * r.speed, dy * r.speed,
-            e.damage * 0.75, r.school, t.name, e, r.slowFactor, r.slowDuration);
+            e.damage * cfg.rangedDamagePct, r.school, t.name, e, r.slowFactor, r.slowDuration);
         }
       }
 
@@ -20692,7 +21506,7 @@ window.WS = window.WS || {};
         e.attackTimer -= dt;
         if (e.attackTimer <= 0) {
           this.bossAttack(e, dx, dy);
-          e.attackTimer = t.interval || 3.6;
+          e.attackTimer = t.interval || cfg.bossInterval;
         }
       }
 
@@ -20741,39 +21555,48 @@ window.WS = window.WS || {};
     const pattern = t.patterns[e.patternIndex];
     e.patternIndex = (e.patternIndex + 1) % t.patterns.length;
     const school = t.school || 'shadow';
+    /* Every figure here is a Config dial (bossVolleySpeed and the rest), and
+       any one pattern entry may carry its own - { type: 'volley', bolts: 8,
+       speed: 300 } - which wins over the dial for that boss alone. */
+    const cfg = WS.Config;
+    const opt = (k, dial) => (pattern[k] !== undefined ? pattern[k] : dial);
 
     if (pattern.type === 'summon') {
-      const scale = 1 + WS.Game.run.time / 600;
+      const scale = 1 + WS.Game.run.time / cfg.bossSummonScaleTime;
+      const near = opt('near', cfg.bossSummonNear), far = opt('far', cfg.bossSummonFar);
       for (let n = 0; n < (pattern.count || 6); n++) {
         const a = WS.random() * WS.TAU;
-        const range = 60 + WS.random() * 70;
+        const range = near + WS.random() * (far - near);
         this.spawn(pattern.id, e.x + WS.cos(a) * range, e.y + WS.sin(a) * range, scale);
       }
       WS.FX.flash(e.x, e.y, e.radius * 2.4, WS.CONST.COLORS.shadow, 0.4);
       e.telegraph = { kind: 'ring', life: 0.4, maxLife: 0.4, radius: e.radius * 3 };
     } else if (pattern.type === 'volley') {
       const bolts = pattern.bolts || 7;
+      const step = opt('spread', cfg.bossVolleySpread), v = opt('speed', cfg.bossVolleySpeed);
+      const dmg = e.damage * opt('damage', cfg.bossVolleyDamage);
       for (let s = 1; s <= bolts; s++) {
-        const spread = (s - (bolts + 1) / 2) * 0.16;
+        const spread = (s - (bolts + 1) / 2) * step;
         const c = WS.cos(spread), sn = WS.sin(spread);
         WS.Projectile.spawnHostile(e.x, e.y,
-          (dx * c - dy * sn) * 260, (dx * sn + dy * c) * 260,
-          e.damage * 0.7, school, t.name, e);
+          (dx * c - dy * sn) * v, (dx * sn + dy * c) * v,
+          dmg, school, t.name, e);
       }
     } else if (pattern.type === 'ring') {
       const bolts = pattern.bolts || 10;
+      const v = opt('speed', cfg.bossRingSpeed), dmg = e.damage * opt('damage', cfg.bossRingDamage);
       for (let s = 0; s < bolts; s++) {
         const a = (s / bolts) * WS.TAU;
         WS.Projectile.spawnHostile(e.x, e.y,
-          WS.cos(a) * 220, WS.sin(a) * 220, e.damage * 0.6, school, t.name, e);
+          WS.cos(a) * v, WS.sin(a) * v, dmg, school, t.name, e);
       }
     } else if (pattern.type === 'charge') {
       /* Plant, mark the ground, then run down it. `live` says the lane is
        * still being aimed; the update loop turns that off the moment the
        * charge commits, and the same lane stays on screen while it happens so
        * the player can see the promise kept. */
-      const cfg = WS.Config;
-      this.beginCharge(e, dx, dy, cfg.chargeWindup, cfg.chargeTime, cfg.chargeRange, 2.2);
+      this.beginCharge(e, dx, dy, opt('windup', cfg.chargeWindup), opt('time', cfg.chargeTime),
+        opt('range', cfg.chargeRange), opt('girth', cfg.bossChargeGirth));
       WS.FX.flash(e.x, e.y, e.radius * 1.6, WS.CONST.COLORS.enemy, 0.5);
     }
   };
@@ -20972,7 +21795,8 @@ window.WS = window.WS || {};
 
   // One scratch spec per shot; fields are copied out by launchBolt.
   const spec = {};
-  const RETRY_COOLDOWN = 0.25;   // nothing in range - look again shortly
+  // Nothing in range: look again this soon (Config.weaponRetry).
+  const retry = () => WS.Config.weaponRetry;
 
   /* --------------------------------------------------------- derivation -- */
   function damageOf(player, w) {
@@ -21170,10 +21994,10 @@ window.WS = window.WS || {};
       ax * speed, ay * speed, spec);
   }
 
-  /* Radiant Gyre's opening pulse: a share of the weapon's own damage, and one
-     re-used ledger so the two passes cannot strike the same creature twice.
-     Sized by measurement - see the discovery's note below. */
-  const NOVA_PULSE = 0.8;
+  /* Radiant Gyre's opening pulse: a share of the weapon's own damage
+     (Config.gyrePulseDamage), and one re-used ledger so the two passes
+     cannot strike the same creature twice. Sized by measurement - see the
+     discovery's note below. */
   const novaHits = new Map();
 
   /* Where a shot LEAVES the survivor.
@@ -21196,7 +22020,7 @@ window.WS = window.WS || {};
   Weapon.behaviors.aimed = function (player, w) {
     const d = w.data;
     const target = WS.Enemy.findNearest(player.x, player.y, d.range || 560);
-    if (!target) { w.cooldown = RETRY_COOLDOWN; return false; }
+    if (!target) { w.cooldown = retry(); return false; }
     const count = countOf(player, w);
     if (d.burst) {
       // Magic-missile style: the rest of the volley trickles out one at a time,
@@ -21227,7 +22051,7 @@ window.WS = window.WS || {};
   Weapon.behaviors.spray = function (player, w) {
     const d = w.data;
     const target = WS.Enemy.findNearest(player.x, player.y, d.range || 560);
-    if (!target) { w.cooldown = RETRY_COOLDOWN; return false; }
+    if (!target) { w.cooldown = retry(); return false; }
     fillSpec(player, w);
     const speed = speedOf(player, w);
     const count = countOf(player, w);
@@ -21354,7 +22178,7 @@ window.WS = window.WS || {};
    * projectile and it is counted like one now. */
   function chainCount(player, w) {
     const d = w.data, cfg = WS.Config;
-    let n = (d.chains || 4) + player.projectileBonus + (w.evolved ? 2 : 0);
+    let n = (d.chains || 4) + player.projectileBonus + (w.evolved ? cfg.evolveChains : 0);
     if (w.level >= (d.projRankA || cfg.projRankA)) n++;
     if (w.level >= (d.projRankB || cfg.projRankB)) n++;
     return n;
@@ -21363,8 +22187,8 @@ window.WS = window.WS || {};
   Weapon.behaviors.chain = function (player, w) {
     const d = w.data;
     const range = areaOf(player, w, d.range || 250);
-    const first = WS.Enemy.findNearest(player.x, player.y, range * 1.6);
-    if (!first) { w.cooldown = RETRY_COOLDOWN; return false; }
+    const first = WS.Enemy.findNearest(player.x, player.y, range * WS.Config.chainFirstReach);
+    if (!first) { w.cooldown = retry(); return false; }
     const chains = chainCount(player, w);
     const [cdx, cdy] = WS.normalize(first.x - player.x, first.y - player.y);
     Weapon.chainFrom(muzzleX(player, cdx), muzzleY(player, cdy),
@@ -21390,7 +22214,7 @@ window.WS = window.WS || {};
       const link = WS.Projectile.spawnBeam(px, py, target.x, target.y, 4 * heavy, colour, 0.16);
       if (link) link.arc = true;
       if (w) mark(WS.Projectile.beams, w);
-      WS.Enemy.hit(target, damage * (1 - i * 0.06), source);
+      WS.Enemy.hit(target, damage * WS.max(0, 1 - i * WS.Config.chainFalloff), source);
       WS.FX.flash(target.x, target.y, 22 * heavy, colour, 0.18);
       px = target.x; py = target.y;
       if (target._dead) continue;
@@ -21421,18 +22245,18 @@ window.WS = window.WS || {};
          and does. The shove still reads on screen - it is the crowd walking
          in that gets it, which is where a shove is worth something anyway -
          and it no longer empties the weapon it was meant to open. */
-      const r = 130 * player.areaMultiplier;
+      const r = cfg.gyrePulseRadius * player.areaMultiplier;
       const inner = areaOf(player, w, d.orbitRadius || 85);
-      const pulse = damageOf(player, w) * NOVA_PULSE;
+      const pulse = damageOf(player, w) * cfg.gyrePulseDamage;
       novaHits.clear();
       WS.Enemy.damageArea(player.x, player.y, inner, pulse, novaHits, null, w.id);
-      WS.Enemy.damageArea(player.x, player.y, r, pulse, novaHits, 20, w.id);
+      WS.Enemy.damageArea(player.x, player.y, r, pulse, novaHits, cfg.gyrePulseKnock, w.id);
       WS.FX.flash(player.x, player.y, r, WS.CONST.COLORS.holy, 0.3);
     }
 
     WS.Projectile.spawnOrbit(player, count,
       areaOf(player, w, d.orbitRadius || 85), speed,
-      damageOf(player, w) * 0.5,             // orbits re-hit often, so per-tick is lower
+      damageOf(player, w) * cfg.orbitTickPct,   // orbits re-hit often, so per-tick is lower
       areaOf(player, w, d.radius || 20),
       durationOf(player, w, d.duration || 3.2),
       schoolColour(w), w.id, d.procChain || w.mods.procChain || 0);
@@ -21443,8 +22267,8 @@ window.WS = window.WS || {};
   };
 
   Weapon.behaviors.storm = function (player, w) {
-    const d = w.data;
-    const strikes = (d.strikes || 5) + player.projectileBonus + (w.evolved ? 2 : 0);
+    const d = w.data, cfg = WS.Config;
+    const strikes = (d.strikes || 5) + player.projectileBonus + (w.evolved ? cfg.evolveStrikes : 0);
     const radius = areaOf(player, w, d.stormRadius || 230);
     const splash = areaOf(player, w, d.splash || 60);
     const damage = damageOf(player, w);
@@ -21454,9 +22278,9 @@ window.WS = window.WS || {};
       const target = WS.Enemy.findNearest(player.x, player.y, radius,
         null);
       let sx, sy;
-      if (target && WS.random() < 0.85) {
-        sx = target.x + WS.randRange(-30, 30);
-        sy = target.y + WS.randRange(-30, 30);
+      if (target && WS.random() < cfg.stormAccuracy) {
+        sx = target.x + WS.randRange(-cfg.stormJitter, cfg.stormJitter);
+        sy = target.y + WS.randRange(-cfg.stormJitter, cfg.stormJitter);
       } else {
         const a = WS.random() * WS.TAU, r = WS.random() * radius;
         sx = player.x + WS.cos(a) * r;
@@ -21474,10 +22298,10 @@ window.WS = window.WS || {};
   Weapon.behaviors.bounce = function (player, w) {
     const d = w.data;
     const target = WS.Enemy.findNearest(player.x, player.y, d.range || 600);
-    if (!target) { w.cooldown = RETRY_COOLDOWN; return false; }
+    if (!target) { w.cooldown = retry(); return false; }
     fillSpec(player, w);
     spec.bounces = (d.bounces || 3) + (w.mods.extraBounces || 0)
-      + player.projectileBonus + (w.evolved ? 3 : 0);
+      + player.projectileBonus + (w.evolved ? WS.Config.evolveBounces : 0);
     spec.spinRate = 16;
     const speed = speedOf(player, w);
     const count = 1 + (w.evolved ? 1 : 0);
@@ -21492,7 +22316,7 @@ window.WS = window.WS || {};
   Weapon.behaviors.beam = function (player, w) {
     const d = w.data;
     const target = WS.Enemy.findNearest(player.x, player.y, d.range || 620);
-    if (!target) { w.cooldown = RETRY_COOLDOWN; return false; }
+    if (!target) { w.cooldown = retry(); return false; }
     const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
     const range = areaOf(player, w, d.range || 620);
     let width = areaOf(player, w, d.beamWidth || 26);
@@ -21559,7 +22383,7 @@ window.WS = window.WS || {};
     /* One disc per count, ricocheting between bounces+1 targets. */
     bounce: (p, w, crowd, q) => {
       const hits = Math.min((w.data.bounces || 3) + p.projectileBonus
-        + (w.evolved ? 3 : 0) + 1, crowd);
+        + (w.evolved ? WS.Config.evolveBounces : 0) + 1, crowd);
       const n = 1 + (w.evolved ? 1 : 0);
       return { per: n * hits, why: `${n} disc(s) x ${hits} target(s)` };
     },
@@ -22237,10 +23061,12 @@ window.WS = window.WS || {};
     if (p.health <= 0) {
       if (p.revives > 0) {
         p.revives--;
-        p.health = WS.floor(p.maxHealth * 0.5);
-        p.invulnerable = 2.5;
+        const cfg = WS.Config;
+        p.health = WS.floor(p.maxHealth * cfg.secondWindHeal);
+        p.invulnerable = cfg.secondWindGrace;
         WS.FX.flash(p.x, p.y, 130, WS.CONST.COLORS.nature, 0.6);
-        WS.Enemy.damageArea(p.x, p.y, 170, 200, null, 90, 'second_wind');
+        WS.Enemy.damageArea(p.x, p.y, cfg.secondWindRadius, cfg.secondWindDamage, null,
+          cfg.secondWindKnock, 'second_wind');
         WS.Game.announce('Second Wind!', 'The ancestors are not done with you.', 2.5,
           { kind: 'glory' });
         WS.Audio.play('level');
@@ -22504,13 +23330,13 @@ window.WS = window.WS || {};
     const luck = player.luck;
 
     if (enemy.elite) {
-      this.spawn('chest', enemy.x, enemy.y, WS.floor((18 + WS.randInt(0, 26)) * WS.Game.run.goldMult));
+      this.spawn('chest', enemy.x, enemy.y, WS.floor((cfg.chestMin + WS.randInt(0, cfg.chestSpread)) * WS.Game.run.goldMult));
       return;
     }
     if (enemy.boss) return;   // bosses pay out directly in Enemy.kill
 
     if (WS.random() < cfg.dropChanceGold * luck) {
-      this.spawn('coin', enemy.x, enemy.y, WS.floor((3 + WS.randInt(0, 4)) * WS.Game.run.goldMult));
+      this.spawn('coin', enemy.x, enemy.y, WS.floor((cfg.coinMin + WS.randInt(0, cfg.coinSpread)) * WS.Game.run.goldMult));
     } else if (WS.random() < cfg.dropChancePotion * luck) {
       this.spawn('potion', enemy.x, enemy.y);
     } else if (WS.random() < cfg.dropChanceBomb * luck) {
@@ -22532,7 +23358,7 @@ window.WS = window.WS || {};
     for (let i = enemies.length - 1; i >= 0; i--) {
       const e = enemies[i];
       if (!e || e.untargetable) continue;
-      if (e.boss || e.part) WS.Enemy.hit(e, e.maxHealth * 0.08, 'bomb');
+      if (e.boss || e.part) WS.Enemy.hit(e, e.maxHealth * WS.Config.bombBossPct, 'bomb');
       else WS.Enemy.damage(e, e.health + 1, false, 'bomb');
     }
   };
@@ -22552,8 +23378,9 @@ window.WS = window.WS || {};
     } else if (kind === 'chest') {
       // Chests roll for a jackpot: one, three, or five payouts.
       const roll = WS.random();
-      const rolls = roll < 0.03 ? 5 : roll < 0.15 ? 3 : 1;
-      const total = WS.floor(pickup.value * p.goldMultiplier * (rolls === 1 ? 1 : rolls * 0.8));
+      const cfg = WS.Config;
+      const rolls = roll < cfg.goldJackpot ? 5 : roll < cfg.goldLucky ? 3 : 1;
+      const total = WS.floor(pickup.value * p.goldMultiplier * (rolls === 1 ? 1 : rolls * cfg.goldMultiRoll));
       WS.Game.addGold(total, pickup.x, pickup.y);
       WS.Audio.play('chest');
       if (rolls > 1) {
@@ -22591,7 +23418,7 @@ window.WS = window.WS || {};
       WS.Save.save();
       WS.Game.announce('Professor Keegan rises!',
         'Buried by mistake. He files a complaint, then takes up his shield.', 3.5);
-      WS.Game.addGold(WS.floor(80 * run.goldMult), p.x, p.y);
+      WS.Game.addGold(WS.floor(WS.Config.coffinGold * run.goldMult), p.x, p.y);
       WS.Achievements.check();
       WS.Audio.play('evolve');
 
@@ -22600,7 +23427,7 @@ window.WS = window.WS || {};
       WS.Save.save();
       WS.Game.announce('The graveblade answers.', 'Something colder takes the hilt.', 3.5,
         { kind: 'glory' });
-      WS.Game.addGold(WS.floor(120 * run.goldMult), p.x, p.y);
+      WS.Game.addGold(WS.floor(WS.Config.gravebladeGold * run.goldMult), p.x, p.y);
       WS.Player.addWeapon(p, 'reaving_arc');
       WS.Achievements.check();
       WS.Audio.play('evolve');
@@ -22610,7 +23437,7 @@ window.WS = window.WS || {};
       WS.Save.save();
       WS.Game.announce('The twin glaives find you.', 'You were never going to refuse.', 3.5,
         { kind: 'glory' });
-      WS.Game.addGold(WS.floor(120 * run.goldMult), p.x, p.y);
+      WS.Game.addGold(WS.floor(WS.Config.glaiveGold * run.goldMult), p.x, p.y);
       WS.Player.addWeapon(p, 'verdant_lance');
       WS.Achievements.check();
       WS.Audio.play('evolve');
@@ -22761,17 +23588,19 @@ window.WS = window.WS || {};
 'use strict';
 (function (WS) {
 
-  const MAX = 6;   // shared cap across every summon kind
-  /* A leashed summon is only released once it is back inside this fraction of
-     the leash, and it only takes marks inside this fraction of it. Both exist
-     to keep the come-home and the go-hunt decisions from meeting at a single
-     pixel and arguing there forever. */
-  const RECALL = 0.55;
-  const HUNT_IN = 0.90;
+  /* The shared cap across every summon kind (tuning.max), and the leash's
+     two thresholds: a leashed summon is only released once it is back inside
+     tuning.recall of the leash, and it only takes marks inside tuning.huntIn
+     of it. Both exist to keep the come-home and the go-hunt decisions from
+     meeting at a single pixel and arguing there forever. All of it is on the
+     tuning bench, under Familiars. */
 
   const Familiar = {
     list: [],
     tuning: {
+      max: 6,
+      recall: 0.55,
+      huntIn: 0.90,
       dashSpeed: 340,
       biteRadius: 46,
       biteCooldown: 0.55,
@@ -22799,7 +23628,7 @@ window.WS = window.WS || {};
   Familiar.reset = function () { this.list.length = 0; };
 
   Familiar.add = function (kind) {
-    if (this.list.length >= MAX) return;
+    if (this.list.length >= this.tuning.max) return;
     const player = WS.Game.player;
     const spec = this.KINDS[kind] || this.KINDS.wolf;
     this.list.push({
@@ -22844,14 +23673,14 @@ window.WS = window.WS || {};
          invites you to do - and nothing breaks it. */
       const homeDist = WS.dist(fam.x, fam.y, player.x, player.y);
       if (homeDist > t.leash) fam.leashed = true;
-      else if (homeDist < t.leash * RECALL) fam.leashed = false;
+      else if (homeDist < t.leash * t.recall) fam.leashed = false;
 
       /* Hunt around the SURVIVOR, not around the summon. Measured from the
          summon, a wolf already out at the leash could commit to a mark another
          huntRange beyond it - a mark it is structurally forbidden to reach.
          Bounded by the leash, everything it can see is something it can get
          to. */
-      const reachable = WS.min(t.huntRange, t.leash * HUNT_IN);
+      const reachable = WS.min(t.huntRange, t.leash * t.huntIn);
       if (fam.leashed) {
         fam.target = null;
       } else if (!fam.target || fam.target._dead
@@ -23012,16 +23841,22 @@ window.WS = window.WS || {};
     this.phaseIndex = 0;
     this.eventIndex = 0;
     this.bossIndex = 0;
-    this.spawnTimer = 0.75;
-    this.endlessBossTimer = 120;
-    this.endlessEventTimer = 100;
+    const cfg = WS.Config;
+    this.spawnTimer = cfg.firstSpawn;
+    this.endlessBossTimer = cfg.endlessFirstBoss;
+    this.endlessEventTimer = cfg.endlessFirstEvent;
     this.endlessBosses = 0;
     this.deathWarned = false;
     this.deathTimer = 0;
-    this.cacheTimer = 60;
-    this.merchantTimer = 150;
+    this.cacheTimer = cfg.cacheFirst;
+    this.merchantTimer = cfg.eggVendorFirst;
+    // What each timer was last set to, so a countdown bar knows its length.
+    this.cacheEvery = cfg.cacheFirst;
+    this.merchantEvery = cfg.eggVendorFirst;
+    this.endlessBossEvery = cfg.endlessFirstBoss;
+    this.endlessEventEvery = cfg.endlessFirstEvent;
     this.coffinDone = false;
-    this.coffinTimer = 120;
+    this.coffinTimer = cfg.coffinTime;
     this.gravebladeDone = false;
     this.glaiveDone = false;
   };
@@ -23032,7 +23867,7 @@ window.WS = window.WS || {};
     const hyper = run.hyper ? WS.Config.hyperScale : 1;
     let s = (1 + time / WS.Config.enemyScaleTime) * this.map.difficulty * run.diffScale * hyper;
     if (run.victorious || run.mode === 'endless') {
-      s *= 1 + WS.max(0, time - 1620) / WS.Config.endlessEnemyRampTime;
+      s *= 1 + WS.max(0, time - WS.Config.endlessRampStart) / WS.Config.endlessEnemyRampTime;
     }
     return s;
   };
@@ -23054,18 +23889,21 @@ window.WS = window.WS || {};
 
   Wave.spawnBoss = function (id, scale, final) {
     const player = WS.Game.player;
-    const a = WS.random() * WS.TAU;
+    const a = WS.random() * WS.TAU, far = WS.Config.bossSpawnDistance;
     const boss = WS.Enemy.spawn(id,
-      WS.clamp(player.x + WS.cos(a) * 520, 60, WS.CONST.WORLD_WIDTH - 60),
-      WS.clamp(player.y + WS.sin(a) * 520, 60, WS.CONST.WORLD_HEIGHT - 60),
+      WS.clamp(player.x + WS.cos(a) * far, 60, WS.CONST.WORLD_WIDTH - 60),
+      WS.clamp(player.y + WS.sin(a) * far, 60, WS.CONST.WORLD_HEIGHT - 60),
       scale, true);
     if (!boss) return null;
     boss.finalBoss = !!final;
     const t = boss.template;
-    WS.Game.announce(t.name, t.yell, 3.4, { kind: 'dread', art: t.art, tint: t.tint });
+    /* A yell between asterisks is a stage direction - a shriek, thunder -
+       not a line: it is shown without them, and nobody speaks it. */
+    const cue = t.yell && /^\*(.+)\*$/.exec(t.yell.trim());
+    WS.Game.announce(t.name, cue ? cue[1] : t.yell, 3.4, { kind: 'dread', art: t.art, tint: t.tint });
     WS.Audio.play('boss');
     // And it says its piece, a beat after the horn.
-    if (t.yell) setTimeout(() => WS.Audio.babble(WS.Audio.voiceFor(id, t), t.yell), 650);
+    if (t.yell && !cue) setTimeout(() => WS.Audio.babble(WS.Audio.voiceFor(id, t), t.yell), 650);
     WS.FX.shake(6, 0.5);
     WS.FX.screen('rgba(180,40,120,.14)', 0.4);
     return boss;
@@ -23093,10 +23931,10 @@ window.WS = window.WS || {};
         * (1 + WS.Config.curseSpawnRate * curse)));
       for (let n = 0; n < count; n++) {
         const pick = WS.weightedPick(phase.roster);
-        WS.Enemy.spawnRing(pick.id, 700 + WS.random() * 160, scale);
+        WS.Enemy.spawnRing(pick.id, WS.Config.spawnRing + WS.random() * WS.Config.spawnRingJitter, scale);
       }
       if (phase.elite && WS.random() < phase.eliteChance) {
-        const elite = WS.Enemy.spawnRing(phase.elite, 740, scale);
+        const elite = WS.Enemy.spawnRing(phase.elite, WS.Config.spawnRing + 40, scale);
         if (elite) WS.FX.notice(elite.x, elite.y, elite.template.name, '#ffb347');
       }
     }
@@ -23107,7 +23945,7 @@ window.WS = window.WS || {};
       this.eventIndex++;
       WS.Game.announce(ev.text, null, 2.6);
       WS.Audio.play('warn');
-      WS.Enemy.spawnCircle(ev.id, ev.count, 620, this.enemyScale(time));
+      WS.Enemy.spawnCircle(ev.id, ev.count, WS.Config.swarmRing, this.enemyScale(time));
     }
 
     /* ---- scheduled bosses ------------------------------------------------ */
@@ -23122,22 +23960,24 @@ window.WS = window.WS || {};
     /* ---- supply caches --------------------------------------------------- */
     this.cacheTimer -= dt;
     if (this.cacheTimer <= 0) {
-      this.cacheTimer = 75 + WS.random() * 45;
+      const cfg = WS.Config;
+      this.cacheTimer = this.cacheEvery = cfg.cacheEvery + WS.random() * cfg.cacheJitter;
       const a = WS.random() * WS.TAU;
       WS.Pickup.spawn('cache',
-        WS.clamp(player.x + WS.cos(a) * 320, 60, WS.CONST.WORLD_WIDTH - 60),
-        WS.clamp(player.y + WS.sin(a) * 320, 60, WS.CONST.WORLD_HEIGHT - 60));
+        WS.clamp(player.x + WS.cos(a) * cfg.cacheDistance, 60, WS.CONST.WORLD_WIDTH - 60),
+        WS.clamp(player.y + WS.sin(a) * cfg.cacheDistance, 60, WS.CONST.WORLD_HEIGHT - 60));
     }
 
     /* ---- Beans, the egg merchant ------------------------------------------ */
     this.merchantTimer -= dt;
     if (this.merchantTimer <= 0) {
-      this.merchantTimer = WS.Config.eggVendorInterval;
+      this.merchantTimer = this.merchantEvery = WS.Config.eggVendorInterval;
       const a = WS.random() * WS.TAU;
+      const far = WS.Config.eggVendorDistance;
       if (WS.Pickup.spawn('merchant',
-        WS.clamp(player.x + WS.cos(a) * 400, 80, WS.CONST.WORLD_WIDTH - 80),
-        WS.clamp(player.y + WS.sin(a) * 400, 80, WS.CONST.WORLD_HEIGHT - 80))) {
-        WS.Game.toast('Beans sets up shop', '"COME GET SOME BEANS... I MEAN EGGS!" Walk over to spend your coin - she leaves in '
+        WS.clamp(player.x + WS.cos(a) * far, 80, WS.CONST.WORLD_WIDTH - 80),
+        WS.clamp(player.y + WS.sin(a) * far, 80, WS.CONST.WORLD_HEIGHT - 80))) {
+        WS.Game.toast('Beans sets up shop', '"COME GET SOME BEANS... I MEAN EGGS!" Walk over to spend your coin. She leaves in '
           + WS.formatTime(WS.Config.eggVendorStay) + '.', { kind: 'merchant' });
       }
     }
@@ -23195,7 +24035,7 @@ window.WS = window.WS || {};
 
     /* ---- Death itself, and the endless escalation ------------------------ */
     const deathTime = WS.Config.deathTime;
-    if (!this.deathWarned && time >= deathTime - 15) {
+    if (!this.deathWarned && time >= deathTime - WS.Config.deathWarning) {
       this.deathWarned = true;
       WS.Game.announce('Something is coming.', 'Fifteen seconds.', 4.0);
       WS.Audio.play('warn');
@@ -23214,23 +24054,68 @@ window.WS = window.WS || {};
         const cfg = WS.Config;
         this.endlessBosses++;
         // The cadence tightens toward a floor as overtime drags on.
-        this.endlessBossTimer = WS.max(cfg.endlessBossMinInterval,
+        this.endlessBossTimer = this.endlessBossEvery = WS.max(cfg.endlessBossMinInterval,
           cfg.endlessBossInterval - this.endlessBosses * cfg.endlessBossInterval / cfg.endlessBossAccel);
         const pool = this.endlessBossPool();
         const pick = pool[WS.randInt(0, pool.length - 1)];
-        const over = WS.max(0, time - 1620);
+        const over = WS.max(0, time - cfg.endlessRampStart);
         this.spawnBoss(pick.id,
           this.bossScale(time) * cfg.endlessBossMult * (1 + over / cfg.endlessRampTime), false);
       }
       this.endlessEventTimer -= dt;
       if (this.endlessEventTimer <= 0) {
-        this.endlessEventTimer = WS.Config.endlessEventInterval;
+        this.endlessEventTimer = this.endlessEventEvery = WS.Config.endlessEventInterval;
         const phaseNow = map.phases[map.phases.length - 1];
         const pick = WS.weightedPick(phaseNow.roster);
         WS.Game.announce('The horde does not stop.', null, 2.0);
-        WS.Enemy.spawnCircle(pick.id, 22, 640, this.enemyScale(time));
+        WS.Enemy.spawnCircle(pick.id, WS.Config.endlessSurgeCount, 640, this.enemyScale(time));
       }
     }
+  };
+
+  /* THE WATCH'S TIMERS - what a boss mod would put on the screen: what is
+   * coming next and how long until it does. Read-only; the HUD draws it.
+   * Each entry is { kind, id, label, left, total, art, tint }, soonest
+   * first. A boss or a swarm is named only once the bestiary has met it:
+   * the timer is a veteran's tool, not a spoiler. */
+  Wave.timers = function (run) {
+    const out = [];
+    if (!this.map || !run || run.map.arena || WS.Finale.running()) return out;
+    const map = this.map, t = run.time;
+    const met = (id) => (WS.Save.stats.bestiary[id] || WS.Save.stats.bosses[id] || 0) > 0;
+    const add = (kind, id, label, left, total, art, tint) => {
+      if (left > 0) out.push({ kind, id, label, left, total: WS.max(total, left, 0.001), art, tint });
+    };
+    add('cache', 'cache', 'Supply cache', this.cacheTimer, this.cacheEvery, 'cache', [1.0, 0.9, 0.6]);
+
+    let beans = null;
+    const pool = WS.Pickup.pool;
+    for (let i = 0; i < pool.count; i++) {
+      const q = pool.active[i];
+      if (q && q.kind === 'merchant') { beans = q; break; }
+    }
+    const stay = WS.Config.eggVendorStay;
+    if (beans) add('beans', 'beans', 'Beans packs up', stay - beans.life, stay, 'egg', [0.9, 0.52, 0.22]);
+    else add('beans', 'beans', 'Beans', this.merchantTimer, this.merchantEvery, 'egg', [0.9, 0.52, 0.22]);
+
+    const nb = map.bosses[this.bossIndex];
+    if (nb) {
+      const prev = this.bossIndex > 0 ? map.bosses[this.bossIndex - 1].at : 0;
+      const tpl = WS.Bosses[nb.id];
+      add('boss', nb.id, met(nb.id) && tpl ? tpl.name : 'A boss', nb.at - t, nb.at - prev, 'skull', tpl && tpl.tint);
+    } else if (run.victorious || run.mode === 'endless') {
+      add('boss', null, 'Overtime boss', this.endlessBossTimer, this.endlessBossEvery, 'skull', [0.9, 0.3, 0.3]);
+    }
+
+    const ev = map.events[this.eventIndex];
+    if (ev) {
+      const prev = this.eventIndex > 0 ? map.events[this.eventIndex - 1].at : 0;
+      const tpl = WS.Enemies[ev.id];
+      add('swarm', ev.id, met(ev.id) && tpl ? `Swarm · ${tpl.name}` : 'Swarm', ev.at - t, ev.at - prev, 'claw', tpl && tpl.tint);
+    } else if (run.victorious || run.mode === 'endless') {
+      add('swarm', null, 'Horde surge', this.endlessEventTimer, this.endlessEventEvery, 'claw', [0.8, 0.5, 0.4]);
+    }
+    return out.sort((a, b) => a.left - b.left);
   };
 
   WS.WaveManager = Wave;
@@ -23282,12 +24167,8 @@ window.WS = window.WS || {};
     shaman: (E, run, c) => run.gold >= c.gold,
   };
 
-  /** Who comes with them. */
-  const GUARDS = {
-    rogue: [['kerchief', 4], ['bruiser', 2]],
-    hunter: [['wolf', 8]],
-    warrior: [['skeleton', 6]],
-  };
+  /** Who comes with them: Config.encounters.guards. */
+  const GUARDS = () => WS.Config.encounters.guards;
 
   /** The ones not in danger wait for you, and then they do not. */
   const WAITS = { warlock: 1, shaman: 1 };
@@ -23301,7 +24182,7 @@ window.WS = window.WS || {};
     this.kills = { kerchief: 0, beast: 0 };
     this.recent = [];
     this.slaughtered = false;
-    this.cooldown = 8;
+    this.cooldown = WS.Config.encounters.firstCheck;
   };
 
   function wanted(id) {
@@ -23356,11 +24237,11 @@ window.WS = window.WS || {};
     const lore = WS.Lore.watchers && WS.Lore.watchers[id];
     const f = lore && lore.found;
     if (f) WS.Game.announce(f.arrive[0], f.arrive[1], 4.0);
-    WS.Audio.play(GUARDS[id] ? 'boss' : 'level');
+    WS.Audio.play(GUARDS()[id] ? 'boss' : 'level');
     WS.FX.flash(x, y, 120, ch.color, 0.45);
 
-    const scale = WS.WaveManager.enemyScale ? WS.WaveManager.enemyScale(this.run.time) * 1.4 : 1;
-    const guards = GUARDS[id] || [];
+    const scale = WS.WaveManager.enemyScale ? WS.WaveManager.enemyScale(this.run.time) * WS.Config.encounters.guardScale : 1;
+    const guards = GUARDS()[id] || [];
     let n = 0;
     const total = guards.reduce((s, g) => s + g[1], 0);
     for (const [kind, count] of guards) {
@@ -23378,7 +24259,7 @@ window.WS = window.WS || {};
     if (pk.kind !== 'watcher' || pk.who !== A.id) { this.active = null; return; }
     const p = WS.Game.player;
     const near = WS.dist(p.x, p.y, pk.x, pk.y) < c.holdRadius;
-    A.hold = near ? A.hold + dt : WS.max(0, A.hold - dt * 0.6);
+    A.hold = near ? A.hold + dt : WS.max(0, A.hold - dt * c.drain);
     pk.hold = WS.clamp(A.hold / c.hold, 0, 1);
     pk.near = near;
     if (A.hold >= c.hold) { this.bringIn(); return; }
@@ -23405,7 +24286,7 @@ window.WS = window.WS || {};
     release(pk);
     WS.Save.stats.found = WS.Save.stats.found || {};
     WS.Save.stats.found[id] = true;
-    WS.Game.addGold(WS.floor(100 * run.goldMult), pk.x, pk.y);
+    WS.Game.addGold(WS.floor(WS.Config.encounters.reward * run.goldMult), pk.x, pk.y);
     WS.Achievements.check();
     WS.Save.save();
     const f = WS.Lore.watchers[id].found;
@@ -23500,7 +24381,7 @@ window.WS = window.WS || {};
       const held = !!WS.Player.getWeapon(p, other);
       out.push({ kind: 'discovery', ready: held && kind === 'new_weapon',
         text: held ? 'Discovery: ' + c.name
-          : c.name + ' - needs ' + (WS.Weapons[other] ? WS.Weapons[other].name : other) });
+          : c.name + ' needs ' + (WS.Weapons[other] ? WS.Weapons[other].name : other) });
     }
 
     // The evolution this weapon is walking toward.
@@ -23512,7 +24393,7 @@ window.WS = window.WS || {};
         out.push({ kind: 'evolve', ready: has && maxed,
           text: has
             ? (maxed ? 'Ready to evolve: ' + d.evolveName
-              : 'Evolves at rank ' + WS.WEAPON_MAX_LEVEL + ' - ' + d.evolveName)
+              : 'Evolves into ' + d.evolveName + ' at rank ' + WS.WEAPON_MAX_LEVEL)
             : 'Evolves with ' + passive });
       }
     }
@@ -23524,8 +24405,8 @@ window.WS = window.WS || {};
       const ow = WS.Player.getWeapon(p, other);
       const res = WS.Weapons[u.result];
       out.push({ kind: 'union', ready: !!(ow && ow.evolved),
-        text: (res ? res.name : 'Union') + ' - with '
-          + (WS.Weapons[other] ? WS.Weapons[other].name : other) + ' evolved' });
+        text: (res ? res.name : 'Union') + ' once '
+          + (WS.Weapons[other] ? WS.Weapons[other].name : other) + ' evolves' });
     }
     /* Two at most, and what is achievable first. A card that lists every
        future it could have is a wall of text, not an aid. */
@@ -23550,11 +24431,11 @@ window.WS = window.WS || {};
       if (w) {
         const maxed = w.level >= WS.WEAPON_MAX_LEVEL;
         out.push({ kind: 'evolve', carried: true, ready: maxed && !has, weapon: wid,
-          text: maxed ? (has ? 'Evolving ' : 'Evolves your ') + d.name + ' now - ' + d.evolveName
-            : 'Evolves your ' + d.name + ' at rank ' + WS.WEAPON_MAX_LEVEL + ' - ' + d.evolveName });
+          text: maxed ? (has ? 'Evolving ' : 'Evolves your ') + d.name + ' into ' + d.evolveName + ' now'
+            : 'Evolves your ' + d.name + ' into ' + d.evolveName + ' at rank ' + WS.WEAPON_MAX_LEVEL });
       } else if (all) {
         out.push({ kind: 'evolve', carried: false, ready: false, weapon: wid,
-          text: 'Evolves ' + d.name + ' - ' + d.evolveName });
+          text: 'Evolves ' + d.name + ' into ' + d.evolveName });
       }
     }
     out.sort((a, b) => (b.ready ? 2 : b.carried ? 1 : 0) - (a.ready ? 2 : a.carried ? 1 : 0));
@@ -24098,9 +24979,10 @@ window.WS = window.WS || {};
 
   const W = () => WS.CONST.WORLD_WIDTH;
   const H = () => WS.CONST.WORLD_HEIGHT;
-  const BREATHER = 30;
-  const PURGE_SPEED = 1150;
-  const EPILOGUE = 3.6;
+  /* The engine's own timings live in Config (finaleBreather and the rest)
+     so the tuning bench can reach them; these read them at the moment of
+     use, so a change on the bench lands in the very next finale. */
+  const C = () => WS.Config;
 
   const F = {
     stage: 'idle',        // idle | purge | breather | fight | outro | done
@@ -24444,7 +25326,7 @@ window.WS = window.WS || {};
   function startBreather() {
     const p = WS.Game.player;
     F.stage = 'breather';
-    F.timer = BREATHER;
+    F.timer = C().finaleBreather;
     F.label = 'Breathe';
     p.health = p.maxHealth;
     WS.FX.flash(p.x, p.y, 120, WS.CONST.COLORS.heal, 0.6);
@@ -24497,7 +25379,7 @@ window.WS = window.WS || {};
     this.queue.length = 0;
     this.line = null;
     for (const l of this.def.outro) this.speak(l[0], l[1]);
-    this.timer = this.linesLeft() + EPILOGUE;
+    this.timer = this.linesLeft() + C().finaleEpilogue;
     this.epilogueShown = false;
     this.cinema = 0; this.cinemaMax = 0;
     this.cine(this.timer);
@@ -24539,7 +25421,7 @@ window.WS = window.WS || {};
     }
 
     if (this.stage === 'purge') {
-      this.purgeR += PURGE_SPEED * dt;
+      this.purgeR += C().finalePurgeSpeed * dt;
       const pool = WS.Enemy.pool;
       for (let i = pool.count - 1; i >= 0; i--) {
         const e = pool.active[i];
@@ -24585,10 +25467,10 @@ window.WS = window.WS || {};
       p.invulnerable = WS.max(p.invulnerable, 0.2);
       if (this.script.outro) this.script.outro(this, dt);
       this.timer -= dt;
-      if (!this.epilogueShown && this.timer <= EPILOGUE) {
+      if (!this.epilogueShown && this.timer <= C().finaleEpilogue) {
         this.epilogueShown = true;
         const ep = this.def.epilogue;
-        if (ep) WS.Game.announce(ep[0], ep[1], EPILOGUE, { kind: 'glory' });
+        if (ep) WS.Game.announce(ep[0], ep[1], C().finaleEpilogue, { kind: 'glory' });
       }
       if (this.timer <= 0) finish();
     }
@@ -24723,7 +25605,7 @@ window.WS = window.WS || {};
             for (let a = 0; a < m.arms; a++) {
               const ang = m.ang + (a / m.arms) * WS.TAU;
               const probe = { x: m.cx, y: m.cy, ang, len: m.len, w: m.w };
-              if (inLane(probe, p.x, p.y, pr)) { m.cd = 0.7; hurt(m, m.dmg); break; }
+              if (inLane(probe, p.x, p.y, pr)) { m.cd = C().finaleRehit; hurt(m, m.dmg); break; }
             }
           }
           if (m.dur <= 0) done = true;
@@ -24751,8 +25633,8 @@ window.WS = window.WS || {};
         if (!F.live(m.a) || !F.live(m.b)) done = true;
         else {
           m.cd -= dt;
-          if (m.cd <= 0 && segDist(p.x, p.y, m.a.x, m.a.y, m.b.x, m.b.y) < 12 + pr * 0.6) {
-            m.cd = 0.7;
+          if (m.cd <= 0 && segDist(p.x, p.y, m.a.x, m.a.y, m.b.x, m.b.y) < C().finaleFenceReach + pr * 0.6) {
+            m.cd = C().finaleRehit;
             hurt(m, m.dmg);
           }
         }
@@ -24833,14 +25715,13 @@ window.WS = window.WS || {};
 
   function busy(e) { return e.windup > 0 || e.chargeTimer > 0; }
 
-  /* Finale charges lock their lane CHARGE_LOCK seconds before they go: the
+  /* Finale charges lock their lane Config.finaleChargeLock seconds before they go: the
      tell tracks you, then stops, then the machine commits - and that last
      beat is the one a player reacts to. */
-  const CHARGE_LOCK = 0.3;
   function charge(e, windup, time, range, girth) {
     const p = WS.Game.player;
     const [dx, dy] = WS.normalize(p.x - e.x, p.y - e.y);
-    WS.Enemy.beginCharge(e, dx, dy, windup, time, range, girth, WS.min(CHARGE_LOCK, windup * 0.6));
+    WS.Enemy.beginCharge(e, dx, dy, windup, time, range, girth, WS.min(C().finaleChargeLock, windup * 0.6));
     WS.Audio.play('warn', e.x);
   }
 
@@ -24854,7 +25735,8 @@ window.WS = window.WS || {};
   SCRIPTS.candlecrawler = {
     start(F) {
       const s = F.s;
-      s.mode = 'rise'; s.rise = 1.8; s.cycle = 0; s.turrets = []; s.chain = 0;
+      const T = F.def.tuning;
+      s.mode = 'rise'; s.rise = T.riseTime; s.cycle = 0; s.turrets = []; s.chain = 0;
       s.label = 'The Candlecrawler rises';
       const c = s.core = F.unit('candlecrawler', 640, 280);
       c.untargetable = true;
@@ -24863,12 +25745,11 @@ window.WS = window.WS || {};
          then the turrets come back; then the burrow; then the meltdown. A
          build that hits hard gets through each window fast - it still sees
          every window. */
-      const T = F.def.tuning;
       s.lines = T.overheatLines.concat([T.burrowAt, T.meltdownAt]);
       s.line = 0;
       c.hpFloor = s.lines[0] * c.maxHealth;
       F.eruption(640, 280, 160, [1.0, 0.7, 0.35]);
-      s.tm = { bomb: 4.5, drill: 8, hatch: 7, ring: 9, trail: 0 };
+      s.tm = Object.assign({ trail: 0 }, T.opening);
     },
     deploy(F) {
       const s = F.s, T = F.def.tuning, c = s.core;
@@ -24891,7 +25772,7 @@ window.WS = window.WS || {};
 
       if (s.mode === 'rise') {
         s.rise -= dt;
-        c.rise = WS.clamp(1 - s.rise / 1.8, 0, 1);
+        c.rise = WS.clamp(1 - s.rise / T.riseTime, 0, 1);
         if (s.rise <= 0) { c.rise = 1; this.deploy(F); }
         return;
       }
@@ -24910,7 +25791,7 @@ window.WS = window.WS || {};
         F.say('burrow');
         s.label = 'Underground';
         c.displayName = 'The Candlecrawler · Burrowing';
-        F.addsRing('lampling', T.lamplings + 6, 700);
+        F.addsRing('lampling', T.burrowLamplings, 700);
         return;
       }
       if (!s.melt && hp <= T.meltdownAt && s.mode === 'stripped') {
@@ -24921,7 +25802,8 @@ window.WS = window.WS || {};
         c.displayName = 'The Candlecrawler · Meltdown';
         WS.FX.screen('rgba(255,80,40,.2)', 0.8);
       }
-      const pace = s.melt ? 1.55 : 1;
+      const pace = s.melt ? T.meltdownPace : 1;
+      const E = T.every;
 
       if (s.mode === 'burrow') {
         // Coming up: the mound stops and the ground is marked where the hull
@@ -24938,18 +25820,18 @@ window.WS = window.WS || {};
             s.label = 'Plating stripped';
             c.displayName = 'The Candlecrawler';
             F.say('surface');
-            s.tm.drill = 3; s.tm.ring = 5;
+            Object.assign(s.tm, T.afterSurface);
           }
           return;
         }
         const [dx, dy, d] = WS.normalize(p.x - s.mx, p.y - s.my);
-        const step = WS.min(d, 150 * dt);
+        const step = WS.min(d, T.burrowSpeed * dt);
         s.mx += dx * step; s.my += dy * step;
         s.burrowT -= dt;
         if (WS.random() < dt * 14) {
           WS.FX.burst(s.mx, s.my, 1, '#6b5238', 60, 0.8, 4);
         }
-        if (F.every('erupt', dt, 3.3)) {
+        if (F.every('erupt', dt, E.erupt)) {
           F.circle(s.mx, s.my, T.eruptRadius, T.eruptTele, T.eruptDamage, 'The Candlecrawler',
             { style: 'erupt', tint: [0.9, 0.6, 0.3] });
           s.erupts++;
@@ -24990,42 +25872,42 @@ window.WS = window.WS || {};
       if (!busy(c)) {
         if (s.chain > 0) {
           s.chain--;
-          charge(c, T.drillChainWindup, T.drillTime, T.drillRange, 1.5);
+          charge(c, T.drillChainWindup, T.drillTime, T.drillRange, T.drillGirth);
         } else {
-          keepAway(F, c, 250, s.melt ? 80 : 55, dt, MACHINE_BOX);
+          keepAway(F, c, T.keepAway, s.melt ? T.meltSpeed : T.huntSpeed, dt, MACHINE_BOX);
         }
       }
       c.damage = F.dmg(busy(c) ? T.drillDamage : c.template.damage);
 
-      if (s.melt && c.chargeTimer > 0 && F.every('trail', dt, 0.1)) {
-        WS.Hazard.spawn(c.x, c.y, { radius: 34, fuse: 0.25, life: 3.2, damage: F.dmg(12),
-          interval: 0.45, tint: [1.0, 0.5, 0.2], name: 'Burning track' });
+      if (s.melt && c.chargeTimer > 0 && F.every('trail', dt, E.trail)) {
+        WS.Hazard.spawn(c.x, c.y, { radius: T.trailRadius, fuse: 0.25, life: T.trailLife, damage: F.dmg(T.trailDamage),
+          interval: T.trailTick, tint: [1.0, 0.5, 0.2], name: 'Burning track' });
       }
 
-      if (F.every('drill', dt, s.mode === 'stripped' ? 6 : 8, pace) && !busy(c)) {
-        charge(c, T.drillWindup, T.drillTime, T.drillRange, 1.5);
+      if (F.every('drill', dt, s.mode === 'stripped' ? E.drillStripped : E.drill, pace) && !busy(c)) {
+        charge(c, T.drillWindup, T.drillTime, T.drillRange, T.drillGirth);
         if (s.melt) s.chain = 1;
       }
 
-      if (F.every('bomb', dt, s.mode === 'stripped' ? 4 : 3.4, pace)) {
+      if (F.every('bomb', dt, s.mode === 'stripped' ? E.bombStripped : E.bomb, pace)) {
         const guns = s.mode === 'shielded' ? s.turrets.filter((t) => F.live(t)) : [c];
         for (const g of guns) {
-          const n = s.mode === 'stripped' ? 3 : 2;
+          const n = s.mode === 'stripped' ? T.bombsStripped : T.bombs;
           for (let k = 0; k < n; k++) {
-            const [x, y] = k === 0 ? [p.x, p.y] : F.near(150);
-            F.circle(x, y, T.bombRadius, T.bombTele + k * 0.15, T.bombDamage, 'Lantern bomb',
-              { from: { x: g.x, y: g.y - 10 }, burn: s.melt ? 3 : 2, tint: [1.0, 0.62, 0.22] });
+            const [x, y] = k === 0 ? [p.x, p.y] : F.near(T.bombScatter);
+            F.circle(x, y, T.bombRadius, T.bombTele + k * T.bombStagger, T.bombDamage, 'Lantern bomb',
+              { from: { x: g.x, y: g.y - 10 }, burn: s.melt ? T.meltBurn : T.bombBurn, tint: [1.0, 0.62, 0.22] });
           }
         }
       }
 
-      if (F.every('hatch', dt, s.mode === 'stripped' ? 12 : 10)) {
+      if (F.every('hatch', dt, s.mode === 'stripped' ? E.hatchStripped : E.hatch)) {
         F.adds('lampling', T.lamplings, c.x, c.y + 50, 100);
         WS.FX.flash(c.x, c.y + 40, 60, [1.0, 0.85, 0.5], 0.3);
       }
 
-      if (s.mode === 'stripped' && F.every('ring', dt, 9, pace)) {
-        F.ring(c.x, c.y, { speed: T.ringSpeed, gaps: 2, gapWidth: 50, dmg: T.ringDamage,
+      if (s.mode === 'stripped' && F.every('ring', dt, E.ring, pace)) {
+        F.ring(c.x, c.y, { speed: T.ringSpeed, gaps: T.ringGaps, gapWidth: T.ringGapWidth, dmg: T.ringDamage,
           name: 'Candle-fire ring', tint: [1.0, 0.55, 0.2] });
       }
     },
@@ -25053,7 +25935,7 @@ window.WS = window.WS || {};
           c.untargetable = false; c.dmgTaken = F.def.tuning.overheatVuln;
           c.windup = 0; c.chargeTimer = 0; c.telegraph = null;
           c.displayName = 'The Candlecrawler · Overheating';
-          s.label = 'Overheating - cockpit open!';
+          s.label = 'Overheating · cockpit open!';
           F.say('turretsDown');
           WS.FX.flash(c.x, c.y, 150, [1.0, 0.4, 0.2], 0.6);
           WS.Game.toast('Cockpit exposed', 'It takes extra damage while it overheats.', { kind: 'warn', art: 'crosshair', tint: [1.0, 0.72, 0.36] });
@@ -25080,17 +25962,17 @@ window.WS = window.WS || {};
         F.part('galleon_cannon', g, 78, 34),
       ].filter(Boolean);
       for (const port of s.ports) port.untargetable = true;
-      s.tm = { broadside: 3.5, grape: 5, keg: 6.5, board: 8 };
+      s.tm = Object.assign({}, F.def.tuning.opening);
     },
     update(F, dt) {
-      const s = F.s, T = F.def.tuning;
+      const s = F.s, T = F.def.tuning, E = T.every;
       const p = WS.Game.player;
 
       if (s.mode === 'sailin' || s.mode === 'sail') {
         const g = s.core;
         if (!F.live(g)) return;
         if (s.mode === 'sailin') {
-          g.x += 260 * dt;
+          g.x += T.sailInSpeed * dt;
           if (g.x >= 640) {
             s.mode = 'sail';
             g.untargetable = false;
@@ -25110,28 +25992,29 @@ window.WS = window.WS || {};
         s.label = ports.length ? `Broadsides · ${ports.length} gun port${ports.length > 1 ? 's' : ''}`
           : 'Guns silenced';
 
-        if (F.every('broadside', dt, 6.5)) {
+        if (F.every('broadside', dt, E.broadside)) {
           ports.forEach((q, i) => {
-            const ang = hp > 0.7 ? WS.PI / 2 : WS.atan2(p.y - q.y, p.x - q.x);
-            F.lane(q.x, q.y + 8, ang, 800, T.broadsideWidth, T.broadsideTele + i * 0.3,
-              T.broadsideDamage, 'Broadside', { active: 0.35, tint: [1.0, 0.7, 0.35], sound: 'cannon' });
+            // Straight down while it is healthy; aimed at you once it is hurt.
+            const ang = hp > T.aimBelow ? WS.PI / 2 : WS.atan2(p.y - q.y, p.x - q.x);
+            F.lane(q.x, q.y + 8, ang, T.broadsideLength, T.broadsideWidth, T.broadsideTele + i * T.broadsideStagger,
+              T.broadsideDamage, 'Broadside', { active: T.broadsideActive, tint: [1.0, 0.7, 0.35], sound: 'cannon' });
           });
         }
-        if (ports.length && F.every('grape', dt, 4.2)) {
+        if (ports.length && F.every('grape', dt, E.grape)) {
           const q = ports[WS.randInt(0, ports.length - 1)];
-          F.fan(q.x, q.y + 10, F.aim(q), 7, 0.14, 300, T.grapeDamage, 'physical', 'Grapeshot', q);
+          F.fan(q.x, q.y + 10, F.aim(q), T.grapeCount, T.grapeSpread, T.grapeSpeed, T.grapeDamage, 'physical', 'Grapeshot', q);
         }
-        if (F.every('keg', dt, 7)) {
-          for (let k = 0; k < 3; k++) {
-            const [x, y] = k === 0 ? [p.x, p.y] : F.near(120);
-            F.circle(x, y, T.kegRadius, T.kegTele + k * 0.2, T.kegDamage, 'Powder keg',
+        if (F.every('keg', dt, E.keg)) {
+          for (let k = 0; k < T.kegs; k++) {
+            const [x, y] = k === 0 ? [p.x, p.y] : F.near(T.kegScatter);
+            F.circle(x, y, T.kegRadius, T.kegTele + k * T.kegStagger, T.kegDamage, 'Powder keg',
               { from: { x: g.x, y: g.y }, tint: [1.0, 0.5, 0.25] });
           }
         }
-        if (F.every('board', dt, 12)) {
+        if (F.every('board', dt, E.board)) {
           F.sayOnce('boarders');
-          F.adds('kerchief', T.boarders - 3, g.x, g.y + 80, 140);
-          F.adds('bruiser', 3, g.x, g.y + 80, 140);
+          F.adds('kerchief', WS.max(0, T.boarders - T.boardBruisers), g.x, g.y + 80, 140);
+          F.adds('bruiser', T.boardBruisers, g.x, g.y + 80, 140);
         }
         return;
       }
@@ -25148,7 +26031,7 @@ window.WS = window.WS || {};
           F.say('duel');
           s.mode = 'duel'; s.dashes = 0;
           s.label = 'The duel';
-          s.tm = { dash: 3, pistol: 2, keg: 6, rally: 10 };
+          s.tm = Object.assign({}, T.duelOpening);
         }
         return;
       }
@@ -25157,46 +26040,47 @@ window.WS = window.WS || {};
         const a = s.adm;
         if (!F.live(a)) return;
         const hp = a.health / a.maxHealth;
-        if (hp < 0.3) F.sayOnce('low');
-        const pace = hp < 0.3 ? 1.35 : 1;
+        if (hp < T.duelLowAt) F.sayOnce('low');
+        const pace = hp < T.duelLowAt ? T.duelLowPace : 1;
         a.damage = F.dmg(busy(a) ? T.dashDamage : a.template.damage);
 
         if (!busy(a)) {
           if (s.dashes > 0) {
             s.dashes--;
-            charge(a, T.dashChainWindup, T.dashTime, T.dashRange, 1.8);
+            charge(a, T.dashChainWindup, T.dashTime, T.dashRange, T.dashGirth);
           } else {
             // Circles you at a duelling distance.
             const [dx, dy, d] = WS.normalize(a.x - p.x, a.y - p.y);
-            const ang = WS.atan2(dy, dx) + 0.9 * dt;
-            const tx = WS.clamp(p.x + WS.cos(ang) * 210, 60, W() - 60);
-            const ty = WS.clamp(p.y + WS.sin(ang) * 210, 60, H() - 60);
+            const ang = WS.atan2(dy, dx) + T.duelCircle * dt;
+            const tx = WS.clamp(p.x + WS.cos(ang) * T.duelRange, 60, W() - 60);
+            const ty = WS.clamp(p.y + WS.sin(ang) * T.duelRange, 60, H() - 60);
             const [mx, my, md] = WS.normalize(tx - a.x, ty - a.y);
-            const step = WS.min(md, 170 * dt);
+            const step = WS.min(md, T.duelSpeed * dt);
             a.x += mx * step; a.y += my * step;
             a.facing = p.x < a.x ? -1 : 1;
             if (d < 1) a.x += 1;
           }
         }
-        if (F.every('dash', dt, 5.5, pace) && !busy(a)) {
-          s.dashes = 2;
-          charge(a, T.dashWindup, T.dashTime, T.dashRange, 1.8);
+        if (F.every('dash', dt, E.dash, pace) && !busy(a)) {
+          s.dashes = T.dashChain;
+          charge(a, T.dashWindup, T.dashTime, T.dashRange, T.dashGirth);
         }
-        if (!busy(a) && s.dashes === 0 && F.every('pistol', dt, 2.6, pace)) {
-          F.fan(a.x, a.y - 10, F.aim(a), 5, 0.12, 340, T.pistolDamage, 'fire', 'Pistol volley', a);
+        if (!busy(a) && s.dashes === 0 && F.every('pistol', dt, E.pistol, pace)) {
+          F.fan(a.x, a.y - 10, F.aim(a), T.pistolCount, T.pistolSpread, T.pistolSpeed, T.pistolDamage, 'fire', 'Pistol volley', a);
         }
-        if (F.every('keg', dt, 8, pace)) {
+        if (F.every('keg', dt, E.duelKeg, pace)) {
           F.circle(p.x, p.y, T.kegRadius, T.kegTele, T.kegDamage, 'Powder keg',
             { from: { x: a.x, y: a.y }, tint: [1.0, 0.5, 0.25] });
-          for (let k = 0; k < 4; k++) {
-            const ang = (k / 4) * WS.TAU + WS.random() * 0.5;
-            F.circle(WS.clamp(p.x + WS.cos(ang) * 110, 40, W() - 40),
-              WS.clamp(p.y + WS.sin(ang) * 110, 40, H() - 40),
-              T.kegRadius * 0.8, T.kegTele + 0.3, T.kegDamage, 'Powder keg',
+          // and a ring of smaller ones round you, a beat later
+          for (let k = 0; k < T.duelKegRing; k++) {
+            const ang = (k / T.duelKegRing) * WS.TAU + WS.random() * 0.5;
+            F.circle(WS.clamp(p.x + WS.cos(ang) * T.duelKegRange, 40, W() - 40),
+              WS.clamp(p.y + WS.sin(ang) * T.duelKegRange, 40, H() - 40),
+              T.kegRadius * T.duelKegScale, T.kegTele + T.duelKegDelay, T.kegDamage, 'Powder keg',
               { from: { x: a.x, y: a.y }, tint: [1.0, 0.5, 0.25] });
           }
         }
-        if (F.every('rally', dt, 14)) {
+        if (F.every('rally', dt, E.rally)) {
           F.adds('bruiser', T.rally, a.x, a.y, 160);
         }
       }
@@ -25217,11 +26101,12 @@ window.WS = window.WS || {};
         WS.FX.stop(0.14);
         F.marks.length = 0;
         F.say('crash');
-        s.mode = 'crash'; s.crashT = 2.6;
+        s.mode = 'crash'; s.crashT = F.def.tuning.crashTime;
         s.label = 'Shipwreck';
         for (let k = 0; k < 4; k++) {
-          WS.Hazard.spawn(s.wx - 150 + k * 100, 302 + WS.randRange(-20, 20), { radius: 46, fuse: 1.4,
-            life: 600, damage: F.dmg(14), interval: 0.5, tint: [1.0, 0.5, 0.2], name: 'Burning wreck' });
+          const T = F.def.tuning;
+          WS.Hazard.spawn(s.wx - 150 + k * 100, 302 + WS.randRange(-20, 20), { radius: T.wreckFireRadius, fuse: 1.4,
+            life: 600, damage: F.dmg(T.wreckFireDamage), interval: T.wreckFireTick, tint: [1.0, 0.5, 0.2], name: 'Burning wreck' });
         }
         return;
       }
@@ -25263,11 +26148,11 @@ window.WS = window.WS || {};
       this.light(F, 4);
       // The lanterns catch one at a time, and he is there when the last does.
       s.lanterns.forEach((l, i) => { l.fade = 0; l.lightAt = 0.5 + i * 0.55; l.untargetable = true; });
-      s.tm = { hand: 3, lance: 4, knell: 7, blink: 8, spawn: 6 };
+      s.tm = Object.assign({}, F.def.tuning.opening);
     },
     light(F, n) {
       const s = F.s, m = s.core;
-      const mult = 1 + 0.15 * s.cycle;
+      const mult = 1 + F.def.tuning.lanternHpGrowth * s.cycle;
       const spots = WS.shuffle(LANTERNS.slice()).slice(0, n);
       s.lanterns = spots.map(([x, y]) => {
         const l = F.unit('soul_lantern', x, y, mult);
@@ -25281,7 +26166,7 @@ window.WS = window.WS || {};
       F.darkTarget = 0;
     },
     update(F, dt) {
-      const s = F.s, T = F.def.tuning, m = s.core;
+      const s = F.s, T = F.def.tuning, E = T.every, m = s.core;
       if (!F.live(m)) return;
       const p = WS.Game.player;
       if (s.introT !== undefined && s.introT < 3.4) {
@@ -25310,10 +26195,10 @@ window.WS = window.WS || {};
       if (!s.risen && hp <= T.riseAt) {
         s.risen = true;
         F.say('rise');
-        F.addsRing('skeleton', 12, 640);
-        F.addsRing('ghoul', 10, 700);
+        F.addsRing('skeleton', T.riseSkeletons, 640);
+        F.addsRing('ghoul', T.riseGhouls, 700);
       }
-      const pace = s.risen ? 1.35 : 1;
+      const pace = s.risen ? T.risenPace : 1;
       m.facing = p.x < m.x ? -1 : 1;
 
       if (s.mode === 'exposed') {
@@ -25334,12 +26219,12 @@ window.WS = window.WS || {};
       } else {
         s.lanterns = s.lanterns.filter((l) => F.live(l));
         s.label = `Break the soul lanterns · ${s.lanterns.length} lit`;
-        if (F.every('spawn', dt, 9)) {
-          for (const l of s.lanterns) F.adds(WS.random() < 0.5 ? 'skeleton' : 'ghoul', 2, l.x, l.y, 60);
+        if (F.every('spawn', dt, E.spawn)) {
+          for (const l of s.lanterns) F.adds(WS.random() < 0.5 ? 'skeleton' : 'ghoul', T.lanternAdds, l.x, l.y, 60);
         }
       }
 
-      if (F.every('blink', dt, 8)) {
+      if (F.every('blink', dt, E.blink)) {
         let i;
         do { i = WS.randInt(0, GRAVES.length - 1); } while (i === s.grave);
         s.grave = i;
@@ -25349,17 +26234,17 @@ window.WS = window.WS || {};
         WS.Audio.play('cast', m.x, 'shadow');
       }
 
-      if (F.every('hand', dt, 5, pace)) s.hands = 3;
-      if (s.hands > 0 && F.every('handStep', dt, 0.45)) {
+      if (F.every('hand', dt, E.hand, pace)) s.hands = T.hands;
+      if (s.hands > 0 && F.every('handStep', dt, E.handStep)) {
         s.hands--;
         F.circle(p.x, p.y, T.handRadius, T.handTele, T.handDamage, 'Grasping dead',
           { style: 'hands', tint: [0.55, 1.0, 0.7] });
       }
-      if (F.every('lance', dt, 4, pace)) {
-        F.fan(m.x, m.y - 20, F.aim(m), 5, 0.16, 260, T.lanceDamage, 'shadow', 'Bone lance', m);
+      if (F.every('lance', dt, E.lance, pace)) {
+        F.fan(m.x, m.y - 20, F.aim(m), T.lanceCount, T.lanceSpread, T.lanceSpeed, T.lanceDamage, 'shadow', 'Bone lance', m);
       }
-      if (F.every('knell', dt, s.mode === 'exposed' || s.risen ? 7.5 : 11)) {
-        F.ring(m.x, m.y, { speed: T.knellSpeed, gaps: 3, gapWidth: T.knellGap, dmg: T.knellDamage,
+      if (F.every('knell', dt, s.mode === 'exposed' || s.risen ? E.knellFast : E.knell)) {
+        F.ring(m.x, m.y, { speed: T.knellSpeed, gaps: T.knellGaps, gapWidth: T.knellGap, dmg: T.knellDamage,
           name: 'Death knell', tint: [0.6, 1.0, 0.8] });
         WS.Audio.play('boss');
       }
@@ -25420,17 +26305,16 @@ window.WS = window.WS || {};
       w.untargetable = true;
       s.legs = [F.part('walker_leg', w, -84, 96), F.part('walker_leg', w, 84, 96)].filter(Boolean);
       for (const l of s.legs) l.untargetable = true;
-      s.tm = { step: 1.3, sweep: 6, missile: 5, karrash: 9 };
+      s.tm = Object.assign({}, F.def.tuning.opening);
     },
     update(F, dt) {
-      const s = F.s, T = F.def.tuning, w = s.core;
+      const s = F.s, T = F.def.tuning, E = T.every, w = s.core;
       if (!F.live(w)) return;
-      const p = WS.Game.player;
       const hp = w.health / w.maxHealth;
       w.walkPhase = (w.walkPhase || 0) + dt * (s.mode === 'walk' ? 2.4 : 0);
 
       if (s.mode === 'enter') {
-        w.y += 120 * dt;
+        w.y += T.enterSpeed * dt;
         if (w.y >= 235) {
           w.y = 235; s.mode = 'walk';
           w.untargetable = false;
@@ -25449,21 +26333,21 @@ window.WS = window.WS || {};
         w.dmgTaken = T.standingArmor;
         w.displayName = 'The Stormbreaker · Armoured';
         s.label = 'Break its legs';
-        w.x += s.dir * 38 * dt;
+        w.x += s.dir * T.walkSpeed * dt;
         if (w.x > 950) s.dir = -1;
         if (w.x < 330) s.dir = 1;
         w.facing = s.dir;
-        if (F.every('step', dt, 1.3)) {
+        if (F.every('step', dt, E.step)) {
           s.step = 1 - s.step;
           const fx = w.x + (s.step ? -84 : 84) + s.dir * 60;
           F.circle(fx, w.y + 130, T.stompRadius, T.stompTele, T.stompDamage, 'Stomp',
             { style: 'stomp', tint: [0.9, 0.75, 0.5] });
         }
-        if (F.every('sweep', dt, 10)) this.beam(F, 1);
-        if (F.every('missile', dt, 5.5)) this.missiles(F, 5);
+        if (F.every('sweep', dt, E.sweep)) this.beam(F, 1);
+        if (F.every('missile', dt, E.missile)) this.missiles(F, T.missiles);
         // Standing clear of its feet is not standing clear of it.
-        if (F.every('shock', dt, T.shockEvery)) this.shockwave(F);
-        if (F.every('karrash', dt, 13)) F.addsRing('karrash', T.karrash, 700);
+        if (F.every('shock', dt, E.shock)) this.shockwave(F);
+        if (F.every('karrash', dt, E.karrash)) F.addsRing('karrash', T.karrash, 700);
         return;
       }
 
@@ -25497,13 +26381,13 @@ window.WS = window.WS || {};
           this.pylons(F);
           this.shockwave(F);
         }
-        if (F.every('sweep', dt, T.fortEvery)) this.lighthouse(F);
-        if (F.every('missile', dt, 5)) this.missiles(F, 5);
-        if (F.every('bolts', dt, 6.5)) {
-          F.radial(w.x, w.y + 30, 16, 200, T.missileDamage * 0.7, 'nature', 'Arc bolt',
+        if (F.every('sweep', dt, E.lighthouse)) this.lighthouse(F);
+        if (F.every('missile', dt, E.fortMissile)) this.missiles(F, T.missiles);
+        if (F.every('bolts', dt, E.bolts)) {
+          F.radial(w.x, w.y + 30, T.boltCount, T.boltSpeed, T.boltDamage, 'nature', 'Arc bolt',
             WS.random() * WS.TAU, w);
         }
-        if (F.every('karrash', dt, 15)) F.addsRing('karrash', T.karrash, 700);
+        if (F.every('karrash', dt, E.fortKarrash)) F.addsRing('karrash', T.karrash, 700);
         return;
       }
 
@@ -25535,7 +26419,7 @@ window.WS = window.WS || {};
       const side = p.x < w.x ? -1 : 1;
       for (let k = 0; k < n; k++) {
         const sd = k === 0 ? side : -side;
-        F.sweep(w.x, w.y + 40, WS.PI / 2 + sd * 1.25, -sd * T.beamSpin, 900, T.beamWidth,
+        F.sweep(w.x, w.y + 40, WS.PI / 2 + sd * T.beamArc, -sd * T.beamSpin, T.beamLength, T.beamWidth,
           T.beamTele, T.beamTime, T.beamDamage, 'Lightning cannon',
           { follow: w, oy: 40, tint: [0.55, 0.85, 1.0] });
       }
@@ -25544,7 +26428,7 @@ window.WS = window.WS || {};
     },
     shockwave(F) {
       const T = F.def.tuning, w = F.s.core;
-      F.ring(w.x, w.y + 90, { speed: 230, gaps: 3, gapWidth: 42, dmg: T.stompDamage,
+      F.ring(w.x, w.y + 90, { speed: T.shockSpeed, gaps: T.shockGaps, gapWidth: T.shockGapWidth, dmg: T.stompDamage,
         name: 'Shockwave', tint: [0.9, 0.75, 0.5] });
       WS.FX.shake(5, 0.3);
       WS.Audio.play('shock', w.x);
@@ -25553,8 +26437,8 @@ window.WS = window.WS || {};
       const T = F.def.tuning, w = F.s.core;
       const p = WS.Game.player;
       for (let k = 0; k < n; k++) {
-        const [x, y] = k === 0 ? [p.x, p.y] : F.near(170);
-        F.circle(x, y, T.missileRadius, T.missileTele + k * 0.12, T.missileDamage, 'Ember missile',
+        const [x, y] = k === 0 ? [p.x, p.y] : F.near(T.missileScatter);
+        F.circle(x, y, T.missileRadius, T.missileTele + k * T.missileStagger, T.missileDamage, 'Ember missile',
           { from: { x: w.x, y: w.y - 30 }, tint: [1.0, 0.6, 0.3] });
       }
     },
@@ -25596,8 +26480,8 @@ window.WS = window.WS || {};
       const dir = WS.random() < 0.5 ? -1 : 1;
       const toward = WS.atan2(p.y - (w.y + 20), p.x - w.x);
       // start a little behind the player in the direction it will turn
-      const start = toward - dir * 0.85;
-      F.sweep(w.x, w.y + 20, start, dir * T.fortSpin, 1400, T.beamWidth,
+      const start = toward - dir * T.fortLead;
+      F.sweep(w.x, w.y + 20, start, dir * T.fortSpin, T.fortBeamLength, T.beamWidth,
         T.beamTele, T.fortBeamTime, T.beamDamage, 'Lightning cannon',
         { follow: w, oy: 20, arms: 2, tint: [0.55, 0.85, 1.0] });
       WS.Audio.play('zap', w.x);
@@ -25611,7 +26495,7 @@ window.WS = window.WS || {};
       // It re-raises its pylons at reraiseAt; it cannot be burned past it first.
       w.hpFloor = T.reraiseAt * w.maxHealth;
       this.pylons(F);
-      s.tm.sweep = 3; s.tm.missile = 2; s.tm.bolts = 4;
+      Object.assign(s.tm, T.fortOpening);
     },
     destruct(F) {
       const s = F.s, T = F.def.tuning, w = s.core;
@@ -25663,7 +26547,7 @@ window.WS = window.WS || {};
           // It comes down hard, and it calls for help on the way.
           this.shockwave(F);
           F.addsRing('karrash', T.karrash, 700);
-          WS.Game.toast('It is down', 'Staggered - it takes extra damage until it recovers.', { kind: 'warn', art: 'crosshair', tint: [1.0, 0.72, 0.36] });
+          WS.Game.toast('It is down', 'Staggered. It takes extra damage until it recovers.', { kind: 'warn', art: 'crosshair', tint: [1.0, 0.72, 0.36] });
         }
       }
     },
@@ -25686,11 +26570,11 @@ window.WS = window.WS || {};
       d.untargetable = true;
       s.dropping = true; s.vy = 0;
       s.pipes = [];
-      s.tm = { debris: 3, vent: 7, ghoul: 6 };
+      s.tm = Object.assign({}, F.def.tuning.opening);
       s.ventDir = 1;
     },
     update(F, dt) {
-      const s = F.s, T = F.def.tuning;
+      const s = F.s, T = F.def.tuning, E = T.every;
       const p = WS.Game.player;
 
       if (s.mode === 'drill') {
@@ -25698,7 +26582,7 @@ window.WS = window.WS || {};
         if (!F.live(d)) return;
         if (s.dropping) {
           // It comes down out of the sky, and the Pale takes the hit.
-          s.vy += 1100 * dt;
+          s.vy += T.dropGravity * dt;
           d.y += s.vy * dt;
           if (d.y >= DRILL_Y) {
             d.y = DRILL_Y; s.dropping = false; d.untargetable = false;
@@ -25719,19 +26603,19 @@ window.WS = window.WS || {};
         d.dmgTaken = s.pipes.length ? T.pipeShield : 1;
         d.hpFloor = s.pipes.length ? T.drillFloor * d.maxHealth : 0;
         s.label = s.pipes.length ? `Cut the coolant lines · ${s.pipes.length} left` : 'Break the drill';
-        if (F.every('debris', dt, 4)) {
-          for (let k = 0; k < 4; k++) {
-            const [x, y] = k === 0 ? [p.x, p.y] : F.near(190);
-            F.circle(x, y, T.debrisRadius, T.debrisTele + k * 0.15, T.debrisDamage, 'Falling ice',
+        if (F.every('debris', dt, E.debris)) {
+          for (let k = 0; k < T.debris; k++) {
+            const [x, y] = k === 0 ? [p.x, p.y] : F.near(T.debrisScatter);
+            F.circle(x, y, T.debrisRadius, T.debrisTele + k * T.debrisStagger, T.debrisDamage, 'Falling ice',
               { style: 'ice', tint: [0.7, 0.9, 1.0] });
           }
         }
-        if (F.every('vent', dt, 11)) {
+        if (F.every('vent', dt, E.vent)) {
           s.ventDir = -s.ventDir;
-          F.sweep(d.x, d.y + 20, WS.random() * WS.TAU, s.ventDir * T.ventSpin, 900, 40, T.ventTele,
-            6, T.ventDamage, 'Flame vent', { arms: 4, follow: d, oy: 20, tint: [1.0, 0.55, 0.25] });
+          F.sweep(d.x, d.y + 20, WS.random() * WS.TAU, s.ventDir * T.ventSpin, T.ventLength, T.ventWidth, T.ventTele,
+            T.ventTime, T.ventDamage, 'Flame vent', { arms: T.ventArms, follow: d, oy: 20, tint: [1.0, 0.55, 0.25] });
         }
-        if (F.every('ghoul', dt, 12)) F.adds('pale_ghoul', T.ghouls, d.x, d.y + 120, 170);
+        if (F.every('ghoul', dt, E.ghoul)) F.adds('pale_ghoul', T.ghouls, d.x, d.y + 120, 170);
         return;
       }
 
@@ -25746,7 +26630,7 @@ window.WS = window.WS || {};
         if (WS.random() < dt * 5) {
           WS.FX.burst(640 + WS.randRange(-120, 120), 200, 2, '#bfe6ff', 120, 0.9, 3);
         }
-        if (s.breachT > 7.4) this.lord(F);
+        if (s.breachT > T.breachTime) this.lord(F);
         return;
       }
 
@@ -25778,22 +26662,22 @@ window.WS = window.WS || {};
           this.ward(F);
           return;
         }
-        if (F.every('nova', dt, 9)) this.nova(F);
-        if (F.every('cross', dt, 15)) {
+        if (F.every('nova', dt, E.nova)) this.nova(F);
+        if (F.every('cross', dt, E.cross)) {
           s.ventDir = -s.ventDir;
-          F.sweep(L.x, L.y, WS.random() * WS.TAU, s.ventDir * 0.45, 900, 34, 1.2, 6,
-            T.ventDamage, 'Frost cross', { arms: 2, follow: L, tint: [0.7, 0.92, 1.0] });
+          F.sweep(L.x, L.y, WS.random() * WS.TAU, s.ventDir * T.crossSpin, 900, T.crossWidth, T.crossTele, T.crossTime,
+            T.ventDamage, 'Frost cross', { arms: T.crossArms, follow: L, tint: [0.7, 0.92, 1.0] });
         }
-        if (F.every('grid', dt, 14)) {
-          F.grid(F.bounds, 5, 4, 4, T.gridTele, T.gridDamage, 'Glacial spikes');
+        if (F.every('grid', dt, E.grid)) {
+          F.grid(F.bounds, T.gridCols, T.gridRows, T.gridSafe, T.gridTele, T.gridDamage, 'Glacial spikes');
           WS.Game.toast('Glacial spikes', 'Find the ground that is not marked.', { kind: 'warn', art: 'frostaura', tint: [0.6, 0.85, 1.0] });
         }
-        if (F.every('spike', dt, 5)) {
-          F.radial(L.x, L.y, 14, 190, T.spikeDamage, 'frost', 'Ice lance', F.t, L);
+        if (F.every('spike', dt, E.spike)) {
+          F.radial(L.x, L.y, T.spikes, T.spikeSpeed, T.spikeDamage, 'frost', 'Ice lance', F.t, L);
         }
-        if (F.every('tide', dt, 16)) {
-          F.addsRing('skeleton', 6, 560);
-          F.addsRing('pale_ghoul', T.ghouls - 4, 620);
+        if (F.every('tide', dt, E.tide)) {
+          F.addsRing('skeleton', T.tideSkeletons, 560);
+          F.addsRing('pale_ghoul', T.tideGhouls, 620);
         }
         return;
       }
@@ -25816,31 +26700,32 @@ window.WS = window.WS || {};
           this.nextLine(F);
           this.shards(F);
           this.nova(F);
-          F.grid(F.bounds, 5, 4, 4, T.gridTele, T.gridDamage, 'Glacial spikes');
+          F.grid(F.bounds, T.gridCols, T.gridRows, T.gridSafe, T.gridTele, T.gridDamage, 'Glacial spikes');
           WS.Game.announce('The last of the Pale', 'Shatter it. There is nothing after this.', 2.8,
             { kind: 'dread', art: 'marrowfrost_face', tint: L.template.tint });
           WS.FX.screen('rgba(170,220,255,.3)', 0.8);
         }
-        if (F.every('cross', dt, 8)) {
+        if (F.every('cross', dt, E.winterCross)) {
           s.ventDir = -s.ventDir;
-          F.sweep(L.x, L.y, WS.random() * WS.TAU, s.ventDir * 0.5, 900, 36, 1.0, 8.2,
-            T.ventDamage, 'Frost cross', { arms: 4, follow: L, tint: [0.7, 0.92, 1.0] });
+          F.sweep(L.x, L.y, WS.random() * WS.TAU, s.ventDir * T.winterCrossSpin, 900, T.winterCrossWidth,
+            T.winterCrossTele, T.winterCrossTime,
+            T.ventDamage, 'Frost cross', { arms: T.winterCrossArms, follow: L, tint: [0.7, 0.92, 1.0] });
         }
-        if (F.every('nova', dt, 7)) this.nova(F);
-        if (F.every('grid', dt, 12)) F.grid(F.bounds, 5, 4, 4, T.gridTele, T.gridDamage, 'Glacial spikes');
-        if (F.every('spike', dt, 4)) {
-          F.radial(L.x, L.y, 16, 200, T.spikeDamage, 'frost', 'Ice lance', F.t, L);
+        if (F.every('nova', dt, E.winterNova)) this.nova(F);
+        if (F.every('grid', dt, E.winterGrid)) F.grid(F.bounds, T.gridCols, T.gridRows, T.gridSafe, T.gridTele, T.gridDamage, 'Glacial spikes');
+        if (F.every('spike', dt, E.winterSpike)) {
+          F.radial(L.x, L.y, T.winterSpikes, T.winterSpikeSpeed, T.spikeDamage, 'frost', 'Ice lance', F.t, L);
         }
-        if (s.enrage <= 0 && F.every('winterEnd', dt, 3)) {
+        if (s.enrage <= 0 && F.every('winterEnd', dt, E.winterEnd)) {
           WS.Player.takeDamage(p, 99999, 'The endless winter');
         }
       }
     },
     nova(F) {
       const T = F.def.tuning, L = F.s.lord;
-      F.ring(L.x, L.y, { speed: T.novaSpeed, gaps: 3, gapWidth: T.novaGap, spin: 0.35,
+      F.ring(L.x, L.y, { speed: T.novaSpeed, gaps: T.novaGaps, gapWidth: T.novaGap, spin: T.novaSpin,
         dmg: T.novaDamage, name: 'Frost nova', tint: [0.7, 0.92, 1.0] });
-      F.ring(L.x, L.y, { speed: T.novaSpeed, gaps: 3, gapWidth: T.novaGap, spin: -0.35, delay: 1.3,
+      F.ring(L.x, L.y, { speed: T.novaSpeed, gaps: T.novaGaps, gapWidth: T.novaGap, spin: -T.novaSpin, delay: T.novaDelay,
         dmg: T.novaDamage, name: 'Frost nova', tint: [0.7, 0.92, 1.0] });
     },
     nextLine(F) {
@@ -25862,7 +26747,7 @@ window.WS = window.WS || {};
     shards(F) {
       const s = F.s, L = s.lord;
       s.shards = [];
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < F.def.tuning.shardCount; i++) {
         const q = F.unit('frost_shard', L.x, L.y);
         if (q) s.shards.push(q);
       }
@@ -25890,7 +26775,7 @@ window.WS = window.WS || {};
         this.shards(F);
       }
       F.say('lord');
-      s.tm = { nova: 4, grid: 9, spike: 3, tide: 8 };
+      s.tm = Object.assign({}, T.lordOpening);
     },
     winter(F) {
       const s = F.s, T = F.def.tuning, L = s.lord;
@@ -37193,7 +38078,13 @@ window.WS = window.WS || {};
       UI.paintAutoBreaking();
       autoBp.blur();   // or the next Space/Enter in a fight flips it again
     });
-    portraitWrap.append(gauge, vitals, autoBp);
+    /* The Watch's timers, boss-mod style: what comes next and how long
+       until it does. A veteran's tool - unlocked by a first dawn - so it
+       hangs under the portrait beside the other switch, not in the field. */
+    const timers = el('div'); timers.id = 'hud-timers';
+    const under = el('div', 'hud-under');
+    under.append(autoBp, timers);
+    portraitWrap.append(gauge, vitals, under);
 
     /* -- timer rail ------------------------------------------------------- */
     const timer = el('div'); timer.id = 'hud-timer';
@@ -37255,7 +38146,8 @@ window.WS = window.WS || {};
     hud.append(portraitWrap, timer, boss, stats, weapons, passives, toasts);
 
     this.els = {
-      gauge, aHP, aXP, portrait, lvl, name, hpText, meters, autoBp,
+      gauge, aHP, aXP, portrait, lvl, name, hpText, meters, autoBp, timers,
+      timerRows: new Map(), timerOrder: '', timerAt: 0,
       timeText, railFill, railHead, rail, mode,
       boss, bossName, bFill, bDrain, bGate, bossPct,
       goldV, killV, dpsV, hpsV, weapons, passives, toasts,
@@ -37283,6 +38175,72 @@ window.WS = window.WS || {};
       b.classList.toggle('on', on);
       b.firstChild.classList.toggle('on', on);
       b.setAttribute('aria-checked', String(on));
+    }
+  };
+
+  /** The timers are earned: a first night held to dawn. */
+  UI.timersUnlocked = function () {
+    return (WS.Save.stats.totalVictories || 0) > 0;
+  };
+
+  const clockOf = (s) => (s >= 60 ? WS.formatTime(s) : s < 10 ? s.toFixed(1) : String(WS.floor(s)));
+  const timerIcons = new Map();
+  function timerIcon(e) {
+    const key = e.kind + ':' + (e.id || '');
+    let url = timerIcons.get(key);
+    if (url) return url;
+    const tpl = e.id && (WS.Bosses[e.id] || WS.Enemies[e.id]);
+    const met = e.id && ((WS.Save.stats.bestiary[e.id] || WS.Save.stats.bosses[e.id] || 0) > 0);
+    url = tpl && met ? WS.Sprites.dataURL(WS.Sprites.creature(tpl.art, tpl.tint, 40, tpl.bossKit))
+      : WS.Icons.url(e.art, e.tint, 40);
+    timerIcons.set(key, url);
+    return url;
+  }
+
+  /** Ten times a second is plenty for a countdown, and keeps the DOM quiet:
+   *  a row is built once per timer and only its width and figures change. */
+  UI.paintTimers = function (force) {
+    const E = this.els;
+    if (!E || !E.timers) return;
+    const now = performance.now();
+    if (!force && now - E.timerAt < 100) return;
+    E.timerAt = now;
+    const run = WS.Game.run;
+    const on = run && this.timersUnlocked() && WS.Save.settings.bossTimers !== false;
+    const list = on ? WS.WaveManager.timers(run).slice(0, 4) : [];
+    const keep = new Set();
+    for (const e of list) {
+      const key = e.kind;
+      keep.add(key);
+      let r = E.timerRows.get(key);
+      if (!r) {
+        const row = el('div', 'bm-bar');
+        row.dataset.kind = e.kind;
+        const img = new Image(); img.className = 'bm-icon'; img.width = img.height = 20; img.alt = '';
+        const track = el('div', 'bm-track');
+        const fill = el('div', 'bm-fill');
+        const name = el('span', 'bm-name');
+        const time = el('span', 'bm-time');
+        track.append(fill, name, time);
+        row.append(img, track);
+        r = { row, img, fill, name, time, label: '', icon: '', soon: false };
+        E.timerRows.set(key, r);
+      }
+      if (r.label !== e.label) { r.label = e.label; r.name.textContent = e.label; }
+      const icon = timerIcon(e);
+      if (r.icon !== icon) { r.icon = icon; r.img.src = icon; }
+      r.fill.style.transform = `scaleX(${WS.clamp(e.left / e.total, 0, 1).toFixed(4)})`;
+      r.time.textContent = clockOf(e.left);
+      const soon = e.left < 5;
+      if (r.soon !== soon) { r.soon = soon; r.row.classList.toggle('soon', soon); }
+    }
+    for (const [key, r] of E.timerRows) {
+      if (!keep.has(key)) { r.row.remove(); E.timerRows.delete(key); }
+    }
+    const order = list.map((e) => e.kind).join(',');
+    if (order !== E.timerOrder) {
+      E.timerOrder = order;
+      for (const e of list) E.timers.append(E.timerRows.get(e.kind).row);
     }
   };
 
@@ -37377,7 +38335,7 @@ window.WS = window.WS || {};
       const slot = el('div', 'pslot');
       slot.append(icon(up.art, qualityColour(up.quality), 34), el('div', 'rim'), el('div', 'rank', String(rank)));
       tipOn(slot, tipPassive(p, id), { prefer: ['above', 'left'], focus: false });
-      slot.setAttribute('aria-label', `${up.name} - rank ${rank}/${up.max}`
+      slot.setAttribute('aria-label', `${up.name}, rank ${rank}/${up.max}`
         + `\n${WS.template(up.description, up)}`);
       wrap.append(slot);
     }
@@ -37417,6 +38375,7 @@ window.WS = window.WS || {};
     if (WS.Finale.running()) modeBits.push(WS.Finale.hudLabel());
     e.mode.textContent = modeBits.join(' · ');
     this.paintAutoBreaking();
+    this.paintTimers();
 
     /* Cheap: a number compared once a frame, and a repaint only on the few
        moments in a run when it actually changes. */
@@ -38025,7 +38984,7 @@ window.WS = window.WS || {};
       const id = WS.Game.selection.map;
       const map = WS.Maps[id];
       if (map && map.arena) {
-        hyper.textContent = 'Hyper: —';
+        hyper.textContent = 'Hyper: n/a';
         hyper.dataset.tip = map.name + ' runs its own fight, so Hyper has nothing to scale.';
         hyper.disabled = true;
         return;
@@ -38536,7 +39495,7 @@ window.WS = window.WS || {};
       const main = el('div', 'row-main');
       main.append(el('div', 'row-name', found ? c.name : '? ? ?'));
       main.append(el('div', 'row-sub', found
-        ? `${WS.Weapons[c.weapons[0]].name} + ${WS.Weapons[c.weapons[1]].name} - ${WS.template(c.description, c)}`
+        ? `${WS.Weapons[c.weapons[0]].name} + ${WS.Weapons[c.weapons[1]].name}: ${WS.template(c.description, c)}`
         : c.hint));
       row.append(main);
       comboRows.append(row);
@@ -38586,7 +39545,7 @@ window.WS = window.WS || {};
       main.append(el('div', 'row-name', d.evolveName));
       main.append(el('div', 'row-sub',
         `${d.name} at its last rank, with ${up ? up.name : d.evolvePairing}`
-        + (d.evolveDescription ? ' - ' + WS.template(d.evolveDescription, d) : '')));
+        + (d.evolveDescription ? '. ' + WS.template(d.evolveDescription, d) : '')));
       row.append(main);
       evoRows.append(row);
     }
@@ -38942,6 +39901,18 @@ window.WS = window.WS || {};
     toggle('victoryCinematic', 'Victory cinematic',
       'Twenty-three seconds at thirty minutes, starring the survivor you ran, '
       + 'before the results. Off puts you straight on the numbers.');
+    if (UI.timersUnlocked()) {
+      toggle('bossTimers', 'The Watch\u2019s timers',
+        'Countdown bars under your portrait for the next supply cache, Beans, '
+        + 'boss and swarm, soonest first.');
+    } else {
+      const row = el('div', 'setting locked');
+      const main = el('div');
+      main.append(el('div', 's-name', 'The Watch\u2019s timers'),
+        el('div', 's-desc', 'Hold one night to dawn and the Watch will tell you what comes next, and when.'));
+      row.append(main, el('div', 'switch disabled'));
+      wrap.append(row);
+    }
     toggle('mouseSteer', 'Steer with the mouse',
       'Hold the left button anywhere on the field and drag, the same as touch. '
       + 'Play one-handed, or keep both on the keys.');
@@ -38960,7 +39931,7 @@ window.WS = window.WS || {};
     const sum = WS.Save.describe(WS.Save.db);
     desc.textContent = `${sum.gold.toLocaleString()} gold, ${sum.characters} survivors, `
       + `${sum.maps} battlefields, ${sum.runs} runs. Your progress lives in this browser `
-      + 'only - copy it somewhere safe, or move it to another machine.';
+      + 'only. Copy it somewhere safe, or move it to another machine.';
     amain.append(desc);
     const note = el('div', 's-desc');
     note.style.marginTop = '6px';
@@ -38980,11 +39951,11 @@ window.WS = window.WS || {};
       if (!code) return say('This browser would not encode the save.', true);
       try {
         await navigator.clipboard.writeText(code);
-        say(`Copied - ${code.length.toLocaleString()} characters. Paste it somewhere you `
+        say(`Copied: ${code.length.toLocaleString()} characters. Paste it somewhere you `
           + 'will still have next year.');
       } catch (e) {
         // Clipboard is gated in plenty of contexts; the file always works.
-        say('The clipboard is blocked here - use Save to file instead.', true);
+        say('The clipboard is blocked here. Use Save to file instead.', true);
       }
     });
 
@@ -39000,7 +39971,7 @@ window.WS = window.WS || {};
         a.href = url; a.download = `ember-watch-${day}.json`;
         document.body.append(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 4000);
-        say('Saved. It is plain JSON - you can read it, and so can a future you.');
+        say('Saved. It is plain JSON: you can read it, and so can a future you.');
       } catch (e) { say('This browser would not hand over a file.', true); }
     });
 
@@ -39727,11 +40698,11 @@ window.WS = window.WS || {};
     } else if (canFace) {
       s.body.append(verdict('win', 'Dawn, and not the end',
         `You held ${run.map.name} for thirty minutes and the win is banked. `
-        + `${def.title} is still out there - or wait for Death, who always comes.`,
+        + `${def.title} is still out there. Or wait for Death, who always comes.`,
         runFigures(run, WS.Game.player), logEntry(run, WS.Game.player, 'dawn')));
     } else {
       s.body.append(verdict('win', 'The night broke first',
-        `You held ${run.map.name} for thirty minutes. Death is on the field now — it always is.`,
+        `You held ${run.map.name} for thirty minutes. Death is on the field now. It always is.`,
         runFigures(run, WS.Game.player), logEntry(run, WS.Game.player, 'dawn')));
     }
     s.body.classList.add('fitted');
@@ -39989,7 +40960,7 @@ window.WS = window.WS || {};
       faults.notified = true;
       try {
         WS.Game.toast('Something went wrong',
-          'The game hit a repeated error and is running rough. Esc to pause - quitting to the menu keeps your gold.',
+          'The game hit a repeated error and is running rough. Esc to pause; quitting to the menu keeps your gold.',
           { kind: 'warn', art: 'rune' });
       } catch (e) { /* the UI is the thing that is broken; nothing else to try */ }
     }
