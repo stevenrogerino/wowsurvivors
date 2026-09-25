@@ -148,6 +148,47 @@
       evolveDescription: 'Judgment finds every last one of them.',
     },
 
+    /* ---- The Old Shapes and the Stillwater Step brought four more ---------
+     *
+     * Iron Palms is the first weapon in the game that has to be close to work
+     * at all, so it is paid for that: its reach is a short cone and it does
+     * the most per hit of anything its speed. Spirit Herd tramples a lane
+     * wide enough to matter. Thornbloom is the first field that goes where
+     * the crowd is rather than where you are. Gale Chakram cuts twice, out
+     * and back. Every figure was fitted against the rest of the arsenal in
+     * tools/sim.js, alone at rank 1 and rank 8. */
+    iron_palms: {
+      name: 'Iron Palms', school: 'physical', behavior: 'palm', art: 'palm',
+      cooldown: 0.95, damage: 15, projectiles: 3, reach: 118, arc: 1.25, knockback: 14,
+      description: 'A flurry of open-handed strikes at whatever is closest, each one a short cone that hits everything in it.',
+      evolveName: 'Temple Breaker', evolvePairing: 'dodge',
+      evolveDescription: 'Every palm lands like the temple bell.',
+    },
+    spirit_herd: {
+      name: 'Spirit Herd', school: 'nature', behavior: 'herd', art: 'herd',
+      cooldown: 2.6, damage: 21, speed: 330, projectiles: 2, pierce: 99, range: 620,
+      life: 1.8, radius: 16, knock: 22, color: [0.62, 0.92, 0.55],
+      description: 'Spirit beasts of the long pasture stampede from behind you toward the nearest foe, trampling everything in the way.',
+      evolveName: 'The Great Herd', evolvePairing: 'perennial',
+      evolveDescription: 'The herd does not end. It only thins.',
+    },
+    thornbloom: {
+      name: 'Thornbloom', school: 'nature', behavior: 'zone', art: 'bloom',
+      cooldown: 3.8, damage: 11, radius: 92, duration: 4.0, tickRate: 0.5,
+      atTarget: true, slowFactor: 0.55, color: [0.52, 0.86, 0.38],
+      description: 'Brambles burst up under the nearest crowd, tearing at everything caught in them and holding it slow.',
+      evolveName: 'Everbloom', evolvePairing: 'thorns',
+      evolveDescription: 'The brambles flower, and the flowers have thorns too.',
+    },
+    gale_chakram: {
+      name: 'Gale Chakram', school: 'physical', behavior: 'chakram', art: 'chakram',
+      cooldown: 1.7, damage: 16, speed: 380, projectiles: 1, range: 330, life: 2.6, radius: 12,
+      color: [0.78, 0.92, 1.0],
+      description: 'A bladed ring thrown out on the wind. It cuts everything on the way out, turns, and cuts everything on the way back.',
+      evolveName: 'Razorgale', evolvePairing: 'serration',
+      evolveDescription: 'The ring splits the wind in two and comes back sharper.',
+    },
+
     /* ---- Union super-weapons: never offered as ordinary new weapons ------
      *
      * TUNED AGAINST THE PAIR EACH ONE EATS, at roughly 82% of it. Below the
@@ -240,6 +281,24 @@
       duration: 4.0, radius: 22, procChain: 0.35, color: [0.45, 0.85, 1.00],
       description: 'Blessed blade of the Tempest: a cyclone of steel that answers every cut with lightning.',
     },
+    union_tempest_kata: {
+      name: 'Tempest Kata', school: 'physical', behavior: 'palm', isUnion: true, art: 'palm',
+      cooldown: 1.0, damage: 9, projectiles: 3, reach: 135, arc: 6.2832, knockback: 10,
+      color: [0.78, 0.92, 1.0],
+      description: 'Palm and ring become one form: strikes in every direction at once, and the wind they leave behind cuts too.',
+    },
+    union_wild_hunt: {
+      name: 'The Wild Hunt', school: 'nature', behavior: 'herd', isUnion: true, art: 'herd',
+      cooldown: 1.9, damage: 22, speed: 360, projectiles: 5, pierce: 99, range: 640,
+      life: 2.1, radius: 19, knock: 26, endBurst: 76, color: [0.55, 1.0, 0.25],
+      description: 'The herd runs in green fire, and every beast that reaches the end of its run goes up in it.',
+    },
+    union_rotwood: {
+      name: 'Rotwood', school: 'nature', behavior: 'zone', isUnion: true, art: 'bloom',
+      cooldown: 3.1, damage: 11, radius: 130, duration: 5.0, tickRate: 0.45,
+      atTarget: true, slowFactor: 0.45, color: [0.60, 0.80, 0.28],
+      description: 'A grove of blighted brambles grows up under the crowd and rots everything it holds.',
+    },
   };
 
   // Shared level-up pool. Every class's starting weapon is findable by anyone.
@@ -247,7 +306,8 @@
     'seeking_motes', 'cinderfall', 'rimeshard', 'arcweb', 'dawnpulse',
     'hallowed_ring', 'umbral_bolt', 'knifestorm', 'axe_gyre', 'volley',
     'moonbrand', 'judgement_disc', 'reaving_arc', 'verdant_lance',
-    'grave_tether', 'blightfield',
+    'grave_tether', 'blightfield', 'iron_palms', 'spirit_herd', 'thornbloom',
+    'gale_chakram',
   ];
 
   // Both sources must be fully evolved to merge; the union frees a slot.
@@ -257,6 +317,9 @@
     { result: 'union_steel', from: ['knifestorm', 'volley'] },
     { result: 'union_sanctuary', from: ['dawnpulse', 'hallowed_ring'] },
     { result: 'union_stormcall', from: ['axe_gyre', 'arcweb'] },
+    { result: 'union_tempest_kata', from: ['iron_palms', 'gale_chakram'] },
+    { result: 'union_wild_hunt', from: ['spirit_herd', 'verdant_lance'] },
+    { result: 'union_rotwood', from: ['thornbloom', 'blightfield'] },
   ];
 
 })(window.WS);

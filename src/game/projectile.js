@@ -77,6 +77,16 @@
     b.spin = WS.random() * WS.TAU;
     b.spinRate = spec.spinRate === undefined ? 0 : spec.spinRate;
     b.trail = spec.trail !== false;
+    /* The newer riders. A shove on every hit (the herd's horns); a range at
+       which the bolt turns and flies home, striking everything again on the
+       way back (the chakram); and what a bolt leaves where its life runs out
+       (the herd's hooves, and the bramble a discovery plants there). */
+    b.knock = spec.knock || 0;
+    b.boomerang = spec.boomerang || 0;
+    b.ox = x; b.oy = y;
+    b.returning = false;
+    b.endBurst = spec.endBurst || 0;
+    b.endZone = !!spec.endZone;
     b.hitBy.clear();
     return b;
   };
@@ -90,6 +100,7 @@
     z.colour = colour; z.source = source; z.heal = heal || 0;
     z.phase = WS.random() * WS.TAU;
     z.rank = 1; z.evolved = false; z.blend = null;   // set by the weapon
+    z.slowFactor = 0;
     return z;
   };
 
@@ -174,12 +185,28 @@
       WS.FX.flash(b.x, b.y, b.splash, b.colour, 0.24);
     }
     if (b.slowFactor) WS.Enemy.applySlow(e, b.slowFactor, b.slowDuration || 1.5);
+    if (b.knock && !e._dead && !e.boss && !e.finale) {
+      const [kx, ky] = WS.normalize(b.vx, b.vy);
+      e.x += kx * b.knock; e.y += ky * b.knock;
+    }
     if (b.heal) WS.Player.heal(player, b.heal, 'holy');
     if (player.lifesteal > 0) WS.Player.lifesteal(player, dealt * player.lifesteal);
     if (b.procChain > 0 && WS.random() < b.procChain) {
       WS.Weapon.chainFrom(e.x, e.y, b.damage * 0.6, 3, 220, b.source);
     }
     WS.FX.spray(b.x, b.y, -b.vx, -b.vy, 4, WS.hex(b.colour), 90, 0.3);
+  }
+
+  /** What a bolt leaves behind where its flight ends. */
+  function expire(b) {
+    if (b.endBurst) {
+      WS.Enemy.damageArea(b.x, b.y, b.endBurst, b.damage * 0.9, null, 18, b.source);
+      WS.FX.flash(b.x, b.y, b.endBurst, b.colour, 0.26, 6, 'physical');
+    }
+    if (b.endZone) {
+      const z = P.spawnZone(b.x, b.y, 60, b.damage * 0.5, 2.5, 0.5, [0.46, 0.72, 0.30], b.source);
+      if (z) { z.rank = b.rank; z.evolved = b.evolved; z.slowFactor = 0.7; }
+    }
   }
 
   /* ------------------------------------------------------------- update -- */
@@ -192,9 +219,25 @@
     while (i < this.bolts.count) {
       const b = this.bolts.active[i];
       b.life -= dt;
-      if (b.life <= 0) { this.bolts.releaseAt(i); continue; }
+      if (b.life <= 0) { expire(b); this.bolts.releaseAt(i); continue; }
 
-      if (b.homing) {
+      if (b.boomerang) {
+        /* Out to its range, then home. Turning clears the ledger so the way
+           back is a second pass through the crowd; home, it is caught. */
+        if (!b.returning) {
+          if (WS.dist2(b.x, b.y, b.ox, b.oy) >= b.boomerang * b.boomerang) {
+            b.returning = true;
+            b.hitBy.clear();
+          }
+        } else {
+          const [hx, hy] = WS.normalize(player.x - b.x, player.y - b.y);
+          b.vx = hx * b.speed * 1.1; b.vy = hy * b.speed * 1.1;
+          if (WS.dist2(b.x, b.y, player.x, player.y) < 24 * 24) {
+            this.bolts.releaseAt(i); continue;
+          }
+          b.life = WS.max(b.life, 0.2);
+        }
+      } else if (b.homing) {
         /* Re-acquire when the current mark dies or has already been hit, so a
            seeking bolt keeps working through a crowd. Excluding what it has
            already pierced matters: hitBy stops it damaging the same enemy
@@ -323,6 +366,11 @@
         z.tick = z.tickRate;
         z.hitBy.clear();
         WS.Enemy.damageArea(z.x, z.y, z.radius, z.damage, z.hitBy, null, z.source);
+        if (z.slowFactor) {
+          for (const [e, id] of z.hitBy) {
+            if (!e._dead && e.spawnId === id) WS.Enemy.applySlow(e, z.slowFactor, z.tickRate + 0.2);
+          }
+        }
         if (z.heal && WS.dist2(z.x, z.y, player.x, player.y) < z.radius * z.radius) {
           WS.Player.heal(player, z.heal, 'holy');
         }

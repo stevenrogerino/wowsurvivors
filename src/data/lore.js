@@ -350,6 +350,24 @@
         says: 'Everything ends. I only want to be there when it does.',
         rumor: 'Give yourself to the ruin, again and again in one night. When it has taken enough of you, two glaives will be waiting.',
       },
+      druid: {
+        record: [
+          'Milksupply kept the herds of the Long Pasture for longer than anyone kept count, and knew every calf by name, and by the name of its mother, and of hers.',
+          'When the dark came down over the pasture she took the old shapes to stand in front of it: the bear when it came close, the owlbear when it came from far off. The herd got out. She stayed long enough to be sure.',
+          'Three of the calves were never found. She came to the Watch because the Watch is where lost things end up, and she has not stopped looking.',
+        ],
+        says: 'Everything out there was somebody\'s calf once. I try to remember that. It does not always help.',
+        rumor: 'Take the old shapes, again and again in one night, and three lost calves may stray onto the field. Bring them home before the dark does, and someone large will come looking for them.',
+      },
+      monk: {
+        record: [
+          'Abbot Eisen kept the Quiet Ascent, a monastery so high that the snow there had never been walked on. He shaved his head the day he took the vow and has not had cause to regret it.',
+          'He teaches one thing, and it takes the whole of a life to learn: that you do not have to be where the blow lands. He has not been struck since the spring before last, and he counts.',
+          'He came down the mountain to see whether anyone below had learned it on their own. He came to the Watch because it looked like the likeliest place to find out.',
+        ],
+        says: 'Stand still inside the storm. Then do not be there.',
+        rumor: 'Step through blow after blow in one night and the Still Hand will start watching. Then let nothing land on you, for as long as it asks, and the abbot will come to meet whoever taught you.',
+      },
     },
   };
 

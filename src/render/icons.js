@@ -351,6 +351,137 @@
       g.fill();
     },
 
+    /* ---- the Old Shapes and the Stillwater Step, and their kit ---------- */
+    paw(g, c) {
+      // a bear's print: the pad, four toes, a claw off each
+      g.fillStyle = c;
+      g.beginPath(); g.ellipse(50, 62, 20, 16, 0, 0, WS.TAU); g.fill();
+      for (const [x, y, r] of [[27, 38, 8], [41, 28, 8.5], [59, 28, 8.5], [73, 38, 8]]) {
+        g.beginPath(); g.ellipse(x, y, r * 0.9, r, 0, 0, WS.TAU); g.fill();
+        spike(g, x + (x - 50) * 0.08, y - r - 3, 6, 3, (x - 50) * 0.012, dim(c));
+      }
+      g.fillStyle = '#00000044';
+      g.beginPath(); g.ellipse(50, 66, 11, 7, 0, 0, WS.TAU); g.fill();
+    },
+    step(g, c) {
+      // a foot come down, and the ripples it leaves on still water
+      for (const [r, a] of [[34, 0.25], [25, 0.45], [16, 0.8]]) {
+        g.globalAlpha = a;
+        g.strokeStyle = c; g.lineWidth = r > 30 ? 2.5 : HAIR;
+        g.beginPath(); g.ellipse(50, 66, r, r * 0.34, 0, 0, WS.TAU); g.stroke();
+      }
+      g.globalAlpha = 1;
+      g.fillStyle = c;
+      g.beginPath();
+      g.moveTo(40, 64); g.quadraticCurveTo(34, 40, 42, 22); g.quadraticCurveTo(52, 14, 58, 26);
+      g.quadraticCurveTo(62, 44, 60, 64); g.closePath(); g.fill();
+      for (const [x, y] of [[43, 16], [50, 13], [57, 15], [62, 19]]) disc(g, x, y, 3.2, c);
+    },
+    palm(g, c) {
+      // an open hand thrust forward, with the air still moving off it
+      g.fillStyle = c;
+      g.beginPath(); g.roundRect(34, 40, 30, 36, 10); g.fill();
+      for (const [x, h] of [[37, 26], [45, 30], [53, 30], [61, 26]]) {
+        g.beginPath(); g.roundRect(x - 3.5, 42 - h, 7, h + 6, 3.5); g.fill();
+      }
+      g.beginPath(); g.ellipse(68, 58, 6, 12, -0.6, 0, WS.TAU); g.fill();
+      line(g, dim(c), HAIR);
+      for (const y of [30, 48, 66]) { g.beginPath(); g.moveTo(14, y); g.lineTo(26, y + 2); g.stroke(); }
+    },
+    herd(g, c) {
+      // a bull's head, broad and low, horns swept wide
+      g.fillStyle = c;
+      g.beginPath();
+      g.moveTo(34, 34); g.quadraticCurveTo(50, 24, 66, 34);
+      g.quadraticCurveTo(70, 56, 60, 76); g.quadraticCurveTo(50, 82, 40, 76);
+      g.quadraticCurveTo(30, 56, 34, 34); g.fill();
+      for (const k of [-1, 1]) {
+        g.beginPath();
+        g.moveTo(50 + k * 12, 32);
+        g.quadraticCurveTo(50 + k * 34, 30, 50 + k * 36, 14);
+        g.quadraticCurveTo(50 + k * 30, 26, 50 + k * 16, 38);
+        g.closePath(); g.fill();
+      }
+      g.fillStyle = '#00000055';
+      g.beginPath(); g.ellipse(50, 70, 11, 7, 0, 0, WS.TAU); g.fill();
+      disc(g, 45, 70, 2.4, '#000000aa'); disc(g, 55, 70, 2.4, '#000000aa');
+      disc(g, 42, 48, 3, lit); disc(g, 58, 48, 3, lit);
+    },
+    bloom(g, c) {
+      // a thorned bramble opening into a flower
+      line(g, dim(c), HAIR + 1);
+      g.beginPath(); g.moveTo(20, 80); g.quadraticCurveTo(40, 64, 50, 50); g.stroke();
+      g.beginPath(); g.moveTo(80, 80); g.quadraticCurveTo(62, 66, 50, 50); g.stroke();
+      for (const [x, y, r] of [[30, 71, -0.9], [70, 71, 0.9], [40, 61, -0.6], [60, 61, 0.6]]) spike(g, x, y, 7, 3, r, dim(c));
+      g.fillStyle = c;
+      for (let i = 0; i < 5; i++) {
+        const a = -WS.PI / 2 + (i / 5) * WS.TAU;
+        g.beginPath(); g.ellipse(50 + WS.cos(a) * 12, 38 + WS.sin(a) * 12, 9, 6, a, 0, WS.TAU); g.fill();
+      }
+      disc(g, 50, 38, 6, lit);
+    },
+    chakram(g, c) {
+      // a flat ring with a cutting edge and a wind round it
+      circle(g, 50, 50, 26, c, STROKE + 2);
+      circle(g, 50, 50, 14, dim(c), HAIR);
+      for (let i = 0; i < 6; i++) spike(g, 50 + WS.cos(i * 1.047) * 33, 50 + WS.sin(i * 1.047) * 33, 5, 3, i * 1.047 + WS.PI / 2, c);
+      arcAt(g, 50, 50, 36, 3.4, 4.6, dim(c), 2.5);
+      arcAt(g, 50, 50, 36, 0.3, 1.5, dim(c), 2.5);
+    },
+    bleed(g, c) {
+      // a serrated edge, and what it leaves
+      g.fillStyle = dim(c);
+      const pts = [[16, 34]];
+      for (let i = 0; i < 7; i++) pts.push([20 + i * 9, i % 2 ? 40 : 30]);
+      pts.push([84, 34], [80, 46], [20, 46]);
+      shape(g, pts, c);
+      g.fillStyle = '#d23a3a';
+      for (const [x, y, h] of [[32, 52, 18], [50, 52, 26], [68, 52, 14]]) {
+        g.beginPath(); g.moveTo(x - 4, y); g.quadraticCurveTo(x, y + h * 1.4, x + 4, y); g.fill();
+        disc(g, x, y + h * 0.9, 4, '#d23a3a');
+      }
+    },
+    perennial(g, c) {
+      // a sprout coming up through a ring of seasons
+      arcAt(g, 50, 52, 32, 0.4, WS.PI * 2 - 0.4, dim(c), HAIR);
+      spike(g, 80, 44, 7, 4, 0.2, dim(c));
+      line(g, c, STROKE - 2);
+      g.beginPath(); g.moveTo(50, 76); g.lineTo(50, 44); g.stroke();
+      g.fillStyle = c;
+      g.beginPath(); g.moveTo(50, 50); g.quadraticCurveTo(30, 44, 28, 26); g.quadraticCurveTo(46, 30, 50, 50); g.fill();
+      g.beginPath(); g.moveTo(50, 44); g.quadraticCurveTo(70, 36, 70, 20); g.quadraticCurveTo(54, 24, 50, 44); g.fill();
+    },
+    cowbell(g, c) {
+      line(g, dim(c), HAIR);
+      g.beginPath(); g.moveTo(34, 26); g.quadraticCurveTo(50, 8, 66, 26); g.stroke();
+      shape(g, [[36, 26], [64, 26], [72, 72], [28, 72]], c);
+      g.fillStyle = '#00000044';
+      g.fillRect(28, 64, 44, 8);
+      disc(g, 50, 78, 7, dim(c));
+      line(g, lit, 2.5);
+      g.beginPath(); g.moveTo(40, 32); g.lineTo(36, 60); g.stroke();
+    },
+    beads(g, c) {
+      // a string of prayer beads, the big one hanging
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * WS.TAU;
+        disc(g, 50 + WS.cos(a) * 26, 44 + WS.sin(a) * 22, i % 3 ? 4.5 : 5.5, i % 3 ? dim(c) : c);
+      }
+      line(g, c, HAIR);
+      g.beginPath(); g.moveTo(50, 66); g.lineTo(50, 74); g.stroke();
+      disc(g, 50, 80, 7.5, c);
+      disc(g, 48, 78, 2.5, lit);
+    },
+    peak(g, c) {
+      // a hill under a storm: the moor, and what walks it
+      shape(g, [[12, 80], [38, 44], [50, 54], [66, 32], [88, 80]], dim(c));
+      shape(g, [[58, 42], [66, 32], [74, 44], [68, 42], [64, 46]], lit);
+      g.fillStyle = c;
+      g.beginPath(); g.ellipse(34, 24, 18, 8, 0, 0, WS.TAU); g.fill();
+      g.beginPath(); g.ellipse(48, 20, 14, 9, 0, 0, WS.TAU); g.fill();
+      shape(g, [[44, 28], [38, 42], [46, 40], [40, 54], [54, 36], [46, 38], [52, 28]], lit);
+    },
+
     expand(g, c) {
       circle(g, 50, 50, 14, c, STROKE - 1);
       circle(g, 50, 50, 26, dim(c), HAIR + 1);

@@ -41,7 +41,7 @@
     },
     radiant_gyre: {
       name: 'Radiant Gyre', weapons: ['axe_gyre', 'dawnpulse'],
-      description: 'Every axe_gyre begins with a pulse of holy Light.',
+      description: 'Every spin of the Axe Gyre begins with a pulse of holy Light.',
       hint: 'Steel spun in faith becomes something more.',
       apply: (w1) => { w1.mods.novaOnCast = true; },
     },
@@ -81,11 +81,91 @@
         w2.mods.healBonus = (w2.mods.healBonus || 0) + c.healBonus;
       },
     },
+
+    /* ------------------------------------------ the monk's and druid's -- */
+    thunderpalm: {
+      name: 'Thunderpalm', weapons: ['iron_palms', 'arcweb'],
+      description: 'Iron Palms carry the storm: {procChain%}% of strikes loose arcweb from what they hit.',
+      hint: 'An open hand can hold lightning, if it is quick enough.',
+      procChain: 0.18,
+      apply: (w1, w2, c) => { w1.mods.procChain = WS.max(w1.mods.procChain || 0, c.procChain); },
+    },
+    whirling_discipline: {
+      name: 'Whirling Discipline', weapons: ['iron_palms', 'axe_gyre'],
+      description: 'One more palm in every flurry, each palm draws the crowd IN toward the blades instead of shoving it away, and the gyre spins {dmgMult*%}% harder.',
+      hint: 'The monk and the axe keep the same tempo.',
+      extraProjectiles: 1, dmgMult: 1.10,
+      apply: (w1, w2, c) => {
+        w1.mods.extraProjectiles = (w1.mods.extraProjectiles || 0) + c.extraProjectiles;
+        w1.mods.pull = true;
+        w2.mods.damageMult = (w2.mods.damageMult || 1) * c.dmgMult;
+      },
+    },
+    hallowed_hands: {
+      name: 'Hallowed Hands', weapons: ['iron_palms', 'hallowed_ring'],
+      description: 'Every flurry mends you for {healBonus}, and the hallowed ground spreads {areaMult*%}% wider.',
+      hint: 'Hands that strike can also bless.',
+      healBonus: 1, areaMult: 1.10,
+      apply: (w1, w2, c) => {
+        w1.mods.healBonus = (w1.mods.healBonus || 0) + c.healBonus;
+        w2.mods.areaMult = (w2.mods.areaMult || 1) * c.areaMult;
+      },
+    },
+    moonlit_herd: {
+      name: 'Moonlit Herd', weapons: ['spirit_herd', 'moonbrand'],
+      description: 'One more beast in the herd, and each ends its run in a burst of moonlight.',
+      hint: 'Some herds only run under a full moon.',
+      extraProjectiles: 1, endBurst: 60,
+      apply: (w1, w2, c) => {
+        w1.mods.extraProjectiles = (w1.mods.extraProjectiles || 0) + c.extraProjectiles;
+        w1.mods.endBurst = WS.max(w1.mods.endBurst || 0, c.endBurst);
+      },
+    },
+    bramble_run: {
+      name: 'Bramble Run', weapons: ['spirit_herd', 'thornbloom'],
+      description: 'Where the herd stops running, brambles grow: a small slowing thicket at the end of every run.',
+      hint: 'Seeds travel far on a running hide.',
+      apply: (w1) => { w1.mods.endZone = true; },
+    },
+    hailwheel: {
+      name: 'Hailwheel', weapons: ['gale_chakram', 'rimeshard'],
+      description: 'The chakram rimes whatever it cuts, and both hit {dmgMult*%}% harder.',
+      hint: 'A spinning edge through a hailstorm comes back cold.',
+      slowFactor: 0.60, slowDuration: 1.2, dmgMult: 1.08,
+      apply: (w1, w2, c) => {
+        w1.mods.slowFactor = c.slowFactor; w1.mods.slowDuration = c.slowDuration;
+        w1.mods.damageMult = (w1.mods.damageMult || 1) * c.dmgMult;
+        w2.mods.damageMult = (w2.mods.damageMult || 1) * c.dmgMult;
+      },
+    },
+    razor_wind: {
+      name: 'Razor Wind', weapons: ['gale_chakram', 'knifestorm'],
+      description: 'One more ring in every throw, cutting {dmgMult*%}% deeper.',
+      hint: 'Every blade that flies wants a blade beside it.',
+      extraProjectiles: 1, dmgMult: 1.10,
+      apply: (w1, w2, c) => {
+        w1.mods.extraProjectiles = (w1.mods.extraProjectiles || 0) + c.extraProjectiles;
+        w1.mods.damageMult = (w1.mods.damageMult || 1) * c.dmgMult;
+      },
+    },
+    rotbloom: {
+      name: 'Rotbloom', weapons: ['thornbloom', 'blightfield'],
+      description: 'Rot feeds the thicket: both fields hit {dmgMult*%}% harder and the brambles hold faster.',
+      hint: 'Nothing grows as well as it does on something dead.',
+      dmgMult: 1.12, slowFactor: 0.40,
+      apply: (w1, w2, c) => {
+        w1.mods.damageMult = (w1.mods.damageMult || 1) * c.dmgMult;
+        w2.mods.damageMult = (w2.mods.damageMult || 1) * c.dmgMult;
+        w1.mods.slowFactor = c.slowFactor;
+      },
+    },
   };
 
   WS.ComboOrder = [
     'frostfire', 'shadowflame', 'deadly_brew', 'tempest_pact',
     'radiant_gyre', 'truestrike', 'celestial', 'verdict', 'curdle',
+    'thunderpalm', 'whirling_discipline', 'hallowed_hands', 'moonlit_herd',
+    'bramble_run', 'hailwheel', 'razor_wind', 'rotbloom',
   ];
 
 })(window.WS);

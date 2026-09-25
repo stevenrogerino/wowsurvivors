@@ -618,6 +618,7 @@
     else WS.WaveManager.update(dt, run);
     if (!this.running) return;
     WS.Encounters.update(dt, run);
+    WS.Trials.update(dt, run);
 
     WS.Enemy.update(dt);
     if (!this.running) return;

@@ -16,6 +16,8 @@
     coffin: { art: 'coffin', tint: [0.85, 0.85, 0.95], size: 30, noMagnet: true },
     graveblade: { art: 'graveblade', tint: [0.85, 0.20, 0.25], size: 30, noMagnet: true },
     twinglaive: { art: 'twinglaive', tint: [0.55, 1.0, 0.25], size: 30, noMagnet: true },
+    // One of the Lost Calves - see src/game/trials.js. It wanders.
+    calf: { art: 'calf', tint: [0.95, 0.88, 0.74], size: 40, noMagnet: true },
     merchant: { art: 'beans', tint: [0.90, 0.52, 0.22], size: 56, noMagnet: true },
     // A watcher, met on the field - see src/game/encounters.js. Tinted per person.
     watcher: { art: 'rune', tint: [1.0, 0.85, 0.5], size: 46, noMagnet: true },
@@ -37,7 +39,7 @@
     chest: 2, cache: 2,
     potion: 1,
   };
-  const KEEP = { coffin: 1, graveblade: 1, twinglaive: 1, merchant: 1, watcher: 1 };
+  const KEEP = { coffin: 1, graveblade: 1, twinglaive: 1, merchant: 1, watcher: 1, calf: 1 };
   const BAND = 150;          // how much nearer a coin has to be to outrank
 
   const Pickup = { pool: null, TYPES, EXPENDABLE, KEEP };
@@ -216,6 +218,9 @@
       WS.Achievements.check();
       WS.Audio.play('evolve');
 
+    } else if (kind === 'calf') {
+      return WS.Trials.gatherCalf(p, pickup);
+
     } else if (kind === 'merchant') {
       // Beans sells run-only eggs; "Buy All" spends every coin.
       const cost = WS.Config.eggVendorCost;
@@ -248,6 +253,7 @@
       }
       // A watcher is not collected: you stand with them (Encounters.tend).
       if (pickup.kind === 'watcher') { i++; continue; }
+      if (pickup.kind === 'calf') WS.Trials.amble(pickup, dt);
       const [dx, dy, distance] = WS.normalize(player.x - pickup.x, player.y - pickup.y);
 
       if (!pickup.type.noMagnet && distance < player.pickupRadius) {

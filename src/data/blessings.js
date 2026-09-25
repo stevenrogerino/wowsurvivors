@@ -107,6 +107,21 @@
         if (p.characterId === 'ruinseeker') p.ruinborn += 1;
       },
     },
+    /* The two newest identity powers - src/game/primal.js runs them, and the
+       numbers behind both are in Config under WILDSHAPE and STILLWATER. */
+    wildshape: {
+      name: 'The Old Shapes', art: 'paw', quality: 'legendary',
+      description: 'The hunt wakes the beast in you. Every kill feeds the Wild, close kills twice over; fill it and you take the shape your arsenal leans to: a Bear if you fight with steel, an Owlbear if you fight with spells.',
+      apply: (p) => { p.wildAttuned += 1; },
+    },
+    stillwater: {
+      name: 'Stillwater Step', art: 'step', quality: 'legendary',
+      description: 'You are not where the blow lands. {Config.flowSteps} steps: a hit you would take becomes a step through it, a palm on everything you pass, and a stack of Poise (+{Config.poiseDamage%}% damage each). Steps come back on their own.',
+      apply: (p) => {
+        p.flowAttuned += 1;
+        p.flowSteps = WS.Primal.maxSteps(p);
+      },
+    },
     unyielding: {
       name: 'Unyielding Faith', art: 'aegis', quality: 'legendary',
       description: '+{armor} armor, +{hpMult*%}% max health, +{healing%}% healing received, and enemies that strike you are burned. But -{speedMult~%}% speed.',
@@ -125,7 +140,7 @@
   WS.BlessingOrder = [
     'kings', 'wisdom', 'moonlit', 'fortune', 'wild', 'air', 'fel', 'ancestors',
     'glass_cannon', 'bloodthirst', 'momentum', 'arcane_overflow', 'blood_rite',
-    'ruinous_pact', 'unyielding',
+    'ruinous_pact', 'unyielding', 'wildshape', 'stillwater',
   ];
 
 })(window.WS);

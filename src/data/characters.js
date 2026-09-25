@@ -126,11 +126,40 @@
       },
       unlockHint: 'Where the ruin has taken enough.',
     },
+    /* The two who came in with the old shapes and the still step. Like the
+       graveblade and the ruinseeker, the power is a blessing anyone can take
+       (The Old Shapes, Stillwater Step - see primal.js); what is theirs is
+       being a little further along it. */
+    druid: {
+      name: 'Milksupply', title: 'Keeper of the Long Pasture', className: 'Druid',
+      art: 'druid', color: [0.86, 0.62, 0.30], weapon: 'spirit_herd',
+      description: 'Remembers every calf by name. Takes the old shapes the way other people take a breath, and is much larger afterward.',
+      perk: 'Born to the herd: take up The Old Shapes and the Wild fills {perkWild%}% faster '
+        + 'for you, and every shape holds {perkForm%}% longer than it does for anyone else.',
+      maxHealth: 150, moveSpeed: 205, armor: 2, pickupRadius: 60, healthRegen: 0.3,
+      perkWild: 0.30, perkForm: 0.25,
+      signatureBlessing: 'wildshape',
+      // Inert until The Old Shapes sets wildAttuned, like the other knacks.
+      apply: (p, c) => { p.wildBonus += c.perkWild; p.formBonus += c.perkForm; },
+      unlockHint: 'Three calves, strayed where the shapes are taken.',
+    },
+    monk: {
+      name: 'Abbot Eisen', title: 'Of the Quiet Ascent', className: 'Monk',
+      art: 'monk', color: [0.42, 0.86, 0.66], weapon: 'iron_palms',
+      description: 'Bald by vow and barefoot by preference. Has not been struck since the spring before last and would like to keep it that way.',
+      perk: 'The step is his by long practice: take up Stillwater Step and he has '
+        + '{perkSteps} more step than anyone else, and his steps come back {perkRecharge~%}% sooner.',
+      maxHealth: 120, moveSpeed: 245, armor: 1, pickupRadius: 58, healthRegen: 0,
+      perkSteps: 1, perkRecharge: 0.80,
+      signatureBlessing: 'stillwater',
+      apply: (p, c) => { p.flowBonusSteps += c.perkSteps; p.flowRechargeMult *= c.perkRecharge; },
+      unlockHint: 'A still hand, among many blows.',
+    },
   };
 
   WS.CharacterOrder = [
     'mage', 'priest', 'rogue', 'hunter', 'warrior', 'warlock', 'shaman',
-    'paladin', 'graveblade', 'ruinseeker',
+    'paladin', 'graveblade', 'ruinseeker', 'druid', 'monk',
   ];
 
 })(window.WS);

@@ -2843,3 +2843,19 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 @media (max-width: 720px) { #hud-timers { width: 190px; } .bm-name { font-size: 12px; } }
 .setting.locked { opacity: .6; }
 .switch.disabled { opacity: .4; pointer-events: none; }
+
+/* The Old Shapes and the Stillwater Step on the HUD. The Wild fills in
+   moss and bark; a shape burns in its own colour, hide-brown for the bear
+   and starlit violet for the owlbear; steps are pips of still water that
+   refill one at a time. */
+.meter.wild .meter-fill { background: linear-gradient(90deg, #4f6b2c, #a8c46a); }
+.meter.wild.waiting .meter-fill { background: linear-gradient(90deg, #26301c, #465a34); opacity: .72; }
+.meter.form.bear .meter-fill { background: linear-gradient(90deg, #7a4b24, #e0aa6a); }
+.meter.form.owlbear .meter-fill { background: linear-gradient(90deg, #5a46b4, #d6ccff); }
+.meter-track.pips { display: flex; gap: 3px; background: none; border-image: none; border: 0; height: 7px; }
+.meter-track.pips .pip {
+  flex: 1; position: relative; overflow: hidden; background: rgba(8,10,16,.72);
+  border: 1px solid transparent; border-image: var(--frame-pip) 24 / 4px / 1px stretch;
+}
+.meter.steps .meter-fill { background: linear-gradient(90deg, #6aa6c8, #d8f2ff); opacity: .55; }
+.meter.steps .pip.ready .meter-fill { opacity: 1; box-shadow: 0 0 6px rgba(190,236,255,.55); }

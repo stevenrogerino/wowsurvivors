@@ -758,7 +758,7 @@
     const eyeY = HEAD_CY + 2;
 
     // Neck: tapered and in shadow. A head sitting flat on a chest is a snowman.
-    taper(g, cx, NECK_Y - 5, cx, SHOULDER_Y, 3.4, 4.6, SKIN, true);
+    taper(g, cx, NECK_Y - 5, cx, SHOULDER_Y, 3.4, 4.6, cfg.skin || SKIN, true);
 
     if (cfg.undead) {
       /* Not a helm - a face. The graveblade wore steel like the warrior and
@@ -832,6 +832,8 @@
         g.moveTo(cx + i * 2.4, HEAD_CY + 8.4); g.lineTo(cx + i * 2.4, HEAD_CY + 10.4);
         g.stroke();
       }
+    } else if (cfg.head === 'bovine') {
+      bovineHead(g, cfg, C, cx, eyeY);
     } else if (hooded) {
       /* A cowl, not a cone.
        *
@@ -934,7 +936,24 @@
       lit(g, helmed ? STEEL : SKIN, cx - HEAD_RX, HEAD_CY - HEAD_RY, cx + HEAD_RX * 0.7, HEAD_CY + HEAD_RY);
       skull(g, cx); g.fill();
 
-      if (!helmed) {
+      if (cfg.bald) {
+        /* Bald by vow. A shaved crown is a shape as much as hair is - it is
+           the light on it that says so: one broad sheen across the dome and
+           a rim of shadow where it turns away. And the one mark on it, three
+           dots of his colour set over the brow in a row. */
+        g.save();
+        skull(g, cx); g.clip();
+        const sheen = g.createRadialGradient(cx - 3.5, HEAD_CY - 10, 0.5, cx - 3.5, HEAD_CY - 10, 9);
+        sheen.addColorStop(0, 'rgba(255,240,220,.55)');
+        sheen.addColorStop(1, 'rgba(255,240,220,0)');
+        g.fillStyle = sheen;
+        g.fillRect(cx - HEAD_RX, HEAD_CY - HEAD_RY * 1.5, HEAD_RX * 2, HEAD_RY);
+        g.restore();
+        g.fillStyle = C.accent;
+        for (let i = -1; i <= 1; i++) {
+          g.beginPath(); g.arc(cx + i * 2.6, HEAD_CY - 7.5 + WS.abs(i) * 0.6, 0.95, 0, WS.TAU); g.fill();
+        }
+      } else if (!helmed) {
         /* Hair with a parting and a fringe that comes down past the temples.
          * A symmetrical cap over the crown reads as a swimming hat; a side
          * parting is one asymmetry and it turns the same shape into hair. */
@@ -1285,6 +1304,113 @@
   const HORN = ramp([0.78, 0.72, 0.60], 'leather');
   const HORN_DARK = ramp([0.52, 0.46, 0.37], 'leather');
 
+  /** A bovine head: Milksupply's. Broader than a person's and set lower, a
+   *  pale hide with one dark patch across an eye (the patch is what reads as
+   *  cattle at 34px, before the horns do), a wide soft muzzle with a brass
+   *  ring through it, ears straight out to the sides, and horns that go out
+   *  first and only then up - a bull's, not a ram's or a devil's. */
+  function bovineHead(g, cfg, C, cx, eyeY) {
+    const hide = cfg.skin || SKIN;
+    const patch = ramp([0.16, 0.14, 0.14], 'skin');
+    const hy = HEAD_CY + 1;
+    const rx = HEAD_RX + 1.5, ry = HEAD_RY - 0.5;
+    // ears first, under everything: leaves pointing out and a touch down
+    for (const dir of [-1, 1]) {
+      const ex = cx + dir * (rx - 1), ey = hy - 4;
+      lit(g, dir < 0 ? patch : hide, ex, ey - 3, ex + dir * 10, ey + 3);
+      g.beginPath();
+      g.moveTo(ex, ey - 2.6);
+      g.quadraticCurveTo(ex + dir * 7, ey - 4.2, ex + dir * 10.5, ey + 0.6);
+      g.quadraticCurveTo(ex + dir * 6, ey + 3.4, ex, ey + 2.4);
+      g.closePath(); g.fill();
+      g.fillStyle = 'rgba(214,140,140,.55)';
+      g.beginPath();
+      g.moveTo(ex + dir * 1.5, ey - 1.2);
+      g.quadraticCurveTo(ex + dir * 6.4, ey - 2, ex + dir * 8.6, ey + 0.4);
+      g.quadraticCurveTo(ex + dir * 5.5, ey + 1.8, ex + dir * 1.5, ey + 1.2);
+      g.closePath(); g.fill();
+    }
+    // horns: out along the brow, then up
+    for (const dir of [-1, 1]) {
+      const rx0 = cx + dir * 7.5, ry0 = hy - ry + 4.5;
+      const P = (t) => {
+        const u = 1 - t;
+        const c1x = cx + dir * 20.5, c1y = ry0 + 1.5, tx = cx + dir * 19, ty = CEIL + 4;
+        return [u * u * rx0 + 2 * u * t * c1x + t * t * tx, u * u * ry0 + 2 * u * t * c1y + t * t * ty];
+      };
+      const W = (t) => 2.9 * Math.pow(1 - t, 0.75);
+      lit(g, HORN, rx0, ry0 + 3, cx + dir * 19, CEIL + 4);
+      sweptPath(g, P, W, 16);
+      g.fill();
+      finish(g, HORN, Math.min(rx0, cx + dir * 20.5) - 3, CEIL, Math.max(rx0, cx + dir * 20.5) + 3, ry0 + 3);
+      // dark tips, the last third
+      g.save();
+      sweptPath(g, P, W, 16); g.clip();
+      g.fillStyle = 'rgba(40,30,22,.8)';
+      g.fillRect(cx + dir * 14 - 8, CEIL - 2, 16, 10);
+      g.restore();
+    }
+    // the head
+    lit(g, hide, cx - rx, hy - ry, cx + rx * 0.7, hy + ry);
+    g.beginPath();
+    g.moveTo(cx - rx, hy - 3);
+    g.bezierCurveTo(cx - rx, hy - ry * 1.3, cx + rx, hy - ry * 1.3, cx + rx, hy - 3);
+    g.bezierCurveTo(cx + rx, hy + ry * 0.5, cx + rx * 0.62, hy + ry, cx, hy + ry);
+    g.bezierCurveTo(cx - rx * 0.62, hy + ry, cx - rx, hy + ry * 0.5, cx - rx, hy - 3);
+    g.closePath(); g.fill();
+    g.save(); g.clip();
+    // the patch: over the left eye and up onto the poll
+    panel(g, [[cx - rx - 1, hy - 1], [cx - rx - 1, hy - ry - 3], [cx - 2, hy - ry - 3],
+      [cx + 1.5, hy - 8], [cx - 1, hy - 3], [cx - 2.5, hy + 2.5], [cx - 7, hy + 4]], patch);
+    // a small second one on the far cheek
+    g.fillStyle = patch.core;
+    g.beginPath(); g.ellipse(cx + rx - 1.5, hy + 1, 3.2, 4.2, 0.3, 0, WS.TAU); g.fill();
+    g.restore();
+    // forelock, between the horns
+    panel(g, [[cx - 5, hy - ry + 1], [cx - 1, hy - ry - 3.5], [cx + 3, hy - ry - 1.5],
+      [cx + 5.5, hy - ry + 2], [cx + 1, hy - ry + 5.5], [cx - 3, hy - ry + 4.5]], cfg.hair || WOOD);
+    // eyes: gentle, set wide
+    for (const dir of [-1, 1]) {
+      g.fillStyle = 'rgba(14,10,8,.95)';
+      g.beginPath(); g.ellipse(cx + dir * 6, eyeY - 1.5, 1.7, 1.9, 0, 0, WS.TAU); g.fill();
+      g.fillStyle = 'rgba(255,255,255,.85)';
+      g.beginPath(); g.arc(cx + dir * 6 - 0.5, eyeY - 2.2, 0.55, 0, WS.TAU); g.fill();
+      g.strokeStyle = 'rgba(14,10,8,.6)'; g.lineWidth = 0.7;
+      g.beginPath(); g.moveTo(cx + dir * 4.2, eyeY - 3.6); g.lineTo(cx + dir * 7.8, eyeY - 3.9); g.stroke();
+    }
+    // the muzzle: broad, soft, pink, and a little in front of the face
+    const my = hy + ry - 4.2;
+    const muz = ramp([0.86, 0.60, 0.58], 'skin');
+    lit(g, muz, cx - 8, my - 4, cx + 8, my + 4.5);
+    g.beginPath(); g.ellipse(cx, my, 8.2, 4.8, 0, 0, WS.TAU); g.fill();
+    finish(g, muz, cx - 8.2, my - 4.8, cx + 8.2, my + 4.8);
+    g.fillStyle = 'rgba(60,24,24,.8)';
+    for (const dir of [-1, 1]) {
+      g.beginPath(); g.ellipse(cx + dir * 3.3, my - 0.6, 1.3, 1.8, dir * 0.5, 0, WS.TAU); g.fill();
+    }
+    // the ring
+    g.strokeStyle = GOLD.key; g.lineWidth = 1.2;
+    g.beginPath(); g.arc(cx, my + 2.6, 2.6, 0.15, WS.PI - 0.15); g.stroke();
+    g.strokeStyle = GOLD.line; g.lineWidth = 0.5;
+    g.beginPath(); g.arc(cx, my + 2.6, 3.2, 0.3, WS.PI - 0.3); g.stroke();
+  }
+
+  /** Bound hands: cloth wrapped round the knuckles in bands, and the colour
+   *  of the survivor glowing faintly through where the palm strikes. */
+  function handWraps(g, x, y, arm, C) {
+    g.save();
+    g.strokeStyle = 'rgba(236,226,204,.92)';
+    g.lineWidth = 0.9;
+    for (let i = 0; i < 3; i++) {
+      g.beginPath();
+      g.moveTo(x - arm * 0.46, y - 1.8 + i * 1.5);
+      g.lineTo(x + arm * 0.46, y - 2.4 + i * 1.5);
+      g.stroke();
+    }
+    g.restore();
+    glow(g, x, y, arm * 1.2, C.accent, 0.35);
+  }
+
   function sideHorns(g, cx, rootY) {
     const y0 = rootY === undefined ? HEAD_CY - 6 : rootY;
     for (const dir of [-1, 1]) {
@@ -1375,7 +1501,8 @@
           ramp([0.26, 0.28, 0.33], 'metal'), 1, null);
       } else {
         hand(g, hx - 0.8, hy + 0.4, b.arm * 0.40, b.arm * 0.45,
-          ramp(WS.shade([0.80, 0.62, 0.47], 0.72), 'skin'), 1, null);
+          ramp(WS.shade(cfg.skinBase || [0.80, 0.62, 0.47], 0.72), 'skin'), 1, null);
+        if (cfg.wraps) handWraps(g, hx - 0.8, hy + 0.4, b.arm * 0.92, C);
       }
     }
 
@@ -1385,10 +1512,13 @@
        * behind the hips and swings the other way. Half the cast is robed and
        * this is the only thing that moves on them. */
       const drag = w.swing * 4;
+      // How far the hem flares past the hips. A heavy frame in a full bell
+      // flares out of its own tile when it flinches, so it can ask for less.
+      const fl = cfg.robeFlare === undefined ? 8 : cfg.robeFlare;
       panel(g, [[cx - b.waist, WAIST_Y - 4 - lift], [cx + b.waist, WAIST_Y - 4 - lift],
-        [cx + b.hip + 8 + drag, FOOT_Y], [cx - b.hip - 8 + drag, FOOT_Y]], C.robeRamp);
-      const hemPts = [[cx - b.hip - 8 + drag, FOOT_Y], [cx + b.hip + 8 + drag, FOOT_Y],
-        [cx + b.hip + 6.5 + drag, FOOT_Y - 4.5], [cx - b.hip - 6.5 + drag, FOOT_Y - 4.5]];
+        [cx + b.hip + fl + drag, FOOT_Y], [cx - b.hip - fl + drag, FOOT_Y]], C.robeRamp);
+      const hemPts = [[cx - b.hip - fl + drag, FOOT_Y], [cx + b.hip + fl + drag, FOOT_Y],
+        [cx + b.hip + fl - 1.5 + drag, FOOT_Y - 4.5], [cx - b.hip - fl + 1.5 + drag, FOOT_Y - 4.5]];
       panel(g, hemPts, C.trimRamp);
       /* The hem band carried the eye along the bottom of every robed survivor
          and was one flat strip. Braid on a hem is a repeat - so it is drawn
@@ -1398,9 +1528,9 @@
       g.moveTo(hemPts[0][0], hemPts[0][1]);
       for (let i = 1; i < hemPts.length; i++) g.lineTo(hemPts[i][0], hemPts[i][1]);
       g.closePath(); g.clip();
-      const hw = (b.hip + 8) * 2;
+      const hw = (b.hip + fl) * 2;
       for (let i = 0; i <= 11; i++) {
-        const x = cx - b.hip - 8 + drag + (hw * i) / 11;
+        const x = cx - b.hip - fl + drag + (hw * i) / 11;
         g.strokeStyle = C.trimRamp.line; g.globalAlpha = 0.5; g.lineWidth = 0.9;
         g.beginPath(); g.moveTo(x, FOOT_Y - 4.5); g.lineTo(x - 0.8, FOOT_Y); g.stroke();
         g.strokeStyle = C.trimRamp.key; g.globalAlpha = 0.3;
@@ -1414,9 +1544,9 @@
       g.save();
       g.beginPath();
       g.moveTo(cx - b.waist, WAIST_Y - 4 - lift); g.lineTo(cx + b.waist, WAIST_Y - 4 - lift);
-      g.lineTo(cx + b.hip + 8 + drag, FOOT_Y); g.lineTo(cx - b.hip - 8 + drag, FOOT_Y);
+      g.lineTo(cx + b.hip + fl + drag, FOOT_Y); g.lineTo(cx - b.hip - fl + drag, FOOT_Y);
       g.closePath(); g.clip();
-      const ey = FOOT_Y - 7.6, span = (b.hip + 7.4) * 2, x0 = cx - b.hip - 7.4 + drag;
+      const ey = FOOT_Y - 7.6, span = (b.hip + fl - 0.6) * 2, x0 = cx - b.hip - fl + 0.6 + drag;
       g.strokeStyle = C.trimRamp.key; g.globalAlpha = 0.55; g.lineWidth = 0.5;
       for (const dy of [-2.2, 2.2]) { g.beginPath(); g.moveTo(x0 - 2, ey + dy); g.lineTo(x0 + span + 2, ey + dy); g.stroke(); }
       g.globalAlpha = 0.85;
@@ -1429,9 +1559,9 @@
       }
       g.restore();
       g.fillStyle = 'rgba(0,0,0,.30)';
-      g.beginPath(); g.moveTo(cx - b.hip - 8 + drag, FOOT_Y);
-      g.lineTo(cx + b.hip + 8 + drag, FOOT_Y); g.lineTo(cx + b.hip + 6 + drag, FOOT_Y - 1.5);
-      g.lineTo(cx - b.hip - 6.5 + drag, FOOT_Y - 1.5); g.closePath(); g.fill();
+      g.beginPath(); g.moveTo(cx - b.hip - fl + drag, FOOT_Y);
+      g.lineTo(cx + b.hip + fl + drag, FOOT_Y); g.lineTo(cx + b.hip + fl - 2 + drag, FOOT_Y - 1.5);
+      g.lineTo(cx - b.hip - fl + 1.5 + drag, FOOT_Y - 1.5); g.closePath(); g.fill();
       /* FOLDS, and a fold is not a line.
        *
        * These were two dark strokes down the bell, which is a drawing of a
@@ -1448,12 +1578,12 @@
       g.beginPath();
       g.moveTo(cx - b.waist, WAIST_Y - 4 - lift);
       g.lineTo(cx + b.waist, WAIST_Y - 4 - lift);
-      g.lineTo(cx + b.hip + 8 + drag, FOOT_Y);
-      g.lineTo(cx - b.hip - 8 + drag, FOOT_Y);
+      g.lineTo(cx + b.hip + fl + drag, FOOT_Y);
+      g.lineTo(cx - b.hip - fl + drag, FOOT_Y);
       g.closePath(); g.clip();
       for (const u of [-0.74, -0.36, 0.05, 0.42, 0.78]) {
         const topX = cx + u * b.waist * 0.86;
-        const botX = cx + u * (b.hip + 8) * 0.94 + drag;
+        const botX = cx + u * (b.hip + fl) * 0.94 + drag;
         const w0 = 1.5 + 0.8 * Math.abs(u), w1 = 2.9 + 1.9 * Math.abs(u);
         const grd = g.createLinearGradient(botX - w1, 0, botX + w1, 0);
         grd.addColorStop(0, 'rgba(0,0,0,.30)');
@@ -2071,8 +2201,9 @@
       g.ellipse(cx + b.sh + 1.4, WAIST_Y - 1.8, b.arm * 0.22, b.arm * 0.16, -0.4, 0, WS.TAU);
       g.fill();
     } else {
-      hand(g, cx + b.sh + 2.4, WAIST_Y - 0.5, b.arm * 0.44, b.arm * 0.5, SKIN, -1,
-        cfg.bracer ? null : C.bodyRamp);
+      hand(g, cx + b.sh + 2.4, WAIST_Y - 0.5, b.arm * 0.44, b.arm * 0.5, cfg.skin || SKIN, -1,
+        cfg.bracer || cfg.wraps ? null : C.bodyRamp);
+      if (cfg.wraps) handWraps(g, cx + b.sh + 2.4, WAIST_Y - 0.5, b.arm, C);
     }
   }
 
@@ -2192,6 +2323,69 @@
    * (50 + sh + 2, WAIST_Y - 1), and every silhouette below is shaped to break
    * the figure's outline so it registers at a glance. */
   const WEAPONS = {
+    /* Milksupply's crook: a herder's staff, the hook at the top turned right
+       over, ivy wound up the haft, and new leaves at the crook lit by the
+       green the herd runs in. The hook is the silhouette - nothing else in
+       the cast carries a curve at the top of a pole. */
+    crook(g, C, b) {
+      const gx = 50 + b.sh + 3;
+      const topY = CEIL + 11;
+      limb(g, gx - 2, FOOT_Y - 2, gx + 2, topY, 3.2, WOOD);
+      grip(g, gx - 2, FOOT_Y - 2, gx + 2, topY, 0.34, 0.58, 3.6);
+      // the hook: a thick arc turned back over toward the head
+      g.save();
+      g.lineCap = 'round';
+      g.strokeStyle = WOOD.core; g.lineWidth = 3.2;
+      g.beginPath(); g.arc(gx - 3.5, topY, 5.5, 0, -WS.PI * 0.95, true); g.stroke();
+      g.strokeStyle = WOOD.key; g.lineWidth = 1.1;
+      g.beginPath(); g.arc(gx - 3.5, topY, 6.2, -0.2, -WS.PI * 0.85, true); g.stroke();
+      g.restore();
+      // ivy up the haft
+      g.save();
+      g.strokeStyle = 'rgba(70,120,50,.9)'; g.lineWidth = 0.8;
+      g.beginPath();
+      for (let i = 0; i <= 12; i++) {
+        const t = i / 12, y = topY + 4 + t * 34, x = gx + 0.6 - t * 1.2 + Math.sin(t * 14) * 1.8;
+        if (i) g.lineTo(x, y); else g.moveTo(x, y);
+      }
+      g.stroke();
+      g.restore();
+      const leaf = (x, y, a, s) => {
+        g.save(); g.translate(x, y); g.rotate(a);
+        lit(g, ramp([0.36, 0.62, 0.28]), -s, -s, s, s);
+        g.beginPath(); g.moveTo(0, 0);
+        g.quadraticCurveTo(s * 0.9, -s * 0.8, s * 1.8, 0);
+        g.quadraticCurveTo(s * 0.9, s * 0.8, 0, 0);
+        g.fill(); g.restore();
+      };
+      leaf(gx + 1.5, topY + 12, -0.5, 2.2);
+      leaf(gx - 1.5, topY + 22, 3.4, 2.0);
+      leaf(gx + 1.2, topY + 31, -0.2, 1.9);
+      // new growth at the crook, and its light
+      leaf(gx - 8.6, topY + 1, 2.2, 2.4);
+      leaf(gx - 9.2, topY - 1.5, 3.8, 1.9);
+      glow(g, gx - 8.5, topY + 2, 8, C.accent, 0.55);
+    },
+    /* Abbot Eisen carries nothing. What he wears instead is a mala - big
+       wooden beads across the chest and down, one of them his colour - and
+       it is the one diagonal chain of dots in the cast. */
+    mala(g, C, b) {
+      const n = 11;
+      const x0 = 50 - b.sh + 3, y0 = SHOULDER_Y - 1, x1 = 50 + b.chest - 3, y1 = WAIST_Y - 3;
+      for (let i = 0; i < n; i++) {
+        const t = i / (n - 1);
+        const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t + Math.sin(t * WS.PI) * 3;
+        const r = i === 5 ? 2.2 : 1.6;
+        const bead = i === 5 ? C.accentRamp : WOOD;
+        lit(g, bead, x - r, y - r, x + r, y + r);
+        g.beginPath(); g.arc(x, y, r, 0, WS.TAU); g.fill();
+        g.fillStyle = 'rgba(255,240,220,.4)';
+        g.beginPath(); g.arc(x - r * 0.35, y - r * 0.35, r * 0.35, 0, WS.TAU); g.fill();
+      }
+      glow(g, x0 + (x1 - x0) * 0.5, y0 + (y1 - y0) * 0.5 + 3, 6, C.accent, 0.4);
+      // the tassel
+      panel(g, [[x1 - 1, y1 + 1], [x1 + 1.4, y1 + 1], [x1 + 2, y1 + 8], [x1 - 1.6, y1 + 8]], C.accentRamp);
+    },
     staff(g, C, b) {
       /* The haft had nothing on it between the hand and the head - a smooth
          dowel with a gold pill balanced on top. It is gripped where the hand
@@ -2813,6 +3007,18 @@
     ruinseeker: { build: 'normal', head: 'bare', horns: true, cloak: 'tattered',
       weapon: 'glaives', blindfold: true, sigils: true, bracer: true, legwraps: true,
       hair: DARKCLOTH, brand: 'ruinseeker' },
+    /* Milksupply: the one head in the cast that is not a person's. Heavy,
+       robed to the floor, the bell at the throat and the crook's hook over
+       the shoulder. Pale hide, so her own hands and neck are hide too. */
+    druid: { build: 'heavy', head: 'bovine', robe: true, robeFlare: 3, cloak: 'short', weapon: 'crook',
+      bell: true, skin: ramp([0.90, 0.86, 0.80], 'skin'), skinBase: [0.90, 0.86, 0.80],
+      hair: ramp([0.34, 0.24, 0.16]), brand: 'druid', crownPoints: 5 },
+    /* Abbot Eisen: bald, barefoot, nothing in his hands but the wraps on
+       them, and the mala across his chest. The only slim survivor with no
+       cloak and no weapon - the gap where everyone else carries something is
+       his silhouette. */
+    monk: { build: 'slim', head: 'bare', bald: true, sash: true, weapon: 'mala', wraps: true,
+      legwraps: true, brand: 'monk', crownPoints: 12 },
   };
 
   /* --------------------------------------------------------------- rank --- */
@@ -3409,6 +3615,21 @@
       g.beginPath(); g.moveTo(-2.6, -1.4); g.lineTo(-0.4, -0.6); g.stroke();
       g.beginPath(); g.moveTo(2.2, 1.6); g.lineTo(0.2, 1.0); g.stroke();
     },
+    druid(g) {                                          // a hoofprint
+      for (const s of [-1, 1]) {
+        g.beginPath();
+        g.moveTo(s * 0.6, -4.8);
+        g.quadraticCurveTo(s * 4.6, -4, s * 4, 1.4);
+        g.quadraticCurveTo(s * 3, 4.8, s * 0.6, 4.4);
+        g.closePath(); g.stroke();
+      }
+    },
+    monk(g) {                                           // an open palm, a circle round it
+      g.beginPath(); g.arc(0, 0, 5.2, 0, WS.TAU); g.stroke();
+      g.beginPath();
+      g.moveTo(-1.8, 3); g.lineTo(-1.8, -2.6); g.moveTo(0, 3); g.lineTo(0, -3.4);
+      g.moveTo(1.8, 3); g.lineTo(1.8, -2.6); g.stroke();
+    },
     ruinseeker(g) {                                     // a vertical rift
       g.beginPath();
       g.moveTo(0, -5.6);
@@ -3501,6 +3722,22 @@
     g.restore();
   }
 
+  /** A brass bell on a strap at the throat. You hear Milksupply before you
+   *  see her, and at 34px you see the bell before you see anything else. */
+  function cowbell(g, C) {
+    const x = 50, y = NECK_Y + 2;
+    panel(g, [[x - 9, y - 2.5], [x + 9, y - 3], [x + 9, y - 0.6], [x - 9, y]], LEATHER);
+    const by = y + 1;
+    lit(g, GOLD, x - 3.4, by, x + 3.4, by + 7);
+    g.beginPath();
+    g.moveTo(x - 2.2, by); g.lineTo(x + 2.2, by);
+    g.lineTo(x + 3.6, by + 6.6); g.lineTo(x - 3.6, by + 6.6);
+    g.closePath(); g.fill();
+    finish(g, GOLD, x - 3.6, by, x + 3.6, by + 6.6);
+    g.fillStyle = GOLD.line;
+    g.beginPath(); g.arc(x, by + 6.9, 1, 0, WS.TAU); g.fill();
+  }
+
   function figure(g, cfg, C, w) {
     const b = BUILDS[cfg.build] || BUILDS.normal;
     /* THE FEET OWN THE FLOOR.
@@ -3543,6 +3780,7 @@
     g.save(); g.translate(0, -lift);
     emberMantle(g, cfg, C, b, cfg.emberMantle || 0);
     drawHead(g, cfg, C);
+    if (cfg.bell) cowbell(g, C);
     emberCrown(g, cfg, C, cfg.emberCrown || 0, b);
     // Offhand first, so the main weapon lands in front of it.
     const off = WEAPONS[cfg.offhand];

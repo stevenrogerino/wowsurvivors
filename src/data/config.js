@@ -331,6 +331,93 @@
     metaDurationPerRank: 1.0,
     glaiveMetas: 3,
 
+    /* WILDSHAPE (The Old Shapes). Kills feed the Wild - a kill within
+       wildNear of you counts wildNearMult times, an elite wildElite, a boss
+       wildBoss - and the bar needs wildNeedBase plus wildNeedPerMinute for
+       every minute of the night, so it takes about as long to fill at 25:00
+       as at 2:00 against a horde that is ten times thicker. Full, it shifts
+       you into the shape your arsenal leans to, for formDuration seconds
+       (+formDurationPerRank per Primal Kinship), and then the Wild sleeps
+       for wildLock (minus wildLockPerRank, never below wildLockFloor).
+
+       The two shapes are not a bigger number, they are different trades.
+       The BEAR takes bearMitigation off every hit, hits bearPhysical harder
+       with physical weapons, and mauls everything within maulRadius every
+       maulEvery seconds. The OWLBEAR hits owlMagic harder with every other
+       school, fires owlCooldownMult faster, and brings a star down on the
+       nearest thing within owlStarRange every owlStarEvery seconds. Both
+       strikes grow with level and damage like the Stillwater palm below.
+       Primal Kinship adds kinshipDamage per rank to everything in a shape.
+
+       Measured against Ruinform (x1.85 damage, x0.60 cooldown, 8s): a shape
+       is roughly x1.5 on the half of a build it favours, plus its strike,
+       for longer - broader and gentler, and it protects as much as it hits. */
+    wildNeedBase: 50,
+    wildNeedPerMinute: 14,
+    wildNear: 240,
+    wildNearMult: 2,
+    wildElite: 8,
+    wildBoss: 30,
+    wildPerRank: 0.10,
+    formDuration: 11,
+    formDurationPerRank: 1.5,
+    wildLock: 7,
+    wildLockPerRank: 0.75,
+    wildLockFloor: 3,
+    bearMitigation: 0.30,
+    bearPhysical: 0.40,
+    bearMoveMult: 0.95,
+    maulEvery: 1.1,
+    maulRadius: 105,
+    maulBase: 24,
+    maulPerLevel: 1.8,
+    maulKnock: 42,
+    owlMagic: 0.35,
+    owlCooldownMult: 0.85,
+    owlStarEvery: 0.8,
+    owlStarRange: 440,
+    owlStarRadius: 62,
+    owlStarBase: 20,
+    owlStarPerLevel: 1.5,
+    kinshipDamage: 0.06,
+    // The Lost Calves, which bring Milksupply: shapes taken in one night, how
+    // many calves wander in, how long there is to gather them, how far out.
+    calfShifts: 3,
+    calfCount: 3,
+    calfTime: 60,
+    calfDistance: 430,
+
+    /* STILLWATER STEP. flowSteps charges (the Monk's own knack adds one,
+       Serenity another at ranks 3 and 5). A hit you would take is spent
+       stepping flowDistance through it instead - flowGrace of untouchable
+       after - and the palm strikes everything in a flowStrikeWidth lane along
+       the way for flowStrikeBase + flowStrikePerLevel per level, times your
+       damage. Each step lays down a stack of Poise (+poiseDamage to every
+       weapon, up to poiseMax) that lasts poiseTime. A step comes back every
+       flowRecharge seconds, flowRechargePerRank sooner per Serenity rank, not
+       below flowRechargeFloor; Serenity also adds serenityStrike to the palm.
+
+       It is a dodge that hits back, rationed: two steps every five and a
+       half seconds turns roughly one blow in three into damage done, where
+       Evasion at four ranks turns one in three into nothing. */
+    flowSteps: 2,
+    flowRecharge: 5.5,
+    flowRechargePerRank: 0.5,
+    flowRechargeFloor: 2.5,
+    flowDistance: 120,
+    flowGrace: 0.45,
+    flowStrikeBase: 30,
+    flowStrikePerLevel: 2.2,
+    flowStrikeWidth: 34,
+    poiseDamage: 0.06,
+    poiseMax: 5,
+    poiseTime: 4.0,
+    serenityStrike: 0.15,
+    // The Trial of the Still Hand, which brings Abbot Eisen: steps taken in
+    // one night before he shows himself, and how long you must then go unhit.
+    trialSteps: 25,
+    trialTime: 20,
+
     limitBreakDamage: 0.08,
 
     eggVendorInterval: 420,

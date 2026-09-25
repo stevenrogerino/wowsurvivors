@@ -1121,7 +1121,8 @@
        sideways, then upside down, then sideways again. A pirouette is the
        figure narrowing to its edge and opening again the other way round;
        never thinner than a fifth of itself, so it never blinks out. */
-    if (p.spinTimer > 0) {
+    // A shape does not pirouette - it just turns to face you.
+    if (p.spinTimer > 0 && !(p.formTimer > 0)) {
       const turn = WS.cos(time * 14);
       ctx.scale(turn < 0 ? WS.min(turn, -0.2) : WS.max(turn, 0.2), 1);
     } else if (p.facing < 0) ctx.scale(-1, 1);
@@ -1136,11 +1137,62 @@
       p.lean = (p.lean || 0) * 0.86;
     }
     if (p.lean) ctx.rotate(p.facing < 0 ? -p.lean : p.lean);
-    const sprite = WS.Sprites.hero(p.characterId, p.character.color, size, demon, frame, pose,
-      WS.Player.rank(p));
-    ctx.drawImage(sprite, -size / 2, -size * 0.66, size, size);
+    /* A SHAPE IS DRAWN INSTEAD OF THE SURVIVOR, not over them: for as long as
+       it holds they ARE a bear or an owlbear, bigger than they were, and only
+       their colour stays - a fifth of it, mixed into the hide or the feathers.
+       Creature art faces left and the survivor faces right, so the shape
+       takes the opposite flip; and it stands on the same feet. */
+    const shaped = p.formTimer > 0 && !dying;
+    let sprite;
+    if (shaped) {
+      const bear = p.form === 'bear';
+      const tint = WS.mix(bear ? [0.52, 0.34, 0.20] : [0.46, 0.40, 0.64], p.character.color, 0.18);
+      const fs = WS.round(size * 1.28);
+      sprite = WS.Sprites.creature(bear ? 'bearform' : 'owlbearform', tint, fs);
+      ctx.scale(-1, 1);
+      const heave = p.moving ? WS.abs(WS.sin(p.walkCycle * 0.5)) * 2.4 : WS.sin(time * 2) * 1;
+      ctx.drawImage(sprite, -fs / 2, -fs * 0.72 - heave, fs, fs);
+    } else {
+      sprite = WS.Sprites.hero(p.characterId, p.character.color, size, demon, frame, pose,
+        WS.Player.rank(p));
+      ctx.drawImage(sprite, -size / 2, -size * 0.66, size, size);
+    }
     ctx.restore();
     ctx.globalAlpha = 1;
+
+    /* A step leaves what the eye last saw of them strung out along the way
+       they went: three fading after-images and a line of disturbed air. */
+    const tr = p.dashTrail;
+    if (tr && !shaped) {
+      const k = tr.life / tr.max;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = `rgba(200,236,255,${(0.5 * k).toFixed(3)})`;
+      ctx.lineWidth = 10 * k; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(tr.x0, tr.y0 - 24); ctx.lineTo(tr.x1, tr.y1 - 24); ctx.stroke();
+      ctx.restore();
+      for (let n = 1; n <= 3; n++) {
+        const f = n / 4;
+        ctx.save();
+        ctx.globalAlpha = 0.34 * k * (1 - f * 0.5);
+        ctx.translate(tr.x0 + (tr.x1 - tr.x0) * f, tr.y0 + (tr.y1 - tr.y0) * f);
+        if (p.facing < 0) ctx.scale(-1, 1);
+        ctx.drawImage(sprite, -size / 2, -size * 0.66, size, size);
+        ctx.restore();
+      }
+    }
+    if (shaped) {
+      const bear = p.form === 'bear';
+      const pulse = 62 + 6 * WS.sin(time * 5);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const grd = ctx.createRadialGradient(p.x, p.y - 10, 8, p.x, p.y - 10, pulse);
+      grd.addColorStop(0, bear ? 'rgba(230,160,90,.22)' : 'rgba(170,150,255,.26)');
+      grd.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grd;
+      ctx.beginPath(); ctx.arc(p.x, p.y - 10, pulse, 0, WS.TAU); ctx.fill();
+      ctx.restore();
+    }
 
     if (demon) {
       // The fel corona is the only sign the empowerment is still running.
@@ -1530,6 +1582,7 @@
         }
         if (z._style === 'holy') this.zoneHallow(ctx, z, R, fade, time, breathe);
         else if (z._style === 'shadow') this.zoneBlight(ctx, z, R, fade, time);
+        else if (z._style === 'nature') this.zoneBramble(ctx, z, R, fade, time);
         else {
           ctx.globalAlpha = 0.55 * fade;
           ctx.lineWidth = 2;
@@ -1654,6 +1707,58 @@
         ctx.lineWidth = 1;
         ctx.strokeStyle = lit;
         ctx.beginPath(); ctx.arc(bx, by, 6 + p * 8, 0, WS.TAU); ctx.stroke();
+      }
+    }
+    ctx.strokeStyle = WS.rgb(z.colour, 1);
+  };
+
+  /** Nature ground: a thicket. Thorned briars curl in from the rim and
+   *  small buds open and close across it - the slow it lays is the thing
+   *  to read, so it looks like somewhere you would snag. */
+  R.zoneBramble = function (ctx, z, R, fade, time) {
+    const x = z.x, y = z.y, ph = z.phase;
+    const dark = WS.rgb(WS.mix(z.colour, [0.12, 0.2, 0.08], 0.45), 1);
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = dark;
+    ctx.fillStyle = dark;
+    const n = R > 90 ? 9 : 6;
+    for (let i = 0; i < n; i++) {
+      const a = ph + (i / n) * WS.TAU + WS.sin(time * 0.5 + i) * 0.05;
+      const r0 = R * 0.95, r1 = R * (0.2 + 0.25 * ((i * 0.61) % 1));
+      const bend = (i % 2 ? 1 : -1) * 0.55;
+      const cx = x + WS.cos(a + bend) * R * 0.62, cy = y + WS.sin(a + bend) * R * 0.62;
+      const ex = x + WS.cos(a + bend * 1.6) * r1, ey = y + WS.sin(a + bend * 1.6) * r1;
+      const sx = x + WS.cos(a) * r0, sy = y + WS.sin(a) * r0;
+      ctx.globalAlpha = 0.6 * fade;
+      ctx.lineWidth = 2.6;
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo(cx, cy, ex, ey); ctx.stroke();
+      // thorns: small hooks along the curve
+      ctx.lineWidth = 1.4;
+      for (let k = 1; k <= 3; k++) {
+        const t = k / 4, u = 1 - t;
+        const px = u * u * sx + 2 * u * t * cx + t * t * ex, py = u * u * sy + 2 * u * t * cy + t * t * ey;
+        const tx = 2 * u * (cx - sx) + 2 * t * (ex - cx), ty = 2 * u * (cy - sy) + 2 * t * (ey - cy);
+        const [nx, ny] = WS.normalize(-ty, tx);
+        const side = k % 2 ? 1 : -1;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(px + nx * 6 * side - tx * 0.02, py + ny * 6 * side - ty * 0.02);
+        ctx.stroke();
+      }
+    }
+    // buds: open and close on their own time
+    const bud = WS.rgb(WS.mix(z.colour, [1, 0.72, 0.85], 0.55), 1);
+    ctx.fillStyle = bud;
+    for (let i = 0; i < 7; i++) {
+      const a = ph * 1.3 + i * 2.1, d = R * (0.2 + 0.6 * ((i * 0.618) % 1));
+      const bx = x + WS.cos(a) * d, by = y + WS.sin(a) * d;
+      const open = 0.5 + 0.5 * WS.sin(time * 1.6 + i * 1.9);
+      ctx.globalAlpha = (0.35 + 0.4 * open) * fade;
+      for (let p = 0; p < 4; p++) {
+        const pa = p * (WS.TAU / 4) + time * 0.2;
+        ctx.beginPath();
+        ctx.arc(bx + WS.cos(pa) * 2.4 * open, by + WS.sin(pa) * 2.4 * open, 1.6 + open * 1.4, 0, WS.TAU);
+        ctx.fill();
       }
     }
     ctx.strokeStyle = WS.rgb(z.colour, 1);
@@ -1960,6 +2065,15 @@
         ctx.drawImage(spr, p.x - size * 0.50, y - size * 0.60, size, size);
       } else if (p.kind === 'watcher') {
         this.drawWatcher(ctx, p, y, size, time);
+      } else if (p.kind === 'calf') {
+        // A Lost Calf ambles, so it is drawn as a creature, turned the way
+        // it is wandering, with a small trot in it.
+        const spr = WS.Sprites.creature('calf', p.type.tint, size);
+        ctx.save();
+        ctx.translate(p.x, y + WS.abs(WS.sin(time * 7 + p.bob)) * -1.5);
+        if (p.facing > 0) ctx.scale(-1, 1);
+        ctx.drawImage(spr, -size * 0.68, -size * 0.8, size * 1.36, size * 1.36);
+        ctx.restore();
       } else if (p.kind === 'cache') {
         // A parachute is never quite still - a small, slow sway says the
         // crate only just landed, rather than having always sat here.

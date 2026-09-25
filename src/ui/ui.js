@@ -848,24 +848,67 @@
     } else if (p.felAttuned > 0) {
       want.push({ key: 'fel', cls: 'fel', label: 'Ruin', pct: p.fel / WS.Config.felToMeta });
     }
-    if (wrap.childElementCount !== want.length
-      || (want.length && wrap.firstChild.dataset.key !== want[0].key)) {
+    /* The Old Shapes: the shape while it holds, the wait after, and the Wild
+       filling otherwise - labelled with the shape it WOULD take, so a player
+       can see their arsenal deciding. */
+    if (p.formTimer > 0) {
+      const bear = p.form === 'bear';
+      want.push({ key: 'form-' + p.form, cls: 'form ' + p.form, label: bear ? 'Bear' : 'Owlbear',
+        pct: p.formTimer / WS.max(0.001, WS.Primal.formDuration(p)) });
+    } else if (p.wildLock > 0) {
+      want.push({ key: 'wildwait', cls: 'wild waiting', label: 'The wild sleeps',
+        pct: 1 - p.wildLock / WS.max(0.001, WS.Primal.wildRecovery(p)) });
+    } else if (p.wildAttuned > 0) {
+      const lean = WS.Primal.lean(p) === 'bear' ? 'Bear' : 'Owlbear';
+      want.push({ key: 'wild', cls: 'wild', label: 'Wild · ' + lean, pct: p.wild / WS.Primal.wildNeed() });
+    }
+    /* Stillwater: one pip per step, the next one refilling, and the Poise the
+       steps have built written beside them. */
+    if (p.flowAttuned > 0) {
+      const max = WS.Primal.maxSteps(p);
+      want.push({ key: 'steps' + max, cls: 'steps', label: p.poise > 0 ? `Steps · Poise ${p.poise}` : 'Steps',
+        pips: max, full: p.flowSteps,
+        pct: p.flowSteps < max ? 1 - p.flowTimer / WS.max(0.001, WS.Primal.stepRecharge(p)) : 1 });
+    }
+    // A trial under way (the Lost Calves, the Still Hand) - src/game/trials.js.
+    const trial = WS.Trials.meter();
+    if (trial) want.push(trial);
+    const sig = want.map((m) => m.key).join('|');
+    if (wrap.dataset.sig !== sig) {
+      wrap.dataset.sig = sig;
       wrap.innerHTML = '';
       for (const m of want) {
         const node = el('div', 'meter ' + m.cls);
         node.dataset.key = m.key;
         const label = el('div', 'meter-label', m.label);
-        const track = el('div', 'meter-track');
-        const fill = el('div', 'meter-fill');
-        track.append(fill);
+        const track = el('div', 'meter-track' + (m.pips ? ' pips' : ''));
+        if (m.pips) {
+          for (let k = 0; k < m.pips; k++) {
+            const pip = el('div', 'pip');
+            pip.append(el('div', 'meter-fill'));
+            track.append(pip);
+          }
+        } else track.append(el('div', 'meter-fill'));
         node.append(label, track);
         wrap.append(node);
       }
     }
     let i = 0;
     for (const m of want) {
-      const fill = wrap.children[i].querySelector('.meter-fill');
-      if (fill) fill.style.width = WS.clamp(m.pct, 0, 1) * 100 + '%';
+      const node = wrap.children[i];
+      const label = node.firstChild;
+      if (label.textContent !== m.label) label.textContent = m.label;
+      if (m.pips) {
+        const fills = node.querySelectorAll('.meter-fill');
+        fills.forEach((f, k) => {
+          const v = k < m.full ? 1 : k === m.full ? WS.clamp(m.pct, 0, 1) : 0;
+          f.style.width = v * 100 + '%';
+          f.parentNode.classList.toggle('ready', k < m.full);
+        });
+      } else {
+        const fill = node.querySelector('.meter-fill');
+        if (fill) fill.style.width = WS.clamp(m.pct, 0, 1) * 100 + '%';
+      }
       i++;
     }
   };
@@ -2152,6 +2195,8 @@
       ['Best damage in a run', WS.formatNumber(s.bestDamage)],
       ['Evolutions', WS.formatNumber(s.evolutions)],
       ['Unions forged', WS.formatNumber(s.unions)],
+      ['Shapes taken', WS.formatNumber(s.shifts || 0)],
+      ['Steps taken', WS.formatNumber(s.dashes || 0)],
       ['Longest unhurt streak', WS.formatTime(s.bestNoHitStreak)],
     ];
     for (const [label, value] of items) {
@@ -2840,6 +2885,8 @@
     if (p.lifesteal > 0) kv('Lifesteal', (p.lifesteal * 100).toFixed(1) + '%');
     if (p.curdled > 0) kv('Curdled Light dealt', WS.formatNumber(p.curdleDealt));
     if (p.felAttuned > 0) kv('Metamorphoses', p.metamorphoses);
+    if (p.wildAttuned > 0) kv('Shapes taken', p.shifts);
+    if (p.flowAttuned > 0) kv('Steps taken', p.dashes);
 
     /* The blessings, one to a line with their marks. They were a single
        key-value row - "Blessings" and then every name joined by commas - and

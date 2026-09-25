@@ -190,7 +190,9 @@ function buildTable(weapons, unions, combos, schools) {
   const onlyAt = process.argv.indexOf('--only');
   if (onlyAt > 0) {
     const needle = process.argv[onlyAt + 1];
-    builds = builds.filter((b) => b.name.includes(needle));
+    // A comma list matches any of its parts: --only "iron_palms,union_rotwood"
+    const needles = needle.split(',');
+    builds = builds.filter((b) => needles.some((n) => b.name.includes(n)));
   }
   const script = CORE.gauntletScript();
 

@@ -72,6 +72,13 @@
       felAttuned: 0, fel: 0, felBonus: 0, soulRending: 0, metaTimer: 0,
       ruinborn: 0, felLock: 0,
       metamorphoses: 0,
+      // The Old Shapes and Stillwater Step - see src/game/primal.js.
+      wildAttuned: 0, wild: 0, wildBonus: 0, formBonus: 0, kinship: 0,
+      form: null, formTimer: 0, wildLock: 0, shifts: 0, maulTimer: 0, starTimer: 0,
+      serration: 0, durationMult: 1,
+      flowAttuned: 0, flowSteps: 0, flowTimer: 0, flowBonusSteps: 0, flowRechargeMult: 1,
+      serenity: 0, poise: 0, poiseTimer: 0, dashes: 0, dashTrail: null,
+      lastDirX: 1, lastDirY: 0,
       summonDamage: 0, summonHaste: 0,
       lifesteal: 0, lifestealCarry: 0,
 
@@ -191,7 +198,7 @@
 
     if (p.hurtTimer > 0) p.hurtTimer -= dt;
 
-    let speed = p.moveSpeed;
+    let speed = p.moveSpeed * WS.Primal.moveMult(p);
     if (p.slowTimer > 0) { p.slowTimer -= dt; speed *= p.slowFactor; }
 
     if (moving) {
@@ -212,6 +219,7 @@
     p.moving = moving;
 
     if (p.spinTimer > 0) p.spinTimer -= dt;
+    WS.Primal.update(p, dt);
 
     // Warding Light recharges over time and flares when it comes back up.
     if (p.blockRank > 0 && !p.blockReady) {
@@ -480,6 +488,12 @@
     if (p.invulnerable > 0) return false;
     const run = WS.Game.run;
 
+    // Stillwater: the blow finds only where they were.
+    if (WS.Primal.tryStep(p)) {
+      run.damagePrevented += amount;
+      return true;
+    }
+
     if (p.dodgeChance && WS.random() < p.dodgeChance) {
       p.invulnerable = WS.Config.dodgeInvulnerable;
       run.damagePrevented += amount;
@@ -501,12 +515,15 @@
     // matters against big hits and cannot trivialise small ones.
     const armor = p.armor || 0;
     const reduction = armor > 0 ? armor / (armor + WS.Config.armorConstant) : 0;
-    const taken = WS.max(1, WS.floor(amount * (1 - reduction)));
+    // The bear's hide takes its share before the armour does.
+    const hide = WS.Primal.mitigate(p, amount);
+    const taken = WS.max(1, WS.floor(hide * (1 - reduction)));
     run.damagePrevented += (amount - taken);
     run.damageTaken += taken;
     p.health -= taken;
     p.invulnerable = WS.Config.hitInvulnerable;
     run.noHitStreak = 0;
+    WS.Trials.onHurt(p);
     p.hurtTimer = WS.Config.hurtBeat;
     WS.FX.playerHurt(p.x, p.y, taken);
     WS.FX.shake(5, 0.22);

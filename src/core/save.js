@@ -170,6 +170,10 @@
         coffinsOpened: 0,
         gravebladesClaimed: 0,
         glaivesClaimed: 0,
+        calvesHerded: 0,
+        stillHands: 0,
+        shifts: 0,
+        dashes: 0,
         bestTime: {},      // per map
         bosses: {},        // bossId -> kills
         families: {},      // family -> kills

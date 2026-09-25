@@ -19,6 +19,7 @@
       * player.damageMultiplier * (w.mods.damageMult || 1);
     if (w.evolved) base *= (d.evolveDamageMult || cfg.evolveDamageMult);
     if (player.metaTimer > 0) base *= cfg.metaDamageMult;
+    base *= WS.Primal.damageMult(player, w);
     if (!d.noNerf) base *= WS.CONST.PLAYER_DAMAGE_SCALE;
     return base;
   }
@@ -47,7 +48,7 @@
   }
 
   function durationOf(player, w, base) {
-    return base * (1 + WS.Config.rankDurationStep * (w.level - 1));
+    return base * (1 + WS.Config.rankDurationStep * (w.level - 1)) * (player.durationMult || 1);
   }
 
   Weapon.cooldown = function (player, w) {
@@ -56,6 +57,7 @@
       * (w.evolved ? (d.evolveCooldownMult || cfg.evolveCooldownMult) : 1);
     if (!d.noNerf) base *= WS.CONST.PLAYER_COOLDOWN_SCALE;
     if (player.metaTimer > 0) base *= cfg.metaCooldownMult;
+    base *= WS.Primal.cooldownMult(player, w);
     // A runaway multiplier must never silently switch a weapon off.
     if (!(base > 0) || base > 20) base = 20;
     if (base < 0.05) base = 0.05;
@@ -84,6 +86,7 @@
       p = Weapon._probe || (Weapon._probe = WS.Player.create('mage'));
       p.damageMultiplier = 1; p.cooldownMultiplier = 1; p.areaMultiplier = 1;
       p.projectileBonus = 0; p.projectileSpeed = 1; p.metaTimer = 0;
+      p.formTimer = 0; p.form = null; p.poise = 0;
     }
     const w = { id, data, level: level || 1, evolved: !!evolved, mods: {} };
     const damage = damageOf(p, w);
@@ -147,6 +150,8 @@
     spec.heal = (w.evolved ? (d.evolvedHeal || 0) : 0) + (w.mods.healBonus || 0) + (d.heal || 0);
     spec.procChain = d.procChain || w.mods.procChain || 0;
     spec.spinRate = d.art === 'dagger' || d.art === 'axe' ? 14 : 0;
+    // The newer behaviours' own fields, cleared here so no shot inherits them.
+    spec.knock = 0; spec.boomerang = 0; spec.endBurst = 0; spec.endZone = false;
     /* Carried so the renderer can show them. Neither touches a hitbox: rank
        is how hard this thing should LOOK, and blend is the colour a discovery
        has mixed into it. */
@@ -255,6 +260,7 @@
   };
 
   Weapon.fireBurstShot = function (player, w) {
+    if (behaviorOf(w) === 'palm') { palmStrike(player, w); return; }
     const d = w.data;
     const target = WS.Enemy.findNearest(player.x, player.y, d.range || 560);
     if (!target) return;
@@ -368,7 +374,16 @@
 
   Weapon.behaviors.zone = function (player, w) {
     const d = w.data;
-    WS.Projectile.spawnZone(player.x, player.y,
+    /* Most fields grow up under the survivor. One that says `atTarget` goes
+       where the crowd is instead - the nearest thing within reach - and does
+       not go off at all with nothing there to catch. */
+    let zx = player.x, zy = player.y;
+    if (d.atTarget) {
+      const t = WS.Enemy.findNearest(player.x, player.y, d.range || 520);
+      if (!t) { w.cooldown = retry(); return false; }
+      zx = t.x; zy = t.y;
+    }
+    const z = WS.Projectile.spawnZone(zx, zy,
       areaOf(player, w, d.radius || 120),
       damageOf(player, w),
       durationOf(player, w, d.duration || 4),
@@ -376,7 +391,143 @@
       schoolColour(w), w.id,
       (w.evolved ? (d.evolvedHeal || 0) : 0) + (w.mods.healBonus || 0));
     mark(WS.Projectile.zones, w);
+    const slow = WS.min(d.slowFactor || 1, w.mods.slowFactor || 1);
+    if (z && slow < 1) z.slowFactor = slow;
+    if (d.atTarget) WS.FX.flash(zx, zy, areaOf(player, w, d.radius || 120) * 0.7, schoolColour(w), 0.25, 6, d.school);
     WS.Audio.play('cast', undefined, w.data.school);
+    return true;
+  };
+
+  /* PALM: the first weapon that has to be close. A flurry of `projectiles`
+     strikes, each a cone `arc` wide and `reach` deep aimed at whatever is
+     nearest, landing a beat apart on the burst clock the Seeking Motes
+     already use. Everything inside a cone is struck - it is a hand, not a
+     bolt - and a union with an arc of a whole turn strikes all round. The
+     first strike needs someone in reach; the rest look again as they land. */
+  function palmStrike(player, w) {
+    const d = w.data;
+    const reach = areaOf(player, w, d.reach || 118);
+    const target = WS.Enemy.findNearest(player.x, player.y, reach * 1.35);
+    if (!target) return false;
+    const arc = WS.min(WS.TAU, (d.arc || 1.2) * (w.evolved ? 1.25 : 1));
+    const full = arc >= WS.TAU - 0.01;
+    const aim = WS.atan2(target.y - player.y, target.x - player.x);
+    const dmg = damageOf(player, w);
+    const proc = d.procChain || w.mods.procChain || 0;
+    const pool = WS.Enemy.pool;
+    let i = 0;
+    while (i < pool.count) {
+      const e = pool.active[i];
+      if (e.untargetable) { i++; continue; }
+      const dx = e.x - player.x, dy = e.y - player.y;
+      const r = reach + e.radius;
+      const d2 = dx * dx + dy * dy;
+      if (d2 > r * r) { i++; continue; }
+      if (!full) {
+        const off = WS.abs(((WS.atan2(dy, dx) - aim) % WS.TAU + WS.TAU * 1.5) % WS.TAU - WS.PI);
+        const slack = WS.atan2(e.radius, WS.max(1, WS.sqrt(d2)));
+        if (off > arc / 2 + slack) { i++; continue; }
+      }
+      /* Whirling Discipline turns the shove into a pull: a palm beside a
+         gyre draws the crowd in to the blades instead of throwing it clear
+         of them. */
+      const knock = d.knockback * (w.mods.pull ? -0.6 : 1);
+      if (knock && !e.boss && !e.finale) {
+        const [kx, ky] = WS.normalize(dx, dy);
+        e.x += kx * knock; e.y += ky * knock;
+      }
+      const dealt = WS.Enemy.hit(e, dmg, w.id);
+      if (player.lifesteal > 0) WS.Player.lifesteal(player, dealt * player.lifesteal);
+      if (proc > 0 && WS.random() < proc) Weapon.chainFrom(e.x, e.y, dmg * 0.6, 3, 220, w.id);
+      if (!e._dead) i++;
+    }
+    const colour = schoolColour(w);
+    if (full) {
+      WS.FX.flash(player.x, player.y - 10, reach, colour, 0.2, 10, 'physical');
+    } else {
+      const hx = player.x + WS.cos(aim) * reach * 0.55, hy = player.y - 14 + WS.sin(aim) * reach * 0.55;
+      WS.FX.flash(hx, hy, reach * 0.42, colour, 0.16, 5, 'physical');
+      for (const k of [-0.33, 0, 0.33]) {
+        const a = aim + k * arc;
+        const beam = WS.Projectile.spawnBeam(player.x + WS.cos(a) * 18, player.y - 14 + WS.sin(a) * 18,
+          player.x + WS.cos(a) * reach, player.y - 14 + WS.sin(a) * reach, 4 + (w.evolved ? 2 : 0), colour, 0.11);
+        if (beam) { beam.rank = w.level; beam.evolved = !!w.evolved; beam.blend = w.mods.blend || null; }
+      }
+    }
+    if (dx0(player, target) < 0) player.facing = -1; else player.facing = 1;
+    WS.Audio.play('palm', player.x);
+    return true;
+  }
+  function dx0(player, t) { return t.x - player.x; }
+
+  Weapon.behaviors.palm = function (player, w) {
+    if (!palmStrike(player, w)) { w.cooldown = retry(); return false; }
+    w.burstShots = countOf(player, w) - 1;
+    w.burstTimer = 0.08;
+    const heal = (w.mods.healBonus || 0) + (w.evolved ? (w.data.evolvedHeal || 0) : 0);
+    if (heal > 0) WS.Player.heal(player, heal, 'holy');
+    return true;
+  };
+
+  /* HERD: spirit beasts that start BEHIND the survivor and run through them
+     toward the nearest foe, side by side, trampling everything on the way.
+     They never stop at a body - a herd is a lane, not a bolt - and each
+     shoulders what it hits aside. A beast can end its run in a burst (the
+     Wild Hunt, Moonlit Herd) or in brambles (Bramble Run). */
+  Weapon.behaviors.herd = function (player, w) {
+    const d = w.data;
+    const target = WS.Enemy.findNearest(player.x, player.y, d.range || 620);
+    if (!target) { w.cooldown = retry(); return false; }
+    fillSpec(player, w);
+    spec.pierce = 999; spec.homing = false; spec.homingTarget = null;
+    spec.knock = d.knock || 0;
+    spec.life = durationOf(player, w, d.life || 1.8) / (1 + WS.Config.rankDurationStep * (w.level - 1));
+    const burst = d.endBurst || w.mods.endBurst;
+    spec.endBurst = burst ? areaOf(player, w, burst) : 0;
+    spec.endZone = !!w.mods.endZone;
+    const count = countOf(player, w);
+    spec.burst = count;
+    const speed = speedOf(player, w);
+    const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
+    const nx = -dy, ny = dx;
+    for (let i = 0; i < count; i++) {
+      const side = (i - (count - 1) / 2);
+      const back = 70 + (i % 2) * 22;
+      const a = side * 0.05;
+      const c = WS.cos(a), sn = WS.sin(a);
+      const vx = dx * c - dy * sn, vy = dx * sn + dy * c;
+      WS.Projectile.launchBolt(player.x - dx * back + nx * side * 32,
+        player.y - 12 - dy * back + ny * side * 32, vx * speed, vy * speed, spec);
+    }
+    WS.Audio.play('cast', undefined, 'nature');
+    WS.Audio.play('maul', player.x);
+    return true;
+  };
+
+  /* CHAKRAM: out to `range`, then home to the hand. The ring forgets what it
+     cut on the way out when it turns, so everything it passed is cut again
+     on the way back - the whole of the weapon is that second pass. */
+  Weapon.behaviors.chakram = function (player, w) {
+    const d = w.data;
+    const range = areaOf(player, w, d.range || 330);
+    const target = WS.Enemy.findNearest(player.x, player.y, range * 1.6);
+    if (!target) { w.cooldown = retry(); return false; }
+    fillSpec(player, w);
+    spec.pierce = 999; spec.homing = false; spec.homingTarget = null;
+    spec.boomerang = range;
+    spec.spinRate = 18;
+    const count = countOf(player, w);
+    spec.burst = count;
+    const speed = speedOf(player, w);
+    const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
+    const spread = 0.42;
+    for (let i = 0; i < count; i++) {
+      const a = (i - (count - 1) / 2) * spread;
+      const c = WS.cos(a), sn = WS.sin(a);
+      const ax = dx * c - dy * sn, ay = dx * sn + dy * c;
+      WS.Projectile.launchBolt(muzzleX(player, ax), muzzleY(player, ay), ax * speed, ay * speed, spec);
+    }
+    WS.Audio.play('dash', player.x);
     return true;
   };
 
@@ -677,6 +828,29 @@
           + 'at half damage' };
     },
   };
+  /* A flurry of cones: each strike takes the share of the reach circle its
+     arc covers. */
+  REACH_MODELS.palm = (p, w, crowd, q) => {
+    const d = w.data;
+    const r = areaOf(p, w, d.reach || 118);
+    const arc = Math.min(Math.PI * 2, (d.arc || 1.2) * (w.evolved ? 1.25 : 1));
+    const each = clamp1(inCircle(r, crowd) * arc / (Math.PI * 2), crowd);
+    return { per: q.count * each, why: `${q.count} strike(s) x ${each.toFixed(1)} in a ${Math.round(r)}px cone` };
+  };
+  /* Each beast tramples a lane its own width, the length of its run. */
+  REACH_MODELS.herd = (p, w, crowd, q) => {
+    const d = w.data;
+    const len = (d.speed || 330) * p.projectileSpeed * (d.life || 1.8);
+    const each = inLine(len, (d.radius || 16) * 2, crowd);
+    return { per: q.count * each, why: `${q.count} beast(s) x ${each.toFixed(1)} in a ${Math.round(len)}px lane` };
+  };
+  /* Out and back: every ring cuts its lane twice. */
+  REACH_MODELS.chakram = (p, w, crowd, q) => {
+    const d = w.data;
+    const len = areaOf(p, w, d.range || 330);
+    const each = inLine(len, (d.radius || 12) * 2, crowd);
+    return { per: q.count * 2 * each, why: `${q.count} ring(s) x 2 passes x ${each.toFixed(1)}` };
+  };
   Weapon.reachModels = REACH_MODELS;
 
   /** Total damage per second against `crowd` enemies on the field.
@@ -694,6 +868,7 @@
       p = Weapon._probe || (Weapon._probe = WS.Player.create('mage'));
       p.damageMultiplier = 1; p.cooldownMultiplier = 1; p.areaMultiplier = 1;
       p.projectileBonus = 0; p.projectileSpeed = 1; p.metaTimer = 0;
+      p.formTimer = 0; p.form = null; p.poise = 0;
     }
     const w = { id, data, level: level || 1, evolved: !!evolved, mods: {} };
     const q = {
@@ -743,6 +918,11 @@
       lines.push(['Strikes', (d.strikes || 5) + player.projectileBonus + (w.evolved ? 2 : 0)]);
     } else if (behavior === 'beam') {
       lines.push(['Width', WS.round(areaOf(player, w, d.beamWidth || 26))]);
+    } else if (behavior === 'palm') {
+      lines.push(['Strikes', countOf(player, w)]);
+      lines.push(['Reach', WS.round(areaOf(player, w, d.reach || 118))]);
+    } else if (behavior === 'herd') {
+      lines.push(['Beasts', countOf(player, w)]);
     } else {
       lines.push(['Projectiles', countOf(player, w)]);
       if ((d.pierce || 0) > 0 || w.evolved) {

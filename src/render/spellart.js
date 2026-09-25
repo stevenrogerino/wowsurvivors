@@ -118,6 +118,45 @@
         ctx.lineTo(r * 0.5, r * 0.75);
         ctx.closePath();
         break;
+      case 'herd':
+        /* A spirit bull from above, head down: the barrel of the body, the
+           hump at the shoulder, the head, and the horns swept out to both
+           sides and forward. Symmetric about its line of travel, so it
+           reads the same whichever way the herd runs. */
+        ctx.beginPath();
+        ctx.moveTo(r * 1.62, 0);
+        ctx.quadraticCurveTo(r * 1.55, -r * 0.36, r * 1.15, -r * 0.40);
+        ctx.quadraticCurveTo(r * 1.45, -r * 0.95, r * 1.95, -r * 1.05);
+        ctx.quadraticCurveTo(r * 1.35, -r * 1.32, r * 0.92, -r * 0.62);
+        ctx.quadraticCurveTo(r * 0.55, -r * 0.9, -r * 0.2, -r * 0.82);
+        ctx.quadraticCurveTo(-r * 1.4, -r * 0.78, -r * 1.75, -r * 0.2);
+        ctx.lineTo(-r * 2.2, 0);
+        ctx.lineTo(-r * 1.75, r * 0.2);
+        ctx.quadraticCurveTo(-r * 1.4, r * 0.78, -r * 0.2, r * 0.82);
+        ctx.quadraticCurveTo(r * 0.55, r * 0.9, r * 0.92, r * 0.62);
+        ctx.quadraticCurveTo(r * 1.35, r * 1.32, r * 1.95, r * 1.05);
+        ctx.quadraticCurveTo(r * 1.45, r * 0.95, r * 1.15, r * 0.40);
+        ctx.quadraticCurveTo(r * 1.55, r * 0.36, r * 1.62, 0);
+        ctx.closePath();
+        break;
+      case 'chakram': {
+        /* A war ring: six hooked edges round a hole you could put a hand
+           through. Drawn with the hole, so it is filled even-odd. */
+        ctx.beginPath();
+        const n = 6;
+        for (let i = 0; i < n; i++) {
+          const a0 = (i / n) * TAU, a1 = a0 + TAU / n * 0.62, a2 = a0 + TAU / n;
+          const r0 = r * 1.0, rt = r * 1.38;
+          const p0x = Math.cos(a0) * r0, p0y = Math.sin(a0) * r0;
+          if (i === 0) ctx.moveTo(p0x, p0y);
+          ctx.quadraticCurveTo(Math.cos(a0 + 0.3) * r * 1.3, Math.sin(a0 + 0.3) * r * 1.3, Math.cos(a1) * rt, Math.sin(a1) * rt);
+          ctx.lineTo(Math.cos(a2) * r0, Math.sin(a2) * r0);
+        }
+        ctx.closePath();
+        ctx.moveTo(r * 0.52, 0);
+        ctx.arc(0, 0, r * 0.52, 0, TAU, true);
+        break;
+      }
       default:
         ctx.beginPath();
         ctx.ellipse(0, 0, r * 1.2, r * 0.55, 0, 0, TAU);
@@ -429,6 +468,58 @@
       line(g, r * 1.3, 0, -r * 0.8, 0);
       g.restore();
       rim(g, 'axe', r, [0.5, 0.52, 0.6], 0.14);
+    },
+
+    /* Spirit Herd: a bull made of moss-light. A pale hide lit from the
+       head, a darker spine, the horns bone-white, and the breath of it
+       glowing at the muzzle. */
+    herd(g, r, c) {
+      const spirit = mix(c, [0.85, 1.0, 0.8], 0.35);
+      SA.path(g, 'herd', r);
+      const hide = g.createLinearGradient(r * 1.6, 0, -r * 2.2, 0);
+      hide.addColorStop(0, rgba(lift(spirit, 0.7), 0.95));
+      hide.addColorStop(0.5, rgba(spirit, 0.85));
+      hide.addColorStop(1, rgba(sink(c, 0.5), 0.35));
+      g.fillStyle = hide; g.fill();
+      g.save();
+      SA.path(g, 'herd', r); g.clip();
+      // the spine and the hump
+      g.fillStyle = rgba(sink(c, 0.45), 0.55);
+      g.beginPath(); g.ellipse(-r * 0.3, 0, r * 1.2, r * 0.22, 0, 0, TAU); g.fill();
+      g.fillStyle = rgba(sink(c, 0.35), 0.5);
+      g.beginPath(); g.ellipse(r * 0.55, 0, r * 0.36, r * 0.46, 0, 0, TAU); g.fill();
+      // horns: bone, tipped dark
+      g.strokeStyle = 'rgba(250,244,222,.95)'; g.lineWidth = Math.max(0.9, r * 0.2); g.lineCap = 'round';
+      for (const sy of [-1, 1]) {
+        g.beginPath(); g.moveTo(r * 1.1, sy * r * 0.42);
+        g.quadraticCurveTo(r * 1.4, sy * r * 0.95, r * 1.85, sy * r * 1.0); g.stroke();
+      }
+      // breath at the muzzle
+      const br = g.createRadialGradient(r * 1.6, 0, 0, r * 1.6, 0, r * 0.7);
+      br.addColorStop(0, 'rgba(255,255,240,.95)'); br.addColorStop(1, rgba(lift(c, 0.6), 0));
+      g.fillStyle = br; g.fillRect(r * 0.9, -r, r * 1.4, r * 2);
+      g.restore();
+      rim(g, 'herd', r, c, 0.12);
+      // eyes: two points of light either side of the brow
+      g.fillStyle = 'rgba(255,255,230,.95)';
+      for (const sy of [-1, 1]) { g.beginPath(); g.arc(r * 1.22, sy * r * 0.2, Math.max(0.6, r * 0.09), 0, TAU); g.fill(); }
+    },
+
+    /* Gale Chakram: a steel ring, the edges ground bright, a darker
+       inner band where the hand holds it, and a wind-blue sheen. */
+    chakram(g, r, c) {
+      SA.path(g, 'chakram', r);
+      g.fillStyle = steel(g, -r * 1.3, r * 1.3, c); g.fill('evenodd');
+      g.save();
+      SA.path(g, 'chakram', r); g.clip('evenodd');
+      g.strokeStyle = rgba(sink(mix([0.5, 0.52, 0.6], c, 0.3), 0.7), 0.8);
+      g.lineWidth = Math.max(0.8, r * 0.16);
+      g.beginPath(); g.arc(0, 0, r * 0.66, 0, TAU); g.stroke();
+      g.strokeStyle = rgba(lift(c, 0.55), 0.7); g.lineWidth = Math.max(0.6, r * 0.07);
+      g.beginPath(); g.arc(0, 0, r * 0.95, -2.2, -0.3); g.stroke();
+      g.restore();
+      rim(g, 'chakram', r, [0.5, 0.52, 0.6], 0.12);
+      glint(g, -r * 0.5, -r * 0.85, r * 0.4, 0.85);
     },
   };
   PAINT.sword = PAINT.axe;

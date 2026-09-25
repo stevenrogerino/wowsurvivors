@@ -99,6 +99,7 @@
       * (1 + WS.Config.curseEnemySpeed * (WS.Game.player ? WS.Game.player.curse : 0));
     e.contactCooldown = 0.3;
     e.slowTimer = 0; e.slowFactor = 1;
+    e.bleedDps = 0; e.bleedTimer = 0; e.bleedTick = 0;
     e.chargeTimer = 0;
     e.flash = 0;
     e.chilled = false;
@@ -238,6 +239,17 @@
     let i = 0;
     while (i < this.pool.count) {
       const e = this.pool.active[i];
+      // Serration: an open wound, ticking. It can be the last thing to land.
+      if (e.bleedTimer > 0) {
+        e.bleedTimer -= dt;
+        e.bleedTick -= dt;
+        if (e.bleedTick <= 0) {
+          e.bleedTick = cfg.bleedTick;
+          this.damage(e, e.bleedDps * cfg.bleedTick, false, 'serration');
+          if (e._dead) continue;
+        }
+        if (e.bleedTimer <= 0) e.bleedDps = 0;
+      }
       const t = e.template;
       const [dx, dy, distance] = WS.normalize(player.x - e.x, player.y - e.y);
 
@@ -491,6 +503,14 @@
     const crit = WS.random() < player.critChance;
     if (crit) amount *= player.critDamage;
     if (e.dmgTaken !== 1) amount *= e.dmgTaken;
+    /* Serration: a crit opens a wound that bleeds a share of the blow over
+       the next few seconds. A fresh crit reopens it at whichever is worse. */
+    if (crit && player.serration > 0 && !e._dead) {
+      const dps = amount * WS.Config.serrationShare * player.serration / WS.Config.bleedTime;
+      e.bleedDps = WS.max(e.bleedTimer > 0 ? e.bleedDps : 0, dps);
+      e.bleedTimer = WS.Config.bleedTime;
+      if (e.bleedTick <= 0) e.bleedTick = WS.Config.bleedTick;
+    }
     this.damage(e, amount, crit, source);
     WS.FX.damage(e.x, e.y - e.radius * 0.6, amount, crit);
     WS.Audio.play(crit ? 'crit' : 'hit', e.x);
@@ -610,6 +630,7 @@
     WS.Save.recordKill(t, e.id);
     WS.Encounters.onKill(t);
     run.kills++;
+    WS.Primal.onKill(player, e);
     WS.Audio.play('enemyHit', e.x);
 
     if (player.bloodthirst && run.kills % player.bloodthirstInterval === 0) {

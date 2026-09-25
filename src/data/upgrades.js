@@ -168,6 +168,40 @@
       offer: (p) => p.felAttuned > 0,
       apply: (p) => { p.soulRending += 1; },
     },
+    primal_kinship: {
+      name: 'Primal Kinship', art: 'paw', quality: 'epic',
+      description: '+{Config.wildPerRank%}% Wild from every kill, +{Config.formDurationPerRank}s in a shape, '
+        + '+{Config.kinshipDamage%}% damage while you wear one, and the Wild wakes sooner', max: 5,
+      detail: 'The shapes come quicker, hold longer and hit harder, and the wait after one ends shrinks by '
+        + '{Config.wildLockPerRank}s a rank, down to {Config.wildLockFloor}s.',
+      offer: (p) => p.wildAttuned > 0,
+      apply: (p) => { p.kinship += 1; },
+    },
+    serenity: {
+      name: 'Serenity', art: 'step', quality: 'epic',
+      description: 'Steps return {Config.flowRechargePerRank}s sooner and palm {Config.serenityStrike%}% harder; '
+        + 'a third step at rank 3 and a fourth at rank 5', max: 5,
+      detail: 'Stillwater Step, deepened: every rank shortens the wait for a step (never below '
+        + '{Config.flowRechargeFloor}s) and strengthens the palm that lands along it.',
+      offer: (p) => p.flowAttuned > 0,
+      apply: (p) => {
+        const before = WS.Primal.maxSteps(p);
+        p.serenity += 1;
+        p.flowSteps += WS.Primal.maxSteps(p) - before;
+      },
+    },
+    serration: {
+      name: 'Serration', art: 'bleed', quality: 'uncommon',
+      description: 'Critical strikes open a wound that bleeds {Config.serrationShare%}% of the blow per rank', max: 4,
+      detail: 'The bleed runs over {Config.bleedTime}s and ticks every {Config.bleedTick}s. A fresh crit reopens the wound at whichever bleed is worse, so it rewards crit chance and big hits alike.',
+      apply: (p) => { p.serration += 1; },
+    },
+    perennial: {
+      name: 'Perennial', art: 'perennial', quality: 'common',
+      description: '+{v%}% duration on everything that lingers', max: 5, v: 0.10,
+      detail: 'Zones, gyres, beasts and anything else with a lifetime stays on the field longer. It does not change how often a weapon fires.',
+      apply: (p, up) => { p.durationMult += up.v; },
+    },
     searing: {
       name: 'Searing Aura', art: 'retaura', quality: 'rare',
       description: 'A holy aura sears nearby enemies.', max: 4,
@@ -187,7 +221,8 @@
     'ferocity', 'area', 'quantity', 'luck', 'wisdom', 'recovery', 'velocity',
     'dark_bargain', 'warding_light', 'chilling_presence', 'spirit_companion',
     'thorns', 'searing', 'dodge', 'curdled', 'ruin_hunger',
-    'grave_call', 'dread_command',
+    'grave_call', 'dread_command', 'primal_kinship', 'serenity',
+    'serration', 'perennial',
   ];
 
 })(window.WS);

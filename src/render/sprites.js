@@ -3578,6 +3578,185 @@
       poly(g, P([[49.4, 38.6], [50, 40.4], [50.8, 38.4]]), '#3e424c', '#08090b', u * 0.3);
     },
 
+    calf(g, s, p) {
+      /* One of the Lost Calves. Big head, long legs it has not grown into,
+         patched hide, and a bell. Faces left; the renderer turns it with
+         the way it is wandering. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+      const HOOF = '#2a2420';
+      // legs: far pair, then body, then near pair
+      for (const x of [44, 70]) {
+        limb(g, P([[x, 60], [x + 1, 72], [x, 84]]), [5.6, 3.8, 3.2].map(X), far);
+        shaded(g, X(x), Y(85), X(2.8), X(1.8), { hi: HOOF, mid: HOOF, lo: HOOF, dark: HOOF, line: HOOF, glow: HOOF });
+      }
+      const body = mass(g, P([[36, 50], [46, 42], [66, 41], [79, 46], [80, 58], [72, 66], [48, 67], [38, 62]]), p);
+      g.save(); body(); g.clip();
+      g.fillStyle = 'rgba(30,24,22,.88)';
+      g.beginPath(); g.ellipse(X(62), Y(47), X(8), X(6), 0.3, 0, WS.TAU); g.fill();
+      g.beginPath(); g.ellipse(X(74), Y(60), X(6), X(5), -0.2, 0, WS.TAU); g.fill();
+      g.beginPath(); g.ellipse(X(47), Y(62), X(4), X(3), 0, 0, WS.TAU); g.fill();
+      g.fillStyle = 'rgba(255,245,230,.18)';
+      g.beginPath(); g.ellipse(X(56), Y(63), X(14), X(4), 0, 0, WS.TAU); g.fill();
+      g.restore();
+      // tail
+      g.strokeStyle = p.lo; g.lineWidth = X(1.6); g.lineCap = 'round';
+      g.beginPath(); g.moveTo(X(79), Y(48)); g.quadraticCurveTo(X(86), Y(52), X(84), Y(62)); g.stroke();
+      g.fillStyle = '#2a2420';
+      g.beginPath(); g.ellipse(X(84), Y(63), X(1.6), X(2.4), 0, 0, WS.TAU); g.fill();
+      for (const x of [40, 66]) {
+        limb(g, P([[x, 60], [x - 1, 72], [x, 84]]), [6, 4.2, 3.4].map(X), p);
+        shaded(g, X(x), Y(85.2), X(3), X(1.9), { hi: '#4a4038', mid: HOOF, lo: HOOF, dark: HOOF, line: HOOF, glow: HOOF });
+      }
+      // head, big for the body, and ears out sideways
+      mass(g, P([[36, 34], [40, 38], [38, 42], [33, 40]]), far);                 // far ear
+      const head = mass(g, P([[20, 36], [24, 26], [34, 24], [40, 30], [40, 42], [32, 52], [22, 53], [16, 48]]), p);
+      g.save(); head(); g.clip();
+      g.fillStyle = 'rgba(30,24,22,.88)';
+      g.beginPath(); g.ellipse(X(32), Y(30), X(7), X(6), 0.4, 0, WS.TAU); g.fill();
+      g.restore();
+      mass(g, P([[16, 44], [14, 50], [19, 54], [28, 54], [29, 47]]),
+        { hi: '#f4c8c0', mid: '#e0a8a0', lo: '#b87c76', dark: '#8a5650', line: '#4a2a26', glow: '#fff' });
+      g.fillStyle = '#4a2a26';
+      g.beginPath(); g.ellipse(X(17.5), Y(49), X(1.1), X(1.4), 0, 0, WS.TAU); g.fill();
+      mass(g, P([[36, 30], [46, 28], [48, 33], [40, 34]]), p);                   // near ear
+      g.fillStyle = 'rgba(220,150,150,.6)';
+      g.beginPath(); g.ellipse(X(43), Y(31), X(3), X(1.3), -0.1, 0, WS.TAU); g.fill();
+      // horn nubs
+      for (const x of [27, 33]) shaded(g, X(x), Y(24.5), X(1.8), X(1.5), { hi: '#f0e6d0', mid: '#d8ccb0', lo: '#a89878', dark: '#786848', line: '#403420', glow: '#fff' });
+      eyes(g, X(27), Y(37), X(0.01), X(1.9), '#2a1a14');
+      g.fillStyle = 'rgba(255,255,255,.9)';
+      g.beginPath(); g.arc(X(26.4), Y(36.2), X(0.6), 0, WS.TAU); g.fill();
+      // the bell collar
+      g.strokeStyle = '#6a3a22'; g.lineWidth = X(2.2);
+      g.beginPath(); g.moveTo(X(34), Y(50)); g.quadraticCurveTo(X(38), Y(46), X(41), Y(40)); g.stroke();
+      poly(g, P([[33.5, 51], [37.5, 51], [38.6, 57], [32.4, 57]]), '#d8a840', '#5a3e10', u * 0.6);
+    },
+
+    bearform(g, s, p) {
+      /* THE BEAR, as a survivor wears it: reared up on its hind legs, one
+         forepaw raised to swing, head low and forward. Upright on purpose -
+         every creature that comes at you walks on four, and the one on your
+         side should not be mistaken for any of them. Faces left like every
+         creature; the renderer turns it with the survivor. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+      const CLAW = '#efe8d8', CLAW_LINE = '#5e5648';
+      const claws = (x, y, dir, n) => {
+        for (let i = 0; i < n; i++) {
+          const ox = x + (i - (n - 1) / 2) * 2.4;
+          poly(g, P([[ox - 1, y], [ox + dir * 1.8, y + 4.2], [ox + 1, y + 0.4]]), CLAW, CLAW_LINE, u * 0.4);
+        }
+      };
+      // far arm and far leg, in the shade of the body
+      limb(g, P([[60, 36], [68, 48], [66, 58]]), [10, 8, 7].map(X), far);
+      limb(g, P([[58, 68], [62, 78], [60, 87]]), [13, 10, 8].map(X), far);
+      shaded(g, X(58), Y(88.4), X(6), X(2.4), far);
+      // the body: a heavy pear, shoulders hunched high
+      const body = mass(g, P([[34, 42], [38, 30], [50, 24], [63, 28], [70, 42], [71, 58], [66, 72],
+        [54, 80], [42, 77], [34, 66], [31, 54]]), p);
+      g.save(); body(); g.clip();
+      pelt(g, p, X(52), Y(52), X(22), X(30), 0.1, 7, 0.4, 0.46);
+      g.fillStyle = 'rgba(255,240,214,.14)';
+      g.beginPath(); g.ellipse(X(44), Y(60), X(9), X(14), 0.2, 0, WS.TAU); g.fill();
+      g.restore();
+      // near leg: a thick haunch and a flat, clawed foot
+      limb(g, P([[46, 68], [44, 79], [44, 87]]), [16, 12, 9].map(X), p);
+      shaded(g, X(42), Y(88.6), X(7), X(2.6), p);
+      claws(37, 87.6, -1, 3);
+      // the head, low and forward, a long snout
+      const head = mass(g, P([[26, 24], [30, 14], [40, 10], [50, 13], [55, 22], [51, 31], [40, 34], [30, 32]]), p);
+      g.save(); head(); g.clip(); pelt(g, p, X(41), Y(22), X(15), X(12), 0, 4, 0.3, 0.3); g.restore();
+      for (const [x, y] of [[33, 12], [48, 11]]) {
+        shaded(g, X(x), Y(y), X(5), X(4.6), p);
+        g.fillStyle = 'rgba(40,20,14,.55)';
+        g.beginPath(); g.ellipse(X(x), Y(y + 0.6), X(2.4), X(2.2), 0, 0, WS.TAU); g.fill();
+      }
+      const muzzle = { hi: '#f2dcc0', mid: p.glow, lo: p.hi, dark: p.mid, line: p.line, glow: '#fff' };
+      mass(g, P([[28, 21], [17, 23], [15, 28], [19, 31], [29, 31]]), muzzle);
+      g.fillStyle = '#16100c';
+      g.beginPath(); g.ellipse(X(16.4), Y(24.6), X(2.2), X(1.7), 0, 0, WS.TAU); g.fill();
+      g.strokeStyle = '#2a1812'; g.lineWidth = u * 0.8; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(X(17), Y(29.4)); g.quadraticCurveTo(X(22), Y(31.4), X(28), Y(30)); g.stroke();
+      for (let i = 0; i < 3; i++) poly(g, P([[19 + i * 2.6, 29.8], [19.6 + i * 2.6, 32.2], [20.3 + i * 2.6, 29.9]]), '#fffaf0', '#8a847a', u * 0.3);
+      eyes(g, X(34), Y(19.6), X(0.01), X(1.6), '#ffd070');
+      g.strokeStyle = p.line; g.lineWidth = u;
+      g.beginPath(); g.moveTo(X(30), Y(17.6)); g.lineTo(X(37), Y(17)); g.stroke();
+      // the near arm, raised to swing, claws out
+      limb(g, P([[44, 38], [33, 44], [23, 44]]), [12, 9, 8].map(X), p);
+      shaded(g, X(21), Y(44), X(5.4), X(4.6), p, -0.2);
+      claws(17, 46, -1, 4);
+    },
+
+    owlbearform(g, s, p) {
+      /* THE OWLBEAR: the bear's weight with an owl's face on it - a round
+         feathered face-disc, great eyes, a hooked beak and two ear-tufts -
+         and a chest of scalloped feathers where the bear has fur. Its forelimbs
+         end in talons and trail a fringe of pinions, so when it lifts them
+         it looks half about to fly and half about to tear something open. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+      const TALON = '#2a2430', TALON_LINE = '#0c0a10';
+      const pinions = (pts, pal) => {
+        for (let i = 0; i < pts.length; i++) {
+          const [x, y, len, a] = pts[i];
+          const nx = Math.cos(a), ny = Math.sin(a);
+          poly(g, P([[x - ny * 1.8, y + nx * 1.8], [x + nx * len, y + ny * len], [x + ny * 1.8, y - nx * 1.8]]),
+            i % 2 ? pal.lo : pal.mid, pal.line, u * 0.5);
+        }
+      };
+      // far wing-arm and leg
+      pinions([[64, 48, 12, 1.2], [66, 52, 12, 1.35], [66, 44, 10, 1.05]], far);
+      limb(g, P([[60, 36], [68, 46], [66, 56]]), [10, 8, 7].map(X), far);
+      limb(g, P([[58, 68], [62, 78], [60, 87]]), [12, 9, 7].map(X), far);
+      poly(g, P([[55, 86], [64, 86], [65, 89.6], [53, 89.8]]), TALON, TALON_LINE, u * 0.5);
+      const body = mass(g, P([[34, 42], [38, 30], [50, 25], [63, 29], [69, 42], [70, 58], [65, 72],
+        [54, 80], [42, 77], [34, 66], [31, 54]]), p);
+      // a chest of scalloped feathers, pale, over the fur of the flanks
+      g.save(); body(); g.clip();
+      pelt(g, p, X(56), Y(56), X(18), X(28), 0.1, 5, 0.4, 0.34);
+      g.fillStyle = 'rgba(255,250,240,.2)';
+      g.beginPath(); g.ellipse(X(44), Y(56), X(11), X(19), 0.15, 0, WS.TAU); g.fill();
+      g.strokeStyle = p.lo; g.lineWidth = u * 0.9; g.globalAlpha = 0.7;
+      for (let r = 0; r < 6; r++) {
+        for (let i = 0; i < 3; i++) {
+          g.beginPath(); g.arc(X(37 + i * 5 + (r % 2) * 2.5), Y(40 + r * 5.6), X(2.8), 0.2, WS.PI - 0.2); g.stroke();
+        }
+      }
+      g.restore();
+      limb(g, P([[46, 68], [44, 79], [44, 87]]), [15, 11, 8].map(X), p);
+      poly(g, P([[36, 86], [47, 86], [48, 89.8], [34, 90]]), TALON, TALON_LINE, u * 0.5);
+      for (let i = 0; i < 3; i++) poly(g, P([[35.4 + i * 3, 89], [33.4 + i * 3, 91.6], [36.6 + i * 3, 90.2]]), TALON, TALON_LINE, u * 0.3);
+      // the head: an owl's disc on a bear's neck
+      const head = mass(g, P([[27, 22], [30, 12], [40, 8], [51, 11], [55, 20], [52, 30], [41, 34], [30, 31]]), p);
+      // ear-tufts, swept back
+      poly(g, P([[31, 13], [27, 1], [37, 10]]), p.lo, p.line, u * 0.6);
+      poly(g, P([[44, 9], [47, -0.5], [51, 11]]), p.mid, p.line, u * 0.6);
+      const disc = { hi: '#faf4ea', mid: p.glow, lo: p.hi, dark: p.mid, line: p.line, glow: '#fff' };
+      const face = mass(g, P([[28, 20], [32, 13], [39, 12], [44, 16], [44, 25], [39, 31], [31, 30], [27, 26]]), disc);
+      g.save(); face(); g.clip();
+      g.strokeStyle = p.mid; g.globalAlpha = 0.45; g.lineWidth = u * 0.6;
+      for (let r = 4; r <= 9; r += 2.5) { g.beginPath(); g.arc(X(36), Y(21), X(r), 0, WS.TAU); g.stroke(); }
+      g.restore();
+      // great eyes, the owl's whole face, and the beak between them
+      for (const x of [32.4, 39.6]) {
+        g.fillStyle = '#1a1206';
+        g.beginPath(); g.arc(X(x), Y(19.6), X(3.2), 0, WS.TAU); g.fill();
+      }
+      eyes(g, X(36), Y(19.6), X(3.6), X(2.2), '#ffb02e');
+      poly(g, P([[34.6, 22], [37.4, 22], [36.6, 28], [35.2, 27.2]]), '#e8c070', '#5a3c10', u * 0.5);
+      // the near wing-arm, raised, talons and a fringe of pinions
+      pinions([[34, 42, 13, 1.9], [30, 44, 12, 2.05], [26, 42, 11, 2.2], [23, 38, 10, 2.4]], p);
+      limb(g, P([[44, 36], [32, 38], [22, 30]]), [12, 9, 7].map(X), p);
+      for (let i = 0; i < 3; i++) {
+        const ox = 20 + i * 2.4;
+        poly(g, P([[ox - 1, 28], [ox - 3, 23], [ox + 1, 27.4]]), TALON, TALON_LINE, u * 0.4);
+      }
+    },
+
     karrash(g, s, p) {
       /* THE KARRASH: centaurs of the plains, and they were drawn as a ball
          on a ball on a barrel. A centaur is two animals joined at the
@@ -3829,6 +4008,8 @@
     paladin: { accessory: 'shield', bulk: 1.1, halo: true },
     graveblade: { accessory: 'graveblade', bulk: 1.1, cloak: true },
     ruinseeker: { accessory: 'glaives', horns: true },
+    druid: { accessory: 'staff', bulk: 1.15, horns: true },
+    monk: { accessory: 'daggers' },
   };
 
   function drawHero(g, s, tint, cfg, demon) {

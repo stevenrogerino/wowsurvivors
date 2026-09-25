@@ -290,6 +290,7 @@
     hit: 0.045, crit: 0.07, gem: 0.06, cast: 0.05, enemyHit: 0.06,
     explode: 0.09, freeze: 0.2, coin: 0.08, hover: 0.045, page: 0.08,
     rumble: 0.8, cannon: 0.25, glass: 0.2, zap: 0.35, shock: 0.4, drill: 1.2, shatter: 0.15,
+    dash: 0.08, maul: 0.3, star: 0.12, shift: 1.0, palm: 0.06, thunder: 0.5,
     /* `warn` is the only one of these that also DUCKS - it pulls the whole mix
        to half for seven tenths of a second, because a charge committing is
        worth hearing over everything else. That is true of one charge and a
@@ -560,6 +561,42 @@
       noise({ filter: 'lowpass', freq: 600, to: 60, q: 0.9, attack: 0.004, decay: 0.7, gain: 0.18 });
       tone({ type: 'triangle', freq: 180, to: 60, decay: 0.5, gain: 0.08, attack: 0.002 });
     },
+    /* The Stillwater step: air parted by a body that is suddenly elsewhere.
+       A falling band of noise with a soft reed under it, short, so a run of
+       steps reads as a flurry and not as a wall. */
+    dash() {
+      noise({ filter: 'bandpass', freq: vary(2600, 0.15), to: vary(700, 0.2), q: 1.4, attack: 0.004, decay: vary(0.2, 0.2), gain: 0.09 });
+      tone({ type: 'sine', freq: vary(520, 0.1), to: 260, decay: 0.16, gain: 0.04, attack: 0.004 });
+    },
+    // A palm landing: a dull slap with a knuckle of noise in it.
+    palm() {
+      noise({ filter: 'lowpass', freq: vary(1100, 0.2), to: 240, q: 0.8, attack: 0.002, decay: vary(0.07, 0.25), gain: 0.10 });
+      tone({ type: 'sine', freq: vary(150, 0.15), to: 70, decay: 0.08, gain: 0.06, attack: 0.002 });
+    },
+    // The bear's maul: weight, then the ground answering.
+    maul() {
+      tone({ type: 'sine', freq: 110, to: 40, decay: 0.45, gain: 0.22, attack: 0.003 });
+      noise({ filter: 'lowpass', freq: 900, to: 120, q: 0.7, attack: 0.003, decay: 0.35, gain: 0.14 });
+      tone({ type: 'sawtooth', freq: 95, to: 70, decay: 0.3, gain: 0.04, filter: 'lowpass', cutoff: 500, attack: 0.02 });
+    },
+    // An owlbear's falling star: a bright chime dropping into a thud.
+    star() {
+      tone({ type: 'sine', freq: vary(1760, 0.08), to: 880, decay: 0.28, gain: 0.05, attack: 0.004 });
+      tone({ type: 'triangle', freq: vary(2640, 0.08), to: 1320, decay: 0.2, gain: 0.025, attack: 0.004 });
+      noise({ filter: 'lowpass', freq: 700, to: 150, q: 0.7, attack: 0.08, decay: 0.2, gain: 0.08, delay: 0.1 });
+    },
+    // Taking a shape: a low roar rising under a rushing wind.
+    shift() {
+      tone({ type: 'sawtooth', freq: 70, to: 120, decay: 0.9, gain: 0.12, filter: 'lowpass', cutoff: 700, attack: 0.08 });
+      tone({ type: 'sawtooth', freq: 104, to: 150, decay: 0.8, gain: 0.07, filter: 'lowpass', cutoff: 900, attack: 0.1 });
+      noise({ filter: 'bandpass', freq: 400, to: 1400, q: 0.9, attack: 0.15, decay: 0.8, gain: 0.08 });
+    },
+    // Thunder on the moor: a crack and then the roll.
+    thunder() {
+      noise({ filter: 'highpass', freq: 2400, to: 900, q: 0.7, attack: 0.002, decay: 0.12, gain: 0.12 });
+      noise({ filter: 'lowpass', freq: 520, to: 70, q: 0.6, attack: 0.03, decay: 1.4, gain: 0.2, delay: 0.05 });
+      tone({ type: 'sine', freq: 62, to: 34, decay: 1.2, gain: 0.16, attack: 0.02, delay: 0.05 });
+    },
     // The Heart-Drill biting: a grinding whine climbing.
     drill() {
       tone({ type: 'sawtooth', freq: 70, to: 110, decay: 1.1, gain: 0.16, filter: 'lowpass', cutoff: 900, attack: 0.1 });
@@ -643,6 +680,7 @@
     level: 0.34, evolve: 0.42, victory: 0.45, boss: 0.5, death: 0.5, warn: 0.12,
     ui: 0.05, select: 0.08, page: 0.05,
     rumble: 0.3, cannon: 0.35, glass: 0.45, zap: 0.2, shock: 0.35, drill: 0.25, shatter: 0.45, winter: 0.7,
+    dash: 0.12, maul: 0.28, star: 0.3, shift: 0.5, palm: 0.08, thunder: 0.6,
   };
 
   /** @param {string} kit  @param {number} [x] world x, to place it in the field.

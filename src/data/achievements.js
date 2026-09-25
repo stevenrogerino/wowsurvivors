@@ -119,6 +119,19 @@
       test: (db) => (db.statistics.glaivesClaimed || 0) > 0,
     },
 
+    lost_calves: {
+      name: 'The Lost Calves', art: 'paw',
+      description: 'Take the old shapes and bring three strayed calves home before the dark does.',
+      reward: { type: 'character', id: 'druid' },
+      test: (db) => (db.statistics.calvesHerded || 0) > 0,
+    },
+    the_still_hand: {
+      name: 'The Still Hand', art: 'step',
+      description: 'Step through enough blows that the Still Hand notices, then let nothing land.',
+      reward: { type: 'character', id: 'monk' },
+      test: (db) => (db.statistics.stillHands || 0) > 0,
+    },
+
     /* ------------------------------------------------------- challenge --- */
     forbidden_knowledge: {
       name: 'Forbidden Knowledge', art: 'arcane',
@@ -169,6 +182,7 @@
     'beyond_the_forest', 'into_the_dark', 'across_the_sea', 'the_frozen_north',
     'nightfall_survivor', 'giant_slayer', 'seasoned_veteran', 'bane_of_the_masses',
     'fortune_seeker', 'grave_robber', 'the_light_curdles', 'you_are_prepared',
+    'lost_calves', 'the_still_hand',
     'forbidden_knowledge', 'lights_favor', 'walking_armory',
     'blorp', 'master_craftsman', 'survivor_of_the_long_dark', 'eclipse_broken',
   ];

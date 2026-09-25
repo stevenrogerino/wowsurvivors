@@ -20,7 +20,7 @@
 const { chromium } = require('playwright');
 const path = require('path');
 
-const EXPECTED_GLYPHS = 70;
+const EXPECTED_GLYPHS = 81;
 const FIELD = 50;   // half-extent of the 100-unit field: beyond this is clipped
 
 (async () => {
