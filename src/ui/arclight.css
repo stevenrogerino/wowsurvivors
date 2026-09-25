@@ -2859,3 +2859,14 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 }
 .meter.steps .meter-fill { background: linear-gradient(90deg, #6aa6c8, #d8f2ff); opacity: .55; }
 .meter.steps .pip.ready .meter-fill { opacity: 1; box-shadow: 0 0 6px rgba(190,236,255,.55); }
+
+/* A trial under way (the Lost Calves, the Still Hand) and a Highmoor shrine's
+   boon: the first is a count running down, cream for the pasture and pale
+   blue for the mountain; the second burns in the colour of its stones. */
+.meter.trial.calves .meter-fill { background: linear-gradient(90deg, #8a6a40, #f0e2c8); }
+.meter.trial.still .meter-fill { background: linear-gradient(90deg, #4a6a8a, #e4f2ff); }
+.meter.boon.stone .meter-fill { background: linear-gradient(90deg, #6a6250, #d8cfb4); }
+.meter.boon.gale .meter-fill { background: linear-gradient(90deg, #2f7a66, #bff0dc); }
+.meter.boon.storm .meter-fill { background: linear-gradient(90deg, #3f5ea8, #d0e0ff); }
+.bm-bar[data-kind="storm"] { --bm: #5c78b8; }
+.bm-bar[data-kind="shrine"] { --bm: #9a8f70; }

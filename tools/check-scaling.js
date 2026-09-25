@@ -44,6 +44,9 @@ const DUPLICITY = {
   nova: false,     // "auras are unaffected"
   zone: false,     // "auras are unaffected"
   beam: false,     // a lance is one line; the detail claims nothing for it
+  palm: true,      // "palms" - one more strike in the flurry
+  herd: true,      // "beasts"
+  chakram: true,   // "rings"
 };
 
 (async () => {

@@ -585,6 +585,73 @@
       frameClose(g, w, h, 0.6);
     },
 
+    highland(g, w, h, t, v, m) {
+      /* Highmoor: a bruised sky that never settles, cloud dragging across
+         it low and fast, tors on the skyline, a ring of standing stones in
+         the middle distance, rain on the slant - and every so often the
+         whole sky goes white for a moment and a fork comes down on the
+         stones. The storm lives here; the picture should never be still. */
+      const s = WS.min(w, h), horizon = h * 0.63;
+      // the strike: every nine seconds or so, lasting a fifth of a second
+      const cyc = t % 9.3, flash = cyc < 0.22 ? 1 - cyc / 0.22 : 0;
+      skyFill(g, w, horizon, flash > 0.5 ? ['#2a2c40', '#474a66', '#6a6c8a', '#8c8ea8']
+        : ['#06060c', '#12121e', '#20202e', '#34303e']);
+      for (let i = 0; i < 4; i++) {
+        const cx = ((t * (9 + i * 5) + i * w * 0.4) % (w * 1.6)) - w * 0.3;
+        g.fillStyle = `rgba(${10 + i * 6},${10 + i * 6},${18 + i * 6},${0.75 - i * 0.12})`;
+        g.beginPath(); g.ellipse(cx, h * (0.12 + i * 0.09), s * (0.35 + i * 0.08), s * 0.05, 0, 0, WS.TAU); g.fill();
+      }
+      ridge(g, v, 'far', w, horizon, s * 0.05, s * 0.16, '#141420', 5);
+      // tors: blocks of granite stacked on the near ridge
+      g.fillStyle = '#0c0c14';
+      for (const [x, ht] of [[0.14, 0.1], [0.2, 0.07], [0.82, 0.12], [0.88, 0.08]]) {
+        g.fillRect(x * w - s * 0.04, horizon - s * ht, s * 0.08, s * ht);
+        g.fillRect(x * w - s * 0.03, horizon - s * (ht + 0.03), s * 0.06, s * 0.03);
+      }
+      // the ring of stones
+      const rx = w * 0.52, ry = horizon + s * 0.02;
+      g.fillStyle = '#08080e';
+      for (let i = 0; i < 9; i++) {
+        const a = (i / 9) * WS.TAU;
+        const x = rx + Math.cos(a) * s * 0.2, y = ry + Math.sin(a) * s * 0.03;
+        const ht = s * (0.06 + (i % 3) * 0.015) * (0.8 + 0.2 * Math.sin(a));
+        g.fillRect(x - s * 0.012, y - ht, s * 0.024, ht);
+      }
+      if (flash > 0) {
+        g.save(); g.globalCompositeOperation = 'lighter';
+        g.strokeStyle = `rgba(220,230,255,${flash})`; g.lineWidth = 2;
+        g.beginPath();
+        let x = rx + s * 0.06, y = 0;
+        g.moveTo(x, y);
+        const seed = WS.floor(t / 9.3);
+        for (let k = 1; k <= 8; k++) {
+          x += Math.sin(seed * 7.3 + k * 2.1) * s * 0.04 - s * 0.006;
+          y = (ry - s * 0.04) * (k / 8);
+          g.lineTo(x, y);
+        }
+        g.stroke();
+        glow(g, x, ry - s * 0.05, s * 0.2, '200,220,255', 0.5 * flash);
+        g.restore();
+      }
+      propLine(g, v, m, w, horizon + s * 0.03, s * 0.2, '#07070c', 7);
+      ground(g, w, h, horizon + s * 0.02, '#0e0c12', '#141018');
+      walker(g, v, 'ram', s * 0.17, horizon + s * 0.18, w, t, 16, 0.4, '#050408', '255,220,120');
+      fog(g, v, 'fog', w, horizon + s * 0.04, s, t, '150,150,190', 0.08);
+      // rain, on the slant
+      motes(g, v, 'rain', 70, (r) => ({ x: r(), off: r(), sp: 0.9 + r() * 0.5, len: 6 + r() * 8 }), (d, tt) => {
+        const y = ((d.off + tt * d.sp) % 1.1) * h;
+        const x = ((d.x + tt * 0.12 * d.sp) % 1) * w;
+        g.strokeStyle = 'rgba(170,185,220,.22)';
+        g.lineWidth = 1;
+        g.beginPath(); g.moveTo(x, y); g.lineTo(x - d.len * 0.35, y + d.len); g.stroke();
+      }, t);
+      if (flash > 0) {
+        g.fillStyle = `rgba(200,210,255,${0.18 * flash})`;
+        g.fillRect(0, 0, w, h);
+      }
+      frameClose(g, w, h, 0.6);
+    },
+
     arena(g, w, h, t, v, m) {
       const s = WS.min(w, h), horizon = h * 0.66;
       skyFill(g, w, horizon, ['#040208', '#0d0618', '#1d0c2a', '#35163a']);
@@ -778,6 +845,7 @@
     haunted:  { sky: ['#030208', '#110d20', '#231a36'], ridge: '#0c0916', ground: ['#08070d', '#0b0913'] },
     savannah: { sky: ['#2a0a0a', '#6a1a10', '#a8341a'], ridge: '#5a180e', ground: ['#2a0c06', '#1a0704'] },
     glacier:  { sky: ['#02040a', '#0b1d34', '#163150'], ridge: '#132540', ground: ['#0e1a2c', '#16263e'] },
+    highland: { sky: ['#06060c', '#16141f', '#2a2634'], ridge: '#141420', ground: ['#0e0c12', '#141018'] },
     arena:    { sky: ['#040208', '#1d0c2a', '#35163a'], ridge: '#100818', ground: ['#0a0612', '#120a1c'] },
     none:     { sky: ['#010102', '#07070c', '#101018'], ridge: '#08080d', ground: ['#050507', '#08080b'] },
   };

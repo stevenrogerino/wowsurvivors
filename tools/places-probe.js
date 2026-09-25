@@ -49,7 +49,7 @@ const SECONDS = secArg > 0 ? +process.argv[secArg + 1] : 30;
       return Array.from(acc, (v) => 20 * Math.log10(v / n));
     };
     const out = {};
-    for (const k of ['forest', 'plains', 'cursed', 'savannah', 'glacier', 'eclipse', 'menu']) {
+    for (const k of ['forest', 'plains', 'cursed', 'savannah', 'glacier', 'highmoor', 'eclipse', 'menu']) {
       WS.Audio.stopMusic();
       WS.Audio.playMusic(k);
       if (WS.Audio._music) { WS.Audio._music.intensity = 0; WS.Audio._music.want = 0; }

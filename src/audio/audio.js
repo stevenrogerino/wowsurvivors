@@ -1054,6 +1054,20 @@
       life: { rate: 0.60, voices: ['whistle', 'chime', 'chime', 'glint', 'glint', 'creak'] },
       drone: { gain: 0.055, oct: 2, cut: 900, wave: 'triangle' },
     },
+    /* Highmoor: a pipe over a held drone, in the dorian - bright sixth,
+       flat seventh - on a skin drum that walks like a march up a hill; the
+       wind, the thunder a long way off, and the sheep. The drone is a
+       square an octave down: the reed under a set of pipes, and the one
+       floor in the game with that much edge in it. */
+    highmoor: {
+      root: 110.00, scale: [0, 2, 3, 7, 9], wave: 'square', tempo: 1.5,
+      leadCut: 9,
+      pad: 'triangle', padCut: 1300,
+      perc: [0, 4, 6, 8, 12, 14], kit: 'skin', percGain: 1.7,
+      prog: [0, 3, 4, 3],
+      life: { rate: 0.5, voices: ['gust', 'gust', 'rumble', 'rumble', 'crow', 'bleat', 'hawk'] },
+      drone: { gain: 0.12, oct: 1, cut: 700, wave: 'square' },
+    },
     /* The Eclipse: wrong. Struck stone on an odd count, an altered scale, and
        a room that RINGS rather than rumbles.
        Its weather was a 230Hz lowpass, which is very nearly Mourneholt's -
@@ -1319,8 +1333,19 @@
     deep(o, t) {
       mTone(o, t, { wave: 'sine', freq: 41, to: 36, slide: 3, gain: 0.072, attack: 1.2, decay: 2.4 });
     },
+    // Highmoor: thunder a long way off, rolling rather than cracking.
+    rumble(o, t) {
+      mNoise(o, t, { filter: 'lowpass', freq: 160, to: 70, q: 0.8, gain: 0.07, attack: 0.25, decay: 3.2 });
+      mTone(o, t + 0.1, { wave: 'sine', freq: 48, to: 34, slide: 2.4, gain: 0.05, attack: 0.3, decay: 2.6 });
+    },
+    // And a sheep somewhere on the hill, which is somehow worse.
+    bleat(o, t) {
+      const f = 380 + WS.random() * 90;
+      mTone(o, t, { wave: 'sawtooth', freq: f, to: f * 0.86, slide: 0.5, gain: 0.012, attack: 0.04, decay: 0.55,
+        cut: 1400 });
+    },
   };
-  const LIFE_ROOM = { toll: 0.8, hawk: 0.5, glint: 0.7, owl: 0.5, wail: 0.9, crow: 0.35, bird: 0.3, whistle: 0.7, chime: 0.8, shimmer: 0.9, creak: 0.4, frog: 0.2, cricket: 0.15, cicada: 0.1, gust: 0.2, deep: 0.3 };
+  const LIFE_ROOM = { rumble: 0.6, bleat: 0.5, toll: 0.8, hawk: 0.5, glint: 0.7, owl: 0.5, wail: 0.9, crow: 0.35, bird: 0.3, whistle: 0.7, chime: 0.8, shimmer: 0.9, creak: 0.4, frog: 0.2, cricket: 0.15, cicada: 0.1, gust: 0.2, deep: 0.3 };
   function life(state, t0) {
     const L = state.score.life;
     const kind = L.voices[WS.floor(WS.random() * L.voices.length)];
@@ -2309,11 +2334,12 @@
     murkgill: 'gurgle', masked_admiral: 'admiral', admiral_ashore: 'admiral', dust_galleon: 'admiral',
     mordecai: 'mordecai', mordecai_bound: 'mordecai', marrowfrost: 'hollow', pale_lord: 'marrowfrost',
     harvestking: 'machine', shriekfeather: 'shrill', silkfang: 'shrill', aethelgard: 'celestial',
-    death_itself: 'celestial',
+    death_itself: 'celestial', skreeva: 'shrill', hornlord: 'beast', mossback: 'machine',
   };
   const FAMILY_VOICE = { beast: 'beast', mongrel: 'beast', moonwretch: 'beast', undead: 'hollow',
     mechanical: 'machine', kerchief: 'gruff', bristlekin: 'gruff', karrash: 'gruff', gilkin: 'gurgle',
-    lampling: 'grimtunnel', celestial: 'celestial', death: 'celestial' };
+    lampling: 'grimtunnel', celestial: 'celestial', death: 'celestial',
+    highland: 'beast', galewing: 'shrill', elemental: 'hollow' };
   Audio.voiceFor = function (id, t) {
     return BOSS_VOICE[id] || (t && FAMILY_VOICE[t.family]) || 'gruff';
   };

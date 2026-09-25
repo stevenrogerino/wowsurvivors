@@ -482,3 +482,30 @@ Fixes from a playthrough.
   engine, boss patterns, the wave director, loot, Second Wind, familiars
   and shared weapon mechanics are on the bench. Saved arena and familiar
   changes now survive a reload.
+
+## Two survivors, two powers, and Highmoor
+
+- **HUD meters** under the portrait (`UI.updateMeters`) are keyed by a
+  signature, so a meter is only rebuilt when the set of meters changes and
+  its label and fill update in place:
+  - *The Old Shapes*: `Wild · Bear/Owlbear` while it fills (named for the
+    shape the arsenal would take), the shape's own bar while it holds,
+    and "The wild sleeps" after.
+  - *Stillwater Step*: one pip per step, the next one refilling, with
+    `Poise N` in the label.
+  - *Trials*: `Calves 1/3 · 0:42` and `Still Hand · 0:12`, from
+    `Trials.meter()`.
+  - *Shrine boons*: `Shrine of the Gale · 0:14`, from `Moor.meter()`.
+- **The Watch's timers** gain Highmoor's `Storm` and `Standing stones`
+  bars, fed by `Moor.timers(run)` through `WaveManager.timers`.
+- **Storm cells** are the one thing on the field darker than the ground:
+  a shadow pool that fills from the rim in, with the rim crackling, so it
+  reads without colour. **Shrines** are six standing stones round a rune in
+  the boon's colour, with the capture count drawn round the ring.
+- **The calves** are drawn through the creature rig (like Beans), turned
+  the way they wander, on the destination-pickup pad.
+- **Hero rig** additions: a `bovine` head (patched hide, muzzle and ring,
+  out-then-up horns, ears), `bald`, `wraps`, a `bell` at the throat,
+  `robeFlare` (a heavy frame in a full bell flared out of its tile when it
+  flinched), and two new carried items, the herder's `crook` and the monk's
+  `mala`. check-hero now covers twelve survivors.

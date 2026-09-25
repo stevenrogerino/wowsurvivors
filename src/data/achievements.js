@@ -35,6 +35,14 @@
         || (db.statistics.finales && db.statistics.finales.palewastes)),
     },
 
+    the_storm_breaks: {
+      name: 'The Storm Breaks', art: 'bolt',
+      description: 'Free Brother Kael from the storm over Highmoor.',
+      reward: { type: 'gold', amount: 800 },
+      test: (db) => !!(db.statistics.bosses.kael_stormbound
+        || (db.statistics.finales && db.statistics.finales.highmoor)),
+    },
+
     /* ------------------------------------------------- map progression --- */
     beyond_the_forest: {
       name: 'Beyond the Forest', art: 'leaf',
@@ -92,7 +100,13 @@
       reward: { type: 'character', id: 'shaman' },
       test: (db) => !!(db.statistics.found && db.statistics.found.shaman),
     },
-    /* These three were filed under "challenge" with a gold reward instead of
+    the_high_places: {
+      name: 'The High Places', art: 'peak',
+      description: 'Survive for 10 minutes in the Pale Wastes.',
+      reward: { type: 'map', id: 'highmoor' },
+      test: (db) => (db.statistics.bestTime.palewastes || 0) >= 600,
+    },
+        /* These three were filed under "challenge" with a gold reward instead of
        here, which is why paladin, graveblade and ruinseeker could never
        actually be unlocked - the coffin, the graveblade and the twin glaives
        all spawn and can be claimed exactly as advertised, `db.statistics`
@@ -178,8 +192,8 @@
   };
 
   WS.AchievementOrder = [
-    'first_blood', 'take_his_candle', 'snarlbane', 'unmasked', 'the_long_dark_ends',
-    'beyond_the_forest', 'into_the_dark', 'across_the_sea', 'the_frozen_north',
+    'first_blood', 'take_his_candle', 'snarlbane', 'unmasked', 'the_long_dark_ends', 'the_storm_breaks',
+    'beyond_the_forest', 'into_the_dark', 'across_the_sea', 'the_frozen_north', 'the_high_places',
     'nightfall_survivor', 'giant_slayer', 'seasoned_veteran', 'bane_of_the_masses',
     'fortune_seeker', 'grave_robber', 'the_light_curdles', 'you_are_prepared',
     'lost_calves', 'the_still_hand',

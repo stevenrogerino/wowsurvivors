@@ -31,7 +31,7 @@ const path = require('path');
 const fs = require('fs');
 
 const GAME = 'file://' + path.resolve(__dirname, '..', 'index.html');
-const MAPS = ['thornhollow', 'dustreach', 'mourneholt', 'ochre', 'palewastes'];
+const MAPS = ['thornhollow', 'dustreach', 'mourneholt', 'ochre', 'palewastes', 'highmoor'];
 const only = process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1] : null;
 const shotDir = process.argv.includes('--shots') ? process.argv[process.argv.indexOf('--shots') + 1] : null;
 /* --strong: the build that deleted Mordecai in one window. The harness build

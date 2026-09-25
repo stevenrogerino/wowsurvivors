@@ -286,6 +286,8 @@
     } else if (run.victorious || run.mode === 'endless') {
       add('swarm', null, 'Horde surge', this.endlessEventTimer, this.endlessEventEvery, 'claw', [0.8, 0.5, 0.4]);
     }
+    // Highmoor's weather and its standing stones.
+    for (const m of WS.Moor.timers(run)) out.push(m);
     return out.sort((a, b) => a.left - b.left);
   };
 

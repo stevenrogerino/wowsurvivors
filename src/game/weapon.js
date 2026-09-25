@@ -57,7 +57,7 @@
       * (w.evolved ? (d.evolveCooldownMult || cfg.evolveCooldownMult) : 1);
     if (!d.noNerf) base *= WS.CONST.PLAYER_COOLDOWN_SCALE;
     if (player.metaTimer > 0) base *= cfg.metaCooldownMult;
-    base *= WS.Primal.cooldownMult(player, w);
+    base *= WS.Primal.cooldownMult(player, w) * WS.Moor.cooldownMult();
     // A runaway multiplier must never silently switch a weapon off.
     if (!(base > 0) || base > 20) base = 20;
     if (base < 0.05) base = 0.05;
@@ -404,7 +404,7 @@
      already use. Everything inside a cone is struck - it is a hand, not a
      bolt - and a union with an arc of a whole turn strikes all round. The
      first strike needs someone in reach; the rest look again as they land. */
-  function palmStrike(player, w) {
+  function palmStrike(player, w, first) {
     const d = w.data;
     const reach = areaOf(player, w, d.reach || 118);
     const target = WS.Enemy.findNearest(player.x, player.y, reach * 1.35);
@@ -431,7 +431,10 @@
       /* Whirling Discipline turns the shove into a pull: a palm beside a
          gyre draws the crowd in to the blades instead of throwing it clear
          of them. */
-      const knock = d.knockback * (w.mods.pull ? -0.6 : 1);
+      /* Only the opening strike of a flurry shoves (or, with Whirling
+         Discipline, pulls): the rest of the palms have to land on what the
+         first one moved, or every strike past the first swings at air. */
+      const knock = first ? d.knockback * (w.mods.pull ? -0.6 : 1) : 0;
       if (knock && !e.boss && !e.finale) {
         const [kx, ky] = WS.normalize(dx, dy);
         e.x += kx * knock; e.y += ky * knock;
@@ -441,7 +444,9 @@
       if (proc > 0 && WS.random() < proc) Weapon.chainFrom(e.x, e.y, dmg * 0.6, 3, 220, w.id);
       if (!e._dead) i++;
     }
-    const colour = schoolColour(w);
+    /* A discovery shows in the strike itself: the flash takes on some of the
+       partner weapon's colour, the way a bolt's blend does. */
+    const colour = w.mods.blend ? WS.mix(schoolColour(w), w.mods.blend, 0.45) : schoolColour(w);
     if (full) {
       WS.FX.flash(player.x, player.y - 10, reach, colour, 0.2, 10, 'physical');
     } else {
@@ -454,14 +459,47 @@
         if (beam) { beam.rank = w.level; beam.evolved = !!w.evolved; beam.blend = w.mods.blend || null; }
       }
     }
+    // Hallowed Hands: every flurry lights a small ring of Light at the hands.
+    if (w.mods.healBonus) {
+      WS.FX.flash(player.x, player.y - 12, 34, [1.0, 0.9, 0.55], 0.35, 8, 'holy');
+    }
     if (dx0(player, target) < 0) player.facing = -1; else player.facing = 1;
     WS.Audio.play('palm', player.x);
     return true;
   }
   function dx0(player, t) { return t.x - player.x; }
 
+  /* With nobody in reach, the palm is thrown instead: one blast of air from
+     an open hand at the nearest foe within waveReach times the palm's reach,
+     through the first couple of things in the way. Weaker than a flurry and
+     only one of it, so closing in is still the point - but a monk who is
+     being kited is not simply standing there. */
+  function palmWave(player, w) {
+    const d = w.data;
+    const reach = areaOf(player, w, d.reach || 118);
+    const target = WS.Enemy.findNearest(player.x, player.y, reach * (d.waveReach || 2.8));
+    if (!target) return false;
+    fillSpec(player, w);
+    const speed = d.waveSpeed || 520;
+    spec.damage *= d.waveDamage || 0.8;
+    spec.pierce = 2; spec.heal = 0;
+    spec.radius = 13 * (w.evolved ? 1.3 : 1);
+    spec.life = (reach * (d.waveReach || 2.8)) / speed;
+    spec.spinRate = 0;
+    const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
+    WS.Projectile.launchBolt(muzzleX(player, dx), muzzleY(player, dy), dx * speed, dy * speed, spec);
+    const colour = w.mods.blend ? WS.mix(schoolColour(w), w.mods.blend, 0.45) : schoolColour(w);
+    WS.FX.flash(player.x + dx * 20, player.y - 14 + dy * 20, 26, colour, 0.14, 5, 'physical');
+    player.facing = dx < 0 ? -1 : 1;
+    WS.Audio.play('palm', player.x);
+    return true;
+  }
+
   Weapon.behaviors.palm = function (player, w) {
-    if (!palmStrike(player, w)) { w.cooldown = retry(); return false; }
+    if (!palmStrike(player, w, true)) {
+      if (!palmWave(player, w)) { w.cooldown = retry(); return false; }
+      return true;
+    }
     w.burstShots = countOf(player, w) - 1;
     w.burstTimer = 0.08;
     const heal = (w.mods.healBonus || 0) + (w.evolved ? (w.data.evolvedHeal || 0) : 0);

@@ -29,7 +29,7 @@ const { chromium } = require('playwright');
 const path = require('path');
 
 const GAME = 'file://' + path.resolve(__dirname, '..', 'index.html');
-const MAPS = ['thornhollow', 'dustreach', 'mourneholt', 'ochre', 'palewastes'];
+const MAPS = ['thornhollow', 'dustreach', 'mourneholt', 'ochre', 'palewastes', 'highmoor'];
 const arg = (k) => (process.argv.includes(k) ? process.argv[process.argv.indexOf(k) + 1] : null);
 const only = arg('--only');
 const dodgeOnly = process.argv.includes('--dodge-only');

@@ -51,6 +51,7 @@
       tint: [0.55, 0.92, 0.72] },
     marrowfrost: { name: 'Marrowfrost', colour: '#a9dcff', art: 'marrowfrost_face',
       tint: [0.62, 0.88, 1.0] },
+    kael: { name: 'Brother Kael', colour: '#b9c8ff', art: 'kael_face', tint: [0.62, 0.72, 1.0] },
     narrator: { name: '', colour: '#e8dcc4' },
   };
 
@@ -92,6 +93,13 @@
       tint: [0.86, 0.52, 0.26], health: 380000, speed: 0, damage: 56, xp: 1500, radius: 80,
       gold: 600, drawScale: 1.25, interval: 99, finale: true, stationary: true, school: 'fire',
       yell: 'One more meter and it is ALL mine!',
+    },
+    kael_stormbound: {
+      name: 'Brother Kael, the Stormbound', family: 'highland', art: 'kael',
+      tint: [0.62, 0.72, 1.00], health: 560000, speed: 0, damage: 60, xp: 2400, radius: 40,
+      spriteScale: 1.15,
+      gold: 1200, interval: 99, finale: true, stationary: true, school: 'nature',
+      yell: 'Stand still. It is the only thing the storm cannot forgive.',
     },
     pale_lord: {
       // His own art (sprites.js), crown and all - no borrowed regalia.
@@ -135,6 +143,11 @@
     coolant_pipe: {
       name: 'Ember Coolant Line', family: 'mechanical', art: 'turret', machine: 'pipe',
       tint: [0.95, 0.55, 0.25], health: 40000, speed: 0, damage: 30, xp: 140, radius: 28,
+      finale: true, part: true, stationary: true,
+    },
+    storm_stone: {
+      name: 'Storm Stone', family: 'highland', art: 'turret', machine: 'stormstone',
+      tint: [0.62, 0.72, 1.00], health: 30000, speed: 0, damage: 30, xp: 110, radius: 26,
       finale: true, part: true, stationary: true,
     },
     frost_shard: {
@@ -376,6 +389,53 @@
           winterCross: 8, winterNova: 7, winterGrid: 12, winterSpike: 4, winterEnd: 3 },
         opening: { debris: 3, vent: 7, ghoul: 6 },
         lordOpening: { nova: 4, grid: 9, spike: 3, tide: 8 },
+      },
+    },
+
+    /* Highmoor is off the road the rest of the story takes. Grimtunnel never
+       came here: the storm on this moor is older than his digging, and it
+       has been held in place for thirty years by one monk of the Quiet
+       Ascent standing in the middle of it - Abbot Eisen's student, who went
+       up to learn to be still and stayed up there being it. Tonight the
+       ember under the Pale was broken open, and the storm got into him. */
+    highmoor: {
+      script: 'tempest',
+      title: 'Brother Kael, the Stormbound', subtitle: 'who has been holding the storm for thirty years',
+      art: 'kael', tint: [0.62, 0.72, 1.0],
+      intro: [
+        ['kael', 'You walked up through the rain for this? Then you know what I am holding.'],
+        ['kael', 'Thirty years I stood still inside it. Tonight it stood still inside me.'],
+        ['kael', 'Topple the stones and it will have nowhere to go but through you.'],
+      ],
+      say: {
+        stone: ['kael', 'That stone was older than the Watch. It did not mind. I did.'],
+        unbound: ['kael', 'Nothing holds it now. Not the stones. Not me. Find the eye!'],
+        eye: ['kael', 'Where it is quiet. Find where it is quiet!'],
+        storm: ['kael', 'It is taking the rest of me. Be quick, whoever you are.'],
+      },
+      outro: [
+        ['kael', 'Ah. There. That is... quiet.'],
+        ['kael', 'Tell the abbot I stood still for as long as I could. Tell him it was a long time.'],
+        ['narrator', 'The storm over Highmoor breaks for the first time in thirty years. Somewhere above the cloud, it is already morning.'],
+      ],
+      epilogue: ['The storm breaks', 'Brother Kael walks down off the moor, very slowly, in no particular hurry at all.'],
+      tuning: {
+        damage: 12.5,   // x difficulty x Hyper x Config.finaleDamage
+        // While any storm stone stands he takes stoneShield and cannot be
+        // broken below stoneFloor; each stone that falls takes stoneBreak of
+        // him with it. Past stormAt the storm takes the rest of him.
+        stoneShield: 0.30, stoneFloor: 0.55, stoneBreak: 0.08, stones: 3, stormAt: 0.30,
+        stoneHpGrowth: 0.20, restoneTime: 26, fenceDamage: 30,
+        boltDamage: 46, boltRadius: 72, boltTele: 1.25, bolts: 4, boltScatter: 200, boltStagger: 0.14,
+        galeDamage: 40, galeWidth: 60, galeLength: 900, galeTele: 1.0,
+        ringDamage: 42, ringSpeed: 210, ringGaps: 2, ringGap: 38,
+        eyeDamage: 70, eyeTele: 3.2, eyeRadius: 90, eyes: 2,
+        armDamage: 38, armSpin: 0.55, armWidth: 30, armTele: 1.1, armTime: 7, arms: 3, stormArms: 4,
+        wisps: 8, harpies: 4,
+        drift: 150, driftSpeed: 0.35,
+        every: { bolt: 3.6, gale: 7.5, ring: 10, adds: 13, eye: 20, arm: 12,
+          stormBolt: 2.6, stormRing: 7, stormArm: 9, stormEye: 15 },
+        opening: { bolt: 3, gale: 6, ring: 9, adds: 5, eye: 99, arm: 99 },
       },
     },
   };

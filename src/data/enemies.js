@@ -160,6 +160,26 @@
       health: 59, speed: 118, damage: 15, xp: 10, radius: 14,
       burst: { radius: 74, damagePct: 0.9, fuse: 0.55, tint: [0.60, 0.90, 1.00] },
     },
+    /* -------------------------------------------------------- Highmoor ---- */
+    stormhorn_ram: {
+      name: 'Stormhorn Ram', family: 'highland', art: 'ram', tint: [0.80, 0.76, 0.66],
+      health: 104, speed: 96, damage: 19, xp: 11, radius: 17,
+    },
+    galewing_harpy: {
+      name: 'Galewing Harpy', family: 'galewing', art: 'galewing', tint: [0.62, 0.70, 0.88],
+      health: 66, speed: 92, damage: 15, xp: 12, radius: 15, caster: true,
+      ranged: { range: 280, cooldown: 2.4, speed: 260, school: 'nature' },
+      orbit: { range: 230, spin: 1.0 },
+    },
+    stonehide: {
+      name: 'Mossback Stonehide', family: 'highland', art: 'stonehide', tint: [0.54, 0.58, 0.50],
+      health: 270, speed: 44, damage: 30, xp: 20, radius: 25,
+    },
+    stormwisp: {
+      name: 'Stormwisp', family: 'elemental', art: 'wisp', tint: [0.62, 0.82, 1.00],
+      health: 58, speed: 124, damage: 15, xp: 10, radius: 13,
+      burst: { radius: 70, damagePct: 0.9, fuse: 0.55, tint: [0.70, 0.88, 1.00] },
+    },
   };
 
   /* Elite champions: bigger, gold-glowing, name-plated, always drop a chest.
@@ -189,6 +209,12 @@
     deathbound_vanguard: {
       name: 'Deathbound Vanguard', family: 'undead', elite: true, art: 'skeleton', bossKit: ['spines', 'brand'],
       tint: [0.55, 0.80, 1.00], health: 1026, speed: 62, damage: 41, xp: 80, radius: 32,
+    },
+    thunderscale: {
+      name: 'Thunderscale Drake', family: 'highland', elite: true, art: 'raptor', bossKit: ['spines'],
+      tint: [0.40, 0.66, 1.00], health: 1080, speed: 80, damage: 42, xp: 82, radius: 30,
+      spriteScale: 1.2,
+      lunge: { range: 340, cooldown: 4.4, windup: 0.55, time: 0.5 },
     },
     // Eclipse Arena: a stationary channeler that drags you toward the chasm.
     shadow_weaver: {

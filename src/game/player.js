@@ -198,7 +198,7 @@
 
     if (p.hurtTimer > 0) p.hurtTimer -= dt;
 
-    let speed = p.moveSpeed * WS.Primal.moveMult(p);
+    let speed = p.moveSpeed * WS.Primal.moveMult(p) * WS.Moor.moveMult();
     if (p.slowTimer > 0) { p.slowTimer -= dt; speed *= p.slowFactor; }
 
     if (moving) {
@@ -516,7 +516,7 @@
     const armor = p.armor || 0;
     const reduction = armor > 0 ? armor / (armor + WS.Config.armorConstant) : 0;
     // The bear's hide takes its share before the armour does.
-    const hide = WS.Primal.mitigate(p, amount);
+    const hide = WS.Moor.mitigate(WS.Primal.mitigate(p, amount));
     const taken = WS.max(1, WS.floor(hide * (1 - reduction)));
     run.damagePrevented += (amount - taken);
     run.damageTaken += taken;

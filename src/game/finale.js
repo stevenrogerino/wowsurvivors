@@ -90,6 +90,7 @@
     run.finaleStarted = true;
     WS.Projectile.hostiles.releaseAll();
     WS.Hazard.clear();
+    WS.Moor.clear();
     WS.Game.announce('First Light', 'The horde cannot stand it. Something bigger can.', 3.4,
       { kind: 'glory' });
     WS.Audio.play('evolve');
@@ -1876,6 +1877,158 @@
           pod.thawed = true;
           pod.path = [[pod.x + 60, pod.y + 120]];
           pod.speed = 40;
+        }
+      }
+    },
+  };
+
+  /* ------------------------------------------------------- Highmoor --- */
+  /* Brother Kael, the Stormbound. He floats in the middle of the moor tied
+     to three storm stones by lightning - tethers that swing across the
+     field as he drifts, and hurt to cross. While a stone stands he shrugs
+     most damage off and cannot be broken past stoneFloor; each one that
+     falls tears a piece out of him. Unbound, the storm has nowhere to go:
+     arms of lightning turn about him and, every so often, the whole sky
+     comes down except in the eye - find the quiet or be struck. If he
+     outlasts the unbound window the stones rise again. Past stormAt the
+     storm takes the rest of him, and everything comes faster. */
+  const STONES = [[380, 300], [900, 300], [640, 520]];
+  const STORM_TINT = [0.62, 0.72, 1.0];
+  SCRIPTS.tempest = {
+    start(F) {
+      const s = F.s;
+      s.cycle = 0; s.stones = []; s.armDir = 1; s.ph = 0;
+      s.core = F.unit('kael_stormbound', 640, 250);
+      s.tm = Object.assign({}, F.def.tuning.opening);
+      this.bind(F, F.def.tuning.stoneFloor);
+    },
+    bind(F, floor) {
+      const s = F.s, T = F.def.tuning, k = s.core;
+      if (!F.live(k)) return;
+      const mult = 1 + T.stoneHpGrowth * s.cycle;
+      s.stones = STONES.slice(0, T.stones).map(([x, y]) => {
+        const q = F.unit('storm_stone', x, y, mult);
+        if (q) F.eruption(x, y, 70, STORM_TINT);
+        return q;
+      }).filter(Boolean);
+      for (const q of s.stones) F.fence(k, q, T.fenceDamage, 'Storm tether');
+      k.dmgTaken = T.stoneShield;
+      k.hpFloor = floor * k.maxHealth;
+      k.displayName = 'Brother Kael · Bound to the stones';
+      s.mode = 'bound';
+      F.darkTarget = 0.25;
+    },
+    update(F, dt) {
+      const s = F.s, T = F.def.tuning, E = T.every, k = s.core;
+      if (!F.live(k)) return;
+      const p = WS.Game.player;
+      s.ph += dt * T.driftSpeed * (s.mode === 'storm' ? 1.5 : 1);
+      k.x = 640 + WS.sin(s.ph) * T.drift;
+      k.y = 250 + WS.sin(s.ph * 2) * T.drift * 0.3;
+      k.facing = p.x < k.x ? -1 : 1;
+      const hp = k.health / k.maxHealth;
+
+      if (s.mode === 'bound') {
+        s.stones = s.stones.filter((q) => F.live(q));
+        s.label = `Topple the storm stones · ${s.stones.length}`;
+      } else if (s.mode === 'unbound') {
+        s.restone -= dt;
+        s.label = `Unbound · ${WS.max(0, WS.ceil(s.restone))}`;
+        if (hp <= T.stormAt) { this.storm(F); return; }
+        if (s.restone <= 0) {
+          s.cycle++;
+          this.bind(F, WS.max(T.stormAt, hp - 0.2));
+          F.say('stone');
+        }
+      } else {
+        s.label = 'The storm takes him';
+      }
+
+      const storming = s.mode === 'storm';
+      if (F.every('bolt', dt, storming ? E.stormBolt : E.bolt)) {
+        for (let i = 0; i < T.bolts; i++) {
+          const [x, y] = i === 0 ? [p.x, p.y] : F.near(T.boltScatter);
+          F.circle(x, y, T.boltRadius, T.boltTele + i * T.boltStagger, T.boltDamage, 'Lightning',
+            { style: 'blast', tint: STORM_TINT });
+        }
+      }
+      if (F.every('gale', dt, E.gale)) {
+        F.lane(k.x, k.y, F.aim(k), T.galeLength, T.galeWidth, T.galeTele, T.galeDamage, 'Gale',
+          { tint: [0.7, 0.95, 0.85], style: 'shot', active: 0.35 });
+      }
+      if (F.every('ring', dt, storming ? E.stormRing : E.ring)) {
+        F.ring(k.x, k.y, { speed: T.ringSpeed, gaps: T.ringGaps, gapWidth: T.ringGap, dmg: T.ringDamage,
+          name: 'Thunderclap', tint: STORM_TINT });
+        WS.Audio.play('thunder', k.x);
+      }
+      if (F.every('adds', dt, E.adds)) {
+        F.adds('stormwisp', T.wisps, k.x, k.y + 120, 220);
+        if (s.mode === 'bound') F.adds('galewing_harpy', T.harpies, k.x, k.y + 60, 260);
+      }
+      if (s.mode !== 'bound') {
+        if (F.every('arm', dt, storming ? E.stormArm : E.arm)) {
+          s.armDir = -s.armDir;
+          F.sweep(k.x, k.y, WS.random() * WS.TAU, s.armDir * T.armSpin, 900, T.armWidth, T.armTele, T.armTime,
+            T.armDamage, 'Lightning arm', { arms: storming ? T.stormArms : T.arms, follow: k, tint: STORM_TINT });
+        }
+        if (F.every('eye', dt, storming ? E.stormEye : E.eye)) this.eye(F);
+      }
+    },
+    /** The whole sky, except the eye. */
+    eye(F) {
+      const T = F.def.tuning, p = WS.Game.player;
+      const b = { minX: 140, maxX: W() - 140, minY: 160, maxY: H() - 110 };
+      const zones = [];
+      for (let i = 0; i < T.eyes; i++) {
+        const a = WS.random() * WS.TAU, d = WS.randRange(180, 320);
+        zones.push({ x: WS.clamp(p.x + WS.cos(a) * d, b.minX, b.maxX),
+          y: WS.clamp(p.y + WS.sin(a) * d, b.minY, b.maxY), r: T.eyeRadius });
+      }
+      F.safe(zones, T.eyeTele, T.eyeDamage, 'The storm');
+      F.sayOnce('eye');
+      WS.Game.toast('The eye of the storm', 'The whole sky is coming down. Get into the quiet.',
+        { kind: 'warn', art: 'bolt', tint: STORM_TINT });
+      WS.Audio.play('warn');
+    },
+    storm(F) {
+      const s = F.s, k = s.core;
+      s.mode = 'storm';
+      for (const q of s.stones) F.remove(q);
+      s.stones = [];
+      k.dmgTaken = 1; k.hpFloor = 0;
+      k.displayName = 'Brother Kael · The storm takes him';
+      F.darkTarget = 0.6;
+      F.say('storm');
+      WS.Game.announce('The storm takes him', 'Break him before there is nothing left to break.', 3.2,
+        { kind: 'dread', art: 'kael_face', tint: STORM_TINT });
+      WS.FX.screen('rgba(190,205,255,.35)', 0.9);
+      s.tm.eye = 5; s.tm.arm = 1.5;
+    },
+    onDead(F, e) {
+      const s = F.s, T = F.def.tuning, k = s.core;
+      if (e === k) {
+        s.core = null;
+        F.darkTarget = 0;
+        F.wreck(e, 'fallen', 20);
+        F.chain(e.x, e.y, 90, 7, 1.6, STORM_TINT);
+        WS.FX.screen('rgba(230,236,255,.6)', 1.4);
+        F.win();
+        return;
+      }
+      if (s.stones.includes(e) && F.live(k)) {
+        s.stones = s.stones.filter((q) => q !== e && F.live(q));
+        WS.Enemy.damage(k, k.maxHealth * T.stoneBreak, false, 'stormbond');
+        WS.FX.flash(k.x, k.y, 120, STORM_TINT, 0.5);
+        if (!F.live(k)) return;
+        if (!s.stones.length) {
+          s.mode = 'unbound'; s.restone = T.restoneTime;
+          k.dmgTaken = 1; k.hpFloor = 0;
+          k.displayName = 'Brother Kael, the Stormbound';
+          F.darkTarget = 0.45;
+          F.say('unbound');
+          s.tm.eye = 4; s.tm.arm = 1.5;
+          WS.Game.toast('Kael is unbound', 'Nothing is holding the storm now - and nothing is shielding him.',
+            { kind: 'warn', art: 'crosshair', tint: [1.0, 0.72, 0.36] });
         }
       }
     },

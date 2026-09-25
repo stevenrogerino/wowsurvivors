@@ -144,6 +144,9 @@
    *  the crown line cannot find by width alone: [x, y, width] of each row. */
   const HEAD_AT = {
     shrikewing: { crown: [50, 20.6, 22] },
+    ram: { crown: [27, 29, 14], shoulder: [56, 34, 26], plate: 0.6 },
+    galewing: { crown: [50, 19, 16], shoulder: [50, 37, 22], plate: 0.55 },
+    stonehide: { crown: [20, 46, 14], shoulder: [56, 28, 30], plate: 0.7 },
     karrash: { crown: [36.6, 12.6, 13], shoulder: [39.4, 26.4, 17], plate: 0.58 },
   };
 
@@ -3578,6 +3581,312 @@
       poly(g, P([[49.4, 38.6], [50, 40.4], [50.8, 38.4]]), '#3e424c', '#08090b', u * 0.3);
     },
 
+    /* ---------------------------------------------------- Highmoor ---- */
+    ram(g, s, p) {
+      /* THE STORMHORN RAM. A heavy fleece on thin dark legs and a head
+         carried low - and the horns, curled right round once, with the storm
+         in them: a cold light along the ridges. The curl is the whole
+         silhouette; everything else on the moor is a straight line. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const shin = { hi: '#5a524a', mid: '#3a342e', lo: '#2a2622', dark: '#1a1714', line: '#0c0a08', glow: '#fff' };
+      const farShin = { hi: '#3a342e', mid: '#2a2622', lo: '#1a1714', dark: '#100e0c', line: '#0c0a08', glow: '#fff' };
+      for (const x of [46, 72]) {
+        limb(g, P([[x, 60], [x + 1, 72], [x, 84]]), [6, 3.6, 3].map(X), farShin);
+        shaded(g, X(x), Y(85), X(2.8), X(1.6), farShin);
+      }
+      const body = mass(g, P([[32, 46], [36, 38], [46, 33], [58, 32], [70, 34], [80, 39], [85, 48], [82, 58],
+        [74, 64], [60, 66], [46, 65], [36, 61], [30, 54]]), p);
+      g.save(); body(); g.clip();
+      // the fleece: rows of curls
+      g.strokeStyle = p.lo; g.lineWidth = u * 1.1; g.globalAlpha = 0.55;
+      for (let r = 0; r < 6; r++) {
+        for (let i = 0; i < 9; i++) {
+          const cx = 34 + i * 6 + (r % 2) * 3, cy = 36 + r * 5.4;
+          g.beginPath(); g.arc(X(cx), Y(cy), X(2.6), 0.3, WS.PI + 0.9); g.stroke();
+        }
+      }
+      g.globalAlpha = 1;
+      const lit = g.createLinearGradient(0, Y(32), 0, Y(66));
+      lit.addColorStop(0, 'rgba(255,255,255,.16)'); lit.addColorStop(1, 'rgba(0,0,0,.22)');
+      g.fillStyle = lit; g.fillRect(0, Y(30), s, Y(40));
+      g.restore();
+      for (const x of [40, 66]) {
+        limb(g, P([[x, 60], [x - 1, 72], [x, 84]]), [7, 4, 3.2].map(X), shin);
+        shaded(g, X(x), Y(85.2), X(3), X(1.8), shin);
+      }
+      // the head, low and long, darker than the fleece
+      const face = { hi: '#8a8076', mid: '#6a6058', lo: '#4a423c', dark: '#2e2824', line: '#14100e', glow: '#fff' };
+      mass(g, P([[16, 46], [20, 36], [28, 32], [35, 36], [36, 46], [30, 56], [20, 58], [13, 53]]), face);
+      // wool cap between the horns
+      mass(g, P([[24, 34], [29, 28], [36, 30], [37, 37], [30, 38]]), p);
+      // the horn: a thick band curled round once, ridged, and lit by the storm
+      const HORN = { hi: '#e8e0cc', mid: '#c4b898', lo: '#8c806a', dark: '#5a5040', line: '#2a2418', glow: '#fff' };
+      const cx = 35, cy = 41, pts = [], ws = [];
+      for (let i = 0; i <= 16; i++) {
+        const t = i / 16, a = -2.5 + t * 5.6, r = 14.5 - t * 8.5;
+        pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.95]);
+        ws.push(9.6 - t * 6.8);
+      }
+      limb(g, P(pts), ws.map(X), HORN);
+      g.strokeStyle = HORN.line; g.globalAlpha = 0.55; g.lineWidth = u * 0.7;
+      for (let i = 1; i < 14; i++) {
+        const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
+        const nx = -(y1 - y0), ny = x1 - x0, d = Math.hypot(nx, ny) || 1, w = ws[i] * 0.5;
+        g.beginPath(); g.moveTo(X(x0 + nx / d * w), Y(y0 + ny / d * w)); g.lineTo(X(x0 - nx / d * w), Y(y0 - ny / d * w)); g.stroke();
+      }
+      g.globalAlpha = 1;
+      // the storm in it
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      g.strokeStyle = 'rgba(160,200,255,.85)'; g.lineWidth = u * 1.1; g.lineCap = 'round';
+      g.beginPath();
+      for (let i = 0; i < 9; i++) {
+        const [x, y] = pts[i];
+        const j = (i % 2 ? 1.6 : -1.6);
+        if (i) g.lineTo(X(x + j * 0.4), Y(y - ws[i] * 0.3 + j * 0.3)); else g.moveTo(X(x), Y(y - ws[i] * 0.3));
+      }
+      g.stroke();
+      g.restore();
+      // muzzle and eye
+      g.fillStyle = '#1a1512';
+      g.beginPath(); g.ellipse(X(15.4), Y(52), X(1.2), X(0.9), 0.3, 0, WS.TAU); g.fill();
+      g.strokeStyle = '#1a1512'; g.lineWidth = u * 0.8;
+      g.beginPath(); g.moveTo(X(15), Y(55.6)); g.quadraticCurveTo(X(19), Y(57), X(22), Y(55)); g.stroke();
+      eyes(g, X(22), Y(42.6), X(0.01), X(1.5), '#ffd96a');
+      g.strokeStyle = '#14100e'; g.lineWidth = u * 0.9;
+      g.beginPath(); g.moveTo(X(19.4), Y(40.4)); g.lineTo(X(24.6), Y(41.2)); g.stroke();
+    },
+
+    galewing(g, s, p) {
+      /* THE GALEWING HARPY. Front-on like the windcaller, so the two share a
+         sky and not a shape: the windcaller is a bird, and this is a woman
+         from the waist up with wings where her arms should be, talons below,
+         and hair that is mostly feathers blown straight up by the wind she
+         rides. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const skin = { hi: '#e8d4c4', mid: '#c8ab98', lo: '#8e7262', dark: '#5a463a', line: '#2c1e18', glow: '#fff' };
+      const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+      // wings: three ranks of long feathers from shoulder to tip, swept up
+      for (const dir of [-1, 1]) {
+        for (let k = 6; k >= 0; k--) {
+          const a = (dir < 0 ? WS.PI : 0) + dir * (-0.75 + k * 0.2);
+          const len = 30 - k * 2.2, wx = 50 + dir * 10, wy = 38;
+          const x1 = wx + Math.cos(a) * len, y1 = wy + Math.sin(a) * len;
+          const nx = -Math.sin(a) * 3, ny = Math.cos(a) * 3;
+          poly(g, P([[wx - nx, wy - ny], [x1 - nx * 0.6, y1 - ny * 0.6], [x1 + Math.cos(a) * 2, y1 + Math.sin(a) * 2],
+            [x1 + nx * 0.6, y1 + ny * 0.6], [wx + nx, wy + ny]]), k % 2 ? far.hi : p.hi, p.line, u * 0.5);
+        }
+        mass(g, P([[50 + dir * 6, 36], [50 + dir * 18, 30], [50 + dir * 26, 33], [50 + dir * 20, 42], [50 + dir * 9, 46]]), p);
+      }
+      // legs: feathered thighs into scaled shins and talons
+      for (const dir of [-1, 1]) {
+        mass(g, P([[50 + dir * 2, 60], [50 + dir * 9, 62], [50 + dir * 9, 72], [50 + dir * 4, 74]]), p);
+        limb(g, P([[50 + dir * 6.5, 72], [50 + dir * 7, 80], [50 + dir * 6, 86]]), [3.4, 2.4, 2].map(X), palette([0.8, 0.66, 0.4]));
+        for (let i = -1; i <= 1; i++) {
+          poly(g, P([[50 + dir * 6 + i * 1.6, 86], [50 + dir * 6 + i * 2.4, 90], [50 + dir * 6 + i * 1.6 + 0.9, 86.4]]), '#1a1612', '#080604', u * 0.3);
+        }
+      }
+      // the torso: bare shoulders, a feathered front from the chest down
+      mass(g, P([[43, 38], [50, 35], [57, 38], [58, 50], [56, 62], [50, 64], [44, 62], [42, 50]]), skin);
+      const front = mass(g, P([[43.5, 46], [50, 44], [56.5, 46], [57, 56], [55, 63], [50, 65], [45, 63], [43, 56]]), p);
+      g.save(); front(); g.clip();
+      g.strokeStyle = p.line; g.globalAlpha = 0.4; g.lineWidth = u * 0.6;
+      for (let r = 0; r < 5; r++) for (let i = -2; i <= 2; i++) {
+        g.beginPath(); g.arc(X(50 + i * 3 + (r % 2) * 1.5), Y(48 + r * 3.6), X(1.7), 0.2, WS.PI - 0.2); g.stroke();
+      }
+      g.restore();
+      // hair: feathers blown straight up and back
+      for (let i = -3; i <= 3; i++) {
+        const a = -WS.PI / 2 + i * 0.22, len = 16 - Math.abs(i) * 1.6;
+        const x0 = 50 + i * 1.8, y0 = 22;
+        poly(g, P([[x0 - 1.6, y0 + 2], [x0 + Math.cos(a) * len, y0 + Math.sin(a) * len], [x0 + 1.6, y0 + 2]]),
+          i % 2 ? p.mid : p.lo, p.line, u * 0.4);
+      }
+      // the head
+      mass(g, P([[50, 18], [55.6, 21], [57, 27.6], [54.4, 33.4], [50, 35], [45.6, 33.4], [43, 27.6], [44.4, 21]]), skin);
+      poly(g, P([[43, 22], [50, 17], [57, 22], [57.6, 27], [55, 23.4], [50, 22], [45, 23.4], [42.4, 27]]), p.lo, p.line, u * 0.5);
+      eyes(g, X(50), Y(27.6), X(3.4), X(1.3), '#e8ff9a');
+      g.strokeStyle = '#2c1e18'; g.lineWidth = u * 0.7;
+      g.beginPath(); g.moveTo(X(47.6), Y(31.6)); g.quadraticCurveTo(X(50), Y(32.8), X(52.4), Y(31.6)); g.stroke();
+    },
+
+    stonehide(g, s, p) {
+      /* THE STONEHIDE. A boulder that walks: a hunched granite back in
+         plates, moss grown over the top of it, short pillar legs, and a
+         small low head with two stubby horns and eyes like banked coals. It
+         is the widest thing on the moor and the lowest. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+      for (const x of [40, 74]) {
+        limb(g, P([[x, 64], [x, 74], [x + 1, 84]]), [11, 10, 10].map(X), far);
+        shaded(g, X(x + 1), Y(85), X(6), X(2.2), far);
+      }
+      const body = mass(g, P([[22, 58], [26, 42], [38, 30], [56, 26], [74, 30], [86, 42], [90, 56], [84, 68],
+        [66, 72], [42, 72], [28, 68]]), p);
+      g.save(); body(); g.clip();
+      // the plates: facets of stone with dark seams between them
+      const plates = [
+        [[26, 44], [38, 32], [46, 42], [36, 54]], [[38, 32], [56, 27], [58, 40], [46, 42]],
+        [[56, 27], [74, 31], [70, 44], [58, 40]], [[74, 31], [86, 43], [80, 52], [70, 44]],
+        [[36, 54], [46, 42], [58, 40], [56, 56], [42, 62]], [[58, 40], [70, 44], [80, 52], [72, 62], [56, 56]],
+        [[80, 52], [90, 56], [84, 68], [72, 62]], [[24, 58], [36, 54], [42, 62], [30, 68]],
+      ];
+      plates.forEach((pl, i) => {
+        poly(g, P(pl), i % 3 === 0 ? p.hi : i % 3 === 1 ? p.mid : p.lo, p.dark, u * 1.2);
+      });
+      // moss over the top
+      g.fillStyle = '#4f6b2c';
+      g.beginPath();
+      g.moveTo(X(28), Y(42));
+      for (let i = 0; i <= 14; i++) {
+        const x = 28 + i * 4.2, y = 34 - Math.sin((i / 14) * WS.PI) * 8 + (i % 2 ? 2.4 : 0);
+        g.lineTo(X(x), Y(y + 6));
+      }
+      g.lineTo(X(86), Y(40)); g.lineTo(X(84), Y(26)); g.lineTo(X(26), Y(26)); g.closePath();
+      g.globalAlpha = 0.85; g.fill();
+      g.fillStyle = '#7e9c48'; g.globalAlpha = 0.6;
+      for (let i = 0; i < 16; i++) {
+        g.beginPath(); g.arc(X(32 + i * 3.4), Y(31 + Math.sin(i * 1.7) * 3), X(1.4), 0, WS.TAU); g.fill();
+      }
+      g.restore();
+      for (const x of [34, 66]) {
+        limb(g, P([[x, 64], [x, 74], [x - 1, 84]]), [12, 11, 11].map(X), p);
+        shaded(g, X(x - 1), Y(85.2), X(6.4), X(2.4), p);
+        for (let i = -1; i <= 1; i++) poly(g, P([[x - 1 + i * 3.4 - 1.2, 85], [x - 1 + i * 3.4, 87.6], [x - 1 + i * 3.4 + 1.2, 85]]), '#d8d0bd', '#3d392f', u * 0.4);
+      }
+      // the head, low at the front of the boulder
+      const head = mass(g, P([[10, 56], [14, 48], [24, 46], [30, 52], [28, 62], [18, 66], [10, 63]]), p);
+      g.save(); head(); g.clip();
+      g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(X(8), Y(58), X(24), X(10));
+      g.restore();
+      for (const [x, y] of [[16, 48], [24, 47]]) {
+        poly(g, P([[x - 2.4, y + 1], [x - 0.6, y - 5], [x + 2.2, y + 1]]), '#d8d0bd', '#3d392f', u * 0.5);
+      }
+      eyes(g, X(18), Y(54.6), X(3.2), X(1.3), '#ffae4a');
+      g.strokeStyle = p.line; g.lineWidth = u;
+      g.beginPath(); g.moveTo(X(11), Y(61)); g.lineTo(X(20), Y(62.4)); g.stroke();
+    },
+
+    wisp(g, s, p) {
+      /* A STORMWISP: a knot of the storm with a face in it. A bright core,
+         a ragged corona, a tail of spent light behind it, and forks of
+         lightning breaking off the edge. It has no feet, so it has no
+         shadow on the ground worth drawing. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      const halo = g.createRadialGradient(X(46), Y(50), 0, X(46), Y(50), X(34));
+      halo.addColorStop(0, 'rgba(210,230,255,.85)');
+      halo.addColorStop(0.4, p.glow + '99');
+      halo.addColorStop(1, 'rgba(90,130,255,0)');
+      g.fillStyle = halo;
+      g.beginPath(); g.arc(X(46), Y(50), X(34), 0, WS.TAU); g.fill();
+      // the tail, streaming right (it faces left)
+      g.fillStyle = 'rgba(150,190,255,.35)';
+      g.beginPath();
+      g.moveTo(X(52), Y(40)); g.quadraticCurveTo(X(78), Y(44), X(90), Y(58));
+      g.quadraticCurveTo(X(76), Y(56), X(54), Y(62)); g.closePath(); g.fill();
+      g.restore();
+      // the core
+      const core = g.createRadialGradient(X(44), Y(47), X(2), X(46), Y(50), X(17));
+      core.addColorStop(0, '#ffffff'); core.addColorStop(0.5, p.hi); core.addColorStop(1, p.lo);
+      g.fillStyle = core;
+      g.beginPath();
+      for (let i = 0; i <= 16; i++) {
+        const a = (i / 16) * WS.TAU, r = 17 + (i % 2 ? 2.4 : -1.2);
+        const x = 46 + Math.cos(a) * r, y = 50 + Math.sin(a) * r;
+        if (i) g.lineTo(X(x), Y(y)); else g.moveTo(X(x), Y(y));
+      }
+      g.closePath(); g.fill();
+      g.strokeStyle = p.line; g.lineWidth = u * 0.8; g.stroke();
+      // forks
+      g.strokeStyle = '#eaf2ff'; g.lineWidth = u * 1.2; g.lineCap = 'round';
+      for (const [a, len] of [[-2.4, 16], [-0.6, 14], [1.9, 13], [3.0, 11]]) {
+        let x = 46 + Math.cos(a) * 17, y = 50 + Math.sin(a) * 17;
+        g.beginPath(); g.moveTo(X(x), Y(y));
+        for (let k = 0; k < 3; k++) {
+          x += Math.cos(a + (k % 2 ? 0.6 : -0.6)) * len / 3; y += Math.sin(a + (k % 2 ? 0.6 : -0.6)) * len / 3;
+          g.lineTo(X(x), Y(y));
+        }
+        g.stroke();
+      }
+      // a face: two hollow eyes and a mouth, dark in the light
+      g.fillStyle = 'rgba(20,30,70,.85)';
+      for (const dx of [-4.6, 3.4]) { g.beginPath(); g.ellipse(X(44 + dx), Y(47), X(2), X(2.8), 0, 0, WS.TAU); g.fill(); }
+      g.beginPath(); g.ellipse(X(43.4), Y(55), X(3.4), X(1.6), 0, 0, WS.TAU); g.fill();
+    },
+
+    kael(g, s, p) {
+      /* BROTHER KAEL, THE STORMBOUND. A monk of the Quiet Ascent, like the
+         abbot - bald, robed, barefoot once - off the ground now, arms held
+         out and down, the storm he was holding pouring out of both palms.
+         Iron cuffs on the wrists with the chains snapped off short: he was
+         bound to the stones and something broke. His tattoos are the only
+         lit thing on him that is not lightning. The robe ends in rags where
+         feet should be, because he has not stood on anything for a while. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const robe = { hi: '#8a90a8', mid: '#5e647c', lo: '#3c4054', dark: '#24273a', line: '#101220', glow: '#fff' };
+      const skin = { hi: '#e2c8b0', mid: '#bf9f86', lo: '#8a6c58', dark: '#5a4436', line: '#2a1e16', glow: '#fff' };
+      const IRON = { hi: '#9aa0ac', mid: '#6a707c', lo: '#434852', dark: '#262a32', line: '#101216', glow: '#fff' };
+      // the storm behind him
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      const halo = g.createRadialGradient(X(50), Y(48), 0, X(50), Y(48), X(46));
+      halo.addColorStop(0, 'rgba(150,175,255,.4)'); halo.addColorStop(1, 'rgba(90,110,255,0)');
+      g.fillStyle = halo; g.beginPath(); g.arc(X(50), Y(48), X(46), 0, WS.TAU); g.fill();
+      g.restore();
+      // the robe: shoulders to rags, and the rags lift
+      const body = mass(g, P([[40, 34], [50, 31], [60, 34], [64, 50], [68, 70], [66, 80], [60, 76], [56, 84],
+        [50, 78], [44, 85], [40, 77], [34, 81], [32, 70], [36, 50]]), robe);
+      g.save(); body(); g.clip();
+      g.fillStyle = 'rgba(0,0,0,.25)';
+      for (const x of [42, 50, 58]) {
+        g.beginPath(); g.moveTo(X(x), Y(40)); g.lineTo(X(x - 3), Y(86)); g.lineTo(X(x + 1), Y(86)); g.closePath(); g.fill();
+      }
+      g.fillStyle = p.mid;
+      g.fillRect(X(36), Y(52), X(30), X(4));
+      g.restore();
+      // the arms, out and down, and the cuffs with their broken chains
+      for (const dir of [-1, 1]) {
+        limb(g, P([[50 + dir * 9, 36], [50 + dir * 17, 46], [50 + dir * 25, 54]]), [6.4, 5.2, 4.4].map(X), robe);
+        limb(g, P([[50 + dir * 24, 53], [50 + dir * 29, 57]]), [3.8, 3.4].map(X), skin);
+        shaded(g, X(50 + dir * 30), Y(58), X(2.8), X(3.2), skin);
+        poly(g, P([[50 + dir * 22.4, 50.6], [50 + dir * 26.4, 52.6], [50 + dir * 25, 56.4], [50 + dir * 21, 54.4]]), IRON.mid, IRON.line, u * 0.5);
+        g.strokeStyle = IRON.lo; g.lineWidth = u * 1.1;
+        for (let k = 0; k < 3; k++) {
+          g.beginPath(); g.ellipse(X(50 + dir * (24 + k * 1.6)), Y(58 + k * 2.4), X(1), X(1.4), dir * 0.5, 0, WS.TAU); g.stroke();
+        }
+        // lightning out of the palm
+        g.save(); g.globalCompositeOperation = 'lighter';
+        g.strokeStyle = 'rgba(200,215,255,.95)'; g.lineWidth = u * 1.3; g.lineCap = 'round';
+        let x = 50 + dir * 30, y = 59;
+        g.beginPath(); g.moveTo(X(x), Y(y));
+        for (let k = 0; k < 5; k++) { x += dir * (2 + (k % 2) * 1.5); y += 3 + (k % 2 ? -1.6 : 1.4); g.lineTo(X(x), Y(y)); }
+        g.stroke();
+        g.restore();
+      }
+      // the head: bald, a short dark beard, and the storm in his tattoos
+      const head = mass(g, P([[50, 14], [56.4, 17], [58, 24], [56.6, 30.6], [50, 34], [43.4, 30.6], [42, 24], [43.6, 17]]), skin);
+      mass(g, P([[44.4, 28], [50, 30], [55.6, 28], [54.6, 33], [50, 36.4], [45.4, 33]]), { hi: '#4a3a30', mid: '#34281f', lo: '#241a14', dark: '#160f0b', line: '#0a0604', glow: '#fff' });
+      g.save(); head(); g.clip();
+      const sheen = g.createRadialGradient(X(47), Y(16), 0, X(47), Y(16), X(7));
+      sheen.addColorStop(0, 'rgba(255,240,225,.5)'); sheen.addColorStop(1, 'rgba(255,240,225,0)');
+      g.fillStyle = sheen; g.fillRect(X(40), Y(10), X(20), X(12));
+      g.restore();
+      g.save(); g.globalCompositeOperation = 'lighter';
+      g.strokeStyle = 'rgba(150,185,255,.9)'; g.lineWidth = u * 0.8;
+      g.beginPath(); g.moveTo(X(50), Y(15)); g.lineTo(X(49), Y(18)); g.lineTo(X(51), Y(20)); g.lineTo(X(50), Y(22.4)); g.stroke();
+      for (const dir of [-1, 1]) {
+        g.beginPath(); g.moveTo(X(50 + dir * 5), Y(17)); g.lineTo(X(50 + dir * 7), Y(20)); g.lineTo(X(50 + dir * 6), Y(23)); g.stroke();
+      }
+      g.restore();
+      eyes(g, X(50), Y(25), X(3.2), X(1.3), '#dbe6ff');
+    },
+
     calf(g, s, p) {
       /* One of the Lost Calves. Big head, long legs it has not grown into,
          patched hide, and a bell. Faces left; the renderer turns it with
@@ -4429,6 +4738,56 @@
         g.beginPath(); g.moveTo(s / 2 + dx * u, s * 0.72);
         g.quadraticCurveTo(s / 2 + dx * u + 6 * u, s * 0.58, s / 2 + dx * u + 2 * u, s * 0.44); g.stroke();
       }
+    },
+    /* Highmoor's furniture. A standing stone is taller than it is wide and
+       leans a little, with a lichen crust and one carved line; heather is a
+       purple mound of flowering spikes; a cairn is a pile somebody built on
+       purpose, which is the difference between it and a rock. */
+    standing(g, s) {
+      const u = s / 100, cx = s / 2;
+      g.globalAlpha = 0.35; g.fillStyle = '#000';
+      g.beginPath(); g.ellipse(cx + 4 * u, s * 0.78, 14 * u, 4 * u, 0, 0, WS.TAU); g.fill();
+      g.globalAlpha = 1;
+      const hull = [[cx - 11 * u, s * 0.78], [cx - 9 * u, s * 0.2], [cx - 2 * u, s * 0.12], [cx + 8 * u, s * 0.18],
+        [cx + 12 * u, s * 0.78]];
+      poly(g, hull, '#5a5c60', '#26282c', u);
+      poly(g, [[cx + 2 * u, s * 0.16], [cx + 8 * u, s * 0.18], [cx + 12 * u, s * 0.78], [cx + 3 * u, s * 0.78]],
+        '#3c3e44', '#26282c', u * 0.6);
+      g.fillStyle = 'rgba(160,170,110,.5)';
+      for (const [x, y, r] of [[-5, 0.3, 3], [4, 0.5, 2.4], [-3, 0.62, 2]]) {
+        g.beginPath(); g.arc(cx + x * u, s * y, r * u, 0, WS.TAU); g.fill();
+      }
+      g.strokeStyle = 'rgba(20,20,24,.7)'; g.lineWidth = 1.4 * u;
+      g.beginPath(); g.moveTo(cx - 3 * u, s * 0.3); g.lineTo(cx - 2 * u, s * 0.46); g.lineTo(cx - 5 * u, s * 0.52); g.stroke();
+    },
+    heather(g, s) {
+      const u = s / 100, cx = s / 2;
+      g.fillStyle = '#2e2a22';
+      g.beginPath(); g.ellipse(cx, s * 0.7, 16 * u, 6 * u, 0, 0, WS.TAU); g.fill();
+      g.lineCap = 'round';
+      for (let i = -6; i <= 6; i++) {
+        const x = cx + i * 2.4 * u, h = (14 - Math.abs(i)) * u;
+        g.strokeStyle = '#4a4a30'; g.lineWidth = 1.4 * u;
+        g.beginPath(); g.moveTo(x, s * 0.7); g.lineTo(x + i * 0.4 * u, s * 0.7 - h); g.stroke();
+        g.fillStyle = i % 2 ? '#9a5aa6' : '#b478c0';
+        for (let k = 0; k < 3; k++) {
+          g.beginPath(); g.arc(x + i * 0.4 * u, s * 0.7 - h + k * 2.4 * u, 1.5 * u, 0, WS.TAU); g.fill();
+        }
+      }
+    },
+    cairn(g, s) {
+      const u = s / 100, cx = s / 2;
+      g.globalAlpha = 0.35; g.fillStyle = '#000';
+      g.beginPath(); g.ellipse(cx + 3 * u, s * 0.76, 18 * u, 5 * u, 0, 0, WS.TAU); g.fill();
+      g.globalAlpha = 1;
+      const rocks = [[-10, 0.7, 9, 6], [6, 0.71, 10, 6], [-2, 0.6, 9, 5.4], [-5, 0.5, 7, 4.6], [3, 0.49, 6, 4], [-1, 0.4, 5, 3.6], [0, 0.32, 3.6, 2.8]];
+      rocks.forEach(([x, y, rx, ry], i) => {
+        g.fillStyle = i % 2 ? '#62646a' : '#74767c';
+        g.strokeStyle = '#2a2c30'; g.lineWidth = u;
+        g.beginPath(); g.ellipse(cx + x * u, s * y, rx * u, ry * u, (i % 3 - 1) * 0.15, 0, WS.TAU); g.fill(); g.stroke();
+        g.fillStyle = 'rgba(255,255,255,.12)';
+        g.beginPath(); g.ellipse(cx + x * u - rx * 0.3 * u, s * y - ry * 0.35 * u, rx * 0.5 * u, ry * 0.3 * u, 0, 0, WS.TAU); g.fill();
+      });
     },
     spire(g, s) {
       const u = s / 100;

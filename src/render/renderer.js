@@ -117,7 +117,7 @@
      not sway; everything with a stem does, and the lighter it is the more. */
   const SWAY = {
     wheat: 0.055, grass: 0.05, flower: 0.038, cactus: 0.008,
-    tree: 0.014, deadtree: 0.018, spire: 0.006,
+    tree: 0.014, deadtree: 0.018, spire: 0.006, heather: 0.045,
   };
 
   /* Radial, not a filled ellipse. A hard-edged ellipse at 8% alpha still has
@@ -361,6 +361,59 @@
             if (s) g.lineTo(x, yy); else g.moveTo(x, yy);
           }
           g.stroke();
+        }
+      }
+      g.globalAlpha = 1;
+    },
+
+    moor(g, c) {
+      /* Highmoor: heather in wide dark-purple patches, peat showing through
+         between them, pale granite breaking the surface, and sheep-trails
+         worn across it all - the only paths on the field, and none of them
+         goes anywhere in particular. */
+      for (let p = 0; p < 26; p++) {
+        const cx = WS.randRange(0, W), cy = WS.randRange(0, H), R = WS.randRange(60, 150);
+        c.blob(g, cx, cy, R, '66,40,70', 0.22, 0.7, 0.6);
+        for (let k = 0; k < 40; k++) {
+          const a = WS.random() * WS.TAU, d = Math.sqrt(WS.random()) * R * 0.9;
+          const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d * 0.7;
+          g.globalAlpha = WS.randRange(0.18, 0.4);
+          g.fillStyle = WS.random() < 0.6 ? '#6e3f78' : '#8c5a8e';
+          g.fillRect(x, y, 1.6, 1.6);
+        }
+      }
+      // peat: the darker ground between, with standing water in the lowest
+      for (let p = 0; p < 9; p++) {
+        const cx = WS.randRange(0, W), cy = WS.randRange(0, H), R = WS.randRange(30, 70);
+        c.blob(g, cx, cy, R, '12,10,12', 0.3, 0.55, 0.7);
+        if (WS.random() < 0.5) {
+          g.globalAlpha = 0.16; g.fillStyle = '#8ea4c8';
+          g.beginPath(); g.ellipse(cx, cy, R * 0.45, R * 0.18, WS.randRange(-0.3, 0.3), 0, WS.TAU); g.fill();
+          g.globalAlpha = 0.22; g.strokeStyle = '#c8d8f0'; g.lineWidth = 1;
+          g.beginPath(); g.moveTo(cx - R * 0.3, cy - R * 0.06); g.lineTo(cx + R * 0.1, cy - R * 0.1); g.stroke();
+        }
+      }
+      // sheep-trails
+      g.lineCap = 'round';
+      for (let t = 0; t < 5; t++) {
+        let x = WS.randRange(0, W), y = WS.randRange(0, H), a = WS.random() * WS.TAU;
+        g.beginPath(); g.moveTo(x, y);
+        for (let s = 0; s < 18; s++) {
+          a += WS.randRange(-0.35, 0.35);
+          x += Math.cos(a) * 30; y += Math.sin(a) * 22;
+          g.lineTo(x, y);
+        }
+        g.globalAlpha = 0.14; g.strokeStyle = '#8a7a6a'; g.lineWidth = 7; g.stroke();
+        g.globalAlpha = 0.12; g.strokeStyle = '#0a0808'; g.lineWidth = 2; g.stroke();
+      }
+      // granite breaking the surface
+      for (let i = 0; i < 30; i++) c.stone(g, WS.randRange(0, W), WS.randRange(0, H), WS.randRange(4, 11));
+      // tussocks
+      for (let i = 0; i < 180; i++) {
+        const x = WS.random() * W, y = WS.random() * H;
+        g.globalAlpha = WS.randRange(0.2, 0.4); g.strokeStyle = '#7a7a52'; g.lineWidth = 1;
+        for (let k = -1; k <= 1; k++) {
+          g.beginPath(); g.moveTo(x + k * 2, y); g.lineTo(x + k * 3.4, y - WS.randRange(4, 8)); g.stroke();
         }
       }
       g.globalAlpha = 1;
@@ -768,6 +821,7 @@
 
     /* ---- ground effects (zones, auras, arena hazards) -------------------- */
     this.drawZones(ctx, time);
+    this.drawMoor(ctx, time);
     this.drawHazards(ctx, time);
     this.drawTelegraphs(ctx, time);
     this.drawPlayerMark(ctx, player, time);
@@ -1710,6 +1764,100 @@
       }
     }
     ctx.strokeStyle = WS.rgb(z.colour, 1);
+  };
+
+  /* HIGHMOOR'S SKY AND STONES (src/game/highmoor.js).
+
+     A storm strike is announced by the shadow of the cloud that carries it:
+     a dark pool on the ground that fills from the rim in as the strike
+     comes, with the rim itself crackling. Full is now. It is the only thing
+     on the field that is darker than the ground, which is why it reads.
+
+     A shrine is a ring of six standing stones round a rune in its boon's
+     colour, and the count to taking it is drawn round the ring like the
+     gyre of a clock. */
+  R.drawMoor = function (ctx, time) {
+    const M = WS.Moor;
+    if (!M || (!M.strikes.length && !M.shrines.length)) return;
+    ctx.save();
+    for (const s of M.strikes) {
+      const k = 1 - WS.clamp(s.tele / s.max, 0, 1);
+      ctx.globalAlpha = 0.34 + 0.2 * k;
+      ctx.fillStyle = '#05070e';
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, WS.TAU); ctx.fill();
+      ctx.globalAlpha = 0.5;
+      ctx.fillStyle = '#0a1224';
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r * k, 0, WS.TAU); ctx.fill();
+      ctx.globalAlpha = 0.75 + 0.25 * WS.sin(time * 18 + s.seed);
+      ctx.strokeStyle = k > 0.8 ? '#e8f0ff' : '#8fb0ff';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, WS.TAU); ctx.stroke();
+      // crackle along the rim
+      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = 'rgba(200,220,255,.8)';
+      const n = 3 + WS.floor(k * 4);
+      for (let i = 0; i < n; i++) {
+        const a = s.seed + i * 2.3 + WS.floor(time * 12) * 0.7;
+        let x = s.x + WS.cos(a) * s.r, y = s.y + WS.sin(a) * s.r;
+        ctx.beginPath(); ctx.moveTo(x, y);
+        for (let j = 0; j < 3; j++) {
+          x += (s.x - x) * 0.18 + WS.randRange(-6, 6);
+          y += (s.y - y) * 0.18 + WS.randRange(-6, 6);
+          ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+    }
+    for (const sh of M.shrines) {
+      const b = M.BOONS[sh.kind];
+      const fade = sh.gone ? WS.max(0, 1 - sh.gone / 1.2) : sh.rise;
+      if (fade <= 0) continue;
+      const lit = sh.taken ? 1 : 0.55 + 0.45 * sh.progress;
+      // the ground inside the ring, faintly lit
+      ctx.globalAlpha = 0.16 * fade * lit;
+      ctx.fillStyle = WS.rgb(b.tint, 1);
+      ctx.beginPath(); ctx.arc(sh.x, sh.y, sh.r, 0, WS.TAU); ctx.fill();
+      // the count, round the ring
+      if (sh.progress > 0 && !sh.gone) {
+        ctx.globalAlpha = 0.9 * fade;
+        ctx.strokeStyle = WS.rgb(WS.mix(b.tint, [1, 1, 1], 0.4), 1);
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(sh.x, sh.y, sh.r + 6, -WS.PI / 2, -WS.PI / 2 + WS.TAU * sh.progress);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 0.5 * fade;
+      ctx.strokeStyle = WS.rgb(b.tint, 1);
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([6, 8]);
+      ctx.beginPath(); ctx.arc(sh.x, sh.y, sh.r, 0, WS.TAU); ctx.stroke();
+      ctx.setLineDash([]);
+      // the stones, rising out of the ground
+      for (let i = 0; i < 6; i++) {
+        const a = sh.seed + (i / 6) * WS.TAU;
+        const sx = sh.x + WS.cos(a) * sh.r, sy = sh.y + WS.sin(a) * sh.r * 0.9;
+        const h = (16 + (i % 3) * 5) * fade, w = 7 + (i % 2) * 2;
+        ctx.globalAlpha = 0.35 * fade;
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.ellipse(sx, sy + 2, w, 3, 0, 0, WS.TAU); ctx.fill();
+        ctx.globalAlpha = fade;
+        const g = ctx.createLinearGradient(sx - w, 0, sx + w, 0);
+        g.addColorStop(0, '#8a8a80'); g.addColorStop(0.55, '#5e5e58'); g.addColorStop(1, '#34342f');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(sx - w, sy); ctx.lineTo(sx - w * 0.8, sy - h); ctx.quadraticCurveTo(sx, sy - h - 4, sx + w * 0.8, sy - h + 1);
+        ctx.lineTo(sx + w, sy); ctx.closePath(); ctx.fill();
+        // a carved mark on each, lit by the boon
+        ctx.globalAlpha = fade * lit * 0.9;
+        ctx.strokeStyle = WS.rgb(b.tint, 1); ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(sx, sy - h * 0.75); ctx.lineTo(sx, sy - h * 0.3); ctx.stroke();
+      }
+      // the rune in the middle
+      const icon = WS.Icons.glyph(sh.kind === 'storm' ? 'bolt' : sh.kind === 'gale' ? 'wing' : 'stone', b.tint, 40);
+      ctx.globalAlpha = fade * (0.6 + 0.4 * lit) * (0.85 + 0.15 * WS.sin(time * 3 + sh.seed));
+      ctx.drawImage(icon, sh.x - 20, sh.y - 26 - WS.sin(time * 2 + sh.seed) * 2, 40, 40);
+    }
+    ctx.restore();
   };
 
   /** Nature ground: a thicket. Thorned briars curl in from the rim and

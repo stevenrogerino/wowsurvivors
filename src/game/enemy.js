@@ -485,6 +485,14 @@
         WS.Projectile.spawnHostile(e.x, e.y,
           WS.cos(a) * v, WS.sin(a) * v, dmg, school, t.name, e);
       }
+    } else if (pattern.type === 'storm') {
+      /* The storm, called down: a cell of telegraphed strikes, one on the
+         survivor, that - like Highmoor's own weather - lands on the horde
+         as hard as on anyone. See src/game/highmoor.js. */
+      WS.Moor.cell(pattern.strikes || 4, { dmg: e.damage * opt('damage', 0.8), name: t.name });
+      WS.FX.flash(e.x, e.y, e.radius * 2, [0.62, 0.78, 1.0], 0.45);
+      e.telegraph = { kind: 'ring', life: 0.5, maxLife: 0.5, radius: e.radius * 3 };
+      WS.Audio.play('thunder', e.x);
     } else if (pattern.type === 'charge') {
       /* Plant, mark the ground, then run down it. `live` says the lane is
        * still being aimed; the update loop turns that off the moment the

@@ -507,7 +507,7 @@ ${css}
   <section id="bosses">
     <div class="kicker">Chapter Five</div>
     <h2 class="stitle">The bosses</h2>
-    <p class="sdesc">Each battlefield sends five on a schedule. Each announces itself, then cycles its patterns: a volley, a ring, a charge, or a summons of its own kind.</p>
+    <p class="sdesc">Each battlefield sends five on a schedule. Each announces itself, then cycles its patterns: a volley, a ring, a charge, a summons of its own kind, or (on Highmoor) the storm itself.</p>
     ${bosses}
   </section>
 

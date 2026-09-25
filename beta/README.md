@@ -19,10 +19,10 @@ loaded on a laptop is not on the desktop until you load it there too.
 ## Which one
 
 **emberwatch-everything** — everything unlocked, Trainer maxed.
-1,000,000 gold, 10 survivors, 6 battlefields, Trainer at 171/171 ranks.
+1,000,000 gold, 12 survivors, 7 battlefields, Trainer at 171/171 ranks.
 
 **emberwatch-rich** — everything unlocked, Trainer untouched, gold to spend.
-1,000,000 gold, 10 survivors, 6 battlefields, Trainer at 0/171 ranks.
+1,000,000 gold, 12 survivors, 7 battlefields, Trainer at 0/171 ranks.
 
 ## Which one, and this matters more than it sounds
 

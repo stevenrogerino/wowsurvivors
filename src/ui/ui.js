@@ -873,6 +873,9 @@
     // A trial under way (the Lost Calves, the Still Hand) - src/game/trials.js.
     const trial = WS.Trials.meter();
     if (trial) want.push(trial);
+    // A Highmoor shrine's boon, while it lasts - src/game/highmoor.js.
+    const boon = WS.Moor.meter();
+    if (boon) want.push(boon);
     const sig = want.map((m) => m.key).join('|');
     if (wrap.dataset.sig !== sig) {
       wrap.dataset.sig = sig;
@@ -1550,7 +1553,7 @@
    *  which is dark by design and reads as mud when set in type; this is the
    *  colour of the thing you remember about the place instead. */
   const PLACE_HUES = { forest: '#a8d69a', plains: '#e6c47e', haunted: '#bcaeea',
-    savannah: '#f0a06e', glacier: '#a6d8f2', arena: '#d6a4f0' };
+    savannah: '#f0a06e', glacier: '#a6d8f2', highland: '#b8aee0', arena: '#d6a4f0' };
   function placeHue(m) { return PLACE_HUES[m.art] || WS.hex(m.groundAlt); }
 
   /** The old still, for a build without the living pictures. */
@@ -1623,7 +1626,7 @@
     const m = WS.Maps[id];
     node.innerHTML = '';
     const art = el('div', 'art');
-    const key = { forest: 'leaf', plains: 'wheat', haunted: 'deadtree', savannah: 'sun', glacier: 'crystal', arena: 'sovereign' }[m.art] || 'rune';
+    const key = { forest: 'leaf', plains: 'wheat', haunted: 'deadtree', savannah: 'sun', glacier: 'crystal', highland: 'peak', arena: 'sovereign' }[m.art] || 'rune';
     art.append(measuring ? el('div') : WS.Vignette ? WS.Vignette.battlefield(id) : stillArt(WS.Sprites.zoneCard(m, key, 184)),
       el('i', 'frame'));
     art.style.setProperty('--q', WS.hex(m.groundAlt));
@@ -1723,7 +1726,7 @@
         + (WS.Game.selection.map === id ? ' selected' : ''));
       node.type = 'button';
       node.style.setProperty('--q', unlocked ? placeHue(m) : WS.hex([0.3, 0.32, 0.4]));
-      const art = { forest: 'leaf', plains: 'wheat', haunted: 'deadtree', savannah: 'sun', glacier: 'crystal', arena: 'sovereign' }[m.art] || 'rune';
+      const art = { forest: 'leaf', plains: 'wheat', haunted: 'deadtree', savannah: 'sun', glacier: 'crystal', highland: 'peak', arena: 'sovereign' }[m.art] || 'rune';
       const seat = el('span', 'pick-seat');
       const img = icon(art, unlocked ? m.groundAlt : [0.22, 0.23, 0.28], 44);
       img.width = img.height = 44;
@@ -2016,7 +2019,8 @@
    * did. A page the Watch has not earned yet is a shape against its sky and
    * a line saying where it has been seen. */
   const FINALE_HOME = { candlecrawler: 'thornhollow', dust_galleon: 'dustreach', admiral_ashore: 'dustreach',
-    mordecai_bound: 'mourneholt', stormbreaker: 'ochre', heart_drill: 'palewastes', pale_lord: 'palewastes' };
+    mordecai_bound: 'mourneholt', stormbreaker: 'ochre', heart_drill: 'palewastes', pale_lord: 'palewastes',
+    kael_stormbound: 'highmoor', storm_stone: 'highmoor' };
 
   /** Where a thing walks, from the battlefields' own schedules. */
   function habitat(id) {

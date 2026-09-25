@@ -1071,6 +1071,42 @@
     }
   };
 
+  /* Highmoor's storm stones: a standing stone with its runes lit from the
+     inside and the storm coming off the top in forks. The tether to Kael is
+     a fence mark, drawn with the rest of the marks. */
+  M.stormstone = function (ctx, e, t, o) {
+    const R = e.radius, x = e.x, y = e.y;
+    ctx.save();
+    const g = ctx.createLinearGradient(x - R * 0.6, 0, x + R * 0.6, 0);
+    g.addColorStop(0, '#8a8c94'); g.addColorStop(0.55, '#5a5c64'); g.addColorStop(1, '#303238');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(x - R * 0.62, y + R * 0.7);
+    ctx.lineTo(x - R * 0.5, y - R * 1.5);
+    ctx.quadraticCurveTo(x, y - R * 1.85, x + R * 0.48, y - R * 1.45);
+    ctx.lineTo(x + R * 0.64, y + R * 0.7);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#1c1e24'; ctx.lineWidth = 2; ctx.stroke();
+    const pulse = o.still ? 1 : 0.6 + 0.4 * WS.sin(t * 5 + x);
+    ctx.strokeStyle = `rgba(160,190,255,${0.9 * pulse})`; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x, y - R * 1.2); ctx.lineTo(x - R * 0.18, y - R * 0.8); ctx.lineTo(x + R * 0.12, y - R * 0.45);
+    ctx.lineTo(x - R * 0.1, y); ctx.moveTo(x - R * 0.3, y - R * 0.2); ctx.lineTo(x + R * 0.26, y - R * 0.2);
+    ctx.stroke();
+    ctx.restore();
+    glow(ctx, x, y - R * 1.6, R * 1.1, [0.62, 0.72, 1.0], o.still ? 0.6 : 0.45 + 0.3 * pulse);
+    if (!o.still && WS.random() < 0.55) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = 'rgba(190,210,255,.85)'; ctx.lineWidth = 1.3;
+      ctx.beginPath(); ctx.moveTo(x, y - R * 1.7);
+      let px = x, py = y - R * 1.7;
+      for (let i = 0; i < 4; i++) { px += WS.randRange(-9, 9); py += WS.randRange(-10, 2); ctx.lineTo(px, py); }
+      ctx.stroke();
+      ctx.restore();
+    }
+  };
+
   M.pipe = function (ctx, e, t, o) {
     const R = e.radius, x = e.x, y = e.y;
     ctx.fillStyle = IRON.dark;
@@ -2002,6 +2038,12 @@
     const full = WS.Sprites.creature('marrowfrost', [0.62, 0.88, 1.0], WS.round(s));
     const z = 2.3;
     g.drawImage(full, s / 2 - s * z * 0.5, s * 0.50 - s * z * 0.27, s * z, s * z);
+  });
+
+  WS.Sprites.define('kael_face', function (g, s) {
+    const full = WS.Sprites.creature('kael', [0.62, 0.72, 1.0], WS.round(s));
+    const z = 2.4;
+    g.drawImage(full, s / 2 - s * z * 0.5, s * 0.5 - s * z * 0.245, s * z, s * z);
   });
 
   A.machines = M;

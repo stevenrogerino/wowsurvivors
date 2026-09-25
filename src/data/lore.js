@@ -187,7 +187,13 @@
       necromancer: 'Throws the grave\'s own cold at you from behind its dead. Get past the dead.',
       abomination: 'Sewn together from what the cult had spare. It comes apart when it dies, and the parts still want you.',
       geist: 'A hunger with nothing left around it. It bursts where it falls. Do not be standing there.',
+      // Highmoor
+      stormhorn_ram: 'The storm lives in their horns. You can hear it building before they charge, the way you can hear a kettle.',
+      galewing_harpy: 'Rides the gusts off the high tors and drops what it throws from wherever the wind happens to be. Stand under the lightning and it will not follow you in.',
+      stonehide: 'Moss on the back, granite underneath, and a temper that takes a century to wake and another to go back to sleep. Let the storm find it: nothing else hurts it much.',
+      stormwisp: 'A piece of the storm that got lost on the way down. It comes apart where it falls, all at once.',
       // Elites
+      thunderscale: 'Sleeps in the thunderheads and comes down with them. Plants, picks you, and runs the line. Be off the line.',
       snarlpack_bonesnapper: 'The Snarlpack\'s biggest, fed first and meanest for it.',
       kerchief_enforcer: 'Plants its feet, picks you, and comes straight down the line. Step off the line.',
       bone_sentinel: 'A knight once, and still standing a knight\'s watch, over the wrong side.',
@@ -210,6 +216,9 @@
       shriekfeather: 'Matron of the Shrikewings. The wind she calls has taken roofs off, and the people under them.',
       kazrok: 'Warlord of the Karrash, who has never let a stranger cross the plains alive. There is a first time for things.',
       stormhide: 'When it walks, the plains thunder. When it charges, they do not have time to.',
+      hornlord: 'The oldest ram on the moor, with horns that have been struck by lightning so often they have started to like it. He calls it down on you now.',
+      skreeva: 'Queen of the Galewing. She has never once landed where anyone could reach her, and she considers this the whole of good manners.',
+      mossback: 'The Stonehide elder, asleep under the moor since before the moor. The storm woke him and he has been in a mood about it ever since.',
       boneweaver: 'Builds with bones the way a mason builds with stone. The Pale\'s architect.',
       gorestitch: 'Every Stitched Horror that ever fell went into this one. It remembers all of them.',
       marrowfrost: 'The Pale Lord\'s herald, sent ahead to count the lights and put some out. Where it stands, the frost grows toward you.',
@@ -222,6 +231,7 @@
       mordecai_bound: 'Mordecai again, bound into four lanterns of stolen ember: four lives to spend, one lantern each. Break the lanterns and he runs out.',
       stormbreaker: 'Grimtunnel\'s walking fortress: forty tons of stolen ember and very confident engineering. Its shield hangs off the pylons; bring down the pylons and the shield goes with them.',
       heart_drill: 'Grimtunnel\'s last machine, sunk into the Pale Wastes to reach the heart of the dark. He reached it. It was awake.',
+      kael_stormbound: 'A monk of the Quiet Ascent who went up onto Highmoor to learn stillness from the storm and stood in it so long he became what held it there. Break the stones that bind it to him, and then find the quiet at the middle of it.',
       pale_lord: 'Marrowfrost, the Pale Lord: the dark itself, woken at the bottom of the world and crowned in rime. Every ember the Watch has ever burned was taken from him, and tonight he came for all of it.',
     },
 

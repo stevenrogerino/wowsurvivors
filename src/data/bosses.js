@@ -159,6 +159,32 @@
       yell: 'My lord is counting your lights, little one. I have come to put some out.',
     },
 
+    /* -------------------------------------------------------- Highmoor ---- */
+    hornlord: {
+      bossKit: ['crown', 'mane'],
+      name: 'Grandhorn, Lord of the High Pasture', family: 'highland', art: 'ram', tint: [0.92, 0.86, 0.72],
+      health: 11000, speed: 64, damage: 58, xp: 500, radius: 50, gold: 65,
+      interval: 3.0, school: 'nature',
+      patterns: [{ type: 'summon', id: 'stormhorn_ram', count: 6 }, { type: 'charge' }, { type: 'storm', strikes: 4 }],
+      yell: 'This slope has been ours since before there were slopes!',
+    },
+    skreeva: {
+      bossKit: ['crown', 'trophies'],
+      name: 'Skreeva, Queen of the Galewing', family: 'galewing', art: 'galewing', tint: [0.72, 0.56, 0.96],
+      health: 14200, speed: 72, damage: 62, xp: 620, radius: 48, gold: 80,
+      interval: 2.9, school: 'nature',
+      patterns: [{ type: 'volley', bolts: 9 }, { type: 'summon', id: 'galewing_harpy', count: 6 }, { type: 'ring', bolts: 12 }],
+      yell: 'Down there, you are only ever prey. Up here, you are only ever falling.',
+    },
+    mossback: {
+      bossKit: ['spines', 'crown'],
+      name: 'Old Mossback, the Stonehide Elder', family: 'highland', art: 'stonehide', tint: [0.50, 0.62, 0.46],
+      health: 20500, speed: 46, damage: 72, xp: 1100, radius: 58, gold: 130,
+      interval: 2.8, school: 'nature',
+      patterns: [{ type: 'charge' }, { type: 'storm', strikes: 6 }, { type: 'summon', id: 'stormwisp', count: 8 }, { type: 'ring', bolts: 12 }],
+      yell: 'You woke me for this? The storm and I were talking.',
+    },
+
     // Not on any schedule: at 30:00 Death itself arrives, and again every
     // minute after. Technically killable, in the proud Survivors tradition.
     death_itself: {

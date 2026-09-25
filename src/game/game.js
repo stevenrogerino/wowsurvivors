@@ -88,6 +88,7 @@
     WS.XP.clear();
     WS.Pickup.clear();
     WS.Hazard.clear();
+    WS.Moor.clear();
     WS.Familiar.reset();
     this.timeScale = 1;
     this.toasts.length = 0;
@@ -191,6 +192,7 @@
     WS.XP.clear();
     WS.Pickup.clear();
     WS.Hazard.clear();
+    WS.Moor.clear();
     WS.Familiar.reset();
     WS.Audio.playMusic('menu');
     WS.UI.openMenu();
@@ -619,6 +621,8 @@
     if (!this.running) return;
     WS.Encounters.update(dt, run);
     WS.Trials.update(dt, run);
+    WS.Moor.update(dt, run);
+    if (!this.running) return;
 
     WS.Enemy.update(dt);
     if (!this.running) return;

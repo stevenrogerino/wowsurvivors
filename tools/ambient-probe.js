@@ -21,7 +21,7 @@ const path = require('path');
 
 const INDEX = 'file://' + path.resolve(__dirname, '..', 'index.html');
 const want = process.argv.slice(2).filter((a) => !a.startsWith('--'));
-const ZONES = want.length ? want : ['forest', 'plains', 'cursed', 'savannah', 'glacier', 'eclipse'];
+const ZONES = want.length ? want : ['forest', 'plains', 'cursed', 'savannah', 'glacier', 'highmoor', 'eclipse'];
 const SECONDS = 16;
 
 (async () => {

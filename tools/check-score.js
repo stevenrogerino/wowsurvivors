@@ -189,7 +189,7 @@ const fail = [];
        rule enforces, which makes it a coin toss rather than a guard. Thirty
        seconds roughly halves it, at eighty-four seconds added to a harness
        that already runs for minutes - a slow guard beats a flaky one. */
-    const keys = ['forest', 'plains', 'cursed', 'savannah', 'glacier', 'eclipse', 'menu'];
+    const keys = ['forest', 'plains', 'cursed', 'savannah', 'glacier', 'highmoor', 'eclipse', 'menu'];
     const specs = {};
     for (const k of keys) {
       WS.Audio.stopMusic();

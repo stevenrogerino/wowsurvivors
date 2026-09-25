@@ -2951,6 +2951,17 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .meter.steps .meter-fill { background: linear-gradient(90deg, #6aa6c8, #d8f2ff); opacity: .55; }
 .meter.steps .pip.ready .meter-fill { opacity: 1; box-shadow: 0 0 6px rgba(190,236,255,.55); }
 
+/* A trial under way (the Lost Calves, the Still Hand) and a Highmoor shrine's
+   boon: the first is a count running down, cream for the pasture and pale
+   blue for the mountain; the second burns in the colour of its stones. */
+.meter.trial.calves .meter-fill { background: linear-gradient(90deg, #8a6a40, #f0e2c8); }
+.meter.trial.still .meter-fill { background: linear-gradient(90deg, #4a6a8a, #e4f2ff); }
+.meter.boon.stone .meter-fill { background: linear-gradient(90deg, #6a6250, #d8cfb4); }
+.meter.boon.gale .meter-fill { background: linear-gradient(90deg, #2f7a66, #bff0dc); }
+.meter.boon.storm .meter-fill { background: linear-gradient(90deg, #3f5ea8, #d0e0ff); }
+.bm-bar[data-kind="storm"] { --bm: #5c78b8; }
+.bm-bar[data-kind="shrine"] { --bm: #9a8f70; }
+
 </style>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%230b0d12'/><circle cx='50' cy='50' r='30' fill='none' stroke='%23f5c56b' stroke-width='8' stroke-dasharray='120 60'/></svg>">
 </head>
@@ -3727,6 +3738,31 @@ window.WS = window.WS || {};
     // one night before he shows himself, and how long you must then go unhit.
     trialSteps: 25,
     trialTime: 20,
+
+    /* HIGHMOOR - src/game/highmoor.js. Two things only this battlefield has.
+
+       STORM CELLS. Every so often the sky picks a handful of spots, one of
+       them wherever you are standing, darkens them for stormTele seconds
+       and then strikes. The strike hurts you (stormDamage, scaled like a
+       creature's blow) and it hurts EVERYTHING ELSE caught in it far worse
+       (stormFoeDamage, scaled like a creature's health), so the storm is a
+       weapon as much as a threat: step out and let the horde follow you in.
+
+       SHRINES. A ring of standing stones rises now and then. Stand in it for
+       shrineCapture seconds (the count slips back while you are out) and it
+       gives one of three boons for shrineBuff seconds: STONE (a share of
+       every blow turned aside), GALE (faster feet, faster weapons) or STORM
+       (lightning from your own sky on the nearest foes). */
+    stormFirst: 20, stormEvery: 15, stormEveryFloor: 8, stormEveryPerMinute: 0.25,
+    stormStrikes: 3, stormStrikesPerMinute: 0.12, stormStrikesMax: 7,
+    stormRadius: 88, stormTele: 1.7, stormSpread: 380,
+    stormDamage: 18, stormFoeDamage: 70,
+    shrineFirst: 50, shrineEvery: 75, shrineRadius: 72, shrineCapture: 3.5, shrineDecay: 0.5,
+    shrineStay: 32, shrineBuff: 20,
+    shrineStoneMitigation: 0.30, shrineGaleSpeed: 1.20, shrineGaleCooldown: 0.85,
+    shrineStormEvery: 1.1, shrineStormTargets: 2, shrineStormDamage: 40,
+    // The Serration passive: the share of a crit that bleeds, and how.
+    serrationShare: 0.30, bleedTime: 3.0, bleedTick: 0.5,
 
     limitBreakDamage: 0.08,
 
@@ -4898,7 +4934,8 @@ window.WS = window.WS || {};
     iron_palms: {
       name: 'Iron Palms', school: 'physical', behavior: 'palm', art: 'palm',
       cooldown: 0.95, damage: 15, projectiles: 3, reach: 118, arc: 1.25, knockback: 14,
-      description: 'A flurry of open-handed strikes at whatever is closest, each one a short cone that hits everything in it.',
+      waveReach: 2.8, waveDamage: 0.8, waveSpeed: 520,
+      description: 'A flurry of open-handed strikes at whatever is closest, each one a short cone that hits everything in it. With nothing in reach, a single palm of air is thrown instead.',
       evolveName: 'Temple Breaker', evolvePairing: 'dodge',
       evolveDescription: 'Every palm lands like the temple bell.',
     },
@@ -5225,6 +5262,26 @@ window.WS = window.WS || {};
       health: 59, speed: 118, damage: 15, xp: 10, radius: 14,
       burst: { radius: 74, damagePct: 0.9, fuse: 0.55, tint: [0.60, 0.90, 1.00] },
     },
+    /* -------------------------------------------------------- Highmoor ---- */
+    stormhorn_ram: {
+      name: 'Stormhorn Ram', family: 'highland', art: 'ram', tint: [0.80, 0.76, 0.66],
+      health: 104, speed: 96, damage: 19, xp: 11, radius: 17,
+    },
+    galewing_harpy: {
+      name: 'Galewing Harpy', family: 'galewing', art: 'galewing', tint: [0.62, 0.70, 0.88],
+      health: 66, speed: 92, damage: 15, xp: 12, radius: 15, caster: true,
+      ranged: { range: 280, cooldown: 2.4, speed: 260, school: 'nature' },
+      orbit: { range: 230, spin: 1.0 },
+    },
+    stonehide: {
+      name: 'Mossback Stonehide', family: 'highland', art: 'stonehide', tint: [0.54, 0.58, 0.50],
+      health: 270, speed: 44, damage: 30, xp: 20, radius: 25,
+    },
+    stormwisp: {
+      name: 'Stormwisp', family: 'elemental', art: 'wisp', tint: [0.62, 0.82, 1.00],
+      health: 58, speed: 124, damage: 15, xp: 10, radius: 13,
+      burst: { radius: 70, damagePct: 0.9, fuse: 0.55, tint: [0.70, 0.88, 1.00] },
+    },
   };
 
   /* Elite champions: bigger, gold-glowing, name-plated, always drop a chest.
@@ -5254,6 +5311,12 @@ window.WS = window.WS || {};
     deathbound_vanguard: {
       name: 'Deathbound Vanguard', family: 'undead', elite: true, art: 'skeleton', bossKit: ['spines', 'brand'],
       tint: [0.55, 0.80, 1.00], health: 1026, speed: 62, damage: 41, xp: 80, radius: 32,
+    },
+    thunderscale: {
+      name: 'Thunderscale Drake', family: 'highland', elite: true, art: 'raptor', bossKit: ['spines'],
+      tint: [0.40, 0.66, 1.00], health: 1080, speed: 80, damage: 42, xp: 82, radius: 30,
+      spriteScale: 1.2,
+      lunge: { range: 340, cooldown: 4.4, windup: 0.55, time: 0.5 },
     },
     // Eclipse Arena: a stationary channeler that drags you toward the chasm.
     shadow_weaver: {
@@ -5424,6 +5487,32 @@ window.WS = window.WS || {};
         { type: 'summon', id: 'crypt_fiend', count: 6 },
       ],
       yell: 'My lord is counting your lights, little one. I have come to put some out.',
+    },
+
+    /* -------------------------------------------------------- Highmoor ---- */
+    hornlord: {
+      bossKit: ['crown', 'mane'],
+      name: 'Grandhorn, Lord of the High Pasture', family: 'highland', art: 'ram', tint: [0.92, 0.86, 0.72],
+      health: 11000, speed: 64, damage: 58, xp: 500, radius: 50, gold: 65,
+      interval: 3.0, school: 'nature',
+      patterns: [{ type: 'summon', id: 'stormhorn_ram', count: 6 }, { type: 'charge' }, { type: 'storm', strikes: 4 }],
+      yell: 'This slope has been ours since before there were slopes!',
+    },
+    skreeva: {
+      bossKit: ['crown', 'trophies'],
+      name: 'Skreeva, Queen of the Galewing', family: 'galewing', art: 'galewing', tint: [0.72, 0.56, 0.96],
+      health: 14200, speed: 72, damage: 62, xp: 620, radius: 48, gold: 80,
+      interval: 2.9, school: 'nature',
+      patterns: [{ type: 'volley', bolts: 9 }, { type: 'summon', id: 'galewing_harpy', count: 6 }, { type: 'ring', bolts: 12 }],
+      yell: 'Down there, you are only ever prey. Up here, you are only ever falling.',
+    },
+    mossback: {
+      bossKit: ['spines', 'crown'],
+      name: 'Old Mossback, the Stonehide Elder', family: 'highland', art: 'stonehide', tint: [0.50, 0.62, 0.46],
+      health: 20500, speed: 46, damage: 72, xp: 1100, radius: 58, gold: 130,
+      interval: 2.8, school: 'nature',
+      patterns: [{ type: 'charge' }, { type: 'storm', strikes: 6 }, { type: 'summon', id: 'stormwisp', count: 8 }, { type: 'ring', bolts: 12 }],
+      yell: 'You woke me for this? The storm and I were talking.',
     },
 
     // Not on any schedule: at 30:00 Death itself arrives, and again every
@@ -5628,6 +5717,43 @@ window.WS = window.WS || {};
       ],
     },
 
+    /* The high moor above the Pale: rain, rams, harpies, and a storm that
+       strikes the horde as hard as it strikes you. Its own two mechanics -
+       storm cells and standing-stone shrines - live in src/game/highmoor.js. */
+    highmoor: {
+      terrain: 'moor',   // what the ground is made of (renderer.js TERRAIN)
+      name: 'Highmoor',
+      subtitle: 'Where the storm lives',
+      description: 'Heather, standing stones and a sky that has never once been quiet. The lightning does not take sides, so learn to use it.',
+      art: 'highland',
+      ground: [0.14, 0.13, 0.15], groundAlt: [0.18, 0.16, 0.19],
+      fog: [0.09, 0.09, 0.12],
+      music: 'highmoor',
+      difficulty: 2.2, goldMult: 2.2,
+      storms: true, shrines: true,
+      unlockHint: 'Survive for 10 minutes in the Pale Wastes.',
+      props: ['standing', 'heather', 'rock', 'cairn'],
+      phases: [
+        { at: 0, interval: 0.85, count: 3, roster: [{ id: 'stormhorn_ram', weight: 40 }, { id: 'wolf', weight: 30 }, { id: 'stormwisp', weight: 30 }] },
+        { at: 90, interval: 0.72, count: 4, roster: [{ id: 'stormhorn_ram', weight: 30 }, { id: 'galewing_harpy', weight: 25 }, { id: 'stormwisp', weight: 25 }, { id: 'wolf', weight: 20 }] },
+        { at: 240, interval: 0.62, count: 4, roster: [{ id: 'galewing_harpy', weight: 30 }, { id: 'stonehide', weight: 20 }, { id: 'stormhorn_ram', weight: 30 }, { id: 'stormwisp', weight: 20 }], elite: 'thunderscale', eliteChance: 0.06 },
+        { at: 420, interval: 0.54, count: 5, roster: [{ id: 'stonehide', weight: 25 }, { id: 'galewing_harpy', weight: 30 }, { id: 'stormhorn_ram', weight: 25 }, { id: 'stormwisp', weight: 20 }], elite: 'thunderscale', eliteChance: 0.08 },
+        { at: 630, interval: 0.46, count: 6, roster: [{ id: 'stonehide', weight: 30 }, { id: 'galewing_harpy', weight: 30 }, { id: 'stormhorn_ram', weight: 25 }, { id: 'stormwisp', weight: 15 }], elite: 'thunderscale', eliteChance: 0.09 },
+        { at: 870, interval: 0.40, count: 7, roster: [{ id: 'stonehide', weight: 35 }, { id: 'galewing_harpy', weight: 35 }, { id: 'stormhorn_ram', weight: 30 }], elite: 'thunderscale', eliteChance: 0.11 },
+        { at: 1080, interval: 0.35, count: 8, roster: [{ id: 'stonehide', weight: 35 }, { id: 'galewing_harpy', weight: 35 }, { id: 'stormwisp', weight: 30 }], elite: 'thunderscale', eliteChance: 0.13 },
+      ],
+      events: [
+        { at: 300, text: 'The rams come down off the high pasture!', id: 'stormhorn_ram', count: 22 },
+        { at: 620, text: 'The Galewing drop out of the cloud!', id: 'galewing_harpy', count: 18 },
+        { at: 920, text: 'The storm breaks into a thousand wisps!', id: 'stormwisp', count: 28 },
+      ],
+      bosses: [
+        { at: 300, id: 'hornlord' }, { at: 630, id: 'skreeva' },
+        { at: 960, id: 'thornmane' }, { at: 1320, id: 'mossback' },
+        { at: 1620, id: 'stormhide' },
+      ],
+    },
+
     // No horde, no timer: a bounded duel with a scripted boss. You arrive with
     // a ready-made kit so the fight tests the mechanics, not the build-up.
     boss_arena: {
@@ -5648,7 +5774,7 @@ window.WS = window.WS || {};
     },
   };
 
-  WS.MapOrder = ['thornhollow', 'dustreach', 'mourneholt', 'ochre', 'palewastes', 'boss_arena'];
+  WS.MapOrder = ['thornhollow', 'dustreach', 'mourneholt', 'ochre', 'palewastes', 'highmoor', 'boss_arena'];
 
 })(window.WS);
 
@@ -5717,7 +5843,7 @@ window.WS = window.WS || {};
     quantity: {
       name: 'Duplicity', art: 'triple', quality: 'rare',
       description: '+{v} projectile for volley weapons', max: 3, v: 1,
-      detail: 'Adds a projectile to bolts, knives, arrows, axes, shields, storm strikes, and chain leaps. Auras and beams are unaffected.',
+      detail: 'Adds a projectile to bolts, knives, arrows, axes, shields, storm strikes, chain leaps, palms, beasts and rings. Auras and beams are unaffected.',
       apply: (p, up) => { p.projectileBonus += up.v; },
     },
     luck: {
@@ -6329,6 +6455,14 @@ window.WS = window.WS || {};
         || (db.statistics.finales && db.statistics.finales.palewastes)),
     },
 
+    the_storm_breaks: {
+      name: 'The Storm Breaks', art: 'bolt',
+      description: 'Free Brother Kael from the storm over Highmoor.',
+      reward: { type: 'gold', amount: 800 },
+      test: (db) => !!(db.statistics.bosses.kael_stormbound
+        || (db.statistics.finales && db.statistics.finales.highmoor)),
+    },
+
     /* ------------------------------------------------- map progression --- */
     beyond_the_forest: {
       name: 'Beyond the Forest', art: 'leaf',
@@ -6386,7 +6520,13 @@ window.WS = window.WS || {};
       reward: { type: 'character', id: 'shaman' },
       test: (db) => !!(db.statistics.found && db.statistics.found.shaman),
     },
-    /* These three were filed under "challenge" with a gold reward instead of
+    the_high_places: {
+      name: 'The High Places', art: 'peak',
+      description: 'Survive for 10 minutes in the Pale Wastes.',
+      reward: { type: 'map', id: 'highmoor' },
+      test: (db) => (db.statistics.bestTime.palewastes || 0) >= 600,
+    },
+        /* These three were filed under "challenge" with a gold reward instead of
        here, which is why paladin, graveblade and ruinseeker could never
        actually be unlocked - the coffin, the graveblade and the twin glaives
        all spawn and can be claimed exactly as advertised, `db.statistics`
@@ -6472,8 +6612,8 @@ window.WS = window.WS || {};
   };
 
   WS.AchievementOrder = [
-    'first_blood', 'take_his_candle', 'snarlbane', 'unmasked', 'the_long_dark_ends',
-    'beyond_the_forest', 'into_the_dark', 'across_the_sea', 'the_frozen_north',
+    'first_blood', 'take_his_candle', 'snarlbane', 'unmasked', 'the_long_dark_ends', 'the_storm_breaks',
+    'beyond_the_forest', 'into_the_dark', 'across_the_sea', 'the_frozen_north', 'the_high_places',
     'nightfall_survivor', 'giant_slayer', 'seasoned_veteran', 'bane_of_the_masses',
     'fortune_seeker', 'grave_robber', 'the_light_curdles', 'you_are_prepared',
     'lost_calves', 'the_still_hand',
@@ -6673,7 +6813,13 @@ window.WS = window.WS || {};
       necromancer: 'Throws the grave\'s own cold at you from behind its dead. Get past the dead.',
       abomination: 'Sewn together from what the cult had spare. It comes apart when it dies, and the parts still want you.',
       geist: 'A hunger with nothing left around it. It bursts where it falls. Do not be standing there.',
+      // Highmoor
+      stormhorn_ram: 'The storm lives in their horns. You can hear it building before they charge, the way you can hear a kettle.',
+      galewing_harpy: 'Rides the gusts off the high tors and drops what it throws from wherever the wind happens to be. Stand under the lightning and it will not follow you in.',
+      stonehide: 'Moss on the back, granite underneath, and a temper that takes a century to wake and another to go back to sleep. Let the storm find it: nothing else hurts it much.',
+      stormwisp: 'A piece of the storm that got lost on the way down. It comes apart where it falls, all at once.',
       // Elites
+      thunderscale: 'Sleeps in the thunderheads and comes down with them. Plants, picks you, and runs the line. Be off the line.',
       snarlpack_bonesnapper: 'The Snarlpack\'s biggest, fed first and meanest for it.',
       kerchief_enforcer: 'Plants its feet, picks you, and comes straight down the line. Step off the line.',
       bone_sentinel: 'A knight once, and still standing a knight\'s watch, over the wrong side.',
@@ -6696,6 +6842,9 @@ window.WS = window.WS || {};
       shriekfeather: 'Matron of the Shrikewings. The wind she calls has taken roofs off, and the people under them.',
       kazrok: 'Warlord of the Karrash, who has never let a stranger cross the plains alive. There is a first time for things.',
       stormhide: 'When it walks, the plains thunder. When it charges, they do not have time to.',
+      hornlord: 'The oldest ram on the moor, with horns that have been struck by lightning so often they have started to like it. He calls it down on you now.',
+      skreeva: 'Queen of the Galewing. She has never once landed where anyone could reach her, and she considers this the whole of good manners.',
+      mossback: 'The Stonehide elder, asleep under the moor since before the moor. The storm woke him and he has been in a mood about it ever since.',
       boneweaver: 'Builds with bones the way a mason builds with stone. The Pale\'s architect.',
       gorestitch: 'Every Stitched Horror that ever fell went into this one. It remembers all of them.',
       marrowfrost: 'The Pale Lord\'s herald, sent ahead to count the lights and put some out. Where it stands, the frost grows toward you.',
@@ -6708,6 +6857,7 @@ window.WS = window.WS || {};
       mordecai_bound: 'Mordecai again, bound into four lanterns of stolen ember: four lives to spend, one lantern each. Break the lanterns and he runs out.',
       stormbreaker: 'Grimtunnel\'s walking fortress: forty tons of stolen ember and very confident engineering. Its shield hangs off the pylons; bring down the pylons and the shield goes with them.',
       heart_drill: 'Grimtunnel\'s last machine, sunk into the Pale Wastes to reach the heart of the dark. He reached it. It was awake.',
+      kael_stormbound: 'A monk of the Quiet Ascent who went up onto Highmoor to learn stillness from the storm and stood in it so long he became what held it there. Break the stones that bind it to him, and then find the quiet at the middle of it.',
       pale_lord: 'Marrowfrost, the Pale Lord: the dark itself, woken at the bottom of the world and crowned in rime. Every ember the Watch has ever burned was taken from him, and tonight he came for all of it.',
     },
 
@@ -6913,6 +7063,7 @@ window.WS = window.WS || {};
       tint: [0.55, 0.92, 0.72] },
     marrowfrost: { name: 'Marrowfrost', colour: '#a9dcff', art: 'marrowfrost_face',
       tint: [0.62, 0.88, 1.0] },
+    kael: { name: 'Brother Kael', colour: '#b9c8ff', art: 'kael_face', tint: [0.62, 0.72, 1.0] },
     narrator: { name: '', colour: '#e8dcc4' },
   };
 
@@ -6954,6 +7105,13 @@ window.WS = window.WS || {};
       tint: [0.86, 0.52, 0.26], health: 380000, speed: 0, damage: 56, xp: 1500, radius: 80,
       gold: 600, drawScale: 1.25, interval: 99, finale: true, stationary: true, school: 'fire',
       yell: 'One more meter and it is ALL mine!',
+    },
+    kael_stormbound: {
+      name: 'Brother Kael, the Stormbound', family: 'highland', art: 'kael',
+      tint: [0.62, 0.72, 1.00], health: 560000, speed: 0, damage: 60, xp: 2400, radius: 40,
+      spriteScale: 1.15,
+      gold: 1200, interval: 99, finale: true, stationary: true, school: 'nature',
+      yell: 'Stand still. It is the only thing the storm cannot forgive.',
     },
     pale_lord: {
       // His own art (sprites.js), crown and all - no borrowed regalia.
@@ -6997,6 +7155,11 @@ window.WS = window.WS || {};
     coolant_pipe: {
       name: 'Ember Coolant Line', family: 'mechanical', art: 'turret', machine: 'pipe',
       tint: [0.95, 0.55, 0.25], health: 40000, speed: 0, damage: 30, xp: 140, radius: 28,
+      finale: true, part: true, stationary: true,
+    },
+    storm_stone: {
+      name: 'Storm Stone', family: 'highland', art: 'turret', machine: 'stormstone',
+      tint: [0.62, 0.72, 1.00], health: 30000, speed: 0, damage: 30, xp: 110, radius: 26,
       finale: true, part: true, stationary: true,
     },
     frost_shard: {
@@ -7238,6 +7401,53 @@ window.WS = window.WS || {};
           winterCross: 8, winterNova: 7, winterGrid: 12, winterSpike: 4, winterEnd: 3 },
         opening: { debris: 3, vent: 7, ghoul: 6 },
         lordOpening: { nova: 4, grid: 9, spike: 3, tide: 8 },
+      },
+    },
+
+    /* Highmoor is off the road the rest of the story takes. Grimtunnel never
+       came here: the storm on this moor is older than his digging, and it
+       has been held in place for thirty years by one monk of the Quiet
+       Ascent standing in the middle of it - Abbot Eisen's student, who went
+       up to learn to be still and stayed up there being it. Tonight the
+       ember under the Pale was broken open, and the storm got into him. */
+    highmoor: {
+      script: 'tempest',
+      title: 'Brother Kael, the Stormbound', subtitle: 'who has been holding the storm for thirty years',
+      art: 'kael', tint: [0.62, 0.72, 1.0],
+      intro: [
+        ['kael', 'You walked up through the rain for this? Then you know what I am holding.'],
+        ['kael', 'Thirty years I stood still inside it. Tonight it stood still inside me.'],
+        ['kael', 'Topple the stones and it will have nowhere to go but through you.'],
+      ],
+      say: {
+        stone: ['kael', 'That stone was older than the Watch. It did not mind. I did.'],
+        unbound: ['kael', 'Nothing holds it now. Not the stones. Not me. Find the eye!'],
+        eye: ['kael', 'Where it is quiet. Find where it is quiet!'],
+        storm: ['kael', 'It is taking the rest of me. Be quick, whoever you are.'],
+      },
+      outro: [
+        ['kael', 'Ah. There. That is... quiet.'],
+        ['kael', 'Tell the abbot I stood still for as long as I could. Tell him it was a long time.'],
+        ['narrator', 'The storm over Highmoor breaks for the first time in thirty years. Somewhere above the cloud, it is already morning.'],
+      ],
+      epilogue: ['The storm breaks', 'Brother Kael walks down off the moor, very slowly, in no particular hurry at all.'],
+      tuning: {
+        damage: 12.5,   // x difficulty x Hyper x Config.finaleDamage
+        // While any storm stone stands he takes stoneShield and cannot be
+        // broken below stoneFloor; each stone that falls takes stoneBreak of
+        // him with it. Past stormAt the storm takes the rest of him.
+        stoneShield: 0.30, stoneFloor: 0.55, stoneBreak: 0.08, stones: 3, stormAt: 0.30,
+        stoneHpGrowth: 0.20, restoneTime: 26, fenceDamage: 30,
+        boltDamage: 46, boltRadius: 72, boltTele: 1.25, bolts: 4, boltScatter: 200, boltStagger: 0.14,
+        galeDamage: 40, galeWidth: 60, galeLength: 900, galeTele: 1.0,
+        ringDamage: 42, ringSpeed: 210, ringGaps: 2, ringGap: 38,
+        eyeDamage: 70, eyeTele: 3.2, eyeRadius: 90, eyes: 2,
+        armDamage: 38, armSpin: 0.55, armWidth: 30, armTele: 1.1, armTime: 7, arms: 3, stormArms: 4,
+        wisps: 8, harpies: 4,
+        drift: 150, driftSpeed: 0.35,
+        every: { bolt: 3.6, gale: 7.5, ring: 10, adds: 13, eye: 20, arm: 12,
+          stormBolt: 2.6, stormRing: 7, stormArm: 9, stormEye: 15 },
+        opening: { bolt: 3, gale: 6, ring: 9, adds: 5, eye: 99, arm: 99 },
       },
     },
   };
@@ -11481,6 +11691,9 @@ window.WS = window.WS || {};
    *  the crown line cannot find by width alone: [x, y, width] of each row. */
   const HEAD_AT = {
     shrikewing: { crown: [50, 20.6, 22] },
+    ram: { crown: [27, 29, 14], shoulder: [56, 34, 26], plate: 0.6 },
+    galewing: { crown: [50, 19, 16], shoulder: [50, 37, 22], plate: 0.55 },
+    stonehide: { crown: [20, 46, 14], shoulder: [56, 28, 30], plate: 0.7 },
     karrash: { crown: [36.6, 12.6, 13], shoulder: [39.4, 26.4, 17], plate: 0.58 },
   };
 
@@ -14915,6 +15128,312 @@ window.WS = window.WS || {};
       poly(g, P([[49.4, 38.6], [50, 40.4], [50.8, 38.4]]), '#3e424c', '#08090b', u * 0.3);
     },
 
+    /* ---------------------------------------------------- Highmoor ---- */
+    ram(g, s, p) {
+      /* THE STORMHORN RAM. A heavy fleece on thin dark legs and a head
+         carried low - and the horns, curled right round once, with the storm
+         in them: a cold light along the ridges. The curl is the whole
+         silhouette; everything else on the moor is a straight line. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const shin = { hi: '#5a524a', mid: '#3a342e', lo: '#2a2622', dark: '#1a1714', line: '#0c0a08', glow: '#fff' };
+      const farShin = { hi: '#3a342e', mid: '#2a2622', lo: '#1a1714', dark: '#100e0c', line: '#0c0a08', glow: '#fff' };
+      for (const x of [46, 72]) {
+        limb(g, P([[x, 60], [x + 1, 72], [x, 84]]), [6, 3.6, 3].map(X), farShin);
+        shaded(g, X(x), Y(85), X(2.8), X(1.6), farShin);
+      }
+      const body = mass(g, P([[32, 46], [36, 38], [46, 33], [58, 32], [70, 34], [80, 39], [85, 48], [82, 58],
+        [74, 64], [60, 66], [46, 65], [36, 61], [30, 54]]), p);
+      g.save(); body(); g.clip();
+      // the fleece: rows of curls
+      g.strokeStyle = p.lo; g.lineWidth = u * 1.1; g.globalAlpha = 0.55;
+      for (let r = 0; r < 6; r++) {
+        for (let i = 0; i < 9; i++) {
+          const cx = 34 + i * 6 + (r % 2) * 3, cy = 36 + r * 5.4;
+          g.beginPath(); g.arc(X(cx), Y(cy), X(2.6), 0.3, WS.PI + 0.9); g.stroke();
+        }
+      }
+      g.globalAlpha = 1;
+      const lit = g.createLinearGradient(0, Y(32), 0, Y(66));
+      lit.addColorStop(0, 'rgba(255,255,255,.16)'); lit.addColorStop(1, 'rgba(0,0,0,.22)');
+      g.fillStyle = lit; g.fillRect(0, Y(30), s, Y(40));
+      g.restore();
+      for (const x of [40, 66]) {
+        limb(g, P([[x, 60], [x - 1, 72], [x, 84]]), [7, 4, 3.2].map(X), shin);
+        shaded(g, X(x), Y(85.2), X(3), X(1.8), shin);
+      }
+      // the head, low and long, darker than the fleece
+      const face = { hi: '#8a8076', mid: '#6a6058', lo: '#4a423c', dark: '#2e2824', line: '#14100e', glow: '#fff' };
+      mass(g, P([[16, 46], [20, 36], [28, 32], [35, 36], [36, 46], [30, 56], [20, 58], [13, 53]]), face);
+      // wool cap between the horns
+      mass(g, P([[24, 34], [29, 28], [36, 30], [37, 37], [30, 38]]), p);
+      // the horn: a thick band curled round once, ridged, and lit by the storm
+      const HORN = { hi: '#e8e0cc', mid: '#c4b898', lo: '#8c806a', dark: '#5a5040', line: '#2a2418', glow: '#fff' };
+      const cx = 35, cy = 41, pts = [], ws = [];
+      for (let i = 0; i <= 16; i++) {
+        const t = i / 16, a = -2.5 + t * 5.6, r = 14.5 - t * 8.5;
+        pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.95]);
+        ws.push(9.6 - t * 6.8);
+      }
+      limb(g, P(pts), ws.map(X), HORN);
+      g.strokeStyle = HORN.line; g.globalAlpha = 0.55; g.lineWidth = u * 0.7;
+      for (let i = 1; i < 14; i++) {
+        const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
+        const nx = -(y1 - y0), ny = x1 - x0, d = Math.hypot(nx, ny) || 1, w = ws[i] * 0.5;
+        g.beginPath(); g.moveTo(X(x0 + nx / d * w), Y(y0 + ny / d * w)); g.lineTo(X(x0 - nx / d * w), Y(y0 - ny / d * w)); g.stroke();
+      }
+      g.globalAlpha = 1;
+      // the storm in it
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      g.strokeStyle = 'rgba(160,200,255,.85)'; g.lineWidth = u * 1.1; g.lineCap = 'round';
+      g.beginPath();
+      for (let i = 0; i < 9; i++) {
+        const [x, y] = pts[i];
+        const j = (i % 2 ? 1.6 : -1.6);
+        if (i) g.lineTo(X(x + j * 0.4), Y(y - ws[i] * 0.3 + j * 0.3)); else g.moveTo(X(x), Y(y - ws[i] * 0.3));
+      }
+      g.stroke();
+      g.restore();
+      // muzzle and eye
+      g.fillStyle = '#1a1512';
+      g.beginPath(); g.ellipse(X(15.4), Y(52), X(1.2), X(0.9), 0.3, 0, WS.TAU); g.fill();
+      g.strokeStyle = '#1a1512'; g.lineWidth = u * 0.8;
+      g.beginPath(); g.moveTo(X(15), Y(55.6)); g.quadraticCurveTo(X(19), Y(57), X(22), Y(55)); g.stroke();
+      eyes(g, X(22), Y(42.6), X(0.01), X(1.5), '#ffd96a');
+      g.strokeStyle = '#14100e'; g.lineWidth = u * 0.9;
+      g.beginPath(); g.moveTo(X(19.4), Y(40.4)); g.lineTo(X(24.6), Y(41.2)); g.stroke();
+    },
+
+    galewing(g, s, p) {
+      /* THE GALEWING HARPY. Front-on like the windcaller, so the two share a
+         sky and not a shape: the windcaller is a bird, and this is a woman
+         from the waist up with wings where her arms should be, talons below,
+         and hair that is mostly feathers blown straight up by the wind she
+         rides. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const skin = { hi: '#e8d4c4', mid: '#c8ab98', lo: '#8e7262', dark: '#5a463a', line: '#2c1e18', glow: '#fff' };
+      const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+      // wings: three ranks of long feathers from shoulder to tip, swept up
+      for (const dir of [-1, 1]) {
+        for (let k = 6; k >= 0; k--) {
+          const a = (dir < 0 ? WS.PI : 0) + dir * (-0.75 + k * 0.2);
+          const len = 30 - k * 2.2, wx = 50 + dir * 10, wy = 38;
+          const x1 = wx + Math.cos(a) * len, y1 = wy + Math.sin(a) * len;
+          const nx = -Math.sin(a) * 3, ny = Math.cos(a) * 3;
+          poly(g, P([[wx - nx, wy - ny], [x1 - nx * 0.6, y1 - ny * 0.6], [x1 + Math.cos(a) * 2, y1 + Math.sin(a) * 2],
+            [x1 + nx * 0.6, y1 + ny * 0.6], [wx + nx, wy + ny]]), k % 2 ? far.hi : p.hi, p.line, u * 0.5);
+        }
+        mass(g, P([[50 + dir * 6, 36], [50 + dir * 18, 30], [50 + dir * 26, 33], [50 + dir * 20, 42], [50 + dir * 9, 46]]), p);
+      }
+      // legs: feathered thighs into scaled shins and talons
+      for (const dir of [-1, 1]) {
+        mass(g, P([[50 + dir * 2, 60], [50 + dir * 9, 62], [50 + dir * 9, 72], [50 + dir * 4, 74]]), p);
+        limb(g, P([[50 + dir * 6.5, 72], [50 + dir * 7, 80], [50 + dir * 6, 86]]), [3.4, 2.4, 2].map(X), palette([0.8, 0.66, 0.4]));
+        for (let i = -1; i <= 1; i++) {
+          poly(g, P([[50 + dir * 6 + i * 1.6, 86], [50 + dir * 6 + i * 2.4, 90], [50 + dir * 6 + i * 1.6 + 0.9, 86.4]]), '#1a1612', '#080604', u * 0.3);
+        }
+      }
+      // the torso: bare shoulders, a feathered front from the chest down
+      mass(g, P([[43, 38], [50, 35], [57, 38], [58, 50], [56, 62], [50, 64], [44, 62], [42, 50]]), skin);
+      const front = mass(g, P([[43.5, 46], [50, 44], [56.5, 46], [57, 56], [55, 63], [50, 65], [45, 63], [43, 56]]), p);
+      g.save(); front(); g.clip();
+      g.strokeStyle = p.line; g.globalAlpha = 0.4; g.lineWidth = u * 0.6;
+      for (let r = 0; r < 5; r++) for (let i = -2; i <= 2; i++) {
+        g.beginPath(); g.arc(X(50 + i * 3 + (r % 2) * 1.5), Y(48 + r * 3.6), X(1.7), 0.2, WS.PI - 0.2); g.stroke();
+      }
+      g.restore();
+      // hair: feathers blown straight up and back
+      for (let i = -3; i <= 3; i++) {
+        const a = -WS.PI / 2 + i * 0.22, len = 16 - Math.abs(i) * 1.6;
+        const x0 = 50 + i * 1.8, y0 = 22;
+        poly(g, P([[x0 - 1.6, y0 + 2], [x0 + Math.cos(a) * len, y0 + Math.sin(a) * len], [x0 + 1.6, y0 + 2]]),
+          i % 2 ? p.mid : p.lo, p.line, u * 0.4);
+      }
+      // the head
+      mass(g, P([[50, 18], [55.6, 21], [57, 27.6], [54.4, 33.4], [50, 35], [45.6, 33.4], [43, 27.6], [44.4, 21]]), skin);
+      poly(g, P([[43, 22], [50, 17], [57, 22], [57.6, 27], [55, 23.4], [50, 22], [45, 23.4], [42.4, 27]]), p.lo, p.line, u * 0.5);
+      eyes(g, X(50), Y(27.6), X(3.4), X(1.3), '#e8ff9a');
+      g.strokeStyle = '#2c1e18'; g.lineWidth = u * 0.7;
+      g.beginPath(); g.moveTo(X(47.6), Y(31.6)); g.quadraticCurveTo(X(50), Y(32.8), X(52.4), Y(31.6)); g.stroke();
+    },
+
+    stonehide(g, s, p) {
+      /* THE STONEHIDE. A boulder that walks: a hunched granite back in
+         plates, moss grown over the top of it, short pillar legs, and a
+         small low head with two stubby horns and eyes like banked coals. It
+         is the widest thing on the moor and the lowest. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+      for (const x of [40, 74]) {
+        limb(g, P([[x, 64], [x, 74], [x + 1, 84]]), [11, 10, 10].map(X), far);
+        shaded(g, X(x + 1), Y(85), X(6), X(2.2), far);
+      }
+      const body = mass(g, P([[22, 58], [26, 42], [38, 30], [56, 26], [74, 30], [86, 42], [90, 56], [84, 68],
+        [66, 72], [42, 72], [28, 68]]), p);
+      g.save(); body(); g.clip();
+      // the plates: facets of stone with dark seams between them
+      const plates = [
+        [[26, 44], [38, 32], [46, 42], [36, 54]], [[38, 32], [56, 27], [58, 40], [46, 42]],
+        [[56, 27], [74, 31], [70, 44], [58, 40]], [[74, 31], [86, 43], [80, 52], [70, 44]],
+        [[36, 54], [46, 42], [58, 40], [56, 56], [42, 62]], [[58, 40], [70, 44], [80, 52], [72, 62], [56, 56]],
+        [[80, 52], [90, 56], [84, 68], [72, 62]], [[24, 58], [36, 54], [42, 62], [30, 68]],
+      ];
+      plates.forEach((pl, i) => {
+        poly(g, P(pl), i % 3 === 0 ? p.hi : i % 3 === 1 ? p.mid : p.lo, p.dark, u * 1.2);
+      });
+      // moss over the top
+      g.fillStyle = '#4f6b2c';
+      g.beginPath();
+      g.moveTo(X(28), Y(42));
+      for (let i = 0; i <= 14; i++) {
+        const x = 28 + i * 4.2, y = 34 - Math.sin((i / 14) * WS.PI) * 8 + (i % 2 ? 2.4 : 0);
+        g.lineTo(X(x), Y(y + 6));
+      }
+      g.lineTo(X(86), Y(40)); g.lineTo(X(84), Y(26)); g.lineTo(X(26), Y(26)); g.closePath();
+      g.globalAlpha = 0.85; g.fill();
+      g.fillStyle = '#7e9c48'; g.globalAlpha = 0.6;
+      for (let i = 0; i < 16; i++) {
+        g.beginPath(); g.arc(X(32 + i * 3.4), Y(31 + Math.sin(i * 1.7) * 3), X(1.4), 0, WS.TAU); g.fill();
+      }
+      g.restore();
+      for (const x of [34, 66]) {
+        limb(g, P([[x, 64], [x, 74], [x - 1, 84]]), [12, 11, 11].map(X), p);
+        shaded(g, X(x - 1), Y(85.2), X(6.4), X(2.4), p);
+        for (let i = -1; i <= 1; i++) poly(g, P([[x - 1 + i * 3.4 - 1.2, 85], [x - 1 + i * 3.4, 87.6], [x - 1 + i * 3.4 + 1.2, 85]]), '#d8d0bd', '#3d392f', u * 0.4);
+      }
+      // the head, low at the front of the boulder
+      const head = mass(g, P([[10, 56], [14, 48], [24, 46], [30, 52], [28, 62], [18, 66], [10, 63]]), p);
+      g.save(); head(); g.clip();
+      g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(X(8), Y(58), X(24), X(10));
+      g.restore();
+      for (const [x, y] of [[16, 48], [24, 47]]) {
+        poly(g, P([[x - 2.4, y + 1], [x - 0.6, y - 5], [x + 2.2, y + 1]]), '#d8d0bd', '#3d392f', u * 0.5);
+      }
+      eyes(g, X(18), Y(54.6), X(3.2), X(1.3), '#ffae4a');
+      g.strokeStyle = p.line; g.lineWidth = u;
+      g.beginPath(); g.moveTo(X(11), Y(61)); g.lineTo(X(20), Y(62.4)); g.stroke();
+    },
+
+    wisp(g, s, p) {
+      /* A STORMWISP: a knot of the storm with a face in it. A bright core,
+         a ragged corona, a tail of spent light behind it, and forks of
+         lightning breaking off the edge. It has no feet, so it has no
+         shadow on the ground worth drawing. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      const halo = g.createRadialGradient(X(46), Y(50), 0, X(46), Y(50), X(34));
+      halo.addColorStop(0, 'rgba(210,230,255,.85)');
+      halo.addColorStop(0.4, p.glow + '99');
+      halo.addColorStop(1, 'rgba(90,130,255,0)');
+      g.fillStyle = halo;
+      g.beginPath(); g.arc(X(46), Y(50), X(34), 0, WS.TAU); g.fill();
+      // the tail, streaming right (it faces left)
+      g.fillStyle = 'rgba(150,190,255,.35)';
+      g.beginPath();
+      g.moveTo(X(52), Y(40)); g.quadraticCurveTo(X(78), Y(44), X(90), Y(58));
+      g.quadraticCurveTo(X(76), Y(56), X(54), Y(62)); g.closePath(); g.fill();
+      g.restore();
+      // the core
+      const core = g.createRadialGradient(X(44), Y(47), X(2), X(46), Y(50), X(17));
+      core.addColorStop(0, '#ffffff'); core.addColorStop(0.5, p.hi); core.addColorStop(1, p.lo);
+      g.fillStyle = core;
+      g.beginPath();
+      for (let i = 0; i <= 16; i++) {
+        const a = (i / 16) * WS.TAU, r = 17 + (i % 2 ? 2.4 : -1.2);
+        const x = 46 + Math.cos(a) * r, y = 50 + Math.sin(a) * r;
+        if (i) g.lineTo(X(x), Y(y)); else g.moveTo(X(x), Y(y));
+      }
+      g.closePath(); g.fill();
+      g.strokeStyle = p.line; g.lineWidth = u * 0.8; g.stroke();
+      // forks
+      g.strokeStyle = '#eaf2ff'; g.lineWidth = u * 1.2; g.lineCap = 'round';
+      for (const [a, len] of [[-2.4, 16], [-0.6, 14], [1.9, 13], [3.0, 11]]) {
+        let x = 46 + Math.cos(a) * 17, y = 50 + Math.sin(a) * 17;
+        g.beginPath(); g.moveTo(X(x), Y(y));
+        for (let k = 0; k < 3; k++) {
+          x += Math.cos(a + (k % 2 ? 0.6 : -0.6)) * len / 3; y += Math.sin(a + (k % 2 ? 0.6 : -0.6)) * len / 3;
+          g.lineTo(X(x), Y(y));
+        }
+        g.stroke();
+      }
+      // a face: two hollow eyes and a mouth, dark in the light
+      g.fillStyle = 'rgba(20,30,70,.85)';
+      for (const dx of [-4.6, 3.4]) { g.beginPath(); g.ellipse(X(44 + dx), Y(47), X(2), X(2.8), 0, 0, WS.TAU); g.fill(); }
+      g.beginPath(); g.ellipse(X(43.4), Y(55), X(3.4), X(1.6), 0, 0, WS.TAU); g.fill();
+    },
+
+    kael(g, s, p) {
+      /* BROTHER KAEL, THE STORMBOUND. A monk of the Quiet Ascent, like the
+         abbot - bald, robed, barefoot once - off the ground now, arms held
+         out and down, the storm he was holding pouring out of both palms.
+         Iron cuffs on the wrists with the chains snapped off short: he was
+         bound to the stones and something broke. His tattoos are the only
+         lit thing on him that is not lightning. The robe ends in rags where
+         feet should be, because he has not stood on anything for a while. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const robe = { hi: '#8a90a8', mid: '#5e647c', lo: '#3c4054', dark: '#24273a', line: '#101220', glow: '#fff' };
+      const skin = { hi: '#e2c8b0', mid: '#bf9f86', lo: '#8a6c58', dark: '#5a4436', line: '#2a1e16', glow: '#fff' };
+      const IRON = { hi: '#9aa0ac', mid: '#6a707c', lo: '#434852', dark: '#262a32', line: '#101216', glow: '#fff' };
+      // the storm behind him
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      const halo = g.createRadialGradient(X(50), Y(48), 0, X(50), Y(48), X(46));
+      halo.addColorStop(0, 'rgba(150,175,255,.4)'); halo.addColorStop(1, 'rgba(90,110,255,0)');
+      g.fillStyle = halo; g.beginPath(); g.arc(X(50), Y(48), X(46), 0, WS.TAU); g.fill();
+      g.restore();
+      // the robe: shoulders to rags, and the rags lift
+      const body = mass(g, P([[40, 34], [50, 31], [60, 34], [64, 50], [68, 70], [66, 80], [60, 76], [56, 84],
+        [50, 78], [44, 85], [40, 77], [34, 81], [32, 70], [36, 50]]), robe);
+      g.save(); body(); g.clip();
+      g.fillStyle = 'rgba(0,0,0,.25)';
+      for (const x of [42, 50, 58]) {
+        g.beginPath(); g.moveTo(X(x), Y(40)); g.lineTo(X(x - 3), Y(86)); g.lineTo(X(x + 1), Y(86)); g.closePath(); g.fill();
+      }
+      g.fillStyle = p.mid;
+      g.fillRect(X(36), Y(52), X(30), X(4));
+      g.restore();
+      // the arms, out and down, and the cuffs with their broken chains
+      for (const dir of [-1, 1]) {
+        limb(g, P([[50 + dir * 9, 36], [50 + dir * 17, 46], [50 + dir * 25, 54]]), [6.4, 5.2, 4.4].map(X), robe);
+        limb(g, P([[50 + dir * 24, 53], [50 + dir * 29, 57]]), [3.8, 3.4].map(X), skin);
+        shaded(g, X(50 + dir * 30), Y(58), X(2.8), X(3.2), skin);
+        poly(g, P([[50 + dir * 22.4, 50.6], [50 + dir * 26.4, 52.6], [50 + dir * 25, 56.4], [50 + dir * 21, 54.4]]), IRON.mid, IRON.line, u * 0.5);
+        g.strokeStyle = IRON.lo; g.lineWidth = u * 1.1;
+        for (let k = 0; k < 3; k++) {
+          g.beginPath(); g.ellipse(X(50 + dir * (24 + k * 1.6)), Y(58 + k * 2.4), X(1), X(1.4), dir * 0.5, 0, WS.TAU); g.stroke();
+        }
+        // lightning out of the palm
+        g.save(); g.globalCompositeOperation = 'lighter';
+        g.strokeStyle = 'rgba(200,215,255,.95)'; g.lineWidth = u * 1.3; g.lineCap = 'round';
+        let x = 50 + dir * 30, y = 59;
+        g.beginPath(); g.moveTo(X(x), Y(y));
+        for (let k = 0; k < 5; k++) { x += dir * (2 + (k % 2) * 1.5); y += 3 + (k % 2 ? -1.6 : 1.4); g.lineTo(X(x), Y(y)); }
+        g.stroke();
+        g.restore();
+      }
+      // the head: bald, a short dark beard, and the storm in his tattoos
+      const head = mass(g, P([[50, 14], [56.4, 17], [58, 24], [56.6, 30.6], [50, 34], [43.4, 30.6], [42, 24], [43.6, 17]]), skin);
+      mass(g, P([[44.4, 28], [50, 30], [55.6, 28], [54.6, 33], [50, 36.4], [45.4, 33]]), { hi: '#4a3a30', mid: '#34281f', lo: '#241a14', dark: '#160f0b', line: '#0a0604', glow: '#fff' });
+      g.save(); head(); g.clip();
+      const sheen = g.createRadialGradient(X(47), Y(16), 0, X(47), Y(16), X(7));
+      sheen.addColorStop(0, 'rgba(255,240,225,.5)'); sheen.addColorStop(1, 'rgba(255,240,225,0)');
+      g.fillStyle = sheen; g.fillRect(X(40), Y(10), X(20), X(12));
+      g.restore();
+      g.save(); g.globalCompositeOperation = 'lighter';
+      g.strokeStyle = 'rgba(150,185,255,.9)'; g.lineWidth = u * 0.8;
+      g.beginPath(); g.moveTo(X(50), Y(15)); g.lineTo(X(49), Y(18)); g.lineTo(X(51), Y(20)); g.lineTo(X(50), Y(22.4)); g.stroke();
+      for (const dir of [-1, 1]) {
+        g.beginPath(); g.moveTo(X(50 + dir * 5), Y(17)); g.lineTo(X(50 + dir * 7), Y(20)); g.lineTo(X(50 + dir * 6), Y(23)); g.stroke();
+      }
+      g.restore();
+      eyes(g, X(50), Y(25), X(3.2), X(1.3), '#dbe6ff');
+    },
+
     calf(g, s, p) {
       /* One of the Lost Calves. Big head, long legs it has not grown into,
          patched hide, and a bell. Faces left; the renderer turns it with
@@ -15766,6 +16285,56 @@ window.WS = window.WS || {};
         g.beginPath(); g.moveTo(s / 2 + dx * u, s * 0.72);
         g.quadraticCurveTo(s / 2 + dx * u + 6 * u, s * 0.58, s / 2 + dx * u + 2 * u, s * 0.44); g.stroke();
       }
+    },
+    /* Highmoor's furniture. A standing stone is taller than it is wide and
+       leans a little, with a lichen crust and one carved line; heather is a
+       purple mound of flowering spikes; a cairn is a pile somebody built on
+       purpose, which is the difference between it and a rock. */
+    standing(g, s) {
+      const u = s / 100, cx = s / 2;
+      g.globalAlpha = 0.35; g.fillStyle = '#000';
+      g.beginPath(); g.ellipse(cx + 4 * u, s * 0.78, 14 * u, 4 * u, 0, 0, WS.TAU); g.fill();
+      g.globalAlpha = 1;
+      const hull = [[cx - 11 * u, s * 0.78], [cx - 9 * u, s * 0.2], [cx - 2 * u, s * 0.12], [cx + 8 * u, s * 0.18],
+        [cx + 12 * u, s * 0.78]];
+      poly(g, hull, '#5a5c60', '#26282c', u);
+      poly(g, [[cx + 2 * u, s * 0.16], [cx + 8 * u, s * 0.18], [cx + 12 * u, s * 0.78], [cx + 3 * u, s * 0.78]],
+        '#3c3e44', '#26282c', u * 0.6);
+      g.fillStyle = 'rgba(160,170,110,.5)';
+      for (const [x, y, r] of [[-5, 0.3, 3], [4, 0.5, 2.4], [-3, 0.62, 2]]) {
+        g.beginPath(); g.arc(cx + x * u, s * y, r * u, 0, WS.TAU); g.fill();
+      }
+      g.strokeStyle = 'rgba(20,20,24,.7)'; g.lineWidth = 1.4 * u;
+      g.beginPath(); g.moveTo(cx - 3 * u, s * 0.3); g.lineTo(cx - 2 * u, s * 0.46); g.lineTo(cx - 5 * u, s * 0.52); g.stroke();
+    },
+    heather(g, s) {
+      const u = s / 100, cx = s / 2;
+      g.fillStyle = '#2e2a22';
+      g.beginPath(); g.ellipse(cx, s * 0.7, 16 * u, 6 * u, 0, 0, WS.TAU); g.fill();
+      g.lineCap = 'round';
+      for (let i = -6; i <= 6; i++) {
+        const x = cx + i * 2.4 * u, h = (14 - Math.abs(i)) * u;
+        g.strokeStyle = '#4a4a30'; g.lineWidth = 1.4 * u;
+        g.beginPath(); g.moveTo(x, s * 0.7); g.lineTo(x + i * 0.4 * u, s * 0.7 - h); g.stroke();
+        g.fillStyle = i % 2 ? '#9a5aa6' : '#b478c0';
+        for (let k = 0; k < 3; k++) {
+          g.beginPath(); g.arc(x + i * 0.4 * u, s * 0.7 - h + k * 2.4 * u, 1.5 * u, 0, WS.TAU); g.fill();
+        }
+      }
+    },
+    cairn(g, s) {
+      const u = s / 100, cx = s / 2;
+      g.globalAlpha = 0.35; g.fillStyle = '#000';
+      g.beginPath(); g.ellipse(cx + 3 * u, s * 0.76, 18 * u, 5 * u, 0, 0, WS.TAU); g.fill();
+      g.globalAlpha = 1;
+      const rocks = [[-10, 0.7, 9, 6], [6, 0.71, 10, 6], [-2, 0.6, 9, 5.4], [-5, 0.5, 7, 4.6], [3, 0.49, 6, 4], [-1, 0.4, 5, 3.6], [0, 0.32, 3.6, 2.8]];
+      rocks.forEach(([x, y, rx, ry], i) => {
+        g.fillStyle = i % 2 ? '#62646a' : '#74767c';
+        g.strokeStyle = '#2a2c30'; g.lineWidth = u;
+        g.beginPath(); g.ellipse(cx + x * u, s * y, rx * u, ry * u, (i % 3 - 1) * 0.15, 0, WS.TAU); g.fill(); g.stroke();
+        g.fillStyle = 'rgba(255,255,255,.12)';
+        g.beginPath(); g.ellipse(cx + x * u - rx * 0.3 * u, s * y - ry * 0.35 * u, rx * 0.5 * u, ry * 0.3 * u, 0, 0, WS.TAU); g.fill();
+      });
     },
     spire(g, s) {
       const u = s / 100;
@@ -20069,6 +20638,20 @@ window.WS = window.WS || {};
       life: { rate: 0.60, voices: ['whistle', 'chime', 'chime', 'glint', 'glint', 'creak'] },
       drone: { gain: 0.055, oct: 2, cut: 900, wave: 'triangle' },
     },
+    /* Highmoor: a pipe over a held drone, in the dorian - bright sixth,
+       flat seventh - on a skin drum that walks like a march up a hill; the
+       wind, the thunder a long way off, and the sheep. The drone is a
+       square an octave down: the reed under a set of pipes, and the one
+       floor in the game with that much edge in it. */
+    highmoor: {
+      root: 110.00, scale: [0, 2, 3, 7, 9], wave: 'square', tempo: 1.5,
+      leadCut: 9,
+      pad: 'triangle', padCut: 1300,
+      perc: [0, 4, 6, 8, 12, 14], kit: 'skin', percGain: 1.7,
+      prog: [0, 3, 4, 3],
+      life: { rate: 0.5, voices: ['gust', 'gust', 'rumble', 'rumble', 'crow', 'bleat', 'hawk'] },
+      drone: { gain: 0.12, oct: 1, cut: 700, wave: 'square' },
+    },
     /* The Eclipse: wrong. Struck stone on an odd count, an altered scale, and
        a room that RINGS rather than rumbles.
        Its weather was a 230Hz lowpass, which is very nearly Mourneholt's -
@@ -20334,8 +20917,19 @@ window.WS = window.WS || {};
     deep(o, t) {
       mTone(o, t, { wave: 'sine', freq: 41, to: 36, slide: 3, gain: 0.072, attack: 1.2, decay: 2.4 });
     },
+    // Highmoor: thunder a long way off, rolling rather than cracking.
+    rumble(o, t) {
+      mNoise(o, t, { filter: 'lowpass', freq: 160, to: 70, q: 0.8, gain: 0.07, attack: 0.25, decay: 3.2 });
+      mTone(o, t + 0.1, { wave: 'sine', freq: 48, to: 34, slide: 2.4, gain: 0.05, attack: 0.3, decay: 2.6 });
+    },
+    // And a sheep somewhere on the hill, which is somehow worse.
+    bleat(o, t) {
+      const f = 380 + WS.random() * 90;
+      mTone(o, t, { wave: 'sawtooth', freq: f, to: f * 0.86, slide: 0.5, gain: 0.012, attack: 0.04, decay: 0.55,
+        cut: 1400 });
+    },
   };
-  const LIFE_ROOM = { toll: 0.8, hawk: 0.5, glint: 0.7, owl: 0.5, wail: 0.9, crow: 0.35, bird: 0.3, whistle: 0.7, chime: 0.8, shimmer: 0.9, creak: 0.4, frog: 0.2, cricket: 0.15, cicada: 0.1, gust: 0.2, deep: 0.3 };
+  const LIFE_ROOM = { rumble: 0.6, bleat: 0.5, toll: 0.8, hawk: 0.5, glint: 0.7, owl: 0.5, wail: 0.9, crow: 0.35, bird: 0.3, whistle: 0.7, chime: 0.8, shimmer: 0.9, creak: 0.4, frog: 0.2, cricket: 0.15, cicada: 0.1, gust: 0.2, deep: 0.3 };
   function life(state, t0) {
     const L = state.score.life;
     const kind = L.voices[WS.floor(WS.random() * L.voices.length)];
@@ -21324,11 +21918,12 @@ window.WS = window.WS || {};
     murkgill: 'gurgle', masked_admiral: 'admiral', admiral_ashore: 'admiral', dust_galleon: 'admiral',
     mordecai: 'mordecai', mordecai_bound: 'mordecai', marrowfrost: 'hollow', pale_lord: 'marrowfrost',
     harvestking: 'machine', shriekfeather: 'shrill', silkfang: 'shrill', aethelgard: 'celestial',
-    death_itself: 'celestial',
+    death_itself: 'celestial', skreeva: 'shrill', hornlord: 'beast', mossback: 'machine',
   };
   const FAMILY_VOICE = { beast: 'beast', mongrel: 'beast', moonwretch: 'beast', undead: 'hollow',
     mechanical: 'machine', kerchief: 'gruff', bristlekin: 'gruff', karrash: 'gruff', gilkin: 'gurgle',
-    lampling: 'grimtunnel', celestial: 'celestial', death: 'celestial' };
+    lampling: 'grimtunnel', celestial: 'celestial', death: 'celestial',
+    highland: 'beast', galewing: 'shrill', elemental: 'hollow' };
   Audio.voiceFor = function (id, t) {
     return BOSS_VOICE[id] || (t && FAMILY_VOICE[t.family]) || 'gruff';
   };
@@ -22700,6 +23295,14 @@ window.WS = window.WS || {};
         WS.Projectile.spawnHostile(e.x, e.y,
           WS.cos(a) * v, WS.sin(a) * v, dmg, school, t.name, e);
       }
+    } else if (pattern.type === 'storm') {
+      /* The storm, called down: a cell of telegraphed strikes, one on the
+         survivor, that - like Highmoor's own weather - lands on the horde
+         as hard as on anyone. See src/game/highmoor.js. */
+      WS.Moor.cell(pattern.strikes || 4, { dmg: e.damage * opt('damage', 0.8), name: t.name });
+      WS.FX.flash(e.x, e.y, e.radius * 2, [0.62, 0.78, 1.0], 0.45);
+      e.telegraph = { kind: 'ring', life: 0.5, maxLife: 0.5, radius: e.radius * 3 };
+      WS.Audio.play('thunder', e.x);
     } else if (pattern.type === 'charge') {
       /* Plant, mark the ground, then run down it. `live` says the lane is
        * still being aimed; the update loop turns that off the moment the
@@ -22963,7 +23566,7 @@ window.WS = window.WS || {};
       * (w.evolved ? (d.evolveCooldownMult || cfg.evolveCooldownMult) : 1);
     if (!d.noNerf) base *= WS.CONST.PLAYER_COOLDOWN_SCALE;
     if (player.metaTimer > 0) base *= cfg.metaCooldownMult;
-    base *= WS.Primal.cooldownMult(player, w);
+    base *= WS.Primal.cooldownMult(player, w) * WS.Moor.cooldownMult();
     // A runaway multiplier must never silently switch a weapon off.
     if (!(base > 0) || base > 20) base = 20;
     if (base < 0.05) base = 0.05;
@@ -23310,7 +23913,7 @@ window.WS = window.WS || {};
      already use. Everything inside a cone is struck - it is a hand, not a
      bolt - and a union with an arc of a whole turn strikes all round. The
      first strike needs someone in reach; the rest look again as they land. */
-  function palmStrike(player, w) {
+  function palmStrike(player, w, first) {
     const d = w.data;
     const reach = areaOf(player, w, d.reach || 118);
     const target = WS.Enemy.findNearest(player.x, player.y, reach * 1.35);
@@ -23337,7 +23940,10 @@ window.WS = window.WS || {};
       /* Whirling Discipline turns the shove into a pull: a palm beside a
          gyre draws the crowd in to the blades instead of throwing it clear
          of them. */
-      const knock = d.knockback * (w.mods.pull ? -0.6 : 1);
+      /* Only the opening strike of a flurry shoves (or, with Whirling
+         Discipline, pulls): the rest of the palms have to land on what the
+         first one moved, or every strike past the first swings at air. */
+      const knock = first ? d.knockback * (w.mods.pull ? -0.6 : 1) : 0;
       if (knock && !e.boss && !e.finale) {
         const [kx, ky] = WS.normalize(dx, dy);
         e.x += kx * knock; e.y += ky * knock;
@@ -23347,7 +23953,9 @@ window.WS = window.WS || {};
       if (proc > 0 && WS.random() < proc) Weapon.chainFrom(e.x, e.y, dmg * 0.6, 3, 220, w.id);
       if (!e._dead) i++;
     }
-    const colour = schoolColour(w);
+    /* A discovery shows in the strike itself: the flash takes on some of the
+       partner weapon's colour, the way a bolt's blend does. */
+    const colour = w.mods.blend ? WS.mix(schoolColour(w), w.mods.blend, 0.45) : schoolColour(w);
     if (full) {
       WS.FX.flash(player.x, player.y - 10, reach, colour, 0.2, 10, 'physical');
     } else {
@@ -23360,14 +23968,47 @@ window.WS = window.WS || {};
         if (beam) { beam.rank = w.level; beam.evolved = !!w.evolved; beam.blend = w.mods.blend || null; }
       }
     }
+    // Hallowed Hands: every flurry lights a small ring of Light at the hands.
+    if (w.mods.healBonus) {
+      WS.FX.flash(player.x, player.y - 12, 34, [1.0, 0.9, 0.55], 0.35, 8, 'holy');
+    }
     if (dx0(player, target) < 0) player.facing = -1; else player.facing = 1;
     WS.Audio.play('palm', player.x);
     return true;
   }
   function dx0(player, t) { return t.x - player.x; }
 
+  /* With nobody in reach, the palm is thrown instead: one blast of air from
+     an open hand at the nearest foe within waveReach times the palm's reach,
+     through the first couple of things in the way. Weaker than a flurry and
+     only one of it, so closing in is still the point - but a monk who is
+     being kited is not simply standing there. */
+  function palmWave(player, w) {
+    const d = w.data;
+    const reach = areaOf(player, w, d.reach || 118);
+    const target = WS.Enemy.findNearest(player.x, player.y, reach * (d.waveReach || 2.8));
+    if (!target) return false;
+    fillSpec(player, w);
+    const speed = d.waveSpeed || 520;
+    spec.damage *= d.waveDamage || 0.8;
+    spec.pierce = 2; spec.heal = 0;
+    spec.radius = 13 * (w.evolved ? 1.3 : 1);
+    spec.life = (reach * (d.waveReach || 2.8)) / speed;
+    spec.spinRate = 0;
+    const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
+    WS.Projectile.launchBolt(muzzleX(player, dx), muzzleY(player, dy), dx * speed, dy * speed, spec);
+    const colour = w.mods.blend ? WS.mix(schoolColour(w), w.mods.blend, 0.45) : schoolColour(w);
+    WS.FX.flash(player.x + dx * 20, player.y - 14 + dy * 20, 26, colour, 0.14, 5, 'physical');
+    player.facing = dx < 0 ? -1 : 1;
+    WS.Audio.play('palm', player.x);
+    return true;
+  }
+
   Weapon.behaviors.palm = function (player, w) {
-    if (!palmStrike(player, w)) { w.cooldown = retry(); return false; }
+    if (!palmStrike(player, w, true)) {
+      if (!palmWave(player, w)) { w.cooldown = retry(); return false; }
+      return true;
+    }
     w.burstShots = countOf(player, w) - 1;
     w.burstTimer = 0.08;
     const heal = (w.mods.healBonus || 0) + (w.evolved ? (w.data.evolvedHeal || 0) : 0);
@@ -24043,7 +24684,7 @@ window.WS = window.WS || {};
 
     if (p.hurtTimer > 0) p.hurtTimer -= dt;
 
-    let speed = p.moveSpeed * WS.Primal.moveMult(p);
+    let speed = p.moveSpeed * WS.Primal.moveMult(p) * WS.Moor.moveMult();
     if (p.slowTimer > 0) { p.slowTimer -= dt; speed *= p.slowFactor; }
 
     if (moving) {
@@ -24361,7 +25002,7 @@ window.WS = window.WS || {};
     const armor = p.armor || 0;
     const reduction = armor > 0 ? armor / (armor + WS.Config.armorConstant) : 0;
     // The bear's hide takes its share before the armour does.
-    const hide = WS.Primal.mitigate(p, amount);
+    const hide = WS.Moor.mitigate(WS.Primal.mitigate(p, amount));
     const taken = WS.max(1, WS.floor(hide * (1 - reduction)));
     run.damagePrevented += (amount - taken);
     run.damageTaken += taken;
@@ -24832,6 +25473,243 @@ window.WS = window.WS || {};
   };
 
   WS.Trials = Trials;
+
+})(window.WS);
+
+/* ===== src/game/highmoor.js ===== */
+/* Highmoor's weather and its stones: the two things only that battlefield has.
+ *
+ *   STORM CELLS. The sky picks a handful of spots, one of them wherever the
+ *   survivor is standing, darkens them, and strikes. The strike hurts the
+ *   survivor like a creature's blow and hurts everything else in it like a
+ *   weapon, so the storm is as much a tool as a threat: step out of the
+ *   shadow and let whatever is chasing you walk into it.
+ *
+ *   SHRINES. A ring of standing stones rises now and then. Stand in it long
+ *   enough and it gives a boon - STONE, GALE or STORM - for a while.
+ *
+ * A boss can call the storm too ({ type: 'storm' } in its patterns), on any
+ * battlefield. Every number is in Config under HIGHMOOR. */
+'use strict';
+(function (WS) {
+
+  const Moor = { strikes: [], shrines: [] };
+  const C = () => WS.Config;
+
+  const BOONS = {
+    stone: { name: 'Shrine of Stone', tint: [0.78, 0.74, 0.62],
+      text: () => `${WS.round(C().shrineStoneMitigation * 100)}% of every blow turned aside` },
+    gale: { name: 'Shrine of the Gale', tint: [0.62, 0.92, 0.80],
+      text: () => `Faster feet and ${WS.round((1 - C().shrineGaleCooldown) * 100)}% faster weapons` },
+    storm: { name: 'Shrine of the Storm', tint: [0.62, 0.78, 1.00],
+      text: () => 'Your own sky strikes the nearest foes' },
+  };
+  Moor.BOONS = BOONS;
+
+  function state(run) {
+    if (!run.moor) {
+      run.moor = { stormTimer: C().stormFirst, shrineTimer: C().shrineFirst,
+        boon: null, boonTimer: 0, boonTick: 0, captured: 0, strikes: 0 };
+    }
+    return run.moor;
+  }
+
+  Moor.clear = function () { this.strikes.length = 0; this.shrines.length = 0; };
+
+  /* ---------------------------------------------------------- the storm -- */
+  function scale() {
+    return WS.WaveManager.enemyScale(WS.Game.run.time) * WS.CONST.ENEMY_SCALE;
+  }
+
+  /** One telegraphed strike. `dmg` is what it does to the survivor, `foe`
+   *  what it does to anything else standing in it. */
+  Moor.strike = function (x, y, opts) {
+    const o = opts || {};
+    const cfg = C();
+    this.strikes.push({
+      x: WS.clamp(x, 40, WS.CONST.WORLD_WIDTH - 40), y: WS.clamp(y, 40, WS.CONST.WORLD_HEIGHT - 40),
+      r: o.r || cfg.stormRadius, tele: o.tele || cfg.stormTele, max: o.tele || cfg.stormTele,
+      dmg: o.dmg !== undefined ? o.dmg : cfg.stormDamage * scale(),
+      foe: o.foe !== undefined ? o.foe : cfg.stormFoeDamage * scale(),
+      name: o.name || 'the storm', seed: WS.random() * 1000,
+    });
+  };
+
+  /** A cell: one strike on the survivor (led a little, if they are moving)
+   *  and the rest scattered round them. */
+  Moor.cell = function (count, opts) {
+    const p = WS.Game.player;
+    const lead = p.moving ? 0.5 * p.moveSpeed : 0;
+    this.strike(p.x + p.lastDirX * lead, p.y + p.lastDirY * lead, opts);
+    for (let i = 1; i < count; i++) {
+      const a = WS.random() * WS.TAU, d = WS.randRange(120, C().stormSpread);
+      this.strike(p.x + WS.cos(a) * d, p.y + WS.sin(a) * d, opts);
+    }
+  };
+
+  function land(s) {
+    const p = WS.Game.player;
+    const run = WS.Game.run;
+    const col = [0.72, 0.84, 1.0];
+    const beam = WS.Projectile.spawnBeam(s.x + 34, s.y - 320, s.x, s.y, 14, col, 0.28);
+    if (beam) { beam.arc = true; beam.rank = 5; }
+    WS.FX.flash(s.x, s.y, s.r, col, 0.36, 8, 'arcane');
+    WS.FX.flash(s.x, s.y, s.r * 0.5, [1, 1, 1], 0.2);
+    WS.FX.shake(2.5, 0.14);
+    WS.Audio.play('thunder', s.x);
+    if (s.foe > 0) {
+      const struck = WS.Enemy.damageArea(s.x, s.y, s.r, s.foe, null, 16, 'storm');
+      if (run && run.moor) run.moor.strikes += struck;
+    }
+    const reach = s.r + p.radius * 0.5;
+    if (s.dmg > 0 && WS.dist2(p.x, p.y, s.x, s.y) < reach * reach) {
+      WS.Player.takeDamage(p, s.dmg, s.name);
+    }
+  }
+
+  /* --------------------------------------------------------- the stones -- */
+  function raiseShrine(p) {
+    const kinds = Object.keys(BOONS);
+    const a = WS.random() * WS.TAU, d = WS.randRange(260, 420);
+    const x = WS.clamp(p.x + WS.cos(a) * d, 120, WS.CONST.WORLD_WIDTH - 120);
+    const y = WS.clamp(p.y + WS.sin(a) * d, 140, WS.CONST.WORLD_HEIGHT - 120);
+    const kind = kinds[WS.randInt(0, kinds.length - 1)];
+    Moor.shrines.push({ x, y, kind, r: C().shrineRadius, progress: 0, life: C().shrineStay,
+      rise: 0, seed: WS.random() * 10, gone: 0 });
+    WS.FX.flash(x, y, 90, BOONS[kind].tint, 0.4);
+    WS.Game.toast(BOONS[kind].name + ' rises', 'Stand in the ring of stones to take its boon.',
+      { kind: 'plain', art: 'rune', tint: BOONS[kind].tint });
+    WS.Audio.play('cast', x, 'nature');
+  }
+
+  function grant(p, sh) {
+    const m = state(WS.Game.run);
+    m.boon = sh.kind; m.boonTimer = C().shrineBuff; m.boonTick = 0.4; m.captured++;
+    WS.Save.stats.shrines = (WS.Save.stats.shrines || 0) + 1;
+    const b = BOONS[sh.kind];
+    WS.Game.announce(b.name, b.text(), 2.2, { kind: 'glory', art: 'rune', tint: b.tint });
+    WS.FX.flash(sh.x, sh.y, 160, b.tint, 0.5, 9, 'arcane');
+    WS.FX.flash(p.x, p.y, 70, b.tint, 0.4);
+    WS.Audio.play('level');
+  }
+
+  /* ---------------------------------------------------------- per frame -- */
+  Moor.update = function (dt, run) {
+    const p = WS.Game.player;
+    if (!p) return;
+    const m = state(run);
+    const cfg = C();
+    const quiet = WS.Finale.running() || run.map.arena;
+
+    // The weather, on Highmoor only - and not over a finale.
+    if (run.map.storms && !quiet) {
+      m.stormTimer -= dt;
+      if (m.stormTimer <= 0) {
+        const minutes = run.time / 60;
+        m.stormTimer = WS.max(cfg.stormEveryFloor, cfg.stormEvery - cfg.stormEveryPerMinute * minutes);
+        Moor.cell(WS.min(cfg.stormStrikesMax, WS.round(cfg.stormStrikes + cfg.stormStrikesPerMinute * minutes)));
+      }
+    }
+    if (run.map.shrines && !quiet) {
+      m.shrineTimer -= dt;
+      if (m.shrineTimer <= 0 && !this.shrines.some((s) => !s.gone)) {
+        m.shrineTimer = cfg.shrineEvery;
+        raiseShrine(p);
+      }
+    }
+
+    for (let i = this.strikes.length - 1; i >= 0; i--) {
+      const s = this.strikes[i];
+      s.tele -= dt;
+      if (s.tele <= 0) {
+        this.strikes.splice(i, 1);
+        land(s);
+        if (!WS.Game.running) return;
+      }
+    }
+
+    for (let i = this.shrines.length - 1; i >= 0; i--) {
+      const sh = this.shrines[i];
+      sh.rise = WS.min(1, sh.rise + dt * 1.5);
+      if (sh.gone) {
+        sh.gone += dt;
+        if (sh.gone > 1.2) this.shrines.splice(i, 1);
+        continue;
+      }
+      sh.life -= dt;
+      const inside = WS.dist2(p.x, p.y, sh.x, sh.y) < sh.r * sh.r;
+      if (inside) sh.progress += dt / cfg.shrineCapture;
+      else sh.progress = WS.max(0, sh.progress - dt * cfg.shrineDecay / cfg.shrineCapture);
+      if (sh.progress >= 1) { sh.gone = 0.001; sh.taken = true; grant(p, sh); }
+      else if (sh.life <= 0) sh.gone = 0.001;
+    }
+
+    // The boon.
+    if (m.boon) {
+      m.boonTimer -= dt;
+      if (m.boon === 'storm') {
+        m.boonTick -= dt;
+        if (m.boonTick <= 0) {
+          m.boonTick = cfg.shrineStormEvery;
+          const hit = new Map();
+          for (let n = 0; n < cfg.shrineStormTargets; n++) {
+            const e = WS.Enemy.findNearest(p.x, p.y, 460, hit);
+            if (!e) break;
+            hit.set(e, e.spawnId);
+            const dmg = (cfg.shrineStormDamage + 3 * p.level) * p.damageMultiplier * WS.CONST.PLAYER_DAMAGE_SCALE;
+            const beam = WS.Projectile.spawnBeam(e.x + 26, e.y - 260, e.x, e.y, 9, [0.72, 0.84, 1.0], 0.2);
+            if (beam) { beam.arc = true; beam.rank = 3; }
+            WS.Enemy.hit(e, dmg, 'shrine_storm');
+            WS.FX.flash(e.x, e.y, 40, [0.72, 0.84, 1.0], 0.25);
+          }
+          WS.Audio.play('zap', p.x);
+        }
+      }
+      if (m.boonTimer <= 0) { m.boon = null; WS.FX.notice(p.x, p.y, 'The boon fades', '#cfd8e8'); }
+    }
+  };
+
+  /* -------------------------------------------------- what the boon does -- */
+  Moor.mitigate = function (amount) {
+    const m = WS.Game.run && WS.Game.run.moor;
+    return m && m.boon === 'stone' ? amount * (1 - C().shrineStoneMitigation) : amount;
+  };
+  Moor.moveMult = function () {
+    const m = WS.Game.run && WS.Game.run.moor;
+    return m && m.boon === 'gale' ? C().shrineGaleSpeed : 1;
+  };
+  Moor.cooldownMult = function () {
+    const m = WS.Game.run && WS.Game.run.moor;
+    return m && m.boon === 'gale' ? C().shrineGaleCooldown : 1;
+  };
+
+  /** The HUD's meter for a boon while it lasts. */
+  Moor.meter = function () {
+    const m = WS.Game.run && WS.Game.run.moor;
+    if (!m || !m.boon) return null;
+    return { key: 'boon-' + m.boon, cls: 'boon ' + m.boon,
+      label: `${BOONS[m.boon].name} · ${WS.formatTime(WS.max(0, WS.ceil(m.boonTimer)))}`,
+      pct: m.boonTimer / C().shrineBuff };
+  };
+
+  /** For the Watch's timers: the next storm and the next shrine. */
+  Moor.timers = function (run) {
+    const out = [];
+    const m = run.moor;
+    if (!m || WS.Finale.running() || run.map.arena) return out;
+    const cfg = C();
+    if (run.map.storms && m.stormTimer > 0) {
+      out.push({ kind: 'storm', id: 'storm', label: 'Storm', left: m.stormTimer,
+        total: WS.max(cfg.stormEvery, m.stormTimer), art: 'bolt', tint: [0.62, 0.78, 1.0] });
+    }
+    if (run.map.shrines && m.shrineTimer > 0 && !this.shrines.some((s) => !s.gone)) {
+      out.push({ kind: 'shrine', id: 'shrine', label: 'Standing stones', left: m.shrineTimer,
+        total: WS.max(cfg.shrineEvery, m.shrineTimer), art: 'rune', tint: [0.78, 0.74, 0.62] });
+    }
+    return out;
+  };
+
+  WS.Moor = Moor;
 
 })(window.WS);
 
@@ -25874,6 +26752,8 @@ window.WS = window.WS || {};
     } else if (run.victorious || run.mode === 'endless') {
       add('swarm', null, 'Horde surge', this.endlessEventTimer, this.endlessEventEvery, 'claw', [0.8, 0.5, 0.4]);
     }
+    // Highmoor's weather and its standing stones.
+    for (const m of WS.Moor.timers(run)) out.push(m);
     return out.sort((a, b) => a.left - b.left);
   };
 
@@ -26810,6 +27690,7 @@ window.WS = window.WS || {};
     run.finaleStarted = true;
     WS.Projectile.hostiles.releaseAll();
     WS.Hazard.clear();
+    WS.Moor.clear();
     WS.Game.announce('First Light', 'The horde cannot stand it. Something bigger can.', 3.4,
       { kind: 'glory' });
     WS.Audio.play('evolve');
@@ -28601,6 +29482,158 @@ window.WS = window.WS || {};
     },
   };
 
+  /* ------------------------------------------------------- Highmoor --- */
+  /* Brother Kael, the Stormbound. He floats in the middle of the moor tied
+     to three storm stones by lightning - tethers that swing across the
+     field as he drifts, and hurt to cross. While a stone stands he shrugs
+     most damage off and cannot be broken past stoneFloor; each one that
+     falls tears a piece out of him. Unbound, the storm has nowhere to go:
+     arms of lightning turn about him and, every so often, the whole sky
+     comes down except in the eye - find the quiet or be struck. If he
+     outlasts the unbound window the stones rise again. Past stormAt the
+     storm takes the rest of him, and everything comes faster. */
+  const STONES = [[380, 300], [900, 300], [640, 520]];
+  const STORM_TINT = [0.62, 0.72, 1.0];
+  SCRIPTS.tempest = {
+    start(F) {
+      const s = F.s;
+      s.cycle = 0; s.stones = []; s.armDir = 1; s.ph = 0;
+      s.core = F.unit('kael_stormbound', 640, 250);
+      s.tm = Object.assign({}, F.def.tuning.opening);
+      this.bind(F, F.def.tuning.stoneFloor);
+    },
+    bind(F, floor) {
+      const s = F.s, T = F.def.tuning, k = s.core;
+      if (!F.live(k)) return;
+      const mult = 1 + T.stoneHpGrowth * s.cycle;
+      s.stones = STONES.slice(0, T.stones).map(([x, y]) => {
+        const q = F.unit('storm_stone', x, y, mult);
+        if (q) F.eruption(x, y, 70, STORM_TINT);
+        return q;
+      }).filter(Boolean);
+      for (const q of s.stones) F.fence(k, q, T.fenceDamage, 'Storm tether');
+      k.dmgTaken = T.stoneShield;
+      k.hpFloor = floor * k.maxHealth;
+      k.displayName = 'Brother Kael · Bound to the stones';
+      s.mode = 'bound';
+      F.darkTarget = 0.25;
+    },
+    update(F, dt) {
+      const s = F.s, T = F.def.tuning, E = T.every, k = s.core;
+      if (!F.live(k)) return;
+      const p = WS.Game.player;
+      s.ph += dt * T.driftSpeed * (s.mode === 'storm' ? 1.5 : 1);
+      k.x = 640 + WS.sin(s.ph) * T.drift;
+      k.y = 250 + WS.sin(s.ph * 2) * T.drift * 0.3;
+      k.facing = p.x < k.x ? -1 : 1;
+      const hp = k.health / k.maxHealth;
+
+      if (s.mode === 'bound') {
+        s.stones = s.stones.filter((q) => F.live(q));
+        s.label = `Topple the storm stones · ${s.stones.length}`;
+      } else if (s.mode === 'unbound') {
+        s.restone -= dt;
+        s.label = `Unbound · ${WS.max(0, WS.ceil(s.restone))}`;
+        if (hp <= T.stormAt) { this.storm(F); return; }
+        if (s.restone <= 0) {
+          s.cycle++;
+          this.bind(F, WS.max(T.stormAt, hp - 0.2));
+          F.say('stone');
+        }
+      } else {
+        s.label = 'The storm takes him';
+      }
+
+      const storming = s.mode === 'storm';
+      if (F.every('bolt', dt, storming ? E.stormBolt : E.bolt)) {
+        for (let i = 0; i < T.bolts; i++) {
+          const [x, y] = i === 0 ? [p.x, p.y] : F.near(T.boltScatter);
+          F.circle(x, y, T.boltRadius, T.boltTele + i * T.boltStagger, T.boltDamage, 'Lightning',
+            { style: 'blast', tint: STORM_TINT });
+        }
+      }
+      if (F.every('gale', dt, E.gale)) {
+        F.lane(k.x, k.y, F.aim(k), T.galeLength, T.galeWidth, T.galeTele, T.galeDamage, 'Gale',
+          { tint: [0.7, 0.95, 0.85], style: 'shot', active: 0.35 });
+      }
+      if (F.every('ring', dt, storming ? E.stormRing : E.ring)) {
+        F.ring(k.x, k.y, { speed: T.ringSpeed, gaps: T.ringGaps, gapWidth: T.ringGap, dmg: T.ringDamage,
+          name: 'Thunderclap', tint: STORM_TINT });
+        WS.Audio.play('thunder', k.x);
+      }
+      if (F.every('adds', dt, E.adds)) {
+        F.adds('stormwisp', T.wisps, k.x, k.y + 120, 220);
+        if (s.mode === 'bound') F.adds('galewing_harpy', T.harpies, k.x, k.y + 60, 260);
+      }
+      if (s.mode !== 'bound') {
+        if (F.every('arm', dt, storming ? E.stormArm : E.arm)) {
+          s.armDir = -s.armDir;
+          F.sweep(k.x, k.y, WS.random() * WS.TAU, s.armDir * T.armSpin, 900, T.armWidth, T.armTele, T.armTime,
+            T.armDamage, 'Lightning arm', { arms: storming ? T.stormArms : T.arms, follow: k, tint: STORM_TINT });
+        }
+        if (F.every('eye', dt, storming ? E.stormEye : E.eye)) this.eye(F);
+      }
+    },
+    /** The whole sky, except the eye. */
+    eye(F) {
+      const T = F.def.tuning, p = WS.Game.player;
+      const b = { minX: 140, maxX: W() - 140, minY: 160, maxY: H() - 110 };
+      const zones = [];
+      for (let i = 0; i < T.eyes; i++) {
+        const a = WS.random() * WS.TAU, d = WS.randRange(180, 320);
+        zones.push({ x: WS.clamp(p.x + WS.cos(a) * d, b.minX, b.maxX),
+          y: WS.clamp(p.y + WS.sin(a) * d, b.minY, b.maxY), r: T.eyeRadius });
+      }
+      F.safe(zones, T.eyeTele, T.eyeDamage, 'The storm');
+      F.sayOnce('eye');
+      WS.Game.toast('The eye of the storm', 'The whole sky is coming down. Get into the quiet.',
+        { kind: 'warn', art: 'bolt', tint: STORM_TINT });
+      WS.Audio.play('warn');
+    },
+    storm(F) {
+      const s = F.s, k = s.core;
+      s.mode = 'storm';
+      for (const q of s.stones) F.remove(q);
+      s.stones = [];
+      k.dmgTaken = 1; k.hpFloor = 0;
+      k.displayName = 'Brother Kael · The storm takes him';
+      F.darkTarget = 0.6;
+      F.say('storm');
+      WS.Game.announce('The storm takes him', 'Break him before there is nothing left to break.', 3.2,
+        { kind: 'dread', art: 'kael_face', tint: STORM_TINT });
+      WS.FX.screen('rgba(190,205,255,.35)', 0.9);
+      s.tm.eye = 5; s.tm.arm = 1.5;
+    },
+    onDead(F, e) {
+      const s = F.s, T = F.def.tuning, k = s.core;
+      if (e === k) {
+        s.core = null;
+        F.darkTarget = 0;
+        F.wreck(e, 'fallen', 20);
+        F.chain(e.x, e.y, 90, 7, 1.6, STORM_TINT);
+        WS.FX.screen('rgba(230,236,255,.6)', 1.4);
+        F.win();
+        return;
+      }
+      if (s.stones.includes(e) && F.live(k)) {
+        s.stones = s.stones.filter((q) => q !== e && F.live(q));
+        WS.Enemy.damage(k, k.maxHealth * T.stoneBreak, false, 'stormbond');
+        WS.FX.flash(k.x, k.y, 120, STORM_TINT, 0.5);
+        if (!F.live(k)) return;
+        if (!s.stones.length) {
+          s.mode = 'unbound'; s.restone = T.restoneTime;
+          k.dmgTaken = 1; k.hpFloor = 0;
+          k.displayName = 'Brother Kael, the Stormbound';
+          F.darkTarget = 0.45;
+          F.say('unbound');
+          s.tm.eye = 4; s.tm.arm = 1.5;
+          WS.Game.toast('Kael is unbound', 'Nothing is holding the storm now - and nothing is shielding him.',
+            { kind: 'warn', art: 'crosshair', tint: [1.0, 0.72, 0.36] });
+        }
+      }
+    },
+  };
+
   WS.Finale = F;
 
 })(window.WS);
@@ -28696,6 +29729,7 @@ window.WS = window.WS || {};
     WS.XP.clear();
     WS.Pickup.clear();
     WS.Hazard.clear();
+    WS.Moor.clear();
     WS.Familiar.reset();
     this.timeScale = 1;
     this.toasts.length = 0;
@@ -28799,6 +29833,7 @@ window.WS = window.WS || {};
     WS.XP.clear();
     WS.Pickup.clear();
     WS.Hazard.clear();
+    WS.Moor.clear();
     WS.Familiar.reset();
     WS.Audio.playMusic('menu');
     WS.UI.openMenu();
@@ -29227,6 +30262,8 @@ window.WS = window.WS || {};
     if (!this.running) return;
     WS.Encounters.update(dt, run);
     WS.Trials.update(dt, run);
+    WS.Moor.update(dt, run);
+    if (!this.running) return;
 
     WS.Enemy.update(dt);
     if (!this.running) return;
@@ -31113,6 +32150,73 @@ window.WS = window.WS || {};
       frameClose(g, w, h, 0.6);
     },
 
+    highland(g, w, h, t, v, m) {
+      /* Highmoor: a bruised sky that never settles, cloud dragging across
+         it low and fast, tors on the skyline, a ring of standing stones in
+         the middle distance, rain on the slant - and every so often the
+         whole sky goes white for a moment and a fork comes down on the
+         stones. The storm lives here; the picture should never be still. */
+      const s = WS.min(w, h), horizon = h * 0.63;
+      // the strike: every nine seconds or so, lasting a fifth of a second
+      const cyc = t % 9.3, flash = cyc < 0.22 ? 1 - cyc / 0.22 : 0;
+      skyFill(g, w, horizon, flash > 0.5 ? ['#2a2c40', '#474a66', '#6a6c8a', '#8c8ea8']
+        : ['#06060c', '#12121e', '#20202e', '#34303e']);
+      for (let i = 0; i < 4; i++) {
+        const cx = ((t * (9 + i * 5) + i * w * 0.4) % (w * 1.6)) - w * 0.3;
+        g.fillStyle = `rgba(${10 + i * 6},${10 + i * 6},${18 + i * 6},${0.75 - i * 0.12})`;
+        g.beginPath(); g.ellipse(cx, h * (0.12 + i * 0.09), s * (0.35 + i * 0.08), s * 0.05, 0, 0, WS.TAU); g.fill();
+      }
+      ridge(g, v, 'far', w, horizon, s * 0.05, s * 0.16, '#141420', 5);
+      // tors: blocks of granite stacked on the near ridge
+      g.fillStyle = '#0c0c14';
+      for (const [x, ht] of [[0.14, 0.1], [0.2, 0.07], [0.82, 0.12], [0.88, 0.08]]) {
+        g.fillRect(x * w - s * 0.04, horizon - s * ht, s * 0.08, s * ht);
+        g.fillRect(x * w - s * 0.03, horizon - s * (ht + 0.03), s * 0.06, s * 0.03);
+      }
+      // the ring of stones
+      const rx = w * 0.52, ry = horizon + s * 0.02;
+      g.fillStyle = '#08080e';
+      for (let i = 0; i < 9; i++) {
+        const a = (i / 9) * WS.TAU;
+        const x = rx + Math.cos(a) * s * 0.2, y = ry + Math.sin(a) * s * 0.03;
+        const ht = s * (0.06 + (i % 3) * 0.015) * (0.8 + 0.2 * Math.sin(a));
+        g.fillRect(x - s * 0.012, y - ht, s * 0.024, ht);
+      }
+      if (flash > 0) {
+        g.save(); g.globalCompositeOperation = 'lighter';
+        g.strokeStyle = `rgba(220,230,255,${flash})`; g.lineWidth = 2;
+        g.beginPath();
+        let x = rx + s * 0.06, y = 0;
+        g.moveTo(x, y);
+        const seed = WS.floor(t / 9.3);
+        for (let k = 1; k <= 8; k++) {
+          x += Math.sin(seed * 7.3 + k * 2.1) * s * 0.04 - s * 0.006;
+          y = (ry - s * 0.04) * (k / 8);
+          g.lineTo(x, y);
+        }
+        g.stroke();
+        glow(g, x, ry - s * 0.05, s * 0.2, '200,220,255', 0.5 * flash);
+        g.restore();
+      }
+      propLine(g, v, m, w, horizon + s * 0.03, s * 0.2, '#07070c', 7);
+      ground(g, w, h, horizon + s * 0.02, '#0e0c12', '#141018');
+      walker(g, v, 'ram', s * 0.17, horizon + s * 0.18, w, t, 16, 0.4, '#050408', '255,220,120');
+      fog(g, v, 'fog', w, horizon + s * 0.04, s, t, '150,150,190', 0.08);
+      // rain, on the slant
+      motes(g, v, 'rain', 70, (r) => ({ x: r(), off: r(), sp: 0.9 + r() * 0.5, len: 6 + r() * 8 }), (d, tt) => {
+        const y = ((d.off + tt * d.sp) % 1.1) * h;
+        const x = ((d.x + tt * 0.12 * d.sp) % 1) * w;
+        g.strokeStyle = 'rgba(170,185,220,.22)';
+        g.lineWidth = 1;
+        g.beginPath(); g.moveTo(x, y); g.lineTo(x - d.len * 0.35, y + d.len); g.stroke();
+      }, t);
+      if (flash > 0) {
+        g.fillStyle = `rgba(200,210,255,${0.18 * flash})`;
+        g.fillRect(0, 0, w, h);
+      }
+      frameClose(g, w, h, 0.6);
+    },
+
     arena(g, w, h, t, v, m) {
       const s = WS.min(w, h), horizon = h * 0.66;
       skyFill(g, w, horizon, ['#040208', '#0d0618', '#1d0c2a', '#35163a']);
@@ -31306,6 +32410,7 @@ window.WS = window.WS || {};
     haunted:  { sky: ['#030208', '#110d20', '#231a36'], ridge: '#0c0916', ground: ['#08070d', '#0b0913'] },
     savannah: { sky: ['#2a0a0a', '#6a1a10', '#a8341a'], ridge: '#5a180e', ground: ['#2a0c06', '#1a0704'] },
     glacier:  { sky: ['#02040a', '#0b1d34', '#163150'], ridge: '#132540', ground: ['#0e1a2c', '#16263e'] },
+    highland: { sky: ['#06060c', '#16141f', '#2a2634'], ridge: '#141420', ground: ['#0e0c12', '#141018'] },
     arena:    { sky: ['#040208', '#1d0c2a', '#35163a'], ridge: '#100818', ground: ['#0a0612', '#120a1c'] },
     none:     { sky: ['#010102', '#07070c', '#101018'], ridge: '#08080d', ground: ['#050507', '#08080b'] },
   };
@@ -34712,6 +35817,42 @@ window.WS = window.WS || {};
     }
   };
 
+  /* Highmoor's storm stones: a standing stone with its runes lit from the
+     inside and the storm coming off the top in forks. The tether to Kael is
+     a fence mark, drawn with the rest of the marks. */
+  M.stormstone = function (ctx, e, t, o) {
+    const R = e.radius, x = e.x, y = e.y;
+    ctx.save();
+    const g = ctx.createLinearGradient(x - R * 0.6, 0, x + R * 0.6, 0);
+    g.addColorStop(0, '#8a8c94'); g.addColorStop(0.55, '#5a5c64'); g.addColorStop(1, '#303238');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(x - R * 0.62, y + R * 0.7);
+    ctx.lineTo(x - R * 0.5, y - R * 1.5);
+    ctx.quadraticCurveTo(x, y - R * 1.85, x + R * 0.48, y - R * 1.45);
+    ctx.lineTo(x + R * 0.64, y + R * 0.7);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#1c1e24'; ctx.lineWidth = 2; ctx.stroke();
+    const pulse = o.still ? 1 : 0.6 + 0.4 * WS.sin(t * 5 + x);
+    ctx.strokeStyle = `rgba(160,190,255,${0.9 * pulse})`; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x, y - R * 1.2); ctx.lineTo(x - R * 0.18, y - R * 0.8); ctx.lineTo(x + R * 0.12, y - R * 0.45);
+    ctx.lineTo(x - R * 0.1, y); ctx.moveTo(x - R * 0.3, y - R * 0.2); ctx.lineTo(x + R * 0.26, y - R * 0.2);
+    ctx.stroke();
+    ctx.restore();
+    glow(ctx, x, y - R * 1.6, R * 1.1, [0.62, 0.72, 1.0], o.still ? 0.6 : 0.45 + 0.3 * pulse);
+    if (!o.still && WS.random() < 0.55) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = 'rgba(190,210,255,.85)'; ctx.lineWidth = 1.3;
+      ctx.beginPath(); ctx.moveTo(x, y - R * 1.7);
+      let px = x, py = y - R * 1.7;
+      for (let i = 0; i < 4; i++) { px += WS.randRange(-9, 9); py += WS.randRange(-10, 2); ctx.lineTo(px, py); }
+      ctx.stroke();
+      ctx.restore();
+    }
+  };
+
   M.pipe = function (ctx, e, t, o) {
     const R = e.radius, x = e.x, y = e.y;
     ctx.fillStyle = IRON.dark;
@@ -35645,6 +36786,12 @@ window.WS = window.WS || {};
     g.drawImage(full, s / 2 - s * z * 0.5, s * 0.50 - s * z * 0.27, s * z, s * z);
   });
 
+  WS.Sprites.define('kael_face', function (g, s) {
+    const full = WS.Sprites.creature('kael', [0.62, 0.72, 1.0], WS.round(s));
+    const z = 2.4;
+    g.drawImage(full, s / 2 - s * z * 0.5, s * 0.5 - s * z * 0.245, s * z, s * z);
+  });
+
   A.machines = M;
   WS.FinaleArt = A;
 
@@ -35770,7 +36917,7 @@ window.WS = window.WS || {};
      not sway; everything with a stem does, and the lighter it is the more. */
   const SWAY = {
     wheat: 0.055, grass: 0.05, flower: 0.038, cactus: 0.008,
-    tree: 0.014, deadtree: 0.018, spire: 0.006,
+    tree: 0.014, deadtree: 0.018, spire: 0.006, heather: 0.045,
   };
 
   /* Radial, not a filled ellipse. A hard-edged ellipse at 8% alpha still has
@@ -36014,6 +37161,59 @@ window.WS = window.WS || {};
             if (s) g.lineTo(x, yy); else g.moveTo(x, yy);
           }
           g.stroke();
+        }
+      }
+      g.globalAlpha = 1;
+    },
+
+    moor(g, c) {
+      /* Highmoor: heather in wide dark-purple patches, peat showing through
+         between them, pale granite breaking the surface, and sheep-trails
+         worn across it all - the only paths on the field, and none of them
+         goes anywhere in particular. */
+      for (let p = 0; p < 26; p++) {
+        const cx = WS.randRange(0, W), cy = WS.randRange(0, H), R = WS.randRange(60, 150);
+        c.blob(g, cx, cy, R, '66,40,70', 0.22, 0.7, 0.6);
+        for (let k = 0; k < 40; k++) {
+          const a = WS.random() * WS.TAU, d = Math.sqrt(WS.random()) * R * 0.9;
+          const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d * 0.7;
+          g.globalAlpha = WS.randRange(0.18, 0.4);
+          g.fillStyle = WS.random() < 0.6 ? '#6e3f78' : '#8c5a8e';
+          g.fillRect(x, y, 1.6, 1.6);
+        }
+      }
+      // peat: the darker ground between, with standing water in the lowest
+      for (let p = 0; p < 9; p++) {
+        const cx = WS.randRange(0, W), cy = WS.randRange(0, H), R = WS.randRange(30, 70);
+        c.blob(g, cx, cy, R, '12,10,12', 0.3, 0.55, 0.7);
+        if (WS.random() < 0.5) {
+          g.globalAlpha = 0.16; g.fillStyle = '#8ea4c8';
+          g.beginPath(); g.ellipse(cx, cy, R * 0.45, R * 0.18, WS.randRange(-0.3, 0.3), 0, WS.TAU); g.fill();
+          g.globalAlpha = 0.22; g.strokeStyle = '#c8d8f0'; g.lineWidth = 1;
+          g.beginPath(); g.moveTo(cx - R * 0.3, cy - R * 0.06); g.lineTo(cx + R * 0.1, cy - R * 0.1); g.stroke();
+        }
+      }
+      // sheep-trails
+      g.lineCap = 'round';
+      for (let t = 0; t < 5; t++) {
+        let x = WS.randRange(0, W), y = WS.randRange(0, H), a = WS.random() * WS.TAU;
+        g.beginPath(); g.moveTo(x, y);
+        for (let s = 0; s < 18; s++) {
+          a += WS.randRange(-0.35, 0.35);
+          x += Math.cos(a) * 30; y += Math.sin(a) * 22;
+          g.lineTo(x, y);
+        }
+        g.globalAlpha = 0.14; g.strokeStyle = '#8a7a6a'; g.lineWidth = 7; g.stroke();
+        g.globalAlpha = 0.12; g.strokeStyle = '#0a0808'; g.lineWidth = 2; g.stroke();
+      }
+      // granite breaking the surface
+      for (let i = 0; i < 30; i++) c.stone(g, WS.randRange(0, W), WS.randRange(0, H), WS.randRange(4, 11));
+      // tussocks
+      for (let i = 0; i < 180; i++) {
+        const x = WS.random() * W, y = WS.random() * H;
+        g.globalAlpha = WS.randRange(0.2, 0.4); g.strokeStyle = '#7a7a52'; g.lineWidth = 1;
+        for (let k = -1; k <= 1; k++) {
+          g.beginPath(); g.moveTo(x + k * 2, y); g.lineTo(x + k * 3.4, y - WS.randRange(4, 8)); g.stroke();
         }
       }
       g.globalAlpha = 1;
@@ -36421,6 +37621,7 @@ window.WS = window.WS || {};
 
     /* ---- ground effects (zones, auras, arena hazards) -------------------- */
     this.drawZones(ctx, time);
+    this.drawMoor(ctx, time);
     this.drawHazards(ctx, time);
     this.drawTelegraphs(ctx, time);
     this.drawPlayerMark(ctx, player, time);
@@ -37363,6 +38564,100 @@ window.WS = window.WS || {};
       }
     }
     ctx.strokeStyle = WS.rgb(z.colour, 1);
+  };
+
+  /* HIGHMOOR'S SKY AND STONES (src/game/highmoor.js).
+
+     A storm strike is announced by the shadow of the cloud that carries it:
+     a dark pool on the ground that fills from the rim in as the strike
+     comes, with the rim itself crackling. Full is now. It is the only thing
+     on the field that is darker than the ground, which is why it reads.
+
+     A shrine is a ring of six standing stones round a rune in its boon's
+     colour, and the count to taking it is drawn round the ring like the
+     gyre of a clock. */
+  R.drawMoor = function (ctx, time) {
+    const M = WS.Moor;
+    if (!M || (!M.strikes.length && !M.shrines.length)) return;
+    ctx.save();
+    for (const s of M.strikes) {
+      const k = 1 - WS.clamp(s.tele / s.max, 0, 1);
+      ctx.globalAlpha = 0.34 + 0.2 * k;
+      ctx.fillStyle = '#05070e';
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, WS.TAU); ctx.fill();
+      ctx.globalAlpha = 0.5;
+      ctx.fillStyle = '#0a1224';
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r * k, 0, WS.TAU); ctx.fill();
+      ctx.globalAlpha = 0.75 + 0.25 * WS.sin(time * 18 + s.seed);
+      ctx.strokeStyle = k > 0.8 ? '#e8f0ff' : '#8fb0ff';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, WS.TAU); ctx.stroke();
+      // crackle along the rim
+      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = 'rgba(200,220,255,.8)';
+      const n = 3 + WS.floor(k * 4);
+      for (let i = 0; i < n; i++) {
+        const a = s.seed + i * 2.3 + WS.floor(time * 12) * 0.7;
+        let x = s.x + WS.cos(a) * s.r, y = s.y + WS.sin(a) * s.r;
+        ctx.beginPath(); ctx.moveTo(x, y);
+        for (let j = 0; j < 3; j++) {
+          x += (s.x - x) * 0.18 + WS.randRange(-6, 6);
+          y += (s.y - y) * 0.18 + WS.randRange(-6, 6);
+          ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+    }
+    for (const sh of M.shrines) {
+      const b = M.BOONS[sh.kind];
+      const fade = sh.gone ? WS.max(0, 1 - sh.gone / 1.2) : sh.rise;
+      if (fade <= 0) continue;
+      const lit = sh.taken ? 1 : 0.55 + 0.45 * sh.progress;
+      // the ground inside the ring, faintly lit
+      ctx.globalAlpha = 0.16 * fade * lit;
+      ctx.fillStyle = WS.rgb(b.tint, 1);
+      ctx.beginPath(); ctx.arc(sh.x, sh.y, sh.r, 0, WS.TAU); ctx.fill();
+      // the count, round the ring
+      if (sh.progress > 0 && !sh.gone) {
+        ctx.globalAlpha = 0.9 * fade;
+        ctx.strokeStyle = WS.rgb(WS.mix(b.tint, [1, 1, 1], 0.4), 1);
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(sh.x, sh.y, sh.r + 6, -WS.PI / 2, -WS.PI / 2 + WS.TAU * sh.progress);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 0.5 * fade;
+      ctx.strokeStyle = WS.rgb(b.tint, 1);
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([6, 8]);
+      ctx.beginPath(); ctx.arc(sh.x, sh.y, sh.r, 0, WS.TAU); ctx.stroke();
+      ctx.setLineDash([]);
+      // the stones, rising out of the ground
+      for (let i = 0; i < 6; i++) {
+        const a = sh.seed + (i / 6) * WS.TAU;
+        const sx = sh.x + WS.cos(a) * sh.r, sy = sh.y + WS.sin(a) * sh.r * 0.9;
+        const h = (16 + (i % 3) * 5) * fade, w = 7 + (i % 2) * 2;
+        ctx.globalAlpha = 0.35 * fade;
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.ellipse(sx, sy + 2, w, 3, 0, 0, WS.TAU); ctx.fill();
+        ctx.globalAlpha = fade;
+        const g = ctx.createLinearGradient(sx - w, 0, sx + w, 0);
+        g.addColorStop(0, '#8a8a80'); g.addColorStop(0.55, '#5e5e58'); g.addColorStop(1, '#34342f');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(sx - w, sy); ctx.lineTo(sx - w * 0.8, sy - h); ctx.quadraticCurveTo(sx, sy - h - 4, sx + w * 0.8, sy - h + 1);
+        ctx.lineTo(sx + w, sy); ctx.closePath(); ctx.fill();
+        // a carved mark on each, lit by the boon
+        ctx.globalAlpha = fade * lit * 0.9;
+        ctx.strokeStyle = WS.rgb(b.tint, 1); ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(sx, sy - h * 0.75); ctx.lineTo(sx, sy - h * 0.3); ctx.stroke();
+      }
+      // the rune in the middle
+      const icon = WS.Icons.glyph(sh.kind === 'storm' ? 'bolt' : sh.kind === 'gale' ? 'wing' : 'stone', b.tint, 40);
+      ctx.globalAlpha = fade * (0.6 + 0.4 * lit) * (0.85 + 0.15 * WS.sin(time * 3 + sh.seed));
+      ctx.drawImage(icon, sh.x - 20, sh.y - 26 - WS.sin(time * 2 + sh.seed) * 2, 40, 40);
+    }
+    ctx.restore();
   };
 
   /** Nature ground: a thicket. Thorned briars curl in from the rim and
@@ -40368,6 +41663,9 @@ window.WS = window.WS || {};
     // A trial under way (the Lost Calves, the Still Hand) - src/game/trials.js.
     const trial = WS.Trials.meter();
     if (trial) want.push(trial);
+    // A Highmoor shrine's boon, while it lasts - src/game/highmoor.js.
+    const boon = WS.Moor.meter();
+    if (boon) want.push(boon);
     const sig = want.map((m) => m.key).join('|');
     if (wrap.dataset.sig !== sig) {
       wrap.dataset.sig = sig;
@@ -41045,7 +42343,7 @@ window.WS = window.WS || {};
    *  which is dark by design and reads as mud when set in type; this is the
    *  colour of the thing you remember about the place instead. */
   const PLACE_HUES = { forest: '#a8d69a', plains: '#e6c47e', haunted: '#bcaeea',
-    savannah: '#f0a06e', glacier: '#a6d8f2', arena: '#d6a4f0' };
+    savannah: '#f0a06e', glacier: '#a6d8f2', highland: '#b8aee0', arena: '#d6a4f0' };
   function placeHue(m) { return PLACE_HUES[m.art] || WS.hex(m.groundAlt); }
 
   /** The old still, for a build without the living pictures. */
@@ -41118,7 +42416,7 @@ window.WS = window.WS || {};
     const m = WS.Maps[id];
     node.innerHTML = '';
     const art = el('div', 'art');
-    const key = { forest: 'leaf', plains: 'wheat', haunted: 'deadtree', savannah: 'sun', glacier: 'crystal', arena: 'sovereign' }[m.art] || 'rune';
+    const key = { forest: 'leaf', plains: 'wheat', haunted: 'deadtree', savannah: 'sun', glacier: 'crystal', highland: 'peak', arena: 'sovereign' }[m.art] || 'rune';
     art.append(measuring ? el('div') : WS.Vignette ? WS.Vignette.battlefield(id) : stillArt(WS.Sprites.zoneCard(m, key, 184)),
       el('i', 'frame'));
     art.style.setProperty('--q', WS.hex(m.groundAlt));
@@ -41218,7 +42516,7 @@ window.WS = window.WS || {};
         + (WS.Game.selection.map === id ? ' selected' : ''));
       node.type = 'button';
       node.style.setProperty('--q', unlocked ? placeHue(m) : WS.hex([0.3, 0.32, 0.4]));
-      const art = { forest: 'leaf', plains: 'wheat', haunted: 'deadtree', savannah: 'sun', glacier: 'crystal', arena: 'sovereign' }[m.art] || 'rune';
+      const art = { forest: 'leaf', plains: 'wheat', haunted: 'deadtree', savannah: 'sun', glacier: 'crystal', highland: 'peak', arena: 'sovereign' }[m.art] || 'rune';
       const seat = el('span', 'pick-seat');
       const img = icon(art, unlocked ? m.groundAlt : [0.22, 0.23, 0.28], 44);
       img.width = img.height = 44;
@@ -41511,7 +42809,8 @@ window.WS = window.WS || {};
    * did. A page the Watch has not earned yet is a shape against its sky and
    * a line saying where it has been seen. */
   const FINALE_HOME = { candlecrawler: 'thornhollow', dust_galleon: 'dustreach', admiral_ashore: 'dustreach',
-    mordecai_bound: 'mourneholt', stormbreaker: 'ochre', heart_drill: 'palewastes', pale_lord: 'palewastes' };
+    mordecai_bound: 'mourneholt', stormbreaker: 'ochre', heart_drill: 'palewastes', pale_lord: 'palewastes',
+    kael_stormbound: 'highmoor', storm_stone: 'highmoor' };
 
   /** Where a thing walks, from the battlefields' own schedules. */
   function habitat(id) {

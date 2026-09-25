@@ -188,7 +188,7 @@ const fail = [];
     WS.Audio.musicGain.connect(an);
     const bins = new Float32Array(an.frequencyBinCount);
     const hz = ctx.sampleRate / an.fftSize;
-    for (const k of ['forest', 'plains', 'cursed', 'savannah', 'glacier', 'eclipse', 'menu']) {
+    for (const k of ['forest', 'plains', 'cursed', 'savannah', 'glacier', 'highmoor', 'eclipse', 'menu']) {
       WS.Audio.stopMusic(); WS.Audio.playMusic(k);
       if (WS.Audio._music) { WS.Audio._music.intensity = 0; WS.Audio._music.want = 0; }
       await sleep(800);

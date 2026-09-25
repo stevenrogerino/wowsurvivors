@@ -172,6 +172,43 @@
       ],
     },
 
+    /* The high moor above the Pale: rain, rams, harpies, and a storm that
+       strikes the horde as hard as it strikes you. Its own two mechanics -
+       storm cells and standing-stone shrines - live in src/game/highmoor.js. */
+    highmoor: {
+      terrain: 'moor',   // what the ground is made of (renderer.js TERRAIN)
+      name: 'Highmoor',
+      subtitle: 'Where the storm lives',
+      description: 'Heather, standing stones and a sky that has never once been quiet. The lightning does not take sides, so learn to use it.',
+      art: 'highland',
+      ground: [0.14, 0.13, 0.15], groundAlt: [0.18, 0.16, 0.19],
+      fog: [0.09, 0.09, 0.12],
+      music: 'highmoor',
+      difficulty: 2.2, goldMult: 2.2,
+      storms: true, shrines: true,
+      unlockHint: 'Survive for 10 minutes in the Pale Wastes.',
+      props: ['standing', 'heather', 'rock', 'cairn'],
+      phases: [
+        { at: 0, interval: 0.85, count: 3, roster: [{ id: 'stormhorn_ram', weight: 40 }, { id: 'wolf', weight: 30 }, { id: 'stormwisp', weight: 30 }] },
+        { at: 90, interval: 0.72, count: 4, roster: [{ id: 'stormhorn_ram', weight: 30 }, { id: 'galewing_harpy', weight: 25 }, { id: 'stormwisp', weight: 25 }, { id: 'wolf', weight: 20 }] },
+        { at: 240, interval: 0.62, count: 4, roster: [{ id: 'galewing_harpy', weight: 30 }, { id: 'stonehide', weight: 20 }, { id: 'stormhorn_ram', weight: 30 }, { id: 'stormwisp', weight: 20 }], elite: 'thunderscale', eliteChance: 0.06 },
+        { at: 420, interval: 0.54, count: 5, roster: [{ id: 'stonehide', weight: 25 }, { id: 'galewing_harpy', weight: 30 }, { id: 'stormhorn_ram', weight: 25 }, { id: 'stormwisp', weight: 20 }], elite: 'thunderscale', eliteChance: 0.08 },
+        { at: 630, interval: 0.46, count: 6, roster: [{ id: 'stonehide', weight: 30 }, { id: 'galewing_harpy', weight: 30 }, { id: 'stormhorn_ram', weight: 25 }, { id: 'stormwisp', weight: 15 }], elite: 'thunderscale', eliteChance: 0.09 },
+        { at: 870, interval: 0.40, count: 7, roster: [{ id: 'stonehide', weight: 35 }, { id: 'galewing_harpy', weight: 35 }, { id: 'stormhorn_ram', weight: 30 }], elite: 'thunderscale', eliteChance: 0.11 },
+        { at: 1080, interval: 0.35, count: 8, roster: [{ id: 'stonehide', weight: 35 }, { id: 'galewing_harpy', weight: 35 }, { id: 'stormwisp', weight: 30 }], elite: 'thunderscale', eliteChance: 0.13 },
+      ],
+      events: [
+        { at: 300, text: 'The rams come down off the high pasture!', id: 'stormhorn_ram', count: 22 },
+        { at: 620, text: 'The Galewing drop out of the cloud!', id: 'galewing_harpy', count: 18 },
+        { at: 920, text: 'The storm breaks into a thousand wisps!', id: 'stormwisp', count: 28 },
+      ],
+      bosses: [
+        { at: 300, id: 'hornlord' }, { at: 630, id: 'skreeva' },
+        { at: 960, id: 'thornmane' }, { at: 1320, id: 'mossback' },
+        { at: 1620, id: 'stormhide' },
+      ],
+    },
+
     // No horde, no timer: a bounded duel with a scripted boss. You arrive with
     // a ready-made kit so the fight tests the mechanics, not the build-up.
     boss_arena: {
@@ -192,6 +229,6 @@
     },
   };
 
-  WS.MapOrder = ['thornhollow', 'dustreach', 'mourneholt', 'ochre', 'palewastes', 'boss_arena'];
+  WS.MapOrder = ['thornhollow', 'dustreach', 'mourneholt', 'ochre', 'palewastes', 'highmoor', 'boss_arena'];
 
 })(window.WS);

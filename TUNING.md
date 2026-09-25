@@ -22,7 +22,7 @@ game's own data at runtime**, not written out by hand. It reads `WS.Config`,
 `WS.Upgrades`, `WS.MetaUpgrades`, `WS.Blessings`, `WS.Combos`, `WS.Unions`,
 `WS.Elites`, `WS.Achievements`, `WS.CONST` (the global damage/speed scalars and
 pool ceilings), `WS.Arena.tuning` (the entire Eclipse Arena fight),
-`WS.Familiar.tuning` (the summons), `WS.Finales` (all five finale fights, down
+`WS.Familiar.tuning` (the summons), `WS.Finales` (all six finale fights, down
 to every attack's timing), `WS.FinaleUnits`, `WS.FinaleSpeakers` and
 `WS.Lore` (every line of the prologue), walks whatever it finds, and builds a control per
 field from the shape of the value:
@@ -104,6 +104,31 @@ applied it live, so it looked fine until you reloaded). Overrides aimed at a
 table that is not loaded yet are now held and applied once every script has
 run, before the game boots. `check-bench` saves one of each and fails if
 they do not survive a reload.
+
+## The Old Shapes, the Stillwater Step and Highmoor
+
+The two newest identity powers and the newest battlefield keep every number
+in *Global rules*, in three blocks with a note above each in
+`src/data/config.js`:
+
+- **The Old Shapes** (`wild*`, `form*`, `bear*`, `maul*`, `owl*`,
+  `kinshipDamage`, `calf*`): how much Wild a kill is worth (and a close
+  kill, an elite, a boss), what fills it, how long a shape holds and how
+  long the wild sleeps after, the bear's hide and maul, the owlbear's
+  falling stars, and the Lost Calves trial that brings Milksupply.
+- **The Stillwater Step** (`flow*`, `poise*`, `serenityStrike`, `trial*`):
+  how many steps, how fast they come back, how far a step goes, how hard
+  the palm along it lands, what Poise is worth, and the Trial of the Still
+  Hand that brings Abbot Eisen.
+- **Highmoor** (`storm*`, `shrine*`): how often the sky strikes, how many
+  strikes in a cell, how long the shadow warns, what a strike does to you
+  and to the horde, and each shrine's boon. A boss can call the storm on
+  any map with `{ type: 'storm', strikes: 4, damage: 0.8 }` in its patterns.
+- **Serration** (`serrationShare`, `bleedTime`, `bleedTick`).
+
+The characters' knacks (`perkWild`, `perkForm`, `perkSteps`,
+`perkRecharge`) are on their cards in *Survivors*, and Brother Kael's whole
+fight is under *Finales › highmoor*.
 
 ## How it saves
 

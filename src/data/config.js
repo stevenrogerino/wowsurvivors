@@ -418,6 +418,31 @@
     trialSteps: 25,
     trialTime: 20,
 
+    /* HIGHMOOR - src/game/highmoor.js. Two things only this battlefield has.
+
+       STORM CELLS. Every so often the sky picks a handful of spots, one of
+       them wherever you are standing, darkens them for stormTele seconds
+       and then strikes. The strike hurts you (stormDamage, scaled like a
+       creature's blow) and it hurts EVERYTHING ELSE caught in it far worse
+       (stormFoeDamage, scaled like a creature's health), so the storm is a
+       weapon as much as a threat: step out and let the horde follow you in.
+
+       SHRINES. A ring of standing stones rises now and then. Stand in it for
+       shrineCapture seconds (the count slips back while you are out) and it
+       gives one of three boons for shrineBuff seconds: STONE (a share of
+       every blow turned aside), GALE (faster feet, faster weapons) or STORM
+       (lightning from your own sky on the nearest foes). */
+    stormFirst: 20, stormEvery: 15, stormEveryFloor: 8, stormEveryPerMinute: 0.25,
+    stormStrikes: 3, stormStrikesPerMinute: 0.12, stormStrikesMax: 7,
+    stormRadius: 88, stormTele: 1.7, stormSpread: 380,
+    stormDamage: 18, stormFoeDamage: 70,
+    shrineFirst: 50, shrineEvery: 75, shrineRadius: 72, shrineCapture: 3.5, shrineDecay: 0.5,
+    shrineStay: 32, shrineBuff: 20,
+    shrineStoneMitigation: 0.30, shrineGaleSpeed: 1.20, shrineGaleCooldown: 0.85,
+    shrineStormEvery: 1.1, shrineStormTargets: 2, shrineStormDamage: 40,
+    // The Serration passive: the share of a crit that bleeds, and how.
+    serrationShare: 0.30, bleedTime: 3.0, bleedTick: 0.5,
+
     limitBreakDamage: 0.08,
 
     eggVendorInterval: 420,

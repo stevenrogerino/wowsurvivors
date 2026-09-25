@@ -99,13 +99,13 @@ const SHOTS = process.env.OUT || null;
 
   // 2. Every map, 11 minutes each - hits two bosses and a swarm event.
   console.log('=== maps ===');
-  for (const m of ['dustreach', 'mourneholt', 'ochre', 'palewastes']) {
+  for (const m of ['dustreach', 'mourneholt', 'ochre', 'palewastes', 'highmoor']) {
     console.log(JSON.stringify(await page.evaluate((m) => window.__run(m, 'shaman', 660, true), m)));
   }
 
   // 3. Every survivor, 4 minutes each - exercises every starting weapon.
   console.log('=== roster ===');
-  for (const c of ['mage', 'priest', 'rogue', 'hunter', 'warrior', 'warlock', 'shaman', 'paladin', 'graveblade', 'ruinseeker']) {
+  for (const c of ['mage', 'priest', 'rogue', 'hunter', 'warrior', 'warlock', 'shaman', 'paladin', 'graveblade', 'ruinseeker', 'druid', 'monk']) {
     const r = await page.evaluate((c) => window.__run('thornhollow', c, 240, true), c);
     console.log(`${c.padEnd(14)} lv${r.level} kills=${r.kills} dmg=${r.dmg} | ${r.weapons}`);
   }
