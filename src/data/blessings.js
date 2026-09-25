@@ -18,7 +18,7 @@
     },
     moonlit: {
       name: 'Grace of the Moon', art: 'moon', quality: 'rare',
-      description: '+{area%}% effect area on everything you cast.',
+      description: '+{area%}% Area on every weapon: the same stat Expanse raises.',
       area: 0.15,
       apply: (p, b) => { p.areaMultiplier += b.area; },
     },

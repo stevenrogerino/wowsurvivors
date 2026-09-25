@@ -302,8 +302,20 @@
         }
         body.append(stats);
       }
+      /* What it grows with, beyond damage, cooldown and crits, which every
+         weapon does: which passives are worth taking for this one. */
+      const grows = WS.Scaling.grows(w || { id: wid, data: d, evolved, mods: {} });
+      const growLine = el('div', 'tip-grows');
+      growLine.append(el('span', 'tip-grows-k', 'Grows with'));
+      if (grows.length) {
+        grows.forEach((g2, i) => {
+          if (i) growLine.append(el('span', 'tip-grows-sep', ' · '));
+          growLine.append(el('b', null, g2.name), el('span', null, ' ' + g2.what));
+        });
+      } else growLine.append(el('span', null, 'damage, cooldown and crits only'));
+      body.append(growLine);
       const links = weaponLinks(p, wid, lvl, evolved);
-      if (onlyLinks && !links.length) return null;
+      if (onlyLinks && !links.length && !grows.length) return null;
       if (links.length) {
         body.append(el('div', 'tip-sec', 'Works with'));
         for (const l of links) body.append(l);
@@ -324,6 +336,7 @@
       body.append(...tipHead(up.name, qualityColour(up.quality), `Rank ${rank} of ${up.max}`, q));
       body.append(el('div', 'tip-desc', WS.template(up.description, up)));
       if (up.detail) body.append(el('div', 'tip-detail', WS.template(up.detail, up)));
+      scalingSection(body, p, WS.Scaling.UPGRADE_STAT[id]);
       const evo = [];
       for (const wid of WS.WeaponOrder) {
         const d = WS.Weapons[wid];
@@ -334,7 +347,7 @@
           `${b(d.name)} at rank ${WS.WEAPON_MAX_LEVEL} → ${em(d.evolveName)}`
           + (w ? (w.evolved ? '<small>evolved</small>' : `<small>carried, rank ${w.level}</small>`) : ''))]);
       }
-      if (onlyLinks && !evo.length) return null;
+      if (onlyLinks && !evo.length && !WS.Scaling.UPGRADE_STAT[id]) return null;
       const order = { ready: 0, part: 1, done: 2, need: 3 };
       evo.sort((x, y) => order[x[0]] - order[y[0]]);
       if (evo.length) {
@@ -345,6 +358,37 @@
     };
   }
   UI.tipPassive = tipPassive;
+
+  /** A blessing's tip, for the ones that raise a stat only some weapons read. */
+  function tipBlessing(p, id) {
+    return () => {
+      const bl = WS.Blessings[id];
+      if (!bl) return null;
+      const body = el('div', 'tip-body');
+      body.append(...tipHead(bl.name, qualityColour(bl.quality || 'legendary'), 'Blessing', 'Yours for the night'));
+      body.append(el('div', 'tip-desc', WS.template(bl.description, bl)));
+      scalingSection(body, p, WS.Scaling.BLESSING_STAT[id]);
+      return body;
+    };
+  }
+  UI.tipBlessing = tipBlessing;
+
+  /** For a passive or blessing that raises Area, Projectiles, Duration or
+   *  Projectile speed: which of the weapons you carry it helps, and how,
+   *  and which it does nothing for. The question it answers is the one a
+   *  player actually has - "is this any good for MY build?" */
+  function scalingSection(body, p, stat) {
+    if (!stat || !p || !p.weapons || !p.weapons.length) return;
+    const h = WS.Scaling.helps(p, stat);
+    body.append(el('div', 'tip-sec', 'Your weapons'));
+    for (const y of h.yes) {
+      const row = el('div', 'tip-help yes');
+      row.append(el('b', null, y.name), el('span', null, ' ' + y.what));
+      body.append(row);
+    }
+    if (h.no.length) body.append(el('div', 'tip-help no', 'No effect on ' + h.no.join(', ')));
+  }
+  UI.scalingSection = scalingSection;
 
   function svgArc(radius, stroke, cls) {
     const ns = 'http://www.w3.org/2000/svg';
@@ -1268,6 +1312,7 @@
       if (choice.type === 'weapon_rank' || choice.type === 'new_weapon') build = tipWeapon(p, null, choice.id, choice.rank, true);
       else if (choice.type === 'evolve') build = tipWeapon(p, WS.Player.getWeapon(p, choice.id), null, null, true);
       else if (choice.type === 'stat') build = tipPassive(p, choice.id, choice.rank, true);
+      else if (choice.type === 'blessing' && WS.Scaling.BLESSING_STAT[choice.id]) build = tipBlessing(p, choice.id);
       if (build) tipOn(card, build, { prefer: ['below', 'above', 'right', 'left'], delay: 260 });
     }
     return card;
@@ -2717,6 +2762,22 @@
       rows.append(row);
     }
     wrap.append(rows);
+
+    if (m.stats && m.stats.length) {
+      const shead = el('div', 'codex-head');
+      shead.style.marginTop = '22px';
+      shead.append(el('h3', 'panel-title', m.statsTitle || 'What the stats mean'));
+      wrap.append(shead);
+      const srows = el('div', 'rows');
+      for (const entry of m.stats) {
+        const row = el('div', 'row');
+        const main = el('div', 'row-main');
+        main.append(el('div', 'row-name', entry.name), el('div', 'row-sub', entry.text));
+        row.append(main);
+        srows.append(row);
+      }
+      wrap.append(srows);
+    }
 
     const chead = el('div', 'codex-head');
     chead.style.marginTop = '22px';

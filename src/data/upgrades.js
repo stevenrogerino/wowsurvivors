@@ -6,13 +6,13 @@
   WS.Upgrades = {
     might: {
       name: 'Might', art: 'fist', quality: 'common',
-      description: '+{v%}% weapon damage', max: 5, v: 0.10,
+      description: '+{v%}% Damage on every weapon', max: 5, v: 0.10,
       detail: 'Multiplies the damage of every weapon you carry.',
       apply: (p, up) => { p.damageMultiplier += up.v; },
     },
     haste: {
       name: 'Haste', art: 'wing', quality: 'common',
-      description: '-{v~%}% weapon cooldowns', max: 5, v: 0.92,
+      description: '-{v~%}% Cooldown on every weapon', max: 5, v: 0.92,
       detail: 'Every weapon fires more often. Ranks stack multiplicatively.',
       apply: (p, up) => { p.cooldownMultiplier *= up.v; },
     },
@@ -54,15 +54,16 @@
     },
     area: {
       name: 'Expanse', art: 'expand', quality: 'uncommon',
-      description: '+{v%}% effect area', max: 5, v: 0.12,
-      detail: 'Bigger auras, zones, orbits and novas. Chain and beam weapons gain REACH from '
-        + 'this (longer leaps, longer lines), not damage. Look to pierce or count for those instead.',
+      description: '+{v%}% Area', max: 5, v: 0.12,
+      detail: 'Area is one stat, shared with Grace of the Moon. It makes novas, fields, orbits, '
+        + 'storms and auras bigger, and gives chains, beams and palms longer reach. It never adds damage.',
       apply: (p, up) => { p.areaMultiplier += up.v; },
     },
     quantity: {
       name: 'Duplicity', art: 'triple', quality: 'rare',
-      description: '+{v} projectile for volley weapons', max: 3, v: 1,
-      detail: 'Adds a projectile to bolts, knives, arrows, axes, shields, storm strikes, chain leaps, palms, beasts and rings. Auras and beams are unaffected.',
+      description: '+{v} Projectile', max: 3, v: 1,
+      detail: 'A projectile is one of whatever a weapon sends out: a bolt, arrow, knife, axe, ricochet, '
+        + 'storm strike, chain leap, palm, beast or ring. Novas, fields, auras and beams send out none, so this does nothing for them.',
       apply: (p, up) => { p.projectileBonus += up.v; },
     },
     luck: {
@@ -87,8 +88,8 @@
     },
     velocity: {
       name: 'Velocity', art: 'spear', quality: 'common',
-      description: '+{v%}% projectile speed', max: 3, v: 0.15,
-      detail: 'Bolts, knives, arrows, and shields fly faster. No effect on chains, auras, gyres, or storms.',
+      description: '+{v%}% Projectile speed', max: 3, v: 0.15,
+      detail: 'Bolts, arrows, knives, shields, rings and beasts travel faster, so they reach foes sooner. No effect on anything that does not travel.',
       apply: (p, up) => { p.projectileSpeed += up.v; },
     },
     dark_bargain: {
@@ -112,7 +113,7 @@
     chilling_presence: {
       name: 'Chilling Presence', art: 'frostaura', quality: 'rare',
       description: 'Enemies near you are slowed by cold.', max: 3,
-      detail: 'Slows non-boss enemies within a widening frost aura (stronger and wider per rank). The aura grows with effect area.',
+      detail: 'Slows non-boss enemies within a widening frost aura (stronger and wider per rank). The aura grows with Area (Expanse, Grace of the Moon).',
       apply: (p) => { p.chillRank += 1; },
     },
     spirit_companion: {
@@ -198,14 +199,14 @@
     },
     perennial: {
       name: 'Perennial', art: 'perennial', quality: 'common',
-      description: '+{v%}% duration on everything that lingers', max: 5, v: 0.10,
+      description: '+{v%}% Duration', max: 5, v: 0.10,
       detail: 'Zones, gyres, beasts and anything else with a lifetime stays on the field longer. It does not change how often a weapon fires.',
       apply: (p, up) => { p.durationMult += up.v; },
     },
     searing: {
       name: 'Searing Aura', art: 'retaura', quality: 'rare',
       description: 'A holy aura sears nearby enemies.', max: 4,
-      detail: 'Burns enemies around you twice per second (damage and radius grow with rank, damage%, and effect area). Lets tanks deal damage while standing firm.',
+      detail: 'Burns enemies around you twice per second (damage grows with rank and Damage; the radius grows with rank and Area). Lets tanks deal damage while standing firm.',
       apply: (p) => { p.retRank += 1; },
     },
     dodge: {

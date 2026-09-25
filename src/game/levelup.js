@@ -193,7 +193,15 @@
           detail: WS.template(up.detail, up),
           rank: rank + 1, maxRank: up.max,
           note: `Rank ${rank + 1} of ${up.max}`,
-          reacts: passiveReactions(p, id, false).slice(0, 2),
+          reacts: (() => {
+            /* A stat that only some weapons read says up front whether it
+               reads any of yours - see src/data/scaling.js. */
+            const stat = WS.Scaling.UPGRADE_STAT[id];
+            const help = stat ? WS.Scaling.helpsLine(p, stat) : null;
+            const r = passiveReactions(p, id, false);
+            if (help) r.unshift({ kind: 'scaling', ready: help.ready, text: help.text });
+            return r.slice(0, 2);
+          })(),
         });
       }
     }
@@ -246,6 +254,11 @@
         name: b.name,
         description: WS.template(b.description, b),
         note: 'A blessing · yours for the rest of the night',
+        reacts: (() => {
+          const stat = WS.Scaling.BLESSING_STAT[id];
+          const help = stat ? WS.Scaling.helpsLine(p, stat) : null;
+          return help ? [{ kind: 'scaling', ready: help.ready, text: help.text }] : [];
+        })(),
       };
     });
   };

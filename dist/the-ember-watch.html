@@ -2962,6 +2962,15 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .bm-bar[data-kind="storm"] { --bm: #5c78b8; }
 .bm-bar[data-kind="shrine"] { --bm: #9a8f70; }
 
+/* What a weapon grows with, and which of your weapons a passive helps. */
+.tip-grows { margin-top: 6px; font-size: 12.5px; line-height: 1.45; color: #cfc4ae; }
+.tip-grows-k { display: block; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: #9a8f7a; margin-bottom: 1px; }
+.tip-grows b, .tip-help b { color: #f0dcae; font-weight: 600; }
+.tip-grows-sep { color: #6a6252; }
+.tip-help { font-size: 12.5px; line-height: 1.45; color: #cfc4ae; }
+.tip-help.no { color: #948a78; font-style: italic; }
+.card .react span { text-align: left; }
+
 </style>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%230b0d12'/><circle cx='50' cy='50' r='30' fill='none' stroke='%23f5c56b' stroke-width='8' stroke-dasharray='120 60'/></svg>">
 </head>
@@ -4674,7 +4683,7 @@ window.WS = window.WS || {};
       name: 'Vonnra Hydrocheck', title: 'Far Seer of the Waystation', className: 'Shaman',
       art: 'shaman', color: [0.00, 0.44, 0.87], weapon: 'arcweb',
       description: 'A far seer who calls the storm down on whole warbands.',
-      perk: '+{perkLuck%}% luck and +{perkArea%}% effect area.',
+      perk: '+{perkLuck%}% luck and +{perkArea%}% Area.',
       maxHealth: 125, moveSpeed: 215, armor: 1, pickupRadius: 58, healthRegen: 0,
       perkLuck: 0.15, perkArea: 0.08,
       apply: (p, c) => { p.luck += c.perkLuck; p.areaMultiplier += c.perkArea; },
@@ -5099,6 +5108,115 @@ window.WS = window.WS || {};
     { result: 'union_wild_hunt', from: ['spirit_herd', 'verdant_lance'] },
     { result: 'union_rotwood', from: ['thornbloom', 'blightfield'] },
   ];
+
+})(window.WS);
+
+/* ===== src/data/scaling.js ===== */
+/* WHAT GROWS WHAT.
+ *
+ * Every weapon grows with damage, cooldown and critical strikes. Beyond that,
+ * each kind of weapon reads a different handful of stats, and the game never
+ * said which: a player holding Volley and Knifestorm had no way to know that
+ * Expanse does nothing for either, or that Duplicity adds a palm to Iron
+ * Palms but nothing at all to Dawnpulse. This table is the one place that
+ * says so, and the tooltips and level-up cards read it - a weapon's card
+ * says what it grows with, a passive's says which of YOUR weapons it helps.
+ *
+ * It describes what src/game/weapon.js does; keep the two in step. Each
+ * entry is keyed by behaviour and says, in a few words, what one more of the
+ * stat buys that kind of weapon. */
+'use strict';
+(function (WS) {
+
+  const S = {};
+
+  S.STATS = {
+    area: { name: 'Area' },
+    count: { name: 'Projectiles' },
+    duration: { name: 'Duration' },
+    speed: { name: 'Projectile speed' },
+  };
+
+  // what one more of each stat buys each kind of weapon
+  S.BEHAVIOR = {
+    aimed: { count: 'one more bolt', speed: 'faster bolts' },
+    spray: { count: 'one more arrow', speed: 'faster arrows' },
+    ring: { count: 'one more knife', speed: 'faster knives' },
+    bounce: { count: 'one more ricochet', speed: 'faster shield' },
+    nova: { area: 'bigger burst' },
+    zone: { area: 'bigger field', duration: 'lasts longer' },
+    orbit: { count: 'one more blade', area: 'wider circle', duration: 'spins longer' },
+    storm: { count: 'one more strike', area: 'wider storm, bigger strikes' },
+    chain: { count: 'one more leap', area: 'longer leaps' },
+    beam: { area: 'longer, wider line' },
+    palm: { count: 'one more palm per flurry', area: 'longer reach' },
+    herd: { count: 'one more beast', duration: 'longer run', speed: 'faster run', area: 'bigger burst at the end' },
+    chakram: { count: 'one more ring', area: 'longer throw', speed: 'faster ring' },
+  };
+
+  // the kinds that launch bolts, which can carry a splash (weapon.js fillSpec)
+  const BOLTS = { aimed: 1, spray: 1, ring: 1, bounce: 1, chakram: 1, herd: 1 };
+
+  // which passives and blessings raise which stat
+  S.UPGRADE_STAT = { area: 'area', quantity: 'count', perennial: 'duration', velocity: 'speed' };
+  S.BLESSING_STAT = { moonlit: 'area' };
+
+  /** What a weapon grows with, as [{ stat, name, what }]. Some entries only
+   *  apply to some weapons of a kind: a bolt only has a splash to grow if it
+   *  splashes, and the herd only bursts at the end of its run if something
+   *  gave it a burst. */
+  S.grows = function (w) {
+    const data = w.data || WS.Weapons[w.id];
+    const beh = (w.evolved && data.evolvedBehavior) || data.behavior;
+    const row = S.BEHAVIOR[beh];
+    if (!row) return [];
+    const mods = w.mods || {};
+    // anything that flies and bursts on impact grows its burst with Area
+    const splash = BOLTS[beh] && (data.splash || mods.splash);
+    const out = [];
+    for (const stat of Object.keys(S.STATS)) {
+      let what = row[stat];
+      if (stat === 'area' && splash) what = what ? what + ', bigger splash' : 'bigger splash';
+      if (!what) continue;
+      if (beh === 'herd' && stat === 'area' && !(data.endBurst || mods.endBurst)) continue;
+      out.push({ stat, name: S.STATS[stat].name, what });
+    }
+    return out;
+  };
+
+  /** Which of this survivor's weapons (and auras) a stat helps, and which it
+   *  does nothing for. */
+  S.helps = function (p, stat) {
+    const yes = [], no = [];
+    for (const w of p.weapons) {
+      const hit = S.grows(w).find((g) => g.stat === stat);
+      const name = (w.evolved && w.data.evolveName) || w.data.name;
+      if (hit) yes.push({ name, what: hit.what }); else no.push(name);
+    }
+    if (stat === 'area') {
+      if (p.retRank > 0) yes.push({ name: 'Searing Aura', what: 'wider aura', aura: true });
+      if (p.chillRank > 0) yes.push({ name: 'Chilling Presence', what: 'wider aura', aura: true });
+    }
+    return { yes, no };
+  };
+
+  /** One line for a card: "Helps Axe Gyre, Thornbloom" or a warning. Short
+   *  enough to sit on one line of a card. */
+  S.helpsLine = function (p, stat) {
+    if (!p.weapons.length) return null;
+    const h = S.helps(p, stat);
+    if (!h.yes.length) return { ready: false, text: 'No effect on your weapons yet' };
+    const names = h.yes.map((x) => x.name);
+    if (!h.no.length && names.length > 1) return { ready: true, text: 'Helps every weapon you carry' };
+    if (names.length > 2) {
+      const armed = h.yes.filter((x) => !x.aura).length;
+      return { ready: true, text: `Helps ${armed} of your ${armed + h.no.length} weapons`
+        + (armed < names.length ? ' and your aura' : '') };
+    }
+    return { ready: true, text: 'Helps ' + names.join(', ') };
+  };
+
+  WS.Scaling = S;
 
 })(window.WS);
 
@@ -5790,13 +5908,13 @@ window.WS = window.WS || {};
   WS.Upgrades = {
     might: {
       name: 'Might', art: 'fist', quality: 'common',
-      description: '+{v%}% weapon damage', max: 5, v: 0.10,
+      description: '+{v%}% Damage on every weapon', max: 5, v: 0.10,
       detail: 'Multiplies the damage of every weapon you carry.',
       apply: (p, up) => { p.damageMultiplier += up.v; },
     },
     haste: {
       name: 'Haste', art: 'wing', quality: 'common',
-      description: '-{v~%}% weapon cooldowns', max: 5, v: 0.92,
+      description: '-{v~%}% Cooldown on every weapon', max: 5, v: 0.92,
       detail: 'Every weapon fires more often. Ranks stack multiplicatively.',
       apply: (p, up) => { p.cooldownMultiplier *= up.v; },
     },
@@ -5838,15 +5956,16 @@ window.WS = window.WS || {};
     },
     area: {
       name: 'Expanse', art: 'expand', quality: 'uncommon',
-      description: '+{v%}% effect area', max: 5, v: 0.12,
-      detail: 'Bigger auras, zones, orbits and novas. Chain and beam weapons gain REACH from '
-        + 'this (longer leaps, longer lines), not damage. Look to pierce or count for those instead.',
+      description: '+{v%}% Area', max: 5, v: 0.12,
+      detail: 'Area is one stat, shared with Grace of the Moon. It makes novas, fields, orbits, '
+        + 'storms and auras bigger, and gives chains, beams and palms longer reach. It never adds damage.',
       apply: (p, up) => { p.areaMultiplier += up.v; },
     },
     quantity: {
       name: 'Duplicity', art: 'triple', quality: 'rare',
-      description: '+{v} projectile for volley weapons', max: 3, v: 1,
-      detail: 'Adds a projectile to bolts, knives, arrows, axes, shields, storm strikes, chain leaps, palms, beasts and rings. Auras and beams are unaffected.',
+      description: '+{v} Projectile', max: 3, v: 1,
+      detail: 'A projectile is one of whatever a weapon sends out: a bolt, arrow, knife, axe, ricochet, '
+        + 'storm strike, chain leap, palm, beast or ring. Novas, fields, auras and beams send out none, so this does nothing for them.',
       apply: (p, up) => { p.projectileBonus += up.v; },
     },
     luck: {
@@ -5871,8 +5990,8 @@ window.WS = window.WS || {};
     },
     velocity: {
       name: 'Velocity', art: 'spear', quality: 'common',
-      description: '+{v%}% projectile speed', max: 3, v: 0.15,
-      detail: 'Bolts, knives, arrows, and shields fly faster. No effect on chains, auras, gyres, or storms.',
+      description: '+{v%}% Projectile speed', max: 3, v: 0.15,
+      detail: 'Bolts, arrows, knives, shields, rings and beasts travel faster, so they reach foes sooner. No effect on anything that does not travel.',
       apply: (p, up) => { p.projectileSpeed += up.v; },
     },
     dark_bargain: {
@@ -5896,7 +6015,7 @@ window.WS = window.WS || {};
     chilling_presence: {
       name: 'Chilling Presence', art: 'frostaura', quality: 'rare',
       description: 'Enemies near you are slowed by cold.', max: 3,
-      detail: 'Slows non-boss enemies within a widening frost aura (stronger and wider per rank). The aura grows with effect area.',
+      detail: 'Slows non-boss enemies within a widening frost aura (stronger and wider per rank). The aura grows with Area (Expanse, Grace of the Moon).',
       apply: (p) => { p.chillRank += 1; },
     },
     spirit_companion: {
@@ -5982,14 +6101,14 @@ window.WS = window.WS || {};
     },
     perennial: {
       name: 'Perennial', art: 'perennial', quality: 'common',
-      description: '+{v%}% duration on everything that lingers', max: 5, v: 0.10,
+      description: '+{v%}% Duration', max: 5, v: 0.10,
       detail: 'Zones, gyres, beasts and anything else with a lifetime stays on the field longer. It does not change how often a weapon fires.',
       apply: (p, up) => { p.durationMult += up.v; },
     },
     searing: {
       name: 'Searing Aura', art: 'retaura', quality: 'rare',
       description: 'A holy aura sears nearby enemies.', max: 4,
-      detail: 'Burns enemies around you twice per second (damage and radius grow with rank, damage%, and effect area). Lets tanks deal damage while standing firm.',
+      detail: 'Burns enemies around you twice per second (damage grows with rank and Damage; the radius grows with rank and Area). Lets tanks deal damage while standing firm.',
       apply: (p) => { p.retRank += 1; },
     },
     dodge: {
@@ -6120,7 +6239,7 @@ window.WS = window.WS || {};
     },
     moonlit: {
       name: 'Grace of the Moon', art: 'moon', quality: 'rare',
-      description: '+{area%}% effect area on everything you cast.',
+      description: '+{area%}% Area on every weapon: the same stat Expanse raises.',
       area: 0.15,
       apply: (p, b) => { p.areaMultiplier += b.area; },
     },
@@ -6678,6 +6797,19 @@ window.WS = window.WS || {};
           text: 'Bosses arrive on a schedule and the horde never stops thickening. Survive to 30:00 and the win is banked. Then choose. Face whatever has been driving the night: first light clears the field, you get thirty seconds and a third blessing, and the finale begins. Or stay out for Death, who always comes.' },
         { name: 'Gold outlives the run',
           text: 'You keep every coin whether you win, die or walk away. Spend it with the Trainer on permanent lessons that apply to every run after.' },
+      ],
+      /* The words the cards use, each said once in plain terms. The
+         question players asked was "does this do anything for MY build",
+         so the last line says where that answer lives. */
+      statsTitle: 'What the stats mean',
+      stats: [
+        { name: 'Damage', text: 'How hard every weapon hits. Helps everything.' },
+        { name: 'Cooldown', text: 'How long a weapon waits between attacks. Lower is faster. Helps everything.' },
+        { name: 'Area', text: 'How big things are: novas, fields, orbits, storms, auras and splashes. Chains, beams, palms and rings reach farther instead.' },
+        { name: 'Projectiles', text: 'How many of a thing a weapon sends out at once: bolts, arrows, knives, blades, strikes, leaps, palms, beasts. A nova or a beam sends out none.' },
+        { name: 'Duration', text: 'How long something stays on the field: fields, spinning blades, a running herd.' },
+        { name: 'Projectile speed', text: 'How fast what you send out travels. Only matters for things that fly.' },
+        { name: 'Which of these help you?', text: 'Hover over any level-up card, or any weapon in your bar or the pause screen. A weapon says what it grows with; a passive lists which of your weapons it helps and which it does nothing for.' },
       ],
       controls: [
         { key: 'WASD  /  arrow keys', text: 'Move. On a pad, the left stick or the d-pad.' },
@@ -27381,7 +27513,15 @@ window.WS = window.WS || {};
           detail: WS.template(up.detail, up),
           rank: rank + 1, maxRank: up.max,
           note: `Rank ${rank + 1} of ${up.max}`,
-          reacts: passiveReactions(p, id, false).slice(0, 2),
+          reacts: (() => {
+            /* A stat that only some weapons read says up front whether it
+               reads any of yours - see src/data/scaling.js. */
+            const stat = WS.Scaling.UPGRADE_STAT[id];
+            const help = stat ? WS.Scaling.helpsLine(p, stat) : null;
+            const r = passiveReactions(p, id, false);
+            if (help) r.unshift({ kind: 'scaling', ready: help.ready, text: help.text });
+            return r.slice(0, 2);
+          })(),
         });
       }
     }
@@ -27434,6 +27574,11 @@ window.WS = window.WS || {};
         name: b.name,
         description: WS.template(b.description, b),
         note: 'A blessing · yours for the rest of the night',
+        reacts: (() => {
+          const stat = WS.Scaling.BLESSING_STAT[id];
+          const help = stat ? WS.Scaling.helpsLine(p, stat) : null;
+          return help ? [{ kind: 'scaling', ready: help.ready, text: help.text }] : [];
+        })(),
       };
     });
   };
@@ -41578,8 +41723,20 @@ window.WS = window.WS || {};
         }
         body.append(stats);
       }
+      /* What it grows with, beyond damage, cooldown and crits, which every
+         weapon does: which passives are worth taking for this one. */
+      const grows = WS.Scaling.grows(w || { id: wid, data: d, evolved, mods: {} });
+      const growLine = el('div', 'tip-grows');
+      growLine.append(el('span', 'tip-grows-k', 'Grows with'));
+      if (grows.length) {
+        grows.forEach((g2, i) => {
+          if (i) growLine.append(el('span', 'tip-grows-sep', ' · '));
+          growLine.append(el('b', null, g2.name), el('span', null, ' ' + g2.what));
+        });
+      } else growLine.append(el('span', null, 'damage, cooldown and crits only'));
+      body.append(growLine);
       const links = weaponLinks(p, wid, lvl, evolved);
-      if (onlyLinks && !links.length) return null;
+      if (onlyLinks && !links.length && !grows.length) return null;
       if (links.length) {
         body.append(el('div', 'tip-sec', 'Works with'));
         for (const l of links) body.append(l);
@@ -41600,6 +41757,7 @@ window.WS = window.WS || {};
       body.append(...tipHead(up.name, qualityColour(up.quality), `Rank ${rank} of ${up.max}`, q));
       body.append(el('div', 'tip-desc', WS.template(up.description, up)));
       if (up.detail) body.append(el('div', 'tip-detail', WS.template(up.detail, up)));
+      scalingSection(body, p, WS.Scaling.UPGRADE_STAT[id]);
       const evo = [];
       for (const wid of WS.WeaponOrder) {
         const d = WS.Weapons[wid];
@@ -41610,7 +41768,7 @@ window.WS = window.WS || {};
           `${b(d.name)} at rank ${WS.WEAPON_MAX_LEVEL} → ${em(d.evolveName)}`
           + (w ? (w.evolved ? '<small>evolved</small>' : `<small>carried, rank ${w.level}</small>`) : ''))]);
       }
-      if (onlyLinks && !evo.length) return null;
+      if (onlyLinks && !evo.length && !WS.Scaling.UPGRADE_STAT[id]) return null;
       const order = { ready: 0, part: 1, done: 2, need: 3 };
       evo.sort((x, y) => order[x[0]] - order[y[0]]);
       if (evo.length) {
@@ -41621,6 +41779,37 @@ window.WS = window.WS || {};
     };
   }
   UI.tipPassive = tipPassive;
+
+  /** A blessing's tip, for the ones that raise a stat only some weapons read. */
+  function tipBlessing(p, id) {
+    return () => {
+      const bl = WS.Blessings[id];
+      if (!bl) return null;
+      const body = el('div', 'tip-body');
+      body.append(...tipHead(bl.name, qualityColour(bl.quality || 'legendary'), 'Blessing', 'Yours for the night'));
+      body.append(el('div', 'tip-desc', WS.template(bl.description, bl)));
+      scalingSection(body, p, WS.Scaling.BLESSING_STAT[id]);
+      return body;
+    };
+  }
+  UI.tipBlessing = tipBlessing;
+
+  /** For a passive or blessing that raises Area, Projectiles, Duration or
+   *  Projectile speed: which of the weapons you carry it helps, and how,
+   *  and which it does nothing for. The question it answers is the one a
+   *  player actually has - "is this any good for MY build?" */
+  function scalingSection(body, p, stat) {
+    if (!stat || !p || !p.weapons || !p.weapons.length) return;
+    const h = WS.Scaling.helps(p, stat);
+    body.append(el('div', 'tip-sec', 'Your weapons'));
+    for (const y of h.yes) {
+      const row = el('div', 'tip-help yes');
+      row.append(el('b', null, y.name), el('span', null, ' ' + y.what));
+      body.append(row);
+    }
+    if (h.no.length) body.append(el('div', 'tip-help no', 'No effect on ' + h.no.join(', ')));
+  }
+  UI.scalingSection = scalingSection;
 
   function svgArc(radius, stroke, cls) {
     const ns = 'http://www.w3.org/2000/svg';
@@ -42544,6 +42733,7 @@ window.WS = window.WS || {};
       if (choice.type === 'weapon_rank' || choice.type === 'new_weapon') build = tipWeapon(p, null, choice.id, choice.rank, true);
       else if (choice.type === 'evolve') build = tipWeapon(p, WS.Player.getWeapon(p, choice.id), null, null, true);
       else if (choice.type === 'stat') build = tipPassive(p, choice.id, choice.rank, true);
+      else if (choice.type === 'blessing' && WS.Scaling.BLESSING_STAT[choice.id]) build = tipBlessing(p, choice.id);
       if (build) tipOn(card, build, { prefer: ['below', 'above', 'right', 'left'], delay: 260 });
     }
     return card;
@@ -43993,6 +44183,22 @@ window.WS = window.WS || {};
       rows.append(row);
     }
     wrap.append(rows);
+
+    if (m.stats && m.stats.length) {
+      const shead = el('div', 'codex-head');
+      shead.style.marginTop = '22px';
+      shead.append(el('h3', 'panel-title', m.statsTitle || 'What the stats mean'));
+      wrap.append(shead);
+      const srows = el('div', 'rows');
+      for (const entry of m.stats) {
+        const row = el('div', 'row');
+        const main = el('div', 'row-main');
+        main.append(el('div', 'row-name', entry.name), el('div', 'row-sub', entry.text));
+        row.append(main);
+        srows.append(row);
+      }
+      wrap.append(srows);
+    }
 
     const chead = el('div', 'codex-head');
     chead.style.marginTop = '22px';

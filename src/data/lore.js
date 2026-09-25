@@ -50,6 +50,19 @@
         { name: 'Gold outlives the run',
           text: 'You keep every coin whether you win, die or walk away. Spend it with the Trainer on permanent lessons that apply to every run after.' },
       ],
+      /* The words the cards use, each said once in plain terms. The
+         question players asked was "does this do anything for MY build",
+         so the last line says where that answer lives. */
+      statsTitle: 'What the stats mean',
+      stats: [
+        { name: 'Damage', text: 'How hard every weapon hits. Helps everything.' },
+        { name: 'Cooldown', text: 'How long a weapon waits between attacks. Lower is faster. Helps everything.' },
+        { name: 'Area', text: 'How big things are: novas, fields, orbits, storms, auras and splashes. Chains, beams, palms and rings reach farther instead.' },
+        { name: 'Projectiles', text: 'How many of a thing a weapon sends out at once: bolts, arrows, knives, blades, strikes, leaps, palms, beasts. A nova or a beam sends out none.' },
+        { name: 'Duration', text: 'How long something stays on the field: fields, spinning blades, a running herd.' },
+        { name: 'Projectile speed', text: 'How fast what you send out travels. Only matters for things that fly.' },
+        { name: 'Which of these help you?', text: 'Hover over any level-up card, or any weapon in your bar or the pause screen. A weapon says what it grows with; a passive lists which of your weapons it helps and which it does nothing for.' },
+      ],
       controls: [
         { key: 'WASD  /  arrow keys', text: 'Move. On a pad, the left stick or the d-pad.' },
         { key: 'Touch, or hold the mouse', text: 'Drag anywhere on the field to steer. Mouse steering is off until you turn it on in Settings.' },

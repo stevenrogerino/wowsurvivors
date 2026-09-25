@@ -2870,3 +2870,12 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .meter.boon.storm .meter-fill { background: linear-gradient(90deg, #3f5ea8, #d0e0ff); }
 .bm-bar[data-kind="storm"] { --bm: #5c78b8; }
 .bm-bar[data-kind="shrine"] { --bm: #9a8f70; }
+
+/* What a weapon grows with, and which of your weapons a passive helps. */
+.tip-grows { margin-top: 6px; font-size: 12.5px; line-height: 1.45; color: #cfc4ae; }
+.tip-grows-k { display: block; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: #9a8f7a; margin-bottom: 1px; }
+.tip-grows b, .tip-help b { color: #f0dcae; font-weight: 600; }
+.tip-grows-sep { color: #6a6252; }
+.tip-help { font-size: 12.5px; line-height: 1.45; color: #cfc4ae; }
+.tip-help.no { color: #948a78; font-style: italic; }
+.card .react span { text-align: left; }
