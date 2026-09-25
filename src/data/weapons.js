@@ -161,6 +161,7 @@
       name: 'Iron Palms', school: 'physical', behavior: 'palm', art: 'palm',
       cooldown: 0.95, damage: 15, projectiles: 3, reach: 118, arc: 1.25, knockback: 14,
       waveReach: 2.8, waveDamage: 0.8, waveSpeed: 520,
+      color: [0.58, 0.92, 0.76], evolvedColor: [1.0, 0.84, 0.48],
       description: 'A flurry of open-handed strikes at whatever is closest, each one a short cone that hits everything in it. With nothing in reach, a single palm of air is thrown instead.',
       evolveName: 'Temple Breaker', evolvePairing: 'dodge',
       evolveDescription: 'Every palm lands like the temple bell.',

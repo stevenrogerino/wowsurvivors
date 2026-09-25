@@ -447,18 +447,14 @@
     /* A discovery shows in the strike itself: the flash takes on some of the
        partner weapon's colour, the way a bolt's blend does. */
     const colour = w.mods.blend ? WS.mix(schoolColour(w), w.mods.blend, 0.45) : schoolColour(w);
-    if (full) {
-      WS.FX.flash(player.x, player.y - 10, reach, colour, 0.2, 10, 'physical');
-    } else {
-      const hx = player.x + WS.cos(aim) * reach * 0.55, hy = player.y - 14 + WS.sin(aim) * reach * 0.55;
-      WS.FX.flash(hx, hy, reach * 0.42, colour, 0.16, 5, 'physical');
-      for (const k of [-0.33, 0, 0.33]) {
-        const a = aim + k * arc;
-        const beam = WS.Projectile.spawnBeam(player.x + WS.cos(a) * 18, player.y - 14 + WS.sin(a) * 18,
-          player.x + WS.cos(a) * reach, player.y - 14 + WS.sin(a) * reach, 4 + (w.evolved ? 2 : 0), colour, 0.11);
-        if (beam) { beam.rank = w.level; beam.evolved = !!w.evolved; beam.blend = w.mods.blend || null; }
-      }
-    }
+    /* The strike itself is drawn by FX.palm (see renderer drawStrikes): a
+       shockwave crescent, speed lines and an open hand, alternating hands
+       through the flurry. */
+    w._palmSide = w._palmSide ? 0 : 1;
+    WS.FX.palm(player.x, player.y - 12, full ? 0 : aim, reach, full ? WS.TAU : arc, schoolColour(w),
+      { evolved: w.evolved, blend: w.mods.blend || null, side: w._palmSide });
+    WS.FX.flash(player.x + (full ? 0 : WS.cos(aim) * 16), player.y - 12 + (full ? 0 : WS.sin(aim) * 16),
+      full ? reach * 0.5 : 22, colour, 0.12);
     // Hallowed Hands: every flurry lights a small ring of Light at the hands.
     if (w.mods.healBonus) {
       WS.FX.flash(player.x, player.y - 12, 34, [1.0, 0.9, 0.55], 0.35, 8, 'holy');

@@ -118,6 +118,28 @@
         ctx.lineTo(r * 0.5, r * 0.75);
         ctx.closePath();
         break;
+      case 'palm': {
+        /* An open hand in flight, fingers first: the air palm. Four fingers
+           side by side, a thumb out to one side and the heel of the palm
+           trailing behind, like a hand print pushed through the air. */
+        ctx.beginPath();
+        ctx.moveTo(-r * 1.25, -r * 0.55);
+        ctx.quadraticCurveTo(-r * 0.4, -r * 0.8, r * 0.2, -r * 0.72);
+        const fingers = [[-0.54, 1.35], [-0.18, 1.62], [0.18, 1.55], [0.52, 1.25]];
+        for (const [fy, tip] of fingers) {
+          ctx.lineTo(r * 0.3, r * (fy - 0.16));
+          ctx.lineTo(r * (tip - 0.12), r * (fy - 0.15));
+          ctx.quadraticCurveTo(r * (tip + 0.12), r * fy, r * (tip - 0.12), r * (fy + 0.15));
+          ctx.lineTo(r * 0.3, r * (fy + 0.16));
+        }
+        ctx.lineTo(r * 0.15, r * 0.7);
+        ctx.quadraticCurveTo(r * 0.55, r * 1.05, r * 0.5, r * 1.3);
+        ctx.quadraticCurveTo(r * 0.2, r * 1.35, -r * 0.35, r * 0.78);
+        ctx.quadraticCurveTo(-r * 0.9, r * 0.8, -r * 1.25, r * 0.55);
+        ctx.quadraticCurveTo(-r * 1.45, 0, -r * 1.25, -r * 0.55);
+        ctx.closePath();
+        break;
+      }
       case 'herd':
         /* A spirit bull from above, head down: the barrel of the body, the
            hump at the shoulder, the head, and the horns swept out to both
@@ -468,6 +490,24 @@
       line(g, r * 1.3, 0, -r * 0.8, 0);
       g.restore();
       rim(g, 'axe', r, [0.5, 0.52, 0.6], 0.14);
+    },
+
+    /* The air palm: a hand of pressed air. Bright at the fingertips where it
+       is pushing, fading to nothing at the heel, with the lines of the
+       fingers drawn in and a trail of force behind it. */
+    palm(g, r, c) {
+      SA.path(g, 'palm', r);
+      const body = g.createLinearGradient(r * 1.6, 0, -r * 1.4, 0);
+      body.addColorStop(0, rgba(lift(c, 0.85), 0.95));
+      body.addColorStop(0.5, rgba(lift(c, 0.35), 0.8));
+      body.addColorStop(1, rgba(c, 0.25));
+      g.fillStyle = body; g.fill();
+      g.save();
+      SA.path(g, 'palm', r); g.clip();
+      g.strokeStyle = rgba(sink(c, 0.45), 0.55); g.lineWidth = Math.max(0.6, r * 0.07);
+      for (const fy of [-0.36, 0, 0.35]) line(g, r * 0.3, r * fy, r * 1.3, r * fy * 1.05);
+      g.restore();
+      rim(g, 'palm', r, c, 0.12);
     },
 
     /* Spirit Herd: a bull made of moss-light. A pale hide lit from the

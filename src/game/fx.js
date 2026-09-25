@@ -23,6 +23,7 @@
     this.flashes = new WS.Pool(() => ({}), null, 90);
     this.particles = new WS.Pool(() => ({}), null, 400);
     this.corpses = new WS.Pool(() => ({}), null, 60);
+    this.strikes = new WS.Pool(() => ({}), null, 40);
     this.hitStop = 0;
     this.hurtPulse = 0;
     this.bigHit = 0;
@@ -33,6 +34,7 @@
     this.flashes.releaseAll();
     this.particles.releaseAll();
     this.corpses.releaseAll();
+    this.strikes.releaseAll();
     this.hitStop = 0;
     this.hurtPulse = 0;
     this.shakeMag = 0; this.shakeTime = 0; this.shakeX = 0; this.shakeY = 0;
@@ -210,6 +212,20 @@
     f.style = style || null;
   };
 
+  /** A struck palm (Iron Palms and its union): a shockwave crescent at the
+   *  reach of the cone, speed lines through it, and an open hand pressed into
+   *  the air where it landed. `arc` of a full turn draws the whole ring. */
+  FX.palm = function (x, y, aim, reach, arc, colour, opts) {
+    const s = FX.strikes.acquire();
+    if (!s) return;
+    const o = opts || {};
+    s.x = x; s.y = y; s.aim = aim; s.reach = reach; s.arc = arc;
+    s.colour = colour; s.evolved = !!o.evolved; s.blend = o.blend || null;
+    s.life = o.life || 0.26; s.maxLife = s.life;
+    s.seed = WS.random() * 1000;
+    s.side = o.side || 0;       // which hand: alternates through a flurry
+  };
+
   /** A screen-wide colour wash (ruinform, death, victory). */
   FX.screen = function (colour, life) {
     this.flashScreen = { colour, life, maxLife: life };
@@ -284,6 +300,14 @@
       const f = this.flashes.active[i];
       f.life -= dt;
       if (f.life <= 0) { this.flashes.releaseAt(i); continue; }
+      i++;
+    }
+
+    i = 0;
+    while (i < this.strikes.count) {
+      const s = this.strikes.active[i];
+      s.life -= dt;
+      if (s.life <= 0) { this.strikes.releaseAt(i); continue; }
       i++;
     }
 

@@ -918,6 +918,7 @@
 
     /* ---- effects --------------------------------------------------------- */
     this.drawFlashes(ctx);
+    this.drawStrikes(ctx);
     this.drawParticles(ctx);
 
     /* The survivor, asserted again over his own light.
@@ -3134,6 +3135,102 @@
       }
       ctx.globalAlpha = 1;
       ctx.restore();
+    }
+    ctx.restore();
+  };
+
+  /* THE PALM. Iron Palms was three hairlines and a ring - the only weapon in
+     the arsenal with nothing of its own to look at, and the monk's whole
+     identity. A strike is three things now, all over in a quarter second:
+     a shockwave crescent riding out to the edge of the cone and thinning as
+     it goes, speed lines streaking through the cone behind it, and an open
+     hand pressed into the air where the blow landed - which hand alternating
+     through a flurry, so five strikes read as left, right, left, not as one
+     shape blinking. The evolution gilds the edges. Tempest Kata is the same
+     strike all the way round: a full ring and six hands. */
+  function handShape(g, u, fill, edge) {
+    // palm and fingers in one colour, so it reads as one hand; the edge
+    // colour only on the rim of the palm, where the light catches it
+    g.fillStyle = fill; g.strokeStyle = fill;
+    g.beginPath();
+    if (g.roundRect) g.roundRect(-0.5 * u, -0.34 * u, 0.66 * u, 0.68 * u, 0.2 * u);
+    else g.rect(-0.5 * u, -0.34 * u, 0.66 * u, 0.68 * u);
+    g.fill();
+    g.save();
+    g.lineCap = 'round';
+    g.lineWidth = u * 0.17;
+    g.beginPath();
+    for (const [y, len] of [[-0.25, 0.5], [-0.08, 0.62], [0.09, 0.58], [0.26, 0.44]]) {
+      g.moveTo(0.1 * u, y * u); g.lineTo((0.12 + len) * u, y * u * 1.12);
+    }
+    g.moveTo(-0.18 * u, 0.3 * u); g.lineTo(0.16 * u, 0.62 * u);
+    g.stroke();
+    g.strokeStyle = edge; g.lineWidth = WS.max(1, u * 0.05);
+    g.beginPath();
+    if (g.roundRect) g.roundRect(-0.5 * u, -0.34 * u, 0.66 * u, 0.68 * u, 0.2 * u);
+    else g.rect(-0.5 * u, -0.34 * u, 0.66 * u, 0.68 * u);
+    g.stroke();
+    g.restore();
+  }
+  R.drawStrikes = function (ctx) {
+    const pool = WS.FX.strikes;
+    if (!pool || !pool.count) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+    for (let i = 0; i < pool.count; i++) {
+      const s = pool.active[i];
+      const t = 1 - WS.clamp(s.life / s.maxLife, 0, 1);
+      const e = 1 - (1 - t) * (1 - t);
+      const full = s.arc >= WS.TAU - 0.01;
+      const a0 = s.aim - s.arc / 2, a1 = s.aim + s.arc / 2;
+      const base = s.blend ? WS.mix(s.colour, s.blend, 0.45) : s.colour;
+      const edge = s.evolved ? WS.mix(base, [1, 0.84, 0.42], 0.6) : WS.mix(base, [1, 1, 1], 0.55);
+      const k = 1 - t;
+      // the shockwave: a band riding out to the reach, thinning as it goes
+      const rr = s.reach * (0.5 + 0.55 * e);
+      ctx.globalAlpha = 0.55 * k;
+      ctx.strokeStyle = WS.rgb(base, 1);
+      ctx.lineWidth = WS.max(2, s.reach * 0.16 * k);
+      ctx.beginPath();
+      if (full) ctx.arc(s.x, s.y, rr, 0, WS.TAU); else ctx.arc(s.x, s.y, rr, a0, a1);
+      ctx.stroke();
+      ctx.globalAlpha = 0.9 * k;
+      ctx.strokeStyle = WS.rgb(edge, 1);
+      ctx.lineWidth = WS.max(1.2, s.reach * 0.035 * k);
+      ctx.beginPath();
+      if (full) ctx.arc(s.x, s.y, rr * 1.04, 0, WS.TAU); else ctx.arc(s.x, s.y, rr * 1.04, a0 + 0.05, a1 - 0.05);
+      ctx.stroke();
+      // speed lines through the cone
+      const lines = full ? 12 : 6;
+      ctx.strokeStyle = WS.rgb(edge, 1);
+      ctx.lineWidth = 1.6;
+      for (let n = 0; n < lines; n++) {
+        const u = ((s.seed * 0.37 + n * 0.618) % 1);
+        const a = full ? (n / lines) * WS.TAU + s.seed : a0 + s.arc * (0.08 + 0.84 * u);
+        const r0 = s.reach * (0.18 + 0.35 * e), r1 = s.reach * (0.45 + 0.5 * e) * (0.85 + 0.15 * ((n * 0.37) % 1));
+        ctx.globalAlpha = 0.6 * k * k;
+        ctx.beginPath();
+        ctx.moveTo(s.x + WS.cos(a) * r0, s.y + WS.sin(a) * r0);
+        ctx.lineTo(s.x + WS.cos(a) * r1, s.y + WS.sin(a) * r1);
+        ctx.stroke();
+      }
+      // the hand: pops in, then fades as it pushes on
+      const pop = t < 0.18 ? t / 0.18 : 1;
+      const hands = full ? 6 : 1;
+      const hu = s.reach * (full ? 0.27 : 0.36) * (0.8 + 0.35 * e);
+      const fill = WS.rgb(WS.mix(base, [1, 1, 1], 0.25), 1), rim = WS.rgb(edge, 1);
+      for (let h = 0; h < hands; h++) {
+        const a = full ? s.aim + (h / hands) * WS.TAU : s.aim;
+        const d = s.reach * (full ? 0.72 : 0.62) * (0.8 + 0.3 * e);
+        ctx.save();
+        ctx.translate(s.x + WS.cos(a) * d, s.y + WS.sin(a) * d);
+        ctx.rotate(a);
+        if (s.side || (full && h % 2)) ctx.scale(1, -1);
+        ctx.globalAlpha = (full ? 0.38 : 0.55) * pop * k;
+        handShape(ctx, hu, fill, rim);
+        ctx.restore();
+      }
     }
     ctx.restore();
   };

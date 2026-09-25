@@ -1251,166 +1251,144 @@
     },
 
     brute(g, s, p) {
-      /* ONE round mass, wide.
-       *
-       * Separating the shoulders from the trunk gave each of them its own
-       * shaded edge, and two stacked domes with a seam between them read as a
-       * cooking pot with a lid on it - which is what this had become. Wide is
-       * what tells a brute from a mongrel; ROUND is what made it likeable,
-       * and roundness is one continuous surface or it is nothing. The
-       * shoulders are a swell in the same body now, not a second body. */
-      const cx = s / 2, cy = s * 0.54, u = s / 100;
-      legs(g, p, cx, cy + 24 * u, u, [-13, 13], 8, 8);
-      shaded(g, cx - 30 * u, cy + 4 * u, 9 * u, 17 * u, p, -0.16);
-      shaded(g, cx + 30 * u, cy + 4 * u, 9 * u, 17 * u, p, 0.16);
-      // the arms carry the same coat the body does - they were the last bare
-      // masses on him and they are a fifth of his area
-      for (const dir of [-1, 1]) {
-        pelt(g, p, cx + dir * 30 * u, cy + 4 * u, 9 * u, 17 * u, dir * 0.16, 3, 0.3, 0.3);
+      /* THE BRUISER, redrawn. It was a round red ball with two fists - a
+         likeable shape, and not a person. The Kerchiefs' muscle is a big man:
+         a barrel chest under a shirt in the gang's colour, a leather vest,
+         arms thicker than his legs ending in brass knuckles, a small bald
+         head on no neck at all, and the red kerchief over his face that says
+         whose he is. Width is still what tells him from the footpads. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const skin = { hi: '#e0b08c', mid: '#b98462', lo: '#8a5c42', dark: '#5a3a28', line: '#2a180e', glow: '#fff' };
+      const skinFar = { hi: skin.mid, mid: skin.lo, lo: skin.dark, dark: skin.dark, line: skin.line, glow: '#fff' };
+      const leather = { hi: '#8a6440', mid: '#5e4228', lo: '#402c1a', dark: '#28190e', line: '#140c06', glow: '#fff' };
+      const trouser = { hi: '#5a5660', mid: '#3e3a44', lo: '#2a2830', dark: '#1a181e', line: '#0c0a0e', glow: '#fff' };
+      const brass = { hi: '#ffe0a0', mid: '#d8a848', lo: '#9a7020', dark: '#5a400e', line: '#2a1c06', glow: '#fff' };
+      // legs, short and planted, in boots
+      for (const [x0, x1, pal] of [[57, 58, trouser], [43, 41, trouser]]) {
+        limb(g, P([[x0, 64], [x1, 76], [x1, 84]]), [13, 11, 10].map(X), pal);
+        shaded(g, X(x1 - 1.5), Y(86), X(8), X(3.4), leather);
       }
-      shaded(g, cx, cy + 2 * u, 31 * u, 25 * u, p);               // the one mass
-      pelt(g, p, cx, cy + 2 * u, 31 * u, 25 * u, 0, 8, 0.4, 0.34);
-      /* The shoulders, as a light on the same form rather than a shape on top
-         of it: a highlight across the top of the mass, clipped inside it. */
-      g.save();
-      g.beginPath(); g.ellipse(cx, cy + 2 * u, 31 * u, 25 * u, 0, 0, WS.TAU); g.clip();
-      const yoke = g.createRadialGradient(cx, cy - 14 * u, 2 * u, cx, cy - 8 * u, 30 * u);
-      yoke.addColorStop(0, 'rgba(255,255,255,.16)');
-      yoke.addColorStop(1, 'rgba(255,255,255,0)');
-      g.fillStyle = yoke;
-      g.beginPath(); g.ellipse(cx, cy - 12 * u, 26 * u, 13 * u, 0, 0, WS.TAU); g.fill();
-      // and a fold under them, which is where a neckless thing creases
-      g.strokeStyle = p.line; g.globalAlpha = 0.28; g.lineWidth = 1.4 * u;
-      g.beginPath();
-      g.moveTo(cx - 22 * u, cy - 2 * u);
-      g.quadraticCurveTo(cx, cy + 4 * u, cx + 22 * u, cy - 2 * u);
-      g.stroke();
-      /* HIDE, on the one mass - the brute is deliberately one continuous
-         surface, so everything here has to be marks ON it rather than shapes
-         cutting it up. Old scars across the shoulder, a pale chest, and the
-         creases where a fat thing folds at the sides.
-
-         Measured against the bestiary's own interior-detail metric, brute
-         came out at 32.8% against an average of 41% - every mark here was
-         real but faint, 0.2 to 0.3 alpha on a body that is otherwise one
-         smooth gradient, and the belly below the shoulder scars had nothing
-         on it at all. Strengthened rather than redrawn, and given two more
-         scars low on the gut, where a brute actually takes most of its
-         hits. */
-      g.globalAlpha = 0.5;
-      g.lineWidth = 1.2 * u;
-      for (const [x0, y0, x1, y1] of [[-18, -14, -6, -6], [-14, -17, -3, -10],
-        [12, -12, 20, -3], [-16, 12, -4, 18], [6, 16, 18, 10]]) {
-        g.beginPath();
-        g.moveTo(cx + x0 * u, cy + y0 * u);
-        g.quadraticCurveTo(cx + (x0 + x1) / 2 * u, cy + (y0 + y1) / 2 * u - 2 * u,
-          cx + x1 * u, cy + y1 * u);
-        g.stroke();
-      }
-      /* The side folds were struck as arcs centred outside the body, which
-         drew two big circles ON him rather than creases IN him. A fold on a
-         round animal is a short comma that follows the surface, not a ring. */
-      g.globalAlpha = 0.32;
-      for (const dir of [-1, 1]) {
-        for (const dy of [2, 10]) {
-          g.beginPath();
-          g.moveTo(cx + dir * 24 * u, cy + (dy - 4) * u);
-          g.quadraticCurveTo(cx + dir * 20 * u, cy + dy * u,
-            cx + dir * 23 * u, cy + (dy + 5) * u);
-          g.stroke();
-        }
-      }
-      const chest = g.createRadialGradient(cx, cy + 14 * u, 2 * u, cx, cy + 14 * u, 24 * u);
-      chest.addColorStop(0, 'rgba(255,238,214,.16)');
-      chest.addColorStop(1, 'rgba(255,238,214,0)');
-      g.globalAlpha = 1;
-      g.fillStyle = chest;
-      g.beginPath(); g.ellipse(cx, cy + 14 * u, 19 * u, 12 * u, 0, 0, WS.TAU); g.fill();
+      // far arm, hanging at his side with its fist
+      limb(g, P([[66, 34], [75, 48], [71, 60]]), [13, 11, 10].map(X), skinFar);
+      shaded(g, X(71), Y(62), X(6.5), X(6), skinFar);
+      // the body: a barrel, in the gang's colour
+      const body = mass(g, P([[30, 38], [38, 28], [50, 26], [62, 28], [71, 38], [71, 54], [64, 67], [36, 67], [29, 54]]), p);
+      g.save(); body(); g.clip();
+      // the vest: two leather panels either side of the shirt
+      poly(g, P([[26, 30], [42, 28], [40, 70], [26, 70]]), leather.mid, leather.line, u * 0.6);
+      poly(g, P([[58, 28], [74, 30], [74, 70], [60, 70]]), leather.lo, leather.line, u * 0.6);
+      g.strokeStyle = 'rgba(255,230,190,.35)'; g.lineWidth = u * 0.6; g.setLineDash([X(1.4), X(1.4)]);
+      g.beginPath(); g.moveTo(X(40), Y(30)); g.lineTo(X(38.5), Y(66)); g.moveTo(X(60), Y(30)); g.lineTo(X(61.5), Y(66)); g.stroke();
+      g.setLineDash([]);
+      // the belly, and the belt that is losing the argument with it
+      g.fillStyle = 'rgba(255,255,255,.12)';
+      g.beginPath(); g.ellipse(X(50), Y(52), X(11), X(10), 0, 0, WS.TAU); g.fill();
       g.restore();
-      shaded(g, cx - 31 * u, cy + 19 * u, 9 * u, 8 * u, STONE);   // knuckles down
-      shaded(g, cx + 31 * u, cy + 19 * u, 9 * u, 8 * u, STONE);
-      shaded(g, cx, cy - 16 * u, 11 * u, 9 * u, p);               // head, sunk in
-      g.fillStyle = p.lo; g.fillRect(cx - 12 * u, cy - 18 * u, 24 * u, 4 * u);
-      g.save();
-      g.strokeStyle = p.line; g.globalAlpha = 0.5; g.lineWidth = 1.2 * u;
-      g.beginPath();                                               // the jaw
-      g.moveTo(cx - 8 * u, cy - 11 * u);
-      g.quadraticCurveTo(cx, cy - 8 * u, cx + 8 * u, cy - 11 * u);
-      g.stroke();
-      g.globalAlpha = 0.3; g.strokeStyle = p.hi;
-      g.beginPath();
-      g.moveTo(cx - 8 * u, cy - 12.4 * u);
-      g.quadraticCurveTo(cx, cy - 9.4 * u, cx + 8 * u, cy - 12.4 * u);
-      g.stroke();
+      poly(g, P([[33, 58], [67, 58], [67, 63], [33, 63]]), leather.mid, leather.line, u * 0.6);
+      poly(g, P([[46, 57], [54, 57], [54, 64], [46, 64]]), brass.mid, brass.line, u * 0.6);
+      poly(g, P([[48, 59], [52, 59], [52, 62], [48, 62]]), leather.dark, brass.line, u * 0.4);
+      // the head: small, bald, sunk between the shoulders
+      const head = mass(g, P([[42, 22], [44, 13], [50, 10], [57, 13], [58, 22], [55, 29], [45, 29]]), skin);
+      g.save(); head(); g.clip();
+      g.fillStyle = 'rgba(255,245,230,.35)';
+      g.beginPath(); g.ellipse(X(48), Y(14), X(4), X(2.4), -0.3, 0, WS.TAU); g.fill();
       g.restore();
-      eyes(g, cx, cy - 17 * u, 4.5 * u, 1.7 * u, '#ff8f6b');
+      shaded(g, X(57.5), Y(20), X(1.8), X(2.6), skin);                 // ear
+      // brows down, eyes narrow
+      g.strokeStyle = skin.line; g.lineWidth = u * 1.3; g.lineCap = 'round';
+      for (const [x0, y0, x1, y1] of [[43.5, 16.4], [51, 16.6]].map(([x, y]) => [x, y, x + 4.6, y + 1.2])) {
+        g.beginPath(); g.moveTo(X(x0), Y(y0)); g.lineTo(X(x1), Y(y1)); g.stroke();
+      }
+      g.fillStyle = '#1a0e08';
+      for (const x of [46, 53]) { g.beginPath(); g.ellipse(X(x), Y(19), X(1.1), X(0.8), 0, 0, WS.TAU); g.fill(); }
+      // the kerchief, over the nose and mouth, knotted behind
+      const kp = P([[42.6, 21], [57.4, 21], [56, 26], [50, 31], [44, 26]]);
+      poly(g, kp, p.mid, p.line, u * 0.6);
+      g.fillStyle = 'rgba(255,240,230,.7)';
+      for (const [x, y] of [[46, 23], [50, 25], [54, 23], [49, 28]]) { g.beginPath(); g.arc(X(x), Y(y), X(0.6), 0, WS.TAU); g.fill(); }
+      poly(g, P([[57, 21.5], [61, 20], [60.5, 24], [57, 23]]), p.lo, p.line, u * 0.5);
+      // near arm: the big one, fist forward, in brass knuckles
+      limb(g, P([[34, 34], [24, 46], [25, 58]]), [14, 12, 11].map(X), skin);
+      shaded(g, X(25), Y(61), X(7.4), X(6.6), skin);
+      for (let k = 0; k < 4; k++) shaded(g, X(20.5 + k * 3), Y(63.6), X(1.8), X(1.5), brass);
+      poly(g, P([[19, 62.4], [31.5, 62.4], [31.5, 64.4], [19, 64.4]]), brass.mid, brass.line, u * 0.5);
     },
 
     gilkin(g, s, p) {
-      const cx = s / 2, cy = s * 0.54, u = s / 100;
-      // Splayed webbed feet, and the head lifted clear of the shoulders. The
-      // head used to overlap the body by half its own height, which merged the
-      // two masses into one green pebble.
-      legs(g, p, cx, cy + 22 * u, u, [-8, 8], 11, 5);
-      /* Head fins fan sideways off the skull, which is where a gilkin's are.
-         They used to be long thin triangles rising off the shoulders, and at
-         36px that read as two blades of grass growing behind it. */
-      for (const dir of [-1, 1]) {
-        poly(g, [[cx + dir * 11 * u, cy - 24 * u], [cx + dir * 31 * u, cy - 32 * u],
-        [cx + dir * 30 * u, cy - 18 * u], [cx + dir * 12 * u, cy - 17 * u]], p.lo, p.line, u);
-        shaded(g, cx + dir * 19 * u, cy + 2 * u, 5 * u, 9 * u, p, dir * 0.3);   // arms
-      }
-      shaded(g, cx, cy + 2 * u, 17 * u, 20 * u, p);
-      shaded(g, cx, cy - 22 * u, 15 * u, 13 * u, p);
-      /* A PALE BELLY AND GILLS. The gilkin was two smooth green masses with a
-         mouth on it - the kind of shape that has a perfect outline and
-         nothing whatever inside it. Every amphibian is darker on top than
-         underneath, and that one change does more for the read than any
-         amount of shading, because it says which way up the animal is. */
-      g.save();
-      g.beginPath(); g.ellipse(cx, cy + 2 * u, 17 * u, 20 * u, 0, 0, WS.TAU); g.clip();
-      const bel = g.createLinearGradient(0, cy + 2 * u, 0, cy + 22 * u);
-      bel.addColorStop(0, 'rgba(255,255,255,0)');
-      bel.addColorStop(1, 'rgba(255,255,255,.26)');
-      g.fillStyle = bel;
-      g.beginPath(); g.ellipse(cx, cy + 10 * u, 11 * u, 14 * u, 0, 0, WS.TAU); g.fill();
-      // and the plates across it, which is what a belly like that is made of
-      g.strokeStyle = p.line; g.globalAlpha = 0.34; g.lineWidth = 1 * u;
-      for (let i = 0; i < 4; i++) {
-        const y = cy + (2 + i * 5) * u;
-        g.beginPath();
-        g.moveTo(cx - 10 * u, y);
-        g.quadraticCurveTo(cx, y + 2.4 * u, cx + 10 * u, y);
-        g.stroke();
+      /* THE GILKIN, redrawn. It was two stacked green ovals seen from the
+         front - a perfect outline with nothing inside it, on the first map
+         every player sees. A gilkin is a hunched thing from the riverbank
+         that walks like it has not quite decided to: side-on, head slung
+         forward and low, a mouth that goes most of the way round it, eyes
+         sitting up on top like a frog's, a spined fin down the back, gangly
+         arms and big splayed webbed feet. Faces left like everything else. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+      const web = (pts, pal) => poly(g, P(pts), pal.lo, pal.line, u * 0.6);
+      // far leg and foot
+      limb(g, P([[58, 62], [66, 73], [60, 84]]), [8, 6, 4.5].map(X), far);
+      web([[53, 86], [58, 82], [64, 83], [68, 87], [62, 88]], far);
+      // the dorsal fin, behind the body: a membrane between spines
+      const fin = [[46, 30], [50, 20], [55, 27], [58, 19], [62, 30], [66, 25], [67, 37], [72, 34], [70, 48]];
+      poly(g, P(fin.concat([[64, 44], [52, 36]])), p.lo, p.line, u * 0.6);
+      g.save(); g.strokeStyle = p.line; g.globalAlpha = 0.6; g.lineWidth = u * 0.8;
+      for (const [x, y] of [[50, 20], [58, 19], [66, 25], [72, 34]]) { g.beginPath(); g.moveTo(X(x), Y(y)); g.lineTo(X(x - 2), Y(y + 14)); g.stroke(); }
+      g.restore();
+      // far arm, hanging forward
+      limb(g, P([[50, 44], [42, 54], [34, 59]]), [6, 4.4, 3.6].map(X), far);
+      web([[29, 58], [33, 56], [36, 60], [33, 64], [29, 63]], far);
+      // the body: a hunched pear
+      const body = mass(g, P([[40, 44], [47, 35], [60, 34], [68, 42], [71, 56], [66, 67], [52, 71], [41, 66], [36, 55]]), p);
+      g.save(); body();  g.clip();
+      g.fillStyle = 'rgba(255,255,240,.28)';
+      g.beginPath(); g.ellipse(X(46), Y(59), X(10), X(11), -0.2, 0, WS.TAU); g.fill();
+      g.strokeStyle = p.line; g.globalAlpha = 0.3; g.lineWidth = u * 0.9;
+      for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(X(38), Y(52 + i * 4.5)); g.quadraticCurveTo(X(46), Y(55 + i * 4.5), X(54), Y(52 + i * 4.5)); g.stroke(); }
+      g.globalAlpha = 0.32; g.fillStyle = p.dark;
+      for (const [x, y, r] of [[60, 42, 3], [65, 52, 2.4], [56, 50, 1.8], [62, 60, 2.2]]) {
+        g.beginPath(); g.ellipse(X(x), Y(y), X(r), X(r * 0.7), 0, 0, WS.TAU); g.fill();
       }
       g.restore();
-      /* The dorsal mass - head and back - carried the whole outline and none
-         of the texture; every mark on a gilkin lived on the pale belly, so
-         the darker two-thirds of the animal stayed a flat green pebble.
-         Mottling, the way a real amphibian's back actually varies. */
-      g.save();
-      g.beginPath(); g.ellipse(cx, cy + 2 * u, 17 * u, 20 * u, 0, 0, WS.TAU); g.clip();
-      g.fillStyle = p.dark; g.globalAlpha = 0.3;
-      for (const [dx, dy, r] of [[-9, -8, 3.2], [8, -3, 2.6], [-4, 8, 3], [10, 14, 2.4]]) {
-        g.beginPath(); g.ellipse(cx + dx * u, cy + dy * u, r * u, r * 0.7 * u, 0, 0, WS.TAU); g.fill();
-      }
+      // near leg: bent, knee forward, and a big splayed foot
+      limb(g, P([[50, 64], [57, 75], [48, 85]]), [9, 7, 5].map(X), p);
+      web([[38, 88], [43, 83], [50, 83], [55, 88], [48, 90]], p);
+      g.save(); g.strokeStyle = p.line; g.lineWidth = u * 0.6; g.globalAlpha = 0.7;
+      for (const [x0, y0, x1, y1] of [[43, 84, 39, 88], [47, 84, 46, 89], [51, 84, 53, 89]]) { g.beginPath(); g.moveTo(X(x0), Y(y0)); g.lineTo(X(x1), Y(y1)); g.stroke(); }
       g.restore();
-      // gill slits, on the side of the neck where they belong
-      g.save();
-      g.strokeStyle = p.line; g.globalAlpha = 0.6; g.lineWidth = 1.4 * u;
-      g.lineCap = 'round';
-      for (const dir of [-1, 1]) {
-        for (let i = 0; i < 3; i++) {
-          g.beginPath();
-          g.moveTo(cx + dir * (11 + i * 2.8) * u, cy - 8 * u);
-          g.lineTo(cx + dir * (12 + i * 2.8) * u, cy - 1 * u);
-          g.stroke();
-        }
-      }
+      // the head, slung forward and low
+      const head = mass(g, P([[16, 36], [21, 26], [33, 21], [45, 24], [51, 33], [48, 43], [34, 49], [20, 47]]), p);
+      g.save(); head(); g.clip();
+      g.fillStyle = 'rgba(255,255,240,.22)';
+      g.beginPath(); g.ellipse(X(30), Y(46), X(14), X(5), 0, 0, WS.TAU); g.fill();
       g.restore();
-      g.fillStyle = p.dark;                                        // wide gormless mouth
-      g.beginPath(); g.ellipse(cx, cy - 16 * u, 9 * u, 4.5 * u, 0, 0, WS.PI); g.fill();
-      eyes(g, cx, cy - 26 * u, 7 * u, 3 * u, '#e8ffd8');
+      // side frill behind the jaw
+      poly(g, P([[44, 28], [55, 22], [54, 30], [58, 33], [48, 38]]), p.lo, p.line, u * 0.6);
+      // gills
+      g.save(); g.strokeStyle = p.line; g.globalAlpha = 0.65; g.lineWidth = u; g.lineCap = 'round';
+      for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(X(42 + i * 2.6), Y(34)); g.quadraticCurveTo(X(40 + i * 2.6), Y(38), X(42 + i * 2.6), Y(42)); g.stroke(); }
+      g.restore();
+      // the mouth: most of the way round the head, with small teeth
+      g.fillStyle = '#1a0e0c';
+      g.beginPath(); g.moveTo(X(15.5), Y(37)); g.quadraticCurveTo(X(26), Y(46), X(41), Y(41));
+      g.quadraticCurveTo(X(27), Y(41.5), X(15.5), Y(37)); g.fill();
+      g.fillStyle = '#f4efe0';
+      for (let i = 0; i < 6; i++) {
+        const t = 0.1 + i * 0.15, x = 15.5 + (41 - 15.5) * t, y = 37 + (41 - 37) * t + Math.sin(t * Math.PI) * 2.6;
+        g.beginPath(); g.moveTo(X(x - 0.8), Y(y - 0.6)); g.lineTo(X(x), Y(y + 1.2)); g.lineTo(X(x + 0.8), Y(y - 0.6)); g.fill();
+      }
+      // eyes up on top, bulging, the far one smaller
+      for (const [x, y, r] of [[38, 21, 3.6], [27, 22, 4.6]]) {
+        shaded(g, X(x), Y(y), X(r), X(r), { hi: '#fbfff0', mid: '#e2ecd0', lo: '#a8b894', dark: '#6a7a58', line: p.line, glow: '#fff' });
+        g.fillStyle = '#0c1208';
+        g.beginPath(); g.ellipse(X(x - r * 0.3), Y(y + r * 0.1), X(r * 0.42), X(r * 0.6), 0, 0, WS.TAU); g.fill();
+        g.fillStyle = '#ffffff';
+        g.beginPath(); g.arc(X(x - r * 0.45), Y(y - r * 0.25), X(r * 0.18), 0, WS.TAU); g.fill();
+      }
+      // near arm, reaching, with a webbed three-fingered hand
+      limb(g, P([[54, 46], [48, 58], [38, 64]]), [6.4, 4.8, 3.8].map(X), p);
+      web([[31, 62], [35, 59], [39, 62], [38, 67], [32, 68]], p);
     },
 
     necromancer(g, s, p) {
@@ -2121,68 +2099,68 @@
     },
 
     abomination(g, s, p) {
-      /* Its own shape, with ONE asymmetry rather than a rebuild.
-       *
-       * This is the second thing in this pass where the distinctness metric
-       * drove the drawing and the drawing lost. It measured 78% the same
-       * silhouette as the brute, so it was made lopsided, then tall and
-       * narrow to get further from the brute again - and a tall trunk
-       * swallowed its head, leaving an egg with eyes on top, and a hump the
-       * size of the head beside the head read as two heads. Every version
-       * scored better than this one and every version looked worse.
-       *
-       * So: the mass it always had, the sagging head it always had, and the
-       * near arm left bigger than the far one - which is true of a thing
-       * stitched together out of parts and costs the drawing nothing. The
-       * brute pair is reported honestly below instead of being engineered
-       * away. */
-      const cx = s / 2, cy = s * 0.58, u = s / 100;
-      shaded(g, cx, cy + 6 * u, 30 * u, 28 * u, p);
-      /* STITCHES, not bars. Five hard full-length lines at even spacing read
-         as a cage laid over the creature; a seam is a thread that crosses a
-         join, so it is short, it is crossed, and it only runs where two
-         pieces meet. */
-      g.save();
-      g.beginPath(); g.ellipse(cx, cy + 6 * u, 30 * u, 28 * u, 0, 0, WS.TAU); g.clip();
-      g.strokeStyle = p.dark; g.globalAlpha = 0.55; g.lineCap = 'round';
-      /* Measured at 33.8% interior detail against a 41% average, and the
-         three stitches - real as they are - left the outer third of the
-         mass on either side bare: a seam close to each rim, at -27 and +27,
-         costs nothing the first three did not already pay for. */
-      for (const [sx, sy, ex, ey] of [[-16, -10, -13, 20], [2, -14, 6, 16],
-        [17, -6, 13, 22], [-27, -2, -24, 18], [26, -8, 24, 16]]) {
-        g.lineWidth = 1.4 * u;
-        g.beginPath();
-        g.moveTo(cx + sx * u, cy + sy * u);
-        g.quadraticCurveTo(cx + (sx + ex) / 2 * u + 2 * u, cy + (sy + ey) / 2 * u,
-          cx + ex * u, cy + ey * u);
-        g.stroke();
-        g.lineWidth = 1.1 * u;
-        const n = 6;
-        for (let k = 1; k < n; k++) {
-          const t = k / n;
-          const mx = cx + (sx + (ex - sx) * t) * u + 2 * u * (1 - Math.abs(t - 0.5) * 2);
-          const my = cy + (sy + (ey - sy) * t) * u;
-          g.beginPath();
-          g.moveTo(mx - 2.6 * u, my - 1.6 * u);
-          g.lineTo(mx + 2.6 * u, my + 1.6 * u);
-          g.stroke();
+      /* THE STITCHED HORROR, redrawn. It was a green ball with a blade stuck
+         on. It is sewn together from what the cult had spare, and it should
+         look it: a huge hunched torso and a gut, a small head buried in the
+         shoulders, one arm a butcher's cleaver and the other ending in a
+         hook on a chain, legs that do not match, and stitches everywhere -
+         the seams are the whole character. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+      const grey = { hi: '#b8b4b0', mid: '#8a8480', lo: '#5e5854', dark: '#3a3432', line: '#1a1614', glow: '#fff' };
+      const STEEL = { hi: '#e0e4ea', mid: '#a8aeb8', lo: '#6a707c', dark: '#3a3e46', line: '#16181c', glow: '#fff' };
+      const stitch = (pts) => {
+        g.save(); g.strokeStyle = '#1e1410'; g.lineWidth = u * 0.9; g.lineCap = 'round';
+        g.beginPath(); P(pts).forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke();
+        for (let i = 0; i < pts.length - 1; i++) {
+          const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
+          const n = Math.max(1, Math.round(Math.hypot(x1 - x0, y1 - y0) / 2.4));
+          const nx = -(y1 - y0), ny = x1 - x0, d = Math.hypot(nx, ny) || 1;
+          for (let k = 0; k <= n; k++) {
+            const t = k / n, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t;
+            g.beginPath(); g.moveTo(X(x + nx / d * 1.3), Y(y + ny / d * 1.3)); g.lineTo(X(x - nx / d * 1.3), Y(y - ny / d * 1.3)); g.stroke();
+          }
         }
-      }
+        g.restore();
+      };
+      // the hook on its chain, behind, from the far arm
+      limb(g, P([[70, 34], [80, 46], [80, 58]]), [11, 9, 7].map(X), far);
+      g.strokeStyle = STEEL.lo; g.lineWidth = u * 1.1;
+      for (let k = 0; k < 4; k++) { g.beginPath(); g.ellipse(X(80), Y(61 + k * 3), X(1.1), X(1.6), 0, 0, WS.TAU); g.stroke(); }
+      g.strokeStyle = STEEL.mid; g.lineWidth = u * 2.2; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(X(80), Y(73)); g.lineTo(X(80), Y(78)); g.arc(X(76), Y(78), X(4), 0, Math.PI * 0.9); g.stroke();
+      // legs that do not match: a thick grey one and a thin green one
+      limb(g, P([[60, 64], [64, 75], [62, 86]]), [13, 11, 10].map(X), grey);
+      limb(g, P([[42, 66], [40, 76], [42, 86]]), [9, 7, 6].map(X), p);
+      shaded(g, X(62), Y(87), X(7), X(2.6), grey);
+      shaded(g, X(41), Y(87), X(5.5), X(2.2), p);
+      // the body: a hunched mountain with a gut
+      const body = mass(g, P([[26, 36], [34, 22], [52, 16], [70, 22], [78, 36], [76, 54], [66, 70], [44, 72], [28, 62], [22, 48]]), p);
+      g.save(); body(); g.clip();
+      // a sewn-on patch of someone else, greyer
+      poly(g, P([[52, 20], [72, 24], [74, 42], [56, 40]]), grey.mid, grey.line, u * 0.5);
+      g.fillStyle = 'rgba(255,255,240,.16)';
+      g.beginPath(); g.ellipse(X(46), Y(56), X(15), X(12), 0, 0, WS.TAU); g.fill();
       g.restore();
-      shaded(g, cx - 29 * u, cy - 1 * u, 8 * u, 14 * u, p, -0.35);  // the small arm
-      shaded(g, cx + 31 * u, cy + 1 * u, 12 * u, 19 * u, p, 0.32);  // and the heavy one
-      blade(g, cx + 19 * u, cy + 6 * u, 30 * u, 8 * u, 0.75, '#aeb6c4', '#5a6070', 'heavy');
-      shaded(g, cx - 4 * u, cy - 24 * u, 13 * u, 11 * u, p, -0.2); // sagging head
-      // the head is stitched on too - it's a part like any other
-      g.strokeStyle = p.dark; g.globalAlpha = 0.5; g.lineCap = 'round'; g.lineWidth = 1.2 * u;
-      g.beginPath(); g.moveTo(cx - 12 * u, cy - 30 * u); g.lineTo(cx - 8 * u, cy - 18 * u); g.stroke();
-      for (const t of [0.25, 0.5, 0.75]) {
-        const mx = cx - 12 * u + 4 * t * u, my = cy - 30 * u + 12 * t * u;
-        g.beginPath(); g.moveTo(mx - 2 * u, my - 1.3 * u); g.lineTo(mx + 2 * u, my + 1.3 * u); g.stroke();
-      }
-      g.globalAlpha = 1;
-      eyes(g, cx - 4 * u, cy - 25 * u, 5 * u, 2 * u, '#bfff6b');
+      stitch([[52, 20], [72, 24], [74, 42], [56, 40], [52, 20]]);
+      stitch([[30, 50], [44, 58], [62, 56]]);
+      stitch([[40, 26], [38, 40]]);
+      // the head, small and sunk into the shoulders, sewn shut on one side
+      const head = mass(g, P([[34, 22], [38, 14], [46, 12], [52, 16], [52, 24], [46, 28], [38, 28]]), grey);
+      stitch([[42, 13], [44, 27]]);
+      eyes(g, X(39), Y(19), X(0.01), X(1.6), '#e8ff6a');
+      g.strokeStyle = '#1e1410'; g.lineWidth = u;
+      g.beginPath(); g.moveTo(X(46), Y(18)); g.lineTo(X(50), Y(21)); g.moveTo(X(50), Y(18)); g.lineTo(X(46), Y(21)); g.stroke();
+      g.beginPath(); g.moveTo(X(37), Y(24)); g.quadraticCurveTo(X(42), Y(26.5), X(47), Y(24)); g.stroke();
+      // near arm: a cleaver where the hand should be
+      limb(g, P([[30, 34], [20, 46], [18, 56]]), [12, 10, 8].map(X), p);
+      stitch([[26, 38], [20, 48]]);
+      poly(g, P([[8, 54], [22, 52], [23, 68], [9, 72]]), STEEL.mid, STEEL.line, u * 0.8);
+      g.fillStyle = 'rgba(255,255,255,.35)';
+      g.beginPath(); g.moveTo(X(9), Y(55)); g.lineTo(X(12), Y(54.5)); g.lineTo(X(12), Y(70)); g.lineTo(X(9.5), Y(71)); g.fill();
+      g.fillStyle = 'rgba(120,20,20,.5)';
+      g.beginPath(); g.ellipse(X(12), Y(68), X(3), X(2.2), 0.2, 0, WS.TAU); g.fill();
     },
 
     wraith(g, s, p) {
@@ -2912,59 +2890,73 @@
     },
 
     bristlekin(g, s, p) {
-      const cx = s / 2, cy = s * 0.58, u = s / 100;
-      shaded(g, cx, cy + 4 * u, 22 * u, 24 * u, p);
-      /* QUILLS THAT TAPER, and short ones between the long. Seven strokes of
-         one width at even spacing read as a comb - which is what this was -
-         and a creature covered in spines should not have its spines all the
-         same length. */
-      for (let i = 0; i < 13; i++) {
-        const a = WS.PI * (0.13 + i * 0.054);
-        const long = i % 2 === 0;
-        const r0 = 19 * u, r1 = (long ? 36 : 28) * u;
-        const x0 = cx - WS.cos(a) * r0, y0 = cy - WS.sin(a) * r0;
-        const x1 = cx - WS.cos(a) * r1, y1 = cy - WS.sin(a) * r1;
-        const w = (long ? 3.2 : 2.2) * u;
-        const nx = -(y1 - y0), ny = x1 - x0;
-        const L = Math.hypot(nx, ny) || 1;
-        g.fillStyle = long ? p.hi : p.mid;
-        g.beginPath();
-        g.moveTo(x0 + nx / L * w, y0 + ny / L * w);
-        g.lineTo(x1, y1);
-        g.lineTo(x0 - nx / L * w, y0 - ny / L * w);
-        g.closePath(); g.fill();
-        g.strokeStyle = p.line; g.globalAlpha = 0.4; g.lineWidth = 0.7 * u;
-        g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
-        g.globalAlpha = 1;
+      /* THE THORNHIDE BATTLEGUARD, redrawn. It was a round ball with quills
+         on it. A battleguard is a boar that stands up and fights: a heavy
+         tusked head slung forward, a crest of quills from the brow all the
+         way down the back - long ones and short ones, a mane, not a comb -
+         a hunched hide-armoured body, hooves, and a spear held low. The
+         quills are the silhouette; everything else is what carries them. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+      const hide = { hi: '#9a7048', mid: '#6e4c2e', lo: '#4a321c', dark: '#2e1e10', line: '#160e06', glow: '#fff' };
+      const QUILL = '#efe4cc', QUILL_TIP = '#3a2a1c';
+      // the spear, behind everything, held low and pointed forward
+      g.strokeStyle = '#5a4028'; g.lineWidth = u * 2.2; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(X(78), Y(46)); g.lineTo(X(10), Y(66)); g.stroke();
+      poly(g, P([[4, 68], [13, 62.5], [14.5, 67.5]]), '#d8dce4', '#3a3e46', u * 0.6);
+      // far leg
+      limb(g, P([[58, 64], [62, 74], [60, 84]]), [9, 7, 5].map(X), far);
+      poly(g, P([[56, 84], [63, 84], [64, 88], [55, 88]]), '#2a1e14', '#0e0804', u * 0.5);
+      // the quill mane: from the brow down the back, long and short
+      for (let pass = 0; pass < 2; pass++) {
+        for (let i = 0; i < 15; i++) {
+          const t = i / 14;
+          const bx = 40 + t * 34, by = 22 + t * 26 + Math.sin(t * Math.PI) * -4;
+          const a = -1.9 + t * 1.5 + (i % 2 ? 0.12 : -0.08);
+          const len = (i % 2 ? 11 : 17) * (1 - Math.abs(t - 0.4) * 0.6) * (pass ? 0.8 : 1);
+          if ((i % 2) !== pass) continue;
+          const tx = bx + Math.cos(a) * len, ty = by + Math.sin(a) * len;
+          const nx = -Math.sin(a) * 1.5, ny = Math.cos(a) * 1.5;
+          poly(g, P([[bx - nx, by - ny], [tx, ty], [bx + nx, by + ny]]), QUILL, '#6a5a44', u * 0.4);
+          g.strokeStyle = QUILL_TIP; g.lineWidth = u * 1.2;
+          g.beginPath(); g.moveTo(X(bx + (tx - bx) * 0.72), Y(by + (ty - by) * 0.72)); g.lineTo(X(tx), Y(ty)); g.stroke();
+        }
       }
-      // and a bristled hide under them
-      g.save();
-      g.beginPath(); g.ellipse(cx, cy + 4 * u, 22 * u, 24 * u, 0, 0, WS.TAU); g.clip();
-      g.strokeStyle = p.line; g.globalAlpha = 0.54; g.lineWidth = 1.1 * u;
-      for (let i = 0; i < 15; i++) {
-        const a = WS.PI * (0.08 + i * 0.056);
-        g.beginPath();
-        g.moveTo(cx - WS.cos(a) * 20 * u, cy - WS.sin(a) * 20 * u);
-        g.lineTo(cx - WS.cos(a) * 9 * u, cy - WS.sin(a) * 9 * u + 4 * u);
-        g.stroke();
-      }
+      // the body: hunched, in hide armour
+      const body = mass(g, P([[36, 40], [44, 30], [58, 30], [70, 40], [72, 54], [66, 66], [48, 68], [38, 60]]), p);
+      g.save(); body(); g.clip();
+      poly(g, P([[34, 52], [74, 52], [74, 70], [34, 70]]), hide.mid, hide.line, u * 0.6);
+      g.strokeStyle = hide.line; g.lineWidth = u * 0.7; g.globalAlpha = 0.6;
+      for (let k = 0; k < 5; k++) { g.beginPath(); g.moveTo(X(38 + k * 8), Y(52)); g.lineTo(X(36 + k * 8), Y(68)); g.stroke(); }
+      g.globalAlpha = 1;
+      poly(g, P([[40, 36], [66, 44], [64, 48], [38, 41]]), hide.lo, hide.line, u * 0.5);     // strap
       g.restore();
-      shaded(g, cx, cy - 20 * u, 13 * u, 11 * u, p);
-      // the head bristles too - it's not a bald patch on a spined animal
-      g.save();
-      g.beginPath(); g.ellipse(cx, cy - 20 * u, 13 * u, 11 * u, 0, 0, WS.TAU); g.clip();
-      g.strokeStyle = p.line; g.globalAlpha = 0.4; g.lineWidth = 0.9 * u;
-      for (let i = 0; i < 6; i++) {
-        const a = WS.PI * (0.15 + i * 0.12);
-        g.beginPath();
-        g.moveTo(cx - WS.cos(a) * 11 * u, cy - 20 * u - WS.sin(a) * 9 * u);
-        g.lineTo(cx - WS.cos(a) * 5 * u, cy - 20 * u - WS.sin(a) * 4 * u);
-        g.stroke();
-      }
+      // near leg, hoofed
+      limb(g, P([[46, 64], [44, 75], [46, 84]]), [10, 8, 6].map(X), p);
+      poly(g, P([[41, 84], [49, 84], [50, 88.5], [40, 88.5]]), '#2a1e14', '#0e0804', u * 0.5);
+      g.strokeStyle = '#0e0804'; g.lineWidth = u * 0.6;
+      g.beginPath(); g.moveTo(X(45), Y(84.5)); g.lineTo(X(45), Y(88.5)); g.stroke();
+      // the head: heavy, slung forward, snout and tusks
+      const head = mass(g, P([[20, 34], [26, 24], [36, 20], [46, 24], [48, 34], [42, 42], [28, 44], [18, 41]]), p);
+      g.save(); head(); g.clip();
+      g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(X(14), Y(36), X(40), X(12));
       g.restore();
-      poly(g, [[cx - 6 * u, cy - 14 * u], [cx + 6 * u, cy - 14 * u], [cx, cy - 6 * u]], p.hi);
-      eyes(g, cx, cy - 22 * u, 5 * u, 1.8 * u, '#ffcf6b');
-      blade(g, cx + 24 * u, cy + 4 * u, 28 * u, 6 * u, 0.55, '#cdd3de', '#6b7280');
+      shaded(g, X(40), Y(22), X(3.6), X(4.6), p, 0.4);                 // ear
+      mass(g, P([[12, 34], [18, 31], [23, 34], [22, 41], [14, 42]]), { hi: p.glow, mid: p.hi, lo: p.mid, dark: p.lo, line: p.line, glow: '#fff' });
+      g.fillStyle = '#1a0c08';
+      for (const [x, y] of [[14.4, 36.4], [17.4, 36]]) { g.beginPath(); g.ellipse(X(x), Y(y), X(0.9), X(1.2), 0, 0, WS.TAU); g.fill(); }
+      // tusks
+      g.strokeStyle = '#f4ecdc'; g.lineWidth = u * 2.4; g.lineCap = 'round';
+      for (const [x, y] of [[20, 41], [25, 42.5]]) {
+        g.beginPath(); g.moveTo(X(x), Y(y)); g.quadraticCurveTo(X(x - 5), Y(y - 1), X(x - 5.5), Y(y - 7)); g.stroke();
+      }
+      eyes(g, X(29), Y(30), X(0.01), X(1.5), '#ff9d4a');
+      g.strokeStyle = p.line; g.lineWidth = u;
+      g.beginPath(); g.moveTo(X(26), Y(27.6)); g.lineTo(X(32), Y(29)); g.stroke();
+      // near arm, gripping the spear
+      limb(g, P([[42, 40], [36, 52], [32, 60]]), [8, 6.4, 5.6].map(X), p);
+      shaded(g, X(31), Y(61), X(3.8), X(3.4), p);
     },
 
     raptor(g, s, p) {

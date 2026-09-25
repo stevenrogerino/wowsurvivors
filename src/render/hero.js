@@ -910,14 +910,46 @@
       g.beginPath();
       g.ellipse(cx, HEAD_CY + 1.5, 8.4, 8.4, 0, 0, WS.TAU);
       g.clip();
-      const void_ = g.createRadialGradient(cx, HEAD_CY + 3, 1, cx, HEAD_CY + 1.5, 10);
-      void_.addColorStop(0, 'rgba(6,8,14,1)');
-      void_.addColorStop(0.7, 'rgba(6,8,14,.98)');
-      void_.addColorStop(1, 'rgba(6,8,14,.55)');
-      g.fillStyle = void_;
-      g.fillRect(cx - 10, HEAD_CY - 10, 20, 22);
-      g.restore();
-      eyes(g, cx, eyeY, C, true, true);
+      if (cfg.hoodFace) {
+        /* A face in the hood, not a void. The rogue and the warlock were the
+           two hooded survivors and both were a black hole with two lights in
+           it - the same head. The warlock keeps the dark; the rogue shows a
+           face, shadowed from the brow down, with a red kerchief over the
+           nose and mouth: the colours of the gang he walked out on. */
+        lit(g, SKIN, cx - 9, HEAD_CY - 7, cx + 7, HEAD_CY + 10);
+        g.fillRect(cx - 10, HEAD_CY - 10, 20, 22);
+        const shade = g.createLinearGradient(0, HEAD_CY - 7, 0, HEAD_CY + 3);
+        shade.addColorStop(0, 'rgba(8,8,14,.85)');
+        shade.addColorStop(1, 'rgba(8,8,14,0)');
+        g.fillStyle = shade;
+        g.fillRect(cx - 10, HEAD_CY - 10, 20, 14);
+        g.restore();
+        eyes(g, cx, eyeY, C, false, false);
+        const red = ramp([0.74, 0.16, 0.14]);
+        panel(g, [[cx - 8.6, eyeY + 2.4], [cx + 8.4, eyeY + 1.9], [cx + 7.2, HEAD_CY + 9],
+          [cx, HEAD_CY + 12.2], [cx - 7.4, HEAD_CY + 9.4]], red);
+        g.save();
+        g.strokeStyle = red.line; g.globalAlpha = 0.55; g.lineWidth = 0.6;
+        g.beginPath();
+        g.moveTo(cx - 6, eyeY + 4.6); g.quadraticCurveTo(cx, eyeY + 6.4, cx + 6, eyeY + 4.2);
+        g.moveTo(cx - 3.5, HEAD_CY + 9.4); g.lineTo(cx, HEAD_CY + 11.2); g.lineTo(cx + 3.4, HEAD_CY + 9);
+        g.stroke();
+        // white dots, the kerchief's pattern
+        g.globalAlpha = 0.7; g.fillStyle = '#f2e6d8';
+        for (const [dx, dy] of [[-4.5, 4.2], [-1, 5.4], [2.6, 4.8], [-2.6, 7.6], [1.4, 8.4], [4.6, 6.8]]) {
+          g.beginPath(); g.arc(cx + dx, eyeY + dy, 0.55, 0, WS.TAU); g.fill();
+        }
+        g.restore();
+      } else {
+        const void_ = g.createRadialGradient(cx, HEAD_CY + 3, 1, cx, HEAD_CY + 1.5, 10);
+        void_.addColorStop(0, 'rgba(6,8,14,1)');
+        void_.addColorStop(0.7, 'rgba(6,8,14,.98)');
+        void_.addColorStop(1, 'rgba(6,8,14,.55)');
+        g.fillStyle = void_;
+        g.fillRect(cx - 10, HEAD_CY - 10, 20, 22);
+        g.restore();
+        eyes(g, cx, eyeY, C, true, true);
+      }
       if (cfg.scarf) {
         /* A scarf pulled up to the chin, OUTSIDE the hood rather than inside
          * it. Painted across the shadow it read as a bandage over the mouth -
@@ -2960,18 +2992,18 @@
      * each and no two lines repeat; that is the test, and it is the same test
      * the silhouette rule applies to the outline. */
     mage: { build: 'slim', head: 'bare', robe: true, cloak: 'long', weapon: 'staff',
-      sash: true, sleeves: true, hair: DARKCLOTH, brand: 'mage', crownPoints: 11 },
+      sash: true, sleeves: true, hair: DARKCLOTH, brand: 'mage', crownPoints: 11, hat: 'wizard' },
     /* No tabard: the stole sits exactly where one goes and the two together
      * made the whole front of her one pale slab. Two bands with the robe
      * showing between them is the reading; three overlapping ones is a bib. */
     priest: { build: 'slim', head: 'bare', robe: true, cloak: 'short', halo: true,
       weapon: 'censer', stole: true, hair: ramp([0.55, 0.46, 0.33]),
-      brand: 'priest', crownPoints: 13 },
-    rogue: { build: 'slim', head: 'hood', cloak: 'cut', weapon: 'daggers',
-      scarf: true, sheaths: true, bracer: true, brand: 'rogue', crownPoints: 9 },
+      brand: 'priest', crownPoints: 13, veil: true },
+    rogue: { build: 'slim', head: 'hood', cloak: 'cut', weapon: 'daggers', hoodFace: true,
+      sheaths: true, bracer: true, brand: 'rogue', crownPoints: 9 },
     hunter: { build: 'normal', head: 'bare', weapon: 'bow', hoodDown: true, pelt: true,
       bracer: true, strap: true, bootknife: true, hair: ramp([0.30, 0.26, 0.18]),
-      brand: 'hunter' },
+      brand: 'hunter', hawk: true },
     /* One hand. The other is gone, which is what "The Fallen Hero" is about,
        and it is stated here rather than left to the drawing code to remember
        - a survivor's anatomy is part of who they are. The off arm ends in a
@@ -3722,6 +3754,136 @@
     g.restore();
   }
 
+  /** The mage's hat: wide in the brim, crooked in the crown, the tip gone
+   *  over to one side from being worn in every weather. Nobody else in the
+   *  cast wears anything on their head that is not armour or a hood, and at
+   *  34px the hat is the mage before the staff is. The band carries his
+   *  runes; the crown he earns is set on the band. */
+  function wizardHat(g, C) {
+    const cx = 50, by = HEAD_CY - HEAD_RY + 5.2;
+    const hatR = C.bodyRamp;
+    // the crown of the hat, leaning back and flopping to the left
+    lit(g, hatR, cx - 10, by, cx + 8, CEIL - 3);
+    g.beginPath();
+    g.moveTo(cx - 9.5, by);
+    g.bezierCurveTo(cx - 8, by - 6, cx - 3.5, CEIL - 1, cx + 1, CEIL - 2.5);
+    g.bezierCurveTo(cx - 4, CEIL - 3.2, cx - 10, CEIL - 0.5, cx - 14.5, CEIL + 3.2);
+    g.bezierCurveTo(cx - 9.5, CEIL + 0.5, cx - 3, CEIL + 1.5, cx + 2.5, CEIL + 0.5);
+    g.bezierCurveTo(cx + 6, by - 7, cx + 8.5, by - 3, cx + 9.5, by);
+    g.closePath(); g.fill();
+    finish(g, hatR, cx - 15, CEIL - 3, cx + 10, by);
+    // a crease where it folds
+    g.save();
+    g.strokeStyle = hatR.line; g.globalAlpha = 0.6; g.lineWidth = 0.8;
+    g.beginPath(); g.moveTo(cx - 5, CEIL + 2.4); g.quadraticCurveTo(cx - 1, CEIL + 5, cx + 1.5, CEIL + 2); g.stroke();
+    g.restore();
+    // the tip: a small bell of his colour
+    g.fillStyle = C.accentLight;
+    g.beginPath(); g.arc(cx - 14.5, CEIL + 3.6, 1.3, 0, WS.TAU); g.fill();
+    glow(g, cx - 14.5, CEIL + 3.6, 3.5, C.accent, 0.5);
+    // the band, with runes
+    panel(g, [[cx - 10, by - 3.2], [cx + 10, by - 3.4], [cx + 10.2, by + 0.4], [cx - 10.2, by + 0.4]], C.trimRamp);
+    g.fillStyle = C.accentLight;
+    for (let i = -2; i <= 2; i++) {
+      g.save(); g.translate(cx + i * 3.8, by - 1.5); g.rotate(i * 0.4);
+      g.fillRect(-0.4, -1, 0.8, 2); g.fillRect(-1, -0.3, 2, 0.6);
+      g.restore();
+    }
+    // the brim: wide, a lit top edge and its shadow on the face
+    lit(g, hatR, cx - 17, by - 1, cx + 17, by + 3);
+    g.beginPath(); g.ellipse(cx, by + 0.8, 17, 3.3, -0.04, 0, WS.TAU); g.fill();
+    finish(g, hatR, cx - 17, by - 2.5, cx + 17, by + 4);
+    g.save();
+    g.beginPath(); g.ellipse(cx, by + 3.4, 11, 2.2, 0, 0, WS.TAU); g.clip();
+    g.fillStyle = 'rgba(10,10,20,.35)'; g.fillRect(cx - 12, by + 1, 24, 5);
+    g.restore();
+  }
+
+  /** The priest's veil: white linen falling from the crown to the shoulders
+   *  on both sides of an open face, edged in gold. The rogue's hood is dark
+   *  and the warlock's is a void; this one is the only light-coloured thing
+   *  worn on a head in the cast, and it frames the face instead of hiding
+   *  it. Drawn in two parts: the fall behind the head, and the band across
+   *  the brow in front of the hair. */
+  function veil(g, C, front) {
+    const cx = 50;
+    const linen = ramp([0.9, 0.88, 0.84]);
+    if (!front) {
+      lit(g, linen, cx - 16, HEAD_CY - HEAD_RY - 4, cx + 14, SHOULDER_Y + 6);
+      g.beginPath();
+      g.moveTo(cx - 14, SHOULDER_Y + 6);
+      g.bezierCurveTo(cx - 16, HEAD_CY, cx - 14, HEAD_CY - HEAD_RY - 5, cx, HEAD_CY - HEAD_RY - 5);
+      g.bezierCurveTo(cx + 14, HEAD_CY - HEAD_RY - 5, cx + 16, HEAD_CY, cx + 14, SHOULDER_Y + 6);
+      g.lineTo(cx + 8, SHOULDER_Y + 3);
+      g.lineTo(cx - 8, SHOULDER_Y + 3);
+      g.closePath(); g.fill();
+      finish(g, linen, cx - 16, HEAD_CY - HEAD_RY - 5, cx + 16, SHOULDER_Y + 6);
+      g.save();
+      g.strokeStyle = C.trimRamp.key; g.lineWidth = 1.2; g.globalAlpha = 0.85;
+      g.beginPath();
+      g.moveTo(cx - 14, SHOULDER_Y + 6);
+      g.bezierCurveTo(cx - 16, HEAD_CY, cx - 14, HEAD_CY - HEAD_RY - 5, cx, HEAD_CY - HEAD_RY - 5);
+      g.bezierCurveTo(cx + 14, HEAD_CY - HEAD_RY - 5, cx + 16, HEAD_CY, cx + 14, SHOULDER_Y + 6);
+      g.stroke();
+      // folds down each side
+      g.strokeStyle = linen.line; g.globalAlpha = 0.4; g.lineWidth = 0.7;
+      for (const d of [-1, 1]) {
+        g.beginPath(); g.moveTo(cx + d * 12, HEAD_CY - 4); g.quadraticCurveTo(cx + d * 14.5, HEAD_CY + 8, cx + d * 12.5, SHOULDER_Y + 4); g.stroke();
+      }
+      g.restore();
+    } else {
+      // the band across the brow, over the hair
+      const by = HEAD_CY - HEAD_RY + 3.4;
+      panel(g, [[cx - HEAD_RX - 1, by + 3.4], [cx - HEAD_RX + 1, by - 1.6], [cx, by - 3.4],
+        [cx + HEAD_RX - 1, by - 1.6], [cx + HEAD_RX + 1, by + 3.4], [cx, by + 1.2]], linen);
+      g.save();
+      g.strokeStyle = C.trimRamp.key; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(cx - HEAD_RX - 1, by + 3.4); g.lineTo(cx, by + 1.2); g.lineTo(cx + HEAD_RX + 1, by + 3.4); g.stroke();
+      g.restore();
+      g.fillStyle = C.trimRamp.key;
+      g.beginPath(); g.arc(cx, by - 0.6, 1.1, 0, WS.TAU); g.fill();
+    }
+  }
+
+  /** The hunter's hawk, on the far shoulder, watching the other way. A
+   *  second living thing on the figure - the only one in the cast - and the
+   *  one mark that says "ranger" before the bow does. */
+  function hawk(g, b, w) {
+    const x = 50 - b.sh + 2, y = SHOULDER_Y - 3 + (w.lift || 0) * 0.3;
+    const brown = ramp([0.46, 0.32, 0.2], 'leather');
+    const pale = ramp([0.88, 0.84, 0.76]);
+    // tail, down the back of the shoulder
+    panel(g, [[x + 1, y + 3], [x + 4, y + 3], [x + 3.4, y + 12], [x + 0.4, y + 11]], brown);
+    // body
+    lit(g, brown, x - 5, y - 6, x + 5, y + 5);
+    g.beginPath(); g.ellipse(x + 1, y - 1, 4.6, 6, 0.25, 0, WS.TAU); g.fill();
+    finish(g, brown, x - 4, y - 7, x + 6, y + 5);
+    // pale breast with bars
+    g.save();
+    g.beginPath(); g.ellipse(x - 1.2, y, 2.6, 4.4, 0.2, 0, WS.TAU); g.clip();
+    lit(g, pale, x - 4, y - 4, x + 1, y + 4); g.fillRect(x - 5, y - 5, 7, 10);
+    g.strokeStyle = brown.line; g.globalAlpha = 0.5; g.lineWidth = 0.5;
+    for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(x - 3.5, y - 2 + i * 1.6); g.lineTo(x + 0.5, y - 2.4 + i * 1.6); g.stroke(); }
+    g.restore();
+    // the folded wing, a darker panel with a feathered edge
+    panel(g, [[x + 0.5, y - 5], [x + 5.4, y - 2.5], [x + 5, y + 4.5], [x + 2.2, y + 6], [x + 0.6, y + 2]],
+      ramp([0.34, 0.24, 0.16], 'leather'));
+    // head, looking out to the left, with a hooked beak
+    lit(g, brown, x - 5, y - 10, x + 1, y - 4);
+    g.beginPath(); g.ellipse(x - 1.5, y - 7.2, 3, 2.7, 0, 0, WS.TAU); g.fill();
+    g.fillStyle = '#e8c048';
+    g.beginPath(); g.moveTo(x - 4.2, y - 7.8); g.lineTo(x - 6.6, y - 6.8); g.lineTo(x - 4.6, y - 6); g.closePath(); g.fill();
+    g.fillStyle = '#1c140c';
+    g.beginPath(); g.moveTo(x - 6.6, y - 6.8); g.lineTo(x - 6.1, y - 5.6); g.lineTo(x - 5.4, y - 6.4); g.closePath(); g.fill();
+    g.fillStyle = '#fff4c0';
+    g.beginPath(); g.arc(x - 2.6, y - 7.8, 0.75, 0, WS.TAU); g.fill();
+    g.fillStyle = '#140c06';
+    g.beginPath(); g.arc(x - 2.7, y - 7.8, 0.4, 0, WS.TAU); g.fill();
+    // talons on the pauldron
+    g.strokeStyle = '#d8b048'; g.lineWidth = 0.7; g.lineCap = 'round';
+    for (const dx of [-0.5, 1.5]) { g.beginPath(); g.moveTo(x + dx, y + 4.5); g.lineTo(x + dx - 0.6, y + 6.2); g.stroke(); }
+  }
+
   /** A brass bell on a strap at the throat. You hear Milksupply before you
    *  see her, and at 34px you see the bell before you see anything else. */
   function cowbell(g, C) {
@@ -3779,14 +3941,24 @@
     if (cfg.emberHem) { g.save(); g.translate(0, -cloakLift); emberHem(g, cfg, C, b, w); g.restore(); }
     g.save(); g.translate(0, -lift);
     emberMantle(g, cfg, C, b, cfg.emberMantle || 0);
+    if (cfg.veil) veil(g, C, false);
     drawHead(g, cfg, C);
+    if (cfg.veil) veil(g, C, true);
     if (cfg.bell) cowbell(g, C);
+    if (cfg.hat === 'wizard') wizardHat(g, C);
     emberCrown(g, cfg, C, cfg.emberCrown || 0, b);
     // Offhand first, so the main weapon lands in front of it.
     const off = WEAPONS[cfg.offhand];
     if (off) off(g, C, b);
     const wp = WEAPONS[cfg.weapon];
     if (wp) wp(g, C, b);
+    // The hawk sits in front of the quiver, or it is a quiver with a beak.
+    if (cfg.hawk) {
+      const hx = 50 - b.sh + 2, hy = SHOULDER_Y - 3;
+      g.save(); g.translate(hx, hy); g.scale(1.4, 1.4); g.translate(-hx, -hy);
+      hawk(g, b, w);
+      g.restore();
+    }
     g.restore();
   }
 
