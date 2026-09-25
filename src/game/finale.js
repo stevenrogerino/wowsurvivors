@@ -61,7 +61,7 @@
   };
 
   /** Called from the dawn panel's "Face" button, with the game running. */
-  F.begin = function (run) {
+  F.begin = function (run, again) {
     this.reset();
     const def = WS.Finales[run.mapId];
     if (!def) return false;
@@ -70,7 +70,11 @@
     this.script = SCRIPTS[def.script];
     const hyper = run.hyper ? WS.Config.hyperScale : 1;
     this.power = F.powerFor(run);
-    this.hpScale = run.diffScale * hyper * this.power;
+    // Harder settings make the fight more dangerous in full, tougher only by
+    // a root of the same product (Config.finaleHpDifficultyExp).
+    this.hpScale = Math.pow(run.diffScale * hyper, WS.Config.finaleHpDifficultyExp) * this.power;
+    this.fightT = 0;
+    this.sunrise = false;
     /* The fight hits like the thirty minutes before it. Damage used to be
        difficulty times Hyper and nothing more, so a heavy telegraphed hit on
        Thornhollow did 44 while a common Kerchief at 30:00 touched for 134.
@@ -91,6 +95,7 @@
     WS.Projectile.hostiles.releaseAll();
     WS.Hazard.clear();
     WS.Moor.clear();
+    if (again) return true;
     WS.Game.announce('First Light', 'The horde cannot stand it. Something bigger can.', 3.4,
       { kind: 'glory' });
     WS.Audio.play('evolve');
@@ -100,13 +105,29 @@
   };
 
   /** How much more health this fight brings for the build that reached it -
-   *  see Config.finaleRefDps. 1 for anything at or below the reference. */
-  F.powerFor = function (run) {
+   *  see Config.finaleRefSingle. 1 for anything at or below the reference. */
+  F.powerFor = function () {
     const cfg = WS.Config;
-    const m = run.dawnMark;
-    const dps = m && run.time - m.t > 10 ? (run.damageDone - m.d) / (run.time - m.t) : run.dps;
-    const ratio = WS.max(1, (dps || 0) / cfg.finaleRefDps);
+    const ratio = WS.max(1, F.singleTarget(WS.Game.player) / cfg.finaleRefSingle);
     return WS.min(cfg.finalePowerCap, Math.pow(ratio, cfg.finalePowerExp));
+  };
+
+  /** What this kit does to ONE target, by the game's own reach model. */
+  F.singleTarget = function (p) {
+    let dps = 0;
+    for (const w of p.weapons) {
+      const r = WS.Weapon.reach(w.id, w.level, !!w.evolved, 1, p);
+      if (r) dps += r.dps;
+    }
+    return dps;
+  };
+
+  /** The sunrise: how much harder everything of the fight's own is hit once
+   *  it has run past Config.finaleSunriseAfter. 1 before. */
+  F.sunriseMult = function () {
+    const cfg = WS.Config;
+    const over = this.fightT - cfg.finaleSunriseAfter;
+    return over > 0 ? 1 + cfg.finaleSunriseStep * over / cfg.finaleSunriseEvery : 1;
   };
 
   /* ------------------------------------------------------------ helpers -- */
@@ -363,6 +384,41 @@
     run.kills++;
   }
 
+  /** A finale death can be taken back: the fight starts over, the dawn
+   *  stays banked, and nothing won on a retry is credited to the record. */
+  F.retryable = function () {
+    return this.running() && this.stage !== 'outro';
+  };
+
+  F.retry = function (run) {
+    const def = WS.Finales[run.mapId];
+    if (!def) return false;
+    run.finaleRetries = (run.finaleRetries || 0) + 1;
+    WS.Enemy.clear();
+    WS.Projectile.hostiles.releaseAll();
+    WS.Hazard.clear();
+    WS.Moor.clear();
+    WS.XP.vacuumAll();
+    this.begin(run, true);
+    // No second purge, no second blessing and no Beans: a short breath and
+    // straight back in.
+    const p = WS.Game.player;
+    this.stage = 'breather';
+    this.timer = C().finaleRetryBreather;
+    this.label = 'Again';
+    p.health = p.maxHealth;
+    p.invulnerable = WS.max(p.invulnerable, this.timer);
+    WS.FX.flash(p.x, p.y, 120, WS.CONST.COLORS.heal, 0.6);
+    WS.Game.announce('Again', `Attempt ${run.finaleRetries + 1}. The dawn is still yours; this fight's record is not.`, 3.0);
+    return true;
+  };
+
+  /** Kills that count toward the record: not on a retry. */
+  F.credit = function (id) {
+    if (WS.Game.run.finaleRetries) return;
+    WS.Save.stats.bosses[id] = (WS.Save.stats.bosses[id] || 0) + 1;
+  };
+
   function startBreather() {
     const p = WS.Game.player;
     F.stage = 'breather';
@@ -441,9 +497,11 @@
     F.bounds = null;
     F.darkness = 0; F.darkTarget = 0;
     run.finaleCleared = true;
-    const st = WS.Save.stats;
-    st.finales = st.finales || {};
-    st.finales[F.mapId] = (st.finales[F.mapId] || 0) + 1;
+    if (!run.finaleRetries) {
+      const st = WS.Save.stats;
+      st.finales = st.finales || {};
+      st.finales[F.mapId] = (st.finales[F.mapId] || 0) + 1;
+    }
     WS.Save.save();
     WS.Game.finaleVictory();
   }
@@ -488,6 +546,12 @@
     }
 
     if (this.stage === 'fight') {
+      this.fightT += dt;
+      if (!this.sunrise && this.fightT > C().finaleSunriseAfter) {
+        this.sunrise = true;
+        WS.Game.toast('The sun is rising', 'It burns whatever made the night. Every second it grows weaker.',
+          { kind: 'glory', art: 'sun', tint: [1.0, 0.86, 0.5] });
+      }
       // Parts ride their host; a host that is gone takes its parts with it.
       for (let i = this.units.length - 1; i >= 0; i--) {
         const e = this.units[i];
@@ -707,7 +771,7 @@
     e.finaleTag = 0;
     if (e.boss) {
       run.bossesSlain++;
-      WS.Save.stats.bosses[e.id] = (WS.Save.stats.bosses[e.id] || 0) + 1;
+      F.credit(e.id);
       const gold = WS.floor((t.gold || 100) * run.goldMult * WS.Game.player.goldMultiplier);
       WS.Game.addGold(gold, e.x, e.y);
       for (let n = 0; n < 10; n++) {
@@ -818,7 +882,7 @@
       }
 
       // The two thresholds, checked in whatever mode the fight is in.
-      if (!s.burrowed && hp <= T.burrowAt && s.mode !== 'burrow') {
+      if (!s.burrowed && hp <= T.burrowAt + 1e-6 && s.mode !== 'burrow') {
         s.burrowed = true;
         this.nextLine(F);
         for (const t of s.turrets) F.remove(t);
@@ -834,7 +898,7 @@
         F.addsRing('lampling', T.burrowLamplings, 700);
         return;
       }
-      if (!s.melt && hp <= T.meltdownAt && s.mode === 'stripped') {
+      if (!s.melt && hp <= T.meltdownAt + 1e-6 && s.mode === 'stripped') {
         s.melt = true;
         c.hpFloor = 0;
         F.say('meltdown');
@@ -1364,7 +1428,7 @@
         return;
       }
 
-      if (s.mode !== 'destruct' && hp <= T.destructAt) {
+      if (s.mode !== 'destruct' && hp <= T.destructAt + 1e-6) {
         this.destruct(F);
         return;
       }
@@ -1447,7 +1511,7 @@
           F.pod(w.x, w.y - 60, [[w.x - 60, w.y - 200], [w.x - 400, -180]], { speed: 260 });
           F.remove(w);
           s.core = null;
-          WS.Save.stats.bosses.stormbreaker = (WS.Save.stats.bosses.stormbreaker || 0) + 1;
+          F.credit('stormbreaker');
           WS.Game.run.bossesSlain++;
           F.win();
         }
@@ -1696,7 +1760,10 @@
           s.shardT -= dt;
           if (s.shardT <= 0) { this.shards(F); F.sayOnce('shards'); }
         }
-        if (hp <= T.winterAt) { this.winter(F); return; }
+        /* A hair of slack: his floor sits exactly on winterAt, and for about
+           one health total in sixteen, floor / maxHealth rounds to a shade
+           above it - he stood at 40% forever and the winter never came. */
+        if (hp <= T.winterAt + 1e-6) { this.winter(F); return; }
         // A ward line: the Pale closes round him again.
         if (L.hpFloor > 0 && L.health <= L.hpFloor + 0.5 && s.lines[s.line] > T.winterAt) {
           this.ward(F);
@@ -1934,7 +2001,7 @@
       } else if (s.mode === 'unbound') {
         s.restone -= dt;
         s.label = `Unbound · ${WS.max(0, WS.ceil(s.restone))}`;
-        if (hp <= T.stormAt) { this.storm(F); return; }
+        if (hp <= T.stormAt + 1e-6) { this.storm(F); return; }
         if (s.restone <= 0) {
           s.cycle++;
           this.bind(F, WS.max(T.stormAt, hp - 0.2));

@@ -22,6 +22,7 @@
     enrage: 0,
     pullTimer: 0,
     darkness: 0,
+    dmgScale: 1,
   };
 
   Arena.tuning = {
@@ -51,7 +52,12 @@
     this.darkness = 0;
     WS.Game.arenaBounds = BOUNDS;
 
-    this.boss = WS.Enemy.spawn('aethelgard', CX, CY - 120, 1, true);
+    /* Difficulty reaches the arena too: every hazard hits for the full
+       difficulty factor, and Aethelgard's health grows by its square root, so
+       a harder setting is a more dangerous duel rather than a longer one. */
+    const run = WS.Game.run;
+    this.dmgScale = run.diffScale * (run.hyper ? WS.Config.hyperScale : 1);
+    this.boss = WS.Enemy.spawn('aethelgard', CX, CY - 120, Math.sqrt(this.dmgScale), true);
     if (this.boss) {
       WS.Game.announce(this.boss.template.name, this.boss.template.yell, 4.0,
         { kind: 'dread', art: this.boss.template.art, tint: this.boss.template.tint });
@@ -220,7 +226,7 @@
           const a = WS.atan2(player.y - h.cy, player.x - h.cx);
           if (!inGap(h, a)) {
             h.hit = true;
-            WS.Player.takeDamage(player, h.damage, 'Solar Flare');
+            WS.Player.takeDamage(player, h.damage * this.dmgScale, 'Solar Flare');
           }
         }
         if (h.r > 900) this.hazards.splice(i, 1);
@@ -233,7 +239,7 @@
             // The spear lands the moment the telegraph expires.
             if (player.x >= h.x && player.x <= h.x + h.w
               && player.y >= h.y && player.y <= h.y + h.h) {
-              WS.Player.takeDamage(player, h.damage, 'Sunfall Spear');
+              WS.Player.takeDamage(player, h.damage * this.dmgScale, 'Sunfall Spear');
             }
             WS.FX.flash(h.x + h.w / 2, h.y + h.h / 2, h.w * 0.5, [1.0, 0.86, 0.45], 0.3);
             WS.Audio.play('hit');
@@ -251,7 +257,7 @@
             let diff = ((pa - armAng + WS.PI * 3) % WS.TAU) - WS.PI;
             if (WS.abs(diff) <= h.half) {
               h.hitTimer = 0.8;
-              WS.Player.takeDamage(player, h.damage, 'Eclipse Cross');
+              WS.Player.takeDamage(player, h.damage * this.dmgScale, 'Eclipse Cross');
               break;
             }
           }

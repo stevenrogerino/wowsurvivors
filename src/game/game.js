@@ -445,6 +445,18 @@
     WS.Finale.begin(this.run);
   };
 
+  /** Back into the finale after dying in it. The survivor gets up whole with
+   *  the kit they fell with; Finale.retry keeps the win off the record. */
+  Game.retryFinale = function () {
+    const run = this.run;
+    run.killedBy = null;
+    this.timeScale = 1;
+    this.running = true;
+    this.state = 'playing';
+    WS.UI.closeOverlay();
+    WS.Finale.retry(run);
+  };
+
   /** The finale is beaten. The story ends here, so the dawn plays here. */
   Game.finaleVictory = function () {
     this.state = 'over';
@@ -597,13 +609,6 @@
       run.hps = span > 0 ? hs / span : 0;
       run.ohps = span > 0 ? os / span : 0;
     }
-    /* What the build is doing in the last stretch before dawn - the finale
-       sizes itself to it (Finale.power). Two minutes, not the HUD's ten
-       seconds, so one lucky screen-clear does not set the boss's health. */
-    if (!run.dawnMark && run.time >= WS.Config.deathTime - WS.Config.finalePowerWindow) {
-      run.dawnMark = { t: run.time, d: run.damageDone };
-    }
-
     run.noHitStreak += dt;
     run.bestNoHitStreak = WS.max(run.bestNoHitStreak, run.noHitStreak);
     // The streak achievement is checked live, so it can fire mid-run.
@@ -775,7 +780,13 @@
     if (this.state === 'dying') {
       WS.FX.update(frameDt);
       this.deathTimer -= frameDt;
-      if (this.deathTimer <= 0) this.endRun('defeated');
+      if (this.deathTimer <= 0) {
+        // Fallen in a finale: the dawn is banked, so offer the fight again.
+        if (WS.Finale.retryable()) {
+          this.state = 'over';
+          WS.UI.openFinaleFallen();
+        } else this.endRun('defeated');
+      }
       return;
     }
 

@@ -36,7 +36,12 @@
   Wave.enemyScale = function (time) {
     const run = WS.Game.run;
     const hyper = run.hyper ? WS.Config.hyperScale : 1;
-    let s = (1 + time / WS.Config.enemyScaleTime) * this.map.difficulty * run.diffScale * hyper;
+    // The dials (map x difficulty x Hyper) ease in over the opening minutes -
+    // see Config.difficultyRampStart.
+    const cfg = WS.Config;
+    const dial = this.map.difficulty * run.diffScale * hyper;
+    const k = WS.min(1, cfg.difficultyRampStart + (1 - cfg.difficultyRampStart) * time / cfg.difficultyRampTime);
+    let s = (1 + time / cfg.enemyScaleTime) * (1 + (dial - 1) * k);
     if (run.victorious || run.mode === 'endless') {
       s *= 1 + WS.max(0, time - WS.Config.endlessRampStart) / WS.Config.endlessEnemyRampTime;
     }

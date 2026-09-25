@@ -3188,8 +3188,10 @@
     const def = WS.Finales && WS.Finales[run.mapId];
     const canFace = !!def && WS.Finale.available(run) && !run.finaleStarted;
     if (run.finaleCleared && def && def.epilogue) {
+      const retried = run.finaleRetries
+        ? ` Won on a retry, so it stays off the record.` : '';
       s.body.append(verdict('win', def.epilogue[0],
-        `${def.epilogue[1]} Death is still out there, if you want it.`,
+        `${def.epilogue[1]}${retried} Death is still out there, if you want it.`,
         runFigures(run, WS.Game.player), logEntry(run, WS.Game.player, 'dawn')));
     } else if (canFace) {
       s.body.append(verdict('win', 'Dawn, and not the end',
@@ -3231,6 +3233,35 @@
     stay.addEventListener('click', () => WS.Game.continueEndless());
     s.foot.append(el('div', 'spacer'), stay, claim);
     if (face) s.foot.append(face);
+    this.show(s.inner);
+  };
+
+  /** Fallen in a finale. The dawn is already banked, so this is not the end
+   *  of the run unless the player says so: the fight can be tried again as
+   *  often as they like, it just no longer counts toward the record. */
+  UI.openFinaleFallen = function () {
+    const run = WS.Game.run;
+    const def = WS.Finales[run.mapId];
+    const s = shell(run.map.name,
+      `${WS.Config.difficulties[WS.Save.settings.difficulty].label}`
+      + `${run.hyper ? ' · Hyper' : ''} · ${WS.Characters[run.characterId].name}`);
+    s.inner.classList.add('sheet-wide');
+    const by = run.killedBy ? run.killedBy.name : def.title;
+    // "Brother Kael, the Stormbound, still stands": close an appositive.
+    s.body.append(verdict('loss', `${def.title}${def.title.indexOf(',') >= 0 ? ',' : ''} still stands`,
+      `${by} got through. The dawn is banked either way. Try again as often as you like: `
+      + 'you keep the kit you fell with, but a win on a retry does not count toward the record '
+      + 'or its achievement.',
+      runFigures(run, WS.Game.player), logEntry(run, WS.Game.player, 'defeated')));
+    s.body.classList.add('fitted');
+    s.body.append(buildSheet(true));
+    const end = el('button', 'btn', 'End the run');
+    end.addEventListener('click', () => WS.Game.endRun('defeated'));
+    const again = el('button', 'btn primary', 'Try again');
+    again.dataset.tip = 'Back into the fight at full health after a short breath. '
+      + 'No blessing and no Beans this time, and no finale credit if you win.';
+    again.addEventListener('click', () => WS.Game.retryFinale());
+    s.foot.append(el('div', 'spacer'), end, again);
     this.show(s.inner);
   };
 

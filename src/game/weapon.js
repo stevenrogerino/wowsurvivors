@@ -963,6 +963,7 @@
         lines.push(['Pierce', (d.pierce || 0) + (w.evolved ? WS.Config.evolvePierce : 0)]);
       }
     }
+    if (d.bossDamage && d.bossDamage !== 1) lines.push(['Vs bosses', '×' + d.bossDamage]);
     return lines;
   };
 

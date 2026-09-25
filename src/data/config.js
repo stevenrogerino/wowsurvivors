@@ -89,22 +89,50 @@
     /* One dial over every finale's damage (each also names its own scale,
        tuning.damage in data/finales.js). */
     finaleDamage: 1.0,
-    /* The finales size their health to the build that reaches them. The
-       fights were tuned against a build doing finaleRefDps; a real 30:00
-       build was measured at 130k+ (27 times that) and deleted Mordecai in
-       his first window. Health grows by (dps / ref) ^ finalePowerExp, so a
-       stronger build still wins faster - 27x the damage ends the fight
-       about 2.7x sooner, not 27x - and is capped at finalePowerCap. dps is
-       the average over the last finalePowerWindow seconds before dawn. */
-    finaleRefDps: 5000,
+    /* The finales size their health to the build that reaches them: by
+       (single / finaleRefSingle) ^ finalePowerExp, capped at finalePowerCap,
+       so a stronger build still wins faster - 8x the damage ends the fight
+       about 2.3x sooner, not 8x.
+
+       `single` is the build's modelled damage against ONE target
+       (Weapon.reach with a crowd of one, summed over the kit). It used to be
+       the damage the build did to the whole field in the two minutes before
+       dawn, and that measured the horde, not the build: an area build that
+       shreds hundreds of weak things read as enormous power and got a boss
+       it could not finish, and a harder map read as a stronger build (more
+       health to chew through means less overkill wasted), so the Pale Lord
+       came out at 10 to 20 times his health and nobody could kill him. */
+    finaleRefSingle: 1500,
     finalePowerExp: 0.7,
-    finalePowerCap: 40,
-    finalePowerWindow: 120,
+    finalePowerCap: 6,
+    /* Difficulty and Hyper make a finale hit harder in full, and make it
+       tougher only by this power of the same product - a harder setting is
+       a more dangerous fight, not a longer one. At 1 the health took the full
+       product too, and on Professional Hyper a fight sized for three minutes
+       ran twelve to twenty. */
+    finaleHpDifficultyExp: 0.5,
+    /* Sunrise: the dawn keeps coming while the fight goes on. Past
+       finaleSunriseAfter seconds the villain and its machines take
+       finaleSunriseStep more damage for every finaleSunriseEvery seconds, so
+       no fight can stall - a build that cannot open the gates quickly gets
+       there in the end, and one that can never sees it. */
+    finaleSunriseAfter: 180,
+    finaleSunriseStep: 0.5,
+    finaleSunriseEvery: 60,
+    /* The difficulty dials (map x difficulty x Hyper) ease in: at 0:00 an
+       enemy carries difficultyRampStart of their extra, all of it by
+       difficultyRampTime seconds. Applied in full from the first second, a
+       Professional Hyper run on the Pale Wastes met four-times ghouls with
+       one level-1 weapon and was over inside a minute. */
+    difficultyRampStart: 0.35,
+    difficultyRampTime: 360,
     // The finale engine: the breather before the boss, how fast the purge
     // clears the field, how long the epilogue holds, how often a beam or a
     // fence can hit again while you stand in it, how close a fence reaches,
     // and how long before a charge goes that its lane stops following you.
     finaleBreather: 30,
+    // A retry after a finale death: a short breath, then the fight again.
+    finaleRetryBreather: 6,
     finalePurgeSpeed: 1150,
     finaleEpilogue: 3.6,
     finaleRehit: 0.7,

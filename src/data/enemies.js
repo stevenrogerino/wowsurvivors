@@ -68,7 +68,7 @@
     harvest_reaper: {
       name: 'Harvest Reaper', family: 'mechanical', art: 'golem', tint: [0.80, 0.70, 0.40],
       health: 103, speed: 46, damage: 18, xp: 10, radius: 20,
-      burst: { radius: 92, damagePct: 1.1, tint: [1.00, 0.62, 0.25] },
+      burst: { radius: 92, damagePct: 0.8, tint: [1.00, 0.62, 0.25] },
     },
     fleshripper: {
       name: 'Young Fleshripper', family: 'beast', art: 'vulture', tint: [0.85, 0.60, 0.40],
@@ -158,7 +158,7 @@
     geist: {
       name: 'Hungering Geist', family: 'undead', art: 'geist', tint: [0.70, 0.85, 0.95],
       health: 59, speed: 118, damage: 15, xp: 10, radius: 14,
-      burst: { radius: 74, damagePct: 0.9, fuse: 0.55, tint: [0.60, 0.90, 1.00] },
+      burst: { radius: 74, damagePct: 0.6, fuse: 0.7, tint: [0.60, 0.90, 1.00] },
     },
     /* -------------------------------------------------------- Highmoor ---- */
     stormhorn_ram: {
@@ -178,7 +178,7 @@
     stormwisp: {
       name: 'Stormwisp', family: 'elemental', art: 'wisp', tint: [0.62, 0.82, 1.00],
       health: 58, speed: 124, damage: 15, xp: 10, radius: 13,
-      burst: { radius: 70, damagePct: 0.9, fuse: 0.55, tint: [0.70, 0.88, 1.00] },
+      burst: { radius: 70, damagePct: 0.6, fuse: 0.7, tint: [0.70, 0.88, 1.00] },
     },
   };
 
@@ -195,7 +195,7 @@
       name: 'Kerchief Enforcer', family: 'kerchief', elite: true, art: 'brute', bossKit: ['pauldrons'],
       tint: [1.00, 0.45, 0.30], health: 518, speed: 72, damage: 28, xp: 44, radius: 28,
       spriteScale: 1.2,
-      lunge: { range: 300, cooldown: 5.0, windup: 0.55, time: 0.45 },
+      lunge: { range: 300, cooldown: 5.0, windup: 0.7, time: 0.45 },
     },
     bone_sentinel: {
       name: 'Bone Sentinel', family: 'undead', elite: true, art: 'skeleton', bossKit: ['horns'],
@@ -204,7 +204,7 @@
     karrash_battlelord: {
       name: 'Karrash Battlelord', family: 'karrash', elite: true, art: 'karrash', bossKit: ['horns'],
       tint: [1.00, 0.62, 0.20], health: 842, speed: 78, damage: 37, xp: 68, radius: 30,
-      lunge: { range: 340, cooldown: 4.4, windup: 0.55, time: 0.5 },
+      lunge: { range: 340, cooldown: 4.4, windup: 0.75, time: 0.5 },
     },
     deathbound_vanguard: {
       name: 'Deathbound Vanguard', family: 'undead', elite: true, art: 'skeleton', bossKit: ['spines', 'brand'],
@@ -214,7 +214,7 @@
       name: 'Thunderscale Drake', family: 'highland', elite: true, art: 'raptor', bossKit: ['spines'],
       tint: [0.40, 0.66, 1.00], health: 1080, speed: 80, damage: 42, xp: 82, radius: 30,
       spriteScale: 1.2,
-      lunge: { range: 340, cooldown: 4.4, windup: 0.55, time: 0.5 },
+      lunge: { range: 340, cooldown: 4.4, windup: 0.75, time: 0.5 },
     },
     // Eclipse Arena: a stationary channeler that drags you toward the chasm.
     shadow_weaver: {

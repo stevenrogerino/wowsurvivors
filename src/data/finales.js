@@ -231,8 +231,8 @@
       tuning: {
         damage: 9,   // x difficulty x Hyper x Config.finaleDamage
         sailSpeed: 70, broadsideDamage: 40, broadsideTele: 1.2, broadsideWidth: 64,
-        grapeDamage: 26, kegDamage: 46, kegRadius: 80, kegTele: 1.2,
-        dashDamage: 50, dashWindup: 0.55, dashTime: 0.35, dashRange: 340,
+        grapeDamage: 26, kegDamage: 40, kegRadius: 80, kegTele: 1.2,
+        dashDamage: 42, dashWindup: 0.55, dashTime: 0.35, dashRange: 340,
         // The second and third dash of a set: quicker, but still a human's
         // reaction plus a step - below ~0.5s a lane this wide cannot be left.
         dashChainWindup: 0.5,
@@ -371,7 +371,7 @@
         pipeBreak: 0.15, debrisDamage: 48, debrisRadius: 70, debrisTele: 1.1,
         ventDamage: 44, ventSpin: 0.7, ventTele: 1.2,
         shardReduce: 0.40, shardEvery: 30, winterAt: 0.40, winterEnrage: 130,
-        novaDamage: 50, novaSpeed: 200, novaGap: 30,
+        novaDamage: 40, novaSpeed: 200, novaGap: 30,
         gridDamage: 56, gridTele: 1.35, spikeDamage: 44,
         ghouls: 10,
         dropGravity: 1100, breachTime: 7.4,
@@ -420,7 +420,7 @@
       ],
       epilogue: ['The storm breaks', 'Brother Kael walks down off the moor, very slowly, in no particular hurry at all.'],
       tuning: {
-        damage: 12.5,   // x difficulty x Hyper x Config.finaleDamage
+        damage: 9.5,   // x difficulty x Hyper x Config.finaleDamage
         // While any storm stone stands he takes stoneShield and cannot be
         // broken below stoneFloor; each stone that falls takes stoneBreak of
         // him with it. Past stormAt the storm takes the rest of him.

@@ -5,6 +5,52 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
 
 <!-- new entries go directly below -->
 
+## 2026-09-25: The balance lab pass (all difficulties, mostly the hardest)
+
+Measured on 3,897 bot games (every survivor, all six battlefields, Beginner
+to Professional Hyper, finale replays from the same dawn kits, the arena).
+Playtest: "some bosses you can literally sit there and they don't die", and
+the survivor was not in danger either.
+
+**Finales**
+- Health sized from single-target power (the reach model with a crowd of
+  one), not total damage before dawn: `finaleRefSingle` 1500,
+  `finalePowerExp` 0.7, `finalePowerCap` 6. Area builds read as up to ×20
+  power and got bosses they could not finish.
+- Difficulty and Hyper raise finale health by the square root of their
+  product (`finaleHpDifficultyExp` 0.5); damage keeps the full product.
+- Sunrise: after `finaleSunriseAfter` 180s of fight the finale's own units
+  take +`finaleSunriseStep` 50% per `finaleSunriseEvery` 60s.
+- 1e-6 tolerance on the winter, burrow, meltdown, destruct and storm lines
+  (the Pale Lord stuck at 40% in 8 of 219 finales).
+- Highmoor damage scale 12.5→9.5; Pale Lord nova 50→40; Admiral dash 50→42,
+  keg 46→40.
+- Retry: dying in a finale offers "Try again" (full health, the kit you fell
+  with, `finaleRetryBreather` 6s, no blessing, no Beans). A retry win is not
+  credited to `statistics.finales` or boss kills.
+- Measured: Veteran win 38%→73%, stalls 15%→1%. Professional Hyper win
+  14%→55%, stalls 42%→0%, fight 7:13→3:32. Deaths at Professional Hyper
+  (~45%) kept on purpose.
+
+**Bosses and weapons**
+- `bossDamage` on 17 weapons (Sanctuary 3.7 down to Rimeshard 1.1), applied
+  to bosses, elites and finale units, shown as "Vs bosses" in tooltips.
+  Measured single-target damage spanned 17×.
+- Aethelgard 324k→520k. The arena now scales: hazards × difficulty × Hyper,
+  Aethelgard health × its square root.
+- Ruin Unbound checked, not changed: on a dummy with one shared late kit it
+  is mid-pack (1,788 DPS vs Axe Gyre 3,321, Umbral Bolt 2,831).
+
+**Early game**
+- Difficulty dials ease in: `difficultyRampStart` 35% of the extra at 0:00,
+  all of it by `difficultyRampTime` 360s. Professional Hyper alive at 1:00
+  64%→96% (Pale Wastes 7%→80%, Highmoor 20%→93%).
+- Geist and Stormwisp burst 0.9→0.6, fuse 0.55→0.7s; Harvest Reaper burst
+  1.1→0.8. Lunge wind-ups: Karrash Battlelord and Thunderscale 0.55→0.75s,
+  Kerchief Enforcer 0.55→0.7s.
+- Health: Shaman 125→145, Hunter 115→130, Rogue 100→115 (armour unchanged).
+- Gems drop inside the field.
+
 ## 2026-09-24 — Marrowfrost (Pale Wastes finale) holds the end of the story
 
 Playtest: "looked awesome but again too easy and died too fast".

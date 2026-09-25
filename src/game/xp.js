@@ -39,7 +39,13 @@
 
   XP.spawnGem = function (x, y, value) {
     if (value <= 0) return;
-    const gx = x + WS.randRange(-6, 6), gy = y + WS.randRange(-6, 6);
+    /* Inside the field. Enemies arrive from up to 120px beyond the edge and
+       a long-range build kills plenty of them out there; their gems used to
+       drop where they fell, past where the survivor can walk, and by two
+       minutes most of the experience on the field was out of reach. */
+    const W = WS.CONST.WORLD_WIDTH, H = WS.CONST.WORLD_HEIGHT;
+    const gx = WS.clamp(x + WS.randRange(-6, 6), 14, W - 14);
+    const gy = WS.clamp(y + WS.randRange(-6, 6), 14, H - 14);
 
     // Fold into a neighbour if there is one. The scan is linear, but it ends
     // on the first hit and the field is densest exactly when hits are likely.

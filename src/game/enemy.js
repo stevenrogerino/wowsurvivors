@@ -508,6 +508,17 @@
   /** Central strike entry: rolls the survivor's crit and prints the number. */
   Enemy.hit = function (e, amount, source) {
     const player = WS.Game.player;
+    /* A weapon built to sweep a crowd still has to finish a boss. Novas,
+       fields, chains and the like hit one big target far more softly than
+       a bolt does - measured on late bosses, the weakest did a twentieth of
+       the strongest - so each carries a bossDamage factor (weapons.js) for
+       bosses, elites and the finales' machines and their parts. */
+    if (e.boss || e.elite || e.finaleTag) {
+      const w = source && WS.Weapons[source];
+      if (w && w.bossDamage) amount *= w.bossDamage;
+    }
+    // The finale's own, under a rising sun (Finale.sunriseMult).
+    if (e.finaleTag) amount *= WS.Finale.sunriseMult();
     const crit = WS.random() < player.critChance;
     if (crit) amount *= player.critDamage;
     if (e.dmgTaken !== 1) amount *= e.dmgTaken;

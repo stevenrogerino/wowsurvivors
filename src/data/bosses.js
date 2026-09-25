@@ -202,7 +202,7 @@
       /* spriteScale, not radius: the corona is drawn inside its own tile now
          (it never was), so the sprite lost reach. This buys the presence back
          without moving the hitbox on the final fight in the game. */
-      health: 324000, speed: 0, damage: 37, xp: 0, radius: 62, gold: 0,
+      health: 520000, speed: 0, damage: 37, xp: 0, radius: 62, gold: 0,
       spriteScale: 1.35,
       interval: 99, arena: true, stationary: true, school: 'holy',
       patterns: [{ type: 'charge' }],

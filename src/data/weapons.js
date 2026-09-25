@@ -1,12 +1,19 @@
 /* Weapon definitions. `behavior` selects a handler in src/game/weapon.js:
  *   aimed | spray | ring | nova | zone | chain | orbit | storm | bounce | beam
  * Weapons rank to 8; a rank-8 weapon whose `evolvePairing` passive has been
- * learned may evolve. `art` names a procedural projectile sprite. */
+ * learned may evolve. `art` names a procedural projectile sprite.
+ *
+ * `bossDamage` multiplies what a weapon does to bosses, elites and the
+ * finales' machines and parts (Enemy.hit). Weapons built for crowds hit one
+ * big target softly; these factors were set from what each weapon measurably
+ * did to late scheduled bosses at rank 7+, so every weapon lands within a
+ * few times of the others single-target. Absent means 1. */
 'use strict';
 (function (WS) {
 
   WS.Weapons = {
     seeking_motes: {
+      bossDamage: 1.7,
       name: 'Seeking Motes', school: 'arcane', behavior: 'aimed', art: 'missile',
       cooldown: 0.934, damage: 5.46, speed: 337, projectiles: 3, pierce: 2, range: 560,
       homing: true, life: 2.2, radius: 6, burst: true,
@@ -23,6 +30,7 @@
       evolveDescription: 'The cinder becomes a falling star.',
     },
     rimeshard: {
+      bossDamage: 1.1,
       name: 'Rimeshard', school: 'frost', behavior: 'aimed', art: 'shard',
       cooldown: 1.209, damage: 18.2, speed: 364, projectiles: 1, pierce: 2, range: 580,
       slowFactor: 0.55, slowDuration: 2.0, life: 2.2, radius: 9,
@@ -31,6 +39,7 @@
       evolveDescription: 'Winter itself takes the field.',
     },
     arcweb: {
+      bossDamage: 3.5,
       name: 'Arcweb', school: 'nature', behavior: 'chain',
       color: [0.55, 0.80, 1.00], art: 'spark',
       cooldown: 1.649, damage: 27.3, chains: 5, range: 250,
@@ -39,6 +48,7 @@
       evolveDescription: 'The sky answers every call.',
     },
     dawnpulse: {
+      bossDamage: 2.4,
       name: 'Dawnpulse', school: 'holy', behavior: 'nova', art: 'ring',
       cooldown: 2.638, damage: 27.3, radius: 150, expandTime: 0.35, knockback: 26,
       description: 'A ring of Light erupts outward from the survivor.',
@@ -46,6 +56,7 @@
       evolveDescription: 'Each dawn mends the faithful.', evolvedHeal: 3,
     },
     verdant_lance: {
+      bossDamage: 2.45,
       name: 'Verdant Lance', school: 'nature', behavior: 'beam', art: 'beam',
       cooldown: 1.429, damage: 20.02, range: 620, beamWidth: 26,
       metaWidthMult: 1.8, color: [0.55, 1.00, 0.20],
@@ -70,6 +81,7 @@
       evolveDescription: 'The blight spreads wider the longer it feeds.', evolvedHeal: 1,
     },
     reaving_arc: {
+      bossDamage: 2.9,
       name: 'Reaving Arc', school: 'shadow', behavior: 'nova', art: 'ring',
       cooldown: 2.418, damage: 30.94, radius: 130, expandTime: 0.28, knockback: 20,
       heal: 6, color: [0.85, 0.15, 0.20],
@@ -78,6 +90,7 @@
       evolveDescription: 'The blade drinks deeper than any wound can hold.', evolvedHeal: 6,
     },
     hallowed_ring: {
+      bossDamage: 1.7,
       name: 'Hallowed Ring', school: 'holy', behavior: 'zone', art: 'zone',
       cooldown: 3.956, damage: 10.01, radius: 120, duration: 4.0, tickRate: 0.5,
       description: "Hallows the ground beneath the survivor's feet.",
@@ -93,6 +106,7 @@
       evolveDescription: 'Ruin that nothing can stop.',
     },
     knifestorm: {
+      bossDamage: 2.9,
       name: 'Knifestorm', school: 'physical', behavior: 'ring', art: 'dagger',
       cooldown: 1.429, damage: 16.38, speed: 346, projectiles: 6, pierce: 1,
       life: 0.9, radius: 8,
@@ -123,6 +137,7 @@
       evolveDescription: 'Become the storm of blades.',
     },
     volley: {
+      bossDamage: 1.4,
       name: 'Volley', school: 'physical', behavior: 'spray', art: 'arrow',
       cooldown: 1.539, damage: 15.47, speed: 419, projectiles: 3, pierce: 2, range: 620,
       spread: 0.16, life: 1.7, radius: 8,
@@ -140,6 +155,7 @@
       evolvedBehavior: 'storm', strikes: 5, stormRadius: 230, splash: 60,
     },
     judgement_disc: {
+      bossDamage: 2.45,
       name: 'Judgement Disc', school: 'holy', behavior: 'bounce', art: 'shield',
       cooldown: 2.308, damage: 27.3, speed: 391, projectiles: 1, bounces: 5, range: 600,
       life: 3.0, radius: 11,
@@ -158,6 +174,7 @@
      * and back. Every figure was fitted against the rest of the arsenal in
      * tools/sim.js, alone at rank 1 and rank 8. */
     iron_palms: {
+      bossDamage: 1.15,
       name: 'Iron Palms', school: 'physical', behavior: 'palm', art: 'palm',
       cooldown: 0.95, damage: 15, projectiles: 3, reach: 118, arc: 1.25, knockback: 14,
       waveReach: 2.8, waveDamage: 0.8, waveSpeed: 520,
@@ -167,6 +184,7 @@
       evolveDescription: 'Every palm lands like the temple bell.',
     },
     spirit_herd: {
+      bossDamage: 1.8,
       name: 'Spirit Herd', school: 'nature', behavior: 'herd', art: 'herd',
       cooldown: 2.6, damage: 21, speed: 330, projectiles: 2, pierce: 99, range: 620,
       life: 1.8, radius: 16, knock: 22, color: [0.62, 0.92, 0.55],
@@ -183,6 +201,7 @@
       evolveDescription: 'The brambles flower, and the flowers have thorns too.',
     },
     gale_chakram: {
+      bossDamage: 1.4,
       name: 'Gale Chakram', school: 'physical', behavior: 'chakram', art: 'chakram',
       cooldown: 1.7, damage: 16, speed: 380, projectiles: 1, range: 330, life: 2.6, radius: 12,
       color: [0.78, 0.92, 1.0],
@@ -268,11 +287,13 @@
       description: 'Ruin that devours everything in its path.',
     },
     union_steel: {
+      bossDamage: 1.6,
       name: 'Storm of Steel', school: 'physical', behavior: 'ring', isUnion: true, art: 'dagger',
       cooldown: 0.934, damage: 16.38, speed: 400, projectiles: 12, pierce: 3, life: 1.1, radius: 9,
       description: 'An unending cyclone of thrown steel.',
     },
     union_sanctuary: {
+      bossDamage: 3.7,
       name: 'Sanctuary', school: 'holy', behavior: 'nova', isUnion: true, art: 'ring',
       cooldown: 1.978, damage: 23.66, radius: 205, expandTime: 0.4, knockback: 34,
       description: 'The Light claims this ground as its own.',
@@ -284,12 +305,14 @@
       description: 'Blessed blade of the Tempest: a cyclone of steel that answers every cut with lightning.',
     },
     union_tempest_kata: {
+      bossDamage: 1.8,
       name: 'Tempest Kata', school: 'physical', behavior: 'palm', isUnion: true, art: 'palm',
       cooldown: 1.0, damage: 9, projectiles: 3, reach: 135, arc: 6.2832, knockback: 10,
       color: [0.78, 0.92, 1.0],
       description: 'Palm and ring become one form: strikes in every direction at once, and the wind they leave behind cuts too.',
     },
     union_wild_hunt: {
+      bossDamage: 1.55,
       name: 'The Wild Hunt', school: 'nature', behavior: 'herd', isUnion: true, art: 'herd',
       cooldown: 1.9, damage: 22, speed: 360, projectiles: 5, pierce: 99, range: 640,
       life: 2.1, radius: 19, knock: 26, endBurst: 76, color: [0.55, 1.0, 0.25],
