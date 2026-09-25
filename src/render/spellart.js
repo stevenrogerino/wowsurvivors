@@ -557,6 +557,35 @@
     ctx.drawImage(b.canvas, -b.ox * k, -b.oy * k, b.w * k, b.h * k);
   };
 
+  /* --------------------------------------------------------------- glows */
+  /* A hollow radial glow, baked once per colour and size and stamped with
+     drawImage. The gyre's blade corona was a fresh radial gradient per blade
+     per frame, and a whirl that recasts before the last ring ends keeps two
+     rings - thirty-odd blades at full rank - each with its own; the gradient
+     objects were the main-thread cost and the pixels under them the rest.
+     `inner` is where the light starts as a fraction of the radius, and the
+     three stops are the alphas at the inner edge, 30% of the way out, and the
+     rim - which is always zero. */
+  const glows = new Map();
+  SA.glow = function (colour, radius, inner, a0, a1) {
+    const rr = Math.max(4, Math.round(radius / 2) * 2);
+    const key = keyOf(colour) + '|' + rr + '|' + Math.round(inner * 20) + '|' + Math.round(a0 * 40) + '|' + Math.round(a1 * 40);
+    let cv = glows.get(key);
+    if (cv) return cv;
+    if (glows.size > 160) glows.clear();
+    cv = document.createElement('canvas');
+    cv.width = cv.height = rr * 2;
+    const g = cv.getContext('2d');
+    const grd = g.createRadialGradient(rr, rr, rr * inner, rr, rr, rr);
+    grd.addColorStop(0, rgba(colour, a0));
+    grd.addColorStop(0.30, rgba(colour, a1));
+    grd.addColorStop(1, rgba(colour, 0));
+    g.fillStyle = grd;
+    g.beginPath(); g.arc(rr, rr, rr, 0, TAU); g.fill();
+    glows.set(key, cv);
+    return cv;
+  };
+
   /* --------------------------------------------------------- struck flash */
   /* A hit used to lay a tinted ELLIPSE over the creature - a red disc the
      size of its hitbox, over grass and all, which on a pack of hyenas read

@@ -1350,21 +1350,48 @@
        is rarely truly idle and the callback mostly arrives by its timeout,
        with no time "remaining" - a loop that only ran on spare time ran
        never, and rescheduled itself forever. */
+    /* And every card the level-up screen can deal, at the size it deals them.
+       Each icon is encoded to a PNG the first time it is shown - about 2ms
+       apiece - and a run meets dozens of them for the first time, so the
+       choice screen opened with a 6-10ms stall that shrank only as the run
+       went on. Done here, in the menu's idle time, it is paid before play. */
+    const cards = [];
+    for (const d of Object.values(WS.Weapons)) {
+      const w = d.data || d;
+      if (w.art && w.school) cards.push([w.art, WS.CONST.COLORS[w.school]]);
+    }
+    for (const id of WS.UpgradeOrder || []) {
+      const up = WS.Upgrades[id];
+      if (up) cards.push([up.art, qualityColour(up.quality)]);
+    }
+    for (const b of Object.values(WS.Blessings || {})) cards.push([b.art, qualityColour(b.quality || 'legendary')]);
+    for (const art of ['leaf', 'heart', 'coin']) cards.push([art, qualityColour('common')]);
+    cards.push(['fist', qualityColour('legendary')]);
     const step = (dl) => {
       let n = 0;
-      while (todo.length && (n++ < 3 || dl.timeRemaining() > 4)) {
+      while ((cards.length || todo.length) && (n++ < 3 || dl.timeRemaining() > 4)) {
+        // the Bestiary's pictures first - the menu is open now, a run is not
+        if (!todo.length) {
+          const [art, colour] = cards.shift();
+          try { WS.Icons.url(art || 'rune', colour, 66); } catch (e) { /* painted when dealt */ }
+          continue;
+        }
         const t = todo.shift();
         try {
           WS.Sprites.dataURL(WS.Sprites.creature(t.art, t.tint, 44, t.bossKit));
           WS.Sprites.dataURL(WS.Sprites.silhouette(t.art, 44, t.bossKit));
         } catch (e) { /* a creature that cannot be drawn is drawn when asked */ }
       }
-      if (todo.length) idle(step, { timeout: 120 });
+      if (cards.length || todo.length) idle(step, { timeout: 120 });
     };
     // The Codex first - one slice, for its icons - then the creatures.
     idle(() => {
       if (UI.tab !== 'codex') { try { UI.paneCodex(); } catch (e) { /* built when opened */ } }
-      idle(step, { timeout: 120 });
+      idle(() => {
+        // the Trainer's rows carry forty-odd icons of their own
+        if (UI.tab !== 'trainer') { try { UI.paneTrainer(() => {}); } catch (e) { /* built when opened */ } }
+        idle(step, { timeout: 120 });
+      }, { timeout: 200 });
     }, { timeout: 400 });
   };
 
@@ -2163,7 +2190,7 @@
     toggle('levelUpTooltips', 'Detailed level-up cards');
     choose('hudLayout', 'Arsenal and passives', 'Where your weapons and traits live.',
       [['strip', 'Along the foot'], ['rail', 'Up the edges']], () => UI.applyHudLayout());
-    choose('quality', 'Graphics', 'Balanced drops trails, glows and ground detail for frames on a slower machine.',
+    choose('quality', 'Graphics', 'Balanced drops trails, glows and ground detail, and draws at standard resolution on sharp screens, for frames on a slower machine.',
       [['high', 'High'], ['balanced', 'Balanced']], () => WS.Renderer.applyQuality());
     /* Two cuts of the prologue exist while the author decides which one to
        keep, and the only way to decide is to watch them one after the other.

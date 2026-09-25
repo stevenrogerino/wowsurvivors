@@ -57,11 +57,19 @@
    * happen a few hundred times a frame to answer a question that changes when
    * the player opens a menu. */
   R.applyQuality = function () {
-    this.lite = WS.Save.settings.quality === 'balanced';
+    const lite = WS.Save.settings.quality === 'balanced';
+    const changed = lite !== this.lite;
+    this.lite = lite;
+    if (changed && this.canvas) this.resize();
   };
 
   R.resize = function () {
-    const dpr = WS.min(window.devicePixelRatio || 1, 2);
+    /* Balanced also draws at the screen's CSS resolution rather than its
+       device resolution. On a high-DPI display that is a quarter of the
+       pixels for every glow, field and wash in the game - by far the largest
+       single saving there is for a weak graphics chip - at the cost of
+       softer edges, which is the trade the setting already describes. */
+    const dpr = this.lite ? 1 : WS.min(window.devicePixelRatio || 1, 2);
     const vw = window.innerWidth, vh = window.innerHeight;
     this.canvas.width = WS.floor(vw * dpr);
     this.canvas.height = WS.floor(vh * dpr);
@@ -780,11 +788,30 @@
     draws.push(player);
     draws.sort((a, b) => a.y - b.y);
 
+    /* Every creature's shadow in one path and one fill, before any of them
+       stands on it. Drawn one by one inside drawEnemy they cost a path, a fill
+       and two alpha changes each - three hundred of them in a full horde -
+       and a shadow is on the ground, under everything, so it never belonged
+       in the y-sorted pass anyway. */
+    ctx.globalAlpha = 0.32;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    for (let i = 0; i < WS.Enemy.pool.count; i++) {
+      const e = WS.Enemy.pool.active[i];
+      if (e.hidden || (e.template.machine && WS.FinaleArt)) continue;
+      const sy = e.y + e.radius * 0.55, sr = e.radius * 0.85;
+      ctx.moveTo(e.x + sr, sy);
+      ctx.ellipse(e.x, sy, sr, sr * 0.4, 0, 0, WS.TAU);
+    }
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    this._shadowsDone = true;
     for (const e of draws) {
       if (e === player) this.drawPlayer(ctx, player, time);
       else if (e.spec) this.drawFamiliar(ctx, e, time);
       else this.drawEnemy(ctx, e, time);
     }
+    this._shadowsDone = false;
 
     /* ---- air: bolts, orbits, beams -------------------------------------- */
     this.drawOrbits(ctx, player);
@@ -901,7 +928,7 @@
     }
     const size = e.spriteSize;
     const bob = WS.sin(e.bob) * (e.boss ? 3 : 2);
-    shadow(ctx, e.x, e.y + e.radius * 0.55, e.radius * 0.85);
+    if (!this._shadowsDone) shadow(ctx, e.x, e.y + e.radius * 0.55, e.radius * 0.85);
 
     if (e.elite || e.boss) {
       // Champions get an arc-lit ground ring so they read out of a crowd.
@@ -1349,6 +1376,7 @@
     }
   };
 
+  const ZONE_FILL_CAP = 6;
   R.drawZones = function (ctx, time) {
     const zones = WS.Projectile.zones;
     /* Each of these is already, on its own admission a few lines down, one of
@@ -1378,12 +1406,38 @@
        reads as the SAME field, not a blown-out searchlight - the additional
        zones are still ticking their own damage, they just stop competing to
        repaint ground the first one already lit. */
-    const stackDamp = zones.count > 1 ? 1 / zones.count : 1;
+    /* The same ceiling for the ground. Arcane Overflow recasting a field on
+       every gem kept twenty-odd of them down at once, each nearly five
+       hundred pixels across - the whole screen washed over twenty times, in
+       an additive pass, every frame. Under the damping above those extra
+       washes added almost no light; they only cost it. So the newest
+       ZONE_FILL_CAP fields carry the wash, and the older ones under them keep
+       their rim - which is what says where each one still reaches - and their
+       damage. */
+    // the newest by time left, for the same reason as the orbits' ceiling
+    let fillAt = -Infinity;
+    if (zones.count > ZONE_FILL_CAP) {
+      const lives = this._zoneLives || (this._zoneLives = []);
+      lives.length = 0;
+      for (let i = 0; i < zones.count; i++) lives.push(zones.active[i].life);
+      lives.sort((a, b) => b - a);
+      fillAt = lives[ZONE_FILL_CAP - 1];
+    }
+    const stackDamp = zones.count > 1 ? 1 / WS.min(zones.count, ZONE_FILL_CAP) : 1;
     ctx.save();
     for (let i = 0; i < zones.count; i++) {
       const z = zones.active[i];
       const fade = WS.clamp(z.life / z.maxLife, 0, 1);
       const R = z.radius;
+      if (z.life < fillAt) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.55 * fade;
+        ctx.strokeStyle = WS.rgb(z.colour, 1);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(z.x, z.y, R, 0, WS.TAU); ctx.stroke();
+        ctx.globalAlpha = 1;
+        continue;
+      }
 
       /* A zone used to be a flat disc under a plain hard ring, which read as a
          circle drawn on the grass rather than something happening to it. Four
@@ -1686,11 +1740,46 @@
   R.drawGems = function (ctx, time) {
     const gems = WS.XP.pool;
     const player = WS.Game.player;
-    for (let i = 0; i < gems.count; i++) {
+    /* Two passes rather than one. A vacuum or an Arcane Overflow build pulls
+       every gem on the field at once - up to MAX_GEMS of them - and each used
+       to pay for a save, a switch to 'lighter' and back, and a restore for its
+       streak, then another save and restore for its stone. The streaks now go
+       down together in one additive pass and the stones in one plain pass,
+       each positioned with setTransform. Same pictures, same order within
+       each layer; the streaks were always under the stones anyway. */
+    const S = gems.count;
+    if (!S) return;
+    const base = ctx.getTransform();
+    const pulledAll = WS.XP.vacuumTimer > 0;
+    const R2 = player.pickupRadius;
+    // pass 1: the streaks of the gems being pulled in
+    if (!this.lite) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.4;
+      ctx.lineCap = 'round';
+      let last = null;
+      for (let i = 0; i < S; i++) {
+        const g = gems.active[i];
+        const d = WS.dist(g.x, g.y, player.x, player.y);
+        if (!(d < R2 || pulledAll)) continue;
+        const s = g.size * 1.2 * ((1 + 0.07 * WS.sin(time * 5 + g.spin)) + (g.pop > 0 ? g.pop * 1.6 : 0));
+        if (g.colour !== last) { ctx.strokeStyle = WS.rgb(g.colour, 1); last = g.colour; }
+        const k = d > 0 ? s * 2.4 / d : 0;
+        ctx.lineWidth = s * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(g.x, g.y);
+        ctx.lineTo(g.x + (g.x - player.x) * k, g.y + (g.y - player.y) * k);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    // pass 2: the stones
+    for (let i = 0; i < S; i++) {
       const g = gems.active[i];
       const d = WS.dist(g.x, g.y, player.x, player.y);
-      const pulled = d < player.pickupRadius || WS.XP.vacuumTimer > 0;
-      const near = WS.clamp(1 - (d - player.pickupRadius) / 260, 0, 1);
+      const pulled = d < R2 || pulledAll;
+      const near = WS.clamp(1 - (d - R2) / 260, 0, 1);
       /* Only gems in play breathe. The pulse used to run on every gem on the
          field, and a hundred marks pulsing on independent phases is not life,
          it is static - so it is spent where it means something: on the ones
@@ -1699,22 +1788,6 @@
       const swell = (pulled ? 1 + 0.07 * WS.sin(time * 5 + g.spin) : 1)
         + (g.pop > 0 ? g.pop * 1.6 : 0);
       const s = g.size * (pulled ? 1.2 : 0.94 + near * 0.14) * swell;
-
-      if (pulled && !this.lite) {
-        ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-        const [tx, ty] = WS.normalize(g.x - player.x, g.y - player.y);
-        ctx.globalAlpha = 0.4;
-        ctx.strokeStyle = WS.rgb(g.colour, 1);
-        ctx.lineWidth = s * 0.5;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(g.x, g.y);
-        ctx.lineTo(g.x + tx * s * 2.4, g.y + ty * s * 2.4);
-        ctx.stroke();
-        ctx.restore();
-      }
-
       /* A gem at rest is quieter than one in play, but it is never a ghost.
        * The floor here used to be 0.26, which is where the vanishing happened;
        * loot the player has not walked to yet is still loot. */
@@ -1727,19 +1800,20 @@
         g._art = gemSprite(g.tier, g.colour);
         g._artTier = g.tier;
       }
-      const art = g._art;
       /* The stone is GEM_R of the sprite's width, so blitting at five times
        * `s` puts it back at exactly the radius the rest of the game means by
        * `s`. Getting this wrong is silent and looks like a taste decision:
        * blitted at 2.5x the gems came out at half size and simply read as
        * "smaller than before" rather than as a bug. */
       const w = s / GEM_R;
-      ctx.save();
-      ctx.translate(g.x, g.y);
-      ctx.rotate(g.spin);
-      ctx.drawImage(art, -w / 2, -w / 2, w, w);
-      ctx.restore();
+      const c = WS.cos(g.spin), sn = WS.sin(g.spin);
+      ctx.setTransform(
+        base.a * c + base.c * sn, base.b * c + base.d * sn,
+        -base.a * sn + base.c * c, -base.b * sn + base.d * c,
+        base.a * g.x + base.c * g.y + base.e, base.b * g.x + base.d * g.y + base.f);
+      ctx.drawImage(g._art, -w / 2, -w / 2, w, w);
     }
+    ctx.setTransform(base);
     ctx.globalAlpha = 1;
   };
 
@@ -2232,8 +2306,44 @@
     ctx.restore();
   };
 
+  const ORBIT_DRAW_CAP = 48;
   R.drawOrbits = function (ctx, player) {
     const orbits = WS.Projectile.orbits;
+    /* A whirl recasts before the last one ends, so at full rank with a few
+       extra projectiles there are two rings of Axe Gyre and two of Stormcall
+       out at once - fifty-odd blades. Past two dozen they read as a wheel of
+       steel rather than as blades anyone is counting, so the extras that
+       cost the most and say the least drop out: the trail of afterimages and
+       Stormcall's crackle. The blades and their glow stay. */
+    let blades = 0;
+    for (let i = 0; i < orbits.count; i++) blades += orbits.active[i].count;
+    const busy = blades > 24;
+    /* AND A CEILING. Cooldown and duration boons at their limits, or Arcane
+       Overflow recasting every weapon on a gem, keep a dozen or twenty rings
+       of one weapon out at once - three hundred blades measured, all on the
+       same circle, a few pixels apart. Past about four dozen that circle is
+       already a solid wheel, and every ring beyond it was paying full price
+       to be invisible: at that count the blades and their glow were most of
+       the pixels in the frame. So each weapon draws its newest rings up to
+       that many blades and no more. The rest still turn and still cut - only
+       the drawing stops. */
+    /* Newest first by time left, not by slot: the pool fills a gap by moving
+       its last entry into it, so a slot says nothing about age, and choosing
+       by slot handed the drawing to a different ring every time one expired. */
+    for (let i = 0; i < orbits.count; i++) orbits.active[i]._hidden = false;
+    if (blades > ORBIT_DRAW_CAP) {
+      const order = this._orbitOrder || (this._orbitOrder = []);
+      order.length = 0;
+      for (let i = 0; i < orbits.count; i++) order.push(orbits.active[i]);
+      order.sort((a, b) => b.life - a.life);
+      const shown = this._orbitShown || (this._orbitShown = new Map());
+      shown.clear();
+      for (const o of order) {
+        const had = shown.get(o.source) || 0;
+        o._hidden = had > 0 && had + o.count > ORBIT_DRAW_CAP;
+        if (!o._hidden) shown.set(o.source, had + o.count);
+      }
+    }
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     /* The wind of the whirl: three sweeps round the survivor's body at
@@ -2259,6 +2369,7 @@
     }
     for (let i = 0; i < orbits.count; i++) {
       const o = orbits.active[i];
+      if (o._hidden) continue;
       for (let n = 0; n < o.count; n++) {
         const a = o.angle + (n / o.count) * WS.TAU;
         const x = player.x + WS.cos(a) * o.radius;
@@ -2267,7 +2378,7 @@
         // The path just travelled, fading behind. Without it an orbiting blade
         // is a diamond that happens to be somewhere, not one that is moving.
         const dir = o.speed >= 0 ? -1 : 1;
-        for (let k = 1; this.lite ? false : k <= 5; k++) {
+        for (let k = 1; (this.lite || busy) ? false : k <= 5; k++) {
           const ta = a + dir * k * 0.11;
           ctx.globalAlpha = (1 - k / 5) * 0.35;
           ctx.fillStyle = WS.rgb(o.colour, 1);
@@ -2315,12 +2426,9 @@
           const veil = 1 / WS.sqrt(grow);
           const deep = [o.colour[0] * 0.78, o.colour[1] * 0.60, o.colour[2] * 0.40];
           const inner = o.size * 0.52;
-          const grd = ctx.createRadialGradient(0, 0, inner, 0, 0, far);
-          grd.addColorStop(0, WS.rgb(deep, 0.30 * veil));
-          grd.addColorStop(0.30, WS.rgb(deep, 0.62 * veil));
-          grd.addColorStop(1, WS.rgb(deep, 0));
-          ctx.fillStyle = grd;
-          ctx.beginPath(); ctx.arc(0, 0, far, 0, WS.TAU); ctx.fill();
+          // baked once per colour and size - see SpellArt.glow
+          const halo = WS.SpellArt.glow(deep, far, inner / far, 0.30 * veil, 0.62 * veil);
+          ctx.drawImage(halo, -far, -far, far * 2, far * 2);
         }
         // A discovery's colour, under the blade rather than over it - see the
         // note in drawBolts about painting onto white in a 'lighter' pass.
@@ -2354,7 +2462,7 @@
           /* Stormcall is the gyre married to the lightning, and its blades
              were Axe Gyre's in another colour. They crackle: two short arcs
              off the edge that re-strike every few frames. */
-          if (o.art === 'sword' && !this.lite) {
+          if (o.art === 'sword' && !this.lite && !busy) {
             ctx.globalCompositeOperation = 'lighter';
             const flick = WS.floor(o.life * 20) + n * 7;
             for (let k = 0; k < 2; k++) {
@@ -2835,6 +2943,7 @@
     const texts = WS.FX.texts;
     ctx.save();
     ctx.textAlign = 'center';
+    let lastPx = -1;
     for (let i = 0; i < texts.count; i++) {
       const t = texts.active[i];
       const fade = WS.clamp(t.life / t.maxLife, 0, 1);
@@ -2842,7 +2951,10 @@
       // A short overshoot on arrival, easing back to size.
       const pop = t.pop ? 1 + t.pop * 0.55 * WS.max(0, 1 - age * 6) : 1;
       ctx.globalAlpha = WS.min(1, fade * 2.2);
-      ctx.font = `600 ${WS.round(t.size * pop)}px ${UI_FONT}`;
+      /* Only when it changes: assigning ctx.font makes the browser parse the
+         string, and sixty-odd numbers a frame mostly share three sizes. */
+      const px = WS.round(t.size * pop);
+      if (px !== lastPx) { ctx.font = `600 ${px}px ${UI_FONT}`; lastPx = px; }
       ctx.lineWidth = 3.5;
       ctx.strokeStyle = 'rgba(4,6,10,.9)';
       ctx.strokeText(t.text, t.x, t.y);

@@ -327,3 +327,27 @@ The interface is only half of it; the other half is how the world answers.
   of its hitbox.
 - check-skills still guards all of it: every weapon keeps edges at rank 8
   and none blows out to white.
+
+## Ceilings, so the busiest frame stays a frame
+
+Measured per layer in a maxed run (320 creatures, six evolved weapons,
+unions, Arcane Overflow at 25%). Main-thread cost stayed near 5-10 ms a
+frame. What didn't was **overdraw**: rings and fields stacking far past
+the point of being visible.
+
+- **Orbit rings:** capped at 48 drawn blades per weapon. Cooldown and
+  duration boons at their limits, or Overflow, kept up to 21 rings (317
+  blades) on one circle. The newest rings by time left are drawn; the rest
+  still turn and cut. Past 24 blades the afterimages and Stormcall's crackle
+  drop. The blade glow is a baked image (`SpellArt.glow`), not a fresh
+  gradient per blade.
+- **Ground fields:** capped at 6 washes. Twenty-odd overlapping Blightfields
+  washed the screen twenty times; now the six newest carry the wash (same
+  total light) and older fields keep their rim and their damage.
+- **Gems** draw in two batched passes. **Creature shadows** are one path.
+  **Floating numbers** only reset the font when the size changes.
+- **Balanced** quality also draws at 1x on high-DPI screens: a quarter of
+  the pixels for every glow.
+- **Menu idle warm-up** also pre-encodes every level-up card icon and
+  builds the Trainer, so neither stalls the first time it's shown.
+  Bestiary images come first.
