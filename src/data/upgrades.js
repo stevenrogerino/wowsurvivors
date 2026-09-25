@@ -181,7 +181,7 @@
     serenity: {
       name: 'Serenity', art: 'step', quality: 'epic',
       description: 'Steps return {Config.flowRechargePerRank}s sooner and palm {Config.serenityStrike%}% harder; '
-        + 'a third step at rank 3 and a fourth at rank 5', max: 5,
+        + 'a third step at rank {Config.serenityThirdStep} and a fourth at rank {Config.serenityFourthStep}', max: 5,
       detail: 'Stillwater Step, deepened: every rank shortens the wait for a step (never below '
         + '{Config.flowRechargeFloor}s) and strengthens the palm that lands along it.',
       offer: (p) => p.flowAttuned > 0,

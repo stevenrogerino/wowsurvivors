@@ -122,7 +122,8 @@
   /* ----------------------------------------------------------- the step -- */
   Primal.maxSteps = function (p) {
     if (p.flowAttuned <= 0) return 0;
-    return C().flowSteps + p.flowBonusSteps + (p.serenity >= 3 ? 1 : 0) + (p.serenity >= 5 ? 1 : 0);
+    return C().flowSteps + p.flowBonusSteps + (p.serenity >= C().serenityThirdStep ? 1 : 0)
+      + (p.serenity >= C().serenityFourthStep ? 1 : 0);
   };
 
   Primal.stepRecharge = function (p) {

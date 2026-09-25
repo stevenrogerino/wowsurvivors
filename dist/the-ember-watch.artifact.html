@@ -3751,6 +3751,9 @@ window.WS = window.WS || {};
     poiseMax: 5,
     poiseTime: 4.0,
     serenityStrike: 0.15,
+    // the Serenity ranks that add a third and a fourth step
+    serenityThirdStep: 3,
+    serenityFourthStep: 5,
     // The Trial of the Still Hand, which brings Abbot Eisen: steps taken in
     // one night before he shows himself, and how long you must then go unhit.
     trialSteps: 25,
@@ -6091,7 +6094,7 @@ window.WS = window.WS || {};
     serenity: {
       name: 'Serenity', art: 'step', quality: 'epic',
       description: 'Steps return {Config.flowRechargePerRank}s sooner and palm {Config.serenityStrike%}% harder; '
-        + 'a third step at rank 3 and a fourth at rank 5', max: 5,
+        + 'a third step at rank {Config.serenityThirdStep} and a fourth at rank {Config.serenityFourthStep}', max: 5,
       detail: 'Stillwater Step, deepened: every rank shortens the wait for a step (never below '
         + '{Config.flowRechargeFloor}s) and strengthens the palm that lands along it.',
       offer: (p) => p.flowAttuned > 0,
@@ -25532,7 +25535,8 @@ window.WS = window.WS || {};
   /* ----------------------------------------------------------- the step -- */
   Primal.maxSteps = function (p) {
     if (p.flowAttuned <= 0) return 0;
-    return C().flowSteps + p.flowBonusSteps + (p.serenity >= 3 ? 1 : 0) + (p.serenity >= 5 ? 1 : 0);
+    return C().flowSteps + p.flowBonusSteps + (p.serenity >= C().serenityThirdStep ? 1 : 0)
+      + (p.serenity >= C().serenityFourthStep ? 1 : 0);
   };
 
   Primal.stepRecharge = function (p) {
@@ -37279,30 +37283,59 @@ window.WS = window.WS || {};
      far better than a slide show. When frames are comfortably fast again it
      climbs back, more slowly than it came down, so it does not flicker
      between the two. It only adapts during a run: a menu is never the
-     reason a frame was slow. */
+     reason a frame was slow.
+
+     Every step down is a trial. Where the browser composites in software,
+     stretching a smaller canvas back up to the window costs MORE than the
+     pixels it saved - measured headless, 17ms frames became 22ms - and a
+     rule that only ever reads "slow, so go lower" walks that machine down
+     to the floor, slower at every step. So a lower resolution is kept only
+     if frames actually got faster at it; if not, the renderer goes back to
+     where it was and stops trying for the rest of the run. */
   const RS_MIN = 0.5, RS_SLOW = 24, RS_FAST = 15;
+  const RS_TRIAL = 1500, RS_GAIN = 0.9;             // judge after 1.5s; keep only a 10% gain
+  const RS_GRACE = 10;                              // seconds into a run before any of it
   R.renderScale = 1;
   R.adaptResolution = function (dtMs) {
     if (!(dtMs > 0) || dtMs > 250) return;          // tab switches and stalls say nothing
     if (WS.Save.settings.dynamicResolution === false) {
       // Turned off: back to full resolution at once, not on the next slow frame.
       if (this.renderScale !== 1) { this.renderScale = 1; this.resize(); }
+      this._rsTrial = null;
       return;
     }
-    if (!WS.Game.running) { this._rsSlow = this._rsFast = 0; return; }
+    if (!WS.Game.running) { this._rsSlow = this._rsFast = 0; this._rsTrial = null; this._rsLocked = false; return; }
+    // The first seconds of a run are loading and settling, never the heavy
+    // part of the night, and are no evidence about the machine.
+    if (WS.Game.run && WS.Game.run.time < RS_GRACE) { this._rsSlow = this._rsFast = 0; this._rsAvg = 0; return; }
     this._rsAvg = this._rsAvg ? this._rsAvg * 0.9 + dtMs * 0.1 : dtMs;
+    const trial = this._rsTrial;
+    if (trial) {
+      trial.left -= dtMs;
+      if (trial.left > 0) return;
+      this._rsTrial = null;
+      if (this._rsAvg > trial.avg * RS_GAIN) {
+        // it did not pay for itself: undo it, and do not try again this run
+        this._rsLocked = true;
+        this.setRenderScale(trial.from);
+        return;
+      }
+    }
     if (this._rsAvg > RS_SLOW) { this._rsSlow = (this._rsSlow || 0) + dtMs; this._rsFast = 0; }
     else if (this._rsAvg < RS_FAST) { this._rsFast = (this._rsFast || 0) + dtMs; this._rsSlow = 0; }
     else { this._rsSlow = 0; this._rsFast = 0; }
-    let next = this.renderScale;
-    if (this._rsSlow > 1200 && this.renderScale > RS_MIN) next = WS.max(RS_MIN, this.renderScale * 0.82);
-    else if (this._rsFast > 6000 && this.renderScale < 1) next = WS.min(1, this.renderScale * 1.1);
-    if (next !== this.renderScale) {
-      this.renderScale = next;
-      this._rsSlow = this._rsFast = 0;
-      this._rsAvg = 0;
-      this.resize();
+    if (this._rsSlow > 1200 && this.renderScale > RS_MIN && !this._rsLocked) {
+      this._rsTrial = { from: this.renderScale, avg: this._rsAvg, left: RS_TRIAL };
+      this.setRenderScale(WS.max(RS_MIN, this.renderScale * 0.82));
+    } else if (this._rsFast > 6000 && this.renderScale < 1) {
+      this.setRenderScale(WS.min(1, this.renderScale * 1.1));
     }
+  };
+  R.setRenderScale = function (scale) {
+    this.renderScale = scale;
+    this._rsSlow = this._rsFast = 0;
+    this._rsAvg = 0;
+    this.resize();
   };
 
   /** Window coords -> world coords (for touch input and debugging). */

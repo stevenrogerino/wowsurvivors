@@ -413,6 +413,9 @@
     poiseMax: 5,
     poiseTime: 4.0,
     serenityStrike: 0.15,
+    // the Serenity ranks that add a third and a fourth step
+    serenityThirdStep: 3,
+    serenityFourthStep: 5,
     // The Trial of the Still Hand, which brings Abbot Eisen: steps taken in
     // one night before he shows himself, and how long you must then go unhit.
     trialSteps: 25,
