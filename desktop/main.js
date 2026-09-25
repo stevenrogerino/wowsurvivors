@@ -23,7 +23,7 @@
  *    a desktop game the player just launched does not need to ask.
  */
 'use strict';
-const { app, BrowserWindow, protocol, net, Menu, shell } = require('electron');
+const { app, BrowserWindow, protocol, net, Menu } = require('electron');
 const path = require('node:path');
 const url = require('node:url');
 
@@ -70,11 +70,12 @@ function createWindow() {
   win.once('ready-to-show', () => win.show());
   win.loadURL(`${SCHEME}://game/${ENTRY}`);
 
-  // One page, forever.
-  win.webContents.setWindowOpenHandler(({ url: target }) => {
-    if (/^https?:/.test(target)) shell.openExternal(target);
-    return { action: 'deny' };
-  });
+  /* One page, forever. A popup is refused outright - including handing it to
+   * the system browser, which this used to do for any http(s) link. The game
+   * has no outbound links, so the only thing that ever took that path was
+   * check-desktop's own "can the page open a window?" probe, and every run of
+   * the check threw example.com into the player's real browser. */
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', (e, target) => {
     if (target !== win.webContents.getURL()) e.preventDefault();
   });

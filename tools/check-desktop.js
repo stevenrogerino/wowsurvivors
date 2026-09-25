@@ -40,6 +40,7 @@
  *   npm i playwright electron
  *   node tools/check-desktop.js
  *
+ * It opens and closes the app twice - that is the save test, not a crash.
  * Needs a display; under CI or a container, run it through xvfb-run. Set
  * ELECTRON to point at an existing Electron binary. */
 const { _electron } = require('playwright');
@@ -149,6 +150,9 @@ const ARGS = process.getuid && process.getuid() === 0 ? ['--no-sandbox'] : [];
     href: BrowserWindow.getAllWindows()[0].webContents.getURL(),
   }));
   if (after.windows !== 1) fail.push(`window.open got a second window (${after.windows} open)`);
+  /* Denying the window is not enough if the shell then hands the URL to the
+     system browser instead - that is a popup with extra steps. */
+  if (/openExternal\s*\(/.test(fs.readFileSync(path.join(DESKTOP, 'main.js'), 'utf8'))) fail.push('main.js passes URLs to shell.openExternal - a denied popup still opens the player\'s browser');
   if (after.href !== before) fail.push(`the page navigated away to ${after.href.slice(0, 60)}`);
 
   /* ---- bank something, and end the process for real ---------------------- */
