@@ -1659,23 +1659,37 @@ input[type=range]::-moz-range-thumb {
   max-width: min(84vw, 880px); transition: opacity .28s ease;
   text-shadow: 0 2px 22px rgba(0,0,0,.95), 0 0 3px rgba(0,0,0,.85);
 }
-/* Archivo, because Archivo is what this game has. Only two faces are embedded
-   and a cinematic is not a reason to reach for a third the player would have
-   to download - the weight, the size and the air do the work a serif would. */
+/* The storyteller's face. This was Archivo when Archivo was the only text
+   face the game carried, on the reasoning that a cinematic was no excuse for
+   a third download. Alegreya has since come aboard as the game's VOICE - it
+   is who speaks on the level cards, the watch log, the records, every line a
+   character says - and the two pieces that tell the story were the last
+   words in the game still set in the interface's sans. The prologue is the
+   first thing anyone reads and the dawn is the last; they speak in the voice
+   now, the second line in its italic, the way a narrator lowers theirs. */
 #prologue .lines p {
-  margin: 0 0 .42em;
-  font-family: var(--ui);
-  font-size: clamp(18px, 2.05vw, 30px); font-weight: 300; line-height: 1.42;
-  letter-spacing: .008em; color: #eef1f7;
+  margin: 0 0 .36em;
+  font-family: var(--voice);
+  font-size: clamp(20px, 2.3vw, 34px); font-weight: 400; line-height: 1.34;
+  letter-spacing: .004em; color: #f3ede1;
 }
-#prologue .lines p + p { color: #aab3c4; font-size: clamp(16px, 1.8vw, 26px); }
+#prologue .lines p + p {
+  font-style: italic; font-weight: 500;
+  color: #b8b0a2; font-size: clamp(17px, 1.95vw, 28px);
+}
 
 /* The victory piece uses the same layer and the same type, with one addition:
    the shot where the survivor is named sets their name in the gilt the title
    uses, because it is the only moment in the game where the player's own
    choice of survivor is the subject rather than the instrument. */
 #prologue.victory .lines p.nameplate {
-  font-size: clamp(26px, 3.4vw, 46px); font-weight: 700;
+  /* No text-shadow: the lines above inherit a dark one, and Chrome paints a
+     text-shadow OVER a background clipped to the text - the gilt came out
+     as black letters with a gold rim. The drop-shadow filter below does the
+     lifting instead. */
+  text-shadow: none;
+  font-style: normal;
+  font-size: clamp(30px, 3.9vw, 54px); font-weight: 800;
   letter-spacing: .04em; text-transform: uppercase; line-height: 1.1;
   background-image: linear-gradient(180deg,
     #fff3d4 0%, #ffe0a2 26%, #f5c56b 46%, #a97c2c 62%, #e6b45e 84%, #ffe6ae 100%);
@@ -1684,9 +1698,9 @@ input[type=range]::-moz-range-thumb {
   filter: drop-shadow(0 2px 0 rgba(0,0,0,.55)) drop-shadow(0 0 34px rgba(245,197,107,.3));
 }
 #prologue.victory .lines p.nameplate + p.titleplate {
-  margin-top: .5em;
-  font-size: clamp(11px, 1.15vw, 15px); letter-spacing: .34em;
-  text-transform: uppercase; color: var(--ink-dim, #8b93a5);
+  margin-top: .45em; font-style: italic; font-weight: 500;
+  font-size: clamp(15px, 1.6vw, 22px); letter-spacing: .06em;
+  text-transform: none; color: #e2cfa6;
 }
 
 #prologue .title {
@@ -1706,8 +1720,8 @@ input[type=range]::-moz-range-thumb {
   position: absolute; right: 3vw; bottom: 3.4vh;
   background: none; border: 0; cursor: pointer;
   font-family: var(--ui, 'Archivo', system-ui, sans-serif);
-  font-size: 11px; letter-spacing: .26em; text-transform: uppercase;
-  color: #6b7488; padding: 8px 10px; border-radius: 5px;
+  font-size: 12px; letter-spacing: .26em; text-transform: uppercase;
+  color: #8f97a8; padding: 8px 10px; border-radius: 5px;
 }
 #prologue .step:hover { color: var(--gold, #f5c56b); }
 #prologue .step:focus-visible { outline: 2px solid var(--gold, #f5c56b); outline-offset: 2px; }
@@ -1724,14 +1738,26 @@ input[type=range]::-moz-range-thumb {
  * It breathes rather than blinking. A hard flash on an otherwise motionless
  * night reads as a fault, and this is the first thing anyone sees of the
  * game. Anyone who has asked for less movement gets a still line. */
+/* It was eleven-pixel spaced capitals in slate on a black sky, and it is the
+   only thing on the first screen anybody sees: a player could reasonably
+   decide the game had not loaded. Now it is said in the voice, at a size
+   you can read from the chair, with an ember either side of it breathing. */
 #prologue .wake {
-  position: absolute; left: 0; right: 0; bottom: 12vh;
+  position: absolute; left: 0; right: 0; bottom: 14vh;
   margin: 0; text-align: center; pointer-events: none;
-  font-family: var(--ui, 'Archivo', system-ui, sans-serif);
-  font-size: clamp(10px, 1.05vw, 13px); letter-spacing: .34em;
-  text-transform: uppercase; color: #8a93a6;
+  font-family: var(--voice);
+  font-style: italic; font-weight: 500;
+  font-size: clamp(17px, 1.7vw, 24px); letter-spacing: .03em;
+  color: #eadbbd;
+  text-shadow: 0 0 18px rgba(245,197,107,.35), 0 2px 10px rgba(0,0,0,.9);
   opacity: 0; visibility: hidden;
   transition: opacity .5s var(--ease, ease);
+}
+#prologue .wake::before, #prologue .wake::after {
+  content: ''; display: inline-block; width: .42em; height: .42em;
+  margin: 0 .9em .14em; vertical-align: middle; transform: rotate(45deg);
+  background: radial-gradient(circle at 40% 40%, #fff1c8, #f5a54a 55%, #a3501c);
+  box-shadow: 0 0 10px rgba(255,170,80,.9), 0 0 22px rgba(255,140,60,.45);
 }
 #prologue.waiting .wake {
   visibility: visible;
@@ -1741,11 +1767,11 @@ input[type=range]::-moz-range-thumb {
    the way while the gate is up. */
 #prologue.waiting .step { opacity: 0; pointer-events: none; }
 @keyframes wake-breathe {
-  0%, 100% { opacity: .30; }
-  50%      { opacity: .78; }
+  0%, 100% { opacity: .55; }
+  50%      { opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
-  #prologue.waiting .wake { animation: none; opacity: .62; }
+  #prologue.waiting .wake { animation: none; opacity: .9; }
 }
 
 /* The import box lives under its own setting row rather than inside it: a
@@ -2806,6 +2832,10 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .pick-grid.prep-maps { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
 @media (max-width: 900px) { .prep-top { grid-template-columns: 1fr; } }
 .prep-maps .pick-name { white-space: normal; overflow: visible; text-overflow: clip; }
+/* And the survivors' names: "Dr. Rav McBreathless" is a name, not an overflow,
+   and it was being cut to "Dr. Rav McBreathl...". Two lines where it needs
+   them; the grid rows size to their tallest, so the row stays even. */
+.prepare .pick-grid:not(.prep-maps) .pick-name { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.08; }
 
 /* The menu's backdrop blur is gone. At 1.5px it barely showed, and over a
    scene that animates every frame it had to be redone every frame: measured,
@@ -5978,7 +6008,7 @@ window.WS = window.WS || {};
       next: 'next',
       /* Shown only when the browser has not yet let the game have a
          voice - see P.arm. It asks for the keypress that buys one. */
-      begin: 'press any key to begin',
+      begin: 'Press any key, or tap, to begin',
       title: 'The Ember Watch',
       subtitle: 'Thirty minutes until dawn',
       /* Rewritten once the story had villains in it. The first draft said
@@ -5996,7 +6026,7 @@ window.WS = window.WS || {};
         { beat: 'night', hold: 4.6, lines: [
           'The dark does not fall here.',
           'It climbs.'] },
-        { beat: 'night', hold: 5.0, lines: [
+        { beat: 'rise', hold: 5.0, lines: [
           'Up through the furrows and the open graves,',
           'every night, until morning.'] },
         { beat: 'ember', hold: 5.6, lines: [
@@ -15941,7 +15971,7 @@ window.WS = window.WS || {};
      frames and the whole shape re-strikes - lightning that holds still is a
      wire. */
   function rnd(s) { s = (s * 1664525 + 1013904223) >>> 0; return s; }
-  SA.lightning = function (ctx, len, hw, colour, fade, seed, forks) {
+  SA.lightning = function (ctx, len, hw, colour, fade, seed, forks, reach) {
     const segs = Math.max(4, Math.min(14, Math.round(len / 16)));
     const jag = Math.min(len * 0.14, 10 + hw * 2.2);
     const xs = [0], ys = [0];
@@ -15972,7 +16002,7 @@ window.WS = window.WS || {};
       const side = (s >>> 12) & 1 ? 1 : -1;
       let x = xs[i], y = ys[i];
       ctx.beginPath(); ctx.moveTo(x, y);
-      const step = len / segs * 0.7;
+      const step = len / segs * 0.7 * (reach || 1);
       for (let k = 0; k < 3; k++) {
         s = rnd(s);
         x += step * (0.6 + ((s >>> 9) % 100) / 250);
@@ -25993,6 +26023,16 @@ window.WS = window.WS || {};
           : `${owed} levels, before the first of them arrives.`, 3.2, { kind: 'glory' });
       this.pendingLevelUps += owed;
       this.openLevelUp();
+    } else {
+      /* The night opens with where you are and who is standing there. A run
+         used to begin on a silent field - the survivor chosen, the place
+         chosen, and nothing said about either - and every watcher has a line
+         of their own in the book that was only ever read in the menu. This is
+         where it belongs: first thing, in their voice, as the dark starts. */
+      const run = this.run;
+      const w = WS.Lore && WS.Lore.watchers && WS.Lore.watchers[run.characterId];
+      const said = w && w.says ? `\u201c${w.says}\u201d` : 'Thirty minutes until dawn.';
+      this.announce(run.map.name, said, 3.6, { kind: 'plain' });
     }
   };
 
@@ -27488,6 +27528,144 @@ window.WS = window.WS || {};
   }
 
 
+  /* ------------------------------------------------------------- graves --
+   * "Up through the furrows and the open graves." The line had no picture:
+   * the beat under it was the same night as the one before, with a few
+   * shapes in it drawn in the colour of the ground they stood on. This is
+   * the picture. A field of graves across the near ground, each one open and
+   * lit faintly from inside, and in each something pulling itself up - a
+   * head, then shoulders, then an arm hooked over the lip - with the cold
+   * pale eyes of the thing that owns them all. They come up in turn, not
+   * together, across the length of the line. */
+  const GRAVES = [
+    [0.12, 0.30, 0.86, 0.10, 'cross'], [0.31, 0.10, 0.66, 0.34, 'stone'],
+    [0.50, 0.48, 1.00, 0.00, 'stone'], [0.69, 0.16, 0.72, 0.22, 'cross'],
+    [0.88, 0.40, 0.92, 0.46, 'stone'],
+  ];
+  function graves(ctx, t, k) {
+    const order = GRAVES.slice().sort((a, b) => a[1] - b[1]);   // far first
+    for (const [gx, depth, sc, delay, kind] of order) {
+      const x = gx * W, y = GROUND + 22 + depth * 110, s = 56 * sc;
+      const rise = WS.clamp((k * 1.35 - delay) / 0.7, 0, 1);
+      const up = rise * rise * (3 - 2 * rise);
+      const lean = (gx * 7.3 % 1 - 0.5) * 0.35;
+      // the marker, leaning, moonlit down its left edge
+      ctx.save();
+      ctx.translate(x - s * 1.05, y - s * 0.12);
+      ctx.rotate(lean);
+      ctx.fillStyle = '#1b1f2a';
+      ctx.strokeStyle = 'rgba(140,158,192,.6)';
+      ctx.lineWidth = WS.max(1, s * 0.05);
+      ctx.beginPath();
+      if (kind === 'cross') {
+        ctx.rect(-s * 0.08, -s * 1.15, s * 0.16, s * 1.15);
+        ctx.rect(-s * 0.36, -s * 0.9, s * 0.72, s * 0.15);
+      } else {
+        ctx.moveTo(-s * 0.3, 0); ctx.lineTo(-s * 0.3, -s * 0.7);
+        ctx.quadraticCurveTo(-s * 0.3, -s * 1.02, 0, -s * 1.02);
+        ctx.quadraticCurveTo(s * 0.3, -s * 1.02, s * 0.3, -s * 0.7);
+        ctx.lineTo(s * 0.3, 0); ctx.closePath();
+      }
+      ctx.fill();
+      ctx.beginPath();
+      if (kind === 'cross') { ctx.moveTo(-s * 0.08, 0); ctx.lineTo(-s * 0.08, -s * 1.15); ctx.moveTo(-s * 0.36, -s * 0.9); ctx.lineTo(s * 0.36, -s * 0.9); }
+      else { ctx.moveTo(-s * 0.3, 0); ctx.lineTo(-s * 0.3, -s * 0.7); ctx.quadraticCurveTo(-s * 0.3, -s * 1.02, 0, -s * 1.02); }
+      ctx.stroke();
+      ctx.restore();
+      // the open grave: a dark mouth with a cold light coming out of it
+      const glow = ctx.createRadialGradient(x, y, 0, x, y, s * 1.6);
+      glow.addColorStop(0, `rgba(150,200,255,${(0.10 + 0.22 * up).toFixed(3)})`);
+      glow.addColorStop(1, 'rgba(150,200,255,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.ellipse(x, y, s * 1.6, s * 0.7, 0, 0, WS.TAU); ctx.fill();
+      ctx.fillStyle = '#030406';
+      ctx.beginPath(); ctx.ellipse(x, y, s * 0.72, s * 0.24, 0, 0, WS.TAU); ctx.fill();
+      // the heaped earth behind it, lit on its crown
+      ctx.fillStyle = '#10131b';
+      ctx.beginPath(); ctx.ellipse(x + s * 0.1, y - s * 0.18, s * 0.9, s * 0.2, 0, Math.PI, WS.TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(96,110,140,.45)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(x + s * 0.1, y - s * 0.18, s * 0.9, s * 0.2, 0, Math.PI * 1.1, Math.PI * 1.7); ctx.stroke();
+      if (up <= 0.01) continue;
+      // what is coming up out of it, clipped to above the lip of the grave
+      ctx.save();
+      ctx.beginPath(); ctx.rect(x - s * 2, y - s * 3, s * 4, s * 3); ctx.clip();
+      const bob = WS.sin(t * 2.2 + gx * 9) * s * 0.03;
+      const top = y + s * 0.9 - up * s * 1.95 + bob;
+      ctx.fillStyle = '#06070b';
+      ctx.strokeStyle = 'rgba(150,172,210,.5)';
+      ctx.lineWidth = WS.max(1, s * 0.045);
+      // ragged shoulders, a neck, a head hung forward
+      const hd = gx > 0.5 ? -1 : 1;
+      ctx.beginPath();
+      ctx.moveTo(x - s * 0.48, top + s * 2.2);
+      ctx.lineTo(x - s * 0.44, top + s * 0.62);
+      ctx.lineTo(x - s * 0.36, top + s * 0.5);
+      ctx.lineTo(x - s * 0.28, top + s * 0.55);
+      ctx.lineTo(x - s * 0.2, top + s * 0.44);
+      ctx.lineTo(x - s * 0.08, top + s * 0.42);
+      ctx.lineTo(x + s * 0.06, top + s * 0.4);
+      ctx.lineTo(x + s * 0.2, top + s * 0.45);
+      ctx.lineTo(x + s * 0.3, top + s * 0.52);
+      ctx.lineTo(x + s * 0.38, top + s * 0.49);
+      ctx.lineTo(x + s * 0.45, top + s * 0.62);
+      ctx.lineTo(x + s * 0.49, top + s * 2.2);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillRect(x + hd * s * 0.02 - s * 0.07, top + s * 0.24, s * 0.14, s * 0.2);
+      ctx.beginPath();
+      ctx.ellipse(x + hd * s * 0.06, top + s * 0.15, s * 0.17, s * 0.19, hd * 0.25, 0, WS.TAU);
+      ctx.fill(); ctx.stroke();
+      // the far arm, braced on the ground behind
+      ctx.lineCap = 'round';
+      ctx.lineWidth = s * 0.11; ctx.strokeStyle = '#06070b';
+      ctx.beginPath(); ctx.moveTo(x - hd * s * 0.34, top + s * 0.6);
+      ctx.quadraticCurveTo(x - hd * s * 0.62, top + s * 0.72, x - hd * s * 0.7, y - s * 0.02); ctx.stroke();
+      ctx.lineWidth = WS.max(1, s * 0.035); ctx.strokeStyle = 'rgba(150,172,210,.4)';
+      ctx.beginPath(); ctx.moveTo(x - hd * s * 0.36, top + s * 0.56);
+      ctx.quadraticCurveTo(x - hd * s * 0.64, top + s * 0.66, x - hd * s * 0.73, y - s * 0.06); ctx.stroke();
+      // an arm hooked over the lip, fingers in the dirt
+      const reach = WS.clamp(up * 1.4 - 0.2, 0, 1);
+      const side = gx > 0.5 ? -1 : 1;
+      const hx = x + side * s * (0.5 + 0.35 * reach), hy = y - s * 0.05 - reach * s * 0.1;
+      ctx.lineCap = 'round';
+      ctx.lineWidth = s * 0.13; ctx.strokeStyle = '#06070b';
+      ctx.beginPath(); ctx.moveTo(x + side * s * 0.3, top + s * 0.55);
+      ctx.quadraticCurveTo(x + side * s * 0.62, top + s * 0.2, hx, hy); ctx.stroke();
+      ctx.lineWidth = WS.max(1, s * 0.04); ctx.strokeStyle = 'rgba(150,172,210,.45)';
+      ctx.beginPath(); ctx.moveTo(x + side * s * 0.3, top + s * 0.5);
+      ctx.quadraticCurveTo(x + side * s * 0.6, top + s * 0.14, hx, hy - s * 0.05); ctx.stroke();
+      ctx.lineWidth = WS.max(1, s * 0.05); ctx.strokeStyle = '#06070b';
+      for (let f = -1; f <= 1; f++) {
+        ctx.beginPath(); ctx.moveTo(hx, hy);
+        ctx.lineTo(hx + side * s * 0.16, hy + s * (0.06 + f * 0.06)); ctx.stroke();
+      }
+      // and the eyes: the Pale's cold, not the ember's warmth
+      const eye = WS.clamp((up - 0.25) / 0.3, 0, 1) * (0.75 + 0.25 * WS.sin(t * 5 + gx * 20));
+      if (eye > 0) {
+        ctx.globalCompositeOperation = 'lighter';
+        for (const ex0 of [-0.08, 0.1]) {
+          const ex = ex0 + hd * 0.06;
+          const g2 = ctx.createRadialGradient(x + ex * s, top + s * 0.13, 0, x + ex * s, top + s * 0.13, s * 0.16);
+          g2.addColorStop(0, `rgba(215,238,255,${(0.95 * eye).toFixed(3)})`);
+          g2.addColorStop(0.35, `rgba(120,190,255,${(0.5 * eye).toFixed(3)})`);
+          g2.addColorStop(1, 'rgba(120,190,255,0)');
+          ctx.fillStyle = g2;
+          ctx.beginPath(); ctx.arc(x + ex * s, top + s * 0.13, s * 0.16, 0, WS.TAU); ctx.fill();
+        }
+      }
+      ctx.restore();
+      // earth thrown up as it comes
+      if (up > 0.05 && up < 0.95) {
+        ctx.fillStyle = '#161a22';
+        for (let c = 0; c < 5; c++) {
+          const ph = (t * 1.3 + c * 0.2 + gx) % 1;
+          const cx = x + (c - 2) * s * 0.28 + (c - 2) * ph * s * 0.3;
+          const cy = y - s * 0.1 - WS.sin(ph * Math.PI) * s * 0.55;
+          ctx.beginPath(); ctx.arc(cx, cy, s * 0.05, 0, WS.TAU); ctx.fill();
+        }
+      }
+    }
+  }
+
   /* ---------------------------------------------------------------- API -- */
   const Scene = {
     W, H, GROUND,
@@ -27505,6 +27683,7 @@ window.WS = window.WS || {};
     thief(ctx, t, k) { ensure(); thiefFront(ctx, t, k); },
     paleBack(ctx, t, k) { ensure(); paleBack(ctx, t, k); },
     paleFront(ctx, t, k) { ensure(); paleFront(ctx, t, k); },
+    graves(ctx, t, k) { graves(ctx, t, k); },
 
     /* The two tree bands, by lift rather than by colour, so a caller cannot
        put the far wood in front of the near one by getting the palette the
@@ -28690,6 +28869,11 @@ window.WS = window.WS || {};
       ctx.restore();
     },
 
+    rise(ctx, t, k) {
+      sky(ctx, t, 0); ground(ctx, 0); treeline(ctx, 0);
+      WS.Scene.graves(ctx, t, k);
+    },
+
     ember(ctx, t, k) {
       sky(ctx, t, 0); ground(ctx, 0); treeline(ctx, 0);
       const glow = 0.25 + 0.75 * k * (0.85 + 0.15 * WS.sin(t * 3));
@@ -29468,6 +29652,19 @@ window.WS = window.WS || {};
         ctx.beginPath(); ctx.ellipse(x, y, s * 0.5, s * 0.3, 0, 0, WS.TAU); ctx.fill();
       }
       ctx.restore();
+    },
+
+    /* The dark climbing up out of the ground: the same night, with the
+       graves in it open and the dead coming up through them. */
+    rise(ctx, t, k, env) {
+      ensure();
+      const l = lightOf(env, 0);
+      S.sky(ctx, t, l); S.ranges(ctx, l);
+      S.woodFar(ctx, 0);
+      S.ground(ctx, l);
+      S.woodNear(ctx, 0);
+      S.mist(ctx, t, l);
+      S.graves(ctx, t, k);
     },
 
     ember(ctx, t, k, env) {
@@ -30717,6 +30914,8 @@ window.WS = window.WS || {};
 (function (WS) {
 
   const UI_FONT = "'Archivo', 'Segoe UI', system-ui, sans-serif";
+  // The storyteller's face - the one every speaking part in the menus uses.
+  const VOICE_FONT = "'Alegreya', 'Iowan Old Style', Georgia, serif";
   const A = {};
 
   const rgba = (c, a) => WS.rgb(c, WS.clamp(a, 0, 1));
@@ -32544,9 +32743,12 @@ window.WS = window.WS || {};
       const n = WS.max(0, WS.ceil(F.timer));
       ctx.save();
       ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(245,197,107,.85)';
-      ctx.font = `600 ${WS.round(13 * R.scale + 4)}px ${UI_FONT}`;
-      ctx.fillText('THE FIELD IS CLEAR · BREATHE', vw / 2, vh * 0.16);
+      // said, not labelled: the voice, not the interface's spaced capitals
+      ctx.fillStyle = 'rgba(245,215,160,.92)';
+      ctx.shadowColor = 'rgba(0,0,0,.8)'; ctx.shadowBlur = 8;
+      ctx.font = `italic 500 ${WS.round(17 * R.scale + 6)}px ${VOICE_FONT}`;
+      ctx.fillText('The field is clear. Breathe.', vw / 2, vh * 0.16);
+      ctx.shadowBlur = 0;
       if (F.timer <= 10) {
         const k = F.timer - WS.floor(F.timer);
         ctx.globalAlpha = 0.5 + 0.5 * k;
@@ -32567,52 +32769,105 @@ window.WS = window.WS || {};
       ctx.restore();
     }
 
+    /* WHO IS TALKING, AND HOW.
+     *
+     * This was the last box in the game drawn the old way: a flat grey slab
+     * with a hairline, a name in spaced sans capitals and the line in the
+     * interface face - the villains' whole voice, in the one font the game
+     * uses for numbers and settings. Every other speaking part in the game
+     * is set in Alegreya on an inked panel, so this is too: a warm dark
+     * plate with a gilt edge and an inner rule, the speaker's colour across
+     * the top, their face in a gilt medallion, and the words arriving at a
+     * speaking pace rather than all at once, in time with the babble that
+     * carries them. The layout is measured on the whole line first, so the
+     * box never grows while the words fill it. */
     const line = F.line;
     if (line && !covered) {
       const sp = WS.FinaleSpeakers[line.who] || WS.FinaleSpeakers.narrator;
       const age = line.dur - line.life;
       const a = WS.min(WS.clamp(age / 0.25, 0, 1), WS.clamp(line.life / 0.35, 0, 1));
-      const fs = WS.round(WS.clamp(15 * R.scale + 4, 14, 22));
+      const fs = WS.round(WS.clamp(16 * R.scale + 5, 15, 24));
+      const narr = !sp.name;
       ctx.save();
       ctx.globalAlpha = a;
-      ctx.font = `500 ${fs}px ${UI_FONT}`;
-      const maxW = WS.min(vw * 0.6, 760);
+      const face = `${narr ? 'italic 500' : '400'} ${fs}px ${VOICE_FONT}`;
+      ctx.font = face;
+      const maxW = WS.min(vw * 0.58, 720);
       const lines = wrap(ctx, line.text, maxW);
       let wmax = 0;
       for (const l of lines) wmax = WS.max(wmax, ctx.measureText(l).width);
-      const portrait = sp.art ? fs * 3.2 : 0;
-      const padX = fs, padY = fs * 0.75;
-      const nameH = sp.name ? fs * 1.1 : 0;
-      const boxW = wmax + padX * 2 + portrait;
-      const boxH = WS.max(portrait, nameH + lines.length * fs * 1.35) + padY * 2;
-      const bx = vw / 2 - boxW / 2;
-      const by = vh * 0.78 - boxH / 2;
-      rrect(ctx, bx, by, boxW, boxH, 6);
-      ctx.fillStyle = 'rgba(8,9,13,.86)'; ctx.fill();
-      ctx.strokeStyle = 'rgba(245,197,107,.35)'; ctx.lineWidth = 1; ctx.stroke();
-      ctx.fillStyle = sp.colour;
-      ctx.fillRect(bx + 10, by, boxW - 20, 2);
-      if (sp.art) {
-        const ps = WS.round(portrait);
-        const pimg = WS.Sprites.creature(sp.art, sp.tint, ps, sp.kit);
-        ctx.save();
-        ctx.beginPath(); ctx.arc(bx + padX * 0.6 + ps / 2, by + boxH / 2, ps * 0.46, 0, WS.TAU);
-        ctx.fillStyle = 'rgba(40,34,30,.9)'; ctx.fill(); ctx.clip();
-        ctx.drawImage(pimg, bx + padX * 0.6, by + boxH / 2 - ps / 2 + 3, ps, ps);
+      const portrait = sp.art ? fs * 3.3 : 0;
+      const padX = fs * 1.1, padY = fs * 0.8;
+      const nameH = sp.name ? fs * 1.15 : 0;
+      const boxW = wmax + padX * 2 + (portrait ? portrait + fs * 0.4 : 0);
+      const boxH = WS.max(portrait + fs * 0.2, nameH + lines.length * fs * 1.34) + padY * 2;
+      const bx = WS.round(vw / 2 - boxW / 2);
+      const by = WS.round(vh * 0.78 - boxH / 2);
+      const col = sp.colour || '#f5c56b';
+      // the plate, lifted off the field by its own shadow
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,.65)'; ctx.shadowBlur = 22; ctx.shadowOffsetY = 6;
+      rrect(ctx, bx, by, boxW, boxH, 7);
+      const plate = ctx.createLinearGradient(0, by, 0, by + boxH);
+      plate.addColorStop(0, 'rgba(30,25,22,.95)');
+      plate.addColorStop(1, 'rgba(11,11,15,.95)');
+      ctx.fillStyle = plate; ctx.fill();
+      ctx.restore();
+      ctx.strokeStyle = 'rgba(245,197,107,.5)'; ctx.lineWidth = 1;
+      rrect(ctx, bx + 0.5, by + 0.5, boxW - 1, boxH - 1, 7); ctx.stroke();
+      ctx.strokeStyle = 'rgba(245,197,107,.14)';
+      rrect(ctx, bx + 4.5, by + 4.5, boxW - 9, boxH - 9, 4); ctx.stroke();
+      // the speaker's colour across the top, fading at both ends
+      const rule = ctx.createLinearGradient(bx, 0, bx + boxW, 0);
+      rule.addColorStop(0, 'rgba(0,0,0,0)'); rule.addColorStop(0.2, col);
+      rule.addColorStop(0.8, col); rule.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = rule;
+      ctx.fillRect(bx + 8, by - 1, boxW - 16, 2);
+      // two ember diamonds where the rule meets the frame
+      for (const dx of [bx + boxW * 0.2, bx + boxW * 0.8]) {
+        ctx.save(); ctx.translate(dx, by); ctx.rotate(Math.PI / 4);
+        ctx.fillStyle = '#f5c56b'; ctx.fillRect(-2.5, -2.5, 5, 5);
         ctx.restore();
       }
-      const tx = bx + padX + portrait;
-      let ty = by + padY + fs * 0.9;
+      if (sp.art) {
+        const ps = WS.round(portrait);
+        const cx = bx + padX * 0.7 + ps / 2, cy = by + boxH / 2;
+        const r0 = ps * 0.47;
+        const halo = ctx.createRadialGradient(cx, cy, r0 * 0.2, cx, cy, r0);
+        halo.addColorStop(0, 'rgba(60,48,40,.95)'); halo.addColorStop(1, 'rgba(18,15,14,.95)');
+        ctx.fillStyle = halo;
+        ctx.beginPath(); ctx.arc(cx, cy, r0, 0, WS.TAU); ctx.fill();
+        const pimg = WS.Sprites.creature(sp.art, sp.tint, ps, sp.kit);
+        ctx.save();
+        ctx.beginPath(); ctx.arc(cx, cy, r0 - 1, 0, WS.TAU); ctx.clip();
+        ctx.drawImage(pimg, cx - ps / 2, cy - ps / 2 + 3, ps, ps);
+        ctx.restore();
+        ctx.strokeStyle = '#c9a24e'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(cx, cy, r0, 0, WS.TAU); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,236,190,.45)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(cx, cy, r0 + 2.5, Math.PI * 1.05, Math.PI * 1.75); ctx.stroke();
+      }
+      const tx = bx + padX + (portrait ? portrait + fs * 0.4 : 0);
+      let ty = by + padY + fs * 0.92;
       ctx.textAlign = 'left';
       if (sp.name) {
-        ctx.font = `700 ${WS.round(fs * 0.72)}px ${UI_FONT}`;
-        ctx.fillStyle = sp.colour;
-        ctx.fillText(sp.name.toUpperCase(), tx, ty - fs * 0.15);
+        ctx.font = `700 ${WS.round(fs * 0.74)}px ${VOICE_FONT}`;
+        if ('letterSpacing' in ctx) ctx.letterSpacing = '0.14em';
+        ctx.fillStyle = col;
+        ctx.fillText(sp.name.toUpperCase(), tx, ty - fs * 0.12);
+        if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
         ty += nameH;
       }
-      ctx.font = `${sp.name ? 500 : 'italic 500'} ${fs}px ${UI_FONT}`;
-      ctx.fillStyle = '#f1ebdf';
-      for (const l of lines) { ctx.fillText(l, tx, ty); ty += fs * 1.35; }
+      // the words, arriving at a speaking pace
+      ctx.font = face;
+      ctx.fillStyle = narr ? '#e6dcc8' : '#f4eee2';
+      let left = WS.floor(age * 52);
+      for (const l of lines) {
+        if (left <= 0) break;
+        ctx.fillText(left >= l.length ? l : l.slice(0, left), tx, ty);
+        left -= l.length + 1;
+        ty += fs * 1.34;
+      }
       ctx.restore();
     }
   };
@@ -34110,7 +34365,12 @@ window.WS = window.WS || {};
          rank is how hard the ground burns inside it - and past the ranks that
          buy other weapons a projectile, a corona just beyond the rim. */
       const zr = z.rank || 1;
-      const hot = 1 + 0.10 * (zr - 1) + (z.evolved ? 0.5 : 0);
+      /* Gentler than it was (0.10 a rank, +0.5 evolved). The fields have
+         runes, a seal, tendrils and bubbles now to say what they are and how
+         far they have come, and at the old rate an evolved Hallowed Ring
+         washed a finale arena three-quarters gold - the boss fought inside
+         a yellow haze of the player's own making. */
+      const hot = 1 + 0.06 * (zr - 1) + (z.evolved ? 0.22 : 0);
       ctx.globalCompositeOperation = 'lighter';
       const grd = ctx.createRadialGradient(z.x, z.y, R * 0.15, z.x, z.y, R);
       grd.addColorStop(0, WS.rgb(z.colour, 0.34 * fade * hot * stackDamp));
@@ -35191,8 +35451,11 @@ window.WS = window.WS || {};
         ctx.translate(b.x1, b.y1);
         ctx.rotate(WS.atan2(dy, dx));
         const strike = WS.floor(b.life * 30);
-        const forks = this.lite ? 0 : 1 + (br >= WS.Config.projRankA ? 1 : 0) + (b.evolved ? 1 : 0);
-        WS.SpellArt.lightning(ctx, len, hw, b.colour, fade, (b.seed ^ (strike * 2654435761)) >>> 0, forks);
+        /* Rank buys branches: one fork at rank 1, four by rank 8, and each
+           reaching further - the storm a rank-8 Arcweb throws should look
+           like more storm, not the same bolt drawn a pixel wider. */
+        const forks = this.lite ? 0 : 1 + WS.floor((br - 1) / 3) + (br >= WS.Config.projRankA ? 1 : 0) + (b.evolved ? 1 : 0);
+        WS.SpellArt.lightning(ctx, len, hw, b.colour, fade, (b.seed ^ (strike * 2654435761)) >>> 0, forks, 1 + 0.07 * (br - 1));
         ctx.restore();
         continue;
       }
@@ -39083,7 +39346,7 @@ window.WS = window.WS || {};
       line.append(el('span', null, k), el('span', null, String(v)));
       into.append(line);
     };
-    kv('Health', `${WS.floor(p.health)} / ${WS.floor(p.maxHealth)}`);
+    kv('Health', `${WS.max(0, WS.floor(p.health))} / ${WS.floor(p.maxHealth)}`);
     kv('Armor', `${p.armor} (${WS.round(p.armor / (p.armor + WS.Config.armorConstant) * 100)}% reduction)`);
     kv('Damage', `×${p.damageMultiplier.toFixed(2)}`);
     kv('Cooldowns', `×${p.cooldownMultiplier.toFixed(2)}`);
@@ -39256,13 +39519,18 @@ window.WS = window.WS || {};
       const evolved = !!(w && w.evolved && WS.Weapons[top].evolveName);
       const name = evolved ? WS.Weapons[top].evolveName : WS.Weapons[top].name;
       if (evolved) topEvolved = top;
-      lines.push(evolved ? `Most of that was ${name}'s work, and it came out of the fire tonight.`
-        : `Most of that was ${name}'s work.`);
+      lines.push(`Most of that was ${name}'s work.`);
     }
+    /* What was forged tonight, said once. It used to be said twice in a row -
+       "...and it came out of the fire tonight. Mote Cascade and Skybreak came
+       out of the fire tonight." - so the best line in the log read like a
+       form being filled in. */
     const forged = p.weapons.filter((w) => w.evolved && w.data.evolveName && w.id !== topEvolved)
       .map((w) => w.data.evolveName);
-    if (forged.length === 1) lines.push(`${forged[0]} came out of the fire tonight.`);
-    else if (forged.length > 1) lines.push(`${forged.slice(0, -1).join(', ')} and ${forged[forged.length - 1]} came out of the fire tonight.`);
+    const list = (a) => (a.length === 1 ? a[0] : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
+    if (topEvolved && forged.length) lines.push(`It came out of the fire tonight, and so did ${list(forged)}.`);
+    else if (topEvolved) lines.push('It came out of the fire tonight.');
+    else if (forged.length) lines.push(`${list(forged)} came out of the fire tonight.`);
 
     if (outcome === 'defeated') lines.push(run.time < 300 ? 'A short night. The fire is still lit for whoever is next.'
       : 'Somebody else will have to keep the fire tonight.');

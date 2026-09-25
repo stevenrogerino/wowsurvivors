@@ -839,6 +839,144 @@
   }
 
 
+  /* ------------------------------------------------------------- graves --
+   * "Up through the furrows and the open graves." The line had no picture:
+   * the beat under it was the same night as the one before, with a few
+   * shapes in it drawn in the colour of the ground they stood on. This is
+   * the picture. A field of graves across the near ground, each one open and
+   * lit faintly from inside, and in each something pulling itself up - a
+   * head, then shoulders, then an arm hooked over the lip - with the cold
+   * pale eyes of the thing that owns them all. They come up in turn, not
+   * together, across the length of the line. */
+  const GRAVES = [
+    [0.12, 0.30, 0.86, 0.10, 'cross'], [0.31, 0.10, 0.66, 0.34, 'stone'],
+    [0.50, 0.48, 1.00, 0.00, 'stone'], [0.69, 0.16, 0.72, 0.22, 'cross'],
+    [0.88, 0.40, 0.92, 0.46, 'stone'],
+  ];
+  function graves(ctx, t, k) {
+    const order = GRAVES.slice().sort((a, b) => a[1] - b[1]);   // far first
+    for (const [gx, depth, sc, delay, kind] of order) {
+      const x = gx * W, y = GROUND + 22 + depth * 110, s = 56 * sc;
+      const rise = WS.clamp((k * 1.35 - delay) / 0.7, 0, 1);
+      const up = rise * rise * (3 - 2 * rise);
+      const lean = (gx * 7.3 % 1 - 0.5) * 0.35;
+      // the marker, leaning, moonlit down its left edge
+      ctx.save();
+      ctx.translate(x - s * 1.05, y - s * 0.12);
+      ctx.rotate(lean);
+      ctx.fillStyle = '#1b1f2a';
+      ctx.strokeStyle = 'rgba(140,158,192,.6)';
+      ctx.lineWidth = WS.max(1, s * 0.05);
+      ctx.beginPath();
+      if (kind === 'cross') {
+        ctx.rect(-s * 0.08, -s * 1.15, s * 0.16, s * 1.15);
+        ctx.rect(-s * 0.36, -s * 0.9, s * 0.72, s * 0.15);
+      } else {
+        ctx.moveTo(-s * 0.3, 0); ctx.lineTo(-s * 0.3, -s * 0.7);
+        ctx.quadraticCurveTo(-s * 0.3, -s * 1.02, 0, -s * 1.02);
+        ctx.quadraticCurveTo(s * 0.3, -s * 1.02, s * 0.3, -s * 0.7);
+        ctx.lineTo(s * 0.3, 0); ctx.closePath();
+      }
+      ctx.fill();
+      ctx.beginPath();
+      if (kind === 'cross') { ctx.moveTo(-s * 0.08, 0); ctx.lineTo(-s * 0.08, -s * 1.15); ctx.moveTo(-s * 0.36, -s * 0.9); ctx.lineTo(s * 0.36, -s * 0.9); }
+      else { ctx.moveTo(-s * 0.3, 0); ctx.lineTo(-s * 0.3, -s * 0.7); ctx.quadraticCurveTo(-s * 0.3, -s * 1.02, 0, -s * 1.02); }
+      ctx.stroke();
+      ctx.restore();
+      // the open grave: a dark mouth with a cold light coming out of it
+      const glow = ctx.createRadialGradient(x, y, 0, x, y, s * 1.6);
+      glow.addColorStop(0, `rgba(150,200,255,${(0.10 + 0.22 * up).toFixed(3)})`);
+      glow.addColorStop(1, 'rgba(150,200,255,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.ellipse(x, y, s * 1.6, s * 0.7, 0, 0, WS.TAU); ctx.fill();
+      ctx.fillStyle = '#030406';
+      ctx.beginPath(); ctx.ellipse(x, y, s * 0.72, s * 0.24, 0, 0, WS.TAU); ctx.fill();
+      // the heaped earth behind it, lit on its crown
+      ctx.fillStyle = '#10131b';
+      ctx.beginPath(); ctx.ellipse(x + s * 0.1, y - s * 0.18, s * 0.9, s * 0.2, 0, Math.PI, WS.TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(96,110,140,.45)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(x + s * 0.1, y - s * 0.18, s * 0.9, s * 0.2, 0, Math.PI * 1.1, Math.PI * 1.7); ctx.stroke();
+      if (up <= 0.01) continue;
+      // what is coming up out of it, clipped to above the lip of the grave
+      ctx.save();
+      ctx.beginPath(); ctx.rect(x - s * 2, y - s * 3, s * 4, s * 3); ctx.clip();
+      const bob = WS.sin(t * 2.2 + gx * 9) * s * 0.03;
+      const top = y + s * 0.9 - up * s * 1.95 + bob;
+      ctx.fillStyle = '#06070b';
+      ctx.strokeStyle = 'rgba(150,172,210,.5)';
+      ctx.lineWidth = WS.max(1, s * 0.045);
+      // ragged shoulders, a neck, a head hung forward
+      const hd = gx > 0.5 ? -1 : 1;
+      ctx.beginPath();
+      ctx.moveTo(x - s * 0.48, top + s * 2.2);
+      ctx.lineTo(x - s * 0.44, top + s * 0.62);
+      ctx.lineTo(x - s * 0.36, top + s * 0.5);
+      ctx.lineTo(x - s * 0.28, top + s * 0.55);
+      ctx.lineTo(x - s * 0.2, top + s * 0.44);
+      ctx.lineTo(x - s * 0.08, top + s * 0.42);
+      ctx.lineTo(x + s * 0.06, top + s * 0.4);
+      ctx.lineTo(x + s * 0.2, top + s * 0.45);
+      ctx.lineTo(x + s * 0.3, top + s * 0.52);
+      ctx.lineTo(x + s * 0.38, top + s * 0.49);
+      ctx.lineTo(x + s * 0.45, top + s * 0.62);
+      ctx.lineTo(x + s * 0.49, top + s * 2.2);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillRect(x + hd * s * 0.02 - s * 0.07, top + s * 0.24, s * 0.14, s * 0.2);
+      ctx.beginPath();
+      ctx.ellipse(x + hd * s * 0.06, top + s * 0.15, s * 0.17, s * 0.19, hd * 0.25, 0, WS.TAU);
+      ctx.fill(); ctx.stroke();
+      // the far arm, braced on the ground behind
+      ctx.lineCap = 'round';
+      ctx.lineWidth = s * 0.11; ctx.strokeStyle = '#06070b';
+      ctx.beginPath(); ctx.moveTo(x - hd * s * 0.34, top + s * 0.6);
+      ctx.quadraticCurveTo(x - hd * s * 0.62, top + s * 0.72, x - hd * s * 0.7, y - s * 0.02); ctx.stroke();
+      ctx.lineWidth = WS.max(1, s * 0.035); ctx.strokeStyle = 'rgba(150,172,210,.4)';
+      ctx.beginPath(); ctx.moveTo(x - hd * s * 0.36, top + s * 0.56);
+      ctx.quadraticCurveTo(x - hd * s * 0.64, top + s * 0.66, x - hd * s * 0.73, y - s * 0.06); ctx.stroke();
+      // an arm hooked over the lip, fingers in the dirt
+      const reach = WS.clamp(up * 1.4 - 0.2, 0, 1);
+      const side = gx > 0.5 ? -1 : 1;
+      const hx = x + side * s * (0.5 + 0.35 * reach), hy = y - s * 0.05 - reach * s * 0.1;
+      ctx.lineCap = 'round';
+      ctx.lineWidth = s * 0.13; ctx.strokeStyle = '#06070b';
+      ctx.beginPath(); ctx.moveTo(x + side * s * 0.3, top + s * 0.55);
+      ctx.quadraticCurveTo(x + side * s * 0.62, top + s * 0.2, hx, hy); ctx.stroke();
+      ctx.lineWidth = WS.max(1, s * 0.04); ctx.strokeStyle = 'rgba(150,172,210,.45)';
+      ctx.beginPath(); ctx.moveTo(x + side * s * 0.3, top + s * 0.5);
+      ctx.quadraticCurveTo(x + side * s * 0.6, top + s * 0.14, hx, hy - s * 0.05); ctx.stroke();
+      ctx.lineWidth = WS.max(1, s * 0.05); ctx.strokeStyle = '#06070b';
+      for (let f = -1; f <= 1; f++) {
+        ctx.beginPath(); ctx.moveTo(hx, hy);
+        ctx.lineTo(hx + side * s * 0.16, hy + s * (0.06 + f * 0.06)); ctx.stroke();
+      }
+      // and the eyes: the Pale's cold, not the ember's warmth
+      const eye = WS.clamp((up - 0.25) / 0.3, 0, 1) * (0.75 + 0.25 * WS.sin(t * 5 + gx * 20));
+      if (eye > 0) {
+        ctx.globalCompositeOperation = 'lighter';
+        for (const ex0 of [-0.08, 0.1]) {
+          const ex = ex0 + hd * 0.06;
+          const g2 = ctx.createRadialGradient(x + ex * s, top + s * 0.13, 0, x + ex * s, top + s * 0.13, s * 0.16);
+          g2.addColorStop(0, `rgba(215,238,255,${(0.95 * eye).toFixed(3)})`);
+          g2.addColorStop(0.35, `rgba(120,190,255,${(0.5 * eye).toFixed(3)})`);
+          g2.addColorStop(1, 'rgba(120,190,255,0)');
+          ctx.fillStyle = g2;
+          ctx.beginPath(); ctx.arc(x + ex * s, top + s * 0.13, s * 0.16, 0, WS.TAU); ctx.fill();
+        }
+      }
+      ctx.restore();
+      // earth thrown up as it comes
+      if (up > 0.05 && up < 0.95) {
+        ctx.fillStyle = '#161a22';
+        for (let c = 0; c < 5; c++) {
+          const ph = (t * 1.3 + c * 0.2 + gx) % 1;
+          const cx = x + (c - 2) * s * 0.28 + (c - 2) * ph * s * 0.3;
+          const cy = y - s * 0.1 - WS.sin(ph * Math.PI) * s * 0.55;
+          ctx.beginPath(); ctx.arc(cx, cy, s * 0.05, 0, WS.TAU); ctx.fill();
+        }
+      }
+    }
+  }
+
   /* ---------------------------------------------------------------- API -- */
   const Scene = {
     W, H, GROUND,
@@ -856,6 +994,7 @@
     thief(ctx, t, k) { ensure(); thiefFront(ctx, t, k); },
     paleBack(ctx, t, k) { ensure(); paleBack(ctx, t, k); },
     paleFront(ctx, t, k) { ensure(); paleFront(ctx, t, k); },
+    graves(ctx, t, k) { graves(ctx, t, k); },
 
     /* The two tree bands, by lift rather than by colour, so a caller cannot
        put the far wood in front of the near one by getting the palette the

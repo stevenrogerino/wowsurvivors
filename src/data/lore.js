@@ -67,7 +67,7 @@
       next: 'next',
       /* Shown only when the browser has not yet let the game have a
          voice - see P.arm. It asks for the keypress that buys one. */
-      begin: 'press any key to begin',
+      begin: 'Press any key, or tap, to begin',
       title: 'The Ember Watch',
       subtitle: 'Thirty minutes until dawn',
       /* Rewritten once the story had villains in it. The first draft said
@@ -85,7 +85,7 @@
         { beat: 'night', hold: 4.6, lines: [
           'The dark does not fall here.',
           'It climbs.'] },
-        { beat: 'night', hold: 5.0, lines: [
+        { beat: 'rise', hold: 5.0, lines: [
           'Up through the furrows and the open graves,',
           'every night, until morning.'] },
         { beat: 'ember', hold: 5.6, lines: [

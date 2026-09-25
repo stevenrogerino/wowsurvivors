@@ -351,3 +351,36 @@ the point of being visible.
 - **Menu idle warm-up** also pre-encodes every level-up card icon and
   builds the Trainer, so neither stalls the first time it's shown.
   Bestiary images come first.
+
+## The top-down pass: first ten seconds to the last line
+
+A walkthrough of the whole journey, from a fresh profile through the
+prologue, menu, run, boss, midpoint, death, dawn, finale and victory.
+
+- **The story speaks in the voice.** The prologue and the dawn were the
+  last text in the game still set in the interface's Archivo. Their lines
+  now use Alegreya, with the second line in its italic. The same goes for
+  the finale's "The field is clear. Breathe."
+- **The start prompt** was 11 px spaced capitals in slate on a black sky,
+  the only thing on the first screen. It is now an italic line at reading
+  size, with an ember breathing either side, and it mentions tapping.
+- **"Up through the furrows and the open graves"** has its own beat,
+  `rise`, drawn by `WS.Scene.graves`. Graves open across the near ground,
+  lit from inside, and the dead climb out in turn with the Pale's cold
+  eyes. It used to reuse the empty night before it.
+- **The finale's speech box** is an inked Arclight plate: gilt edge and
+  inner rule, the speaker's colour across the top, a gilt medallion, the
+  name in spaced Alegreya capitals. The words arrive at speaking pace, and
+  the layout is measured on the full line so the box never grows.
+- **The victory nameplate** is gilt again. Chrome paints an inherited
+  text-shadow over a background clipped to text, so it had been black
+  letters with a gold rim.
+- **Each night opens** with the battlefield's name and the watcher's own
+  line from their record, in their voice.
+- **Smaller fixes:**
+  - The Watch's log says "came out of the fire tonight" once instead of
+    twice in a row.
+  - Health on the sheet no longer goes negative on the death screen.
+  - Long survivor names wrap instead of being cut.
+  - The zone wash grows more gently with rank, so an evolved Hallowed Ring
+    no longer turns a finale arena gold.

@@ -151,6 +151,16 @@
           : `${owed} levels, before the first of them arrives.`, 3.2, { kind: 'glory' });
       this.pendingLevelUps += owed;
       this.openLevelUp();
+    } else {
+      /* The night opens with where you are and who is standing there. A run
+         used to begin on a silent field - the survivor chosen, the place
+         chosen, and nothing said about either - and every watcher has a line
+         of their own in the book that was only ever read in the menu. This is
+         where it belongs: first thing, in their voice, as the dark starts. */
+      const run = this.run;
+      const w = WS.Lore && WS.Lore.watchers && WS.Lore.watchers[run.characterId];
+      const said = w && w.says ? `\u201c${w.says}\u201d` : 'Thirty minutes until dawn.';
+      this.announce(run.map.name, said, 3.6, { kind: 'plain' });
     }
   };
 

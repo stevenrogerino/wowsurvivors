@@ -13,6 +13,8 @@
 (function (WS) {
 
   const UI_FONT = "'Archivo', 'Segoe UI', system-ui, sans-serif";
+  // The storyteller's face - the one every speaking part in the menus uses.
+  const VOICE_FONT = "'Alegreya', 'Iowan Old Style', Georgia, serif";
   const A = {};
 
   const rgba = (c, a) => WS.rgb(c, WS.clamp(a, 0, 1));
@@ -1840,9 +1842,12 @@
       const n = WS.max(0, WS.ceil(F.timer));
       ctx.save();
       ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(245,197,107,.85)';
-      ctx.font = `600 ${WS.round(13 * R.scale + 4)}px ${UI_FONT}`;
-      ctx.fillText('THE FIELD IS CLEAR · BREATHE', vw / 2, vh * 0.16);
+      // said, not labelled: the voice, not the interface's spaced capitals
+      ctx.fillStyle = 'rgba(245,215,160,.92)';
+      ctx.shadowColor = 'rgba(0,0,0,.8)'; ctx.shadowBlur = 8;
+      ctx.font = `italic 500 ${WS.round(17 * R.scale + 6)}px ${VOICE_FONT}`;
+      ctx.fillText('The field is clear. Breathe.', vw / 2, vh * 0.16);
+      ctx.shadowBlur = 0;
       if (F.timer <= 10) {
         const k = F.timer - WS.floor(F.timer);
         ctx.globalAlpha = 0.5 + 0.5 * k;
@@ -1863,52 +1868,105 @@
       ctx.restore();
     }
 
+    /* WHO IS TALKING, AND HOW.
+     *
+     * This was the last box in the game drawn the old way: a flat grey slab
+     * with a hairline, a name in spaced sans capitals and the line in the
+     * interface face - the villains' whole voice, in the one font the game
+     * uses for numbers and settings. Every other speaking part in the game
+     * is set in Alegreya on an inked panel, so this is too: a warm dark
+     * plate with a gilt edge and an inner rule, the speaker's colour across
+     * the top, their face in a gilt medallion, and the words arriving at a
+     * speaking pace rather than all at once, in time with the babble that
+     * carries them. The layout is measured on the whole line first, so the
+     * box never grows while the words fill it. */
     const line = F.line;
     if (line && !covered) {
       const sp = WS.FinaleSpeakers[line.who] || WS.FinaleSpeakers.narrator;
       const age = line.dur - line.life;
       const a = WS.min(WS.clamp(age / 0.25, 0, 1), WS.clamp(line.life / 0.35, 0, 1));
-      const fs = WS.round(WS.clamp(15 * R.scale + 4, 14, 22));
+      const fs = WS.round(WS.clamp(16 * R.scale + 5, 15, 24));
+      const narr = !sp.name;
       ctx.save();
       ctx.globalAlpha = a;
-      ctx.font = `500 ${fs}px ${UI_FONT}`;
-      const maxW = WS.min(vw * 0.6, 760);
+      const face = `${narr ? 'italic 500' : '400'} ${fs}px ${VOICE_FONT}`;
+      ctx.font = face;
+      const maxW = WS.min(vw * 0.58, 720);
       const lines = wrap(ctx, line.text, maxW);
       let wmax = 0;
       for (const l of lines) wmax = WS.max(wmax, ctx.measureText(l).width);
-      const portrait = sp.art ? fs * 3.2 : 0;
-      const padX = fs, padY = fs * 0.75;
-      const nameH = sp.name ? fs * 1.1 : 0;
-      const boxW = wmax + padX * 2 + portrait;
-      const boxH = WS.max(portrait, nameH + lines.length * fs * 1.35) + padY * 2;
-      const bx = vw / 2 - boxW / 2;
-      const by = vh * 0.78 - boxH / 2;
-      rrect(ctx, bx, by, boxW, boxH, 6);
-      ctx.fillStyle = 'rgba(8,9,13,.86)'; ctx.fill();
-      ctx.strokeStyle = 'rgba(245,197,107,.35)'; ctx.lineWidth = 1; ctx.stroke();
-      ctx.fillStyle = sp.colour;
-      ctx.fillRect(bx + 10, by, boxW - 20, 2);
-      if (sp.art) {
-        const ps = WS.round(portrait);
-        const pimg = WS.Sprites.creature(sp.art, sp.tint, ps, sp.kit);
-        ctx.save();
-        ctx.beginPath(); ctx.arc(bx + padX * 0.6 + ps / 2, by + boxH / 2, ps * 0.46, 0, WS.TAU);
-        ctx.fillStyle = 'rgba(40,34,30,.9)'; ctx.fill(); ctx.clip();
-        ctx.drawImage(pimg, bx + padX * 0.6, by + boxH / 2 - ps / 2 + 3, ps, ps);
+      const portrait = sp.art ? fs * 3.3 : 0;
+      const padX = fs * 1.1, padY = fs * 0.8;
+      const nameH = sp.name ? fs * 1.15 : 0;
+      const boxW = wmax + padX * 2 + (portrait ? portrait + fs * 0.4 : 0);
+      const boxH = WS.max(portrait + fs * 0.2, nameH + lines.length * fs * 1.34) + padY * 2;
+      const bx = WS.round(vw / 2 - boxW / 2);
+      const by = WS.round(vh * 0.78 - boxH / 2);
+      const col = sp.colour || '#f5c56b';
+      // the plate, lifted off the field by its own shadow
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,.65)'; ctx.shadowBlur = 22; ctx.shadowOffsetY = 6;
+      rrect(ctx, bx, by, boxW, boxH, 7);
+      const plate = ctx.createLinearGradient(0, by, 0, by + boxH);
+      plate.addColorStop(0, 'rgba(30,25,22,.95)');
+      plate.addColorStop(1, 'rgba(11,11,15,.95)');
+      ctx.fillStyle = plate; ctx.fill();
+      ctx.restore();
+      ctx.strokeStyle = 'rgba(245,197,107,.5)'; ctx.lineWidth = 1;
+      rrect(ctx, bx + 0.5, by + 0.5, boxW - 1, boxH - 1, 7); ctx.stroke();
+      ctx.strokeStyle = 'rgba(245,197,107,.14)';
+      rrect(ctx, bx + 4.5, by + 4.5, boxW - 9, boxH - 9, 4); ctx.stroke();
+      // the speaker's colour across the top, fading at both ends
+      const rule = ctx.createLinearGradient(bx, 0, bx + boxW, 0);
+      rule.addColorStop(0, 'rgba(0,0,0,0)'); rule.addColorStop(0.2, col);
+      rule.addColorStop(0.8, col); rule.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = rule;
+      ctx.fillRect(bx + 8, by - 1, boxW - 16, 2);
+      // two ember diamonds where the rule meets the frame
+      for (const dx of [bx + boxW * 0.2, bx + boxW * 0.8]) {
+        ctx.save(); ctx.translate(dx, by); ctx.rotate(Math.PI / 4);
+        ctx.fillStyle = '#f5c56b'; ctx.fillRect(-2.5, -2.5, 5, 5);
         ctx.restore();
       }
-      const tx = bx + padX + portrait;
-      let ty = by + padY + fs * 0.9;
+      if (sp.art) {
+        const ps = WS.round(portrait);
+        const cx = bx + padX * 0.7 + ps / 2, cy = by + boxH / 2;
+        const r0 = ps * 0.47;
+        const halo = ctx.createRadialGradient(cx, cy, r0 * 0.2, cx, cy, r0);
+        halo.addColorStop(0, 'rgba(60,48,40,.95)'); halo.addColorStop(1, 'rgba(18,15,14,.95)');
+        ctx.fillStyle = halo;
+        ctx.beginPath(); ctx.arc(cx, cy, r0, 0, WS.TAU); ctx.fill();
+        const pimg = WS.Sprites.creature(sp.art, sp.tint, ps, sp.kit);
+        ctx.save();
+        ctx.beginPath(); ctx.arc(cx, cy, r0 - 1, 0, WS.TAU); ctx.clip();
+        ctx.drawImage(pimg, cx - ps / 2, cy - ps / 2 + 3, ps, ps);
+        ctx.restore();
+        ctx.strokeStyle = '#c9a24e'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(cx, cy, r0, 0, WS.TAU); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,236,190,.45)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(cx, cy, r0 + 2.5, Math.PI * 1.05, Math.PI * 1.75); ctx.stroke();
+      }
+      const tx = bx + padX + (portrait ? portrait + fs * 0.4 : 0);
+      let ty = by + padY + fs * 0.92;
       ctx.textAlign = 'left';
       if (sp.name) {
-        ctx.font = `700 ${WS.round(fs * 0.72)}px ${UI_FONT}`;
-        ctx.fillStyle = sp.colour;
-        ctx.fillText(sp.name.toUpperCase(), tx, ty - fs * 0.15);
+        ctx.font = `700 ${WS.round(fs * 0.74)}px ${VOICE_FONT}`;
+        if ('letterSpacing' in ctx) ctx.letterSpacing = '0.14em';
+        ctx.fillStyle = col;
+        ctx.fillText(sp.name.toUpperCase(), tx, ty - fs * 0.12);
+        if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
         ty += nameH;
       }
-      ctx.font = `${sp.name ? 500 : 'italic 500'} ${fs}px ${UI_FONT}`;
-      ctx.fillStyle = '#f1ebdf';
-      for (const l of lines) { ctx.fillText(l, tx, ty); ty += fs * 1.35; }
+      // the words, arriving at a speaking pace
+      ctx.font = face;
+      ctx.fillStyle = narr ? '#e6dcc8' : '#f4eee2';
+      let left = WS.floor(age * 52);
+      for (const l of lines) {
+        if (left <= 0) break;
+        ctx.fillText(left >= l.length ? l : l.slice(0, left), tx, ty);
+        left -= l.length + 1;
+        ty += fs * 1.34;
+      }
       ctx.restore();
     }
   };

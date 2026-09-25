@@ -2732,7 +2732,7 @@
       line.append(el('span', null, k), el('span', null, String(v)));
       into.append(line);
     };
-    kv('Health', `${WS.floor(p.health)} / ${WS.floor(p.maxHealth)}`);
+    kv('Health', `${WS.max(0, WS.floor(p.health))} / ${WS.floor(p.maxHealth)}`);
     kv('Armor', `${p.armor} (${WS.round(p.armor / (p.armor + WS.Config.armorConstant) * 100)}% reduction)`);
     kv('Damage', `×${p.damageMultiplier.toFixed(2)}`);
     kv('Cooldowns', `×${p.cooldownMultiplier.toFixed(2)}`);
@@ -2905,13 +2905,18 @@
       const evolved = !!(w && w.evolved && WS.Weapons[top].evolveName);
       const name = evolved ? WS.Weapons[top].evolveName : WS.Weapons[top].name;
       if (evolved) topEvolved = top;
-      lines.push(evolved ? `Most of that was ${name}'s work, and it came out of the fire tonight.`
-        : `Most of that was ${name}'s work.`);
+      lines.push(`Most of that was ${name}'s work.`);
     }
+    /* What was forged tonight, said once. It used to be said twice in a row -
+       "...and it came out of the fire tonight. Mote Cascade and Skybreak came
+       out of the fire tonight." - so the best line in the log read like a
+       form being filled in. */
     const forged = p.weapons.filter((w) => w.evolved && w.data.evolveName && w.id !== topEvolved)
       .map((w) => w.data.evolveName);
-    if (forged.length === 1) lines.push(`${forged[0]} came out of the fire tonight.`);
-    else if (forged.length > 1) lines.push(`${forged.slice(0, -1).join(', ')} and ${forged[forged.length - 1]} came out of the fire tonight.`);
+    const list = (a) => (a.length === 1 ? a[0] : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
+    if (topEvolved && forged.length) lines.push(`It came out of the fire tonight, and so did ${list(forged)}.`);
+    else if (topEvolved) lines.push('It came out of the fire tonight.');
+    else if (forged.length) lines.push(`${list(forged)} came out of the fire tonight.`);
 
     if (outcome === 'defeated') lines.push(run.time < 300 ? 'A short night. The fire is still lit for whoever is next.'
       : 'Somebody else will have to keep the fire tonight.');

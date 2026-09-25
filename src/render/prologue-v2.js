@@ -391,6 +391,19 @@
       ctx.restore();
     },
 
+    /* The dark climbing up out of the ground: the same night, with the
+       graves in it open and the dead coming up through them. */
+    rise(ctx, t, k, env) {
+      ensure();
+      const l = lightOf(env, 0);
+      S.sky(ctx, t, l); S.ranges(ctx, l);
+      S.woodFar(ctx, 0);
+      S.ground(ctx, l);
+      S.woodNear(ctx, 0);
+      S.mist(ctx, t, l);
+      S.graves(ctx, t, k);
+    },
+
     ember(ctx, t, k, env) {
       ensure();
       const l = lightOf(env, 0);

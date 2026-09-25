@@ -614,7 +614,7 @@
      frames and the whole shape re-strikes - lightning that holds still is a
      wire. */
   function rnd(s) { s = (s * 1664525 + 1013904223) >>> 0; return s; }
-  SA.lightning = function (ctx, len, hw, colour, fade, seed, forks) {
+  SA.lightning = function (ctx, len, hw, colour, fade, seed, forks, reach) {
     const segs = Math.max(4, Math.min(14, Math.round(len / 16)));
     const jag = Math.min(len * 0.14, 10 + hw * 2.2);
     const xs = [0], ys = [0];
@@ -645,7 +645,7 @@
       const side = (s >>> 12) & 1 ? 1 : -1;
       let x = xs[i], y = ys[i];
       ctx.beginPath(); ctx.moveTo(x, y);
-      const step = len / segs * 0.7;
+      const step = len / segs * 0.7 * (reach || 1);
       for (let k = 0; k < 3; k++) {
         s = rnd(s);
         x += step * (0.6 + ((s >>> 9) % 100) / 250);

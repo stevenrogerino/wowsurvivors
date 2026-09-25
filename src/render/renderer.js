@@ -1463,7 +1463,12 @@
          rank is how hard the ground burns inside it - and past the ranks that
          buy other weapons a projectile, a corona just beyond the rim. */
       const zr = z.rank || 1;
-      const hot = 1 + 0.10 * (zr - 1) + (z.evolved ? 0.5 : 0);
+      /* Gentler than it was (0.10 a rank, +0.5 evolved). The fields have
+         runes, a seal, tendrils and bubbles now to say what they are and how
+         far they have come, and at the old rate an evolved Hallowed Ring
+         washed a finale arena three-quarters gold - the boss fought inside
+         a yellow haze of the player's own making. */
+      const hot = 1 + 0.06 * (zr - 1) + (z.evolved ? 0.22 : 0);
       ctx.globalCompositeOperation = 'lighter';
       const grd = ctx.createRadialGradient(z.x, z.y, R * 0.15, z.x, z.y, R);
       grd.addColorStop(0, WS.rgb(z.colour, 0.34 * fade * hot * stackDamp));
@@ -2544,8 +2549,11 @@
         ctx.translate(b.x1, b.y1);
         ctx.rotate(WS.atan2(dy, dx));
         const strike = WS.floor(b.life * 30);
-        const forks = this.lite ? 0 : 1 + (br >= WS.Config.projRankA ? 1 : 0) + (b.evolved ? 1 : 0);
-        WS.SpellArt.lightning(ctx, len, hw, b.colour, fade, (b.seed ^ (strike * 2654435761)) >>> 0, forks);
+        /* Rank buys branches: one fork at rank 1, four by rank 8, and each
+           reaching further - the storm a rank-8 Arcweb throws should look
+           like more storm, not the same bolt drawn a pixel wider. */
+        const forks = this.lite ? 0 : 1 + WS.floor((br - 1) / 3) + (br >= WS.Config.projRankA ? 1 : 0) + (b.evolved ? 1 : 0);
+        WS.SpellArt.lightning(ctx, len, hw, b.colour, fade, (b.seed ^ (strike * 2654435761)) >>> 0, forks, 1 + 0.07 * (br - 1));
         ctx.restore();
         continue;
       }

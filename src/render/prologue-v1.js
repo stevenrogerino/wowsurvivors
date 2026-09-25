@@ -208,6 +208,11 @@
       ctx.restore();
     },
 
+    rise(ctx, t, k) {
+      sky(ctx, t, 0); ground(ctx, 0); treeline(ctx, 0);
+      WS.Scene.graves(ctx, t, k);
+    },
+
     ember(ctx, t, k) {
       sky(ctx, t, 0); ground(ctx, 0); treeline(ctx, 0);
       const glow = 0.25 + 0.75 * k * (0.85 + 0.15 * WS.sin(t * 3));
