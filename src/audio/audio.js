@@ -1057,8 +1057,9 @@
     /* Highmoor: a pipe over a held drone, in the dorian - bright sixth,
        flat seventh - on a skin drum that walks like a march up a hill; the
        wind, the thunder a long way off, and the sheep. The drone is a
-       square an octave down: the reed under a set of pipes, and the one
-       floor in the game with that much edge in it. */
+       bright saw at the lead's own octave - the reed under a set of pipes -
+       where the Eclipse's square sits low and hollow: the two were the
+       closest pair in the game until the pipes came up out of the floor. */
     highmoor: {
       root: 110.00, scale: [0, 2, 3, 7, 9], wave: 'square', tempo: 1.5,
       leadCut: 9,
@@ -1066,7 +1067,7 @@
       perc: [0, 4, 6, 8, 12, 14], kit: 'skin', percGain: 1.7,
       prog: [0, 3, 4, 3],
       life: { rate: 0.5, voices: ['gust', 'gust', 'rumble', 'rumble', 'crow', 'bleat', 'hawk'] },
-      drone: { gain: 0.12, oct: 1, cut: 700, wave: 'square' },
+      drone: { gain: 0.085, oct: 0, cut: 1500, wave: 'sawtooth' },
     },
     /* The Eclipse: wrong. Struck stone on an odd count, an altered scale, and
        a room that RINGS rather than rumbles.
