@@ -140,11 +140,30 @@ const ARGS = process.getuid && process.getuid() === 0 ? ['--no-sandbox'] : [];
   }
   if (shell.title !== 'The Ember Watch') fail.push(`the window is titled "${shell.title}"`);
 
-  // One page, forever: neither a popup nor a navigation may take.
+  /* One page, forever: neither a popup nor a navigation may take - and a
+     refused popup may not be handed to the system browser either.
+
+     The probe must never reach a real browser, whatever the shell does. It
+     used to aim at example.com, and while main.js still passed denied popups
+     to shell.openExternal, every run of this check opened a tab in the
+     player's own browser. So openExternal is swapped for a recorder in the
+     main process before the probe - a regression now shows up as a failure
+     here instead of as a stray tab - and the address is under .invalid, a
+     top-level domain reserved never to resolve. */
+  await app.evaluate(({ shell }) => {
+    globalThis.__externalOpened = [];
+    shell.openExternal = async (u) => { globalThis.__externalOpened.push(u); };
+  });
   const before = boot.href;
-  await page.evaluate(() => { try { window.open('https://example.com'); } catch (e) {} });
-  await page.evaluate(() => { try { location.href = 'https://example.com'; } catch (e) {} });
+  const PROBE = 'https://popup-probe.emberwatch.invalid/';
+  await page.evaluate((u) => { try { window.open(u); } catch (e) {} }, PROBE);
+  await page.evaluate((u) => { try { location.href = u; } catch (e) {} }, PROBE);
   await page.waitForTimeout(500);
+  const opened = await app.evaluate(() => globalThis.__externalOpened);
+  if (opened.length) {
+    fail.push(`a refused popup was handed to the system browser (${opened[0]}) - `
+      + 'the player would get a stray browser tab');
+  }
   const after = await app.evaluate(({ BrowserWindow }) => ({
     windows: BrowserWindow.getAllWindows().length,
     href: BrowserWindow.getAllWindows()[0].webContents.getURL(),
@@ -152,7 +171,6 @@ const ARGS = process.getuid && process.getuid() === 0 ? ['--no-sandbox'] : [];
   if (after.windows !== 1) fail.push(`window.open got a second window (${after.windows} open)`);
   /* Denying the window is not enough if the shell then hands the URL to the
      system browser instead - that is a popup with extra steps. */
-  if (/openExternal\s*\(/.test(fs.readFileSync(path.join(DESKTOP, 'main.js'), 'utf8'))) fail.push('main.js passes URLs to shell.openExternal - a denied popup still opens the player\'s browser');
   if (after.href !== before) fail.push(`the page navigated away to ${after.href.slice(0, 60)}`);
 
   /* ---- bank something, and end the process for real ---------------------- */
