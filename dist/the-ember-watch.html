@@ -2568,12 +2568,27 @@ body.hud-rail #hud-passives { gap: 9px; }
 .wslot:not(.empty), .pslot { pointer-events: auto; }
 
 /* The sheet's passives: a compact two-column list under the arsenal. */
-.sheet-passives { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px 14px; margin-top: 6px; }
-.sheet-passive { display: flex; align-items: center; gap: 10px; padding: 3px 0; }
+/* Passives three across (two on a narrow sheet): a mark, a name, a rank.
+   A passive that feeds one of the weapons carried wears a small gilt pip on
+   its mark; the tooltip says which. */
+.sheet-passives { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; margin-top: 6px; }
+@media (max-width: 1100px) { .sheet-passives { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.sheet-passive { display: flex; align-items: center; gap: 7px; padding: 2px 0; min-width: 0; position: relative; }
 .sheet-passive img { flex: none; }
-.sheet-passive .sp-name { font-family: var(--voice); font-weight: 700; font-size: 15px; line-height: 1.2; }
-.sheet-passive .sp-rank { font-family: var(--voice); font-style: italic; font-size: 13px; color: var(--ink-dim); }
-.sheet-passive .sp-feeds { font-size: 11px; color: var(--arc); margin-top: 1px; }
+.sheet-passive > div { min-width: 0; }
+.sheet-passive .sp-name { font-family: var(--voice); font-weight: 700; font-size: 13.5px; line-height: 1.15;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sheet-passive .sp-rank { font-family: var(--fig); font-size: 11px; color: var(--ink-dim); }
+.sheet-passive.feeds::before {
+  content: ''; position: absolute; left: 20px; top: 1px; width: 6px; height: 6px;
+  transform: rotate(45deg); background: var(--arc); box-shadow: 0 0 6px rgba(245,197,107,.8);
+}
+/* Blessings, one to a line with their marks - a list, not a key and a value. */
+.sheet-blessings { display: flex; flex-direction: column; gap: 5px; margin: 4px 0 2px; }
+.sheet-blessing { display: flex; align-items: center; gap: 9px; cursor: default;
+  font-family: var(--voice); font-weight: 700; font-size: 15px; color: var(--ink); }
+.sheet-blessing img { flex: none; }
+.sheet-empty { font-family: var(--voice); font-style: italic; color: var(--ink-dim); margin: 6px 0 0; }
 .sheet .row, .sheet-passive { cursor: default; }
 
 /* ======================================================== THE BOOK ========
@@ -2722,7 +2737,14 @@ body.hud-rail #hud-passives { gap: 9px; }
 }
 
 /* The build sheet in three: what you carry, who you are, how the run went. */
-.sheet.three { grid-template-columns: 1.15fr 1fr 1fr; }
+/* The build and results sheets: wider than a menu card where the screen
+   allows, because three panels of figures are what they are for - at 1180px
+   a weapon's stat line wrapped to three lines and every panel scrolled. */
+.overlay-inner.sheet-wide { width: min(1480px, 100%); }
+.sheet .kv { padding: 2px 0; }
+.sheet .kv span:first-child, .sheet .kv span:last-child { font-size: 14px; }
+.sheet .row-sub { font-size: 13px; line-height: 1.35; }
+.sheet.three { grid-template-columns: 1.2fr 1fr 1fr; }
 @media (max-width: 1100px) { .sheet.three { grid-template-columns: 1fr 1fr; } .sheet.three > .panel:last-child { grid-column: 1 / -1; } }
 @media (max-width: 900px) { .sheet.three { grid-template-columns: 1fr; } }
 
@@ -6573,6 +6595,10 @@ window.WS = window.WS || {};
         destructTime: 7, destructDamage: 90,
         stompDamage: 46, stompRadius: 76, stompTele: 0.9,
         beamDamage: 42, beamTele: 1.4, beamSpin: 0.6, beamTime: 4.5, beamWidth: 46,
+        /* The fortress's lighthouse: two back-to-back beams, each through ~210
+           degrees, so every bearing is crossed at least once. 0.52 rad/s is
+           ~175 px/s at the cage's rim - a survivor can keep ahead of it, just. */
+        fortSpin: 0.52, fortBeamTime: 7.0, fortEvery: 10.5,
         fenceDamage: 30, missileDamage: 40, missileRadius: 70, missileTele: 1.05,
         karrash: 5,
       },
@@ -19297,7 +19323,26 @@ window.WS = window.WS || {};
     return out;
   }
 
-  Audio.babble = function (who, text) {
+  /** A whole line's worth of babble, walked word by word, with a breath at
+   *  each comma and full stop - enough syllables to fill `secs`. */
+  function speechOf(text, secs, len) {
+    const words = text.split(/\s+/).filter(Boolean);
+    const seq = [];
+    for (const w of words) {
+      const groups = w.toLowerCase().replace(/[^a-z]/g, '').match(/[aeiouy]+/g) || ['a'];
+      groups.forEach((g, j) => seq.push({ v: VOWELS[g[0]] ? g[0] : 'a', stop: j > 0 || /^[bcdfgkpqtx]/i.test(w) }));
+      if (/[,;:]$/.test(w)) seq.push({ pause: 1.6 });
+      else if (/[.!?…]$/.test(w)) seq.push({ pause: 2.6 });
+    }
+    // Stretch or trim to the time the words take to arrive on screen.
+    const want = WS.max(4, WS.round(secs / len));
+    const out = [];
+    for (let i = 0; out.length < want; i++) out.push(seq[i % seq.length]);
+    while (out.length && out[out.length - 1].pause) out.pop();
+    return out;
+  }
+
+  Audio.babble = function (who, text, opts) {
     if (!live() || !WS.Save.settings.sound || !text) return;
     const v = VOICES[who] || (typeof who === 'object' ? who : null);
     if (!v) return;
@@ -19306,9 +19351,19 @@ window.WS = window.WS || {};
     const shout = /!/.test(text) || /\b[A-Z]{3,}\b/.test(text);
     const ask = /\?\s*$/.test(text);
     const trail = /(\.\.\.|…)\s*$/.test(text) && !shout;
-    const syl = syllablesOf(text, v.count);
     const len = v.syl * (shout ? 0.85 : trail ? 1.3 : 1);
-    const end = t0 + syl.length * len;
+    /* A finale line is TALKED, not grunted. The yell on a banner is a burst
+       of a few syllables and should stay one; a line in the speech box used
+       to get the same burst - half a second of voice under words that took
+       three seconds to arrive, and then silence while they finished. Given a
+       pace, the voice runs for as long as the words are appearing, in the
+       speaker's own syllable length, breathing at the punctuation. */
+    const syl = opts && opts.pace
+      ? speechOf(text, WS.clamp(text.length / opts.pace, 0.9, 3.6), len)
+      : syllablesOf(text, v.count);
+    let dur = 0;
+    for (const sy of syl) dur += sy.pause ? len * sy.pause : len;
+    const end = t0 + dur;
 
     const out = ctx.createGain();
     out.gain.value = v.gain * (shout ? 1.35 : trail ? 0.75 : 1);
@@ -19360,8 +19415,15 @@ window.WS = window.WS || {};
     }
 
     const base = v.pitch * (1 + (Math.random() - 0.5) * 0.06);
+    let ts = t0 - len;
     syl.forEach((sy, i) => {
-      const ts = t0 + i * len;
+      ts += len;
+      if (sy.pause) {
+        // a breath: the mouth closes, and the next word comes after it
+        amp.gain.setTargetAtTime(0.02, ts, 0.03);
+        ts += len * (sy.pause - 1);
+        return;
+      }
       const k = syl.length > 1 ? i / (syl.length - 1) : 0;
       // The pitch contour: a shout climbs to a peak, a question lifts at the
       // end, anything else settles downward as a sentence does.
@@ -24243,7 +24305,7 @@ window.WS = window.WS || {};
     if (!F.line && F.queue.length) {
       F.line = F.queue.shift();
       // Whoever is speaking makes a noise as their line comes up.
-      if (F.line.who !== 'narrator') WS.Audio.babble(F.line.who, F.line.text);
+      if (F.line.who !== 'narrator') WS.Audio.babble(F.line.who, F.line.text, { pace: 52 });
     }
   }
 
@@ -25357,6 +25419,8 @@ window.WS = window.WS || {};
      and it kneels, staggered - then digs in as a fortress behind a cage of
      tesla fences. At 15% it does not die. It blows itself up, and you had
      better be behind a rock. */
+  // Where the Stormbreaker kneels to raise its fortress: the open middle.
+  const FORT_Y = 330, FORT_X0 = 470, FORT_X1 = 810;
   SCRIPTS.stormbreaker = {
     start(F) {
       const s = F.s;
@@ -25416,7 +25480,12 @@ window.WS = window.WS || {};
       if (s.mode === 'kneel') {
         s.kneelT -= dt;
         s.kneel = WS.min(1, s.kneel + dt * 1.5);
-        w.y += (275 - w.y) * WS.min(1, dt * 3);
+        /* It staggers forward as it goes down, into the open middle of the
+           field - the fortress it raises there has to have ground on every
+           side of it, or the side it lacks is where everybody stands. */
+        const k = WS.min(1, dt * 2.2);
+        w.y += (FORT_Y - w.y) * k;
+        w.x += (WS.clamp(w.x, FORT_X0, FORT_X1) - w.x) * k;
         s.label = `Staggered · ${WS.max(0, WS.ceil(s.kneelT))}`;
         if (s.kneelT <= 0) this.fortress(F);
         return;
@@ -25438,7 +25507,7 @@ window.WS = window.WS || {};
           this.pylons(F);
           this.shockwave(F);
         }
-        if (F.every('sweep', dt, 9)) this.beam(F, 2);
+        if (F.every('sweep', dt, T.fortEvery)) this.lighthouse(F);
         if (F.every('missile', dt, 5)) this.missiles(F, 5);
         if (F.every('bolts', dt, 6.5)) {
           F.radial(w.x, w.y + 30, 16, 200, T.missileDamage * 0.7, 'nature', 'Arc bolt',
@@ -25499,17 +25568,50 @@ window.WS = window.WS || {};
           { from: { x: w.x, y: w.y - 30 }, tint: [1.0, 0.6, 0.3] });
       }
     },
+    /* THE CAGE.
+     *
+     * The pylons used to stand at the corners of a box below the machine
+     * with fences down three sides of it - a U, open at the top, with the
+     * Stormbreaker kneeling at the top of the field and both its cannons
+     * sweeping the lower half-circle only. So the whole fortress had a
+     * safe side, and it was the side nearest the thing you were fighting:
+     * walk up past it and nothing in the phase could reach you.
+     *
+     * Now the four pylons stand round the machine on all four sides, north,
+     * east, south and west, with a fence between each and the next, and the
+     * machine is shut inside a diamond of lightning in the middle of the
+     * field. Its cannons are the lighthouse below. A pylon falling drops the
+     * two fences it holds, which is the way in. */
     pylons(F) {
-      const s = F.s, T = F.def.tuning;
-      const at = [[360, 330], [920, 330], [920, 610], [360, 610]];
+      const s = F.s, T = F.def.tuning, w = s.core;
+      const cx = w ? w.x : 640, cy = w ? w.y : FORT_Y;
+      const at = [[cx, cy - 190], [cx + 310, cy + 12], [cx, cy + 215], [cx - 310, cy + 12]]
+        .map(([x, y]) => [WS.clamp(x, 110, 1170), WS.clamp(y, 118, 660)]);
       s.pylons = at.map(([x, y]) => F.unit('tesla_pylon', x, y)).filter(Boolean);
-      if (s.pylons.length === 4) {
-        const [a, b, c, d] = s.pylons;
-        F.fence(a, d, T.fenceDamage, 'Tesla fence');
-        F.fence(b, c, T.fenceDamage, 'Tesla fence');
-        F.fence(c, d, T.fenceDamage, 'Tesla fence');
+      const n = s.pylons.length;
+      for (let i = 0; i < n && n > 1; i++) {
+        F.fence(s.pylons[i], s.pylons[(i + 1) % n], T.fenceDamage, 'Tesla fence');
       }
       F.say('pylons');
+    },
+    /* The lighthouse: two cannons back to back, turning together through
+       more than a half-turn, so between them they pass over every bearing
+       from the machine - nowhere round the cage is out of reach. Each volley
+       opens beside you rather than on you, and turns whichever way it
+       likes, so there is no one direction to learn and outrun. The dance is
+       to move with it, in the wake of one beam and ahead of the other. */
+    lighthouse(F) {
+      const s = F.s, T = F.def.tuning, w = s.core;
+      const p = WS.Game.player;
+      const dir = WS.random() < 0.5 ? -1 : 1;
+      const toward = WS.atan2(p.y - (w.y + 20), p.x - w.x);
+      // start a little behind the player in the direction it will turn
+      const start = toward - dir * 0.85;
+      F.sweep(w.x, w.y + 20, start, dir * T.fortSpin, 1400, T.beamWidth,
+        T.beamTele, T.fortBeamTime, T.beamDamage, 'Lightning cannon',
+        { follow: w, oy: 20, arms: 2, tint: [0.55, 0.85, 1.0] });
+      WS.Audio.play('zap', w.x);
+      WS.Audio.play('warn', w.x);
     },
     fortress(F) {
       const s = F.s, w = s.core, T = F.def.tuning;
@@ -26334,7 +26436,10 @@ window.WS = window.WS || {};
      * - so nothing downstream of here has to know whether it played. */
     const wanted = WS.Save.settings.victoryCinematic !== false;
     if (wanted && WS.Victory
-      && WS.Victory.begin(this.player, run, () => WS.UI.openVictory())) return;
+      && WS.Victory.begin(this.player, run, () => WS.UI.openVictory())) {
+      run.sunriseSeen = true;          // the claim that follows does not replay it
+      return;
+    }
 
     WS.Audio.play('victory');
     WS.FX.screen('rgba(245,197,107,.35)', 1.2);
@@ -32803,6 +32908,17 @@ window.WS = window.WS || {};
       const boxH = WS.max(portrait + fs * 0.2, nameH + lines.length * fs * 1.34) + padY * 2;
       const bx = WS.round(vw / 2 - boxW / 2);
       const by = WS.round(vh * 0.78 - boxH / 2);
+      /* The plate sits low and centre, which is also where a fight puts the
+         survivor half the time - and the Stormbreaker's south pylon every
+         time. So it thins as the survivor walks under it, and whatever is
+         about to land there shows through. By distance, not a switch, so it
+         never pops. */
+      if (p) {
+        const sx = R.offsetX + p.x * R.scale, sy = R.offsetY + p.y * R.scale;
+        const ddx = WS.max(bx - sx, 0, sx - (bx + boxW)), ddy = WS.max(by - sy, 0, sy - (by + boxH));
+        const near = WS.clamp(1 - Math.hypot(ddx, ddy) / (70 * R.scale), 0, 1);
+        ctx.globalAlpha = a * (1 - 0.7 * near);
+      }
       const col = sp.colour || '#f5c56b';
       // the plate, lifted off the field by its own shadow
       ctx.save();
@@ -36162,7 +36278,22 @@ window.WS = window.WS || {};
    * timer rail runs from y=20 to roughly y=88 across the top centre, which is
    * exactly where a centred title card wants to sit - the two collided until
    * this constant existed. Every banner lays out downward from it. */
-  const HUD_SAFE = 108;
+  const HUD_SAFE_MIN = 108;
+  /* The line the banner hangs from. It was a constant, measured against the
+     timeline alone - and a boss arriving puts its health bar under the
+     timeline in the same instant its banner opens, so the dread card's
+     medallion landed on the bar's figures. The line now sits under whatever
+     the HUD is actually showing up there. */
+  let HUD_SAFE = HUD_SAFE_MIN;
+  function hudSafe() {
+    let y = HUD_SAFE_MIN;
+    const bar = document.getElementById('hud-boss');
+    if (bar && !bar.classList.contains('hidden') && bar.offsetParent !== null) {
+      const r = bar.getBoundingClientRect();
+      if (r.height > 0) y = WS.max(y, r.bottom + 10);
+    }
+    return y;
+  }
   /** Medallion geometry, shared by the layout and the draw so they agree. */
   const MED = 76, MED_HALO = MED * 1.05;
 
@@ -36180,6 +36311,7 @@ window.WS = window.WS || {};
   R.drawBanner = function (ctx) {
     const b = WS.Game.banner;
     if (!b || WS.Game.overlayCovers()) return;
+    HUD_SAFE = hudSafe();
     const k = WS.clamp(b.life / b.maxLife, 0, 1);
     const t = 1 - k;                                  // 0 at open, 1 at close
     const alpha = envelope(k, 0.18, 0.3);
@@ -39282,7 +39414,10 @@ window.WS = window.WS || {};
     return 'evolves ' + r.map((x) => WS.Weapons[x.weapon].name).join(', ');
   }
 
-  function buildSheet() {
+  /* `results` is true on the end-of-run panels, where the verdict above the
+     sheet already shows time, slain, bosses, damage and gold in large type -
+     so the sheet does not spend its height saying them twice. */
+  function buildSheet(results) {
     const p = WS.Game.player, run = WS.Game.run;
     const sheet = el('div', 'sheet');
 
@@ -39315,17 +39450,19 @@ window.WS = window.WS || {};
        weapons evolve was invisible on the one screen made for reading it. */
     const learned = WS.UpgradeOrder.filter((id) => p.upgradeLevels[id]);
     if (learned.length) {
+      /* Three across, compact: a mark, a name and a rank. What each one
+         feeds is in its tooltip; spelled out under every name it made a
+         dozen passives a column long enough to need its own scroll. */
       left.append(el('h3', null, 'Passives'));
       const grid = el('div', 'sheet-passives');
       for (const id of learned) {
         const up = WS.Upgrades[id], r = p.upgradeLevels[id];
         const item = el('div', 'sheet-passive');
-        const im = icon(up.art, qualityColour(up.quality), 32);
-        im.width = im.height = 32;
+        const im = icon(up.art, qualityColour(up.quality), 26);
+        im.width = im.height = 26;
         const t = el('div');
-        t.append(el('div', 'sp-name', up.name), el('div', 'sp-rank', `rank ${r} of ${up.max}`));
-        const feeds = LevelUpFeeds(p, id);
-        if (feeds) t.append(el('div', 'sp-feeds', feeds));
+        t.append(el('div', 'sp-name', up.name), el('div', 'sp-rank', `${r} / ${up.max}`));
+        if (LevelUpFeeds(p, id)) item.classList.add('feeds');
         item.append(im, t);
         tipOn(item, tipPassive(p, id), { prefer: ['right', 'below'], focus: false });
         grid.append(item);
@@ -39363,14 +39500,38 @@ window.WS = window.WS || {};
     if (p.lifesteal > 0) kv('Lifesteal', (p.lifesteal * 100).toFixed(1) + '%');
     if (p.curdled > 0) kv('Curdled Light dealt', WS.formatNumber(p.curdleDealt));
     if (p.felAttuned > 0) kv('Metamorphoses', p.metamorphoses);
-    if (p.blessingNames.length) kv('Blessings', p.blessingNames.join(', '));
 
-    into = third;
-    third.append(el('h3', null, 'Run'));
-    kv('Time', WS.formatTime(run.time));
-    kv('Slain', WS.formatNumber(run.kills));
-    kv('Bosses', run.bossesSlain);
-    kv('Damage dealt', WS.formatNumber(run.damageDone));
+    /* The blessings, one to a line with their marks. They were a single
+       key-value row - "Blessings" and then every name joined by commas - and
+       three names were wider than the value side, so the list ran back over
+       its own label. */
+    const taken = Object.keys(p.blessingsTaken || {}).filter((id) => WS.Blessings[id]);
+    if (taken.length) {
+      right.append(el('h3', null, 'Blessings'));
+      const list = el('div', 'sheet-blessings');
+      for (const id of taken) {
+        const bl = WS.Blessings[id];
+        const item = el('div', 'sheet-blessing');
+        const im = icon(bl.art, qualityColour(bl.quality || 'legendary'), 24);
+        im.width = im.height = 24;
+        item.append(im, el('span', null, bl.name));
+        item.dataset.tip = WS.template(bl.description, bl);
+        list.append(item);
+      }
+      right.append(list);
+    }
+
+    /* The run's figures sit under the survivor's now, and the third panel is
+       the meters' alone - the breakdown of what did the damage and what did
+       the mending is the thing a finished run is read for, and it was the
+       part below the fold. */
+    right.append(el('h3', null, 'Run'));
+    if (!results) {
+      kv('Time', WS.formatTime(run.time));
+      kv('Slain', WS.formatNumber(run.kills));
+      kv('Bosses', run.bossesSlain);
+      kv('Damage dealt', WS.formatNumber(run.damageDone));
+    }
     kv('Damage taken', WS.formatNumber(run.damageTaken));
     kv('Damage prevented', WS.formatNumber(run.damagePrevented));
     kv('Healing', WS.formatNumber(run.healingDone));
@@ -39381,7 +39542,7 @@ window.WS = window.WS || {};
     } else if (WS.Save.stats.deathsSlain) {
       kv('Death itself slain', `0  (${WS.Save.stats.deathsSlain} all told)`);
     }
-    kv('Gold this run', WS.formatNumber(run.gold));
+    if (!results) kv('Gold this run', WS.formatNumber(run.gold));
 
     /* Two meters, built the same way: what you dealt, and what you mended.
        A healing build had nothing to read at the end of a run - every number
@@ -39412,6 +39573,9 @@ window.WS = window.WS || {};
     if (healMeter) third.append(healMeter);
     const overMeter = meterFor('Overhealing', run.overhealBySource, WS.CONST.COLORS.shadow);
     if (overMeter) third.append(overMeter);
+    if (!dmgMeter && !healMeter && !overMeter) {
+      third.append(el('h3', null, 'Damage meter'), el('p', 'sheet-empty', 'Nothing fell to you tonight.'));
+    }
 
     sheet.classList.add('three');
     sheet.append(left.frame, right.frame, third.frame);
@@ -39420,6 +39584,7 @@ window.WS = window.WS || {};
 
   UI.openPause = function () {
     const s = shell('Paused', `${WS.Game.run.map.name} waits.`);
+    s.inner.classList.add('sheet-wide');
 
     /* Two views behind the pause. The build sheet is what you paused to look
      * at, so it leads; settings are here because the alternative was
@@ -39559,6 +39724,7 @@ window.WS = window.WS || {};
     const s = shell(run.map.name,
       `${WS.Config.difficulties[WS.Save.settings.difficulty].label}`
       + `${run.hyper ? ' · Hyper' : ''} · ${WS.Characters[run.characterId].name}`);
+    s.inner.classList.add('sheet-wide');
     /* Three ways this panel can arrive: at 30:00 with a finale still to
        face, at 30:00 on a battlefield that has none, and after the finale
        has been beaten - where the story is over and only Death is left. */
@@ -39579,9 +39745,23 @@ window.WS = window.WS || {};
         runFigures(run, WS.Game.player), logEntry(run, WS.Game.player, 'dawn')));
     }
     s.body.classList.add('fitted');
-    s.body.append(buildSheet());
+    s.body.append(buildSheet(true));
     const claim = el('button', canFace ? 'btn' : 'btn primary', 'Claim the win');
-    claim.addEventListener('click', () => WS.Game.endRun('victory'));
+    /* Claiming the win at dawn gets the dawn. The sunrise only ever played
+       for a beaten finale, so a player who held for thirty minutes and took
+       the win - the prologue's own promise, "hold the line until the light
+       comes back" - never saw the light come back. Once per run: after a
+       finale it has already played, and the claim goes straight to the
+       results. */
+    claim.addEventListener('click', () => {
+      const r = WS.Game.run;
+      if (WS.Save.settings.victoryCinematic !== false && WS.Victory && r && !r.sunriseSeen) {
+        r.sunriseSeen = true;
+        WS.UI.closeOverlay();
+        if (WS.Victory.begin(WS.Game.player, r, () => WS.Game.endRun('victory'))) return;
+      }
+      WS.Game.endRun('victory');
+    });
     const face = canFace ? el('button', 'btn primary', 'Face ' + def.title) : null;
     if (face) face.addEventListener('click', () => WS.Game.faceFinale());
     /* One way to stay. There used to be two - "Fight to the end" and "True
@@ -39611,6 +39791,7 @@ window.WS = window.WS || {};
     const s = shell(run.map.name,
       `${WS.Config.difficulties[WS.Save.settings.difficulty].label}`
       + `${run.hyper ? ' · Hyper' : ''} · ${WS.Characters[run.characterId].name}`);
+    s.inner.classList.add('sheet-wide');
 
     const lines = {
       defeated: `${run.killedBy ? run.killedBy.name : 'The horde'} got through at ${WS.formatTime(run.time)}. `
@@ -39623,7 +39804,7 @@ window.WS = window.WS || {};
     s.body.append(verdict(kinds[reason] || 'neutral', titles[reason] || 'The run ends',
       lines[reason] || sub, runFigures(run, WS.Game.player), logEntry(run, WS.Game.player, reason)));
     s.body.classList.add('fitted');
-    s.body.append(buildSheet());
+    s.body.append(buildSheet(true));
     const again = el('button', 'btn primary', 'Run again');
     again.addEventListener('click', () => WS.Game.startRun(run.mapId, run.characterId));
     const menu = el('button', 'btn', 'Main menu');

@@ -2477,12 +2477,27 @@ body.hud-rail #hud-passives { gap: 9px; }
 .wslot:not(.empty), .pslot { pointer-events: auto; }
 
 /* The sheet's passives: a compact two-column list under the arsenal. */
-.sheet-passives { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px 14px; margin-top: 6px; }
-.sheet-passive { display: flex; align-items: center; gap: 10px; padding: 3px 0; }
+/* Passives three across (two on a narrow sheet): a mark, a name, a rank.
+   A passive that feeds one of the weapons carried wears a small gilt pip on
+   its mark; the tooltip says which. */
+.sheet-passives { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; margin-top: 6px; }
+@media (max-width: 1100px) { .sheet-passives { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.sheet-passive { display: flex; align-items: center; gap: 7px; padding: 2px 0; min-width: 0; position: relative; }
 .sheet-passive img { flex: none; }
-.sheet-passive .sp-name { font-family: var(--voice); font-weight: 700; font-size: 15px; line-height: 1.2; }
-.sheet-passive .sp-rank { font-family: var(--voice); font-style: italic; font-size: 13px; color: var(--ink-dim); }
-.sheet-passive .sp-feeds { font-size: 11px; color: var(--arc); margin-top: 1px; }
+.sheet-passive > div { min-width: 0; }
+.sheet-passive .sp-name { font-family: var(--voice); font-weight: 700; font-size: 13.5px; line-height: 1.15;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sheet-passive .sp-rank { font-family: var(--fig); font-size: 11px; color: var(--ink-dim); }
+.sheet-passive.feeds::before {
+  content: ''; position: absolute; left: 20px; top: 1px; width: 6px; height: 6px;
+  transform: rotate(45deg); background: var(--arc); box-shadow: 0 0 6px rgba(245,197,107,.8);
+}
+/* Blessings, one to a line with their marks - a list, not a key and a value. */
+.sheet-blessings { display: flex; flex-direction: column; gap: 5px; margin: 4px 0 2px; }
+.sheet-blessing { display: flex; align-items: center; gap: 9px; cursor: default;
+  font-family: var(--voice); font-weight: 700; font-size: 15px; color: var(--ink); }
+.sheet-blessing img { flex: none; }
+.sheet-empty { font-family: var(--voice); font-style: italic; color: var(--ink-dim); margin: 6px 0 0; }
 .sheet .row, .sheet-passive { cursor: default; }
 
 /* ======================================================== THE BOOK ========
@@ -2631,7 +2646,14 @@ body.hud-rail #hud-passives { gap: 9px; }
 }
 
 /* The build sheet in three: what you carry, who you are, how the run went. */
-.sheet.three { grid-template-columns: 1.15fr 1fr 1fr; }
+/* The build and results sheets: wider than a menu card where the screen
+   allows, because three panels of figures are what they are for - at 1180px
+   a weapon's stat line wrapped to three lines and every panel scrolled. */
+.overlay-inner.sheet-wide { width: min(1480px, 100%); }
+.sheet .kv { padding: 2px 0; }
+.sheet .kv span:first-child, .sheet .kv span:last-child { font-size: 14px; }
+.sheet .row-sub { font-size: 13px; line-height: 1.35; }
+.sheet.three { grid-template-columns: 1.2fr 1fr 1fr; }
 @media (max-width: 1100px) { .sheet.three { grid-template-columns: 1fr 1fr; } .sheet.three > .panel:last-child { grid-column: 1 / -1; } }
 @media (max-width: 900px) { .sheet.three { grid-template-columns: 1fr; } }
 

@@ -215,7 +215,7 @@
     if (!F.line && F.queue.length) {
       F.line = F.queue.shift();
       // Whoever is speaking makes a noise as their line comes up.
-      if (F.line.who !== 'narrator') WS.Audio.babble(F.line.who, F.line.text);
+      if (F.line.who !== 'narrator') WS.Audio.babble(F.line.who, F.line.text, { pace: 52 });
     }
   }
 
@@ -1329,6 +1329,8 @@
      and it kneels, staggered - then digs in as a fortress behind a cage of
      tesla fences. At 15% it does not die. It blows itself up, and you had
      better be behind a rock. */
+  // Where the Stormbreaker kneels to raise its fortress: the open middle.
+  const FORT_Y = 330, FORT_X0 = 470, FORT_X1 = 810;
   SCRIPTS.stormbreaker = {
     start(F) {
       const s = F.s;
@@ -1388,7 +1390,12 @@
       if (s.mode === 'kneel') {
         s.kneelT -= dt;
         s.kneel = WS.min(1, s.kneel + dt * 1.5);
-        w.y += (275 - w.y) * WS.min(1, dt * 3);
+        /* It staggers forward as it goes down, into the open middle of the
+           field - the fortress it raises there has to have ground on every
+           side of it, or the side it lacks is where everybody stands. */
+        const k = WS.min(1, dt * 2.2);
+        w.y += (FORT_Y - w.y) * k;
+        w.x += (WS.clamp(w.x, FORT_X0, FORT_X1) - w.x) * k;
         s.label = `Staggered · ${WS.max(0, WS.ceil(s.kneelT))}`;
         if (s.kneelT <= 0) this.fortress(F);
         return;
@@ -1410,7 +1417,7 @@
           this.pylons(F);
           this.shockwave(F);
         }
-        if (F.every('sweep', dt, 9)) this.beam(F, 2);
+        if (F.every('sweep', dt, T.fortEvery)) this.lighthouse(F);
         if (F.every('missile', dt, 5)) this.missiles(F, 5);
         if (F.every('bolts', dt, 6.5)) {
           F.radial(w.x, w.y + 30, 16, 200, T.missileDamage * 0.7, 'nature', 'Arc bolt',
@@ -1471,17 +1478,50 @@
           { from: { x: w.x, y: w.y - 30 }, tint: [1.0, 0.6, 0.3] });
       }
     },
+    /* THE CAGE.
+     *
+     * The pylons used to stand at the corners of a box below the machine
+     * with fences down three sides of it - a U, open at the top, with the
+     * Stormbreaker kneeling at the top of the field and both its cannons
+     * sweeping the lower half-circle only. So the whole fortress had a
+     * safe side, and it was the side nearest the thing you were fighting:
+     * walk up past it and nothing in the phase could reach you.
+     *
+     * Now the four pylons stand round the machine on all four sides, north,
+     * east, south and west, with a fence between each and the next, and the
+     * machine is shut inside a diamond of lightning in the middle of the
+     * field. Its cannons are the lighthouse below. A pylon falling drops the
+     * two fences it holds, which is the way in. */
     pylons(F) {
-      const s = F.s, T = F.def.tuning;
-      const at = [[360, 330], [920, 330], [920, 610], [360, 610]];
+      const s = F.s, T = F.def.tuning, w = s.core;
+      const cx = w ? w.x : 640, cy = w ? w.y : FORT_Y;
+      const at = [[cx, cy - 190], [cx + 310, cy + 12], [cx, cy + 215], [cx - 310, cy + 12]]
+        .map(([x, y]) => [WS.clamp(x, 110, 1170), WS.clamp(y, 118, 660)]);
       s.pylons = at.map(([x, y]) => F.unit('tesla_pylon', x, y)).filter(Boolean);
-      if (s.pylons.length === 4) {
-        const [a, b, c, d] = s.pylons;
-        F.fence(a, d, T.fenceDamage, 'Tesla fence');
-        F.fence(b, c, T.fenceDamage, 'Tesla fence');
-        F.fence(c, d, T.fenceDamage, 'Tesla fence');
+      const n = s.pylons.length;
+      for (let i = 0; i < n && n > 1; i++) {
+        F.fence(s.pylons[i], s.pylons[(i + 1) % n], T.fenceDamage, 'Tesla fence');
       }
       F.say('pylons');
+    },
+    /* The lighthouse: two cannons back to back, turning together through
+       more than a half-turn, so between them they pass over every bearing
+       from the machine - nowhere round the cage is out of reach. Each volley
+       opens beside you rather than on you, and turns whichever way it
+       likes, so there is no one direction to learn and outrun. The dance is
+       to move with it, in the wake of one beam and ahead of the other. */
+    lighthouse(F) {
+      const s = F.s, T = F.def.tuning, w = s.core;
+      const p = WS.Game.player;
+      const dir = WS.random() < 0.5 ? -1 : 1;
+      const toward = WS.atan2(p.y - (w.y + 20), p.x - w.x);
+      // start a little behind the player in the direction it will turn
+      const start = toward - dir * 0.85;
+      F.sweep(w.x, w.y + 20, start, dir * T.fortSpin, 1400, T.beamWidth,
+        T.beamTele, T.fortBeamTime, T.beamDamage, 'Lightning cannon',
+        { follow: w, oy: 20, arms: 2, tint: [0.55, 0.85, 1.0] });
+      WS.Audio.play('zap', w.x);
+      WS.Audio.play('warn', w.x);
     },
     fortress(F) {
       const s = F.s, w = s.core, T = F.def.tuning;

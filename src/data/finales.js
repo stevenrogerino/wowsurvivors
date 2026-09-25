@@ -274,6 +274,10 @@
         destructTime: 7, destructDamage: 90,
         stompDamage: 46, stompRadius: 76, stompTele: 0.9,
         beamDamage: 42, beamTele: 1.4, beamSpin: 0.6, beamTime: 4.5, beamWidth: 46,
+        /* The fortress's lighthouse: two back-to-back beams, each through ~210
+           degrees, so every bearing is crossed at least once. 0.52 rad/s is
+           ~175 px/s at the cage's rim - a survivor can keep ahead of it, just. */
+        fortSpin: 0.52, fortBeamTime: 7.0, fortEvery: 10.5,
         fenceDamage: 30, missileDamage: 40, missileRadius: 70, missileTele: 1.05,
         karrash: 5,
       },

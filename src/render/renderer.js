@@ -3260,7 +3260,22 @@
    * timer rail runs from y=20 to roughly y=88 across the top centre, which is
    * exactly where a centred title card wants to sit - the two collided until
    * this constant existed. Every banner lays out downward from it. */
-  const HUD_SAFE = 108;
+  const HUD_SAFE_MIN = 108;
+  /* The line the banner hangs from. It was a constant, measured against the
+     timeline alone - and a boss arriving puts its health bar under the
+     timeline in the same instant its banner opens, so the dread card's
+     medallion landed on the bar's figures. The line now sits under whatever
+     the HUD is actually showing up there. */
+  let HUD_SAFE = HUD_SAFE_MIN;
+  function hudSafe() {
+    let y = HUD_SAFE_MIN;
+    const bar = document.getElementById('hud-boss');
+    if (bar && !bar.classList.contains('hidden') && bar.offsetParent !== null) {
+      const r = bar.getBoundingClientRect();
+      if (r.height > 0) y = WS.max(y, r.bottom + 10);
+    }
+    return y;
+  }
   /** Medallion geometry, shared by the layout and the draw so they agree. */
   const MED = 76, MED_HALO = MED * 1.05;
 
@@ -3278,6 +3293,7 @@
   R.drawBanner = function (ctx) {
     const b = WS.Game.banner;
     if (!b || WS.Game.overlayCovers()) return;
+    HUD_SAFE = hudSafe();
     const k = WS.clamp(b.life / b.maxLife, 0, 1);
     const t = 1 - k;                                  // 0 at open, 1 at close
     const alpha = envelope(k, 0.18, 0.3);

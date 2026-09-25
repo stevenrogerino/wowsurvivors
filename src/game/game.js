@@ -462,7 +462,10 @@
      * - so nothing downstream of here has to know whether it played. */
     const wanted = WS.Save.settings.victoryCinematic !== false;
     if (wanted && WS.Victory
-      && WS.Victory.begin(this.player, run, () => WS.UI.openVictory())) return;
+      && WS.Victory.begin(this.player, run, () => WS.UI.openVictory())) {
+      run.sunriseSeen = true;          // the claim that follows does not replay it
+      return;
+    }
 
     WS.Audio.play('victory');
     WS.FX.screen('rgba(245,197,107,.35)', 1.2);

@@ -2108,7 +2108,26 @@
     return out;
   }
 
-  Audio.babble = function (who, text) {
+  /** A whole line's worth of babble, walked word by word, with a breath at
+   *  each comma and full stop - enough syllables to fill `secs`. */
+  function speechOf(text, secs, len) {
+    const words = text.split(/\s+/).filter(Boolean);
+    const seq = [];
+    for (const w of words) {
+      const groups = w.toLowerCase().replace(/[^a-z]/g, '').match(/[aeiouy]+/g) || ['a'];
+      groups.forEach((g, j) => seq.push({ v: VOWELS[g[0]] ? g[0] : 'a', stop: j > 0 || /^[bcdfgkpqtx]/i.test(w) }));
+      if (/[,;:]$/.test(w)) seq.push({ pause: 1.6 });
+      else if (/[.!?…]$/.test(w)) seq.push({ pause: 2.6 });
+    }
+    // Stretch or trim to the time the words take to arrive on screen.
+    const want = WS.max(4, WS.round(secs / len));
+    const out = [];
+    for (let i = 0; out.length < want; i++) out.push(seq[i % seq.length]);
+    while (out.length && out[out.length - 1].pause) out.pop();
+    return out;
+  }
+
+  Audio.babble = function (who, text, opts) {
     if (!live() || !WS.Save.settings.sound || !text) return;
     const v = VOICES[who] || (typeof who === 'object' ? who : null);
     if (!v) return;
@@ -2117,9 +2136,19 @@
     const shout = /!/.test(text) || /\b[A-Z]{3,}\b/.test(text);
     const ask = /\?\s*$/.test(text);
     const trail = /(\.\.\.|…)\s*$/.test(text) && !shout;
-    const syl = syllablesOf(text, v.count);
     const len = v.syl * (shout ? 0.85 : trail ? 1.3 : 1);
-    const end = t0 + syl.length * len;
+    /* A finale line is TALKED, not grunted. The yell on a banner is a burst
+       of a few syllables and should stay one; a line in the speech box used
+       to get the same burst - half a second of voice under words that took
+       three seconds to arrive, and then silence while they finished. Given a
+       pace, the voice runs for as long as the words are appearing, in the
+       speaker's own syllable length, breathing at the punctuation. */
+    const syl = opts && opts.pace
+      ? speechOf(text, WS.clamp(text.length / opts.pace, 0.9, 3.6), len)
+      : syllablesOf(text, v.count);
+    let dur = 0;
+    for (const sy of syl) dur += sy.pause ? len * sy.pause : len;
+    const end = t0 + dur;
 
     const out = ctx.createGain();
     out.gain.value = v.gain * (shout ? 1.35 : trail ? 0.75 : 1);
@@ -2171,8 +2200,15 @@
     }
 
     const base = v.pitch * (1 + (Math.random() - 0.5) * 0.06);
+    let ts = t0 - len;
     syl.forEach((sy, i) => {
-      const ts = t0 + i * len;
+      ts += len;
+      if (sy.pause) {
+        // a breath: the mouth closes, and the next word comes after it
+        amp.gain.setTargetAtTime(0.02, ts, 0.03);
+        ts += len * (sy.pause - 1);
+        return;
+      }
       const k = syl.length > 1 ? i / (syl.length - 1) : 0;
       // The pitch contour: a shout climbs to a peak, a question lifts at the
       // end, anything else settles downward as a sentence does.

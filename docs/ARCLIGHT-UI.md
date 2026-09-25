@@ -384,3 +384,50 @@ prologue, menu, run, boss, midpoint, death, dawn, finale and victory.
   - Long survivor names wrap instead of being cut.
   - The zone wash grows more gently with rank, so an evolved Hallowed Ring
     no longer turns a finale arena gold.
+
+## From the field: the dawn, the plate, the cage and the sheet
+
+Fixes from a playthrough.
+
+- **Claiming the win plays the sunrise.** "Claim the win" on the dawn
+  panel used to go straight to the results. It now runs the victory
+  cinematic first, once per run (`run.sunriseSeen`), unless the setting
+  turns it off.
+- **Boss banners clear the boss bar.** The arrival banner's medallion
+  was drawn over the boss bar's figures. The banner's safe top is now
+  measured from `#hud-boss` each time it draws (`hudSafe()`, never less
+  than 108 px), so it clears the bar however tall that has become.
+- **The Stormbreaker's fortress has no safe side.** Its pylons used to
+  make a U below the machine, with both cannons sweeping the lower half
+  only. Standing level with the machine or above it was out of reach of
+  the whole phase. Pinned at eight spots round the field, five took no
+  cannon hits at all. Now:
+  - The machine staggers into the middle of the field as it kneels.
+  - Four pylons ring it north, east, south and west, fenced into a
+    closed diamond.
+  - Its cannons became a lighthouse: two back-to-back beams turning
+    about 210 degrees together, so every bearing is crossed at least
+    once.
+  - Each volley opens just behind the survivor and turns a random way,
+    shown by the telegraph's arrows. At 0.52 rad/s it can be outrun
+    round the cage's rim (about 175 px/s), and more easily from inside
+    the cage once a pylon has fallen.
+
+  Results: every standing spot now takes a hit per volley, and the
+  dodging bot takes fewer cannon hits than before (6.3 against 17).
+- **The speech plate thins under the survivor.** It sits low and
+  centred, which is where the south pylon stands and often where the
+  survivor is. Its opacity now falls with the survivor's distance to it,
+  down to 30%, without a pop.
+- **The villains talk longer.** Babble is paced to the line
+  (`Audio.babble(who, text, { pace })`). It walks the words, pauses at
+  commas and full stops, and stretches to about the time the text takes
+  to type out, from 0.9 s up to 3.6 s.
+- **The results sheet fits without scrolling.**
+  - The sheet is wider.
+  - Passives sit in a three-column grid (two below 1100 px).
+  - Blessings have their own tiled section instead of spilling over the
+    kv rows.
+  - The run's figures move to the centre column under the survivor.
+  - The third column holds only the damage and healing meters, which
+    now fit at 1920x1080 without a scrollbar.

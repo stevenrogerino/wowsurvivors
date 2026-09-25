@@ -1902,6 +1902,17 @@
       const boxH = WS.max(portrait + fs * 0.2, nameH + lines.length * fs * 1.34) + padY * 2;
       const bx = WS.round(vw / 2 - boxW / 2);
       const by = WS.round(vh * 0.78 - boxH / 2);
+      /* The plate sits low and centre, which is also where a fight puts the
+         survivor half the time - and the Stormbreaker's south pylon every
+         time. So it thins as the survivor walks under it, and whatever is
+         about to land there shows through. By distance, not a switch, so it
+         never pops. */
+      if (p) {
+        const sx = R.offsetX + p.x * R.scale, sy = R.offsetY + p.y * R.scale;
+        const ddx = WS.max(bx - sx, 0, sx - (bx + boxW)), ddy = WS.max(by - sy, 0, sy - (by + boxH));
+        const near = WS.clamp(1 - Math.hypot(ddx, ddy) / (70 * R.scale), 0, 1);
+        ctx.globalAlpha = a * (1 - 0.7 * near);
+      }
       const col = sp.colour || '#f5c56b';
       // the plate, lifted off the field by its own shadow
       ctx.save();

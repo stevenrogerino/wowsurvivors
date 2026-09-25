@@ -2668,7 +2668,10 @@
     return 'evolves ' + r.map((x) => WS.Weapons[x.weapon].name).join(', ');
   }
 
-  function buildSheet() {
+  /* `results` is true on the end-of-run panels, where the verdict above the
+     sheet already shows time, slain, bosses, damage and gold in large type -
+     so the sheet does not spend its height saying them twice. */
+  function buildSheet(results) {
     const p = WS.Game.player, run = WS.Game.run;
     const sheet = el('div', 'sheet');
 
@@ -2701,17 +2704,19 @@
        weapons evolve was invisible on the one screen made for reading it. */
     const learned = WS.UpgradeOrder.filter((id) => p.upgradeLevels[id]);
     if (learned.length) {
+      /* Three across, compact: a mark, a name and a rank. What each one
+         feeds is in its tooltip; spelled out under every name it made a
+         dozen passives a column long enough to need its own scroll. */
       left.append(el('h3', null, 'Passives'));
       const grid = el('div', 'sheet-passives');
       for (const id of learned) {
         const up = WS.Upgrades[id], r = p.upgradeLevels[id];
         const item = el('div', 'sheet-passive');
-        const im = icon(up.art, qualityColour(up.quality), 32);
-        im.width = im.height = 32;
+        const im = icon(up.art, qualityColour(up.quality), 26);
+        im.width = im.height = 26;
         const t = el('div');
-        t.append(el('div', 'sp-name', up.name), el('div', 'sp-rank', `rank ${r} of ${up.max}`));
-        const feeds = LevelUpFeeds(p, id);
-        if (feeds) t.append(el('div', 'sp-feeds', feeds));
+        t.append(el('div', 'sp-name', up.name), el('div', 'sp-rank', `${r} / ${up.max}`));
+        if (LevelUpFeeds(p, id)) item.classList.add('feeds');
         item.append(im, t);
         tipOn(item, tipPassive(p, id), { prefer: ['right', 'below'], focus: false });
         grid.append(item);
@@ -2749,14 +2754,38 @@
     if (p.lifesteal > 0) kv('Lifesteal', (p.lifesteal * 100).toFixed(1) + '%');
     if (p.curdled > 0) kv('Curdled Light dealt', WS.formatNumber(p.curdleDealt));
     if (p.felAttuned > 0) kv('Metamorphoses', p.metamorphoses);
-    if (p.blessingNames.length) kv('Blessings', p.blessingNames.join(', '));
 
-    into = third;
-    third.append(el('h3', null, 'Run'));
-    kv('Time', WS.formatTime(run.time));
-    kv('Slain', WS.formatNumber(run.kills));
-    kv('Bosses', run.bossesSlain);
-    kv('Damage dealt', WS.formatNumber(run.damageDone));
+    /* The blessings, one to a line with their marks. They were a single
+       key-value row - "Blessings" and then every name joined by commas - and
+       three names were wider than the value side, so the list ran back over
+       its own label. */
+    const taken = Object.keys(p.blessingsTaken || {}).filter((id) => WS.Blessings[id]);
+    if (taken.length) {
+      right.append(el('h3', null, 'Blessings'));
+      const list = el('div', 'sheet-blessings');
+      for (const id of taken) {
+        const bl = WS.Blessings[id];
+        const item = el('div', 'sheet-blessing');
+        const im = icon(bl.art, qualityColour(bl.quality || 'legendary'), 24);
+        im.width = im.height = 24;
+        item.append(im, el('span', null, bl.name));
+        item.dataset.tip = WS.template(bl.description, bl);
+        list.append(item);
+      }
+      right.append(list);
+    }
+
+    /* The run's figures sit under the survivor's now, and the third panel is
+       the meters' alone - the breakdown of what did the damage and what did
+       the mending is the thing a finished run is read for, and it was the
+       part below the fold. */
+    right.append(el('h3', null, 'Run'));
+    if (!results) {
+      kv('Time', WS.formatTime(run.time));
+      kv('Slain', WS.formatNumber(run.kills));
+      kv('Bosses', run.bossesSlain);
+      kv('Damage dealt', WS.formatNumber(run.damageDone));
+    }
     kv('Damage taken', WS.formatNumber(run.damageTaken));
     kv('Damage prevented', WS.formatNumber(run.damagePrevented));
     kv('Healing', WS.formatNumber(run.healingDone));
@@ -2767,7 +2796,7 @@
     } else if (WS.Save.stats.deathsSlain) {
       kv('Death itself slain', `0  (${WS.Save.stats.deathsSlain} all told)`);
     }
-    kv('Gold this run', WS.formatNumber(run.gold));
+    if (!results) kv('Gold this run', WS.formatNumber(run.gold));
 
     /* Two meters, built the same way: what you dealt, and what you mended.
        A healing build had nothing to read at the end of a run - every number
@@ -2798,6 +2827,9 @@
     if (healMeter) third.append(healMeter);
     const overMeter = meterFor('Overhealing', run.overhealBySource, WS.CONST.COLORS.shadow);
     if (overMeter) third.append(overMeter);
+    if (!dmgMeter && !healMeter && !overMeter) {
+      third.append(el('h3', null, 'Damage meter'), el('p', 'sheet-empty', 'Nothing fell to you tonight.'));
+    }
 
     sheet.classList.add('three');
     sheet.append(left.frame, right.frame, third.frame);
@@ -2806,6 +2838,7 @@
 
   UI.openPause = function () {
     const s = shell('Paused', `${WS.Game.run.map.name} waits.`);
+    s.inner.classList.add('sheet-wide');
 
     /* Two views behind the pause. The build sheet is what you paused to look
      * at, so it leads; settings are here because the alternative was
@@ -2945,6 +2978,7 @@
     const s = shell(run.map.name,
       `${WS.Config.difficulties[WS.Save.settings.difficulty].label}`
       + `${run.hyper ? ' · Hyper' : ''} · ${WS.Characters[run.characterId].name}`);
+    s.inner.classList.add('sheet-wide');
     /* Three ways this panel can arrive: at 30:00 with a finale still to
        face, at 30:00 on a battlefield that has none, and after the finale
        has been beaten - where the story is over and only Death is left. */
@@ -2965,9 +2999,23 @@
         runFigures(run, WS.Game.player), logEntry(run, WS.Game.player, 'dawn')));
     }
     s.body.classList.add('fitted');
-    s.body.append(buildSheet());
+    s.body.append(buildSheet(true));
     const claim = el('button', canFace ? 'btn' : 'btn primary', 'Claim the win');
-    claim.addEventListener('click', () => WS.Game.endRun('victory'));
+    /* Claiming the win at dawn gets the dawn. The sunrise only ever played
+       for a beaten finale, so a player who held for thirty minutes and took
+       the win - the prologue's own promise, "hold the line until the light
+       comes back" - never saw the light come back. Once per run: after a
+       finale it has already played, and the claim goes straight to the
+       results. */
+    claim.addEventListener('click', () => {
+      const r = WS.Game.run;
+      if (WS.Save.settings.victoryCinematic !== false && WS.Victory && r && !r.sunriseSeen) {
+        r.sunriseSeen = true;
+        WS.UI.closeOverlay();
+        if (WS.Victory.begin(WS.Game.player, r, () => WS.Game.endRun('victory'))) return;
+      }
+      WS.Game.endRun('victory');
+    });
     const face = canFace ? el('button', 'btn primary', 'Face ' + def.title) : null;
     if (face) face.addEventListener('click', () => WS.Game.faceFinale());
     /* One way to stay. There used to be two - "Fight to the end" and "True
@@ -2997,6 +3045,7 @@
     const s = shell(run.map.name,
       `${WS.Config.difficulties[WS.Save.settings.difficulty].label}`
       + `${run.hyper ? ' · Hyper' : ''} · ${WS.Characters[run.characterId].name}`);
+    s.inner.classList.add('sheet-wide');
 
     const lines = {
       defeated: `${run.killedBy ? run.killedBy.name : 'The horde'} got through at ${WS.formatTime(run.time)}. `
@@ -3009,7 +3058,7 @@
     s.body.append(verdict(kinds[reason] || 'neutral', titles[reason] || 'The run ends',
       lines[reason] || sub, runFigures(run, WS.Game.player), logEntry(run, WS.Game.player, reason)));
     s.body.classList.add('fitted');
-    s.body.append(buildSheet());
+    s.body.append(buildSheet(true));
     const again = el('button', 'btn primary', 'Run again');
     again.addEventListener('click', () => WS.Game.startRun(run.mapId, run.characterId));
     const menu = el('button', 'btn', 'Main menu');
