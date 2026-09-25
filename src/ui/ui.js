@@ -2938,11 +2938,13 @@
     kv('Health', `${WS.max(0, WS.floor(p.health))} / ${WS.floor(p.maxHealth)}`);
     kv('Armor', `${p.armor} (${WS.round(p.armor / (p.armor + WS.Config.armorConstant) * 100)}% reduction)`);
     kv('Damage', `×${p.damageMultiplier.toFixed(2)}`);
-    kv('Cooldowns', `×${p.cooldownMultiplier.toFixed(2)}`);
-    kv('Effect area', `×${p.areaMultiplier.toFixed(2)}`);
+    kv('Cooldown', `×${p.cooldownMultiplier.toFixed(2)}`);
+    kv('Area', `×${p.areaMultiplier.toFixed(2)}`);
     kv('Move speed', WS.round(p.moveSpeed));
     kv('Crit', `${WS.round(p.critChance * 100)}% for ×${p.critDamage.toFixed(2)}`);
     kv('Projectiles', `+${p.projectileBonus}`);
+    if (p.projectileSpeed !== 1) kv('Projectile speed', `×${p.projectileSpeed.toFixed(2)}`);
+    if ((p.durationMult || 1) !== 1) kv('Duration', `×${p.durationMult.toFixed(2)}`);
     kv('Pickup radius', WS.round(p.pickupRadius));
     kv('Luck', `×${p.luck.toFixed(2)}`);
     kv('Experience', `×${p.xpMultiplier.toFixed(2)}`);
@@ -3120,7 +3122,8 @@
     if (outcome === 'defeated') lines.push(`${who} kept the watch in ${where} for ${t}, and then the dark got in.`);
     else if (outcome === 'abandoned') lines.push(`${who} left the wall in ${where} at ${t}. The Watch does not ask why.`);
     else if (outcome === 'arena_victory') lines.push(`${who} walked into the Eclipse Arena and came out of it with the sun.`);
-    else lines.push(`${who} kept the watch in ${where} until dawn.`);
+    else if (outcome === 'victory' || run.time >= WS.Config.deathTime) lines.push(`${who} kept the watch in ${where} until dawn.`);
+    else lines.push(`${who} kept the watch in ${where} for ${t}.`);
 
     const k = run.kills || 0;
     lines.push(k <= 0 ? 'Nothing fell.' : k === 1 ? 'One of them will not be coming back.'

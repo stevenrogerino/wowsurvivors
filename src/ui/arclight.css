@@ -2879,3 +2879,21 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .tip-help { font-size: 12.5px; line-height: 1.45; color: #cfc4ae; }
 .tip-help.no { color: #948a78; font-style: italic; }
 .card .react span { text-align: left; }
+
+/* On a short screen (720p and the like) the two cartouches took most of the
+   card and the roster showed as a strip of name tops under them. They draw
+   tighter there: a smaller picture, and the list of who walks a place kept
+   to two lines, so the first row of survivors sits whole on screen. */
+@media (max-height: 800px) {
+  .prep-top .cartouche { grid-template-columns: 112px 1fr; gap: 14px; padding: 12px 14px; }
+  .prep-top .cartouche .art, .prep-top .cartouche .art img { width: 112px; height: 112px; }
+  .prep-top .cartouche h3 { font-size: 19px; }
+  .prep-top .cartouche .flavour { font-size: 13px; margin-top: 4px; }
+  .prep-top .cartouche .stat-line { margin-top: 5px; }
+  .prep-top .cartouche .perk { margin-top: 6px; padding: 5px 9px; font-size: 13px; }
+  .prep-top .cartouche .perk > :last-child {
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .prepare { margin-top: 8px; }
+  .prep-label { margin: 10px 0 6px; }
+}

@@ -2964,6 +2964,24 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .tip-help.no { color: #948a78; font-style: italic; }
 .card .react span { text-align: left; }
 
+/* On a short screen (720p and the like) the two cartouches took most of the
+   card and the roster showed as a strip of name tops under them. They draw
+   tighter there: a smaller picture, and the list of who walks a place kept
+   to two lines, so the first row of survivors sits whole on screen. */
+@media (max-height: 800px) {
+  .prep-top .cartouche { grid-template-columns: 112px 1fr; gap: 14px; padding: 12px 14px; }
+  .prep-top .cartouche .art, .prep-top .cartouche .art img { width: 112px; height: 112px; }
+  .prep-top .cartouche h3 { font-size: 19px; }
+  .prep-top .cartouche .flavour { font-size: 13px; margin-top: 4px; }
+  .prep-top .cartouche .stat-line { margin-top: 5px; }
+  .prep-top .cartouche .perk { margin-top: 6px; padding: 5px 9px; font-size: 13px; }
+  .prep-top .cartouche .perk > :last-child {
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .prepare { margin-top: 8px; }
+  .prep-label { margin: 10px 0 6px; }
+}
+
 </style>
 <div id="stage">
     <canvas id="game-canvas"></canvas>
@@ -44349,11 +44367,13 @@ window.WS = window.WS || {};
     kv('Health', `${WS.max(0, WS.floor(p.health))} / ${WS.floor(p.maxHealth)}`);
     kv('Armor', `${p.armor} (${WS.round(p.armor / (p.armor + WS.Config.armorConstant) * 100)}% reduction)`);
     kv('Damage', `×${p.damageMultiplier.toFixed(2)}`);
-    kv('Cooldowns', `×${p.cooldownMultiplier.toFixed(2)}`);
-    kv('Effect area', `×${p.areaMultiplier.toFixed(2)}`);
+    kv('Cooldown', `×${p.cooldownMultiplier.toFixed(2)}`);
+    kv('Area', `×${p.areaMultiplier.toFixed(2)}`);
     kv('Move speed', WS.round(p.moveSpeed));
     kv('Crit', `${WS.round(p.critChance * 100)}% for ×${p.critDamage.toFixed(2)}`);
     kv('Projectiles', `+${p.projectileBonus}`);
+    if (p.projectileSpeed !== 1) kv('Projectile speed', `×${p.projectileSpeed.toFixed(2)}`);
+    if ((p.durationMult || 1) !== 1) kv('Duration', `×${p.durationMult.toFixed(2)}`);
     kv('Pickup radius', WS.round(p.pickupRadius));
     kv('Luck', `×${p.luck.toFixed(2)}`);
     kv('Experience', `×${p.xpMultiplier.toFixed(2)}`);
@@ -44531,7 +44551,8 @@ window.WS = window.WS || {};
     if (outcome === 'defeated') lines.push(`${who} kept the watch in ${where} for ${t}, and then the dark got in.`);
     else if (outcome === 'abandoned') lines.push(`${who} left the wall in ${where} at ${t}. The Watch does not ask why.`);
     else if (outcome === 'arena_victory') lines.push(`${who} walked into the Eclipse Arena and came out of it with the sun.`);
-    else lines.push(`${who} kept the watch in ${where} until dawn.`);
+    else if (outcome === 'victory' || run.time >= WS.Config.deathTime) lines.push(`${who} kept the watch in ${where} until dawn.`);
+    else lines.push(`${who} kept the watch in ${where} for ${t}.`);
 
     const k = run.kills || 0;
     lines.push(k <= 0 ? 'Nothing fell.' : k === 1 ? 'One of them will not be coming back.'
