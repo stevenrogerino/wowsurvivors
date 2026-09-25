@@ -55,8 +55,10 @@
 
   function frame(now) {
     try {
-      const dt = last ? WS.min((now - last) / 1000, 0.25) : 0;
+      const raw = last ? now - last : 0;
+      const dt = last ? WS.min(raw / 1000, 0.25) : 0;
       last = now;
+      WS.Renderer.adaptResolution(raw);
       WS.Game.update(dt);
       WS.Renderer.draw(now / 1000);
       WS.UI.pollMenuPad(dt);

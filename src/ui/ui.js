@@ -2315,6 +2315,8 @@
       [['strip', 'Along the foot'], ['rail', 'Up the edges']], () => UI.applyHudLayout());
     choose('quality', 'Graphics', 'Balanced drops trails, glows and ground detail, and draws at standard resolution on sharp screens, for frames on a slower machine.',
       [['high', 'High'], ['balanced', 'Balanced']], () => WS.Renderer.applyQuality());
+    toggle('dynamicResolution', 'Dynamic resolution',
+      'When a fight gets heavy, draw the field at a lower resolution to keep it smooth, and sharpen again once it eases.');
     /* Two cuts of the prologue exist while the author decides which one to
        keep, and the only way to decide is to watch them one after the other.
        The button that plays it is in the menu footer, so this sits here and

@@ -492,6 +492,8 @@
       autoBreakingPoint: false,
       // Countdown bars for what comes next; shown only once a dawn is won.
       bossTimers: true,
+      // Draw at a lower resolution while frames run slow (renderer.js).
+      dynamicResolution: true,
       /* Which cut of the prologue plays. Two exist while the author decides
          which one to keep; see src/render/cinematic.js. */
       cinematic: 2,

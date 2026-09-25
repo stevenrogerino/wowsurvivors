@@ -3813,6 +3813,8 @@ window.WS = window.WS || {};
       autoBreakingPoint: false,
       // Countdown bars for what comes next; shown only once a dawn is won.
       bossTimers: true,
+      // Draw at a lower resolution while frames run slow (renderer.js).
+      dynamicResolution: true,
       /* Which cut of the prologue plays. Two exist while the author decides
          which one to keep; see src/render/cinematic.js. */
       cinematic: 2,
@@ -36870,8 +36872,8 @@ window.WS = window.WS || {};
        pixels for every glow, field and wash in the game - by far the largest
        single saving there is for a weak graphics chip - at the cost of
        softer edges, which is the trade the setting already describes. */
-    const dpr = this.lite ? 1 : WS.min(window.devicePixelRatio || 1, 2);
     const vw = window.innerWidth, vh = window.innerHeight;
+    const dpr = (this.lite ? 1 : WS.min(window.devicePixelRatio || 1, 2)) * (this.renderScale || 1);
     this.canvas.width = WS.floor(vw * dpr);
     this.canvas.height = WS.floor(vh * dpr);
     this.canvas.style.width = vw + 'px';
@@ -36881,6 +36883,48 @@ window.WS = window.WS || {};
     this.offsetX = (vw - W * this.scale) * 0.5;
     this.offsetY = (vh - H * this.scale) * 0.5;
     this.viewW = vw; this.viewH = vh;
+  };
+
+  /* DYNAMIC RESOLUTION.
+
+     A tester on a 3440-wide monitor, with a finished build at the Pale
+     Wastes finale, got two frames a second: the game draws at the window's
+     full size, and a late run is dozens of large, soft, additive layers
+     over 4.8 million pixels. Nothing about any single layer was wrong; the
+     screen was simply too big for the machine to repaint that often.
+
+     So the renderer watches its own frame time. If frames run long for a
+     sustained stretch it draws the next ones at a lower internal
+     resolution - down to RS_MIN of the window's - and the canvas stretches
+     that back to the window. Glows, fields and washes, which are most of
+     the cost, look the same softened; edges get a little softer, which is
+     far better than a slide show. When frames are comfortably fast again it
+     climbs back, more slowly than it came down, so it does not flicker
+     between the two. It only adapts during a run: a menu is never the
+     reason a frame was slow. */
+  const RS_MIN = 0.5, RS_SLOW = 24, RS_FAST = 15;
+  R.renderScale = 1;
+  R.adaptResolution = function (dtMs) {
+    if (!(dtMs > 0) || dtMs > 250) return;          // tab switches and stalls say nothing
+    if (WS.Save.settings.dynamicResolution === false) {
+      // Turned off: back to full resolution at once, not on the next slow frame.
+      if (this.renderScale !== 1) { this.renderScale = 1; this.resize(); }
+      return;
+    }
+    if (!WS.Game.running) { this._rsSlow = this._rsFast = 0; return; }
+    this._rsAvg = this._rsAvg ? this._rsAvg * 0.9 + dtMs * 0.1 : dtMs;
+    if (this._rsAvg > RS_SLOW) { this._rsSlow = (this._rsSlow || 0) + dtMs; this._rsFast = 0; }
+    else if (this._rsAvg < RS_FAST) { this._rsFast = (this._rsFast || 0) + dtMs; this._rsSlow = 0; }
+    else { this._rsSlow = 0; this._rsFast = 0; }
+    let next = this.renderScale;
+    if (this._rsSlow > 1200 && this.renderScale > RS_MIN) next = WS.max(RS_MIN, this.renderScale * 0.82);
+    else if (this._rsFast > 6000 && this.renderScale < 1) next = WS.min(1, this.renderScale * 1.1);
+    if (next !== this.renderScale) {
+      this.renderScale = next;
+      this._rsSlow = this._rsFast = 0;
+      this._rsAvg = 0;
+      this.resize();
+    }
   };
 
   /** Window coords -> world coords (for touch input and debugging). */
@@ -38284,6 +38328,150 @@ window.WS = window.WS || {};
   };
 
   const ZONE_FILL_CAP = 6;
+  const ZONE_DETAIL_CAP = 2;
+
+  /* The baked parts of a field (see drawZones). Painted at ZONE_ART pixels
+     across the field's own radius, which is plenty: every one of them is a
+     soft gradient with no edge in it, and stretching a gradient does not
+     show. Keyed by what they depend on and nothing else. */
+  const ZONE_ART = 128;
+  const zoneArts = new Map();
+  let zoneBurnCanvas = null;
+  function zoneBurn() {
+    if (zoneBurnCanvas) return zoneBurnCanvas;
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = ZONE_ART * 2;
+    const g = cv.getContext('2d');
+    const r = ZONE_ART;
+    const burn = g.createRadialGradient(r, r, 0, r, r, r);
+    burn.addColorStop(0, 'rgba(0,0,0,0.28)');
+    burn.addColorStop(0.75, 'rgba(0,0,0,0.16)');
+    burn.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = burn;
+    g.beginPath(); g.arc(r, r, r, 0, WS.TAU); g.fill();
+    zoneBurnCanvas = cv;
+    return cv;
+  }
+  /* THE GROUND UNDER A FIELD, ALL AT ONCE, AT A QUARTER OF THE PIXELS.
+
+     A field's scorch and its wash are the biggest things the game draws -
+     a finished Hallowed Ring is three hundred units across, keeps four of
+     itself down at once, and each copy was two or three full-size blended
+     layers. At 3440 pixels wide that is twenty-odd million blended pixels a
+     frame, and it took a tester's Pale Wastes finale to two frames a
+     second. Baking the gradients into images did not help: stretching an
+     image over a large area costs what painting the gradient did. What
+     costs is the number of full-size layers blended onto the screen.
+
+     So every field's scorch goes into one small buffer and every field's
+     light into another, each a quarter of the screen's width and height -
+     a sixteenth of the pixels, where nothing about a soft gradient can be
+     lost - and each buffer is blended onto the screen once, over only the
+     box the fields cover. However many fields there are, the screen pays
+     for two. The rims, runes and seals, which have edges and would show the
+     lower resolution, are drawn at full size afterwards as before. */
+  const WASH_SCALE = 0.25;
+  const washBufs = { burn: null, light: null };
+  function washBuf(name, w, h) {
+    let b = washBufs[name];
+    if (!b) { b = washBufs[name] = document.createElement('canvas'); b.ctx = b.getContext('2d'); }
+    if (b.width !== w || b.height !== h) { b.width = w; b.height = h; }
+    return b;
+  }
+  R.washZones = function (ctx, zones, fillAt, stackDamp, busy) {
+    if (!zones.count) return;
+    const cv = ctx.canvas;
+    const m = ctx.getTransform();
+    const k = WASH_SCALE;
+    const bw = Math.ceil(cv.width * k), bh = Math.ceil(cv.height * k);
+    const scorch = !this.lite && !busy;
+    const light = washBuf('light', bw, bh), lg = light.ctx;
+    lg.setTransform(1, 0, 0, 1, 0, 0); lg.clearRect(0, 0, bw, bh);
+    lg.setTransform(m.a * k, m.b * k, m.c * k, m.d * k, m.e * k, m.f * k);
+    lg.globalCompositeOperation = 'lighter';
+    let bg = null, burn = null;
+    if (scorch) {
+      burn = washBuf('burn', bw, bh); bg = burn.ctx;
+      bg.setTransform(1, 0, 0, 1, 0, 0); bg.clearRect(0, 0, bw, bh);
+      bg.setTransform(m.a * k, m.b * k, m.c * k, m.d * k, m.e * k, m.f * k);
+    }
+    // the box the fields cover, in screen pixels
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 0; i < zones.count; i++) {
+      const z = zones.active[i];
+      if (z.life < fillAt) continue;
+      const fade = WS.clamp(z.life / z.maxLife, 0, 1);
+      const R = z.radius;
+      const art = zoneArt(z, z.rank || 1, scorch);
+      const span = R * art.reach;
+      if (bg) {
+        bg.globalAlpha = fade;
+        bg.drawImage(zoneBurn(), z.x - R, z.y - R, R * 2, R * 2);
+      }
+      lg.globalAlpha = fade * stackDamp;
+      lg.drawImage(art.canvas, z.x - span, z.y - span, span * 2, span * 2);
+      const sx = m.a * z.x + m.c * z.y + m.e, sy = m.b * z.x + m.d * z.y + m.f;
+      const sr = span * Math.hypot(m.a, m.b);
+      x0 = WS.min(x0, sx - sr); y0 = WS.min(y0, sy - sr);
+      x1 = WS.max(x1, sx + sr); y1 = WS.max(y1, sy + sr);
+    }
+    if (x1 <= x0) return;
+    // snapped to the buffer's own pixel grid, and kept on the canvas
+    x0 = WS.max(0, Math.floor(x0 * k) / k); y0 = WS.max(0, Math.floor(y0 * k) / k);
+    x1 = WS.min(cv.width, Math.ceil(x1 * k) / k); y1 = WS.min(cv.height, Math.ceil(y1 * k) / k);
+    if (x1 <= x0 || y1 <= y0) return;
+    const w = x1 - x0, h = y1 - y0;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.imageSmoothingEnabled = true;
+    if (burn) {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.drawImage(burn, x0 * k, y0 * k, w * k, h * k, x0, y0, w, h);
+    }
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.drawImage(light, x0 * k, y0 * k, w * k, h * k, x0, y0, w, h);
+    ctx.restore();
+  };
+
+  function zoneArt(z, zr, corona) {
+    const hot = 1 + 0.06 * (zr - 1) + (z.evolved ? 0.22 : 0);
+    const withHalo = corona && zr >= WS.Config.projRankA;
+    const far = withHalo ? (zr >= WS.Config.projRankB ? 1.26 : 1.15) * (z.evolved ? 1.1 : 1) : 1;
+    const key = WS.hex(z.colour) + '|' + zr + '|' + (z.evolved ? 1 : 0) + '|' + (withHalo ? 1 : 0)
+      + '|' + (z.blend ? WS.hex(z.blend) : '');
+    let a = zoneArts.get(key);
+    if (a) return a;
+    if (zoneArts.size > 64) zoneArts.clear();
+    const R = ZONE_ART, size = Math.ceil(R * far) * 2, c = size / 2;
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = size;
+    const g = cv.getContext('2d');
+    g.globalCompositeOperation = 'lighter';
+    const grd = g.createRadialGradient(c, c, R * 0.15, c, c, R);
+    grd.addColorStop(0, WS.rgb(z.colour, WS.min(1, 0.34 * hot)));
+    grd.addColorStop(0.62, WS.rgb(z.colour, WS.min(1, 0.17 * hot)));
+    grd.addColorStop(1, WS.rgb(z.colour, 0));
+    g.fillStyle = grd;
+    g.beginPath(); g.arc(c, c, R, 0, WS.TAU); g.fill();
+    if (withHalo) {
+      const halo = g.createRadialGradient(c, c, R * 0.9, c, c, R * far);
+      halo.addColorStop(0, WS.rgb(z.colour, 0.18));
+      halo.addColorStop(1, WS.rgb(z.colour, 0));
+      g.fillStyle = halo;
+      g.beginPath(); g.arc(c, c, R * far, 0, WS.TAU); g.fill();
+    }
+    if (z.blend) {
+      const bl = g.createRadialGradient(c, c, 0, c, c, R * 0.45);
+      bl.addColorStop(0, WS.rgb(z.blend, 0.30));
+      bl.addColorStop(1, WS.rgb(z.blend, 0));
+      g.fillStyle = bl;
+      g.beginPath(); g.arc(c, c, R * 0.45, 0, WS.TAU); g.fill();
+    }
+    a = { canvas: cv, reach: far };
+    zoneArts.set(key, a);
+    return a;
+  }
   R.drawZones = function (ctx, time) {
     const zones = WS.Projectile.zones;
     /* Each of these is already, on its own admission a few lines down, one of
@@ -38331,6 +38519,22 @@ window.WS = window.WS || {};
       fillAt = lives[ZONE_FILL_CAP - 1];
     }
     const stackDamp = zones.count > 1 ? 1 / WS.min(zones.count, ZONE_FILL_CAP) : 1;
+    this.washZones(ctx, zones, fillAt, stackDamp, busy);
+    /* The detail inside a field - rune bands, seals, tendrils, motes - on the
+       newest ZONE_DETAIL_CAP only. A finished Hallowed Ring keeps four of
+       itself down at once, nearly concentric, and four rune bands turning at
+       four different angles on one spot read as a smear, not as four holy
+       grounds - while each one costs dozens of strokes at full size. The
+       older fields keep their wash and their rim, which is what says where
+       each still reaches. */
+    let detailAt = -Infinity;
+    if (zones.count > ZONE_DETAIL_CAP) {
+      const lives = this._zoneLives || (this._zoneLives = []);
+      lives.length = 0;
+      for (let i = 0; i < zones.count; i++) lives.push(zones.active[i].life);
+      lives.sort((a, b) => b - a);
+      detailAt = lives[ZONE_DETAIL_CAP - 1];
+    }
     ctx.save();
     for (let i = 0; i < zones.count; i++) {
       const z = zones.active[i];
@@ -38352,53 +38556,12 @@ window.WS = window.WS || {};
          ring of graduations - the same language the health gauge uses, which
          is what makes it read as a spell and not a decal. */
 
-      // 1. Scorch. The ground goes darker under the effect, so it sits IN the
-      //    world instead of floating over it.
-      ctx.globalCompositeOperation = 'source-over';
-      if (!this.lite && !busy) {
-      const burn = ctx.createRadialGradient(z.x, z.y, 0, z.x, z.y, R);
-      burn.addColorStop(0, `rgba(0,0,0,${0.28 * fade})`);
-      burn.addColorStop(0.75, `rgba(0,0,0,${0.16 * fade})`);
-      burn.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = burn;
-      ctx.beginPath(); ctx.arc(z.x, z.y, R, 0, WS.TAU); ctx.fill();
-      }
-
-      // 2. The energy itself, hottest off-centre so it does not read as a lamp.
-      /* Rank turns the field up rather than out. A zone's radius IS its
-         damage area and moving it would retune the weapon, so what grows with
-         rank is how hard the ground burns inside it - and past the ranks that
-         buy other weapons a projectile, a corona just beyond the rim. */
-      const zr = z.rank || 1;
-      /* Gentler than it was (0.10 a rank, +0.5 evolved). The fields have
-         runes, a seal, tendrils and bubbles now to say what they are and how
-         far they have come, and at the old rate an evolved Hallowed Ring
-         washed a finale arena three-quarters gold - the boss fought inside
-         a yellow haze of the player's own making. */
-      const hot = 1 + 0.06 * (zr - 1) + (z.evolved ? 0.22 : 0);
+      /* A field's own paint - the scorch under it and the light over it -
+         is not drawn here any more but in one pass for every field at once,
+         at a quarter of the resolution: see washZones. */
+      // 1 and 2, the scorch and the wash, were laid down for every field at
+      // once by washZones() before this loop - see there.
       ctx.globalCompositeOperation = 'lighter';
-      const grd = ctx.createRadialGradient(z.x, z.y, R * 0.15, z.x, z.y, R);
-      grd.addColorStop(0, WS.rgb(z.colour, 0.34 * fade * hot * stackDamp));
-      grd.addColorStop(0.62, WS.rgb(z.colour, 0.17 * fade * hot * stackDamp));
-      grd.addColorStop(1, WS.rgb(z.colour, 0));
-      ctx.fillStyle = grd;
-      ctx.beginPath(); ctx.arc(z.x, z.y, R, 0, WS.TAU); ctx.fill();
-      if (zr >= WS.Config.projRankA && !this.lite && !busy) {
-        const far = R * (zr >= WS.Config.projRankB ? 1.26 : 1.15) * (z.evolved ? 1.1 : 1);
-        const halo = ctx.createRadialGradient(z.x, z.y, R * 0.9, z.x, z.y, far);
-        halo.addColorStop(0, WS.rgb(z.colour, 0.18 * fade));
-        halo.addColorStop(1, WS.rgb(z.colour, 0));
-        ctx.fillStyle = halo;
-        ctx.beginPath(); ctx.arc(z.x, z.y, far, 0, WS.TAU); ctx.fill();
-      }
-      // what a discovery has mixed into it, at the heart of the field
-      if (z.blend) {
-        const bl = ctx.createRadialGradient(z.x, z.y, 0, z.x, z.y, R * 0.45);
-        bl.addColorStop(0, WS.rgb(z.blend, 0.30 * fade * stackDamp));
-        bl.addColorStop(1, WS.rgb(z.blend, 0));
-        ctx.fillStyle = bl;
-        ctx.beginPath(); ctx.arc(z.x, z.y, R * 0.45, 0, WS.TAU); ctx.fill();
-      }
 
       // 3. Two edges: a soft one just inside, a bright hairline on the rim.
       // Same concentric-stacking problem as the energy fill above, and the
@@ -38429,7 +38592,7 @@ window.WS = window.WS || {};
        *
        * Anything else keeps the graduations. Past `busy` all of it drops,
        * as it always did. */
-      if (!this.lite && !busy) {
+      if (!this.lite && !busy && z.life >= detailAt) {
         if (z._src !== z.source) {
           const wd = WS.Weapons[z.source];
           z._style = wd ? (wd.data || wd).school : null;
@@ -43106,6 +43269,8 @@ window.WS = window.WS || {};
       [['strip', 'Along the foot'], ['rail', 'Up the edges']], () => UI.applyHudLayout());
     choose('quality', 'Graphics', 'Balanced drops trails, glows and ground detail, and draws at standard resolution on sharp screens, for frames on a slower machine.',
       [['high', 'High'], ['balanced', 'Balanced']], () => WS.Renderer.applyQuality());
+    toggle('dynamicResolution', 'Dynamic resolution',
+      'When a fight gets heavy, draw the field at a lower resolution to keep it smooth, and sharpen again once it eases.');
     /* Two cuts of the prologue exist while the author decides which one to
        keep, and the only way to decide is to watch them one after the other.
        The button that plays it is in the menu footer, so this sits here and
@@ -44189,8 +44354,10 @@ window.WS = window.WS || {};
 
   function frame(now) {
     try {
-      const dt = last ? WS.min((now - last) / 1000, 0.25) : 0;
+      const raw = last ? now - last : 0;
+      const dt = last ? WS.min(raw / 1000, 0.25) : 0;
       last = now;
+      WS.Renderer.adaptResolution(raw);
       WS.Game.update(dt);
       WS.Renderer.draw(now / 1000);
       WS.UI.pollMenuPad(dt);
