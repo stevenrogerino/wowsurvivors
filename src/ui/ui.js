@@ -1410,6 +1410,9 @@
   function placeHue(m) { return PLACE_HUES[m.art] || WS.hex(m.groundAlt); }
 
   /** The old still, for a build without the living pictures. */
+  // Set while the Prepare tab sizes its cards: text only, no living art.
+  let measuring = false;
+
   function stillArt(canvas) {
     const img = new Image();
     img.src = canvas.toDataURL();
@@ -1426,7 +1429,7 @@
     node.classList.remove('map');
     node.style.setProperty('--q', '#8a90a4');
     const art = el('div', 'art');
-    art.append(WS.Vignette ? WS.Vignette.survivor(id, WS.Characters[id].color, 0, true) : el('div'), el('i', 'frame'));
+    art.append(measuring || !WS.Vignette ? el('div') : WS.Vignette.survivor(id, WS.Characters[id].color, 0, true), el('i', 'frame'));
     const body = el('div');
     body.append(el('h3', 'unfound', 'Not yet found'));
     body.append(el('div', 'label role', c.className));
@@ -1440,7 +1443,7 @@
     const c = WS.Characters[id];
     node.innerHTML = '';
     const art = el('div', 'art');
-    art.append(WS.Vignette ? WS.Vignette.survivor(id, c.color) : stillArt(WS.Sprites.portrait(id, c.color, 184)),
+    art.append(measuring ? el('div') : WS.Vignette ? WS.Vignette.survivor(id, c.color) : stillArt(WS.Sprites.portrait(id, c.color, 184)),
       el('i', 'frame'));
     art.style.setProperty('--q', WS.hex(c.color));
     node.classList.remove('map');
@@ -1477,7 +1480,7 @@
     node.innerHTML = '';
     const art = el('div', 'art');
     const key = { forest: 'leaf', plains: 'wheat', haunted: 'deadtree', savannah: 'sun', glacier: 'crystal', arena: 'sovereign' }[m.art] || 'rune';
-    art.append(WS.Vignette ? WS.Vignette.battlefield(id) : stillArt(WS.Sprites.zoneCard(m, key, 184)),
+    art.append(measuring ? el('div') : WS.Vignette ? WS.Vignette.battlefield(id) : stillArt(WS.Sprites.zoneCard(m, key, 184)),
       el('i', 'frame'));
     art.style.setProperty('--q', WS.hex(m.groundAlt));
     node.classList.add('map');
@@ -1617,8 +1620,48 @@
     wrap.append(top,
       el('div', 'prep-label', 'Who stands watch'), whoGrid,
       el('div', 'prep-label', 'And where'), whereGrid);
+    pinPrepare(top, whoCard, whereCard);
     return wrap;
   };
+
+  /* The two cards above the picks change height with whatever they describe
+     - a longer tale, one more stat, a wrapped roster - and every pick below
+     them moved with it, so walking the maps left to right meant chasing the
+     buttons. Each card is filled once, out of sight and without its living
+     art, with every entry it could show; the tallest sets its floor. Done
+     again only when the width changes, since that is what rewraps the text. */
+  function pinPrepare(top, whoCard, whereCard) {
+    if (typeof ResizeObserver === 'undefined') return;
+    let lastW = 0;
+    const tallest = (card, fills) => {
+      const probe = cartouche();
+      probe.className = card.className;
+      probe.setAttribute('aria-hidden', 'true');
+      probe.style.cssText = 'position:absolute;left:0;top:0;visibility:hidden;pointer-events:none;'
+        + 'min-height:0;width:' + card.getBoundingClientRect().width + 'px;';
+      top.append(probe);
+      let h = 0;
+      measuring = true;
+      try {
+        for (const fill of fills) { fill(probe); h = Math.max(h, probe.getBoundingClientRect().height); }
+      } finally { measuring = false; probe.remove(); }
+      return Math.ceil(h);
+    };
+    const pin = () => {
+      const w = Math.round(top.getBoundingClientRect().width);
+      if (!w || w === lastW) return;
+      lastW = w;
+      const who = WS.CharacterOrder.map((id) => WS.Save.isCharacterUnlocked(id)
+        ? (n) => fillSurvivorCartouche(n, id) : (n) => fillUnfoundCartouche(n, id));
+      const where = WS.MapOrder.filter((id) => WS.Save.isMapUnlocked(id))
+        .map((id) => (n) => fillMapCartouche(n, id));
+      whoCard.style.minHeight = whereCard.style.minHeight = '';
+      whoCard.style.minHeight = tallest(whoCard, who) + 'px';
+      whereCard.style.minHeight = tallest(whereCard, where) + 'px';
+    };
+    top.style.position = 'relative';
+    new ResizeObserver(pin).observe(top);
+  }
 
   UI.paneTrainer = function (rerender) {
     const wrap = el('div');

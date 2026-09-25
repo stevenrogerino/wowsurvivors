@@ -200,12 +200,14 @@
    *  when given, adds rays bursting out through the ring - every caller but
    *  the nova behaviour leaves it unset and gets the plain ring exactly as
    *  before. */
-  FX.flash = function (x, y, radius, colour, life, spikes) {
+  FX.flash = function (x, y, radius, colour, life, spikes, style) {
     const f = FX.flashes.acquire();
     if (!f) return;
     f.x = x; f.y = y; f.radius = radius; f.colour = colour;
     f.life = life || 0.30; f.maxLife = f.life;
     f.spikes = spikes || 0;
+    // A nova's school, so its wave can look like what it is (see drawFlashes).
+    f.style = style || null;
   };
 
   /** A screen-wide colour wash (ruinform, death, victory). */

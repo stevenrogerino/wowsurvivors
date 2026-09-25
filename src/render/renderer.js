@@ -939,6 +939,14 @@
        either side, both were facing out. Mirror when the prey is right. */
     if (e.facing > 0) ctx.scale(-1, 1);
     ctx.drawImage(sprite, -size / 2, -size * 0.62, size, size);
+    /* Struck: the creature's own shape, filled and laid over itself - the
+       tint follows the silhouette rather than a disc the size of the
+       hitbox, which on a pack read as a row of coins. */
+    if (e.flash > 0) {
+      ctx.globalAlpha = WS.clamp(e.flash / 0.09, 0, 1) * 0.8 * (e.fade !== undefined && e.fade < 1 ? e.fade : 1);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.drawImage(WS.SpellArt.flashOf(sprite, e.flashCrit ? '#ffd45c' : '#ff6b5c'), -size / 2, -size * 0.62, size, size);
+    }
     ctx.restore();
 
     /* THE ONES THAT SHOOT.
@@ -991,18 +999,6 @@
         ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.arc(fx, fy, r * 3.0, 0, WS.TAU); ctx.stroke();
       }
-      ctx.restore();
-    }
-
-    if (e.flash > 0) {
-      // A hit tints the silhouette rather than replacing it.
-      ctx.save();
-      ctx.globalAlpha = WS.clamp(e.flash / 0.09, 0, 1) * 0.75;
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.fillStyle = e.flashCrit ? '#ffd45c' : '#ff6b5c';
-      ctx.beginPath();
-      ctx.ellipse(e.x, e.y + bob, e.radius * 0.95, e.radius * 1.05, 0, 0, WS.TAU);
-      ctx.fill();
       ctx.restore();
     }
 
@@ -1092,8 +1088,16 @@
       ctx.globalAlpha = (WS.floor(p.invulnerable * 12) % 2 === 0) ? 0.45 : 0.95;
     }
     ctx.translate(p.x, p.y + bob);
-    if (p.spinTimer > 0) ctx.rotate(time * 14);
-    else if (p.facing < 0) ctx.scale(-1, 1);
+    /* The whirl turns him about his own spine, not his navel. It used to
+       rotate the whole figure in the plane of the screen at two turns a
+       second, so for the length of every Axe Gyre the survivor cartwheeled -
+       sideways, then upside down, then sideways again. A pirouette is the
+       figure narrowing to its edge and opening again the other way round;
+       never thinner than a fifth of itself, so it never blinks out. */
+    if (p.spinTimer > 0) {
+      const turn = WS.cos(time * 14);
+      ctx.scale(turn < 0 ? WS.min(turn, -0.2) : WS.max(turn, 0.2), 1);
+    } else if (p.facing < 0) ctx.scale(-1, 1);
     /* And a lean. Baked frames cannot know which way the player is going, so
      * the one part of the walk that belongs out here is the tilt into the
      * direction of travel - about three degrees, which is enough to read as
@@ -1443,56 +1447,157 @@
       ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(z.x, z.y, R * breathe, 0, WS.TAU); ctx.stroke();
 
-      // 4. Graduations, turning slowly. Twelve, so the rotation is legible
-      //    without the ring ever looking like it is strobing.
-      ctx.globalAlpha = 0.55 * fade;
-      ctx.lineWidth = 2;
-      const spin = time * 0.5 + z.phase;
-      for (let n = 0; (this.lite || busy) ? false : n < 12; n++) {
-        const a = spin + (n / 12) * WS.TAU;
-        const ca = WS.cos(a), sa = WS.sin(a);
-        ctx.beginPath();
-        ctx.moveTo(z.x + ca * R * 0.86, z.y + sa * R * 0.86);
-        ctx.lineTo(z.x + ca * R * 0.97, z.y + sa * R * 0.97);
-        ctx.stroke();
-      }
-
-      /* 5. AND SOMETHING INSIDE IT.
+      /* 4. WHAT THE GROUND IS DOING.
        *
-       * Everything above lives on the rim. Measured across the whole
-       * arsenal, the two ground fields came last and second-last for
-       * structure - 12% and 14% of their lit pixels carried an edge against
-       * 55% for a whirl of blades - and they are the two BIGGEST things in
-       * the game, forty-odd thousand pixels each. A hairline around a
-       * smooth wash is a circle drawn on the grass with a puddle in it,
-       * and the puddle is almost all of what the player sees.
+       * Both fields were the same drawing - graduations on the rim, two
+       * inner rings, eight spokes - in two colours, and between them they
+       * read as a radar screen somebody had left on the grass. The rim and
+       * the wash above stay: they say exactly where the damage reaches. What
+       * is inside now says what kind of damage it is.
        *
-       * Two inner rings and a set of spokes turning against the
-       * graduations. Same language as the rim, applied to the ninety per
-       * cent of the effect that had none - and all of it inside the radius
-       * that damages, so the field still says exactly where it reaches. */
+       *   holy    Consecrated ground. A band of runes turning on the rim, a
+       *           six-pointed seal turning the other way inside it, and
+       *           motes of light lifting off the ground.
+       *   shadow  Blight. The rim goes ragged, the mire bubbles and pops,
+       *           and tendrils of it reach in from the edge.
+       *
+       * Anything else keeps the graduations. Past `busy` all of it drops,
+       * as it always did. */
       if (!this.lite && !busy) {
-        ctx.globalAlpha = 0.34 * fade;
-        ctx.lineWidth = 1.5;
-        for (const k of [0.40, 0.66]) {
-          ctx.beginPath(); ctx.arc(z.x, z.y, R * k * breathe, 0, WS.TAU); ctx.stroke();
+        if (z._src !== z.source) {
+          const wd = WS.Weapons[z.source];
+          z._style = wd ? (wd.data || wd).school : null;
+          z._src = z.source;
         }
-        ctx.globalAlpha = 0.30 * fade;
-        ctx.lineWidth = 1.5;
-        for (let n = 0; n < 8; n++) {
-          // against the graduations, so the field reads as two things
-          // turning rather than one thing spinning
-          const a = -spin * 0.62 + (n / 8) * WS.TAU;
-          const ca = WS.cos(a), sa = WS.sin(a);
-          ctx.beginPath();
-          ctx.moveTo(z.x + ca * R * 0.18, z.y + sa * R * 0.18);
-          ctx.lineTo(z.x + ca * R * 0.78, z.y + sa * R * 0.78);
-          ctx.stroke();
+        if (z._style === 'holy') this.zoneHallow(ctx, z, R, fade, time, breathe);
+        else if (z._style === 'shadow') this.zoneBlight(ctx, z, R, fade, time);
+        else {
+          ctx.globalAlpha = 0.55 * fade;
+          ctx.lineWidth = 2;
+          const spin = time * 0.5 + z.phase;
+          for (let n = 0; n < 12; n++) {
+            const a = spin + (n / 12) * WS.TAU;
+            const ca = WS.cos(a), sa = WS.sin(a);
+            ctx.beginPath();
+            ctx.moveTo(z.x + ca * R * 0.86, z.y + sa * R * 0.86);
+            ctx.lineTo(z.x + ca * R * 0.97, z.y + sa * R * 0.97);
+            ctx.stroke();
+          }
         }
       }
       ctx.globalAlpha = 1;
     }
     ctx.restore();
+  };
+
+  /* Consecrated ground: runes on the rim, a seal, and rising light. */
+  R.zoneHallow = function (ctx, z, R, fade, time, breathe) {
+    const x = z.x, y = z.y, spin = time * 0.35 + z.phase;
+    ctx.strokeStyle = WS.rgb(z.colour, 1);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    // the rune band: two fine rings and eighteen marks between them
+    ctx.globalAlpha = 0.5 * fade;
+    ctx.lineWidth = 1.2;
+    for (const k of [0.79, 0.92]) { ctx.beginPath(); ctx.arc(x, y, R * k * breathe, 0, WS.TAU); ctx.stroke(); }
+    ctx.globalAlpha = 0.75 * fade;
+    ctx.lineWidth = 1.6;
+    const runes = 18, h = R * 0.1;
+    for (let n = 0; n < runes; n++) {
+      const a = spin + (n / runes) * WS.TAU;
+      ctx.save();
+      ctx.translate(x + WS.cos(a) * R * 0.855, y + WS.sin(a) * R * 0.855);
+      ctx.rotate(a + Math.PI / 2);
+      const kind = (n * 7 + 3) % 4;
+      ctx.beginPath();
+      ctx.moveTo(0, -h * 0.5); ctx.lineTo(0, h * 0.5);
+      if (kind === 0) { ctx.moveTo(0, -h * 0.5); ctx.lineTo(h * 0.35, -h * 0.15); }
+      else if (kind === 1) { ctx.moveTo(-h * 0.3, -h * 0.1); ctx.lineTo(h * 0.3, h * 0.2); }
+      else if (kind === 2) { ctx.moveTo(0, 0); ctx.lineTo(-h * 0.32, h * 0.35); ctx.moveTo(0, 0); ctx.lineTo(h * 0.32, h * 0.35); }
+      else { ctx.moveTo(-h * 0.3, -h * 0.5); ctx.lineTo(h * 0.3, -h * 0.5); }
+      ctx.stroke();
+      ctx.restore();
+    }
+    // the seal: two triangles, turning against the band
+    ctx.globalAlpha = 0.42 * fade;
+    ctx.lineWidth = 1.5;
+    for (const off of [0, Math.PI]) {
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const a = -spin * 0.6 + off + (i / 3) * WS.TAU - Math.PI / 2;
+        const px = x + WS.cos(a) * R * 0.6, py = y + WS.sin(a) * R * 0.6;
+        if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+      }
+      ctx.closePath(); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.arc(x, y, R * 0.3 * breathe, 0, WS.TAU); ctx.stroke();
+    // motes lifting off the ground, each on its own clock
+    ctx.fillStyle = WS.rgb(WS.mix(z.colour, [1, 1, 1], 0.55), 1);
+    for (let i = 0; i < 14; i++) {
+      const u = (time * 0.45 + i * 0.618 + z.phase) % 1;
+      const a = i * 2.399 + z.phase, d = R * (0.12 + 0.78 * ((i * 0.37) % 1));
+      ctx.globalAlpha = fade * 0.85 * WS.sin(u * Math.PI);
+      ctx.beginPath();
+      ctx.arc(x + WS.cos(a) * d, y + WS.sin(a) * d * 0.9 - u * 26, 1.6 + (i % 3) * 0.5, 0, WS.TAU);
+      ctx.fill();
+    }
+  };
+
+  /* Blight: a ragged rim, a mire that bubbles, and tendrils reaching in. */
+  R.zoneBlight = function (ctx, z, R, fade, time) {
+    const x = z.x, y = z.y, ph = z.phase;
+    ctx.strokeStyle = WS.rgb(z.colour, 1);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    // the ragged edge, inside the true rim: a wobble of three frequencies
+    ctx.globalAlpha = 0.5 * fade;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    for (let i = 0; i <= 48; i++) {
+      const a = (i / 48) * WS.TAU;
+      const w = 0.86 + 0.035 * WS.sin(a * 5 + time * 1.3 + ph) + 0.025 * WS.sin(a * 11 - time * 2.1) + 0.02 * WS.sin(a * 3 + ph * 2);
+      const px = x + WS.cos(a) * R * w, py = y + WS.sin(a) * R * w;
+      if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+    }
+    ctx.stroke();
+    // tendrils: seven curls from the rim toward the middle, writhing
+    ctx.globalAlpha = 0.45 * fade;
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 7; i++) {
+      const a = ph + (i / 7) * WS.TAU + WS.sin(time * 0.7 + i) * 0.12;
+      const wig = WS.sin(time * 1.9 + i * 1.3) * 0.35;
+      const ca = WS.cos(a), sa = WS.sin(a);
+      const r0 = R * 0.84, r1 = R * (0.38 + 0.12 * ((i * 0.53) % 1));
+      const cx = x + WS.cos(a + 0.35 + wig) * R * 0.62, cy = y + WS.sin(a + 0.35 + wig) * R * 0.62;
+      ctx.beginPath();
+      ctx.moveTo(x + ca * r0, y + sa * r0);
+      ctx.quadraticCurveTo(cx, cy, x + WS.cos(a + 0.7 + wig) * r1, y + WS.sin(a + 0.7 + wig) * r1);
+      ctx.stroke();
+    }
+    // bubbles: each swells, holds and pops, then comes up somewhere else
+    const lit = WS.rgb(WS.mix(z.colour, [1, 1, 1], 0.45), 1);
+    for (let i = 0; i < 11; i++) {
+      const cyc = time * 0.8 + i * 0.37 + ph;
+      const u = cyc % 1, gen = WS.floor(cyc);
+      const a = (gen * 2.4 + i * 1.7) % WS.TAU, d = R * (0.15 + 0.62 * (((gen + i) * 0.618) % 1));
+      const bx = x + WS.cos(a) * d, by = y + WS.sin(a) * d;
+      if (u < 0.82) {
+        const br = 2 + 5 * (u / 0.82) * (0.6 + (i % 3) * 0.25);
+        ctx.globalAlpha = 0.55 * fade;
+        ctx.lineWidth = 1.3;
+        ctx.strokeStyle = lit;
+        ctx.beginPath(); ctx.arc(bx, by, br, 0, WS.TAU); ctx.stroke();
+        ctx.fillStyle = lit;
+        ctx.globalAlpha = 0.6 * fade;
+        ctx.beginPath(); ctx.arc(bx - br * 0.35, by - br * 0.35, WS.max(0.8, br * 0.22), 0, WS.TAU); ctx.fill();
+      } else {
+        // the pop: a ring thrown wide and gone
+        const p = (u - 0.82) / 0.18;
+        ctx.globalAlpha = 0.6 * fade * (1 - p);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = lit;
+        ctx.beginPath(); ctx.arc(bx, by, 6 + p * 8, 0, WS.TAU); ctx.stroke();
+      }
+    }
+    ctx.strokeStyle = WS.rgb(z.colour, 1);
   };
 
   /* ---------------------------------------------------------- the loot --- */
@@ -1883,170 +1988,16 @@
    * its own bright glow has no boundary until something darkens one, and
    * nothing in a 'lighter' pass can - so the edge is painted in source-over,
    * clipped to this path. Splitting it out is the whole reason it exists. */
-  function boltPath(ctx, b, r) {
-    switch (b.art) {
-      case 'dagger':
-        /* Blade, guard-notch and grip as ONE path, not a diamond with a
-           square dropped beside it. The old shape closed straight from the
-           blade's back corner - a single point - to a grip rect that only
-           grazed that point, so the two read as a gem next to an unrelated
-           chip rather than one weapon. A shared boundary fixes it. */
-        ctx.beginPath();
-        ctx.moveTo(r * 1.9, 0);
-        ctx.lineTo(r * 0.32, -r * 0.42); ctx.lineTo(r * 0.14, -r * 0.16);
-        ctx.lineTo(-r * 0.95, -r * 0.20); ctx.lineTo(-r * 0.95, r * 0.20);
-        ctx.lineTo(r * 0.14, r * 0.16); ctx.lineTo(r * 0.32, r * 0.42);
-        ctx.closePath();
-        break;
-      case 'arrow':
-        ctx.beginPath();
-        ctx.moveTo(r * 1.9, 0);
-        ctx.lineTo(r * 0.7, -r * 0.55); ctx.lineTo(r * 0.7, -r * 0.16);
-        ctx.lineTo(-r * 1.6, -r * 0.16); ctx.lineTo(-r * 1.6, r * 0.16);
-        ctx.lineTo(r * 0.7, r * 0.16); ctx.lineTo(r * 0.7, r * 0.55);
-        ctx.closePath();
-        break;
-      case 'axe':
-      case 'sword':
-        ctx.beginPath();
-        ctx.moveTo(r * 1.7, 0); ctx.lineTo(0, -r * 0.75);
-        ctx.lineTo(-r * 1.2, 0); ctx.lineTo(0, r * 0.75);
-        ctx.closePath();
-        break;
-      case 'shield':
-        ctx.beginPath(); ctx.arc(0, 0, r * 1.1, 0, WS.TAU);
-        break;
-      /* Seven weapons - Seeking Motes, Cinderfall, Rimeshard, Grave Tether,
-         Umbral Bolt, Moonbrand and Ruin Unbound - fell through to the plain
-         ellipse below and were told apart only by colour and glow. Rank
-         already scales `r`, so each of these grows exactly as the steel
-         shapes do; nothing about rank had to change to give them a shape. */
-      case 'missile':                                    // a faceted mote
-        ctx.beginPath();
-        ctx.moveTo(r * 1.6, 0); ctx.lineTo(r * 0.15, -r * 0.85);
-        ctx.lineTo(-r * 0.9, 0); ctx.lineTo(r * 0.15, r * 0.85);
-        ctx.closePath();
-        break;
-      case 'ember':                                       // an irregular coal
-        ctx.beginPath();
-        ctx.moveTo(r * 1.5, 0); ctx.lineTo(r * 0.7, -r * 0.95);
-        ctx.lineTo(-r * 0.55, -r * 0.8); ctx.lineTo(-r * 1.35, -r * 0.15);
-        ctx.lineTo(-r * 0.85, r * 0.9); ctx.lineTo(r * 0.5, r * 0.75);
-        ctx.closePath();
-        break;
-      case 'shard':                                  // a long hexagonal spike
-        ctx.beginPath();
-        ctx.moveTo(r * 2.1, 0); ctx.lineTo(r * 0.5, -r * 0.5);
-        ctx.lineTo(-r * 1.1, -r * 0.34); ctx.lineTo(-r * 1.5, 0);
-        ctx.lineTo(-r * 1.1, r * 0.34); ctx.lineTo(r * 0.5, r * 0.5);
-        ctx.closePath();
-        break;
-      case 'coil':                        // a curled talon dragging backward
-        ctx.beginPath();
-        ctx.moveTo(r * 1.5, -r * 0.1);
-        ctx.quadraticCurveTo(r * 0.2, -r * 1.25, -r * 1.15, -r * 0.55);
-        ctx.quadraticCurveTo(-r * 1.95, -r * 0.15, -r * 1.5, r * 0.5);
-        ctx.quadraticCurveTo(-r * 1.2, r * 0.15, -r * 0.75, r * 0.05);
-        ctx.quadraticCurveTo(-r * 0.15, -r * 0.25, r * 0.75, r * 0.25);
-        ctx.closePath();
-        break;
-      case 'bolt':                       // a jagged dark bolt, four turns
-        ctx.beginPath();
-        ctx.moveTo(r * 1.9, 0); ctx.lineTo(r * 0.3, -r * 0.5);
-        ctx.lineTo(-r * 0.5, -r * 0.15); ctx.lineTo(-r * 1.6, -r * 0.6);
-        ctx.lineTo(-r * 0.9, r * 0.02); ctx.lineTo(-r * 1.5, r * 0.55);
-        ctx.lineTo(-r * 0.1, r * 0.12); ctx.lineTo(r * 0.5, r * 0.55);
-        ctx.closePath();
-        break;
-      case 'moon':             // a crescent, cut from the disc with evenodd
-        ctx.beginPath();
-        ctx.arc(0, 0, r * 1.05, 0.6, -0.6, true);
-        ctx.arc(r * 0.55, 0, r * 0.92, -2.5, 2.5, false);
-        break;
-      case 'chaos':                     // an asymmetric fused shard-star
-        ctx.beginPath();
-        ctx.moveTo(r * 2.0, 0); ctx.lineTo(r * 0.5, -r * 0.4);
-        ctx.lineTo(r * 0.7, -r * 1.1); ctx.lineTo(-r * 0.2, -r * 0.5);
-        ctx.lineTo(-r * 1.0, -r * 0.9); ctx.lineTo(-r * 0.9, -r * 0.05);
-        ctx.lineTo(-r * 1.6, r * 0.25); ctx.lineTo(-r * 0.7, r * 0.35);
-        ctx.lineTo(-r * 0.85, r * 1.0); ctx.lineTo(r * 0.1, r * 0.4);
-        ctx.lineTo(r * 0.5, r * 0.75);
-        ctx.closePath();
-        break;
-      default:
-        ctx.beginPath();
-        ctx.ellipse(0, 0, r * 1.2, r * 0.55, 0, 0, WS.TAU);
-    }
-  }
-
-  function drawBoltShape(ctx, b, r) {
-    ctx.fillStyle = 'rgba(255,255,255,.92)';
-    boltPath(ctx, b, r);
-    // evenodd rather than the default nonzero: only the moon crescent's two
-    // opposed arcs need it (it is carved out of a disc), but it agrees with
-    // nonzero on every shape that does not self-overlap, so one rule serves
-    // all of them.
-    ctx.fill('evenodd');
-    if (b.art === 'dagger') {
-      /* The grip, darkened IN PLACE rather than painted as a separate rect
-         beside the blade - source-over, because the blade fill above just
-         painted this same region white, and 'lighter' cannot darken white:
-         it can only add to it. */
-      ctx.save();
-      boltPath(ctx, b, r); ctx.clip('evenodd');
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.fillStyle = '#7a5a38';
-      ctx.fillRect(-r * 0.95, -r * 0.20, r * 0.85, r * 0.40);
-      ctx.strokeStyle = 'rgba(30,18,8,.6)';
-      ctx.lineWidth = WS.max(1, r * 0.08);
-      for (const t of [-0.6, -0.2, 0.2, 0.6]) {
-        const x = -r * 0.95 + (t + 1) / 2 * r * 0.85;
-        ctx.beginPath(); ctx.moveTo(x, -r * 0.20); ctx.lineTo(x, r * 0.20); ctx.stroke();
-      }
-      ctx.restore();
-    } else if (b.art === 'shield') {
-      ctx.strokeStyle = WS.rgb(b.colour, 1);
-      ctx.lineWidth = WS.max(1.5, r * 0.28);
-      ctx.beginPath(); ctx.arc(0, 0, r * 0.7, 0, WS.TAU); ctx.stroke();
-    } else if (b.art === 'missile' || b.art === 'ember' || b.art === 'shard' || b.art === 'arrow') {
-      /* Four shapes that got the universal dark OUTLINE every bolt has and
-         nothing else - dagger and shield are the only two with a line
-         INSIDE them, so next to those two a plain diamond or hexagon reads
-         as a flat sticker no matter how many corners its own outline has.
-         Same clip-and-stroke-in-source-over trick as the dagger's grip,
-         one to three lines each, chosen per shape rather than a single
-         reused pattern: */
-      ctx.save();
-      boltPath(ctx, b, r); ctx.clip('evenodd');
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.strokeStyle = 'rgba(20,16,30,.55)';
-      ctx.lineWidth = WS.max(1, r * 0.1);
-      if (b.art === 'missile') {
-        // a gem cut: a spine and two facets off it, so a mote reads as
-        // faceted arcane crystal rather than a plain kite
-        ctx.beginPath(); ctx.moveTo(r * 1.6, 0); ctx.lineTo(-r * 0.9, 0); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(r * 0.15, -r * 0.85); ctx.lineTo(r * 0.5, 0); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(r * 0.15, r * 0.85); ctx.lineTo(r * 0.5, 0); ctx.stroke();
-      } else if (b.art === 'ember') {
-        // crack lines radiating off-centre, like a coal fracturing as it burns
-        ctx.beginPath(); ctx.moveTo(r * 0.1, -r * 0.1); ctx.lineTo(r * 0.7, -r * 0.95); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(r * 0.1, -r * 0.1); ctx.lineTo(-r * 1.35, -r * 0.15); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(r * 0.1, -r * 0.1); ctx.lineTo(-r * 0.85, r * 0.9); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(r * 0.1, -r * 0.1); ctx.lineTo(r * 1.5, 0); ctx.stroke();
-      } else if (b.art === 'shard') {
-        // a crystal spine down the middle plus two angled facets, so it
-        // reads as cut ice rather than a smooth hexagonal pebble
-        ctx.beginPath(); ctx.moveTo(r * 2.1, 0); ctx.lineTo(-r * 1.5, 0); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(r * 0.5, -r * 0.5); ctx.lineTo(-r * 0.3, r * 0.12); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(r * 0.5, r * 0.5); ctx.lineTo(-r * 0.3, -r * 0.12); ctx.stroke();
-      } else if (b.art === 'arrow') {
-        // fletching at the tail: two angled vanes and the nock between them
-        ctx.beginPath(); ctx.moveTo(-r * 1.6, -r * 0.16); ctx.lineTo(-r * 1.95, -r * 0.42); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(-r * 1.6, r * 0.16); ctx.lineTo(-r * 1.95, r * 0.42); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(-r * 1.15, -r * 0.16); ctx.lineTo(-r * 1.15, r * 0.16); ctx.stroke();
-      }
-      ctx.restore();
-    }
+  /* A bolt is painted, not filled: src/render/spellart.js holds every
+     shape's silhouette and the material it is made of, cached per shape,
+     colour and size. What used to live here - the paths, a white fill, and
+     the facet lines clipped inside it - is there now, drawn once instead of
+     every frame. */
+  function drawBoltShape(ctx, b, r, c) {
+    const op = ctx.globalCompositeOperation;
+    ctx.globalCompositeOperation = 'source-over';
+    WS.SpellArt.drawBolt(ctx, b.art, c, r);
+    ctx.globalCompositeOperation = op;
   }
 
   R.drawBolts = function (ctx) {
@@ -2217,22 +2168,7 @@
         ctx.arc(-r * 1.75, 0, r * 0.48, 0, WS.TAU);
         ctx.fill();
       }
-      drawBoltShape(ctx, b, r);
-      /* A dark edge under the shape, inside it. Same reasoning as the axe:
-         nothing in a 'lighter' pass can darken, so the boundary between a
-         white shape and its own glow has to be painted rather than
-         composited - clipped to the shape so the silhouette never grows. */
-      if (!this.lite && r > 4) {
-        ctx.save();
-        boltPath(ctx, b, r);
-        ctx.clip('evenodd');
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.strokeStyle = 'rgba(6,8,14,.55)';
-        ctx.lineWidth = WS.max(1, r * 0.34);
-        boltPath(ctx, b, r);
-        ctx.stroke();
-        ctx.restore();
-      }
+      drawBoltShape(ctx, b, r, c);
       ctx.restore();
     }
     /* Hostile bolts, which must not be mistaken for something worth walking
@@ -2300,6 +2236,27 @@
     const orbits = WS.Projectile.orbits;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
+    /* The wind of the whirl: three sweeps round the survivor's body at
+       waist, chest and shoulder, turning with the blades. They are drawn
+       before he is stamped back over his own light, so what shows is only
+       the part outside his silhouette - air moving round a figure. */
+    if (player.spinTimer > 0 && orbits.count && !this.lite) {
+      const o0 = orbits.active[0];
+      const ph = o0.angle * 1.6;
+      const cl = WS.clamp(player.spinTimer * 3, 0, 1);
+      ctx.lineCap = 'round';
+      for (let k = 0; k < 3; k++) {
+        const rx = 22 + k * 5, ry = rx * 0.34, cy = player.y - 4 - k * 11;
+        const a0 = ph + k * 2.1;
+        for (const [w, al] of [[5, 0.10], [2, 0.32]]) {
+          ctx.strokeStyle = WS.rgb(o0.colour, al * cl);
+          ctx.lineWidth = w;
+          ctx.beginPath();
+          ctx.ellipse(player.x, cy, rx, ry, 0, a0, a0 + 2.2);
+          ctx.stroke();
+        }
+      }
+    }
     for (let i = 0; i < orbits.count; i++) {
       const o = orbits.active[i];
       for (let n = 0; n < o.count; n++) {
@@ -2385,91 +2342,30 @@
         const S = o.size;
         ctx.fillStyle = 'rgba(255,255,255,.95)';
         if (o.art === 'axe' || o.art === 'sword') {
-          /* Poll block and blade, as two separate shapes - picked directly
-             over every merged/fixed version that followed it. */
-          const head = () => {
-            ctx.beginPath();
-            ctx.moveTo(S * 0.10, -S * 0.24);
-            ctx.lineTo(S * 0.46, -S * 0.24);
-            ctx.lineTo(S * 0.46, -S * 0.04);
-            ctx.lineTo(S * 0.10, 0);
-            ctx.closePath();
-            ctx.moveTo(S * 0.10, S * 0.04);
-            ctx.lineTo(S * 0.40, 0);
-            ctx.lineTo(S * 1.45, S * 0.20);
-            ctx.lineTo(S * 0.95, S * 0.72);
-            ctx.lineTo(S * 0.28, S * 0.44);
-            ctx.lineTo(S * 0.10, S * 0.20);
-            ctx.closePath();
-          };
-          const haft = () => {
-            ctx.beginPath();
-            ctx.rect(-S * 0.95, -S * 0.085, S * 1.00, S * 0.17);
-          };
-          haft(); ctx.fill();
-          head(); ctx.fill();
-          /* The haft is wood, not steel, and painting it the same white as
-             the head is why the two read as one pale blob with a nub on
-             it. Recoloured in place, source-over: this region is already
-             white from the fill above, and 'lighter' cannot darken white -
-             it can only add to it, which is the same fault the dagger's
-             grip had. */
-          ctx.save();
-          haft(); ctx.clip();
+          /* AN AXE, and now a steel one. The silhouette - poll block and
+             wedge, picked over every merged version that followed it - is
+             exactly the shape it was; spellart.js paints it as a material
+             instead of a white fill with its bevel lines cut in afterwards:
+             a honed edge carrying the school's colour, a darker cheek, an
+             ash haft with a wrapped grip. Cached, so the detail costs one
+             drawImage a blade. */
           ctx.globalCompositeOperation = 'source-over';
-          ctx.fillStyle = '#8b6a44';
-          haft(); ctx.fill();
-          ctx.restore();
-          /* THE ONE DARK LINE IN THE WEAPON, and the reason it reads as a
-             blade rather than a blob: a white shape on a bright halo has no
-             boundary until something takes light AWAY, and this pass
-             composites with 'lighter', where nothing can.
-             The first attempt cut it with destination-out, which does take
-             light away - from EVERYTHING, including the grass. It punched a
-             black gash through the field and erased the halo behind the
-             blade with it. Clipping to the head and painting the line over
-             it in source-over is the same trick the survivors' armour uses:
-             the dark stays inside the shape it belongs to, so the
-             silhouette never grows and the ground is never touched. */
-          ctx.save();
-          head(); ctx.clip();
-          ctx.globalCompositeOperation = 'source-over';
-          /* A bevel PARALLELING the cutting edge, not through the middle of
-             the head - a line through the middle does not separate an edge
-             from a body, it cuts the bit in half and the axe reads as a
-             crescent moon regardless of how the silhouette is built. */
-          ctx.strokeStyle = 'rgba(8,10,16,.72)';
-          ctx.lineWidth = WS.max(1, S * 0.06);
-          ctx.beginPath();
-          ctx.moveTo(S * 0.24, -S * 0.24);
-          ctx.lineTo(S * 0.24, -S * 0.04);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(S * 0.46, S * 0.12);
-          ctx.lineTo(S * 1.28, S * 0.24);
-          ctx.lineTo(S * 0.95, S * 0.66);
-          ctx.stroke();
-          /* More surface than edge, so far: everything above traces the
-             outline. A rivet band across the poll and a fuller running
-             down the blade's own middle - not along its border - give the
-             white fill somewhere for the eye to land other than its own
-             silhouette, the same reason the bolt facets went in. */
-          ctx.beginPath();
-          ctx.moveTo(S * 0.10, -S * 0.14);
-          ctx.lineTo(S * 0.46, -S * 0.14);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(S * 0.30, S * 0.10);
-          ctx.lineTo(S * 1.15, S * 0.28);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(S * 0.20, S * 0.08);
-          ctx.lineTo(S * 0.28, S * 0.38);
-          ctx.stroke();
-          ctx.restore();
-          ctx.fillStyle = 'rgba(8,10,16,.6)';
-          ctx.beginPath(); ctx.arc(S * 0.20, -S * 0.19, WS.max(0.6, S * 0.02), 0, WS.TAU); ctx.fill();
-          ctx.beginPath(); ctx.arc(S * 0.36, -S * 0.19, WS.max(0.6, S * 0.02), 0, WS.TAU); ctx.fill();
+          WS.SpellArt.drawBlade(ctx, o.art, o.colour, S);
+          /* Stormcall is the gyre married to the lightning, and its blades
+             were Axe Gyre's in another colour. They crackle: two short arcs
+             off the edge that re-strike every few frames. */
+          if (o.art === 'sword' && !this.lite) {
+            ctx.globalCompositeOperation = 'lighter';
+            const flick = WS.floor(o.life * 20) + n * 7;
+            for (let k = 0; k < 2; k++) {
+              ctx.save();
+              ctx.translate(S * (1.1 - k * 0.35), S * (0.35 + k * 0.2));
+              ctx.rotate(((flick * 2.39 + k * 1.7) % WS.TAU));
+              WS.SpellArt.lightning(ctx, S * 0.7, WS.max(0.8, S * 0.05), o.colour, 0.9, flick * 977 + k * 131, 0);
+              ctx.restore();
+            }
+          }
+          ctx.globalCompositeOperation = 'lighter';
         } else {
           ctx.beginPath();
           ctx.moveTo(0, -S * 0.7); ctx.lineTo(S * 0.28, 0);
@@ -2527,6 +2423,24 @@
       const hw = WS.max(1.5, b.width * 0.5);
       const br = b.rank || 1;
       const grand = 1 + 0.15 * (br - 1) + (b.evolved ? 0.7 : 0);
+      /* A CHAIN LINK IS LIGHTNING, NOT A LANCE.
+       *
+       * Arcweb's hops were drawn by the lance below: a straight white rule
+       * from creature to creature with a spearhead on the end, so the storm
+       * weapon read as a set of laser pointers joining the dots. The link is
+       * a jagged, forking bolt now, pinned at both ends so it still lands on
+       * exactly what it hit, and re-struck every couple of frames - a bolt
+       * that holds still is a wire. More forks with rank. */
+      if (b.arc) {
+        ctx.save();
+        ctx.translate(b.x1, b.y1);
+        ctx.rotate(WS.atan2(dy, dx));
+        const strike = WS.floor(b.life * 30);
+        const forks = this.lite ? 0 : 1 + (br >= WS.Config.projRankA ? 1 : 0) + (b.evolved ? 1 : 0);
+        WS.SpellArt.lightning(ctx, len, hw, b.colour, fade, (b.seed ^ (strike * 2654435761)) >>> 0, forks);
+        ctx.restore();
+        continue;
+      }
       /* RANK BUYS STRUCTURE, NOT VEIL.
        *
        * Rank used to scale the bloom and nothing else, and a bloom is a
@@ -2709,6 +2623,21 @@
       const e = 1 - (1 - t) * (1 - t);
       const r = f.radius * (0.22 + 0.78 * e);
 
+      /* A NOVA IS A SHOCKWAVE, and it says which school sent it.
+       *
+       * The nova was this function's plain ring with hairline spokes through
+       * it - a wagon wheel, the same drawing for the Dawn as for the Reaver,
+       * and at speed a set of thin lines nobody could read. Its main wave is
+       * a band now: a soft wake behind, a hot edge in front, and the edge is
+       * where the damage has got to. Then each school draws what it is: the
+       * holy ones throw tapered sunrays, the shadow one reaps - crescent
+       * blades riding the wave round, over a darkening of the ground that
+       * gives the violet something to be bright against. */
+      if (f.style && !this.lite && !busy) {
+        this.drawNova(ctx, f, t, e, r);
+        continue;
+      }
+
       // The core: bright, and gone inside the first third. This is the hit.
       const core = WS.clamp(1 - t * 3, 0, 1);
       if (core > 0 && !this.lite && !busy) {
@@ -2759,6 +2688,134 @@
     }
     ctx.globalAlpha = 1;
     ctx.restore();
+  };
+
+  R.drawNova = function (ctx, f, t, e, r) {
+    const k = 1 - t;
+    const col = f.colour;
+    const shadow = f.style === 'shadow';
+    const band = f.radius * (0.2 * (1 - e) + 0.05) + 4;
+    /* The echoes - the inner wave, and the outer one rank buys - were the
+       old hard rings, and three of them round the real one turned the
+       whole nova into an archery target. An echo is the same band, fainter,
+       with nothing riding on it. */
+    if (!f.spikes) {
+      const g = ctx.createRadialGradient(f.x, f.y, WS.max(0, r - band * 0.8), f.x, f.y, r + 2);
+      g.addColorStop(0, WS.rgb(col, 0));
+      g.addColorStop(0.8, WS.rgb(col, 0.24 * k));
+      g.addColorStop(0.95, `rgba(255,255,255,${(0.34 * k * k).toFixed(3)})`);
+      g.addColorStop(1, WS.rgb(col, 0));
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(f.x, f.y, r + 2, 0, WS.TAU); ctx.fill();
+      ctx.strokeStyle = WS.rgb(WS.mix(col, [1, 1, 1], 0.4), 0.45 * k);
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(f.x, f.y, r, 0, WS.TAU); ctx.stroke();
+      return;
+    }
+    if (shadow) {
+      // The ground under the wave goes dark first: source-over, so it can.
+      ctx.globalCompositeOperation = 'source-over';
+      const d = ctx.createRadialGradient(f.x, f.y, WS.max(0, r - band * 1.6), f.x, f.y, r + 2);
+      d.addColorStop(0, 'rgba(8,2,16,0)');
+      d.addColorStop(0.7, `rgba(8,2,16,${(0.30 * k).toFixed(3)})`);
+      d.addColorStop(1, 'rgba(8,2,16,0)');
+      ctx.fillStyle = d;
+      ctx.beginPath(); ctx.arc(f.x, f.y, r + 2, 0, WS.TAU); ctx.fill();
+      ctx.globalCompositeOperation = 'lighter';
+    } else if (t < 0.34) {
+      // The holy wave opens with light at the heart, gone in its first third.
+      const core = 1 - t * 3;
+      const cg = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.radius * 0.55);
+      cg.addColorStop(0, `rgba(255,255,240,${(0.7 * core).toFixed(3)})`);
+      cg.addColorStop(0.4, WS.rgb(col, 0.35 * core));
+      cg.addColorStop(1, WS.rgb(col, 0));
+      ctx.fillStyle = cg;
+      ctx.beginPath(); ctx.arc(f.x, f.y, f.radius * 0.55, 0, WS.TAU); ctx.fill();
+    }
+    // the band: a wake that fades behind a hot leading edge
+    const g = ctx.createRadialGradient(f.x, f.y, WS.max(0, r - band), f.x, f.y, r + 3);
+    g.addColorStop(0, WS.rgb(col, 0));
+    g.addColorStop(0.72, WS.rgb(col, 0.42 * k));
+    g.addColorStop(0.93, `rgba(255,255,255,${(0.62 * k * k).toFixed(3)})`);
+    g.addColorStop(1, WS.rgb(col, 0));
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(f.x, f.y, r + 3, 0, WS.TAU); ctx.fill();
+    /* The front itself, as a line: the wake is soft by nature, and a wave
+       that is all wake has nowhere it has reached. This is where the
+       damage is. */
+    ctx.strokeStyle = WS.rgb(WS.mix(col, [1, 1, 1], 0.5), 0.9 * k);
+    ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.arc(f.x, f.y, r, 0, WS.TAU); ctx.stroke();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = WS.rgb(col, 0.5 * k);
+    ctx.beginPath(); ctx.arc(f.x, f.y, WS.max(0, r - band * 0.55), 0, WS.TAU); ctx.stroke();
+
+    const seed = ((f.x * 12.9898 + f.y * 78.233) % WS.TAU + WS.TAU) % WS.TAU;
+    if (shadow) {
+      /* Reaping blades: crescents riding the wave, sweeping round as it
+         spreads. Thick in the middle, a point at each end, a bright
+         outer edge - a scythe's cut seen from above. */
+      const n = WS.max(4, WS.ceil(f.spikes / 2.6));
+      const sweep = 0.95, turn = e * 1.5;
+      for (let i = 0; i < n; i++) {
+        const a0 = seed + (i / n) * WS.TAU + turn;
+        ctx.beginPath();
+        for (let j = 0; j <= 8; j++) {
+          const a = a0 + sweep * (j / 8);
+          ctx.lineTo(f.x + WS.cos(a) * r, f.y + WS.sin(a) * r);
+        }
+        for (let j = 8; j >= 0; j--) {
+          const a = a0 + sweep * (j / 8);
+          // thickest two-thirds of the way along: the blade's belly, then its point
+          const u = j / 8;
+          const rr = r * (1 - 0.2 * WS.sin(Math.PI * WS.pow(u, 0.7)) * (0.5 + 0.5 * u));
+          ctx.lineTo(f.x + WS.cos(a) * rr, f.y + WS.sin(a) * rr);
+        }
+        ctx.closePath();
+        ctx.fillStyle = WS.rgb(WS.mix(col, [1, 1, 1], 0.2), 0.75 * k);
+        ctx.fill();
+        ctx.strokeStyle = `rgba(255,255,255,${(0.7 * k).toFixed(3)})`;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        for (let j = 0; j <= 8; j++) {
+          const a = a0 + sweep * (j / 8);
+          ctx.lineTo(f.x + WS.cos(a) * r, f.y + WS.sin(a) * r);
+        }
+        ctx.stroke();
+      }
+    } else {
+      /* Sunrays: tapered wedges, long and short in turn, reaching just past
+         the wave - light that has somewhere to be going. */
+      for (let i = 0; i < f.spikes; i++) {
+        const a = seed + (i / f.spikes) * WS.TAU;
+        const long = i % 2 ? 0.8 : 1;
+        const r0 = r * 0.32, r1 = r * (0.88 + 0.26 * long);
+        const wd = WS.max(1.5, f.radius * 0.035 * long * (1.2 - e * 0.5));
+        const ca = WS.cos(a), sa = WS.sin(a);
+        ctx.fillStyle = WS.rgb(col, 0.55 * k);
+        ctx.beginPath();
+        ctx.moveTo(f.x + ca * r0 - sa * wd, f.y + sa * r0 + ca * wd);
+        ctx.lineTo(f.x + ca * r1, f.y + sa * r1);
+        ctx.lineTo(f.x + ca * r0 + sa * wd, f.y + sa * r0 - ca * wd);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = `rgba(255,255,240,${(0.6 * k).toFixed(3)})`;
+        ctx.beginPath();
+        ctx.moveTo(f.x + ca * r0 - sa * wd * 0.35, f.y + sa * r0 + ca * wd * 0.35);
+        ctx.lineTo(f.x + ca * r1 * 0.94, f.y + sa * r1 * 0.94);
+        ctx.lineTo(f.x + ca * r0 + sa * wd * 0.35, f.y + sa * r0 - ca * wd * 0.35);
+        ctx.closePath(); ctx.fill();
+      }
+      // and beads of light strung on the edge, the corona of a small sun
+      ctx.fillStyle = `rgba(255,255,245,${(0.75 * k).toFixed(3)})`;
+      const beads = f.spikes * 2;
+      for (let i = 0; i < beads; i++) {
+        const a = seed + ((i + 0.5) / beads) * WS.TAU;
+        ctx.beginPath();
+        ctx.arc(f.x + WS.cos(a) * r, f.y + WS.sin(a) * r, 1.6 + 1.4 * (1 - e), 0, WS.TAU);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
   };
 
   R.drawParticles = function (ctx) {

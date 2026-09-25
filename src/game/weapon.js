@@ -328,13 +328,13 @@
     if (w.level >= (d.projRankA || WS.Config.projRankA)) spikes += 3;
     if (w.level >= (d.projRankB || WS.Config.projRankB)) spikes += 3;
     if (w.evolved) spikes += 3;
-    WS.FX.flash(player.x, player.y, radius, colour, hold, spikes);
-    WS.FX.flash(player.x, player.y, radius * 0.6, colour, hold * 0.7);
+    WS.FX.flash(player.x, player.y, radius, colour, hold, spikes, d.school);
+    WS.FX.flash(player.x, player.y, radius * 0.6, colour, hold * 0.7, 0, d.school);
     if (w.level >= (d.projRankA || WS.Config.projRankA)) {
-      WS.FX.flash(player.x, player.y, radius * 1.22 * grow, colour, hold * 1.25);
+      WS.FX.flash(player.x, player.y, radius * 1.22 * grow, colour, hold * 1.25, 0, d.school);
     }
     if (w.level >= (d.projRankB || WS.Config.projRankB)) {
-      WS.FX.flash(player.x, player.y, radius * 0.3, colour, hold * 1.6);
+      WS.FX.flash(player.x, player.y, radius * 0.3, colour, hold * 1.6, 0, d.school);
     }
     /* A combined nova, marked as beads ON the ring rather than as another
        ring of light.
@@ -423,7 +423,8 @@
       const target = WS.Enemy.findNearest(px, py, range, visited);
       if (!target) break;
       visited.add(target);
-      WS.Projectile.spawnBeam(px, py, target.x, target.y, 4 * heavy, colour, 0.16);
+      const link = WS.Projectile.spawnBeam(px, py, target.x, target.y, 4 * heavy, colour, 0.16);
+      if (link) link.arc = true;
       if (w) mark(WS.Projectile.beams, w);
       WS.Enemy.hit(target, damage * (1 - i * 0.06), source);
       WS.FX.flash(target.x, target.y, 22 * heavy, colour, 0.18);

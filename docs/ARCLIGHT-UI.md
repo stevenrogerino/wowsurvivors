@@ -302,3 +302,28 @@ The interface is only half of it; the other half is how the world answers.
   crack, ice) picks a painter in renderer.js `TERRAIN`, run once into the
   ground canvas on its own seed. Dark and light in balance: check-ground
   pins each map's brightness and everything's visibility is measured on it.
+
+## The arsenal as objects
+
+- **A bolt is painted, not filled** (`src/render/spellart.js`). Each shape
+  keeps the silhouette the renderer always drew and is painted as a
+  material: a coal with cracks of fire, cut ice, a faceted gem, a knife
+  with a brass guard and wrapped grip, an arrow with fletching, a rent of
+  shadow, a cratered moon, a bone talon, fused shards, a gilded disc.
+  Cached per shape, colour and size: one `drawImage` a bolt, which put the
+  detail in at no extra cost per frame.
+- **The gyre's axes are steel** on the same chosen silhouette, with an ash
+  haft. Stormcall's crackle. The survivor **pirouettes** during a whirl
+  instead of cartwheeling, with wind sweeping round the figure.
+- **A chain link is lightning**: jagged, forking with rank, pinned to what
+  it hit at both ends, re-struck every couple of frames.
+- **A nova is a shockwave** with a crisp front where the damage is. Holy
+  throws tapered sunrays and a corona of beads. Shadow reaps, with crescent
+  blades riding the wave over darkened ground. Echo waves are faint bands.
+- **The two fields are different ground.** Hallowed Ring consecrates, with
+  a turning rune band, a seal and rising motes. Blightfield festers, with a
+  ragged rim, tendrils and bubbles that swell and pop.
+- **A hit flashes the creature's own shape** instead of a disc the size
+  of its hitbox.
+- check-skills still guards all of it: every weapon keeps edges at rank 8
+  and none blows out to white.

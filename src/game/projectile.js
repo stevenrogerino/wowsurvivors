@@ -136,6 +136,7 @@
     b.x1 = x1; b.y1 = y1; b.x2 = x2; b.y2 = y2;
     b.width = width; b.colour = colour;
     b.rank = 1; b.evolved = false; b.blend = null;   // set by the weapon
+    b.art = null; b.arc = false;   // a chain link sets arc: drawn as lightning
     /* A number that stays the same for this beam's whole short life, so the
        striations the renderer draws inside it hold still. Derived rather
        than drawn from the RNG: a beam lives about thirteen frames and
