@@ -81,11 +81,32 @@ function overlayFns(cast) {
       g.restore();
     }
     if (line && b > 0) {
-      g.save(); g.globalAlpha = ease(b);
-      g.font = `italic 500 ${Math.round(H * 0.05)}px Alegreya, serif`;
-      g.textAlign = 'center';
-      g.fillStyle = 'rgba(0,0,0,.7)'; g.fillText(line, W / 2, H * 0.335 + H * 0.004);
-      g.fillStyle = '#ffe0a2'; g.fillText(line, W / 2, H * 0.335);
+      // The call to action: a gilt-edged plate, like the game's own primary
+      // button, rising into place.
+      const k = ease(b);
+      g.save(); g.globalAlpha = k;
+      const fs = Math.round(H * 0.036);
+      g.font = `700 ${fs}px Archivo, sans-serif`;
+      g.letterSpacing = `${Math.round(fs * 0.22)}px`;
+      const label = line.toUpperCase();
+      const tw = g.measureText(label).width;
+      const pw = tw + fs * 2.6, ph = fs * 2.3;
+      const px = W / 2 - pw / 2, py = H * 0.305 + (1 - k) * H * 0.015;
+      const r = ph / 2;
+      const plate = () => { g.beginPath(); g.moveTo(px + r, py); g.arcTo(px + pw, py, px + pw, py + ph, r);
+        g.arcTo(px + pw, py + ph, px, py + ph, r); g.arcTo(px, py + ph, px, py, r); g.arcTo(px, py, px + pw, py, r); g.closePath(); };
+      g.shadowColor = 'rgba(245,197,107,.45)'; g.shadowBlur = H * 0.03;
+      plate(); g.fillStyle = 'rgba(12,10,8,.82)'; g.fill();
+      g.shadowBlur = 0;
+      const edge = g.createLinearGradient(0, py, 0, py + ph);
+      edge.addColorStop(0, '#ffe6ae'); edge.addColorStop(0.5, '#c8913d'); edge.addColorStop(1, '#ffe0a2');
+      g.lineWidth = Math.max(2, H * 0.0028); g.strokeStyle = edge; plate(); g.stroke();
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      const metal = g.createLinearGradient(0, py + ph * 0.25, 0, py + ph * 0.75);
+      metal.addColorStop(0, '#fff3d4'); metal.addColorStop(0.5, '#f5c56b'); metal.addColorStop(1, '#e6b45e');
+      g.fillStyle = metal;
+      g.fillText(label, W / 2 + fs * 0.11, py + ph / 2 + fs * 0.04);
+      g.letterSpacing = '0px';
       g.restore();
     }
     black(g, fade);
@@ -95,13 +116,16 @@ function overlayFns(cast) {
    *  a large line (the promise), on a dark band that holds its contrast over
    *  anything the game is drawing, between two gold rules. `a` fades it in
    *  and out; it rises a little as it arrives. */
-  window.__caption = function (kicker, text, a, fade) {
+  window.__caption = function (kicker, text, a, fade, low) {
     const g = c.getContext('2d');
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.clearRect(0, 0, W, H);
     if (text && a > 0) {
       const k = ease(a);
-      const top = H * 0.69, bot = H * 0.875;
+      // `low` drops the band over the (dimmed) HUD, for screens whose
+      // content fills the middle of the frame.
+      const dy = low ? H * 0.105 : 0;
+      const top = H * 0.69 + dy, bot = H * 0.875 + dy;
       const across = (alpha, y0, h) => {
         const gr = g.createLinearGradient(0, 0, W, 0);
         gr.addColorStop(0, `rgba(4,5,9,0)`); gr.addColorStop(0.18, `rgba(4,5,9,${alpha})`);
@@ -122,13 +146,13 @@ function overlayFns(cast) {
         g.font = `600 ${Math.round(H * 0.026)}px Archivo, sans-serif`;
         g.letterSpacing = `${Math.round(H * 0.026 * 0.32)}px`;
         g.fillStyle = '#f5c56b';
-        g.fillText(kicker.toUpperCase(), W / 2, H * 0.745 + rise);
+        g.fillText(kicker.toUpperCase(), W / 2, H * 0.745 + dy + rise);
         g.letterSpacing = '0px';
       }
       g.font = `700 ${Math.round(H * 0.064)}px Alegreya, serif`;
       g.shadowColor = 'rgba(0,0,0,.9)'; g.shadowBlur = H * 0.012; g.shadowOffsetY = H * 0.003;
       g.fillStyle = '#f7efdc';
-      g.fillText(text, W / 2, H * 0.83 + rise);
+      g.fillText(text, W / 2, H * 0.83 + dy + rise);
       g.restore();
     }
     black(g, fade);
@@ -232,7 +256,7 @@ async function renderAudioInPage({ scoreSrc, cuts, log, drops }) {
 
   // 3. The mix: the score leads, the game sits under it, and both go quiet
   //    together for the drops.
-  const SFX = 0.55;
+  const SFX = 3.85;   // the game sits about 6dB under the score: heard, not in charge
   const L = new Float32Array(N), R = new Float32Array(N);
   const m0 = music.getChannelData(0), m1 = music.getChannelData(1);
   const s0 = sfx.getChannelData(0), s1 = sfx.getChannelData(1);
@@ -313,6 +337,7 @@ async function make(browser, env) {
   };
   /* Play: stage the scene, then film it with its caption, logging sound. */
   const play = async (key, stage, kicker, line, extra) => {
+    const low = !!(extra && extra.low);
     await page.evaluate((s) => { __filmClear(); __stage(s); __hold(true); }, stage);
     if (extra && extra.before) await page.evaluate(extra.before);
     const len = Math.round(EDIT.find(([k]) => k === key)[1] * FPS);
@@ -322,8 +347,8 @@ async function make(browser, env) {
       if (extra && extra.at && extra.at[i]) await page.evaluate(extra.at[i]);
       const cap = (i / FPS - 0.35) / 0.35;
       const off = ((len - i) / FPS - 0.55) / 0.3;
-      await page.evaluate(([kk, text, a, f, t]) => { __film(true, t); __caption(kk, text, a, f); },
-        [kicker, line, Math.min(cap, off), blackOf(key, i, len), t0 + i / FPS]);
+      await page.evaluate(([kk, text, a, f, t, lo]) => { __film(true, t); __caption(kk, text, a, f, lo); },
+        [kicker, line, Math.min(cap, off), blackOf(key, i, len), t0 + i / FPS, low]);
       await frame();
     }
     await page.evaluate(() => { window.__rec = false; __hold(false); });
@@ -335,6 +360,7 @@ async function make(browser, env) {
     'One night · thirty minutes', 'Hold the fire until dawn');
   await play('levelup', { map: 'dustreach', char: 'rogue', time: 540, settle: 20,
     kit: [['knifestorm', 1], ['umbral_bolt', 0], ['rimeshard', 0]] }, 'Every level', 'Choose what you become', {
+    low: true,
     at: {
       24: () => { __hold(false); const p = WS.Game.player; WS.Player.gainXP(p, p.xpToNext * 1.02); },
       105: () => { const G = WS.Game; if (G.state === 'levelup') G.chooseLevelUp(G.levelChoices[1] || G.levelChoices[0]); __hold(true); },
@@ -384,10 +410,17 @@ async function make(browser, env) {
   const wavs = { mix: path.join(out, 'trailer-mix.wav'), music: path.join(out, 'trailer-score.wav'), sfx: path.join(out, 'trailer-effects.wav') };
   for (const k of Object.keys(wavs)) fs.writeFileSync(wavs[k], wavFile(r[k], r.SR));
 
-  // Picture and sound together.
+  // Picture and sound together, at the usual trailer loudness (-14 LUFS).
+  // Measured first and then moved by one fixed gain, with a limiter for the
+  // peaks: a dynamic normaliser would lift the quiet opening and flatten the
+  // arc the score is built on.
   const { spawnSync } = require('child_process');
+  const meter = spawnSync(ffmpeg, ['-hide_banner', '-i', wavs.mix, '-af', 'ebur128', '-f', 'null', '-'], { encoding: 'utf8' });
+  const I = Number((/I:\s+(-?[\d.]+) LUFS/.exec(meter.stderr.split('Summary').pop()) || [])[1]);
+  const gain = Number.isFinite(I) ? -14 - I : 0;
   const mux = spawnSync(ffmpeg, ['-y', '-loglevel', 'error', '-i', picture, '-i', wavs.mix,
-    '-c:v', 'copy', '-c:a', 'aac', '-b:a', '320k', '-shortest', '-movflags', '+faststart', file], { stdio: 'inherit' });
+    '-af', `volume=${gain.toFixed(2)}dB,alimiter=limit=0.89:attack=2:release=60:level=disabled`,
+    '-c:v', 'copy', '-c:a', 'aac', '-b:a', '320k', '-ar', '48000', '-shortest', '-movflags', '+faststart', file], { stdio: 'inherit' });
   if (mux.status !== 0) throw new Error('ffmpeg could not mux the trailer');
   fs.unlinkSync(picture);
 
