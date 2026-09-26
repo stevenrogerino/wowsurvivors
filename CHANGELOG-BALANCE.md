@@ -5,6 +5,27 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
 
 <!-- new entries go directly below -->
 
+## 2026-09-26: The herd's thickets and bursts land where the crowd is
+
+Playtest: "some of the green aura things don't really have an effect, or
+sometimes have one". Measured in play at 10:00 over 90s: Blightfield,
+Thornbloom and Rotwood fields caught something on 84-100% of their ticks;
+Bramble Run's thickets caught nothing on 52% of theirs, and 30% of them
+never touched a creature at all.
+
+- A spirit beast runs through the crowd and out the far side, and both
+  herd effects went off where the run ENDED: open ground. Bramble Run's
+  thicket and the end-of-run burst (Moonlit Herd, The Wild Hunt) now land
+  where the beast last trampled something. A beast that met nobody grows
+  no thicket. (`src/game/projectile.js`)
+- Thickets that never touched anything: 30% to 2%; ticks that hit: 52% to
+  73%; thicket damage over the same 90s +51%.
+- Discoveries, same loadout off -> on (`tools/check-combos.js`): Moonlit
+  Herd -3% -> +58%, Bramble Run -2% -> +47%. Both had been measuring
+  WEAKER than not finding them.
+- The Wild Hunt against the evolved pair it replaces (`tools/check-unions.js`):
+  81% -> 122%, now the one union above its pair. Worth a look on the bench.
+
 ## 2026-09-26: Oaths, the Nightly and the score
 
 - A run score: `floor(time) * 10 + kills + bosses * 400 + Deaths * 1500`,

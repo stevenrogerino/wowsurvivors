@@ -24194,6 +24194,7 @@ window.WS = window.WS || {};
        a hitbox: the rank behind it, whether it evolved, and the colour a
        discovery has mixed into it. */
     b.rank = spec.rank || 1;
+    b.lastHx = null; b.lastHy = null;    // where it last struck anything
     b.evolved = !!spec.evolved;
     b.blend = spec.blend || null;
     b.burst = spec.burst || 1;
@@ -24335,13 +24336,29 @@ window.WS = window.WS || {};
   /** What a bolt leaves behind where its flight ends. */
   function expire(b) {
     if (b.endBurst) {
-      WS.Enemy.damageArea(b.x, b.y, b.endBurst, b.damage * 0.9, null, 18, b.source);
-      WS.FX.flash(b.x, b.y, b.endBurst, b.colour, 0.26, 6, 'physical');
+      /* Only herds carry a burst (Moonlit Herd, The Wild Hunt), and a herd
+         runs through the crowd and out the far side: the end of the run is
+         open ground. The burst goes off where the beast last trampled
+         something, which is where there is anything left to hit. */
+      const bx = b.lastHx === null ? b.x : b.lastHx, by = b.lastHx === null ? b.y : b.lastHy;
+      WS.Enemy.damageArea(bx, by, b.endBurst, b.damage * 0.9, null, 18, b.source);
+      WS.FX.flash(bx, by, b.endBurst, b.colour, 0.26, 6, 'physical');
     }
-    if (b.endZone) {
-      const z = P.spawnZone(b.x, b.y, 60, b.damage * 0.5, 2.5, 0.5, [0.46, 0.72, 0.30], b.source);
-      if (z) { z.rank = b.rank; z.evolved = b.evolved; z.slowFactor = 0.7; }
-    }
+    if (b.endZone) thicket(b);
+  }
+
+  /* Bramble Run's thicket. It used to grow where the herd's run ENDED - but
+     a spirit beast tramples straight through the crowd and keeps running, so
+     the end of the run was nearly always open ground past it. Measured over
+     90s of play at 10:00: 30% of thickets never touched a creature and half
+     of all their ticks struck nothing - green ground that sometimes did
+     something, which is what a tester noticed. It grows now where the beast
+     last trampled something, which is where the crowd is; a beast that met
+     nobody grows nothing, because there is nothing there to hold. */
+  function thicket(b) {
+    if (b.lastHx === null) return;
+    const z = P.spawnZone(b.lastHx, b.lastHy, 60, b.damage * 0.5, 2.5, 0.5, [0.46, 0.72, 0.30], b.source);
+    if (z) { z.rank = b.rank; z.evolved = b.evolved; z.slowFactor = 0.7; }
   }
 
   /* ------------------------------------------------------------- update -- */
@@ -24411,12 +24428,14 @@ window.WS = window.WS || {};
       b.spin += b.spinRate * dt;
 
       if (b.x < -OFF || b.x > W + OFF || b.y < -OFF || b.y > H + OFF) {
+        if (b.endZone) thicket(b);      // a run off the field still seeds where it struck
         this.bolts.releaseAt(i); continue;
       }
 
       const e = WS.Enemy.findCollision(b.x, b.y, b.radius, b.hitBy);
       if (e) {
         b.hitBy.set(e, e.spawnId);
+        b.lastHx = e.x; b.lastHy = e.y;
         resolveHit(b, e);
 
         if (b.bounces > 0) {
