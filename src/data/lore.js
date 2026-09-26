@@ -74,6 +74,7 @@
         { key: '{kReroll}  /  {kBanish}', text: 'Reroll or banish the cards on offer, if you have any left.' },
         { key: '{kPause}', text: 'Pause. Your build, the damage meter and the settings are in there.' },
         { key: 'Arrow keys  /  pad', text: 'Move around any menu. Enter or A picks.' },
+        { key: 'Pad', text: 'Start pauses, B backs out, LB and RB change tabs, and on a level-up X rerolls and Y banishes.' },
       ],
     },
     prologue: {

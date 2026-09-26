@@ -23,7 +23,7 @@
  *    a desktop game the player just launched does not need to ask.
  */
 'use strict';
-const { app, BrowserWindow, protocol, net, Menu } = require('electron');
+const { app, BrowserWindow, protocol, net, Menu, ipcMain } = require('electron');
 const path = require('node:path');
 const url = require('node:url');
 
@@ -47,6 +47,13 @@ protocol.registerSchemesAsPrivileged([{
 // The player launched a game. It may make a noise.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
+/* Steam (steam.js): optional, and it must start before the app is ready - the
+   overlay sets Chromium switches, and a copy launched outside Steam may be
+   handed to Steam instead. Without Steam the game runs exactly as before. */
+const steam = require('./steam');
+if (!steam.early(app)) app.quit();
+steam.wire(ipcMain);
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
@@ -62,6 +69,8 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      // window.emberSteam - five calls to steam.js, and nothing else
+      preload: path.join(__dirname, 'preload.js'),
       backgroundThrottling: false,   // a paused game is the game's decision
     },
   });

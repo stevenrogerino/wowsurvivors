@@ -60,6 +60,7 @@ const fail = [];
  * sandboxed either way. */
 const ARGS = process.getuid && process.getuid() === 0 ? ['--no-sandbox'] : [];
 
+let steamNote = '';
 (async () => {
   /* Test what a player would get: the bundle as it is built today, written
      straight into desktop/game/ (which git ignores). It used to rebuild
@@ -99,6 +100,26 @@ const ARGS = process.getuid && process.getuid() === 0 ? ['--no-sandbox'] : [];
      stand on the same ground an https:// page does rather than a weaker one. */
   if (!boot.secure) fail.push('the page is not a secure context');
   if (!boot.storage) fail.push('localStorage threw on the very first write');
+
+  /* Steam is optional in every direction. The bridge must exist and answer,
+     the page must still be sandboxed (no Node in it), and without a running
+     Steam client the game must be the game - platform 'web', nothing broken.
+     With a Steam client and an App ID it reports available instead. */
+  const steam = await page.evaluate(() => ({
+    bridge: !!window.emberSteam,
+    info: window.emberSteam ? window.emberSteam.info() : null,
+    node: typeof window.require !== 'undefined' || typeof window.process !== 'undefined',
+    platform: WS.Platform && WS.Platform.name,
+    cloud: window.emberSteam ? window.emberSteam.cloudRead('../../etc/passwd') : 'n/a',
+  }));
+  if (!steam.bridge) fail.push('the preload did not hand the page window.emberSteam');
+  else if (!steam.info || typeof steam.info.available !== 'boolean') fail.push('window.emberSteam.info() did not answer');
+  if (steam.node) fail.push('the page can see Node - the preload broke the sandbox');
+  if (steam.cloud) fail.push('the cloud bridge read a file other than save.json');
+  if (steam.info && !steam.info.available && steam.platform !== 'web') {
+    fail.push(`with no Steam the game thinks it is on '${steam.platform}'`);
+  }
+  steamNote = steam.info ? (steam.info.available ? 'Steam connected' : 'no Steam (' + steam.info.reason + ')') : 'no bridge';
 
   // A window that opened is not a game that started.
   const painted = await page.evaluate(() => {
@@ -213,5 +234,6 @@ const ARGS = process.getuid && process.getuid() === 0 ? ['--no-sandbox'] : [];
   console.log(`ok: the desktop shell boots the bundle over ${boot.origin}, paints `
     + `${painted.colours} colours on a ${shell.size.join('x')} canvas, refuses popups, `
     + 'navigation and paths outside the game folder, and an account banked in one '
-    + 'launch is still there in the next');
+    + 'launch is still there in the next; the Steam bridge answers from a sandboxed page '
+    + `(${steamNote})`);
 })().catch((e) => { console.error('FAIL\n  - ' + (e.stack || e.message)); process.exit(1); });

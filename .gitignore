@@ -2,3 +2,4 @@ node_modules/
 .DS_Store
 desktop/game/
 desktop/release/
+desktop/steam_appid.txt

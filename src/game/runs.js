@@ -201,6 +201,7 @@
     const G = WS.Game, run = G.run, p = G.player;
     const out = {
       kind: 'ember-watch-report', v: 1, at: new Date().toISOString(), note: note || '',
+      platform: WS.Platform ? WS.Platform.name : 'web', deck: !!(WS.Platform && WS.Platform.deck),
       agent: navigator.userAgent, screen: [screen.width, screen.height, window.devicePixelRatio || 1],
       view: [window.innerWidth, window.innerHeight],
       settings: Object.assign({}, WS.Save.settings),

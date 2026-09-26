@@ -127,6 +127,11 @@
   function defaults() {
     return {
       schema: SCHEMA,
+      /* When this account was last written, so two copies of it (this
+         machine's and Steam Cloud's) can say which is newer. */
+      savedAt: 0,
+      // Set once the Steam Deck defaults have been applied (main.js).
+      deckSetup: false,
       gold: 0,
       hyperArmed: false,
       // Set the first time the manual is closed, so the primer greets a new
@@ -361,6 +366,19 @@
       } catch (e) { /* private mode */ }
       let data = null;
       if (raw) { try { data = JSON.parse(raw); } catch (e) { data = null; } }
+      /* On Steam there may be a second copy in the cloud, written on another
+         machine. Whichever was written last is the account; a save from
+         before `savedAt` existed counts as the oldest possible. */
+      const cloudRaw = WS.Platform ? WS.Platform.cloudRead() : null;
+      if (cloudRaw) {
+        let cloud = null;
+        try { cloud = JSON.parse(cloudRaw); } catch (e) { cloud = null; }
+        const when = (d) => (isPlain(d) && Number.isFinite(d.savedAt) ? d.savedAt : 0);
+        if (isPlain(cloud) && (!isPlain(data) || when(cloud) > when(data))) {
+          data = cloud;
+          this.fromCloud = true;
+        }
+      }
       // A save that parses to a non-object - `null`, `7`, `"[]"` - is not a
       // save. merge() would otherwise write the defaults onto a primitive and
       // hand back something that is not a database.
@@ -373,11 +391,17 @@
     },
 
     save() {
+      this.db.savedAt = Date.now();
+      const text = JSON.stringify(this.db);
       try {
-        localStorage.setItem(KEY, JSON.stringify(this.db));
+        localStorage.setItem(KEY, text);
         this.lastWrite = Date.now();
       } catch (e) { /* quota / blocked */ }
+      if (WS.Platform) WS.Platform.saved(text);
     },
+
+    /** Set when the account was taken from Steam Cloud at launch. */
+    fromCloud: false,
 
     lastWrite: 0,
 

@@ -17,6 +17,7 @@
 
       db.achievements[id] = true;
       earned = a;
+      if (WS.Platform) WS.Platform.achievement(id);
       if (a.reward) {
         if (a.reward.type === 'gold') WS.Save.addGold(a.reward.amount);
         else if (a.reward.type === 'character') db.unlocks.characters[a.reward.id] = true;

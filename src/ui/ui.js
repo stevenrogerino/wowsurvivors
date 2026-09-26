@@ -1151,12 +1151,43 @@
   /** Gamepad, polled from the frame loop while an overlay is up. Edge
    *  detected with a repeat delay, so holding a direction walks a list at a
    *  readable pace instead of teleporting to the end of it. */
-  const PAD = { axis: 0, held: 0, repeat: 0, a: false, b: false };
+  const PAD = { axis: 0, held: 0, repeat: 0, a: false, b: false, start: false, x: false, y: false, lb: false, rb: false };
   UI.pollMenuPad = function (dt) {
-    if (this.overlay.classList.contains('hidden')) { PAD.axis = 0; return; }
     if (!navigator.getGamepads) return;
     const pad = navigator.getGamepads()[WS.Input.gamepadIndex];
     if (!pad) return;
+    const btn = (i) => !!(pad.buttons[i] && pad.buttons[i].pressed);
+
+    /* Start pauses and resumes from anywhere in a run - the one button a pad
+       player reaches for, and the only way in without a keyboard. */
+    const start = btn(9);
+    if (start && !PAD.start) {
+      if (WS.Game.state === 'playing') WS.Game.pause();
+      else if (WS.Game.state === 'paused') WS.Game.resume();
+    }
+    PAD.start = start;
+
+    if (this.overlay.classList.contains('hidden')) { PAD.axis = 0; return; }
+
+    // X rerolls and Y banishes on a level-up, the keyboard's R and B.
+    const x = btn(2), y = btn(3);
+    if (WS.Game.state === 'levelup') {
+      if (x && !PAD.x) WS.Game.rerollLevelUp();
+      if (y && !PAD.y) this.setBanishMode(!this.banishMode);
+    }
+    PAD.x = x; PAD.y = y;
+
+    // The shoulders page through tabs, in the menu and the pause screen.
+    const lb = btn(4), rb = btn(5);
+    if ((lb && !PAD.lb) || (rb && !PAD.rb)) {
+      const tabs = [...this.overlay.querySelectorAll('.tabs .tab')];
+      if (tabs.length) {
+        const cur = tabs.findIndex((t) => t.classList.contains('active'));
+        const next = tabs[(cur + (rb ? 1 : -1) + tabs.length) % tabs.length];
+        if (next) next.click();
+      }
+    }
+    PAD.lb = lb; PAD.rb = rb;
 
     const dead = 0.5;
     let dx = 0, dy = 0;
@@ -1190,7 +1221,11 @@
 
     const back = !!(pad.buttons[1] && pad.buttons[1].pressed);
     if (back && !PAD.b) {
-      if (WS.Game.state === 'paused') WS.Game.resume();
+      /* B backs out: of a screen that has a way back (Oaths, the report, the
+         manual), or of the pause. */
+      const out = this.overlay.querySelector('[data-back]');
+      if (out) out.click();
+      else if (WS.Game.state === 'paused') WS.Game.resume();
     }
     PAD.b = back;
   };
@@ -2470,6 +2505,7 @@
     const clear = el('button', 'btn', 'Release all');
     clear.addEventListener('click', () => { WS.Save.db.oaths = {}; WS.Save.save(); WS.Audio.play('ui'); paint(); });
     const done = el('button', 'btn primary', 'Done');
+    done.dataset.back = '1';
     done.addEventListener('click', () => { WS.Audio.play('ui'); UI.openMenu(); });
     s.foot.append(total, el('div', 'spacer'), clear, done);
     paint();
@@ -2514,6 +2550,7 @@
       } catch (e) { say.textContent = 'This browser would not hand over a file.'; }
     });
     const done = el('button', 'btn primary', 'Back');
+    done.dataset.back = '1';
     done.addEventListener('click', () => { WS.Audio.play('ui'); (back || (() => UI.openMenu()))(); });
     s.foot.append(say, el('div', 'spacer'), copy, file, done);
     this.show(s.inner);
@@ -3127,6 +3164,7 @@
       m.subtitle || 'Ninety seconds, and you will not need it again.');
     s.body.append(this.paneManual());
     const done = el('button', 'btn primary', onClose ? 'Got it' : 'Back');
+    done.dataset.back = '1';
     done.addEventListener('click', () => {
       WS.Audio.play('select');
       if (onClose) onClose(); else UI.openMenu();

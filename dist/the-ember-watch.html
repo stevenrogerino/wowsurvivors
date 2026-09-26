@@ -3443,6 +3443,96 @@ window.WS = window.WS || {};
 
 })(window.WS);
 
+/* ===== src/core/platform.js ===== */
+/* The platform the game is running on, and what it offers.
+ *
+ * In a browser this is nothing at all: every call below is a no-op and the
+ * game is exactly the game. In the desktop build on Steam, desktop/preload.js
+ * hands the page a small bridge (`window.emberSteam`) and this file is the
+ * only thing that talks to it:
+ *
+ *   achievements  each one the game awards is unlocked on Steam under its
+ *                 API name (the id, upper-cased: first_blood -> FIRST_BLOOD),
+ *                 and on the first launch with Steam every one already earned
+ *                 is unlocked too, so an account that predates Steam loses
+ *                 nothing.
+ *   cloud         the account is mirrored to Steam Cloud as save.json a few
+ *                 seconds after it changes and again on the way out; at
+ *                 launch whichever copy was written last wins, so a second
+ *                 machine picks up where the first left off.
+ *   deck          whether this is a Steam Deck, for the report and for the
+ *                 first-launch defaults.
+ *
+ * Loaded before save.js, because the save has to be able to ask for the
+ * cloud copy while it loads. It touches nothing else until it is called. */
+'use strict';
+(function (WS) {
+
+  const bridge = (typeof window !== 'undefined' && window.emberSteam) || null;
+  let info = null;
+  try { info = bridge && bridge.info ? bridge.info() : null; } catch (e) { info = null; }
+
+  const Platform = {
+    name: info && info.available ? 'steam' : 'web',
+    steam: !!(info && info.available),
+    deck: !!(info && info.deck),
+    player: (info && info.player) || null,
+    CLOUD_FILE: 'save.json',
+  };
+
+  /** Steam API name for an achievement id. */
+  Platform.apiName = (id) => String(id).toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+
+  Platform.achievement = function (id) {
+    if (!Platform.steam) return;
+    try { bridge.unlock(Platform.apiName(id)); } catch (e) { /* Steam went away; the save still has it */ }
+  };
+
+  /** Every achievement the account already holds, unlocked on Steam. */
+  Platform.syncAchievements = function (db) {
+    if (!Platform.steam || !db || !db.achievements) return 0;
+    let n = 0;
+    for (const id of Object.keys(db.achievements)) {
+      if (db.achievements[id]) { Platform.achievement(id); n++; }
+    }
+    return n;
+  };
+
+  /** The cloud copy of the account as text, or null. */
+  Platform.cloudRead = function () {
+    if (!Platform.steam) return null;
+    try { return bridge.cloudRead(Platform.CLOUD_FILE) || null; } catch (e) { return null; }
+  };
+
+  let pending = null, timer = null;
+  function push() {
+    timer = null;
+    if (pending === null) return;
+    const text = pending; pending = null;
+    try { bridge.cloudWrite(Platform.CLOUD_FILE, text); } catch (e) { /* retried on the next save */ }
+  }
+  /** Called by Save.save with the account as written. Coalesced: a run
+   *  saves often, and the cloud only needs the latest. */
+  Platform.saved = function (text) {
+    if (!Platform.steam) return;
+    pending = text;
+    if (!timer) timer = setTimeout(push, 4000);
+  };
+  /** Now, not in four seconds: on the way out. */
+  Platform.flush = function () {
+    if (!Platform.steam) return;
+    if (timer) { clearTimeout(timer); timer = null; }
+    push();
+  };
+  if (bridge && typeof window !== 'undefined') {
+    window.addEventListener('pagehide', () => Platform.flush());
+    window.addEventListener('beforeunload', () => Platform.flush());
+  }
+
+  WS.Platform = Platform;
+
+})(window.WS);
+
 /* ===== src/data/config.js ===== */
 /* Static tuning. Anything the player can change lives in save.js settings. */
 'use strict';
@@ -4144,6 +4234,11 @@ window.WS = window.WS || {};
   function defaults() {
     return {
       schema: SCHEMA,
+      /* When this account was last written, so two copies of it (this
+         machine's and Steam Cloud's) can say which is newer. */
+      savedAt: 0,
+      // Set once the Steam Deck defaults have been applied (main.js).
+      deckSetup: false,
       gold: 0,
       hyperArmed: false,
       // Set the first time the manual is closed, so the primer greets a new
@@ -4378,6 +4473,19 @@ window.WS = window.WS || {};
       } catch (e) { /* private mode */ }
       let data = null;
       if (raw) { try { data = JSON.parse(raw); } catch (e) { data = null; } }
+      /* On Steam there may be a second copy in the cloud, written on another
+         machine. Whichever was written last is the account; a save from
+         before `savedAt` existed counts as the oldest possible. */
+      const cloudRaw = WS.Platform ? WS.Platform.cloudRead() : null;
+      if (cloudRaw) {
+        let cloud = null;
+        try { cloud = JSON.parse(cloudRaw); } catch (e) { cloud = null; }
+        const when = (d) => (isPlain(d) && Number.isFinite(d.savedAt) ? d.savedAt : 0);
+        if (isPlain(cloud) && (!isPlain(data) || when(cloud) > when(data))) {
+          data = cloud;
+          this.fromCloud = true;
+        }
+      }
       // A save that parses to a non-object - `null`, `7`, `"[]"` - is not a
       // save. merge() would otherwise write the defaults onto a primitive and
       // hand back something that is not a database.
@@ -4390,11 +4498,17 @@ window.WS = window.WS || {};
     },
 
     save() {
+      this.db.savedAt = Date.now();
+      const text = JSON.stringify(this.db);
       try {
-        localStorage.setItem(KEY, JSON.stringify(this.db));
+        localStorage.setItem(KEY, text);
         this.lastWrite = Date.now();
       } catch (e) { /* quota / blocked */ }
+      if (WS.Platform) WS.Platform.saved(text);
     },
+
+    /** Set when the account was taken from Steam Cloud at launch. */
+    fromCloud: false,
 
     lastWrite: 0,
 
@@ -7050,6 +7164,7 @@ window.WS = window.WS || {};
         { key: '{kReroll}  /  {kBanish}', text: 'Reroll or banish the cards on offer, if you have any left.' },
         { key: '{kPause}', text: 'Pause. Your build, the damage meter and the settings are in there.' },
         { key: 'Arrow keys  /  pad', text: 'Move around any menu. Enter or A picks.' },
+        { key: 'Pad', text: 'Start pauses, B backs out, LB and RB change tabs, and on a level-up X rerolls and Y banishes.' },
       ],
     },
     prologue: {
@@ -27782,6 +27897,7 @@ window.WS = window.WS || {};
 
       db.achievements[id] = true;
       earned = a;
+      if (WS.Platform) WS.Platform.achievement(id);
       if (a.reward) {
         if (a.reward.type === 'gold') WS.Save.addGold(a.reward.amount);
         else if (a.reward.type === 'character') db.unlocks.characters[a.reward.id] = true;
@@ -31283,6 +31399,7 @@ window.WS = window.WS || {};
     const G = WS.Game, run = G.run, p = G.player;
     const out = {
       kind: 'ember-watch-report', v: 1, at: new Date().toISOString(), note: note || '',
+      platform: WS.Platform ? WS.Platform.name : 'web', deck: !!(WS.Platform && WS.Platform.deck),
       agent: navigator.userAgent, screen: [screen.width, screen.height, window.devicePixelRatio || 1],
       view: [window.innerWidth, window.innerHeight],
       settings: Object.assign({}, WS.Save.settings),
@@ -43982,12 +44099,43 @@ window.WS = window.WS || {};
   /** Gamepad, polled from the frame loop while an overlay is up. Edge
    *  detected with a repeat delay, so holding a direction walks a list at a
    *  readable pace instead of teleporting to the end of it. */
-  const PAD = { axis: 0, held: 0, repeat: 0, a: false, b: false };
+  const PAD = { axis: 0, held: 0, repeat: 0, a: false, b: false, start: false, x: false, y: false, lb: false, rb: false };
   UI.pollMenuPad = function (dt) {
-    if (this.overlay.classList.contains('hidden')) { PAD.axis = 0; return; }
     if (!navigator.getGamepads) return;
     const pad = navigator.getGamepads()[WS.Input.gamepadIndex];
     if (!pad) return;
+    const btn = (i) => !!(pad.buttons[i] && pad.buttons[i].pressed);
+
+    /* Start pauses and resumes from anywhere in a run - the one button a pad
+       player reaches for, and the only way in without a keyboard. */
+    const start = btn(9);
+    if (start && !PAD.start) {
+      if (WS.Game.state === 'playing') WS.Game.pause();
+      else if (WS.Game.state === 'paused') WS.Game.resume();
+    }
+    PAD.start = start;
+
+    if (this.overlay.classList.contains('hidden')) { PAD.axis = 0; return; }
+
+    // X rerolls and Y banishes on a level-up, the keyboard's R and B.
+    const x = btn(2), y = btn(3);
+    if (WS.Game.state === 'levelup') {
+      if (x && !PAD.x) WS.Game.rerollLevelUp();
+      if (y && !PAD.y) this.setBanishMode(!this.banishMode);
+    }
+    PAD.x = x; PAD.y = y;
+
+    // The shoulders page through tabs, in the menu and the pause screen.
+    const lb = btn(4), rb = btn(5);
+    if ((lb && !PAD.lb) || (rb && !PAD.rb)) {
+      const tabs = [...this.overlay.querySelectorAll('.tabs .tab')];
+      if (tabs.length) {
+        const cur = tabs.findIndex((t) => t.classList.contains('active'));
+        const next = tabs[(cur + (rb ? 1 : -1) + tabs.length) % tabs.length];
+        if (next) next.click();
+      }
+    }
+    PAD.lb = lb; PAD.rb = rb;
 
     const dead = 0.5;
     let dx = 0, dy = 0;
@@ -44021,7 +44169,11 @@ window.WS = window.WS || {};
 
     const back = !!(pad.buttons[1] && pad.buttons[1].pressed);
     if (back && !PAD.b) {
-      if (WS.Game.state === 'paused') WS.Game.resume();
+      /* B backs out: of a screen that has a way back (Oaths, the report, the
+         manual), or of the pause. */
+      const out = this.overlay.querySelector('[data-back]');
+      if (out) out.click();
+      else if (WS.Game.state === 'paused') WS.Game.resume();
     }
     PAD.b = back;
   };
@@ -45301,6 +45453,7 @@ window.WS = window.WS || {};
     const clear = el('button', 'btn', 'Release all');
     clear.addEventListener('click', () => { WS.Save.db.oaths = {}; WS.Save.save(); WS.Audio.play('ui'); paint(); });
     const done = el('button', 'btn primary', 'Done');
+    done.dataset.back = '1';
     done.addEventListener('click', () => { WS.Audio.play('ui'); UI.openMenu(); });
     s.foot.append(total, el('div', 'spacer'), clear, done);
     paint();
@@ -45345,6 +45498,7 @@ window.WS = window.WS || {};
       } catch (e) { say.textContent = 'This browser would not hand over a file.'; }
     });
     const done = el('button', 'btn primary', 'Back');
+    done.dataset.back = '1';
     done.addEventListener('click', () => { WS.Audio.play('ui'); (back || (() => UI.openMenu()))(); });
     s.foot.append(say, el('div', 'spacer'), copy, file, done);
     this.show(s.inner);
@@ -45958,6 +46112,7 @@ window.WS = window.WS || {};
       m.subtitle || 'Ninety seconds, and you will not need it again.');
     s.body.append(this.paneManual());
     const done = el('button', 'btn primary', onClose ? 'Got it' : 'Back');
+    done.dataset.back = '1';
     done.addEventListener('click', () => {
       WS.Audio.play('select');
       if (onClose) onClose(); else UI.openMenu();
@@ -46782,6 +46937,15 @@ window.WS = window.WS || {};
     const stick = document.getElementById('stick');
 
     WS.Save.load();
+    /* On Steam: everything already earned goes up to Steam, and a Deck gets
+       larger interface type the first time it runs (a 7-inch screen at
+       arm's length). Both no-ops in a browser. */
+    WS.Platform.syncAchievements(WS.Save.db);
+    if (WS.Platform.deck && !WS.Save.db.deckSetup) {
+      WS.Save.db.deckSetup = true;
+      WS.Save.settings.textScale = 1.15;
+      WS.Save.save();
+    }
     /* cinematic.js picks a version at load time, when the save is still the
        defaults. This is the first moment the player's actual choice exists. */
     if (WS.Cinematic) WS.Cinematic.select(WS.Cinematic.wanted());

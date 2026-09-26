@@ -164,6 +164,15 @@
     const stick = document.getElementById('stick');
 
     WS.Save.load();
+    /* On Steam: everything already earned goes up to Steam, and a Deck gets
+       larger interface type the first time it runs (a 7-inch screen at
+       arm's length). Both no-ops in a browser. */
+    WS.Platform.syncAchievements(WS.Save.db);
+    if (WS.Platform.deck && !WS.Save.db.deckSetup) {
+      WS.Save.db.deckSetup = true;
+      WS.Save.settings.textScale = 1.15;
+      WS.Save.save();
+    }
     /* cinematic.js picks a version at load time, when the save is still the
        defaults. This is the first moment the player's actual choice exists. */
     if (WS.Cinematic) WS.Cinematic.select(WS.Cinematic.wanted());

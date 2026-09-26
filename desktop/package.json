@@ -13,24 +13,52 @@
     "dist": "npm run sync && electron-builder",
     "dist:win": "npm run sync && electron-builder --win",
     "dist:mac": "npm run sync && electron-builder --mac",
-    "dist:linux": "npm run sync && electron-builder --linux"
+    "dist:linux": "npm run sync && electron-builder --linux",
+    "steam:dev": "node -e \"require('fs').writeFileSync('steam_appid.txt', process.env.STEAM_APP_ID || '480')\" && npm start"
   },
   "build": {
     "appId": "com.emberwatch.game",
     "productName": "The Ember Watch",
-    "files": ["main.js", "game/**/*"],
-    "directories": { "output": "release" },
+    "files": [
+      "main.js",
+      "steam.js",
+      "preload.js",
+      "game/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    },
     "publish": null,
-    "win": { "target": ["nsis", "zip"] },
-    "mac": { "target": ["dmg", "zip"], "category": "public.app-category.games" },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.games"
+    },
     "linux": {
-      "target": ["AppImage", "tar.gz"],
+      "target": [
+        "AppImage",
+        "tar.gz"
+      ],
       "category": "Game",
       "executableName": "the-ember-watch"
-    }
+    },
+    "asarUnpack": [
+      "node_modules/steamworks.js/**"
+    ]
   },
   "devDependencies": {
     "electron": "^44.3.0",
     "electron-builder": "^26.15.3"
+  },
+  "dependencies": {
+    "steamworks.js": "0.4.0"
   }
 }
