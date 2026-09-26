@@ -459,7 +459,7 @@
     const opt = (k, dial) => (pattern[k] !== undefined ? pattern[k] : dial);
 
     if (pattern.type === 'summon') {
-      const scale = 1 + WS.Game.run.time / cfg.bossSummonScaleTime;
+      const scale = 1 + WS.WaveManager.clock(WS.Game.run) / cfg.bossSummonScaleTime;
       const near = opt('near', cfg.bossSummonNear), far = opt('far', cfg.bossSummonFar);
       for (let n = 0; n < (pattern.count || 6); n++) {
         const a = WS.random() * WS.TAU;
@@ -556,6 +556,8 @@
     run.damageDone += amount;
     const key = source || 'untagged';
     run.damageByWeapon[key] = (run.damageByWeapon[key] || 0) + amount;
+    const hits = run.hitsBySource || (run.hitsBySource = {});   // absent from a run saved before it existed
+    hits[key] = (hits[key] || 0) + 1;
     if (e.health <= 0) this.kill(e);
   };
 

@@ -190,7 +190,7 @@
       const [kx, ky] = WS.normalize(b.vx, b.vy);
       e.x += kx * b.knock; e.y += ky * b.knock;
     }
-    if (b.heal) WS.Player.heal(player, b.heal, 'holy');
+    if (b.heal) WS.Player.heal(player, b.heal, b.source || 'holy');
     if (player.lifesteal > 0) WS.Player.lifesteal(player, dealt * player.lifesteal);
     if (b.procChain > 0 && WS.random() < b.procChain) {
       WS.Weapon.chainFrom(e.x, e.y, b.damage * 0.6, 3, 220, b.source);
@@ -391,7 +391,7 @@
           }
         }
         if (z.heal && WS.dist2(z.x, z.y, player.x, player.y) < z.radius * z.radius) {
-          WS.Player.heal(player, z.heal, 'holy');
+          WS.Player.heal(player, z.heal, z.source || 'holy');
         }
       }
       i++;

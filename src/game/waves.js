@@ -32,6 +32,22 @@
     this.glaiveDone = false;
   };
 
+  /** THE NIGHT'S OWN CLOCK: the run's time less the time the finale took.
+   *
+   *  The run clock keeps running through a finale while the wave director
+   *  stands still, and everything the director does after it - how tough a
+   *  creature is, how tough a returning boss is - was read off that clock.
+   *  So a five-minute fight with Brother Kael left overtime starting five
+   *  minutes deep: creatures at two and a half times what they were at dawn,
+   *  arriving at once. A tester beat him and died almost immediately to the
+   *  ordinary horde. Overtime now resumes where the night stopped. */
+  Wave.clock = function (run) {
+    if (!run) return 0;
+    if (run.finaleSpent) return run.time - run.finaleSpent;
+    if (run.finaleBegan !== undefined) return run.finaleBegan;    // mid-finale: the night is paused
+    return run.time;
+  };
+
   /** Health/damage/xp inflation for ambient spawns. */
   Wave.enemyScale = function (time) {
     const run = WS.Game.run;
@@ -87,7 +103,7 @@
 
   Wave.update = function (dt, run) {
     const map = this.map;
-    const time = run.time;
+    const time = this.clock(run);
     const player = WS.Game.player;
 
     // Advance to the newest phase whose start time has passed.

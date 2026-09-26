@@ -229,7 +229,7 @@
     evolveBounces: 3,
     chainFalloff: 0.06,
     chainFirstReach: 1.6,
-    orbitTickPct: 0.5,
+    orbitTickPct: 0.65,
     gyrePulseRadius: 130,
     gyrePulseDamage: 0.8,
     gyrePulseKnock: 20,

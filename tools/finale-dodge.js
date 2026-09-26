@@ -277,7 +277,11 @@ async function runOne(page, map, dodge, seed) {
   });
 }
 
-(async () => {
+/* The bot, for tools/dawn-fight.js, which drives it through the finale with
+   a build that earned its way to dawn rather than one handed it. */
+module.exports = { installBot };
+
+if (require.main === module) (async () => {
   const browser = await chromium.launch({
     executablePath: process.env.CHROME || undefined, args: ['--no-sandbox'] });
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });

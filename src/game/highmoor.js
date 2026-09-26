@@ -39,7 +39,7 @@
 
   /* ---------------------------------------------------------- the storm -- */
   function scale() {
-    return WS.WaveManager.enemyScale(WS.Game.run.time) * WS.CONST.ENEMY_SCALE;
+    return WS.WaveManager.enemyScale(WS.WaveManager.clock(WS.Game.run)) * WS.CONST.ENEMY_SCALE;
   }
 
   /** One telegraphed strike. `dmg` is what it does to the survivor, `foe`
@@ -126,7 +126,7 @@
     if (run.map.storms && !quiet) {
       m.stormTimer -= dt;
       if (m.stormTimer <= 0) {
-        const minutes = run.time / 60;
+        const minutes = WS.WaveManager.clock(run) / 60;
         m.stormTimer = WS.max(cfg.stormEveryFloor, cfg.stormEvery - cfg.stormEveryPerMinute * minutes);
         Moor.cell(WS.min(cfg.stormStrikesMax, WS.round(cfg.stormStrikes + cfg.stormStrikesPerMinute * minutes)));
       }

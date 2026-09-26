@@ -3378,27 +3378,67 @@
     /* Two meters, built the same way: what you dealt, and what you mended.
        A healing build had nothing to read at the end of a run - every number
        it cared about was summed into one line called "Healing". */
-    const meterFor = (title, table, tint) => {
-      const entries = Object.entries(table).sort((a, b) => b[1] - a[1]);
+    /* Every row is named for the thing that did it - the weapon (by the name
+       it has now, so an evolved Axe Gyre reads as Gyrestorm), the passive,
+       the blessing, the companion - never a school or an internal key. A
+       heal used to be filed under "Holy" whichever weapon cast it. */
+    const SOURCE = {
+      regen: 'Regeneration', lifesteal: 'Leech Pact (lifesteal)', potion: 'Healing potions',
+      food: 'Bread', wolves: 'Spirit wolves', ghouls: 'Risen ghouls', bomb: 'Bombs',
+      maul: 'Bear maul', starfell: 'Owlbear stars', stillwater: 'Stillwater Step palms',
+      second_wind: 'Second Wind', storm: 'Storm cells', shrine_storm: 'Storm shrine',
+      soulbond: 'Soul lanterns', coolant: 'Burst coolant pipes', stormbond: 'Storm stones',
+      holy: 'Holy Light', other: 'Other', untagged: 'Other',
+    };
+    const sourceName = (key) => {
+      const w = WS.Weapons[key];
+      if (w) {
+        const mine = WS.Game.player && WS.Player.getWeapon(WS.Game.player, key);
+        return mine && mine.evolved && w.evolveName ? w.evolveName : w.name;
+      }
+      const named = SOURCE[key] || (WS.Upgrades[key] && WS.Upgrades[key].name)
+        || (WS.Blessings[key] && WS.Blessings[key].name);
+      return named || key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
+    };
+    const meterFor = (title, table, tint, hits) => {
+      const entries = Object.entries(table).filter((e) => e[1] > 0).sort((a, b) => b[1] - a[1]);
       if (!entries.length) return null;
       const meter = el('div');
       meter.append(el('h3', null, title));
       const total = entries.reduce((sum, e) => sum + e[1], 0) || 1;
       const top = entries[0][1];
-      for (const [key, value] of entries.slice(0, 10)) {
-        const w = WS.Weapons[key];
-        const label = w ? w.name : key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
+      /* Every weapon gets a row, however little it did - a short-range
+         weapon starved by the ranged ones is exactly what this is read to
+         find, and it used to be the row cut off the bottom. Past twelve rows
+         the smallest of the rest share one line. */
+      const MAX = 12;
+      const shown = [], rest = [];
+      for (const e of entries) {
+        if (shown.length < MAX - 1 || WS.Weapons[e[0]]) shown.push(e); else rest.push(e);
+      }
+      if (rest.length === 1) shown.push(rest.pop());
+      const row = (label, value, colour, tip) => {
         const line = el('div', 'kv meter-row');
         line.style.setProperty('--share', (value / top * 100) + '%');
-        line.style.setProperty('--q', WS.hex(
-          w ? (WS.CONST.COLORS[w.school] || WS.CONST.COLORS.arc) : tint));
+        line.style.setProperty('--q', WS.hex(colour));
         line.append(el('span', null, label),
           el('span', null, `${WS.formatNumber(value)}  (${WS.round(value / total * 100)}%)`));
+        if (tip) line.dataset.tip = tip;
         meter.append(line);
+      };
+      for (const [key, value] of shown) {
+        const w = WS.Weapons[key];
+        const n = hits && hits[key];
+        row(sourceName(key), value, w ? (WS.CONST.COLORS[w.school] || WS.CONST.COLORS.arc) : tint,
+          n ? `${WS.formatNumber(n)} hits, ${WS.formatNumber(WS.round(value / n))} each` : null);
+      }
+      if (rest.length) {
+        row(`${rest.length} more`, rest.reduce((sum, e) => sum + e[1], 0), tint,
+          rest.map((e) => sourceName(e[0])).join(', '));
       }
       return meter;
     };
-    const dmgMeter = meterFor('Damage meter', run.damageByWeapon, WS.CONST.COLORS.arc);
+    const dmgMeter = meterFor('Damage meter', run.damageByWeapon, WS.CONST.COLORS.arc, run.hitsBySource);
     if (dmgMeter) third.append(dmgMeter);
     const healMeter = meterFor('Healing meter', run.healingBySource, WS.CONST.COLORS.heal);
     if (healMeter) third.append(healMeter);

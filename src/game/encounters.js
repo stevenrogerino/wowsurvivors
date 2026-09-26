@@ -115,7 +115,7 @@
     WS.Audio.play(GUARDS()[id] ? 'boss' : 'level');
     WS.FX.flash(x, y, 120, ch.color, 0.45);
 
-    const scale = WS.WaveManager.enemyScale ? WS.WaveManager.enemyScale(this.run.time) * WS.Config.encounters.guardScale : 1;
+    const scale = WS.WaveManager.enemyScale ? WS.WaveManager.enemyScale(WS.WaveManager.clock(this.run)) * WS.Config.encounters.guardScale : 1;
     const guards = GUARDS()[id] || [];
     let n = 0;
     const total = guards.reduce((s, g) => s + g[1], 0);

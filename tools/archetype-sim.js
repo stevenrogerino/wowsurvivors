@@ -193,8 +193,12 @@ function pickBlessing(build, choices) {
   return choices[0];
 }
 
+/* The roster and the autopilot, for tools/dawn-fight.js, which plays these
+   same builds to dawn and then into the finale. */
+module.exports = { ARCHETYPES, scoreChoice, pickBest, pickBlessing };
+
 /* --------------------------------------------------------------- run --- */
-(async () => {
+if (require.main === module) (async () => {
   const browser = await chromium.launch({
     executablePath: process.env.CHROME || undefined, args: ['--no-sandbox'],
   });

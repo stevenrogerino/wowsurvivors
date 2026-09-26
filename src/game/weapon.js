@@ -367,7 +367,7 @@
       }
       WS.FX.flash(player.x, player.y, radius * 0.22, w.mods.blend, hold * 0.9);
     }
-    if (heal > 0) WS.Player.heal(player, heal, 'holy');
+    if (heal > 0) WS.Player.heal(player, heal, w.id);
     WS.Audio.play('cast', undefined, w.data.school);
     return true;
   };
@@ -499,7 +499,7 @@
     w.burstShots = countOf(player, w) - 1;
     w.burstTimer = 0.08;
     const heal = (w.mods.healBonus || 0) + (w.evolved ? (w.data.evolvedHeal || 0) : 0);
-    if (heal > 0) WS.Player.heal(player, heal, 'holy');
+    if (heal > 0) WS.Player.heal(player, heal, w.id);
     return true;
   };
 

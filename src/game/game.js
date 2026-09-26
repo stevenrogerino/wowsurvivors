@@ -60,6 +60,7 @@
          could not tell whether you were feeding it or wasting it. */
       overhealDone: 0,
       damageByWeapon: {},
+      hitsBySource: {},
       healingBySource: {},
       overhealBySource: {},
       dps: 0, hps: 0, ohps: 0,
@@ -513,6 +514,13 @@
    *  overtime rules in WaveManager (a climbing horde, returning bosses on a
    *  tightening clock, Death every minute) are what this walks into. */
   Game.continueEndless = function () {
+    /* After a finale, Death's first visit is a full interval away. His
+       timer only runs while the wave director does, and it was at zero
+       when the finale began, so he used to arrive on the first frame of
+       overtime - on top of whatever the finale had just taken. */
+    if (this.run.finaleCleared && WS.WaveManager.deathTimer < WS.Config.deathInterval) {
+      WS.WaveManager.deathTimer = WS.Config.deathInterval;
+    }
     this.run.mode = 'endless';
     this.run.victorious = true;
     this.running = true;

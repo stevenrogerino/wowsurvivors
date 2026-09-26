@@ -3737,6 +3737,8 @@
     ctx.lineWidth = 2;
     ctx.strokeRect(b.minX, b.minY, b.maxX - b.minX, b.maxY - b.minY);
 
+    // Where the next Solar Flare's openings will be when it reaches you.
+    WS.FinaleArt.ringLanding(ctx, A.hazards.filter((h) => h.shape === 'ring'), WS.Game.player, time);
     for (const h of A.hazards) {
       if (h.shape === 'ring') {
         if (h.delay > 0) continue;
@@ -3763,6 +3765,7 @@
         }
         ctx.stroke();
         ctx.restore();
+        WS.FinaleArt.ringGapEdges(ctx, h, [1.0, 0.75, 0.35]);
 
       } else if (h.shape === 'square') {
         if (h.telegraph > 0) {

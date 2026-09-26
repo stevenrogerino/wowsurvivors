@@ -2162,6 +2162,10 @@
     mordecai: { pitch: 92, mouth: 0.86, syl: 0.15, count: [2, 4], wobble: 0.08, gain: 0.54, hollow: 0.011, room: 0.45 },
     // The Pale Lord: the deepest thing in the game, and a choir under him.
     marrowfrost: { pitch: 56, mouth: 0.7, syl: 0.24, count: [2, 3], wobble: 0.05, gain: 0.66, choir: true, room: 0.7 },
+    // Brother Kael: a monk who has held a storm for thirty years. A tired,
+    // even baritone, unhurried, out on an open moor with the wind taking it.
+    // (He had no voice at all - his lines went by in silence.)
+    kael: { pitch: 118, mouth: 0.92, syl: 0.14, count: [3, 5], wobble: 0.05, gain: 0.52, room: 0.55 },
     // For the bosses of the night, by what they are.
     gruff: { pitch: 125, mouth: 1.0, syl: 0.11, count: [3, 5], wobble: 0.1, gain: 0.48, room: 0.25 },
     beast: { pitch: 80, mouth: 0.8, syl: 0.16, count: [2, 3], wobble: 0.2, gain: 0.54, growl: true, room: 0.3 },
@@ -2341,6 +2345,10 @@
     mechanical: 'machine', kerchief: 'gruff', bristlekin: 'gruff', karrash: 'gruff', gilkin: 'gurgle',
     lampling: 'grimtunnel', celestial: 'celestial', death: 'celestial',
     highland: 'beast', galewing: 'shrill', elemental: 'hollow' };
+  /** Whether a speaker has a voice; tools/check-speakers.js asks it of every
+   *  finale speaker, so a new one cannot talk in silence again. */
+  Audio.hasVoice = function (who) { return !!VOICES[who]; };
+
   Audio.voiceFor = function (id, t) {
     return BOSS_VOICE[id] || (t && FAMILY_VOICE[t.family]) || 'gruff';
   };

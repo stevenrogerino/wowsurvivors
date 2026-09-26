@@ -5,6 +5,40 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
 
 <!-- new entries go directly below -->
 
+## 2026-09-26: Meters, rings, finales that hit a moving target, overtime after a finale
+
+Playtest: Axe Gyre "says like no damage", the healing meter "just shows
+schools", the spinning find-the-gap rings are hard to see and the gap can
+open out of reach, Brother Kael "took a while to kill but I was never in
+danger" and had no voice, and after beating him "I died quite quickly to
+mobs in the continued run".
+
+- Axe Gyre was not misattributed: an independent hit counter matched the
+  meter to the point for every weapon. It is starved in a mixed build (the
+  ranged weapons kill what would reach the blades). `orbitTickPct` 0.5 ->
+  0.65 (Axe Gyre, Stormcall). Warrior with five other rank-6 weapons,
+  same four seeds: Axe Gyre's share 10.2% -> 12.5%.
+- Meters: every weapon keeps a row (the smallest used to fall off a top-10
+  cut), rows are named for what did it, evolved weapons by their evolved
+  name, and a row's tooltip gives hits and damage per hit. Healing from a
+  weapon is credited to the weapon, not "holy".
+- Rings (finale and arena): one opening is aimed within reach of the
+  survivor (at most 150px of walking, never more than a radian, allowing
+  for how far a spinning ring turns before it arrives); openings are framed
+  by bright edge bars; the ground at the survivor's distance lights where
+  the nearest openings will be when the ring gets there.
+- Finales lead their target (`Finale.lead`): a strike aimed at the survivor
+  lands where they are going, and in a barrage the second covers where they
+  stand. A survivor who never stops walking, 150s of Kael: Lightning 570 ->
+  3895, Gale 0 -> 1235. Standing still is unchanged.
+- Brother Kael has a voice (`tools/check-speakers.js` now fails any finale
+  speaker without one).
+- Overtime after a finale resumes where the night stopped: the wave
+  director's clock (`WaveManager.clock`) leaves out the time the finale
+  took, and Death's first visit is a full interval after overtime begins.
+  Before, a five-minute finale left overtime starting five minutes deep and
+  Death arrived on its first frame.
+
 ## 2026-09-26: The herd's thickets and bursts land where the crowd is
 
 Playtest: "some of the green aura things don't really have an effect, or

@@ -88,11 +88,14 @@
   }
 
   Arena.ring = function (gapBase, gapWidth, damage, speed, gapCount, spin, delay) {
-    this.hazards.push({
+    const h = {
       shape: 'ring', cx: CX, cy: CY, r: 26, speed, thick: 30,
       gapBase, gapWidth, gapCount: gapCount || 1, gapRot: 0, spin: spin || 0,
       damage, delay: delay || 0, life: 9, hit: false,
-    });
+    };
+    // One opening within reach of the survivor; see Finale.aimGap.
+    if (gapBase === null) h.gapBase = WS.Finale.aimGap(h, WS.Game.player);
+    this.hazards.push(h);
   };
 
   Arena.spears = function (safeCount) {
@@ -188,11 +191,11 @@
       this.trackA = (this.phase >= 2 ? 7.5 : 9.5) * speedUp;
       const t = this.tuning;
       if (this.phase >= 2) {
-        this.ring(WS.random() * WS.TAU, t.ringGapP2, t.ringDamage, t.ringSpeed, t.ringGapsP2, t.ringSpinP2, 0.7);
-        this.ring(WS.random() * WS.TAU, t.ringGapP2, t.ringDamage, t.ringSpeed, t.ringGapsP2, t.ringSpinP2, 0.7 + t.ringDelay);
+        this.ring(null, t.ringGapP2, t.ringDamage, t.ringSpeed, t.ringGapsP2, t.ringSpinP2, 0.7);
+        this.ring(null, t.ringGapP2, t.ringDamage, t.ringSpeed, t.ringGapsP2, t.ringSpinP2, 0.7 + t.ringDelay);
       } else {
-        this.ring(WS.random() * WS.TAU, t.ringGapP1 * 2, t.ringDamage, t.ringSpeed, 1, 0, 0.6);
-        this.ring(WS.random() * WS.TAU, t.ringGapP1, t.ringDamage, t.ringSpeed, 1, 0, 0.6 + t.ringDelay);
+        this.ring(null, t.ringGapP1 * 2, t.ringDamage, t.ringSpeed, 1, 0, 0.6);
+        this.ring(null, t.ringGapP1, t.ringDamage, t.ringSpeed, 1, 0, 0.6 + t.ringDelay);
       }
       WS.Game.toast('Solar Flare', 'Stand in the opening.', { kind: 'warn', art: 'sun' });
     }

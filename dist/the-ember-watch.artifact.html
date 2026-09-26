@@ -3776,7 +3776,7 @@ window.WS = window.WS || {};
     evolveBounces: 3,
     chainFalloff: 0.06,
     chainFirstReach: 1.6,
-    orbitTickPct: 0.5,
+    orbitTickPct: 0.65,
     gyrePulseRadius: 130,
     gyrePulseDamage: 0.8,
     gyrePulseKnock: 20,
@@ -23657,6 +23657,10 @@ window.WS = window.WS || {};
     mordecai: { pitch: 92, mouth: 0.86, syl: 0.15, count: [2, 4], wobble: 0.08, gain: 0.54, hollow: 0.011, room: 0.45 },
     // The Pale Lord: the deepest thing in the game, and a choir under him.
     marrowfrost: { pitch: 56, mouth: 0.7, syl: 0.24, count: [2, 3], wobble: 0.05, gain: 0.66, choir: true, room: 0.7 },
+    // Brother Kael: a monk who has held a storm for thirty years. A tired,
+    // even baritone, unhurried, out on an open moor with the wind taking it.
+    // (He had no voice at all - his lines went by in silence.)
+    kael: { pitch: 118, mouth: 0.92, syl: 0.14, count: [3, 5], wobble: 0.05, gain: 0.52, room: 0.55 },
     // For the bosses of the night, by what they are.
     gruff: { pitch: 125, mouth: 1.0, syl: 0.11, count: [3, 5], wobble: 0.1, gain: 0.48, room: 0.25 },
     beast: { pitch: 80, mouth: 0.8, syl: 0.16, count: [2, 3], wobble: 0.2, gain: 0.54, growl: true, room: 0.3 },
@@ -23836,6 +23840,10 @@ window.WS = window.WS || {};
     mechanical: 'machine', kerchief: 'gruff', bristlekin: 'gruff', karrash: 'gruff', gilkin: 'gurgle',
     lampling: 'grimtunnel', celestial: 'celestial', death: 'celestial',
     highland: 'beast', galewing: 'shrill', elemental: 'hollow' };
+  /** Whether a speaker has a voice; tools/check-speakers.js asks it of every
+   *  finale speaker, so a new one cannot talk in silence again. */
+  Audio.hasVoice = function (who) { return !!VOICES[who]; };
+
   Audio.voiceFor = function (id, t) {
     return BOSS_VOICE[id] || (t && FAMILY_VOICE[t.family]) || 'gruff';
   };
@@ -24492,7 +24500,7 @@ window.WS = window.WS || {};
       const [kx, ky] = WS.normalize(b.vx, b.vy);
       e.x += kx * b.knock; e.y += ky * b.knock;
     }
-    if (b.heal) WS.Player.heal(player, b.heal, 'holy');
+    if (b.heal) WS.Player.heal(player, b.heal, b.source || 'holy');
     if (player.lifesteal > 0) WS.Player.lifesteal(player, dealt * player.lifesteal);
     if (b.procChain > 0 && WS.random() < b.procChain) {
       WS.Weapon.chainFrom(e.x, e.y, b.damage * 0.6, 3, 220, b.source);
@@ -24693,7 +24701,7 @@ window.WS = window.WS || {};
           }
         }
         if (z.heal && WS.dist2(z.x, z.y, player.x, player.y) < z.radius * z.radius) {
-          WS.Player.heal(player, z.heal, 'holy');
+          WS.Player.heal(player, z.heal, z.source || 'holy');
         }
       }
       i++;
@@ -25224,7 +25232,7 @@ window.WS = window.WS || {};
     const opt = (k, dial) => (pattern[k] !== undefined ? pattern[k] : dial);
 
     if (pattern.type === 'summon') {
-      const scale = 1 + WS.Game.run.time / cfg.bossSummonScaleTime;
+      const scale = 1 + WS.WaveManager.clock(WS.Game.run) / cfg.bossSummonScaleTime;
       const near = opt('near', cfg.bossSummonNear), far = opt('far', cfg.bossSummonFar);
       for (let n = 0; n < (pattern.count || 6); n++) {
         const a = WS.random() * WS.TAU;
@@ -25321,6 +25329,8 @@ window.WS = window.WS || {};
     run.damageDone += amount;
     const key = source || 'untagged';
     run.damageByWeapon[key] = (run.damageByWeapon[key] || 0) + amount;
+    const hits = run.hitsBySource || (run.hitsBySource = {});   // absent from a run saved before it existed
+    hits[key] = (hits[key] || 0) + 1;
     if (e.health <= 0) this.kill(e);
   };
 
@@ -25844,7 +25854,7 @@ window.WS = window.WS || {};
       }
       WS.FX.flash(player.x, player.y, radius * 0.22, w.mods.blend, hold * 0.9);
     }
-    if (heal > 0) WS.Player.heal(player, heal, 'holy');
+    if (heal > 0) WS.Player.heal(player, heal, w.id);
     WS.Audio.play('cast', undefined, w.data.school);
     return true;
   };
@@ -25976,7 +25986,7 @@ window.WS = window.WS || {};
     w.burstShots = countOf(player, w) - 1;
     w.burstTimer = 0.08;
     const heal = (w.mods.healBonus || 0) + (w.evolved ? (w.data.evolvedHeal || 0) : 0);
-    if (heal > 0) WS.Player.heal(player, heal, 'holy');
+    if (heal > 0) WS.Player.heal(player, heal, w.id);
     return true;
   };
 
@@ -27036,7 +27046,7 @@ window.WS = window.WS || {};
   /* ------------------------------------------------------------ the wild -- */
   Primal.wildNeed = function () {
     const run = WS.Game.run;
-    const minutes = run ? run.time / 60 : 0;
+    const minutes = run ? WS.WaveManager.clock(run) / 60 : 0;
     return C().wildNeedBase + C().wildNeedPerMinute * minutes;
   };
 
@@ -27484,7 +27494,7 @@ window.WS = window.WS || {};
 
   /* ---------------------------------------------------------- the storm -- */
   function scale() {
-    return WS.WaveManager.enemyScale(WS.Game.run.time) * WS.CONST.ENEMY_SCALE;
+    return WS.WaveManager.enemyScale(WS.WaveManager.clock(WS.Game.run)) * WS.CONST.ENEMY_SCALE;
   }
 
   /** One telegraphed strike. `dmg` is what it does to the survivor, `foe`
@@ -27571,7 +27581,7 @@ window.WS = window.WS || {};
     if (run.map.storms && !quiet) {
       m.stormTimer -= dt;
       if (m.stormTimer <= 0) {
-        const minutes = run.time / 60;
+        const minutes = WS.WaveManager.clock(run) / 60;
         m.stormTimer = WS.max(cfg.stormEveryFloor, cfg.stormEvery - cfg.stormEveryPerMinute * minutes);
         Moor.cell(WS.min(cfg.stormStrikesMax, WS.round(cfg.stormStrikes + cfg.stormStrikesPerMinute * minutes)));
       }
@@ -28471,6 +28481,22 @@ window.WS = window.WS || {};
     this.glaiveDone = false;
   };
 
+  /** THE NIGHT'S OWN CLOCK: the run's time less the time the finale took.
+   *
+   *  The run clock keeps running through a finale while the wave director
+   *  stands still, and everything the director does after it - how tough a
+   *  creature is, how tough a returning boss is - was read off that clock.
+   *  So a five-minute fight with Brother Kael left overtime starting five
+   *  minutes deep: creatures at two and a half times what they were at dawn,
+   *  arriving at once. A tester beat him and died almost immediately to the
+   *  ordinary horde. Overtime now resumes where the night stopped. */
+  Wave.clock = function (run) {
+    if (!run) return 0;
+    if (run.finaleSpent) return run.time - run.finaleSpent;
+    if (run.finaleBegan !== undefined) return run.finaleBegan;    // mid-finale: the night is paused
+    return run.time;
+  };
+
   /** Health/damage/xp inflation for ambient spawns. */
   Wave.enemyScale = function (time) {
     const run = WS.Game.run;
@@ -28526,7 +28552,7 @@ window.WS = window.WS || {};
 
   Wave.update = function (dt, run) {
     const map = this.map;
-    const time = run.time;
+    const time = this.clock(run);
     const player = WS.Game.player;
 
     // Advance to the newest phase whose start time has passed.
@@ -28858,7 +28884,7 @@ window.WS = window.WS || {};
     WS.Audio.play(GUARDS()[id] ? 'boss' : 'level');
     WS.FX.flash(x, y, 120, ch.color, 0.45);
 
-    const scale = WS.WaveManager.enemyScale ? WS.WaveManager.enemyScale(this.run.time) * WS.Config.encounters.guardScale : 1;
+    const scale = WS.WaveManager.enemyScale ? WS.WaveManager.enemyScale(WS.WaveManager.clock(this.run)) * WS.Config.encounters.guardScale : 1;
     const guards = GUARDS()[id] || [];
     let n = 0;
     const total = guards.reduce((s, g) => s + g[1], 0);
@@ -29368,11 +29394,14 @@ window.WS = window.WS || {};
   }
 
   Arena.ring = function (gapBase, gapWidth, damage, speed, gapCount, spin, delay) {
-    this.hazards.push({
+    const h = {
       shape: 'ring', cx: CX, cy: CY, r: 26, speed, thick: 30,
       gapBase, gapWidth, gapCount: gapCount || 1, gapRot: 0, spin: spin || 0,
       damage, delay: delay || 0, life: 9, hit: false,
-    });
+    };
+    // One opening within reach of the survivor; see Finale.aimGap.
+    if (gapBase === null) h.gapBase = WS.Finale.aimGap(h, WS.Game.player);
+    this.hazards.push(h);
   };
 
   Arena.spears = function (safeCount) {
@@ -29468,11 +29497,11 @@ window.WS = window.WS || {};
       this.trackA = (this.phase >= 2 ? 7.5 : 9.5) * speedUp;
       const t = this.tuning;
       if (this.phase >= 2) {
-        this.ring(WS.random() * WS.TAU, t.ringGapP2, t.ringDamage, t.ringSpeed, t.ringGapsP2, t.ringSpinP2, 0.7);
-        this.ring(WS.random() * WS.TAU, t.ringGapP2, t.ringDamage, t.ringSpeed, t.ringGapsP2, t.ringSpinP2, 0.7 + t.ringDelay);
+        this.ring(null, t.ringGapP2, t.ringDamage, t.ringSpeed, t.ringGapsP2, t.ringSpinP2, 0.7);
+        this.ring(null, t.ringGapP2, t.ringDamage, t.ringSpeed, t.ringGapsP2, t.ringSpinP2, 0.7 + t.ringDelay);
       } else {
-        this.ring(WS.random() * WS.TAU, t.ringGapP1 * 2, t.ringDamage, t.ringSpeed, 1, 0, 0.6);
-        this.ring(WS.random() * WS.TAU, t.ringGapP1, t.ringDamage, t.ringSpeed, 1, 0, 0.6 + t.ringDelay);
+        this.ring(null, t.ringGapP1 * 2, t.ringDamage, t.ringSpeed, 1, 0, 0.6);
+        this.ring(null, t.ringGapP1, t.ringDamage, t.ringSpeed, 1, 0, 0.6 + t.ringDelay);
       }
       WS.Game.toast('Solar Flare', 'Stand in the opening.', { kind: 'warn', art: 'sun' });
     }
@@ -29627,6 +29656,7 @@ window.WS = window.WS || {};
     t: 0, timer: 0, purgeR: 0,
     hpScale: 1, dmgScale: 1, power: 1,
     units: [], marks: [], queue: [], line: null,
+    pv: { x: 0, y: 0 },   // the survivor's smoothed heading, for F.lead
     wrecks: [], pods: [], booms: [],
     darkness: 0, darkTarget: 0,
     cinema: 0, cinemaMax: 0,
@@ -29647,6 +29677,7 @@ window.WS = window.WS || {};
     if (this.bounds && WS.Game.arenaBounds === this.bounds) WS.Game.arenaBounds = null;
     this.bounds = null;
     this.label = '';
+    this.pv = { x: 0, y: 0 }; this._px = undefined; this._py = undefined;
   };
 
   /** A finale is on the field and owns the clock. */
@@ -29663,6 +29694,8 @@ window.WS = window.WS || {};
     this.reset();
     const def = WS.Finales[run.mapId];
     if (!def) return false;
+    // When it began, the first time: see WaveManager.clock.
+    if (run.finaleBegan === undefined) run.finaleBegan = run.time;
     this.def = def;
     this.mapId = run.mapId;
     this.script = SCRIPTS[def.script];
@@ -29874,11 +29907,41 @@ window.WS = window.WS || {};
   /** Expanding ring with openings - stand in a gap as it passes. */
   F.ring = function (cx, cy, opts) {
     const o = opts;
-    this.marks.push({ kind: 'ring', cx, cy, r: o.r0 || 30, speed: o.speed || 180, thick: o.thick || 28,
-      gapBase: o.gapBase !== undefined ? o.gapBase : WS.random() * WS.TAU,
+    const m = { kind: 'ring', cx, cy, r: o.r0 || 30, speed: o.speed || 180, thick: o.thick || 28,
+      gapBase: 0,
       gapWidth: o.gapWidth || 40, gapCount: o.gaps || 1, gapRot: 0, spin: o.spin || 0,
       delay: o.delay || 0, dmg: this.dmg(o.dmg), name: o.name, hit: false,
-      tint: o.tint || [1.0, 0.6, 0.3], max: o.max || 1100 });
+      tint: o.tint || [1.0, 0.6, 0.3], max: o.max || 1100 };
+    m.gapBase = o.gapBase !== undefined ? o.gapBase : F.aimGap(m, WS.Game.player);
+    this.marks.push(m);
+  };
+
+  /** Where a ring's first opening starts, so that one is always within reach.
+   *
+   *  It used to be anywhere at all. A single gap could open on the far side
+   *  of the boss, and a spinning ring's gaps are not where they look while it
+   *  is small - they turn the whole time it travels - so "find the hole" was
+   *  often a hole nobody could get to. Now one opening is aimed at where the
+   *  survivor stands, for the moment the ring actually REACHES them (the spin
+   *  it will have turned by then taken off first), and then pushed aside by
+   *  a random amount no larger than they can cover in the time it takes to
+   *  arrive, walking at half their speed. There is still somewhere to go -
+   *  it is rarely right under their feet - but it is never out of reach. The
+   *  other openings are spaced from that one as before. */
+  F.aimGap = function (m, p) {
+    if (!p) return WS.random() * WS.TAU;
+    const dx = p.x - m.cx, dy = p.y - m.cy;
+    const d = Math.hypot(dx, dy);
+    const at = WS.atan2(dy, dx);
+    const travel = WS.max(0, d - m.r) / (m.speed || 180);    // the time it has to get there
+    const turn = (m.spin || 0) * travel;                      // how far its gaps turn meanwhile
+    // At most 150px of walking round the ring, and never more than a
+    // radian: a single gap with a long way to travel could otherwise be
+    // "reachable" on the far side of the boss at a flat sprint.
+    const walk = WS.min(150, 0.5 * (p.moveSpeed || 220) * (travel + (m.delay || 0)));
+    const reach = WS.min(walk / WS.max(d, 80), 1, WS.PI / (m.gapCount || 1));
+    const side = WS.random() < 0.5 ? -1 : 1;
+    return at - turn + side * reach * (0.35 + 0.65 * WS.random());
   };
 
   /** One or more beams turning about a point. `arms` of them, evenly spaced. */
@@ -29934,10 +29997,36 @@ window.WS = window.WS || {};
     return WS.atan2(p.y - e.y, p.x - e.x);
   };
 
-  F.near = function (spread) {
-    const p = WS.Game.player;
+  F.near = function (spread, from) {
+    const p = from ? { x: from[0], y: from[1] } : WS.Game.player;
     const a = WS.random() * WS.TAU, r = WS.random() * spread;
     return [WS.clamp(p.x + WS.cos(a) * r, 40, W() - 40), WS.clamp(p.y + WS.sin(a) * r, 40, H() - 40)];
+  };
+
+  /** Where the survivor will be in `t` seconds if they keep going as they
+   *  are - read off their last few tenths of a second of movement, and a
+   *  little short of the full distance, capped at 1.2s ahead.
+   *
+   *  Every finale aimed its strikes at where the survivor WAS. In a game
+   *  where you never stop walking, a circle that lands a second and a
+   *  quarter after it is drawn on your feet lands on empty ground behind
+   *  you: a tester fought Brother Kael for minutes and was never in danger.
+   *  Someone standing still gets exactly what they always got. */
+  F.lead = function (t) {
+    const p = WS.Game.player, v = this.pv;
+    const k = WS.min(t, 1.2) * 0.85;
+    return [WS.clamp(p.x + v.x * k, 40, W() - 40), WS.clamp(p.y + v.y * k, 40, H() - 40)];
+  };
+
+  /** The k-th of n strikes in a barrage aimed at the survivor: the first
+   *  where they are going, the second (in a barrage of three or more) where
+   *  they are, the rest scattered round where they are going. Walking on
+   *  is not safe and neither is stopping; turning is. */
+  F.target = function (k, n, t, spread) {
+    if (k === 0) return this.lead(t);
+    const p = WS.Game.player;
+    if (k === 1 && n >= 3) return [p.x, p.y];
+    return this.near(spread, this.lead(t));
   };
 
   F.eruption = function (x, y, r, tint) {
@@ -30097,6 +30186,7 @@ window.WS = window.WS || {};
     F.bounds = null;
     F.darkness = 0; F.darkTarget = 0;
     run.finaleCleared = true;
+    run.finaleSpent = run.time - (run.finaleBegan !== undefined ? run.finaleBegan : run.time);
     if (!run.finaleRetries) {
       const st = WS.Save.stats;
       st.finales = st.finales || {};
@@ -30110,6 +30200,13 @@ window.WS = window.WS || {};
   F.update = function (dt) {
     const p = WS.Game.player;
     this.t += dt;
+    // The survivor's heading, smoothed over about a sixth of a second: F.lead.
+    if (this._px !== undefined && dt > 0) {
+      const a = WS.min(1, dt * 6);
+      this.pv.x += ((p.x - this._px) / dt - this.pv.x) * a;
+      this.pv.y += ((p.y - this._py) / dt - this.pv.y) * a;
+    }
+    this._px = p.x; this._py = p.y;
     updateLines(dt);
     this.darkness += (this.darkTarget - this.darkness) * WS.min(1, dt * 1.5);
     if (this.cinema > 0) {
@@ -30598,7 +30695,7 @@ window.WS = window.WS || {};
         for (const g of guns) {
           const n = s.mode === 'stripped' ? T.bombsStripped : T.bombs;
           for (let k = 0; k < n; k++) {
-            const [x, y] = k === 0 ? [p.x, p.y] : F.near(T.bombScatter);
+            const [x, y] = F.target(k, n, T.bombTele, T.bombScatter);
             F.circle(x, y, T.bombRadius, T.bombTele + k * T.bombStagger, T.bombDamage, 'Lantern bomb',
               { from: { x: g.x, y: g.y - 10 }, burn: s.melt ? T.meltBurn : T.bombBurn, tint: [1.0, 0.62, 0.22] });
           }
@@ -30710,7 +30807,7 @@ window.WS = window.WS || {};
         }
         if (F.every('keg', dt, E.keg)) {
           for (let k = 0; k < T.kegs; k++) {
-            const [x, y] = k === 0 ? [p.x, p.y] : F.near(T.kegScatter);
+            const [x, y] = F.target(k, T.kegs, T.kegTele, T.kegScatter);
             F.circle(x, y, T.kegRadius, T.kegTele + k * T.kegStagger, T.kegDamage, 'Powder keg',
               { from: { x: g.x, y: g.y }, tint: [1.0, 0.5, 0.25] });
           }
@@ -30773,7 +30870,8 @@ window.WS = window.WS || {};
           F.fan(a.x, a.y - 10, F.aim(a), T.pistolCount, T.pistolSpread, T.pistolSpeed, T.pistolDamage, 'fire', 'Pistol volley', a);
         }
         if (F.every('keg', dt, E.duelKeg, pace)) {
-          F.circle(p.x, p.y, T.kegRadius, T.kegTele, T.kegDamage, 'Powder keg',
+          const [kx, ky] = F.lead(T.kegTele);
+          F.circle(kx, ky, T.kegRadius, T.kegTele, T.kegDamage, 'Powder keg',
             { from: { x: a.x, y: a.y }, tint: [1.0, 0.5, 0.25] });
           // and a ring of smaller ones round you, a beat later
           for (let k = 0; k < T.duelKegRing; k++) {
@@ -31141,7 +31239,7 @@ window.WS = window.WS || {};
       const T = F.def.tuning, w = F.s.core;
       const p = WS.Game.player;
       for (let k = 0; k < n; k++) {
-        const [x, y] = k === 0 ? [p.x, p.y] : F.near(T.missileScatter);
+        const [x, y] = F.target(k, n, T.missileTele, T.missileScatter);
         F.circle(x, y, T.missileRadius, T.missileTele + k * T.missileStagger, T.missileDamage, 'Ember missile',
           { from: { x: w.x, y: w.y - 30 }, tint: [1.0, 0.6, 0.3] });
       }
@@ -31309,7 +31407,7 @@ window.WS = window.WS || {};
         s.label = s.pipes.length ? `Cut the coolant lines · ${s.pipes.length} left` : 'Break the drill';
         if (F.every('debris', dt, E.debris)) {
           for (let k = 0; k < T.debris; k++) {
-            const [x, y] = k === 0 ? [p.x, p.y] : F.near(T.debrisScatter);
+            const [x, y] = F.target(k, T.debris, T.debrisTele, T.debrisScatter);
             F.circle(x, y, T.debrisRadius, T.debrisTele + k * T.debrisStagger, T.debrisDamage, 'Falling ice',
               { style: 'ice', tint: [0.7, 0.9, 1.0] });
           }
@@ -31614,13 +31712,14 @@ window.WS = window.WS || {};
       const storming = s.mode === 'storm';
       if (F.every('bolt', dt, storming ? E.stormBolt : E.bolt)) {
         for (let i = 0; i < T.bolts; i++) {
-          const [x, y] = i === 0 ? [p.x, p.y] : F.near(T.boltScatter);
+          const [x, y] = F.target(i, T.bolts, T.boltTele, T.boltScatter);
           F.circle(x, y, T.boltRadius, T.boltTele + i * T.boltStagger, T.boltDamage, 'Lightning',
             { style: 'blast', tint: STORM_TINT });
         }
       }
       if (F.every('gale', dt, E.gale)) {
-        F.lane(k.x, k.y, F.aim(k), T.galeLength, T.galeWidth, T.galeTele, T.galeDamage, 'Gale',
+        const [gx, gy] = F.lead(T.galeTele);
+        F.lane(k.x, k.y, WS.atan2(gy - k.y, gx - k.x), T.galeLength, T.galeWidth, T.galeTele, T.galeDamage, 'Gale',
           { tint: [0.7, 0.95, 0.85], style: 'shot', active: 0.35 });
       }
       if (F.every('ring', dt, storming ? E.stormRing : E.ring)) {
@@ -32019,6 +32118,7 @@ window.WS = window.WS || {};
          could not tell whether you were feeding it or wasting it. */
       overhealDone: 0,
       damageByWeapon: {},
+      hitsBySource: {},
       healingBySource: {},
       overhealBySource: {},
       dps: 0, hps: 0, ohps: 0,
@@ -32472,6 +32572,13 @@ window.WS = window.WS || {};
    *  overtime rules in WaveManager (a climbing horde, returning bosses on a
    *  tightening clock, Death every minute) are what this walks into. */
   Game.continueEndless = function () {
+    /* After a finale, Death's first visit is a full interval away. His
+       timer only runs while the wave director does, and it was at zero
+       when the finale began, so he used to arrive on the first frame of
+       overtime - on top of whatever the finale had just taken. */
+    if (this.run.finaleCleared && WS.WaveManager.deathTimer < WS.Config.deathInterval) {
+      WS.WaveManager.deathTimer = WS.Config.deathInterval;
+    }
     this.run.mode = 'endless';
     this.run.victorious = true;
     this.running = true;
@@ -38881,6 +38988,77 @@ window.WS = window.WS || {};
     ctx.restore();
   }
 
+  /* A RING'S OPENINGS, MADE READABLE. Two things, drawn for the finale's
+     rings and the arena's alike.
+
+     The edges: each opening is framed by a bright bar across the band at
+     either side, so the hole is a shape with ends rather than an absence in
+     a half-transparent stroke against a busy floor.
+
+     The landing: for the ring that will reach the survivor next, the ground
+     at THEIR distance from its centre is marked where the openings will be
+     when it gets there - a spinning ring's gaps have turned by then, and
+     this is the only honest way to show where that is. It is drawn in the
+     same pale green the arena uses for safe ground, and it brightens as the
+     ring closes. Stand in the lit arc. */
+  function ringGapEdges(ctx, m, tint) {
+    const half = (m.gapWidth * WS.PI / 180) * 0.5;
+    ctx.save();
+    ctx.lineCap = 'round';
+    for (let k = 0; k < m.gapCount; k++) {
+      const c = m.gapBase + m.gapRot + (k / m.gapCount) * WS.TAU;
+      for (const a of [c - half, c + half]) {
+        const ca = WS.cos(a), sa = WS.sin(a);
+        const r0 = m.r - m.thick * 0.6, r1 = m.r + m.thick * 0.6;
+        ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.lineWidth = 7;
+        ctx.beginPath(); ctx.moveTo(m.cx + ca * r0, m.cy + sa * r0); ctx.lineTo(m.cx + ca * r1, m.cy + sa * r1); ctx.stroke();
+        ctx.strokeStyle = rgba(WS.mix(tint, [1, 1, 1], 0.7), 1); ctx.lineWidth = 3.5;
+        ctx.beginPath(); ctx.moveTo(m.cx + ca * r0, m.cy + sa * r0); ctx.lineTo(m.cx + ca * r1, m.cy + sa * r1); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+  A.ringGapEdges = ringGapEdges;
+
+  A.ringLanding = function (ctx, rings, p, time) {
+    if (!p) return;
+    let best = null, soon = Infinity, dist = 0;
+    for (const m of rings) {
+      const d = WS.dist(p.x, p.y, m.cx, m.cy);
+      if (m.r + m.thick * 0.5 >= d) continue;                    // already on or past them
+      const t = (m.delay > 0 ? m.delay : 0) + (d - m.r) / m.speed;
+      if (t < soon) { soon = t; best = m; dist = d; }
+    }
+    if (!best || soon > 3.5) return;
+    const m = best, half = (m.gapWidth * WS.PI / 180) * 0.5;
+    const turn = m.spin * (dist - m.r) / m.speed;
+    const k = WS.clamp(1 - soon / 3.5, 0, 1);
+    const pulse = 0.85 + 0.15 * WS.sin(time * 9);
+    ctx.save();
+    ctx.lineCap = 'round';
+    /* Only the openings near them: a ring with seven gaps drew seven arcs
+       all the way round, and the six they could not reach were noise. The
+       nearest is lit full; the next, the other way to run, at half. */
+    const at = WS.atan2(p.y - m.cy, p.x - m.cx);
+    const near = [];
+    for (let g = 0; g < m.gapCount; g++) {
+      const c = m.gapBase + m.gapRot + turn + (g / m.gapCount) * WS.TAU;
+      near.push([WS.abs(((c - at + WS.PI * 3) % WS.TAU) - WS.PI), c]);
+    }
+    near.sort((a, b) => a[0] - b[0]);
+    for (let n = 0; n < WS.min(2, near.length); n++) {
+      const c = near[n][1];
+      ctx.globalAlpha = (0.35 + 0.6 * k) * pulse * (n === 0 ? 1 : 0.5);
+      ctx.strokeStyle = 'rgba(10,30,18,.6)'; ctx.lineWidth = 12;
+      ctx.beginPath(); ctx.arc(m.cx, m.cy, dist, c - half, c + half); ctx.stroke();
+      ctx.strokeStyle = 'rgba(120,240,160,.9)'; ctx.lineWidth = 7;
+      ctx.beginPath(); ctx.arc(m.cx, m.cy, dist, c - half, c + half); ctx.stroke();
+      ctx.strokeStyle = 'rgba(235,255,240,1)'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(m.cx, m.cy, dist, c - half * 0.9, c + half * 0.9); ctx.stroke();
+    }
+    ctx.restore();
+  };
+
   function drawRing(ctx, m) {
     if (m.delay > 0) {
       ctx.save();
@@ -38914,6 +39092,7 @@ window.WS = window.WS || {};
     }
     ctx.stroke();
     ctx.restore();
+    ringGapEdges(ctx, m, m.tint);
   }
 
   function drawSweep(ctx, m, time) {
@@ -39145,6 +39324,7 @@ window.WS = window.WS || {};
       else if (m.kind === 'safe') drawSafe(ctx, m, time);
       m.tint = t0;
     }
+    A.ringLanding(ctx, F.marks.filter((m) => m.kind === 'ring'), WS.Game.player, time);
   };
 
   A.drawAir = function (ctx, time) {
@@ -43120,6 +43300,8 @@ window.WS = window.WS || {};
     ctx.lineWidth = 2;
     ctx.strokeRect(b.minX, b.minY, b.maxX - b.minX, b.maxY - b.minY);
 
+    // Where the next Solar Flare's openings will be when it reaches you.
+    WS.FinaleArt.ringLanding(ctx, A.hazards.filter((h) => h.shape === 'ring'), WS.Game.player, time);
     for (const h of A.hazards) {
       if (h.shape === 'ring') {
         if (h.delay > 0) continue;
@@ -43146,6 +43328,7 @@ window.WS = window.WS || {};
         }
         ctx.stroke();
         ctx.restore();
+        WS.FinaleArt.ringGapEdges(ctx, h, [1.0, 0.75, 0.35]);
 
       } else if (h.shape === 'square') {
         if (h.telegraph > 0) {
@@ -47243,27 +47426,67 @@ window.WS = window.WS || {};
     /* Two meters, built the same way: what you dealt, and what you mended.
        A healing build had nothing to read at the end of a run - every number
        it cared about was summed into one line called "Healing". */
-    const meterFor = (title, table, tint) => {
-      const entries = Object.entries(table).sort((a, b) => b[1] - a[1]);
+    /* Every row is named for the thing that did it - the weapon (by the name
+       it has now, so an evolved Axe Gyre reads as Gyrestorm), the passive,
+       the blessing, the companion - never a school or an internal key. A
+       heal used to be filed under "Holy" whichever weapon cast it. */
+    const SOURCE = {
+      regen: 'Regeneration', lifesteal: 'Leech Pact (lifesteal)', potion: 'Healing potions',
+      food: 'Bread', wolves: 'Spirit wolves', ghouls: 'Risen ghouls', bomb: 'Bombs',
+      maul: 'Bear maul', starfell: 'Owlbear stars', stillwater: 'Stillwater Step palms',
+      second_wind: 'Second Wind', storm: 'Storm cells', shrine_storm: 'Storm shrine',
+      soulbond: 'Soul lanterns', coolant: 'Burst coolant pipes', stormbond: 'Storm stones',
+      holy: 'Holy Light', other: 'Other', untagged: 'Other',
+    };
+    const sourceName = (key) => {
+      const w = WS.Weapons[key];
+      if (w) {
+        const mine = WS.Game.player && WS.Player.getWeapon(WS.Game.player, key);
+        return mine && mine.evolved && w.evolveName ? w.evolveName : w.name;
+      }
+      const named = SOURCE[key] || (WS.Upgrades[key] && WS.Upgrades[key].name)
+        || (WS.Blessings[key] && WS.Blessings[key].name);
+      return named || key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
+    };
+    const meterFor = (title, table, tint, hits) => {
+      const entries = Object.entries(table).filter((e) => e[1] > 0).sort((a, b) => b[1] - a[1]);
       if (!entries.length) return null;
       const meter = el('div');
       meter.append(el('h3', null, title));
       const total = entries.reduce((sum, e) => sum + e[1], 0) || 1;
       const top = entries[0][1];
-      for (const [key, value] of entries.slice(0, 10)) {
-        const w = WS.Weapons[key];
-        const label = w ? w.name : key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
+      /* Every weapon gets a row, however little it did - a short-range
+         weapon starved by the ranged ones is exactly what this is read to
+         find, and it used to be the row cut off the bottom. Past twelve rows
+         the smallest of the rest share one line. */
+      const MAX = 12;
+      const shown = [], rest = [];
+      for (const e of entries) {
+        if (shown.length < MAX - 1 || WS.Weapons[e[0]]) shown.push(e); else rest.push(e);
+      }
+      if (rest.length === 1) shown.push(rest.pop());
+      const row = (label, value, colour, tip) => {
         const line = el('div', 'kv meter-row');
         line.style.setProperty('--share', (value / top * 100) + '%');
-        line.style.setProperty('--q', WS.hex(
-          w ? (WS.CONST.COLORS[w.school] || WS.CONST.COLORS.arc) : tint));
+        line.style.setProperty('--q', WS.hex(colour));
         line.append(el('span', null, label),
           el('span', null, `${WS.formatNumber(value)}  (${WS.round(value / total * 100)}%)`));
+        if (tip) line.dataset.tip = tip;
         meter.append(line);
+      };
+      for (const [key, value] of shown) {
+        const w = WS.Weapons[key];
+        const n = hits && hits[key];
+        row(sourceName(key), value, w ? (WS.CONST.COLORS[w.school] || WS.CONST.COLORS.arc) : tint,
+          n ? `${WS.formatNumber(n)} hits, ${WS.formatNumber(WS.round(value / n))} each` : null);
+      }
+      if (rest.length) {
+        row(`${rest.length} more`, rest.reduce((sum, e) => sum + e[1], 0), tint,
+          rest.map((e) => sourceName(e[0])).join(', '));
       }
       return meter;
     };
-    const dmgMeter = meterFor('Damage meter', run.damageByWeapon, WS.CONST.COLORS.arc);
+    const dmgMeter = meterFor('Damage meter', run.damageByWeapon, WS.CONST.COLORS.arc, run.hitsBySource);
     if (dmgMeter) third.append(dmgMeter);
     const healMeter = meterFor('Healing meter', run.healingBySource, WS.CONST.COLORS.heal);
     if (healMeter) third.append(healMeter);

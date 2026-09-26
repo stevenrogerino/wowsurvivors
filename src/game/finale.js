@@ -29,6 +29,7 @@
     t: 0, timer: 0, purgeR: 0,
     hpScale: 1, dmgScale: 1, power: 1,
     units: [], marks: [], queue: [], line: null,
+    pv: { x: 0, y: 0 },   // the survivor's smoothed heading, for F.lead
     wrecks: [], pods: [], booms: [],
     darkness: 0, darkTarget: 0,
     cinema: 0, cinemaMax: 0,
@@ -49,6 +50,7 @@
     if (this.bounds && WS.Game.arenaBounds === this.bounds) WS.Game.arenaBounds = null;
     this.bounds = null;
     this.label = '';
+    this.pv = { x: 0, y: 0 }; this._px = undefined; this._py = undefined;
   };
 
   /** A finale is on the field and owns the clock. */
@@ -65,6 +67,8 @@
     this.reset();
     const def = WS.Finales[run.mapId];
     if (!def) return false;
+    // When it began, the first time: see WaveManager.clock.
+    if (run.finaleBegan === undefined) run.finaleBegan = run.time;
     this.def = def;
     this.mapId = run.mapId;
     this.script = SCRIPTS[def.script];
@@ -276,11 +280,41 @@
   /** Expanding ring with openings - stand in a gap as it passes. */
   F.ring = function (cx, cy, opts) {
     const o = opts;
-    this.marks.push({ kind: 'ring', cx, cy, r: o.r0 || 30, speed: o.speed || 180, thick: o.thick || 28,
-      gapBase: o.gapBase !== undefined ? o.gapBase : WS.random() * WS.TAU,
+    const m = { kind: 'ring', cx, cy, r: o.r0 || 30, speed: o.speed || 180, thick: o.thick || 28,
+      gapBase: 0,
       gapWidth: o.gapWidth || 40, gapCount: o.gaps || 1, gapRot: 0, spin: o.spin || 0,
       delay: o.delay || 0, dmg: this.dmg(o.dmg), name: o.name, hit: false,
-      tint: o.tint || [1.0, 0.6, 0.3], max: o.max || 1100 });
+      tint: o.tint || [1.0, 0.6, 0.3], max: o.max || 1100 };
+    m.gapBase = o.gapBase !== undefined ? o.gapBase : F.aimGap(m, WS.Game.player);
+    this.marks.push(m);
+  };
+
+  /** Where a ring's first opening starts, so that one is always within reach.
+   *
+   *  It used to be anywhere at all. A single gap could open on the far side
+   *  of the boss, and a spinning ring's gaps are not where they look while it
+   *  is small - they turn the whole time it travels - so "find the hole" was
+   *  often a hole nobody could get to. Now one opening is aimed at where the
+   *  survivor stands, for the moment the ring actually REACHES them (the spin
+   *  it will have turned by then taken off first), and then pushed aside by
+   *  a random amount no larger than they can cover in the time it takes to
+   *  arrive, walking at half their speed. There is still somewhere to go -
+   *  it is rarely right under their feet - but it is never out of reach. The
+   *  other openings are spaced from that one as before. */
+  F.aimGap = function (m, p) {
+    if (!p) return WS.random() * WS.TAU;
+    const dx = p.x - m.cx, dy = p.y - m.cy;
+    const d = Math.hypot(dx, dy);
+    const at = WS.atan2(dy, dx);
+    const travel = WS.max(0, d - m.r) / (m.speed || 180);    // the time it has to get there
+    const turn = (m.spin || 0) * travel;                      // how far its gaps turn meanwhile
+    // At most 150px of walking round the ring, and never more than a
+    // radian: a single gap with a long way to travel could otherwise be
+    // "reachable" on the far side of the boss at a flat sprint.
+    const walk = WS.min(150, 0.5 * (p.moveSpeed || 220) * (travel + (m.delay || 0)));
+    const reach = WS.min(walk / WS.max(d, 80), 1, WS.PI / (m.gapCount || 1));
+    const side = WS.random() < 0.5 ? -1 : 1;
+    return at - turn + side * reach * (0.35 + 0.65 * WS.random());
   };
 
   /** One or more beams turning about a point. `arms` of them, evenly spaced. */
@@ -336,10 +370,36 @@
     return WS.atan2(p.y - e.y, p.x - e.x);
   };
 
-  F.near = function (spread) {
-    const p = WS.Game.player;
+  F.near = function (spread, from) {
+    const p = from ? { x: from[0], y: from[1] } : WS.Game.player;
     const a = WS.random() * WS.TAU, r = WS.random() * spread;
     return [WS.clamp(p.x + WS.cos(a) * r, 40, W() - 40), WS.clamp(p.y + WS.sin(a) * r, 40, H() - 40)];
+  };
+
+  /** Where the survivor will be in `t` seconds if they keep going as they
+   *  are - read off their last few tenths of a second of movement, and a
+   *  little short of the full distance, capped at 1.2s ahead.
+   *
+   *  Every finale aimed its strikes at where the survivor WAS. In a game
+   *  where you never stop walking, a circle that lands a second and a
+   *  quarter after it is drawn on your feet lands on empty ground behind
+   *  you: a tester fought Brother Kael for minutes and was never in danger.
+   *  Someone standing still gets exactly what they always got. */
+  F.lead = function (t) {
+    const p = WS.Game.player, v = this.pv;
+    const k = WS.min(t, 1.2) * 0.85;
+    return [WS.clamp(p.x + v.x * k, 40, W() - 40), WS.clamp(p.y + v.y * k, 40, H() - 40)];
+  };
+
+  /** The k-th of n strikes in a barrage aimed at the survivor: the first
+   *  where they are going, the second (in a barrage of three or more) where
+   *  they are, the rest scattered round where they are going. Walking on
+   *  is not safe and neither is stopping; turning is. */
+  F.target = function (k, n, t, spread) {
+    if (k === 0) return this.lead(t);
+    const p = WS.Game.player;
+    if (k === 1 && n >= 3) return [p.x, p.y];
+    return this.near(spread, this.lead(t));
   };
 
   F.eruption = function (x, y, r, tint) {
@@ -499,6 +559,7 @@
     F.bounds = null;
     F.darkness = 0; F.darkTarget = 0;
     run.finaleCleared = true;
+    run.finaleSpent = run.time - (run.finaleBegan !== undefined ? run.finaleBegan : run.time);
     if (!run.finaleRetries) {
       const st = WS.Save.stats;
       st.finales = st.finales || {};
@@ -512,6 +573,13 @@
   F.update = function (dt) {
     const p = WS.Game.player;
     this.t += dt;
+    // The survivor's heading, smoothed over about a sixth of a second: F.lead.
+    if (this._px !== undefined && dt > 0) {
+      const a = WS.min(1, dt * 6);
+      this.pv.x += ((p.x - this._px) / dt - this.pv.x) * a;
+      this.pv.y += ((p.y - this._py) / dt - this.pv.y) * a;
+    }
+    this._px = p.x; this._py = p.y;
     updateLines(dt);
     this.darkness += (this.darkTarget - this.darkness) * WS.min(1, dt * 1.5);
     if (this.cinema > 0) {
@@ -1000,7 +1068,7 @@
         for (const g of guns) {
           const n = s.mode === 'stripped' ? T.bombsStripped : T.bombs;
           for (let k = 0; k < n; k++) {
-            const [x, y] = k === 0 ? [p.x, p.y] : F.near(T.bombScatter);
+            const [x, y] = F.target(k, n, T.bombTele, T.bombScatter);
             F.circle(x, y, T.bombRadius, T.bombTele + k * T.bombStagger, T.bombDamage, 'Lantern bomb',
               { from: { x: g.x, y: g.y - 10 }, burn: s.melt ? T.meltBurn : T.bombBurn, tint: [1.0, 0.62, 0.22] });
           }
@@ -1112,7 +1180,7 @@
         }
         if (F.every('keg', dt, E.keg)) {
           for (let k = 0; k < T.kegs; k++) {
-            const [x, y] = k === 0 ? [p.x, p.y] : F.near(T.kegScatter);
+            const [x, y] = F.target(k, T.kegs, T.kegTele, T.kegScatter);
             F.circle(x, y, T.kegRadius, T.kegTele + k * T.kegStagger, T.kegDamage, 'Powder keg',
               { from: { x: g.x, y: g.y }, tint: [1.0, 0.5, 0.25] });
           }
@@ -1175,7 +1243,8 @@
           F.fan(a.x, a.y - 10, F.aim(a), T.pistolCount, T.pistolSpread, T.pistolSpeed, T.pistolDamage, 'fire', 'Pistol volley', a);
         }
         if (F.every('keg', dt, E.duelKeg, pace)) {
-          F.circle(p.x, p.y, T.kegRadius, T.kegTele, T.kegDamage, 'Powder keg',
+          const [kx, ky] = F.lead(T.kegTele);
+          F.circle(kx, ky, T.kegRadius, T.kegTele, T.kegDamage, 'Powder keg',
             { from: { x: a.x, y: a.y }, tint: [1.0, 0.5, 0.25] });
           // and a ring of smaller ones round you, a beat later
           for (let k = 0; k < T.duelKegRing; k++) {
@@ -1543,7 +1612,7 @@
       const T = F.def.tuning, w = F.s.core;
       const p = WS.Game.player;
       for (let k = 0; k < n; k++) {
-        const [x, y] = k === 0 ? [p.x, p.y] : F.near(T.missileScatter);
+        const [x, y] = F.target(k, n, T.missileTele, T.missileScatter);
         F.circle(x, y, T.missileRadius, T.missileTele + k * T.missileStagger, T.missileDamage, 'Ember missile',
           { from: { x: w.x, y: w.y - 30 }, tint: [1.0, 0.6, 0.3] });
       }
@@ -1711,7 +1780,7 @@
         s.label = s.pipes.length ? `Cut the coolant lines · ${s.pipes.length} left` : 'Break the drill';
         if (F.every('debris', dt, E.debris)) {
           for (let k = 0; k < T.debris; k++) {
-            const [x, y] = k === 0 ? [p.x, p.y] : F.near(T.debrisScatter);
+            const [x, y] = F.target(k, T.debris, T.debrisTele, T.debrisScatter);
             F.circle(x, y, T.debrisRadius, T.debrisTele + k * T.debrisStagger, T.debrisDamage, 'Falling ice',
               { style: 'ice', tint: [0.7, 0.9, 1.0] });
           }
@@ -2016,13 +2085,14 @@
       const storming = s.mode === 'storm';
       if (F.every('bolt', dt, storming ? E.stormBolt : E.bolt)) {
         for (let i = 0; i < T.bolts; i++) {
-          const [x, y] = i === 0 ? [p.x, p.y] : F.near(T.boltScatter);
+          const [x, y] = F.target(i, T.bolts, T.boltTele, T.boltScatter);
           F.circle(x, y, T.boltRadius, T.boltTele + i * T.boltStagger, T.boltDamage, 'Lightning',
             { style: 'blast', tint: STORM_TINT });
         }
       }
       if (F.every('gale', dt, E.gale)) {
-        F.lane(k.x, k.y, F.aim(k), T.galeLength, T.galeWidth, T.galeTele, T.galeDamage, 'Gale',
+        const [gx, gy] = F.lead(T.galeTele);
+        F.lane(k.x, k.y, WS.atan2(gy - k.y, gx - k.x), T.galeLength, T.galeWidth, T.galeTele, T.galeDamage, 'Gale',
           { tint: [0.7, 0.95, 0.85], style: 'shot', active: 0.35 });
       }
       if (F.every('ring', dt, storming ? E.stormRing : E.ring)) {

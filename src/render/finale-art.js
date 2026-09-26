@@ -1563,6 +1563,77 @@
     ctx.restore();
   }
 
+  /* A RING'S OPENINGS, MADE READABLE. Two things, drawn for the finale's
+     rings and the arena's alike.
+
+     The edges: each opening is framed by a bright bar across the band at
+     either side, so the hole is a shape with ends rather than an absence in
+     a half-transparent stroke against a busy floor.
+
+     The landing: for the ring that will reach the survivor next, the ground
+     at THEIR distance from its centre is marked where the openings will be
+     when it gets there - a spinning ring's gaps have turned by then, and
+     this is the only honest way to show where that is. It is drawn in the
+     same pale green the arena uses for safe ground, and it brightens as the
+     ring closes. Stand in the lit arc. */
+  function ringGapEdges(ctx, m, tint) {
+    const half = (m.gapWidth * WS.PI / 180) * 0.5;
+    ctx.save();
+    ctx.lineCap = 'round';
+    for (let k = 0; k < m.gapCount; k++) {
+      const c = m.gapBase + m.gapRot + (k / m.gapCount) * WS.TAU;
+      for (const a of [c - half, c + half]) {
+        const ca = WS.cos(a), sa = WS.sin(a);
+        const r0 = m.r - m.thick * 0.6, r1 = m.r + m.thick * 0.6;
+        ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.lineWidth = 7;
+        ctx.beginPath(); ctx.moveTo(m.cx + ca * r0, m.cy + sa * r0); ctx.lineTo(m.cx + ca * r1, m.cy + sa * r1); ctx.stroke();
+        ctx.strokeStyle = rgba(WS.mix(tint, [1, 1, 1], 0.7), 1); ctx.lineWidth = 3.5;
+        ctx.beginPath(); ctx.moveTo(m.cx + ca * r0, m.cy + sa * r0); ctx.lineTo(m.cx + ca * r1, m.cy + sa * r1); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+  A.ringGapEdges = ringGapEdges;
+
+  A.ringLanding = function (ctx, rings, p, time) {
+    if (!p) return;
+    let best = null, soon = Infinity, dist = 0;
+    for (const m of rings) {
+      const d = WS.dist(p.x, p.y, m.cx, m.cy);
+      if (m.r + m.thick * 0.5 >= d) continue;                    // already on or past them
+      const t = (m.delay > 0 ? m.delay : 0) + (d - m.r) / m.speed;
+      if (t < soon) { soon = t; best = m; dist = d; }
+    }
+    if (!best || soon > 3.5) return;
+    const m = best, half = (m.gapWidth * WS.PI / 180) * 0.5;
+    const turn = m.spin * (dist - m.r) / m.speed;
+    const k = WS.clamp(1 - soon / 3.5, 0, 1);
+    const pulse = 0.85 + 0.15 * WS.sin(time * 9);
+    ctx.save();
+    ctx.lineCap = 'round';
+    /* Only the openings near them: a ring with seven gaps drew seven arcs
+       all the way round, and the six they could not reach were noise. The
+       nearest is lit full; the next, the other way to run, at half. */
+    const at = WS.atan2(p.y - m.cy, p.x - m.cx);
+    const near = [];
+    for (let g = 0; g < m.gapCount; g++) {
+      const c = m.gapBase + m.gapRot + turn + (g / m.gapCount) * WS.TAU;
+      near.push([WS.abs(((c - at + WS.PI * 3) % WS.TAU) - WS.PI), c]);
+    }
+    near.sort((a, b) => a[0] - b[0]);
+    for (let n = 0; n < WS.min(2, near.length); n++) {
+      const c = near[n][1];
+      ctx.globalAlpha = (0.35 + 0.6 * k) * pulse * (n === 0 ? 1 : 0.5);
+      ctx.strokeStyle = 'rgba(10,30,18,.6)'; ctx.lineWidth = 12;
+      ctx.beginPath(); ctx.arc(m.cx, m.cy, dist, c - half, c + half); ctx.stroke();
+      ctx.strokeStyle = 'rgba(120,240,160,.9)'; ctx.lineWidth = 7;
+      ctx.beginPath(); ctx.arc(m.cx, m.cy, dist, c - half, c + half); ctx.stroke();
+      ctx.strokeStyle = 'rgba(235,255,240,1)'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(m.cx, m.cy, dist, c - half * 0.9, c + half * 0.9); ctx.stroke();
+    }
+    ctx.restore();
+  };
+
   function drawRing(ctx, m) {
     if (m.delay > 0) {
       ctx.save();
@@ -1596,6 +1667,7 @@
     }
     ctx.stroke();
     ctx.restore();
+    ringGapEdges(ctx, m, m.tint);
   }
 
   function drawSweep(ctx, m, time) {
@@ -1827,6 +1899,7 @@
       else if (m.kind === 'safe') drawSafe(ctx, m, time);
       m.tint = t0;
     }
+    A.ringLanding(ctx, F.marks.filter((m) => m.kind === 'ring'), WS.Game.player, time);
   };
 
   A.drawAir = function (ctx, time) {

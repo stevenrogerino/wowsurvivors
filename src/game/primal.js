@@ -29,7 +29,7 @@
   /* ------------------------------------------------------------ the wild -- */
   Primal.wildNeed = function () {
     const run = WS.Game.run;
-    const minutes = run ? run.time / 60 : 0;
+    const minutes = run ? WS.WaveManager.clock(run) / 60 : 0;
     return C().wildNeedBase + C().wildNeedPerMinute * minutes;
   };
 
