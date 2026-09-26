@@ -34324,6 +34324,223 @@ window.WS = window.WS || {};
     frameClose(g, w, h, 0.6);
   }
 
+  /* ------------------------------------------------------- the key art -- */
+  /* The store's picture of the game: the watch fire at the middle of the
+   * night, the survivors standing around it facing out, and the night
+   * itself - the treeline, and what is in it - pressing in from both sides.
+   * Painted once at any size by tools/steam-assets.js rather than animated;
+   * the same materials as every other picture here, so the capsule on the
+   * store is drawn by the game it is selling.
+   *
+   * `o` (all positions are fractions of the picture, sizes of its height):
+   *   cast    [{ id, x, y, k, flip }]  survivors, feet at (x, y), size k
+   *   fire    { x, y, k }              the fire, its base and size
+   *   horde   [{ art, x, y, k, flip }] creatures at the edge of the light
+   *   horizon, moon {x, y, k}, stars, dim (0..1 extra dark), vignette
+   *   t       the moment, for the flames */
+  function keyArt(g, w, h, o) {
+    const v = { opts: o, rnd: rng(hash('keyart:' + (o.seed || 0))), s: {} };
+    const t = o.t === undefined ? 7.3 : o.t;
+    const u = h / 100;
+    const horizon = h * (o.horizon || 0.6);
+    const hearth = o.fire || { x: 0.5, y: 0.88, k: 1 };
+    const fx = w * hearth.x, fy = h * hearth.y, fs = h * 0.5 * (hearth.k || 1);
+    const flick = 0.95;
+
+    skyFill(g, w, horizon, ['#03050b', '#070b17', '#101425', '#1d1a27']);
+    stars(g, v, w, horizon, t, o.stars || WS.round(60 * w / h));
+    if (o.moon) {
+      const mx = w * o.moon.x, my = h * o.moon.y, mr = u * 4.5 * (o.moon.k || 1);
+      g.save(); g.globalCompositeOperation = 'lighter';
+      glow(g, mx, my, mr * 7, '150,170,230', 0.12);
+      g.restore();
+      crescent(g, v, mx, my, mr);
+    }
+
+    // The far range, then the wood, then a cold mist lying in front of it.
+    ridge(g, v, 'far', w, horizon - u * 1, u * 5, u * 16, '#0e1222', WS.round(6 * w / h) + 2);
+    ridge(g, v, 'near', w, horizon + u * 1, u * 2, u * 7, '#0a0d18', WS.round(9 * w / h) + 2);
+    pines(g, v, 'wood', w, horizon + u * 2, u * 20, '#05070c', 0.3);
+
+    // Ground: the clearing, warmed where the fire reaches it.
+    const gr = g.createLinearGradient(0, horizon, 0, h);
+    gr.addColorStop(0, '#07080b');
+    gr.addColorStop(1, '#100c0a');
+    g.fillStyle = gr;
+    g.fillRect(0, horizon + u * 1.5, w, h - horizon);
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    g.beginPath(); g.ellipse(fx, fy, fs * 2.4, fs * 0.5, 0, 0, WS.TAU);
+    g.clip();
+    glow(g, fx, fy, fs * 2.4, '255,120,40', 0.3);
+    g.restore();
+    fog(g, v, 'fog', w, horizon + u * 3, h, t, '150,160,200', 0.045);
+
+    /* The horde: dark shapes at the edge of the light, rimmed on the side
+       that faces the fire, their eyes the only colour they have. Back to
+       front, so the nearer ones overlap. */
+    const horde = (o.horde || []).slice().sort((a, b) => a.y - b.y);
+    for (const m of horde) {
+      const size = WS.round(h * 0.2 * m.k);
+      const src = WS.Sprites.has(m.art) ? WS.Sprites.creature(m.art, [1, 1, 1], size) : null;
+      if (!src) continue;
+      const x = w * m.x, y = h * m.y;
+      const towards = x < fx ? 1 : -1;
+      const near = WS.clamp(1 - Math.abs(x - fx) / (w * 0.6), 0, 1);
+      g.save();
+      g.translate(x, y);
+      if (m.flip) g.scale(-1, 1);
+      g.globalAlpha = 0.45 + 0.5 * near;
+      g.drawImage(sil(src, 'rgba(255,140,60,1)'), -size / 2 + towards * (m.flip ? -1 : 1) * size * 0.012, -size * 0.74, size, size);
+      g.globalAlpha = 1;
+      g.drawImage(sil(src, '#050609'), -size / 2, -size * 0.74, size, size);
+      g.restore();
+      // Eyes: a pair of coals, a little above the middle of the shape.
+      const ex = x + (m.eye ? m.eye[0] : 0) * size * (m.flip ? -1 : 1);
+      const ey = y - size * (m.eye ? m.eye[1] : 0.42);
+      g.save(); g.globalCompositeOperation = 'lighter';
+      glow(g, ex, ey, size * 0.09, '255,50,30', 0.35);
+      g.fillStyle = 'rgba(255,120,80,.95)';
+      for (const d of [-1, 1]) {
+        g.beginPath(); g.ellipse(ex + d * size * 0.022, ey, size * 0.011, size * 0.007, 0, 0, WS.TAU); g.fill();
+      }
+      g.restore();
+    }
+
+    // The survivors, back row first, each lit on the side that faces the fire.
+    const cast = (o.cast || []).slice().sort((a, b) => a.y - b.y);
+    for (const c of cast) {
+      const ch = WS.Characters[c.id];
+      const tint = ch ? ch.color : [1, 1, 1];
+      const hs = WS.round(h * 0.5 * c.k);
+      const src = WS.Sprites.hero(c.id, tint, hs, false, undefined, undefined, c.rank || 0);
+      const x = w * c.x, y = h * c.y;
+      const lit = document.createElement('canvas');
+      lit.width = src.width; lit.height = src.height;
+      const lg = lit.getContext('2d');
+      if (c.flip) { lg.translate(lit.width, 0); lg.scale(-1, 1); }
+      lg.drawImage(src, 0, 0);
+      lg.setTransform(1, 0, 0, 1, 0, 0);
+      lg.globalCompositeOperation = 'source-atop';
+      const dx = fx - x, reach = WS.clamp(1 - Math.abs(dx) / (w * 0.55), 0.25, 1);
+      const side = dx >= 0 ? lg.createLinearGradient(lit.width, 0, 0, 0) : lg.createLinearGradient(0, 0, lit.width, 0);
+      side.addColorStop(0.2, `rgba(255,150,70,${0.34 * reach})`);
+      side.addColorStop(0.5, 'rgba(255,150,70,0)');
+      side.addColorStop(0.62, 'rgba(6,8,16,0)');
+      side.addColorStop(0.95, `rgba(6,8,16,${0.3 + 0.2 * (1 - reach)})`);
+      lg.fillStyle = side;
+      lg.fillRect(0, 0, lit.width, lit.height);
+      // Contact shadow, and the long one thrown away from the fire.
+      g.save();
+      g.fillStyle = 'rgba(0,0,0,.5)';
+      g.beginPath(); g.ellipse(x, y, hs * 0.17, hs * 0.035, 0, 0, WS.TAU); g.fill();
+      g.globalAlpha = 0.28;
+      g.translate(x, y);
+      g.transform(1, 0, dx >= 0 ? 1.4 : -1.4, 0.22, 0, 0);
+      g.drawImage(sil(src, '#000'), -hs / 2, -hs * 0.72, hs, hs);
+      g.restore();
+      g.drawImage(lit, x - hs / 2, y - hs * 0.72, hs, hs);
+    }
+
+    if (o.fire !== null) fire(g, v, fx, fy, fs, t, flick);
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    glow(g, fx, fy - fs * 0.1, fs * 2.2, '255,110,40', 0.1);
+    g.restore();
+
+    // Sparks riding up across the whole picture.
+    g.save(); g.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < WS.round(40 * w / h); i++) {
+      const x = v.rnd() * w, y = horizon * 0.3 + v.rnd() * (h - horizon * 0.3), r = u * (0.12 + v.rnd() * 0.25);
+      g.fillStyle = `rgba(255,${WS.round(150 + v.rnd() * 60)},90,${(0.25 + v.rnd() * 0.5).toFixed(2)})`;
+      g.beginPath(); g.arc(x, y, r, 0, WS.TAU); g.fill();
+    }
+    g.restore();
+
+    if (o.dim) { g.fillStyle = `rgba(3,4,8,${o.dim})`; g.fillRect(0, 0, w, h); }
+    if (o.vignette !== 0) frameClose(g, w, h, o.vignette || 0.6);
+  }
+
+  /* The logotype, as the menu sets it: a small cold italic article, EMBER
+   * struck in gilt, WATCH in cold grey. `size` is the cap height's font size
+   * in px; `stack` sets THE over EMBER over WATCH for tall capsules. Returns
+   * the box it drew in. */
+  function logo(g, x, y, size, o) {
+    o = o || {};
+    const art = `italic 500 ${WS.round(size * 0.5)}px Alegreya, serif`;
+    const big = `700 ${WS.round(size)}px Alegreya, serif`;
+    g.save();
+    g.textBaseline = 'alphabetic';
+    const measure = (font, text) => { g.font = font; return g.measureText(text).width; };
+    const gap = size * 0.22;
+    const wa = measure(art, 'The'), we = measure(big, 'Ember'), ww = measure(big, 'Watch');
+    const parts = [];
+    let width, height;
+    if (o.stack) {
+      width = WS.max(we, ww);
+      height = size * 2.2;
+      const left = o.align === 'center' ? x - width / 2 : x;
+      const cx = (wd) => (o.align === 'center' ? x - wd / 2 : left);
+      parts.push(['art', 'The', cx(wa), y + size * 0.42]);
+      parts.push(['ember', 'Ember', cx(we), y + size * 1.28]);
+      parts.push(['watch', 'Watch', cx(ww), y + size * 2.14]);
+    } else {
+      width = wa + gap + we + gap + ww;
+      height = size;
+      const left = o.align === 'center' ? x - width / 2 : x;
+      const base = y + size * 0.78;
+      parts.push(['art', 'The', left, base]);
+      parts.push(['ember', 'Ember', left + wa + gap, base]);
+      parts.push(['watch', 'Watch', left + wa + gap + we + gap, base]);
+    }
+    for (const [kind, text, px, py] of parts) {
+      g.font = kind === 'art' ? art : big;
+      if (kind === 'ember') {
+        // Glow first, then a hard drop, then the metal.
+        g.save();
+        g.shadowColor = 'rgba(245,197,107,.45)'; g.shadowBlur = size * 0.6;
+        g.fillStyle = 'rgba(245,197,107,.35)';
+        g.fillText(text, px, py);
+        g.restore();
+        g.fillStyle = 'rgba(0,0,0,.6)';
+        g.fillText(text, px, py + size * 0.04);
+        const top = py - size * 0.72;
+        const metal = g.createLinearGradient(0, top, 0, py + size * 0.06);
+        [['#fff3d4', 0], ['#ffe0a2', 0.26], ['#f5c56b', 0.46], ['#a97c2c', 0.62], ['#e6b45e', 0.84], ['#ffe6ae', 1]]
+          .forEach(([c, k]) => metal.addColorStop(k, c));
+        g.fillStyle = metal;
+        g.fillText(text, px, py);
+      } else {
+        g.fillStyle = 'rgba(0,0,0,.7)';
+        g.fillText(text, px, py + size * 0.03);
+        g.fillStyle = kind === 'art' ? '#9a9384' : '#d4d6de';
+        g.fillText(text, px, py);
+      }
+    }
+    if (o.sub) {
+      g.font = `500 ${WS.round(size * 0.2)}px Archivo, sans-serif`;
+      g.letterSpacing = `${(size * 0.2 * 0.34).toFixed(1)}px`;
+      g.fillStyle = '#8d8779';
+      const text = 'THIRTY MINUTES UNTIL DAWN';
+      const wd = g.measureText(text).width;
+      const sy = y + height + size * 0.42;
+      const sx = o.align === 'center' ? x - wd / 2 : x;
+      g.fillText(text, sx, sy);
+      g.letterSpacing = '0px';
+      // The title's arc, under it.
+      const ay = sy + size * 0.24;
+      const aw = WS.max(width, wd);
+      const ax = o.align === 'center' ? x - aw / 2 : x;
+      const arc = g.createLinearGradient(ax, 0, ax + aw, 0);
+      arc.addColorStop(0, 'rgba(245,197,107,0)'); arc.addColorStop(0.5, 'rgba(245,197,107,.8)'); arc.addColorStop(1, 'rgba(245,197,107,0)');
+      g.fillStyle = arc;
+      g.fillRect(ax, ay, aw, WS.max(1, size * 0.02));
+      height = ay - y;
+    }
+    g.restore();
+    return { x: o.align === 'center' ? x - width / 2 : x, y, w: width, h: height };
+  }
+
   WS.Vignette = {
     /** The survivor, on watch. */
     survivor(id, tint, rank, shadow) {
@@ -34339,6 +34556,9 @@ window.WS = window.WS || {};
     beast(id, o) {
       return mount('b:' + id + (o.known ? ':k' : ':u'), beastPage, Object.assign({ key: 'b:' + id }, o));
     },
+    /** The store's key art and logotype, painted once into any context. */
+    keyArt,
+    logo,
     /** How many pictures are currently animating - for the checks. */
     get live() { return live.size; },
   };

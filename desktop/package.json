@@ -14,6 +14,7 @@
     "dist:win": "npm run sync && electron-builder --win",
     "dist:mac": "npm run sync && electron-builder --mac",
     "dist:linux": "npm run sync && electron-builder --linux",
+    "dist:steam": "npm run sync && electron-builder --dir",
     "steam:dev": "node -e \"require('fs').writeFileSync('steam_appid.txt', process.env.STEAM_APP_ID || '480')\" && npm start"
   },
   "build": {

@@ -82,3 +82,13 @@ paperwork and platform work, roughly in the order it bites:
   reachable. What is missing is Steam Input glyphs and a binding config.
 - **A depot upload.** `steamcmd` and an app build script; straightforward once
   the above is done.
+
+## Steam
+
+`steam.js` and `preload.js` connect the build to Steam: achievements, Steam
+Cloud saves and the Deck's first-launch defaults. `npm run steam:dev` runs it
+against a Steam client (App ID from `STEAM_APP_ID`, else 480), and
+`npm run dist:steam` produces the unpacked build that
+`../tools/steam-upload.js` sends to SteamPipe. The whole process, from
+partner signup to the Release button, is in
+[`../docs/STEAM.md`](../docs/STEAM.md).

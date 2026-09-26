@@ -1,0 +1,29 @@
+API Name,Display Name,Description,Achieved Icon,Unachieved Icon
+FIRST_BLOOD,"First Blood","Slay your first enemy.",FIRST_BLOOD.png,FIRST_BLOOD_locked.png
+TAKE_HIS_CANDLE,"Mine! My Light!","Defeat Foreman Grimtunnel.",TAKE_HIS_CANDLE.png,TAKE_HIS_CANDLE_locked.png
+SNARLBANE,"Bane of the Snarlpack","Defeat Gnarlfang the Ravager.",SNARLBANE.png,SNARLBANE_locked.png
+UNMASKED,"Unmasked","Defeat the Masked Admiral.",UNMASKED.png,UNMASKED_locked.png
+THE_LONG_DARK_ENDS,"The Long Dark Ends","Break Marrowfrost, the Pale Lord, at the end of the last night.",THE_LONG_DARK_ENDS.png,THE_LONG_DARK_ENDS_locked.png
+THE_STORM_BREAKS,"The Storm Breaks","Free Brother Kael from the storm over Highmoor.",THE_STORM_BREAKS.png,THE_STORM_BREAKS_locked.png
+BEYOND_THE_FOREST,"Beyond the Forest","Survive for 10 minutes in Thornhollow.",BEYOND_THE_FOREST.png,BEYOND_THE_FOREST_locked.png
+INTO_THE_DARK,"Into the Dark","Survive for 10 minutes in the Dustreach.",INTO_THE_DARK.png,INTO_THE_DARK_locked.png
+ACROSS_THE_SEA,"Across the Great Sea","Survive for 10 minutes in Mourneholt.",ACROSS_THE_SEA.png,ACROSS_THE_SEA_locked.png
+THE_FROZEN_NORTH,"The Frozen North","Survive for 10 minutes in the Ochre Plains.",THE_FROZEN_NORTH.png,THE_FROZEN_NORTH_locked.png
+THE_HIGH_PLACES,"The High Places","Survive for 10 minutes in the Pale Wastes.",THE_HIGH_PLACES.png,THE_HIGH_PLACES_locked.png
+NIGHTFALL_SURVIVOR,"Cut Loose","Free the Kerchiefs' prisoner.",NIGHTFALL_SURVIVOR.png,NIGHTFALL_SURVIVOR_locked.png
+GIANT_SLAYER,"The Screaming Cairn","Dig the fallen hero out of his cairn.",GIANT_SLAYER.png,GIANT_SLAYER_locked.png
+SEASONED_VETERAN,"Last Quiver","Stand with the last ranger of Ashford against the pack.",SEASONED_VETERAN.png,SEASONED_VETERAN_locked.png
+BANE_OF_THE_MASSES,"Bane of the Masses","Draw the exile of the Gloaming Grove out with a slaughter.",BANE_OF_THE_MASSES.png,BANE_OF_THE_MASSES_locked.png
+FORTUNE_SEEKER,"Fortune Seeker","Have your fortune read in the far seer's storm.",FORTUNE_SEEKER.png,FORTUNE_SEEKER_locked.png
+GRAVE_ROBBER,"Grave Robber","Open a weathered coffin found on the battlefield.",GRAVE_ROBBER.png,GRAVE_ROBBER_locked.png
+THE_LIGHT_CURDLES,"The Light Curdles","Claim a graveblade drawn out by your own curdled Light.",THE_LIGHT_CURDLES.png,THE_LIGHT_CURDLES_locked.png
+YOU_ARE_PREPARED,"You Were Warned","Claim the twin glaives after giving yourself to the fel.",YOU_ARE_PREPARED.png,YOU_ARE_PREPARED_locked.png
+LOST_CALVES,"The Lost Calves","Take the old shapes and bring three strayed calves home before the dark does.",LOST_CALVES.png,LOST_CALVES_locked.png
+THE_STILL_HAND,"The Still Hand","Step through enough blows that the Still Hand notices, then let nothing land.",THE_STILL_HAND.png,THE_STILL_HAND_locked.png
+FORBIDDEN_KNOWLEDGE,"Forbidden Knowledge","Evolve a weapon to its ultimate form.",FORBIDDEN_KNOWLEDGE.png,FORBIDDEN_KNOWLEDGE_locked.png
+LIGHTS_FAVOR,"Light's Favor","Survive for 3 minutes straight without taking damage.",LIGHTS_FAVOR.png,LIGHTS_FAVOR_locked.png
+WALKING_ARMORY,"Walking Armory","Wield 6 weapons at once.",WALKING_ARMORY.png,WALKING_ARMORY_locked.png
+BLORP,"Blorp!","Slay 500 gilkin across all runs.",BLORP.png,BLORP_locked.png
+MASTER_CRAFTSMAN,"Master Craftsman","Forge a weapon union.",MASTER_CRAFTSMAN.png,MASTER_CRAFTSMAN_locked.png
+SURVIVOR_OF_THE_LONG_DARK,"Survivor of the Long Dark","Achieve Victory on any battlefield.",SURVIVOR_OF_THE_LONG_DARK.png,SURVIVOR_OF_THE_LONG_DARK_locked.png
+ECLIPSE_BROKEN,"Eclipse Broken","Defeat Aethelgard in the Eclipse Arena.",ECLIPSE_BROKEN.png,ECLIPSE_BROKEN_locked.png
