@@ -34,6 +34,14 @@ window.WS = window.WS || {};
      has to hand the stream back where it found it, or every run after it is
      deterministic in a way nobody asked for. */
   WS.getSeed = () => seed;
+  /** Run `fn` on a stream of its own: `holder.s` is that stream's state, taken
+   *  up before and written back after, and the shared stream is left exactly
+   *  where it was. The Nightly deals its cards from one of these. */
+  WS.withStream = function (holder, fn) {
+    const saved = seed;
+    seed = (holder.s >>> 0) || 1;
+    try { return fn(); } finally { holder.s = seed; seed = saved; }
+  };
   WS.random = function () {
     seed ^= seed << 13; seed >>>= 0;
     seed ^= seed >> 17;

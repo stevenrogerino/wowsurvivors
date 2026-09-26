@@ -2989,6 +2989,96 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
   .prep-label { margin: 10px 0 6px; }
 }
 
+/* ===========================================================================
+   THE LEDGER, THE NIGHTLY, THE OATHS, THE REPORT
+   ======================================================================== */
+.record .record-score { font-family: var(--fig); font-size: var(--t-micro); color: var(--ink-faint); margin-top: 2px; }
+
+.ledger-bests { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
+.ledger-best {
+  display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px;
+  border: 1px solid var(--rim); border-radius: 8px; background: rgba(255,240,214,.02); box-shadow: var(--bevel);
+}
+.ledger-best img { border-radius: 5px; display: block; }
+.ledger-best .lb-name { font-family: var(--voice); font-weight: 700; font-size: 14px; color: var(--ink); }
+.ledger-best .lb-score { font-family: var(--fig); font-size: var(--t-small); color: var(--arc); font-variant-numeric: tabular-nums; }
+
+.ledger-scroll { overflow-x: auto; }
+.ledger-table { width: 100%; border-collapse: collapse; font-size: var(--t-small); }
+.ledger-table th {
+  text-align: left; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+  font-size: var(--t-micro); color: var(--ink-faint); padding: 6px 8px; border-bottom: 1px solid var(--rim-lit);
+}
+.ledger-table td { padding: 6px 8px; border-bottom: 1px solid var(--rim); color: var(--ink-dim); white-space: nowrap; }
+.ledger-table td.num { font-family: var(--fig); font-variant-numeric: tabular-nums; color: var(--ink); text-align: right; }
+.ledger-table th:nth-child(5), .ledger-table th:nth-child(7) { text-align: right; }
+.ledger-table tr:hover td { background: rgba(245,197,107,.04); }
+
+.nightly-card {
+  display: grid; grid-template-columns: auto 1fr; gap: 22px; align-items: start;
+  border: 1px solid var(--rim-arc); border-radius: 14px; padding: 18px 20px;
+  background: radial-gradient(120% 120% at 0% 0%, rgba(245,197,107,.07), transparent 60%), rgba(11,13,18,.6);
+  box-shadow: var(--bevel-deep);
+}
+.nightly-pics { display: flex; gap: 12px; }
+.nightly-pic { margin: 0; text-align: center; }
+.nightly-pic img { display: block; border-radius: 10px; border: 1px solid var(--rim-lit); box-shadow: var(--lift-1); }
+.nightly-pic figcaption { margin-top: 6px; font-family: var(--voice); font-weight: 700; color: var(--ink-dim); }
+.nightly-title { font-family: var(--voice); font-weight: 800; font-size: 26px; color: var(--arc-hot); line-height: 1.1; }
+.nightly-sub { font-family: var(--fig); font-size: var(--t-small); color: var(--arc); margin: 4px 0 12px; }
+.nightly-oath { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-top: 1px solid var(--rim); }
+.nightly-oath .no-name { font-weight: 700; color: var(--ink); }
+.nightly-oath .no-desc { font-size: var(--t-small); color: var(--ink-dim); }
+.nightly-best { margin: 12px 0; font-family: var(--voice); font-size: 16px; color: var(--ink); }
+.nightly-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 760px) { .nightly-card { grid-template-columns: 1fr; } }
+
+.oath-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.oath-card {
+  position: relative; display: grid; grid-template-columns: 48px 1fr; gap: 12px; align-items: center;
+  text-align: left; padding: 12px 14px; border-radius: 10px; cursor: pointer; font: inherit; color: inherit;
+  border: 1px solid var(--rim); background: rgba(255,240,214,.02); box-shadow: var(--bevel);
+  transition: border-color .15s var(--ease), background .15s var(--ease);
+}
+.oath-card:hover { border-color: var(--rim-lit); }
+.oath-card .oath-icon img { display: block; filter: saturate(.3) brightness(.7); transition: filter .15s var(--ease); }
+.oath-card .oath-name { font-family: var(--voice); font-weight: 700; font-size: 16px; color: var(--ink-dim); }
+.oath-card .oath-desc { font-size: var(--t-small); color: var(--ink-dim); margin-top: 2px; }
+.oath-card .oath-bonus { font-family: var(--fig); font-size: var(--t-micro); color: var(--ink-faint); margin-top: 4px; }
+.oath-card .oath-seal {
+  position: absolute; top: 10px; right: 10px; width: 14px; height: 14px; border-radius: 50%;
+  border: 1px solid var(--rim-lit);
+}
+.oath-card.on { border-color: rgba(226,72,61,.6); background: linear-gradient(180deg, rgba(226,72,61,.10), rgba(143,32,24,.06)); }
+.oath-card.on .oath-icon img { filter: none; }
+.oath-card.on .oath-name { color: #ffd6cf; }
+.oath-card.on .oath-bonus { color: var(--arc); }
+.oath-card.on .oath-seal { background: var(--blood); border-color: #ff9a8e; box-shadow: 0 0 10px rgba(226,72,61,.7); }
+.oath-total { font-family: var(--fig); color: var(--arc); font-size: var(--t-small); }
+
+.report-note { width: 100%; }
+.report-preview {
+  max-height: 260px; overflow: auto; margin: 10px 0 0; padding: 10px 12px; border-radius: 8px;
+  background: rgba(0,0,0,.35); border: 1px solid var(--rim); font-family: var(--fig); font-size: 11px;
+  color: var(--ink-dim); white-space: pre-wrap; word-break: break-all;
+}
+
+/* Settings: groups and key bindings */
+.setting-group {
+  margin: 14px 0 2px; font-size: var(--t-micro); letter-spacing: .24em; text-transform: uppercase;
+  color: var(--arc-deep); font-weight: 600;
+}
+.keys-setting { align-items: flex-start; flex-wrap: wrap; }
+.key-binds { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; max-width: 520px; }
+.key-bind { display: inline-flex; gap: 8px; align-items: center; }
+.key-bind .kb-label { color: var(--ink-dim); }
+.key-bind kbd {
+  font-family: var(--fig); font-size: var(--t-small); color: var(--arc); min-width: 1.6em; text-align: center;
+  padding: 1px 6px; border: 1px solid var(--rim-lit); border-radius: 4px; background: rgba(0,0,0,.3);
+}
+.key-bind.listening { border-color: var(--arc); }
+.key-bind.listening kbd { color: var(--arc-hot); }
+
 </style>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%230b0d12'/><circle cx='50' cy='50' r='30' fill='none' stroke='%23f5c56b' stroke-width='8' stroke-dasharray='120 60'/></svg>">
 </head>
@@ -3068,6 +3158,14 @@ window.WS = window.WS || {};
      has to hand the stream back where it found it, or every run after it is
      deterministic in a way nobody asked for. */
   WS.getSeed = () => seed;
+  /** Run `fn` on a stream of its own: `holder.s` is that stream's state, taken
+   *  up before and written back after, and the shared stream is left exactly
+   *  where it was. The Nightly deals its cards from one of these. */
+  WS.withStream = function (holder, fn) {
+    const saved = seed;
+    seed = (holder.s >>> 0) || 1;
+    try { return fn(); } finally { holder.s = seed; seed = saved; }
+  };
   WS.random = function () {
     seed ^= seed << 13; seed >>>= 0;
     seed ^= seed >> 17;
@@ -3857,6 +3955,15 @@ window.WS = window.WS || {};
     difficultyOrder: ['beginner', 'veteran', 'professional'],
 
     defaultSettings: {
+      /* Accessibility. The danger palette recolours every telegraph and
+         hazard (see Renderer.danger), reduceFlashes softens full-screen
+         flashes and strobing telegraphs, textScale sizes the interface
+         type, and keys are the player's own bindings (arrows always move
+         as well). */
+      dangerPalette: 'ember',
+      reduceFlashes: false,
+      textScale: 1,
+      keys: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', pause: 'Escape', reroll: 'KeyR', banish: 'KeyB' },
       sound: true,
       music: true,
       effectsVolume: 0.7,
@@ -4060,6 +4167,12 @@ window.WS = window.WS || {};
          you WHICH, so it cannot tell you what is left to hunt. */
       evolved: {},
       unions: {},
+      /* The ledger (WS.Runs): the last sixty nights, the best score per
+         battlefield and per survivor, today's Nightly, and the Oaths armed. */
+      history: [],
+      records: { map: {}, char: {} },
+      nightly: {},
+      oaths: {},
       settings: Object.assign({}, WS.Config.defaultSettings),
       statistics: {
         totalKills: 0,
@@ -4194,6 +4307,22 @@ window.WS = window.WS || {};
        nothing of the right shape to check against. The shape check still
        drops anything that is not a flag. */
     db.unions = scrubMap(db.unions, 'flag');
+    db.oaths = scrubMap(db.oaths, 'flag', WS.Oaths);
+    /* The ledger is a list of small records; any that is not the right shape
+       is dropped on its own. */
+    if (!Array.isArray(db.history)) db.history = [];
+    db.history = db.history.filter((h) => isPlain(h) && typeof h.map === 'string'
+      && typeof h.char === 'string' && Number.isFinite(h.score) && Number.isFinite(h.time)
+      && Number.isFinite(h.at)).slice(0, 60);
+    if (!isPlain(db.records)) db.records = { map: {}, char: {} };
+    for (const k of ['map', 'char']) {
+      if (!isPlain(db.records[k])) db.records[k] = {};
+      for (const id of Object.keys(db.records[k])) {
+        const r = db.records[k][id];
+        if (!isPlain(r) || !Number.isFinite(r.score)) delete db.records[k][id];
+      }
+    }
+    if (!isPlain(db.nightly) || (db.nightly.day !== undefined && !Number.isFinite(db.nightly.score))) db.nightly = {};
     db.unlocks.characters = scrubMap(db.unlocks.characters, 'flag', WS.Characters);
     db.unlocks.maps = scrubMap(db.unlocks.maps, 'flag', WS.Maps);
     db.unlocks.hyper = scrubMap(db.unlocks.hyper, 'flag', WS.Maps);
@@ -4219,6 +4348,14 @@ window.WS = window.WS || {};
     if (st.hudLayout !== 'strip' && st.hudLayout !== 'rail') st.hudLayout = 'strip';
     if (st.quality !== 'high' && st.quality !== 'balanced') st.quality = 'high';
     if (st.cinematic !== 1 && st.cinematic !== 2) st.cinematic = 2;
+    if (st.dangerPalette !== 'ember' && st.dangerPalette !== 'vivid') st.dangerPalette = 'ember';
+    if (![1, 1.15, 1.3].includes(st.textScale)) st.textScale = 1;
+    const KD = WS.Config.defaultSettings.keys;
+    if (!isPlain(st.keys)) st.keys = Object.assign({}, KD);
+    for (const k of Object.keys(KD)) {
+      if (typeof st.keys[k] !== 'string' || !/^[A-Za-z0-9]{1,24}$/.test(st.keys[k])) st.keys[k] = KD[k];
+    }
+    for (const k of Object.keys(st.keys)) if (!(k in KD)) delete st.keys[k];
 
     // The starting roster is a floor, not a stored fact: a save that lost it
     // would otherwise leave the player with nothing they are allowed to play.
@@ -4565,14 +4702,33 @@ window.WS = window.WS || {};
     gamepadIndex: null,
   };
 
-  const MAP = {
-    KeyW: 'up', ArrowUp: 'up',
-    KeyS: 'down', ArrowDown: 'down',
-    KeyA: 'left', ArrowLeft: 'left',
-    KeyD: 'right', ArrowRight: 'right',
+  /* Movement keys: the player's own bindings (Settings) plus the arrows,
+     which always move so nobody can bind themselves out of the game. */
+  let MAP = {};
+  Input.rebind = function () {
+    const k = (WS.Save && WS.Save.db && WS.Save.settings.keys) || WS.Config.defaultSettings.keys;
+    MAP = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+    for (const dir of ['up', 'down', 'left', 'right']) if (k[dir]) MAP[k[dir]] = dir;
+  };
+  /** The action a key is bound to (pause, reroll, banish), or null. */
+  Input.action = function (code) {
+    const k = (WS.Save && WS.Save.db && WS.Save.settings.keys) || WS.Config.defaultSettings.keys;
+    if (code === k.pause || code === 'Escape') return 'pause';
+    if (code === k.reroll) return 'reroll';
+    if (code === k.banish) return 'banish';
+    return null;
+  };
+  /** A key code as a player would name it. */
+  Input.keyName = function (code) {
+    if (!code) return '';
+    if (code.startsWith('Key')) return code.slice(3);
+    if (code.startsWith('Digit')) return code.slice(5);
+    if (code.startsWith('Arrow')) return code.slice(5) + ' arrow';
+    return code.replace(/Left$|Right$/, (m) => ' ' + m.toLowerCase());
   };
 
   Input.init = function () {
+    this.rebind();
     window.addEventListener('keydown', (e) => {
       const dir = MAP[e.code];
       if (dir) { this.held[dir] = true; this.keys[dir] = true; e.preventDefault(); }
@@ -6869,6 +7025,10 @@ window.WS = window.WS || {};
           text: 'Bosses arrive on a schedule and the horde never stops thickening. Survive to 30:00 and the win is banked. Then choose. Face whatever has been driving the night: first light clears the field, you get thirty seconds and a third blessing, and the finale begins. Or stay out for Death, who always comes.' },
         { name: 'Gold outlives the run',
           text: 'You keep every coin whether you win, die or walk away. Spend it with the Trainer on permanent lessons that apply to every run after.' },
+        { name: 'Every night has a score',
+          text: 'Time held, what you put down and how the night ended, multiplied by the battlefield, the difficulty, Hyper and any Oaths you swore. The Statistics tab keeps the ledger and your best on every field and with every survivor.' },
+        { name: 'Oaths and the Nightly',
+          text: 'Once you have held any battlefield to dawn, you can swear Oaths from the menu: harder nights for a bigger score. The Nightly is one run a day, the same for everyone: a battlefield, a survivor, two Oaths and the same cards dealt for the same picks.' },
       ],
       /* The words the cards use, each said once in plain terms. The
          question players asked was "does this do anything for MY build",
@@ -6884,11 +7044,11 @@ window.WS = window.WS || {};
         { name: 'Which of these help you?', text: 'Hover over any level-up card, or any weapon in your bar or the pause screen. A weapon says what it grows with; a passive lists which of your weapons it helps and which it does nothing for.' },
       ],
       controls: [
-        { key: 'WASD  /  arrow keys', text: 'Move. On a pad, the left stick or the d-pad.' },
+        { key: '{kMove}  /  arrow keys', text: 'Move. On a pad, the left stick or the d-pad.' },
         { key: 'Touch, or hold the mouse', text: 'Drag anywhere on the field to steer. Mouse steering is off until you turn it on in Settings.' },
         { key: '1  2  3', text: 'Take the matching card when you level up.' },
-        { key: 'R  /  B', text: 'Reroll or banish the cards on offer, if you have any left.' },
-        { key: 'Esc', text: 'Pause. Your build, the damage meter and the settings are in there.' },
+        { key: '{kReroll}  /  {kBanish}', text: 'Reroll or banish the cards on offer, if you have any left.' },
+        { key: '{kPause}', text: 'Pause. Your build, the damage meter and the settings are in there.' },
         { key: 'Arrow keys  /  pad', text: 'Move around any menu. Enter or A picks.' },
       ],
     },
@@ -7661,6 +7821,72 @@ window.WS = window.WS || {};
 
 })(window.WS);
 
+/* ===== src/data/oaths.js ===== */
+/* Oaths: hardships a survivor can swear to before a night, on top of the
+ * difficulty and Hyper. Each one makes the night harder in one plain way and
+ * adds its `bonus` to the run's score multiplier, so a sworn night is worth
+ * more on the ledger than the same night taken easy.
+ *
+ * `mods` is read by the game through WS.Runs.oath(key), which folds every
+ * sworn oath's value for that key together (multiplying), and is 1 when none
+ * of them says anything about it:
+ *
+ *   hp      enemy health            dmg     enemy damage
+ *   speed   enemy move speed        spawn   time between waves
+ *   elite   elite chance            xp      experience gained
+ *   potion  healing from potions    bossHp  boss and finale health
+ *
+ * They open once a battlefield has been held to dawn, and never apply in the
+ * Eclipse Arena, which runs its own fight. */
+'use strict';
+(function (WS) {
+
+  WS.Oaths = {
+    crowd: {
+      name: 'Oath of the Crowd', art: 'skull',
+      desc: 'Waves come a third more often.',
+      bonus: 0.20, mods: { spawn: 0.75 },
+    },
+    iron: {
+      name: 'Oath of Iron Hides', art: 'shield',
+      desc: 'Everything out there has 40% more health.',
+      bonus: 0.25, mods: { hp: 1.4 },
+    },
+    teeth: {
+      name: 'Oath of Teeth', art: 'claw',
+      desc: 'Everything out there hits 35% harder.',
+      bonus: 0.25, mods: { dmg: 1.35 },
+    },
+    chase: {
+      name: 'Oath of the Chase', art: 'boot',
+      desc: 'The horde moves 15% faster.',
+      bonus: 0.20, mods: { speed: 1.15 },
+    },
+    lean: {
+      name: 'Oath of the Lean Night', art: 'crystal',
+      desc: 'Experience comes 25% slower.',
+      bonus: 0.15, mods: { xp: 0.75 },
+    },
+    thirst: {
+      name: 'Oath of Thirst', art: 'potion',
+      desc: 'Potions heal a quarter as much.',
+      bonus: 0.15, mods: { potion: 0.25 },
+    },
+    captains: {
+      name: 'Oath of Captains', art: 'crown',
+      desc: 'Elites come twice as often.',
+      bonus: 0.20, mods: { elite: 2 },
+    },
+    giants: {
+      name: 'Oath of Giants', art: 'sovereign',
+      desc: 'Bosses and the finale have half again their health.',
+      bonus: 0.25, mods: { bossHp: 1.5 },
+    },
+  };
+  WS.OathOrder = ['crowd', 'iron', 'teeth', 'chase', 'lean', 'thirst', 'captains', 'giants'];
+
+})(window.WS);
+
 /* ===== src/data/tuning.js ===== */
 /* Local tuning overrides. WRITTEN BY THE TUNING BENCH - edit by hand if you
  * like, but expect the bench to rewrite the whole file when you save.
@@ -7721,7 +7947,7 @@ window.WS = window.WS || {};
    * system rather than only at the top level. */
   const ROOTS = ['Config', 'CONST', 'Characters', 'Weapons', 'Unions', 'Enemies',
     'Elites', 'Bosses', 'Maps', 'Upgrades', 'MetaUpgrades', 'Blessings',
-    'Combos', 'Achievements', 'Lore', 'Arena.tuning', 'Familiar.tuning',
+    'Combos', 'Achievements', 'Lore', 'Oaths', 'Arena.tuning', 'Familiar.tuning',
     // The map finales: each fight's tuning and script, its parts, its cast.
     'Finales', 'FinaleUnits', 'FinaleSpeakers'];
   /* A Set, not an object literal. `{ __proto__: 1 }` does not create a key
@@ -24044,6 +24270,8 @@ window.WS = window.WS || {};
        overhangs the hitbox threefold; a little more on one creature is a
        drawing decision, not a balance one. */
     e.spriteSize = template.radius * (isBoss ? 3.4 : 3.0) * (template.spriteScale || 1);
+    // Whatever Oaths the survivor swore for tonight (WS.Runs).
+    if (WS.Runs) WS.Runs.applyToEnemy(e);
     return e;
   };
 
@@ -25944,7 +26172,7 @@ window.WS = window.WS || {};
       WS.FX.flash(p.x, p.y, 60, WS.CONST.COLORS.arcane, 0.3);
     }
 
-    p.xp += amount * p.xpMultiplier;
+    p.xp += amount * p.xpMultiplier * WS.Runs.oath('xp');
     while (p.xp >= p.xpToNext) {
       p.xp -= p.xpToNext;
       p.level++;
@@ -25999,7 +26227,7 @@ window.WS = window.WS || {};
   Player.heal = function (p, amount, source) {
     // No early-out at full health: overheal is a resource Curdled Light eats,
     // so the heal still has to be measured.
-    const scaled = WS.floor(amount * p.healingMult);
+    const scaled = WS.floor(amount * p.healingMult * (source === 'potion' ? WS.Runs.oath('potion') : 1));
     if (scaled <= 0) return 0;
     return Player.applyHeal(p, scaled, source || 'other');
   };
@@ -27686,7 +27914,8 @@ window.WS = window.WS || {};
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0 && phase.count > 0) {
       this.spawnTimer = phase.interval * WS.Config.spawnIntervalMult
-        * run.diffInterval * (run.hyper ? 0.75 : 1) / (1 + WS.Config.curseSpawnRate * curse);
+        * run.diffInterval * (run.hyper ? 0.75 : 1) / (1 + WS.Config.curseSpawnRate * curse)
+        * WS.Runs.oath('spawn');
       const scale = this.enemyScale(time);
       const count = WS.max(1, WS.round(phase.count * WS.Config.spawnCountMult
         * (1 + WS.Config.curseSpawnRate * curse)));
@@ -27694,7 +27923,7 @@ window.WS = window.WS || {};
         const pick = WS.weightedPick(phase.roster);
         WS.Enemy.spawnRing(pick.id, WS.Config.spawnRing + WS.random() * WS.Config.spawnRingJitter, scale);
       }
-      if (phase.elite && WS.random() < phase.eliteChance) {
+      if (phase.elite && WS.random() < phase.eliteChance * WS.Runs.oath('elite')) {
         const elite = WS.Enemy.spawnRing(phase.elite, WS.Config.spawnRing + 40, scale);
         if (elite) WS.FX.notice(elite.x, elite.y, elite.template.name, '#ffb347');
       }
@@ -28888,6 +29117,8 @@ window.WS = window.WS || {};
     e.health = e.maxHealth;
     e.damage = t.damage * this.dmgScale;
     e.finaleTag = ++this.tagCounter;
+    // The spawn applied tonight's Oaths to stats this has just replaced.
+    if (WS.Runs) WS.Runs.applyToEnemy(e, true);
     this.units.push(e);
     return e;
   };
@@ -30848,6 +31079,256 @@ window.WS = window.WS || {};
 
 })(window.WS);
 
+/* ===== src/game/runs.js ===== */
+/* Runs, remembered: the score a night is worth, the ledger of past nights,
+ * the records they set, the Nightly (one seeded run a day, the same for
+ * everyone), the Oaths a survivor swore, and the report a tester sends when
+ * something goes wrong.
+ *
+ * None of this changes how a run plays unless an Oath is sworn or the run is
+ * the Nightly. It reads the run as it ends and writes to the save. */
+'use strict';
+(function (WS) {
+
+  const Runs = {};
+  const HISTORY_CAP = 60;
+
+  /* ---------------------------------------------------------- the score -- */
+  /* What a night is worth. Time held is most of it, then what was put down,
+   * then what the night ended in; and all of it scales with how hard the
+   * night was set to be - the battlefield, the difficulty, Hyper and every
+   * Oath sworn. Two runs of the same length on the same field only differ by
+   * what they killed and how they ended, which is the comparison a player
+   * actually wants to make. */
+  const DIFF_MULT = { beginner: 0.75, veteran: 1, professional: 1.5 };
+
+  Runs.multiplier = function (run) {
+    const d = DIFF_MULT[run.difficulty] || 1;
+    const hyper = run.hyper ? 1.5 : 1;
+    const field = run.map && run.map.difficulty ? run.map.difficulty : 1;
+    return d * hyper * field * (run.oathMult || 1);
+  };
+
+  Runs.score = function (run, outcome) {
+    if (!run) return 0;
+    let base = WS.floor(run.time) * 10 + (run.kills || 0) + (run.bossesSlain || 0) * 400
+      + (run.deathsSlain || 0) * 1500;
+    if (run.victorious) base += 5000;
+    if (run.finaleCleared && !run.finaleRetries) base += 10000;
+    if (outcome === 'arena_victory') base += 15000;
+    return WS.floor(base * Runs.multiplier(run));
+  };
+
+  /* ------------------------------------------------------------- oaths --- */
+  /** Every sworn oath's value for `key`, multiplied together; 1 when none. */
+  Runs.oath = function (key) {
+    const run = WS.Game && WS.Game.run;
+    if (!run || !run.oaths || !run.oaths.length) return 1;
+    let v = 1;
+    for (const id of run.oaths) {
+      const o = WS.Oaths[id];
+      if (o && o.mods[key] !== undefined) v *= o.mods[key];
+    }
+    return v;
+  };
+
+  /** Oaths open once any battlefield has been held to dawn. */
+  Runs.oathsOpen = function () {
+    return (WS.Save.stats.totalVictories || 0) > 0;
+  };
+
+  Runs.armedOaths = function () {
+    const db = WS.Save.db;
+    return WS.OathOrder.filter((id) => db.oaths && db.oaths[id]);
+  };
+
+  Runs.oathMult = function (ids) {
+    let m = 1;
+    for (const id of ids) if (WS.Oaths[id]) m += WS.Oaths[id].bonus;
+    return m;
+  };
+
+  /** Called by Enemy.spawn and Finale.unit once a hostile's stats are set. */
+  Runs.applyToEnemy = function (e, statsOnly) {
+    const run = WS.Game && WS.Game.run;
+    if (!run || !run.oaths || !run.oaths.length) return;
+    let hp = Runs.oath('hp');
+    if (e.boss || e.finaleTag) hp *= Runs.oath('bossHp');
+    if (hp !== 1) { e.maxHealth = WS.floor(e.maxHealth * hp); e.health = e.maxHealth; }
+    const dmg = Runs.oath('dmg');
+    if (dmg !== 1) e.damage *= dmg;
+    const sp = Runs.oath('speed');
+    if (!statsOnly && sp !== 1 && !e.stationary) e.speed *= sp;
+  };
+
+  /* ---------------------------------------------------------- the Nightly -- */
+  /* One run a day, the same for everyone who plays it: the battlefield, the
+   * survivor, two Oaths, and the draft - every blessing and level-up offer is
+   * dealt from the day's own stream, so two players who pick the same cards
+   * are offered the same cards. The horde itself is not seeded; it answers to
+   * how you play, which is the part a daily is testing.
+   *
+   * It lends the survivor and the battlefield, so the Nightly opens with the
+   * Oaths (one night held to dawn) rather than on the first launch. */
+  Runs.dayKey = function (d) {
+    const t = d || new Date();
+    return t.toISOString().slice(0, 10);
+  };
+
+  function hash(str) {
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    return h || 1;
+  }
+
+  Runs.nightly = function (key) {
+    const day = key || Runs.dayKey();
+    const seed = hash('ember-watch:' + day);
+    const holder = { s: seed };
+    return WS.withStream(holder, () => {
+      const maps = WS.MapOrder.filter((id) => WS.Maps[id] && !WS.Maps[id].arena);
+      const chars = Object.keys(WS.Characters);
+      const map = maps[WS.floor(WS.random() * maps.length)];
+      const character = chars[WS.floor(WS.random() * chars.length)];
+      const pool = WS.OathOrder.slice();
+      WS.shuffle(pool);
+      const oaths = pool.slice(0, 2).sort((a, b) => WS.OathOrder.indexOf(a) - WS.OathOrder.indexOf(b));
+      return { day, seed, map, character, oaths, difficulty: 'veteran', draft: (seed ^ 0x5bd1e995) >>> 0 };
+    });
+  };
+
+  Runs.nightlyBest = function (day) {
+    const n = WS.Save.db.nightly;
+    return n && n.day === (day || Runs.dayKey()) ? n : null;
+  };
+
+  /* ------------------------------------------------------ the ledger ------ */
+  function topWeapon(run) {
+    let top = null, most = 0;
+    for (const [id, v] of Object.entries(run.damageByWeapon || {})) if (v > most) { most = v; top = id; }
+    return top;
+  }
+
+  /** Called once, from Game.endRun. Returns the entry it wrote. */
+  Runs.record = function (run, player, outcome) {
+    const db = WS.Save.db;
+    const score = Runs.score(run, outcome);
+    run.score = score;
+    const entry = {
+      at: Date.now(), map: run.mapId, char: run.characterId, diff: run.difficulty || 'veteran',
+      hyper: !!run.hyper, oaths: (run.oaths || []).slice(), nightly: run.nightly ? run.nightly.day : null,
+      outcome, time: WS.floor(run.time), kills: run.kills || 0, bosses: run.bossesSlain || 0,
+      level: player ? player.level : 0, finale: !!run.finaleCleared, retried: !!run.finaleRetries,
+      top: topWeapon(run), score,
+    };
+    db.history = Array.isArray(db.history) ? db.history : [];
+    db.history.unshift(entry);
+    if (db.history.length > HISTORY_CAP) db.history.length = HISTORY_CAP;
+
+    // Records survive the ledger's cap: best score per battlefield and per survivor.
+    db.records = db.records && typeof db.records === 'object' ? db.records : { map: {}, char: {} };
+    const rec = db.records;
+    rec.map = rec.map || {}; rec.char = rec.char || {};
+    const beat = (table, key) => {
+      const cur = table[key];
+      if (!cur || score > cur.score) { table[key] = { score, at: entry.at, map: entry.map, char: entry.char }; return true; }
+      return false;
+    };
+    entry.bestMap = beat(rec.map, entry.map);
+    entry.bestChar = beat(rec.char, entry.char);
+
+    if (run.nightly) {
+      const n = db.nightly;
+      const tries = n && n.day === run.nightly.day ? (n.tries || 0) + 1 : 1;
+      const best = n && n.day === run.nightly.day ? n.score : -1;
+      db.nightly = { day: run.nightly.day, tries, score: WS.max(best, score),
+        time: score >= best ? entry.time : n.time, map: entry.map, char: entry.char };
+      entry.bestNightly = score > best;
+    }
+    WS.Save.save();
+    return entry;
+  };
+
+  /** The line a player pastes to show off the Nightly. */
+  Runs.shareLine = function (entry) {
+    const m = WS.Maps[entry.map], c = WS.Characters[entry.char];
+    return `The Ember Watch · Nightly ${entry.nightly} · ${m ? m.name : entry.map} · `
+      + `${c ? c.name : entry.char} · ${WS.formatTime(entry.time)} · ${WS.formatNumber(entry.score)}`;
+  };
+
+  /* ------------------------------------------------------ the report ------ */
+  /* What a tester sends when something is wrong. Everything needed to put
+   * the same survivor with the same kit on the same field in the balance
+   * lab, plus how the frames were going and any errors the page threw. */
+  const frameLog = [];
+  const errors = [];
+  Runs.noteFrame = function (ms) {
+    frameLog.push(ms);
+    if (frameLog.length > 600) frameLog.shift();
+  };
+  Runs.noteError = function (msg) {
+    errors.push({ at: Date.now(), msg: String(msg).slice(0, 300) });
+    if (errors.length > 20) errors.shift();
+  };
+  window.addEventListener('error', (e) => Runs.noteError(e.message || e));
+  window.addEventListener('unhandledrejection', (e) => Runs.noteError((e.reason && e.reason.message) || e.reason));
+
+  function pct(a, p) {
+    if (!a.length) return 0;
+    const s = a.slice().sort((x, y) => x - y);
+    return +s[WS.min(s.length - 1, WS.floor(s.length * p))].toFixed(1);
+  }
+
+  Runs.report = function (note) {
+    const G = WS.Game, run = G.run, p = G.player;
+    const out = {
+      kind: 'ember-watch-report', v: 1, at: new Date().toISOString(), note: note || '',
+      agent: navigator.userAgent, screen: [screen.width, screen.height, window.devicePixelRatio || 1],
+      view: [window.innerWidth, window.innerHeight],
+      settings: Object.assign({}, WS.Save.settings),
+      frames: { n: frameLog.length, p50: pct(frameLog, 0.5), p90: pct(frameLog, 0.9), p99: pct(frameLog, 0.99),
+        worst: frameLog.length ? +WS.max(...frameLog).toFixed(1) : 0 },
+      resolution: WS.Renderer && WS.Renderer.renderScale !== undefined ? WS.Renderer.renderScale : null,
+      faults: WS.faultCount ? WS.faultCount() : 0,
+      errors: errors.slice(),
+    };
+    if (run && p) {
+      out.run = {
+        map: run.mapId, char: run.characterId, diff: run.difficulty, hyper: !!run.hyper,
+        oaths: run.oaths || [], nightly: run.nightly ? run.nightly.day : null, state: G.state,
+        time: +run.time.toFixed(1), level: p.level, kills: run.kills, field: WS.Enemy.pool.count,
+        finale: WS.Finale.running() ? WS.Finale.stage : null, seed: WS.getSeed(),
+      };
+      out.kit = {
+        weapons: p.weapons.map((w) => ({ id: w.id, level: w.level, evolved: !!w.evolved })),
+        upgrades: Object.assign({}, p.upgradeLevels),
+        blessings: Object.keys(p.blessingsTaken || {}),
+        stats: {
+          maxHealth: p.maxHealth, armor: p.armor, damageMultiplier: p.damageMultiplier,
+          cooldownMultiplier: p.cooldownMultiplier, areaMultiplier: p.areaMultiplier,
+          projectileBonus: p.projectileBonus, critChance: p.critChance, critDamage: p.critDamage,
+          moveSpeed: p.moveSpeed, dodgeChance: p.dodgeChance, revives: p.revives,
+        },
+      };
+    }
+    return out;
+  };
+
+  /* ------------------------------------------------ the Nightly's draft --- */
+  /* Level-up and blessing offers come from the run's own stream when it has
+   * one, so the Nightly deals everyone the same hand for the same picks. */
+  for (const k of ['buildChoices', 'buildBlessingChoices']) {
+    const f = WS.LevelUp[k];
+    WS.LevelUp[k] = function (p) {
+      const r = WS.Game && WS.Game.run;
+      return r && r.draft ? WS.withStream(r.draft, () => f.call(this, p)) : f.call(this, p);
+    };
+  }
+
+  WS.Runs = Runs;
+
+})(window.WS);
+
 /* ===== src/game/game.js ===== */
 /* Orchestration: run lifecycle, the fixed-step simulation, banners and toasts,
  * gold, victory and defeat. The UI layer reads this state and never mutates the
@@ -30893,6 +31374,8 @@ window.WS = window.WS || {};
     const diff = WS.Config.difficulties[diffId] || WS.Config.difficulties.veteran;
     return {
       mapId, map, characterId,
+      difficulty: diffId,
+      oaths: [], oathMult: 1, nightly: null, draft: null,
       time: 0,
       mode: 'normal',
       kills: 0,
@@ -30928,10 +31411,27 @@ window.WS = window.WS || {};
     };
   }
 
-  Game.startRun = function (mapId, characterId) {
+  /** @param {{nightly?: object}} [opts] the Nightly, from WS.Runs.nightly() */
+  Game.startRun = function (mapId, characterId, opts) {
     // The menu's fire goes out when the run begins.
     if (WS.Audio.setAmbience) WS.Audio.setAmbience(null);
     this.run = newRun(mapId, characterId);
+    const run = this.run;
+    const n = opts && opts.nightly;
+    if (n) {
+      /* The Nightly is the same night for everyone: Veteran, no Hyper, its
+         own two Oaths, and its own stream for the draft. */
+      const v = WS.Config.difficulties.veteran;
+      run.difficulty = 'veteran';
+      run.diffScale = v.scale; run.diffInterval = v.interval; run.goldMult = run.map.goldMult * v.gold;
+      run.hyper = false;
+      run.nightly = n;
+      run.oaths = n.oaths.slice();
+      run.draft = { s: n.draft };
+    } else if (!run.map.arena && WS.Runs.oathsOpen()) {
+      run.oaths = WS.Runs.armedOaths();
+    }
+    run.oathMult = WS.Runs.oathMult(run.oaths);
     this.arenaBounds = null;
     WS.FX.clear();
     WS.Enemy.clear();
@@ -31264,7 +31764,9 @@ window.WS = window.WS || {};
     if (run.victorious) return false;
     run.victorious = true;
     WS.Save.stats.totalVictories++;
-    WS.Save.db.unlocks.hyper[run.mapId] = true;
+    // A Nightly on a battlefield the player has not opened yet lends it for
+    // the night; it does not open Hyper there.
+    if (!run.nightly || WS.Save.isMapUnlocked(run.mapId)) WS.Save.db.unlocks.hyper[run.mapId] = true;
     WS.Save.save();
     this.state = 'over';
     this.running = false;
@@ -31402,6 +31904,8 @@ window.WS = window.WS || {};
     const run = this.run;
     const stats = WS.Save.stats;
 
+    // The ledger: the score, the history, the records, today's Nightly.
+    run.entry = WS.Runs.record(run, this.player, reason);
     stats.totalTime += run.time;
     stats.bestRunTime = WS.max(stats.bestRunTime, run.time);
     stats.bestBossesInRun = WS.max(stats.bestBossesInRun, run.bossesSlain);
@@ -37639,10 +38143,12 @@ window.WS = window.WS || {};
     ctx.beginPath();
     ctx.rect(0, 0, W, H);
     for (const z of m.zones) { ctx.moveTo(z.x + z.r, z.y); ctx.arc(z.x, z.y, z.r, 0, WS.TAU, true); }
-    ctx.fillStyle = `rgba(226,72,61,${(0.08 + 0.2 * k + 0.06 * WS.sin(time * 10)).toFixed(3)})`;
+    const dz = WS.Renderer.danger();
+    const pulse = WS.Renderer.calm() ? 0 : 0.06 * WS.sin(time * 10);
+    ctx.fillStyle = `rgba(${dz.deep},${(0.08 + 0.2 * k + pulse).toFixed(3)})`;
     ctx.fill('evenodd');
     ctx.clip('evenodd');
-    hatch(ctx, 0, 0, W, H, 30 - 14 * k, `rgba(255,150,120,${(0.15 + 0.3 * k).toFixed(3)})`, 1 + k);
+    hatch(ctx, 0, 0, W, H, 30 - 14 * k, `rgba(${dz.hatch},${(0.15 + 0.3 * k).toFixed(3)})`, 1 + k);
     ctx.restore();
     for (const z of m.zones) {
       const rock = WS.Sprites.prop('rock', WS.round(z.r * 1.3));
@@ -37780,21 +38286,30 @@ window.WS = window.WS || {};
       if (s.orb && !F.pods.some((q) => q.carrying)) glow(ctx, s.orb.x, s.orb.y, 22, [0.55, 1.0, 0.75], 0.9);
     }
 
+    // Vivid (Settings): every threat in the one colour, safe ground untouched.
+    const vivid = WS.Renderer.vivid();
     for (const m of F.marks) {
+      const t0 = m.tint;
+      if (vivid && m.kind !== 'safe') m.tint = WS.Renderer.VIVID;
       if (m.kind === 'circle') drawCircle(ctx, m, time);
       else if (m.kind === 'lane') drawLane(ctx, m, time);
       else if (m.kind === 'ring') drawRing(ctx, m);
       else if (m.kind === 'grid') drawGrid(ctx, m);
       else if (m.kind === 'safe') drawSafe(ctx, m, time);
+      m.tint = t0;
     }
   };
 
   A.drawAir = function (ctx, time) {
     const F = WS.Finale;
+    const vivid = WS.Renderer.vivid();
     for (const m of F.marks) {
+      const t0 = m.tint;
+      if (vivid) m.tint = WS.Renderer.VIVID;
       if (m.kind === 'sweep') drawSweep(ctx, m, time);
       else if (m.kind === 'fence') drawFence(ctx, m, time);
       else if (m.kind === 'circle' && (m.from || m.style === 'ice')) drawShell(ctx, m, time);
+      m.tint = t0;
     }
     for (const pod of F.pods) {
       if (pod.x < -120 || pod.x > WS.CONST.WORLD_WIDTH + 120 || pod.y < -120) continue;
@@ -38995,7 +39510,7 @@ window.WS = window.WS || {};
     this.drawVignette(ctx);
     if (WS.FX.flashScreen) {
       const f = WS.FX.flashScreen;
-      ctx.globalAlpha = WS.clamp(f.life / f.maxLife, 0, 1);
+      ctx.globalAlpha = WS.clamp(f.life / f.maxLife, 0, 1) * (R.calm() ? 0.25 : 1);
       ctx.fillStyle = f.colour;
       ctx.fillRect(0, 0, this.viewW, this.viewH);
       ctx.globalAlpha = 1;
@@ -39477,12 +39992,27 @@ window.WS = window.WS || {};
    *  drawing at two opacities: a player has to be able to tell "not yet" from
    *  "now" at a glance, in a field of two hundred enemies, without counting
    *  frames. */
+  /* DANGER, IN TWO PALETTES. The Watch's own reds and oranges, or - for
+     anyone who cannot tell a red telegraph from green ground - Vivid, which
+     paints every threat in one hot magenta that no colour-vision type
+     confuses with the grass, the gems or the healing. Shapes, hatching and
+     rails stay exactly as they are; only the colour moves. */
+  const DANGER = {
+    ember: { deep: '226,72,61', mid: '255,120,100', rim: '255,140,120', hatch: '255,150,120', edge: '255,140,110' },
+    vivid: { deep: '214,34,186', mid: '255,84,226', rim: '255,176,246', hatch: '255,150,240', edge: '255,190,248' },
+  };
+  R.vivid = () => WS.Save.settings.dangerPalette === 'vivid';
+  R.danger = () => DANGER[R.vivid() ? 'vivid' : 'ember'];
+  R.VIVID = [1.0, 0.3, 0.88];
+  /** Flashes and strobes, softened when the player has asked for that. */
+  R.calm = () => !!WS.Save.settings.reduceFlashes;
+
   R.drawHazards = function (ctx, time) {
     const pool = WS.Hazard.pool;
     if (!pool) return;
     for (let i = 0; i < pool.count; i++) {
       const h = pool.active[i];
-      const c = h.tint;
+      const c = R.vivid() ? R.VIVID : h.tint;
       const rgb = `${WS.floor(c[0] * 255)},${WS.floor(c[1] * 255)},${WS.floor(c[2] * 255)}`;
       ctx.save();
       if (h.fuse > 0) {
@@ -39519,6 +40049,7 @@ window.WS = window.WS || {};
   };
 
   R.drawTelegraphs = function (ctx, time) {
+    const dz = R.danger();
     for (let i = 0; i < WS.Enemy.pool.count; i++) {
       const e = WS.Enemy.pool.active[i];
       const t = e.telegraph;
@@ -39535,11 +40066,11 @@ window.WS = window.WS || {};
         const fade = t.firing ? 1 - k : 1;
         ctx.translate(e.x, e.y);
         ctx.rotate(WS.atan2(t.dy, t.dx));
-        ctx.fillStyle = `rgba(226,72,61,${(aim ? 0.07 + 0.16 * k : 0.20 * fade).toFixed(3)})`;
+        ctx.fillStyle = `rgba(${dz.deep},${(aim ? 0.07 + 0.16 * k : 0.20 * fade).toFixed(3)})`;
         ctx.fillRect(0, -t.width / 2, t.length, t.width);
-        ctx.fillStyle = `rgba(255,120,100,${(aim ? 0.16 + 0.3 * k : 0.42 * fade).toFixed(3)})`;
+        ctx.fillStyle = `rgba(${dz.mid},${(aim ? 0.16 + 0.3 * k : 0.42 * fade).toFixed(3)})`;
         ctx.fillRect(0, -t.width / 2, t.length * (aim ? k : 1), t.width);
-        ctx.strokeStyle = `rgba(255,140,120,${(aim ? 0.35 + 0.45 * k : 0.85 * fade).toFixed(3)})`;
+        ctx.strokeStyle = `rgba(${dz.rim},${(aim ? 0.35 + 0.45 * k : 0.85 * fade).toFixed(3)})`;
         ctx.lineWidth = aim ? 1.5 : 2.5;
         ctx.strokeRect(0, -t.width / 2, t.length, t.width);
         /* Locked but not yet gone: it stopped swinging, and it says so with
@@ -39565,7 +40096,7 @@ window.WS = window.WS || {};
         }
       } else if (t.kind === 'ring') {
         ctx.globalAlpha = 0.7 * (1 - k);
-        ctx.strokeStyle = 'rgba(226,72,61,.9)';
+        ctx.strokeStyle = `rgba(${dz.deep},.9)`;
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.arc(e.x, e.y, t.radius * (0.4 + 0.9 * k), 0, WS.TAU);
@@ -41629,12 +42160,13 @@ window.WS = window.WS || {};
               ctx.stroke();
             }
           } else {
-            ctx.fillStyle = `rgba(226,72,61,${(0.10 + 0.20 * k).toFixed(3)})`;
+            const dz = R.danger();
+            ctx.fillStyle = `rgba(${dz.deep},${(0.10 + 0.20 * k).toFixed(3)})`;
             ctx.fillRect(x, y, w, hh);
             // Hazard hatching, clipped to the cell, tightening as it lands.
             ctx.beginPath(); ctx.rect(x, y, w, hh); ctx.clip();
             const gap = 18 - 8 * k;
-            ctx.strokeStyle = `rgba(255,150,120,${(0.30 + 0.5 * k).toFixed(3)})`;
+            ctx.strokeStyle = `rgba(${dz.hatch},${(0.30 + 0.5 * k).toFixed(3)})`;
             ctx.lineWidth = 1 + 1.6 * k;
             ctx.beginPath();
             for (let d = -hh; d < w; d += gap) {
@@ -41643,7 +42175,7 @@ window.WS = window.WS || {};
             }
             ctx.stroke();
             ctx.restore(); ctx.save();
-            ctx.strokeStyle = `rgba(255,140,110,${(0.5 + 0.45 * k).toFixed(3)})`;
+            ctx.strokeStyle = `rgba(${dz.edge},${(0.5 + 0.45 * k).toFixed(3)})`;
             ctx.lineWidth = 2 + 1.5 * k;
             ctx.strokeRect(x, y, w, hh);
           }
@@ -41655,8 +42187,9 @@ window.WS = window.WS || {};
         ctx.save();
         ctx.translate(h.cx, h.cy);
         ctx.rotate(h.ang);
-        ctx.globalAlpha = telegraphing ? (0.25 + 0.25 * WS.sin(time * 14)) : 0.75;
-        ctx.fillStyle = telegraphing ? 'rgba(255,180,90,.6)' : 'rgba(255,120,60,.75)';
+        ctx.globalAlpha = telegraphing ? (R.calm() ? 0.4 : 0.25 + 0.25 * WS.sin(time * 14)) : 0.75;
+        ctx.fillStyle = R.vivid() ? (telegraphing ? 'rgba(255,150,240,.6)' : 'rgba(230,50,200,.75)')
+          : telegraphing ? 'rgba(255,180,90,.6)' : 'rgba(255,120,60,.75)';
         for (let arm = 0; arm < 4; arm++) {
           ctx.save();
           ctx.rotate(arm * WS.PI * 0.5);
@@ -43091,6 +43624,8 @@ window.WS = window.WS || {};
     }
     const modeBits = [];
     if (run.hyper) modeBits.push('Hyper');
+    if (run.nightly) modeBits.push('Nightly');
+    else if (run.oaths && run.oaths.length) modeBits.push(run.oaths.length === 1 ? '1 Oath' : run.oaths.length + ' Oaths');
     if ((run.victorious || run.mode === 'endless') && !WS.Finale.running()) modeBits.push('Overtime');
     if (run.map.arena) modeBits.push('Eclipse Arena · Phase ' + WS.Arena.phase);
     if (WS.Finale.running()) modeBits.push(WS.Finale.hudLabel());
@@ -43656,6 +44191,7 @@ window.WS = window.WS || {};
          about to start - and splitting them across two tabs meant two trips
          and a tab strip longer than it needed to be. */
       ['roster', 'Prepare'],
+      ['nightly', 'Nightly'],
       ['trainer', 'Trainer'],
       ['codex', 'Codex'],
       ['bestiary', 'Bestiary'],
@@ -43775,6 +44311,22 @@ window.WS = window.WS || {};
        in place - so the footer has to be told. */
     UI.syncModes = setHyperLabel;
 
+    /* Oaths: hardships sworn before a night, each worth more score. The
+       button says how many are armed and what they multiply the score by. */
+    const oathBtn = el('button', 'btn', '');
+    const setOathLabel = () => {
+      const open = WS.Runs.oathsOpen();
+      const armed = WS.Runs.armedOaths();
+      oathBtn.disabled = !open;
+      oathBtn.textContent = !open ? 'Oaths: hold a night first'
+        : armed.length ? `Oaths: ${armed.length} \u00b7 \u00d7${WS.Runs.oathMult(armed).toFixed(2)}` : 'Oaths: none';
+      oathBtn.dataset.tip = open
+        ? 'Swear to a harder night. Every Oath adds to your score. They do not apply in the Eclipse Arena.'
+        : 'Hold any battlefield to dawn to open the Oaths.';
+    };
+    setOathLabel();
+    oathBtn.addEventListener('click', () => { WS.Audio.play('ui'); UI.openOaths(); });
+
     const help = el('button', 'btn', 'How to play');
     help.addEventListener('click', () => { WS.Audio.play('ui'); UI.openManual(); });
 
@@ -43789,7 +44341,7 @@ window.WS = window.WS || {};
       WS.Prologue.begin(() => UI.openMenu());
     });
 
-    s.foot.append(bank, el('div', 'spacer'), story, help, diff, hyper, begin);
+    s.foot.append(bank, el('div', 'spacer'), story, help, diff, hyper, oathBtn, begin);
     this.show(s.inner);
   };
 
@@ -43864,6 +44416,7 @@ window.WS = window.WS || {};
     if (tab === 'codex') return this.paneCodex();
     if (tab === 'bestiary') return this.paneBestiary();
     if (tab === 'stats') return this.paneStats();
+    if (tab === 'nightly') return this.paneNightly(rerender);
     return this.paneSettings(rerender);
   };
 
@@ -44575,11 +45128,226 @@ window.WS = window.WS || {};
       const body = el('div');
       body.append(el('div', 'record-name', m.name));
       body.append(el('div', 'record-time', time ? WS.formatTime(time) : 'not yet'));
+      const rec = WS.Save.db.records && WS.Save.db.records.map[id];
+      if (rec) body.append(el('div', 'record-score', `best score ${WS.formatNumber(rec.score)}`));
       card.append(body);
       best.append(card);
     }
     wrap.append(grid, head, best);
+    wrap.append(ledgerSection());
     return wrap;
+  };
+
+  /* THE LEDGER: the last nights, newest first, one line each - who, where,
+     how hard, how long, how it ended and what it was worth. Records per
+     battlefield live on the cards above; the survivors' are here. */
+  function ledgerSection() {
+    const box = el('div');
+    const db = WS.Save.db;
+    const hist = db.history || [];
+    const head = el('div', 'codex-head');
+    head.style.marginTop = '24px';
+    head.append(el('div', 'card-body pane-intro', hist.length
+      ? 'The last nights on the wall, newest first.'
+      : 'The ledger is empty. It fills in as nights end.'));
+    box.append(head);
+    const recs = db.records && db.records.char ? db.records.char : {};
+    const ids = Object.keys(WS.Characters).filter((id) => recs[id]);
+    if (ids.length) {
+      const strip = el('div', 'ledger-bests');
+      for (const id of ids.sort((a, b) => recs[b].score - recs[a].score)) {
+        const ch = WS.Characters[id];
+        const item = el('div', 'ledger-best');
+        const img = new Image();
+        img.src = WS.Sprites.dataURL(WS.Sprites.portrait(id, ch.color, 64));
+        img.width = img.height = 44;
+        const t = el('div');
+        t.append(el('div', 'lb-name', ch.name), el('div', 'lb-score', WS.formatNumber(recs[id].score)));
+        item.append(img, t);
+        strip.append(item);
+      }
+      box.append(strip);
+    }
+    if (!hist.length) return box;
+    const OUT = { defeated: 'Fell', victory: 'Dawn', abandoned: 'Left', arena_victory: 'Eclipse broken' };
+    const table = el('table', 'ledger-table');
+    const thead = el('tr');
+    for (const h of ['When', 'Survivor', 'Battlefield', 'Setting', 'Held', 'End', 'Score']) thead.append(el('th', '', h));
+    table.append(thead);
+    for (const e of hist.slice(0, 20)) {
+      const tr = el('tr');
+      const d = new Date(e.at);
+      const when = `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} ${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
+      const diff = WS.Config.difficulties[e.diff] ? WS.Config.difficulties[e.diff].label : e.diff;
+      const setting = e.nightly ? 'Nightly'
+        : [diff, e.hyper ? 'Hyper' : '', e.oaths.length ? `${e.oaths.length} Oath${e.oaths.length > 1 ? 's' : ''}` : ''].filter(Boolean).join(' \u00b7 ');
+      const end = (OUT[e.outcome] || e.outcome) + (e.finale ? (e.retried ? ', finale (retried)' : ', finale') : '');
+      const cells = [when, WS.Characters[e.char] ? WS.Characters[e.char].name : e.char,
+        WS.Maps[e.map] ? WS.Maps[e.map].name : e.map, setting, WS.formatTime(e.time), end, WS.formatNumber(e.score)];
+      cells.forEach((c, i) => tr.append(el('td', i === 6 ? 'num' : i === 4 ? 'num' : '', c)));
+      table.append(tr);
+    }
+    const scroller = el('div', 'ledger-scroll');
+    scroller.append(table);
+    box.append(scroller);
+    return box;
+  }
+
+  /* ------------------------------------------------------------ Nightly -- */
+  UI.paneNightly = function (rerender) {
+    const wrap = el('div');
+    wrap.style.marginTop = '16px';
+    if (!WS.Runs.oathsOpen()) {
+      wrap.append(el('p', 'pane-intro book-line',
+        'The Nightly opens once you have held any battlefield to dawn. One night a day, the same for '
+        + 'everyone who plays it: a battlefield, a survivor, two Oaths, and the same cards dealt for the same picks.'));
+      return wrap;
+    }
+    const n = WS.Runs.nightly();
+    const m = WS.Maps[n.map], c = WS.Characters[n.character];
+    const now = new Date();
+    const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+    const hrs = WS.max(0, (next - now.getTime()) / 3600000);
+    wrap.append(el('p', 'pane-intro book-line',
+      `Tonight\u2019s watch, ${n.day}. The same night for everyone who plays it: ${m.name}, ${c.name}, `
+      + `Veteran, two Oaths, and the same cards for the same picks. Your best score today is the one that counts. `
+      + `A new night in ${hrs >= 1 ? WS.floor(hrs) + ' hours' : WS.ceil(hrs * 60) + ' minutes'}.`));
+    const card = el('div', 'nightly-card');
+    const pics = el('div', 'nightly-pics');
+    const who = new Image();
+    who.src = WS.Sprites.dataURL(WS.Sprites.portrait(n.character, c.color, 150));
+    const where = new Image();
+    where.src = WS.Sprites.dataURL(WS.Sprites.zoneCard(m, 'rune', 150));
+    for (const [img, cap] of [[who, c.name], [where, m.name]]) {
+      const f = el('figure', 'nightly-pic');
+      img.width = img.height = 150;
+      f.append(img, el('figcaption', '', cap));
+      pics.append(f);
+    }
+    const info = el('div', 'nightly-info');
+    info.append(el('div', 'nightly-title', `${c.name} on ${m.name}`));
+    info.append(el('div', 'nightly-sub', `Veteran \u00b7 score \u00d7${WS.Runs.oathMult(n.oaths).toFixed(2)} from its Oaths`));
+    for (const id of n.oaths) {
+      const o = WS.Oaths[id];
+      const row = el('div', 'nightly-oath');
+      row.append(icon(o.art, [0.89, 0.28, 0.24], 26));
+      const t = el('div');
+      t.append(el('div', 'no-name', o.name), el('div', 'no-desc', o.desc));
+      row.append(t);
+      info.append(row);
+    }
+    const best = WS.Runs.nightlyBest();
+    info.append(el('div', 'nightly-best', best
+      ? `Your best today: ${WS.formatNumber(best.score)}, held ${WS.formatTime(best.time)}, in ${best.tries} ${best.tries === 1 ? 'try' : 'tries'}.`
+      : 'Not tried yet today.'));
+    const btns = el('div', 'nightly-btns');
+    const go = el('button', 'btn primary', best ? 'Try again' : 'Begin the Nightly');
+    go.addEventListener('click', () => {
+      WS.Audio.init(); WS.Audio.resume(); WS.Audio.play('select');
+      WS.Game.startRun(n.map, n.character, { nightly: n });
+    });
+    btns.append(go);
+    const last = (WS.Save.db.history || []).find((h) => h.nightly === n.day && h.score === (best && best.score));
+    if (best && last) {
+      const share = el('button', 'btn', 'Copy result');
+      share.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(WS.Runs.shareLine(last)); share.textContent = 'Copied'; }
+        catch (e) { share.textContent = 'Clipboard blocked'; }
+      });
+      btns.append(share);
+    }
+    info.append(btns);
+    card.append(pics, info);
+    wrap.append(card);
+    return wrap;
+  };
+
+  /* -------------------------------------------------------------- Oaths -- */
+  UI.openOaths = function () {
+    const s = shell('Oaths', 'Swear to a harder night. Every Oath adds to the score it is worth.');
+    s.inner.classList.add('sheet-wide');
+    const grid = el('div', 'oath-grid');
+    const total = el('div', 'oath-total');
+    const paint = () => {
+      const armed = WS.Runs.armedOaths();
+      total.textContent = armed.length
+        ? `${armed.length} sworn \u00b7 score \u00d7${WS.Runs.oathMult(armed).toFixed(2)}`
+        : 'None sworn. The night as it comes.';
+      for (const b of grid.children) b.classList.toggle('on', !!WS.Save.db.oaths[b.dataset.id]);
+    };
+    for (const id of WS.OathOrder) {
+      const o = WS.Oaths[id];
+      const b = el('button', 'oath-card');
+      b.type = 'button';
+      b.dataset.id = id;
+      const ic = el('div', 'oath-icon');
+      ic.append(icon(o.art, [0.89, 0.28, 0.24], 40));
+      const t = el('div');
+      t.append(el('div', 'oath-name', o.name), el('div', 'oath-desc', o.desc),
+        el('div', 'oath-bonus', `+${WS.round(o.bonus * 100)}% score`));
+      b.append(ic, t, el('div', 'oath-seal'));
+      b.addEventListener('click', () => {
+        WS.Save.db.oaths[id] = !WS.Save.db.oaths[id];
+        if (!WS.Save.db.oaths[id]) delete WS.Save.db.oaths[id];
+        WS.Save.save();
+        WS.Audio.play(WS.Save.db.oaths[id] ? 'select' : 'ui');
+        paint();
+      });
+      grid.append(b);
+    }
+    s.body.append(el('p', 'pane-intro book-line',
+      'Oaths hold for every night until you release them, on every battlefield but the Eclipse Arena. '
+      + 'The Nightly swears its own two and ignores these.'), grid);
+    const clear = el('button', 'btn', 'Release all');
+    clear.addEventListener('click', () => { WS.Save.db.oaths = {}; WS.Save.save(); WS.Audio.play('ui'); paint(); });
+    const done = el('button', 'btn primary', 'Done');
+    done.addEventListener('click', () => { WS.Audio.play('ui'); UI.openMenu(); });
+    s.foot.append(total, el('div', 'spacer'), clear, done);
+    paint();
+    this.show(s.inner);
+  };
+
+  /* -------------------------------------------------------------- Report -- */
+  /* A tester's report: what the game was doing, in one block they can paste
+     or save. Nothing leaves the machine unless they send it. */
+  UI.openReport = function (back) {
+    const s = shell('Report a problem', 'Everything needed to see what you saw.');
+    s.inner.classList.add('sheet-wide');
+    s.body.append(el('p', 'pane-intro book-line',
+      'Say what happened in a line or two, then copy the report or save it as a file and send it with '
+      + 'your video. It holds your survivor, kit, battlefield, settings, how the frames were running and any '
+      + 'errors the game hit. Nothing is sent anywhere by the game itself.'));
+    const note = el('textarea', 'import-box report-note');
+    note.rows = 3;
+    note.placeholder = 'What happened? (e.g. "the Pale Lord stopped taking damage at 40%")';
+    const pre = el('pre', 'report-preview');
+    const build = () => JSON.stringify(WS.Runs.report(note.value.trim()), null, 1);
+    const paint = () => { pre.textContent = build(); };
+    note.addEventListener('input', paint);
+    paint();
+    s.body.append(note, pre);
+    const say = el('div', 's-desc report-say');
+    const copy = el('button', 'btn', 'Copy report');
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(build()); say.textContent = 'Copied.'; }
+      catch (e) { say.textContent = 'The clipboard is blocked here. Save it to a file instead.'; }
+    });
+    const file = el('button', 'btn', 'Save to file');
+    file.addEventListener('click', () => {
+      try {
+        const blob = new Blob([build()], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `ember-watch-report-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.json`;
+        document.body.append(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+        say.textContent = 'Saved.';
+      } catch (e) { say.textContent = 'This browser would not hand over a file.'; }
+    });
+    const done = el('button', 'btn primary', 'Back');
+    done.addEventListener('click', () => { WS.Audio.play('ui'); (back || (() => UI.openMenu()))(); });
+    s.foot.append(say, el('div', 'spacer'), copy, file, done);
+    this.show(s.inner);
   };
 
   /** `inRun` hides the destructive Progress row: wiping your save from a pause
@@ -44690,7 +45458,70 @@ window.WS = window.WS || {};
       'Hold the left button anywhere on the field and drag, the same as touch. '
       + 'Play one-handed, or keep both on the keys.');
 
+    /* ---- accessibility ----------------------------------------------------- */
+    wrap.append(el('div', 'setting-group', 'Accessibility'));
+    choose('dangerPalette', 'Danger colour',
+      'Vivid paints every telegraph and hazard in one hot magenta that stays apart from green ground '
+      + 'and red enemies for every kind of colour vision. The shapes and hatching do not change.',
+      [['ember', 'Ember'], ['vivid', 'Vivid']]);
+    toggle('reduceFlashes', 'Reduce flashes',
+      'Full-screen flashes drop to a quarter, and telegraphs that strobe hold steady instead.');
+    choose('textScale', 'Text size', 'The interface: menus, cards, tooltips and the ledger.',
+      [[1, '100%'], [1.15, '115%'], [1.3, '130%']], () => UI.applyTextScale());
+    const keyRow = el('div', 'setting keys-setting');
+    const kmain = el('div');
+    kmain.append(el('div', 's-name', 'Keys'),
+      el('div', 's-desc', 'Click one, then press the key you want. The arrow keys always move as well, and Esc always pauses.'));
+    const kgrid = el('div', 'key-binds');
+    const ACTIONS = [['up', 'Up'], ['left', 'Left'], ['down', 'Down'], ['right', 'Right'],
+      ['pause', 'Pause'], ['reroll', 'Reroll'], ['banish', 'Banish']];
+    const paintKeys = () => {
+      kgrid.replaceChildren();
+      for (const [act, label] of ACTIONS) {
+        const b = el('button', 'btn small key-bind');
+        b.type = 'button';
+        b.append(el('span', 'kb-label', label), el('kbd', null, WS.Input.keyName(st.keys[act])));
+        b.addEventListener('click', () => {
+          if (UI.capturing) return;
+          UI.capturing = true;
+          b.classList.add('listening');
+          b.lastChild.textContent = 'press a key';
+          const grab = (e) => {
+            e.preventDefault(); e.stopPropagation();
+            window.removeEventListener('keydown', grab, true);
+            UI.capturing = false;
+            if (e.code !== 'Escape' || act === 'pause') st.keys[act] = e.code;
+            WS.Save.save();
+            WS.Input.rebind();
+            WS.Audio.play('ui');
+            paintKeys();
+          };
+          window.addEventListener('keydown', grab, true);
+        });
+        kgrid.append(b);
+      }
+      const reset = el('button', 'btn small', 'Defaults');
+      reset.addEventListener('click', () => {
+        st.keys = Object.assign({}, WS.Config.defaultSettings.keys);
+        WS.Save.save(); WS.Input.rebind(); WS.Audio.play('ui'); paintKeys();
+      });
+      kgrid.append(reset);
+    };
+    paintKeys();
+    keyRow.append(kmain, kgrid);
+    wrap.append(keyRow);
+
     if (inRun) return wrap;
+
+    /* ---- a tester's report --------------------------------------------------- */
+    const rep = el('div', 'setting');
+    const rmain = el('div');
+    rmain.append(el('div', 's-name', 'Report a problem'),
+      el('div', 's-desc', 'Put together what the game knows about your machine, settings and last run, to send with a bug report. Mid-run, it is in the pause menu.'));
+    const repBtn = el('button', 'btn small', 'Open report');
+    repBtn.addEventListener('click', () => { WS.Audio.play('ui'); UI.openReport(); });
+    rep.append(rmain, repBtn);
+    wrap.append(rep);
 
     /* ---- the account, and getting it off this machine -------------------- */
     /* A save that only exists in one browser's localStorage is one cleared
@@ -45082,9 +45913,13 @@ window.WS = window.WS || {};
     chead.append(el('h3', 'panel-title', m.controlsTitle || 'Controls'));
     wrap.append(chead);
     const keys = el('div', 'key-grid');
+    // The player's own bindings (Settings), so the manual never lies.
+    const kb = WS.Save.settings.keys, kn = WS.Input.keyName;
+    const bound = { kMove: [kb.up, kb.left, kb.down, kb.right].map(kn).join(''),
+      kReroll: kn(kb.reroll), kBanish: kn(kb.banish), kPause: kb.pause === 'Escape' ? 'Esc' : `${kn(kb.pause)} / Esc` };
     for (const entry of (m.controls || [])) {
       const row = el('div', 'key-row');
-      row.append(el('kbd', null, WS.template(entry.key, entry)),
+      row.append(el('kbd', null, WS.template(entry.key, Object.assign({}, entry, bound))),
         el('span', null, WS.template(entry.text, entry)));
       keys.append(row);
     }
@@ -45376,7 +46211,9 @@ window.WS = window.WS || {};
       if (quit.dataset.armed) WS.Game.endRun('abandoned');
       else { quit.dataset.armed = '1'; quit.textContent = 'Really abandon?'; }
     });
-    s.foot.append(el('div', 'spacer'), quit, resume);
+    const report = el('button', 'btn', 'Report a problem');
+    report.addEventListener('click', () => { WS.Audio.play('ui'); UI.openReport(() => UI.openPause()); });
+    s.foot.append(report, el('div', 'spacer'), quit, resume);
     this.show(s.inner);
   };
 
@@ -45470,15 +46307,33 @@ window.WS = window.WS || {};
       ['Slain', WS.formatNumber(run.kills)],
       ['Bosses', String(run.bossesSlain)],
       ['Damage', WS.formatNumber(run.damageDone)],
-      ['Gold', WS.formatNumber(run.gold)],
+      ['Score', WS.formatNumber(run.score !== undefined ? run.score : WS.Runs.score(run))],
     ];
+  }
+
+  /** The Nightly or the Oaths sworn, for a results header. */
+  function modeTag(run) {
+    if (run.nightly) return ' \u00b7 Nightly';
+    const n = run.oaths ? run.oaths.length : 0;
+    return n ? ` \u00b7 ${n} Oath${n > 1 ? 's' : ''}` : '';
+  }
+
+  /** Under the verdict: the records this night set, if any. */
+  function bestsLine(run) {
+    const e = run.entry;
+    if (!e) return '';
+    const out = [];
+    if (e.bestNightly) out.push('A new best for today\u2019s Nightly.');
+    if (e.bestMap) out.push(`A new best score on ${run.map.name}.`);
+    else if (e.bestChar) out.push(`A new best score for ${WS.Characters[run.characterId].name}.`);
+    return out.length ? ' ' + out.join(' ') : '';
   }
 
   UI.openVictory = function () {
     const run = WS.Game.run;
     const s = shell(run.map.name,
-      `${WS.Config.difficulties[WS.Save.settings.difficulty].label}`
-      + `${run.hyper ? ' · Hyper' : ''} · ${WS.Characters[run.characterId].name}`);
+      `${WS.Config.difficulties[run.difficulty || WS.Save.settings.difficulty].label}`
+      + `${run.hyper ? ' · Hyper' : ''}${modeTag(run)} · ${WS.Characters[run.characterId].name}`);
     s.inner.classList.add('sheet-wide');
     /* Three ways this panel can arrive: at 30:00 with a finale still to
        face, at 30:00 on a battlefield that has none, and after the finale
@@ -45541,8 +46396,8 @@ window.WS = window.WS || {};
     const run = WS.Game.run;
     const def = WS.Finales[run.mapId];
     const s = shell(run.map.name,
-      `${WS.Config.difficulties[WS.Save.settings.difficulty].label}`
-      + `${run.hyper ? ' · Hyper' : ''} · ${WS.Characters[run.characterId].name}`);
+      `${WS.Config.difficulties[run.difficulty || WS.Save.settings.difficulty].label}`
+      + `${run.hyper ? ' · Hyper' : ''}${modeTag(run)} · ${WS.Characters[run.characterId].name}`);
     s.inner.classList.add('sheet-wide');
     const by = run.killedBy ? run.killedBy.name : def.title;
     // "Brother Kael, the Stormbound, still stands": close an appositive.
@@ -45575,8 +46430,8 @@ window.WS = window.WS || {};
       ? `Slain by ${run.killedBy ? run.killedBy.name : 'the endless horde'} at ${WS.formatTime(run.time)}.`
       : `${WS.formatTime(run.time)} on ${run.map.name}.`;
     const s = shell(run.map.name,
-      `${WS.Config.difficulties[WS.Save.settings.difficulty].label}`
-      + `${run.hyper ? ' · Hyper' : ''} · ${WS.Characters[run.characterId].name}`);
+      `${WS.Config.difficulties[run.difficulty || WS.Save.settings.difficulty].label}`
+      + `${run.hyper ? ' · Hyper' : ''}${modeTag(run)} · ${WS.Characters[run.characterId].name}`);
     s.inner.classList.add('sheet-wide');
 
     const lines = {
@@ -45588,17 +46443,29 @@ window.WS = window.WS || {};
     };
     const kinds = { defeated: 'loss', victory: 'win', abandoned: 'neutral', arena_victory: 'win' };
     s.body.append(verdict(kinds[reason] || 'neutral', titles[reason] || 'The run ends',
-      lines[reason] || sub, runFigures(run, WS.Game.player), logEntry(run, WS.Game.player, reason)));
+      (lines[reason] || sub) + bestsLine(run), runFigures(run, WS.Game.player), logEntry(run, WS.Game.player, reason)));
     s.body.classList.add('fitted');
     s.body.append(buildSheet(true));
-    const again = el('button', 'btn primary', 'Run again');
-    again.addEventListener('click', () => WS.Game.startRun(run.mapId, run.characterId));
+    const again = el('button', 'btn primary', run.nightly ? 'Try the Nightly again' : 'Run again');
+    again.addEventListener('click', () => WS.Game.startRun(run.mapId, run.characterId,
+      run.nightly ? { nightly: run.nightly } : undefined));
+    let share = null;
+    if (run.nightly && run.entry) {
+      share = el('button', 'btn', 'Copy result');
+      share.dataset.tip = 'A line with today\u2019s Nightly, your time and your score, to paste wherever you are comparing.';
+      share.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(WS.Runs.shareLine(run.entry)); share.textContent = 'Copied'; }
+        catch (e) { share.textContent = 'Clipboard blocked'; }
+      });
+    }
     const menu = el('button', 'btn', 'Main menu');
     menu.addEventListener('click', () => WS.Game.quitToMenu());
     const banked = el('div', 'bank');
     banked.append(el('span', 'label', 'Banked this run'),
       el('span', 'v', WS.formatNumber(run.gold) + ' gold'));
-    s.foot.append(banked, el('div', 'spacer'), menu, again);
+    s.foot.append(banked, el('div', 'spacer'), menu);
+    if (share) s.foot.append(share);
+    s.foot.append(again);
     this.show(s.inner);
   };
 
@@ -45697,8 +46564,19 @@ window.WS = window.WS || {};
   };
 
   /* ------------------------------------------------------------- wiring -- */
+  /** Text size (Settings): every step of the type scale, multiplied. */
+  const TYPE_SCALE = { '--t-micro': 10, '--t-small': 11.5, '--t-body': 13.5, '--t-lead': 15,
+    '--t-title': 18, '--t-head': 28, '--t-hero': 40 };
+  UI.applyTextScale = function () {
+    const k = WS.Save.settings.textScale || 1;
+    const root = document.documentElement;
+    for (const [v, px] of Object.entries(TYPE_SCALE)) root.style.setProperty(v, (px * k).toFixed(2) + 'px');
+    root.classList.toggle('text-large', k > 1);
+  };
+
   UI.init = function (root, overlay, hud) {
     this.root = root; this.overlay = overlay; this.hud = hud;
+    this.applyTextScale();
     this.buildHUD();
     this.applyHudLayout();
     this.wireHover(overlay);
@@ -45713,7 +46591,9 @@ window.WS = window.WS || {};
         const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.code];
         if (d) { this.navigate(d[0], d[1]); return; }
       }
-      if (e.code === 'Escape') {
+      if (UI.capturing) return;       // a key is being bound in Settings
+      const act = WS.Input.action(e.code);
+      if (act === 'pause') {
         if (WS.Game.state === 'playing') WS.Game.pause();
         else if (WS.Game.state === 'paused') WS.Game.resume();
         return;
@@ -45723,8 +46603,8 @@ window.WS = window.WS || {};
         const idx = { Digit1: 0, Digit2: 1, Digit3: 2 }[e.code];
         const cards = this.overlay.querySelectorAll('.card');
         if (idx !== undefined && cards[idx]) { cards[idx].click(); return; }
-        if (e.code === 'KeyR' && WS.Game.state === 'levelup') WS.Game.rerollLevelUp();
-        if (e.code === 'KeyB' && WS.Game.state === 'levelup') {
+        if (act === 'reroll' && WS.Game.state === 'levelup') WS.Game.rerollLevelUp();
+        if (act === 'banish' && WS.Game.state === 'levelup') {
           this.setBanishMode(!this.banishMode);
         }
       }
@@ -45769,6 +46649,7 @@ window.WS = window.WS || {};
     faults.count++;
     faults.sinceReport++;
     const msg = (err && err.message) || String(err);
+    if (WS.Runs) WS.Runs.noteError(msg);
     if (faults.count === 1) {
       console.error('[The Ember Watch] recovered from an error in the frame loop:', err);
       faults.lastMessage = msg;
@@ -45797,6 +46678,7 @@ window.WS = window.WS || {};
       const dt = last ? WS.min(raw / 1000, 0.25) : 0;
       last = now;
       WS.Renderer.adaptResolution(raw);
+      if (raw && WS.Game.state === 'playing') WS.Runs.noteFrame(raw);
       WS.Game.update(dt);
       WS.Renderer.draw(now / 1000);
       WS.UI.pollMenuPad(dt);

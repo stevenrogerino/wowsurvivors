@@ -42,6 +42,8 @@
     const diff = WS.Config.difficulties[diffId] || WS.Config.difficulties.veteran;
     return {
       mapId, map, characterId,
+      difficulty: diffId,
+      oaths: [], oathMult: 1, nightly: null, draft: null,
       time: 0,
       mode: 'normal',
       kills: 0,
@@ -77,10 +79,27 @@
     };
   }
 
-  Game.startRun = function (mapId, characterId) {
+  /** @param {{nightly?: object}} [opts] the Nightly, from WS.Runs.nightly() */
+  Game.startRun = function (mapId, characterId, opts) {
     // The menu's fire goes out when the run begins.
     if (WS.Audio.setAmbience) WS.Audio.setAmbience(null);
     this.run = newRun(mapId, characterId);
+    const run = this.run;
+    const n = opts && opts.nightly;
+    if (n) {
+      /* The Nightly is the same night for everyone: Veteran, no Hyper, its
+         own two Oaths, and its own stream for the draft. */
+      const v = WS.Config.difficulties.veteran;
+      run.difficulty = 'veteran';
+      run.diffScale = v.scale; run.diffInterval = v.interval; run.goldMult = run.map.goldMult * v.gold;
+      run.hyper = false;
+      run.nightly = n;
+      run.oaths = n.oaths.slice();
+      run.draft = { s: n.draft };
+    } else if (!run.map.arena && WS.Runs.oathsOpen()) {
+      run.oaths = WS.Runs.armedOaths();
+    }
+    run.oathMult = WS.Runs.oathMult(run.oaths);
     this.arenaBounds = null;
     WS.FX.clear();
     WS.Enemy.clear();
@@ -413,7 +432,9 @@
     if (run.victorious) return false;
     run.victorious = true;
     WS.Save.stats.totalVictories++;
-    WS.Save.db.unlocks.hyper[run.mapId] = true;
+    // A Nightly on a battlefield the player has not opened yet lends it for
+    // the night; it does not open Hyper there.
+    if (!run.nightly || WS.Save.isMapUnlocked(run.mapId)) WS.Save.db.unlocks.hyper[run.mapId] = true;
     WS.Save.save();
     this.state = 'over';
     this.running = false;
@@ -551,6 +572,8 @@
     const run = this.run;
     const stats = WS.Save.stats;
 
+    // The ledger: the score, the history, the records, today's Nightly.
+    run.entry = WS.Runs.record(run, this.player, reason);
     stats.totalTime += run.time;
     stats.bestRunTime = WS.max(stats.bestRunTime, run.time);
     stats.bestBossesInRun = WS.max(stats.bestBossesInRun, run.bossesSlain);

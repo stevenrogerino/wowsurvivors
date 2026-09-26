@@ -346,7 +346,7 @@
       WS.FX.flash(p.x, p.y, 60, WS.CONST.COLORS.arcane, 0.3);
     }
 
-    p.xp += amount * p.xpMultiplier;
+    p.xp += amount * p.xpMultiplier * WS.Runs.oath('xp');
     while (p.xp >= p.xpToNext) {
       p.xp -= p.xpToNext;
       p.level++;
@@ -401,7 +401,7 @@
   Player.heal = function (p, amount, source) {
     // No early-out at full health: overheal is a resource Curdled Light eats,
     // so the heal still has to be measured.
-    const scaled = WS.floor(amount * p.healingMult);
+    const scaled = WS.floor(amount * p.healingMult * (source === 'potion' ? WS.Runs.oath('potion') : 1));
     if (scaled <= 0) return 0;
     return Player.applyHeal(p, scaled, source || 'other');
   };

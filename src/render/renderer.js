@@ -974,7 +974,7 @@
     this.drawVignette(ctx);
     if (WS.FX.flashScreen) {
       const f = WS.FX.flashScreen;
-      ctx.globalAlpha = WS.clamp(f.life / f.maxLife, 0, 1);
+      ctx.globalAlpha = WS.clamp(f.life / f.maxLife, 0, 1) * (R.calm() ? 0.25 : 1);
       ctx.fillStyle = f.colour;
       ctx.fillRect(0, 0, this.viewW, this.viewH);
       ctx.globalAlpha = 1;
@@ -1456,12 +1456,27 @@
    *  drawing at two opacities: a player has to be able to tell "not yet" from
    *  "now" at a glance, in a field of two hundred enemies, without counting
    *  frames. */
+  /* DANGER, IN TWO PALETTES. The Watch's own reds and oranges, or - for
+     anyone who cannot tell a red telegraph from green ground - Vivid, which
+     paints every threat in one hot magenta that no colour-vision type
+     confuses with the grass, the gems or the healing. Shapes, hatching and
+     rails stay exactly as they are; only the colour moves. */
+  const DANGER = {
+    ember: { deep: '226,72,61', mid: '255,120,100', rim: '255,140,120', hatch: '255,150,120', edge: '255,140,110' },
+    vivid: { deep: '214,34,186', mid: '255,84,226', rim: '255,176,246', hatch: '255,150,240', edge: '255,190,248' },
+  };
+  R.vivid = () => WS.Save.settings.dangerPalette === 'vivid';
+  R.danger = () => DANGER[R.vivid() ? 'vivid' : 'ember'];
+  R.VIVID = [1.0, 0.3, 0.88];
+  /** Flashes and strobes, softened when the player has asked for that. */
+  R.calm = () => !!WS.Save.settings.reduceFlashes;
+
   R.drawHazards = function (ctx, time) {
     const pool = WS.Hazard.pool;
     if (!pool) return;
     for (let i = 0; i < pool.count; i++) {
       const h = pool.active[i];
-      const c = h.tint;
+      const c = R.vivid() ? R.VIVID : h.tint;
       const rgb = `${WS.floor(c[0] * 255)},${WS.floor(c[1] * 255)},${WS.floor(c[2] * 255)}`;
       ctx.save();
       if (h.fuse > 0) {
@@ -1498,6 +1513,7 @@
   };
 
   R.drawTelegraphs = function (ctx, time) {
+    const dz = R.danger();
     for (let i = 0; i < WS.Enemy.pool.count; i++) {
       const e = WS.Enemy.pool.active[i];
       const t = e.telegraph;
@@ -1514,11 +1530,11 @@
         const fade = t.firing ? 1 - k : 1;
         ctx.translate(e.x, e.y);
         ctx.rotate(WS.atan2(t.dy, t.dx));
-        ctx.fillStyle = `rgba(226,72,61,${(aim ? 0.07 + 0.16 * k : 0.20 * fade).toFixed(3)})`;
+        ctx.fillStyle = `rgba(${dz.deep},${(aim ? 0.07 + 0.16 * k : 0.20 * fade).toFixed(3)})`;
         ctx.fillRect(0, -t.width / 2, t.length, t.width);
-        ctx.fillStyle = `rgba(255,120,100,${(aim ? 0.16 + 0.3 * k : 0.42 * fade).toFixed(3)})`;
+        ctx.fillStyle = `rgba(${dz.mid},${(aim ? 0.16 + 0.3 * k : 0.42 * fade).toFixed(3)})`;
         ctx.fillRect(0, -t.width / 2, t.length * (aim ? k : 1), t.width);
-        ctx.strokeStyle = `rgba(255,140,120,${(aim ? 0.35 + 0.45 * k : 0.85 * fade).toFixed(3)})`;
+        ctx.strokeStyle = `rgba(${dz.rim},${(aim ? 0.35 + 0.45 * k : 0.85 * fade).toFixed(3)})`;
         ctx.lineWidth = aim ? 1.5 : 2.5;
         ctx.strokeRect(0, -t.width / 2, t.length, t.width);
         /* Locked but not yet gone: it stopped swinging, and it says so with
@@ -1544,7 +1560,7 @@
         }
       } else if (t.kind === 'ring') {
         ctx.globalAlpha = 0.7 * (1 - k);
-        ctx.strokeStyle = 'rgba(226,72,61,.9)';
+        ctx.strokeStyle = `rgba(${dz.deep},.9)`;
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.arc(e.x, e.y, t.radius * (0.4 + 0.9 * k), 0, WS.TAU);
@@ -3608,12 +3624,13 @@
               ctx.stroke();
             }
           } else {
-            ctx.fillStyle = `rgba(226,72,61,${(0.10 + 0.20 * k).toFixed(3)})`;
+            const dz = R.danger();
+            ctx.fillStyle = `rgba(${dz.deep},${(0.10 + 0.20 * k).toFixed(3)})`;
             ctx.fillRect(x, y, w, hh);
             // Hazard hatching, clipped to the cell, tightening as it lands.
             ctx.beginPath(); ctx.rect(x, y, w, hh); ctx.clip();
             const gap = 18 - 8 * k;
-            ctx.strokeStyle = `rgba(255,150,120,${(0.30 + 0.5 * k).toFixed(3)})`;
+            ctx.strokeStyle = `rgba(${dz.hatch},${(0.30 + 0.5 * k).toFixed(3)})`;
             ctx.lineWidth = 1 + 1.6 * k;
             ctx.beginPath();
             for (let d = -hh; d < w; d += gap) {
@@ -3622,7 +3639,7 @@
             }
             ctx.stroke();
             ctx.restore(); ctx.save();
-            ctx.strokeStyle = `rgba(255,140,110,${(0.5 + 0.45 * k).toFixed(3)})`;
+            ctx.strokeStyle = `rgba(${dz.edge},${(0.5 + 0.45 * k).toFixed(3)})`;
             ctx.lineWidth = 2 + 1.5 * k;
             ctx.strokeRect(x, y, w, hh);
           }
@@ -3634,8 +3651,9 @@
         ctx.save();
         ctx.translate(h.cx, h.cy);
         ctx.rotate(h.ang);
-        ctx.globalAlpha = telegraphing ? (0.25 + 0.25 * WS.sin(time * 14)) : 0.75;
-        ctx.fillStyle = telegraphing ? 'rgba(255,180,90,.6)' : 'rgba(255,120,60,.75)';
+        ctx.globalAlpha = telegraphing ? (R.calm() ? 0.4 : 0.25 + 0.25 * WS.sin(time * 14)) : 0.75;
+        ctx.fillStyle = R.vivid() ? (telegraphing ? 'rgba(255,150,240,.6)' : 'rgba(230,50,200,.75)')
+          : telegraphing ? 'rgba(255,180,90,.6)' : 'rgba(255,120,60,.75)';
         for (let arm = 0; arm < 4; arm++) {
           ctx.save();
           ctx.rotate(arm * WS.PI * 0.5);

@@ -31,6 +31,7 @@
     faults.count++;
     faults.sinceReport++;
     const msg = (err && err.message) || String(err);
+    if (WS.Runs) WS.Runs.noteError(msg);
     if (faults.count === 1) {
       console.error('[The Ember Watch] recovered from an error in the frame loop:', err);
       faults.lastMessage = msg;
@@ -59,6 +60,7 @@
       const dt = last ? WS.min(raw / 1000, 0.25) : 0;
       last = now;
       WS.Renderer.adaptResolution(raw);
+      if (raw && WS.Game.state === 'playing') WS.Runs.noteFrame(raw);
       WS.Game.update(dt);
       WS.Renderer.draw(now / 1000);
       WS.UI.pollMenuPad(dt);

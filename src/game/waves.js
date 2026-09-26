@@ -101,7 +101,8 @@
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0 && phase.count > 0) {
       this.spawnTimer = phase.interval * WS.Config.spawnIntervalMult
-        * run.diffInterval * (run.hyper ? 0.75 : 1) / (1 + WS.Config.curseSpawnRate * curse);
+        * run.diffInterval * (run.hyper ? 0.75 : 1) / (1 + WS.Config.curseSpawnRate * curse)
+        * WS.Runs.oath('spawn');
       const scale = this.enemyScale(time);
       const count = WS.max(1, WS.round(phase.count * WS.Config.spawnCountMult
         * (1 + WS.Config.curseSpawnRate * curse)));
@@ -109,7 +110,7 @@
         const pick = WS.weightedPick(phase.roster);
         WS.Enemy.spawnRing(pick.id, WS.Config.spawnRing + WS.random() * WS.Config.spawnRingJitter, scale);
       }
-      if (phase.elite && WS.random() < phase.eliteChance) {
+      if (phase.elite && WS.random() < phase.eliteChance * WS.Runs.oath('elite')) {
         const elite = WS.Enemy.spawnRing(phase.elite, WS.Config.spawnRing + 40, scale);
         if (elite) WS.FX.notice(elite.x, elite.y, elite.template.name, '#ffb347');
       }

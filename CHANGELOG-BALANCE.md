@@ -5,6 +5,23 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
 
 <!-- new entries go directly below -->
 
+## 2026-09-26: Oaths, the Nightly and the score
+
+- A run score: `floor(time) * 10 + kills + bosses * 400 + Deaths * 1500`,
+  `+5000` at dawn, `+10000` for a finale won first time, `+15000` for the
+  arena; times Beginner 0.75 / Veteran 1 / Professional 1.5, Hyper 1.5, the
+  battlefield's difficulty and the Oath multiplier (`src/game/runs.js`).
+- Eight Oaths (`src/data/oaths.js`), each `+15..25%` score: Crowd (waves
+  ×0.75 interval), Iron Hides (health ×1.4), Teeth (damage ×1.35), Chase
+  (speed ×1.15), Lean Night (XP ×0.75), Thirst (potions ×0.25), Captains
+  (elites ×2), Giants (boss and finale health ×1.5). All eight: ×2.65.
+- Measured, Veteran, 15 builds on Thornhollow, Mourneholt and the Pale
+  Wastes, 15 minutes: alive at 10:00 76% with none, 60% with four, 40% with
+  all eight; at 15:00 69% / 47% / 20%. All eight on the Pale Wastes is not
+  survivable by the lab bot, which is the top of the ladder.
+- The Nightly runs on Veteran without Hyper and swears two Oaths chosen from
+  the day's seed.
+
 ## 2026-09-25: The balance lab pass (all difficulties, mostly the hardest)
 
 Measured on 3,897 bot games (every survivor, all six battlefields, Beginner

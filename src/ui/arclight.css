@@ -2897,3 +2897,93 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
   .prepare { margin-top: 8px; }
   .prep-label { margin: 10px 0 6px; }
 }
+
+/* ===========================================================================
+   THE LEDGER, THE NIGHTLY, THE OATHS, THE REPORT
+   ======================================================================== */
+.record .record-score { font-family: var(--fig); font-size: var(--t-micro); color: var(--ink-faint); margin-top: 2px; }
+
+.ledger-bests { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
+.ledger-best {
+  display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px;
+  border: 1px solid var(--rim); border-radius: 8px; background: rgba(255,240,214,.02); box-shadow: var(--bevel);
+}
+.ledger-best img { border-radius: 5px; display: block; }
+.ledger-best .lb-name { font-family: var(--voice); font-weight: 700; font-size: 14px; color: var(--ink); }
+.ledger-best .lb-score { font-family: var(--fig); font-size: var(--t-small); color: var(--arc); font-variant-numeric: tabular-nums; }
+
+.ledger-scroll { overflow-x: auto; }
+.ledger-table { width: 100%; border-collapse: collapse; font-size: var(--t-small); }
+.ledger-table th {
+  text-align: left; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+  font-size: var(--t-micro); color: var(--ink-faint); padding: 6px 8px; border-bottom: 1px solid var(--rim-lit);
+}
+.ledger-table td { padding: 6px 8px; border-bottom: 1px solid var(--rim); color: var(--ink-dim); white-space: nowrap; }
+.ledger-table td.num { font-family: var(--fig); font-variant-numeric: tabular-nums; color: var(--ink); text-align: right; }
+.ledger-table th:nth-child(5), .ledger-table th:nth-child(7) { text-align: right; }
+.ledger-table tr:hover td { background: rgba(245,197,107,.04); }
+
+.nightly-card {
+  display: grid; grid-template-columns: auto 1fr; gap: 22px; align-items: start;
+  border: 1px solid var(--rim-arc); border-radius: 14px; padding: 18px 20px;
+  background: radial-gradient(120% 120% at 0% 0%, rgba(245,197,107,.07), transparent 60%), rgba(11,13,18,.6);
+  box-shadow: var(--bevel-deep);
+}
+.nightly-pics { display: flex; gap: 12px; }
+.nightly-pic { margin: 0; text-align: center; }
+.nightly-pic img { display: block; border-radius: 10px; border: 1px solid var(--rim-lit); box-shadow: var(--lift-1); }
+.nightly-pic figcaption { margin-top: 6px; font-family: var(--voice); font-weight: 700; color: var(--ink-dim); }
+.nightly-title { font-family: var(--voice); font-weight: 800; font-size: 26px; color: var(--arc-hot); line-height: 1.1; }
+.nightly-sub { font-family: var(--fig); font-size: var(--t-small); color: var(--arc); margin: 4px 0 12px; }
+.nightly-oath { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-top: 1px solid var(--rim); }
+.nightly-oath .no-name { font-weight: 700; color: var(--ink); }
+.nightly-oath .no-desc { font-size: var(--t-small); color: var(--ink-dim); }
+.nightly-best { margin: 12px 0; font-family: var(--voice); font-size: 16px; color: var(--ink); }
+.nightly-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 760px) { .nightly-card { grid-template-columns: 1fr; } }
+
+.oath-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.oath-card {
+  position: relative; display: grid; grid-template-columns: 48px 1fr; gap: 12px; align-items: center;
+  text-align: left; padding: 12px 14px; border-radius: 10px; cursor: pointer; font: inherit; color: inherit;
+  border: 1px solid var(--rim); background: rgba(255,240,214,.02); box-shadow: var(--bevel);
+  transition: border-color .15s var(--ease), background .15s var(--ease);
+}
+.oath-card:hover { border-color: var(--rim-lit); }
+.oath-card .oath-icon img { display: block; filter: saturate(.3) brightness(.7); transition: filter .15s var(--ease); }
+.oath-card .oath-name { font-family: var(--voice); font-weight: 700; font-size: 16px; color: var(--ink-dim); }
+.oath-card .oath-desc { font-size: var(--t-small); color: var(--ink-dim); margin-top: 2px; }
+.oath-card .oath-bonus { font-family: var(--fig); font-size: var(--t-micro); color: var(--ink-faint); margin-top: 4px; }
+.oath-card .oath-seal {
+  position: absolute; top: 10px; right: 10px; width: 14px; height: 14px; border-radius: 50%;
+  border: 1px solid var(--rim-lit);
+}
+.oath-card.on { border-color: rgba(226,72,61,.6); background: linear-gradient(180deg, rgba(226,72,61,.10), rgba(143,32,24,.06)); }
+.oath-card.on .oath-icon img { filter: none; }
+.oath-card.on .oath-name { color: #ffd6cf; }
+.oath-card.on .oath-bonus { color: var(--arc); }
+.oath-card.on .oath-seal { background: var(--blood); border-color: #ff9a8e; box-shadow: 0 0 10px rgba(226,72,61,.7); }
+.oath-total { font-family: var(--fig); color: var(--arc); font-size: var(--t-small); }
+
+.report-note { width: 100%; }
+.report-preview {
+  max-height: 260px; overflow: auto; margin: 10px 0 0; padding: 10px 12px; border-radius: 8px;
+  background: rgba(0,0,0,.35); border: 1px solid var(--rim); font-family: var(--fig); font-size: 11px;
+  color: var(--ink-dim); white-space: pre-wrap; word-break: break-all;
+}
+
+/* Settings: groups and key bindings */
+.setting-group {
+  margin: 14px 0 2px; font-size: var(--t-micro); letter-spacing: .24em; text-transform: uppercase;
+  color: var(--arc-deep); font-weight: 600;
+}
+.keys-setting { align-items: flex-start; flex-wrap: wrap; }
+.key-binds { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; max-width: 520px; }
+.key-bind { display: inline-flex; gap: 8px; align-items: center; }
+.key-bind .kb-label { color: var(--ink-dim); }
+.key-bind kbd {
+  font-family: var(--fig); font-size: var(--t-small); color: var(--arc); min-width: 1.6em; text-align: center;
+  padding: 1px 6px; border: 1px solid var(--rim-lit); border-radius: 4px; background: rgba(0,0,0,.3);
+}
+.key-bind.listening { border-color: var(--arc); }
+.key-bind.listening kbd { color: var(--arc-hot); }

@@ -21,14 +21,33 @@
     gamepadIndex: null,
   };
 
-  const MAP = {
-    KeyW: 'up', ArrowUp: 'up',
-    KeyS: 'down', ArrowDown: 'down',
-    KeyA: 'left', ArrowLeft: 'left',
-    KeyD: 'right', ArrowRight: 'right',
+  /* Movement keys: the player's own bindings (Settings) plus the arrows,
+     which always move so nobody can bind themselves out of the game. */
+  let MAP = {};
+  Input.rebind = function () {
+    const k = (WS.Save && WS.Save.db && WS.Save.settings.keys) || WS.Config.defaultSettings.keys;
+    MAP = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+    for (const dir of ['up', 'down', 'left', 'right']) if (k[dir]) MAP[k[dir]] = dir;
+  };
+  /** The action a key is bound to (pause, reroll, banish), or null. */
+  Input.action = function (code) {
+    const k = (WS.Save && WS.Save.db && WS.Save.settings.keys) || WS.Config.defaultSettings.keys;
+    if (code === k.pause || code === 'Escape') return 'pause';
+    if (code === k.reroll) return 'reroll';
+    if (code === k.banish) return 'banish';
+    return null;
+  };
+  /** A key code as a player would name it. */
+  Input.keyName = function (code) {
+    if (!code) return '';
+    if (code.startsWith('Key')) return code.slice(3);
+    if (code.startsWith('Digit')) return code.slice(5);
+    if (code.startsWith('Arrow')) return code.slice(5) + ' arrow';
+    return code.replace(/Left$|Right$/, (m) => ' ' + m.toLowerCase());
   };
 
   Input.init = function () {
+    this.rebind();
     window.addEventListener('keydown', (e) => {
       const dir = MAP[e.code];
       if (dir) { this.held[dir] = true; this.keys[dir] = true; e.preventDefault(); }

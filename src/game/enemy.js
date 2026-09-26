@@ -130,6 +130,8 @@
        overhangs the hitbox threefold; a little more on one creature is a
        drawing decision, not a balance one. */
     e.spriteSize = template.radius * (isBoss ? 3.4 : 3.0) * (template.spriteScale || 1);
+    // Whatever Oaths the survivor swore for tonight (WS.Runs).
+    if (WS.Runs) WS.Runs.applyToEnemy(e);
     return e;
   };
 

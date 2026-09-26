@@ -1672,10 +1672,12 @@
     ctx.beginPath();
     ctx.rect(0, 0, W, H);
     for (const z of m.zones) { ctx.moveTo(z.x + z.r, z.y); ctx.arc(z.x, z.y, z.r, 0, WS.TAU, true); }
-    ctx.fillStyle = `rgba(226,72,61,${(0.08 + 0.2 * k + 0.06 * WS.sin(time * 10)).toFixed(3)})`;
+    const dz = WS.Renderer.danger();
+    const pulse = WS.Renderer.calm() ? 0 : 0.06 * WS.sin(time * 10);
+    ctx.fillStyle = `rgba(${dz.deep},${(0.08 + 0.2 * k + pulse).toFixed(3)})`;
     ctx.fill('evenodd');
     ctx.clip('evenodd');
-    hatch(ctx, 0, 0, W, H, 30 - 14 * k, `rgba(255,150,120,${(0.15 + 0.3 * k).toFixed(3)})`, 1 + k);
+    hatch(ctx, 0, 0, W, H, 30 - 14 * k, `rgba(${dz.hatch},${(0.15 + 0.3 * k).toFixed(3)})`, 1 + k);
     ctx.restore();
     for (const z of m.zones) {
       const rock = WS.Sprites.prop('rock', WS.round(z.r * 1.3));
@@ -1813,21 +1815,30 @@
       if (s.orb && !F.pods.some((q) => q.carrying)) glow(ctx, s.orb.x, s.orb.y, 22, [0.55, 1.0, 0.75], 0.9);
     }
 
+    // Vivid (Settings): every threat in the one colour, safe ground untouched.
+    const vivid = WS.Renderer.vivid();
     for (const m of F.marks) {
+      const t0 = m.tint;
+      if (vivid && m.kind !== 'safe') m.tint = WS.Renderer.VIVID;
       if (m.kind === 'circle') drawCircle(ctx, m, time);
       else if (m.kind === 'lane') drawLane(ctx, m, time);
       else if (m.kind === 'ring') drawRing(ctx, m);
       else if (m.kind === 'grid') drawGrid(ctx, m);
       else if (m.kind === 'safe') drawSafe(ctx, m, time);
+      m.tint = t0;
     }
   };
 
   A.drawAir = function (ctx, time) {
     const F = WS.Finale;
+    const vivid = WS.Renderer.vivid();
     for (const m of F.marks) {
+      const t0 = m.tint;
+      if (vivid) m.tint = WS.Renderer.VIVID;
       if (m.kind === 'sweep') drawSweep(ctx, m, time);
       else if (m.kind === 'fence') drawFence(ctx, m, time);
       else if (m.kind === 'circle' && (m.from || m.style === 'ice')) drawShell(ctx, m, time);
+      m.tint = t0;
     }
     for (const pod of F.pods) {
       if (pod.x < -120 || pod.x > WS.CONST.WORLD_WIDTH + 120 || pod.y < -120) continue;

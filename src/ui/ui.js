@@ -793,6 +793,8 @@
     }
     const modeBits = [];
     if (run.hyper) modeBits.push('Hyper');
+    if (run.nightly) modeBits.push('Nightly');
+    else if (run.oaths && run.oaths.length) modeBits.push(run.oaths.length === 1 ? '1 Oath' : run.oaths.length + ' Oaths');
     if ((run.victorious || run.mode === 'endless') && !WS.Finale.running()) modeBits.push('Overtime');
     if (run.map.arena) modeBits.push('Eclipse Arena · Phase ' + WS.Arena.phase);
     if (WS.Finale.running()) modeBits.push(WS.Finale.hudLabel());
@@ -1358,6 +1360,7 @@
          about to start - and splitting them across two tabs meant two trips
          and a tab strip longer than it needed to be. */
       ['roster', 'Prepare'],
+      ['nightly', 'Nightly'],
       ['trainer', 'Trainer'],
       ['codex', 'Codex'],
       ['bestiary', 'Bestiary'],
@@ -1477,6 +1480,22 @@
        in place - so the footer has to be told. */
     UI.syncModes = setHyperLabel;
 
+    /* Oaths: hardships sworn before a night, each worth more score. The
+       button says how many are armed and what they multiply the score by. */
+    const oathBtn = el('button', 'btn', '');
+    const setOathLabel = () => {
+      const open = WS.Runs.oathsOpen();
+      const armed = WS.Runs.armedOaths();
+      oathBtn.disabled = !open;
+      oathBtn.textContent = !open ? 'Oaths: hold a night first'
+        : armed.length ? `Oaths: ${armed.length} \u00b7 \u00d7${WS.Runs.oathMult(armed).toFixed(2)}` : 'Oaths: none';
+      oathBtn.dataset.tip = open
+        ? 'Swear to a harder night. Every Oath adds to your score. They do not apply in the Eclipse Arena.'
+        : 'Hold any battlefield to dawn to open the Oaths.';
+    };
+    setOathLabel();
+    oathBtn.addEventListener('click', () => { WS.Audio.play('ui'); UI.openOaths(); });
+
     const help = el('button', 'btn', 'How to play');
     help.addEventListener('click', () => { WS.Audio.play('ui'); UI.openManual(); });
 
@@ -1491,7 +1510,7 @@
       WS.Prologue.begin(() => UI.openMenu());
     });
 
-    s.foot.append(bank, el('div', 'spacer'), story, help, diff, hyper, begin);
+    s.foot.append(bank, el('div', 'spacer'), story, help, diff, hyper, oathBtn, begin);
     this.show(s.inner);
   };
 
@@ -1566,6 +1585,7 @@
     if (tab === 'codex') return this.paneCodex();
     if (tab === 'bestiary') return this.paneBestiary();
     if (tab === 'stats') return this.paneStats();
+    if (tab === 'nightly') return this.paneNightly(rerender);
     return this.paneSettings(rerender);
   };
 
@@ -2277,11 +2297,226 @@
       const body = el('div');
       body.append(el('div', 'record-name', m.name));
       body.append(el('div', 'record-time', time ? WS.formatTime(time) : 'not yet'));
+      const rec = WS.Save.db.records && WS.Save.db.records.map[id];
+      if (rec) body.append(el('div', 'record-score', `best score ${WS.formatNumber(rec.score)}`));
       card.append(body);
       best.append(card);
     }
     wrap.append(grid, head, best);
+    wrap.append(ledgerSection());
     return wrap;
+  };
+
+  /* THE LEDGER: the last nights, newest first, one line each - who, where,
+     how hard, how long, how it ended and what it was worth. Records per
+     battlefield live on the cards above; the survivors' are here. */
+  function ledgerSection() {
+    const box = el('div');
+    const db = WS.Save.db;
+    const hist = db.history || [];
+    const head = el('div', 'codex-head');
+    head.style.marginTop = '24px';
+    head.append(el('div', 'card-body pane-intro', hist.length
+      ? 'The last nights on the wall, newest first.'
+      : 'The ledger is empty. It fills in as nights end.'));
+    box.append(head);
+    const recs = db.records && db.records.char ? db.records.char : {};
+    const ids = Object.keys(WS.Characters).filter((id) => recs[id]);
+    if (ids.length) {
+      const strip = el('div', 'ledger-bests');
+      for (const id of ids.sort((a, b) => recs[b].score - recs[a].score)) {
+        const ch = WS.Characters[id];
+        const item = el('div', 'ledger-best');
+        const img = new Image();
+        img.src = WS.Sprites.dataURL(WS.Sprites.portrait(id, ch.color, 64));
+        img.width = img.height = 44;
+        const t = el('div');
+        t.append(el('div', 'lb-name', ch.name), el('div', 'lb-score', WS.formatNumber(recs[id].score)));
+        item.append(img, t);
+        strip.append(item);
+      }
+      box.append(strip);
+    }
+    if (!hist.length) return box;
+    const OUT = { defeated: 'Fell', victory: 'Dawn', abandoned: 'Left', arena_victory: 'Eclipse broken' };
+    const table = el('table', 'ledger-table');
+    const thead = el('tr');
+    for (const h of ['When', 'Survivor', 'Battlefield', 'Setting', 'Held', 'End', 'Score']) thead.append(el('th', '', h));
+    table.append(thead);
+    for (const e of hist.slice(0, 20)) {
+      const tr = el('tr');
+      const d = new Date(e.at);
+      const when = `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} ${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
+      const diff = WS.Config.difficulties[e.diff] ? WS.Config.difficulties[e.diff].label : e.diff;
+      const setting = e.nightly ? 'Nightly'
+        : [diff, e.hyper ? 'Hyper' : '', e.oaths.length ? `${e.oaths.length} Oath${e.oaths.length > 1 ? 's' : ''}` : ''].filter(Boolean).join(' \u00b7 ');
+      const end = (OUT[e.outcome] || e.outcome) + (e.finale ? (e.retried ? ', finale (retried)' : ', finale') : '');
+      const cells = [when, WS.Characters[e.char] ? WS.Characters[e.char].name : e.char,
+        WS.Maps[e.map] ? WS.Maps[e.map].name : e.map, setting, WS.formatTime(e.time), end, WS.formatNumber(e.score)];
+      cells.forEach((c, i) => tr.append(el('td', i === 6 ? 'num' : i === 4 ? 'num' : '', c)));
+      table.append(tr);
+    }
+    const scroller = el('div', 'ledger-scroll');
+    scroller.append(table);
+    box.append(scroller);
+    return box;
+  }
+
+  /* ------------------------------------------------------------ Nightly -- */
+  UI.paneNightly = function (rerender) {
+    const wrap = el('div');
+    wrap.style.marginTop = '16px';
+    if (!WS.Runs.oathsOpen()) {
+      wrap.append(el('p', 'pane-intro book-line',
+        'The Nightly opens once you have held any battlefield to dawn. One night a day, the same for '
+        + 'everyone who plays it: a battlefield, a survivor, two Oaths, and the same cards dealt for the same picks.'));
+      return wrap;
+    }
+    const n = WS.Runs.nightly();
+    const m = WS.Maps[n.map], c = WS.Characters[n.character];
+    const now = new Date();
+    const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+    const hrs = WS.max(0, (next - now.getTime()) / 3600000);
+    wrap.append(el('p', 'pane-intro book-line',
+      `Tonight\u2019s watch, ${n.day}. The same night for everyone who plays it: ${m.name}, ${c.name}, `
+      + `Veteran, two Oaths, and the same cards for the same picks. Your best score today is the one that counts. `
+      + `A new night in ${hrs >= 1 ? WS.floor(hrs) + ' hours' : WS.ceil(hrs * 60) + ' minutes'}.`));
+    const card = el('div', 'nightly-card');
+    const pics = el('div', 'nightly-pics');
+    const who = new Image();
+    who.src = WS.Sprites.dataURL(WS.Sprites.portrait(n.character, c.color, 150));
+    const where = new Image();
+    where.src = WS.Sprites.dataURL(WS.Sprites.zoneCard(m, 'rune', 150));
+    for (const [img, cap] of [[who, c.name], [where, m.name]]) {
+      const f = el('figure', 'nightly-pic');
+      img.width = img.height = 150;
+      f.append(img, el('figcaption', '', cap));
+      pics.append(f);
+    }
+    const info = el('div', 'nightly-info');
+    info.append(el('div', 'nightly-title', `${c.name} on ${m.name}`));
+    info.append(el('div', 'nightly-sub', `Veteran \u00b7 score \u00d7${WS.Runs.oathMult(n.oaths).toFixed(2)} from its Oaths`));
+    for (const id of n.oaths) {
+      const o = WS.Oaths[id];
+      const row = el('div', 'nightly-oath');
+      row.append(icon(o.art, [0.89, 0.28, 0.24], 26));
+      const t = el('div');
+      t.append(el('div', 'no-name', o.name), el('div', 'no-desc', o.desc));
+      row.append(t);
+      info.append(row);
+    }
+    const best = WS.Runs.nightlyBest();
+    info.append(el('div', 'nightly-best', best
+      ? `Your best today: ${WS.formatNumber(best.score)}, held ${WS.formatTime(best.time)}, in ${best.tries} ${best.tries === 1 ? 'try' : 'tries'}.`
+      : 'Not tried yet today.'));
+    const btns = el('div', 'nightly-btns');
+    const go = el('button', 'btn primary', best ? 'Try again' : 'Begin the Nightly');
+    go.addEventListener('click', () => {
+      WS.Audio.init(); WS.Audio.resume(); WS.Audio.play('select');
+      WS.Game.startRun(n.map, n.character, { nightly: n });
+    });
+    btns.append(go);
+    const last = (WS.Save.db.history || []).find((h) => h.nightly === n.day && h.score === (best && best.score));
+    if (best && last) {
+      const share = el('button', 'btn', 'Copy result');
+      share.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(WS.Runs.shareLine(last)); share.textContent = 'Copied'; }
+        catch (e) { share.textContent = 'Clipboard blocked'; }
+      });
+      btns.append(share);
+    }
+    info.append(btns);
+    card.append(pics, info);
+    wrap.append(card);
+    return wrap;
+  };
+
+  /* -------------------------------------------------------------- Oaths -- */
+  UI.openOaths = function () {
+    const s = shell('Oaths', 'Swear to a harder night. Every Oath adds to the score it is worth.');
+    s.inner.classList.add('sheet-wide');
+    const grid = el('div', 'oath-grid');
+    const total = el('div', 'oath-total');
+    const paint = () => {
+      const armed = WS.Runs.armedOaths();
+      total.textContent = armed.length
+        ? `${armed.length} sworn \u00b7 score \u00d7${WS.Runs.oathMult(armed).toFixed(2)}`
+        : 'None sworn. The night as it comes.';
+      for (const b of grid.children) b.classList.toggle('on', !!WS.Save.db.oaths[b.dataset.id]);
+    };
+    for (const id of WS.OathOrder) {
+      const o = WS.Oaths[id];
+      const b = el('button', 'oath-card');
+      b.type = 'button';
+      b.dataset.id = id;
+      const ic = el('div', 'oath-icon');
+      ic.append(icon(o.art, [0.89, 0.28, 0.24], 40));
+      const t = el('div');
+      t.append(el('div', 'oath-name', o.name), el('div', 'oath-desc', o.desc),
+        el('div', 'oath-bonus', `+${WS.round(o.bonus * 100)}% score`));
+      b.append(ic, t, el('div', 'oath-seal'));
+      b.addEventListener('click', () => {
+        WS.Save.db.oaths[id] = !WS.Save.db.oaths[id];
+        if (!WS.Save.db.oaths[id]) delete WS.Save.db.oaths[id];
+        WS.Save.save();
+        WS.Audio.play(WS.Save.db.oaths[id] ? 'select' : 'ui');
+        paint();
+      });
+      grid.append(b);
+    }
+    s.body.append(el('p', 'pane-intro book-line',
+      'Oaths hold for every night until you release them, on every battlefield but the Eclipse Arena. '
+      + 'The Nightly swears its own two and ignores these.'), grid);
+    const clear = el('button', 'btn', 'Release all');
+    clear.addEventListener('click', () => { WS.Save.db.oaths = {}; WS.Save.save(); WS.Audio.play('ui'); paint(); });
+    const done = el('button', 'btn primary', 'Done');
+    done.addEventListener('click', () => { WS.Audio.play('ui'); UI.openMenu(); });
+    s.foot.append(total, el('div', 'spacer'), clear, done);
+    paint();
+    this.show(s.inner);
+  };
+
+  /* -------------------------------------------------------------- Report -- */
+  /* A tester's report: what the game was doing, in one block they can paste
+     or save. Nothing leaves the machine unless they send it. */
+  UI.openReport = function (back) {
+    const s = shell('Report a problem', 'Everything needed to see what you saw.');
+    s.inner.classList.add('sheet-wide');
+    s.body.append(el('p', 'pane-intro book-line',
+      'Say what happened in a line or two, then copy the report or save it as a file and send it with '
+      + 'your video. It holds your survivor, kit, battlefield, settings, how the frames were running and any '
+      + 'errors the game hit. Nothing is sent anywhere by the game itself.'));
+    const note = el('textarea', 'import-box report-note');
+    note.rows = 3;
+    note.placeholder = 'What happened? (e.g. "the Pale Lord stopped taking damage at 40%")';
+    const pre = el('pre', 'report-preview');
+    const build = () => JSON.stringify(WS.Runs.report(note.value.trim()), null, 1);
+    const paint = () => { pre.textContent = build(); };
+    note.addEventListener('input', paint);
+    paint();
+    s.body.append(note, pre);
+    const say = el('div', 's-desc report-say');
+    const copy = el('button', 'btn', 'Copy report');
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(build()); say.textContent = 'Copied.'; }
+      catch (e) { say.textContent = 'The clipboard is blocked here. Save it to a file instead.'; }
+    });
+    const file = el('button', 'btn', 'Save to file');
+    file.addEventListener('click', () => {
+      try {
+        const blob = new Blob([build()], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `ember-watch-report-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.json`;
+        document.body.append(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+        say.textContent = 'Saved.';
+      } catch (e) { say.textContent = 'This browser would not hand over a file.'; }
+    });
+    const done = el('button', 'btn primary', 'Back');
+    done.addEventListener('click', () => { WS.Audio.play('ui'); (back || (() => UI.openMenu()))(); });
+    s.foot.append(say, el('div', 'spacer'), copy, file, done);
+    this.show(s.inner);
   };
 
   /** `inRun` hides the destructive Progress row: wiping your save from a pause
@@ -2392,7 +2627,70 @@
       'Hold the left button anywhere on the field and drag, the same as touch. '
       + 'Play one-handed, or keep both on the keys.');
 
+    /* ---- accessibility ----------------------------------------------------- */
+    wrap.append(el('div', 'setting-group', 'Accessibility'));
+    choose('dangerPalette', 'Danger colour',
+      'Vivid paints every telegraph and hazard in one hot magenta that stays apart from green ground '
+      + 'and red enemies for every kind of colour vision. The shapes and hatching do not change.',
+      [['ember', 'Ember'], ['vivid', 'Vivid']]);
+    toggle('reduceFlashes', 'Reduce flashes',
+      'Full-screen flashes drop to a quarter, and telegraphs that strobe hold steady instead.');
+    choose('textScale', 'Text size', 'The interface: menus, cards, tooltips and the ledger.',
+      [[1, '100%'], [1.15, '115%'], [1.3, '130%']], () => UI.applyTextScale());
+    const keyRow = el('div', 'setting keys-setting');
+    const kmain = el('div');
+    kmain.append(el('div', 's-name', 'Keys'),
+      el('div', 's-desc', 'Click one, then press the key you want. The arrow keys always move as well, and Esc always pauses.'));
+    const kgrid = el('div', 'key-binds');
+    const ACTIONS = [['up', 'Up'], ['left', 'Left'], ['down', 'Down'], ['right', 'Right'],
+      ['pause', 'Pause'], ['reroll', 'Reroll'], ['banish', 'Banish']];
+    const paintKeys = () => {
+      kgrid.replaceChildren();
+      for (const [act, label] of ACTIONS) {
+        const b = el('button', 'btn small key-bind');
+        b.type = 'button';
+        b.append(el('span', 'kb-label', label), el('kbd', null, WS.Input.keyName(st.keys[act])));
+        b.addEventListener('click', () => {
+          if (UI.capturing) return;
+          UI.capturing = true;
+          b.classList.add('listening');
+          b.lastChild.textContent = 'press a key';
+          const grab = (e) => {
+            e.preventDefault(); e.stopPropagation();
+            window.removeEventListener('keydown', grab, true);
+            UI.capturing = false;
+            if (e.code !== 'Escape' || act === 'pause') st.keys[act] = e.code;
+            WS.Save.save();
+            WS.Input.rebind();
+            WS.Audio.play('ui');
+            paintKeys();
+          };
+          window.addEventListener('keydown', grab, true);
+        });
+        kgrid.append(b);
+      }
+      const reset = el('button', 'btn small', 'Defaults');
+      reset.addEventListener('click', () => {
+        st.keys = Object.assign({}, WS.Config.defaultSettings.keys);
+        WS.Save.save(); WS.Input.rebind(); WS.Audio.play('ui'); paintKeys();
+      });
+      kgrid.append(reset);
+    };
+    paintKeys();
+    keyRow.append(kmain, kgrid);
+    wrap.append(keyRow);
+
     if (inRun) return wrap;
+
+    /* ---- a tester's report --------------------------------------------------- */
+    const rep = el('div', 'setting');
+    const rmain = el('div');
+    rmain.append(el('div', 's-name', 'Report a problem'),
+      el('div', 's-desc', 'Put together what the game knows about your machine, settings and last run, to send with a bug report. Mid-run, it is in the pause menu.'));
+    const repBtn = el('button', 'btn small', 'Open report');
+    repBtn.addEventListener('click', () => { WS.Audio.play('ui'); UI.openReport(); });
+    rep.append(rmain, repBtn);
+    wrap.append(rep);
 
     /* ---- the account, and getting it off this machine -------------------- */
     /* A save that only exists in one browser's localStorage is one cleared
@@ -2784,9 +3082,13 @@
     chead.append(el('h3', 'panel-title', m.controlsTitle || 'Controls'));
     wrap.append(chead);
     const keys = el('div', 'key-grid');
+    // The player's own bindings (Settings), so the manual never lies.
+    const kb = WS.Save.settings.keys, kn = WS.Input.keyName;
+    const bound = { kMove: [kb.up, kb.left, kb.down, kb.right].map(kn).join(''),
+      kReroll: kn(kb.reroll), kBanish: kn(kb.banish), kPause: kb.pause === 'Escape' ? 'Esc' : `${kn(kb.pause)} / Esc` };
     for (const entry of (m.controls || [])) {
       const row = el('div', 'key-row');
-      row.append(el('kbd', null, WS.template(entry.key, entry)),
+      row.append(el('kbd', null, WS.template(entry.key, Object.assign({}, entry, bound))),
         el('span', null, WS.template(entry.text, entry)));
       keys.append(row);
     }
@@ -3078,7 +3380,9 @@
       if (quit.dataset.armed) WS.Game.endRun('abandoned');
       else { quit.dataset.armed = '1'; quit.textContent = 'Really abandon?'; }
     });
-    s.foot.append(el('div', 'spacer'), quit, resume);
+    const report = el('button', 'btn', 'Report a problem');
+    report.addEventListener('click', () => { WS.Audio.play('ui'); UI.openReport(() => UI.openPause()); });
+    s.foot.append(report, el('div', 'spacer'), quit, resume);
     this.show(s.inner);
   };
 
@@ -3172,15 +3476,33 @@
       ['Slain', WS.formatNumber(run.kills)],
       ['Bosses', String(run.bossesSlain)],
       ['Damage', WS.formatNumber(run.damageDone)],
-      ['Gold', WS.formatNumber(run.gold)],
+      ['Score', WS.formatNumber(run.score !== undefined ? run.score : WS.Runs.score(run))],
     ];
+  }
+
+  /** The Nightly or the Oaths sworn, for a results header. */
+  function modeTag(run) {
+    if (run.nightly) return ' \u00b7 Nightly';
+    const n = run.oaths ? run.oaths.length : 0;
+    return n ? ` \u00b7 ${n} Oath${n > 1 ? 's' : ''}` : '';
+  }
+
+  /** Under the verdict: the records this night set, if any. */
+  function bestsLine(run) {
+    const e = run.entry;
+    if (!e) return '';
+    const out = [];
+    if (e.bestNightly) out.push('A new best for today\u2019s Nightly.');
+    if (e.bestMap) out.push(`A new best score on ${run.map.name}.`);
+    else if (e.bestChar) out.push(`A new best score for ${WS.Characters[run.characterId].name}.`);
+    return out.length ? ' ' + out.join(' ') : '';
   }
 
   UI.openVictory = function () {
     const run = WS.Game.run;
     const s = shell(run.map.name,
-      `${WS.Config.difficulties[WS.Save.settings.difficulty].label}`
-      + `${run.hyper ? ' · Hyper' : ''} · ${WS.Characters[run.characterId].name}`);
+      `${WS.Config.difficulties[run.difficulty || WS.Save.settings.difficulty].label}`
+      + `${run.hyper ? ' · Hyper' : ''}${modeTag(run)} · ${WS.Characters[run.characterId].name}`);
     s.inner.classList.add('sheet-wide');
     /* Three ways this panel can arrive: at 30:00 with a finale still to
        face, at 30:00 on a battlefield that has none, and after the finale
@@ -3243,8 +3565,8 @@
     const run = WS.Game.run;
     const def = WS.Finales[run.mapId];
     const s = shell(run.map.name,
-      `${WS.Config.difficulties[WS.Save.settings.difficulty].label}`
-      + `${run.hyper ? ' · Hyper' : ''} · ${WS.Characters[run.characterId].name}`);
+      `${WS.Config.difficulties[run.difficulty || WS.Save.settings.difficulty].label}`
+      + `${run.hyper ? ' · Hyper' : ''}${modeTag(run)} · ${WS.Characters[run.characterId].name}`);
     s.inner.classList.add('sheet-wide');
     const by = run.killedBy ? run.killedBy.name : def.title;
     // "Brother Kael, the Stormbound, still stands": close an appositive.
@@ -3277,8 +3599,8 @@
       ? `Slain by ${run.killedBy ? run.killedBy.name : 'the endless horde'} at ${WS.formatTime(run.time)}.`
       : `${WS.formatTime(run.time)} on ${run.map.name}.`;
     const s = shell(run.map.name,
-      `${WS.Config.difficulties[WS.Save.settings.difficulty].label}`
-      + `${run.hyper ? ' · Hyper' : ''} · ${WS.Characters[run.characterId].name}`);
+      `${WS.Config.difficulties[run.difficulty || WS.Save.settings.difficulty].label}`
+      + `${run.hyper ? ' · Hyper' : ''}${modeTag(run)} · ${WS.Characters[run.characterId].name}`);
     s.inner.classList.add('sheet-wide');
 
     const lines = {
@@ -3290,17 +3612,29 @@
     };
     const kinds = { defeated: 'loss', victory: 'win', abandoned: 'neutral', arena_victory: 'win' };
     s.body.append(verdict(kinds[reason] || 'neutral', titles[reason] || 'The run ends',
-      lines[reason] || sub, runFigures(run, WS.Game.player), logEntry(run, WS.Game.player, reason)));
+      (lines[reason] || sub) + bestsLine(run), runFigures(run, WS.Game.player), logEntry(run, WS.Game.player, reason)));
     s.body.classList.add('fitted');
     s.body.append(buildSheet(true));
-    const again = el('button', 'btn primary', 'Run again');
-    again.addEventListener('click', () => WS.Game.startRun(run.mapId, run.characterId));
+    const again = el('button', 'btn primary', run.nightly ? 'Try the Nightly again' : 'Run again');
+    again.addEventListener('click', () => WS.Game.startRun(run.mapId, run.characterId,
+      run.nightly ? { nightly: run.nightly } : undefined));
+    let share = null;
+    if (run.nightly && run.entry) {
+      share = el('button', 'btn', 'Copy result');
+      share.dataset.tip = 'A line with today\u2019s Nightly, your time and your score, to paste wherever you are comparing.';
+      share.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(WS.Runs.shareLine(run.entry)); share.textContent = 'Copied'; }
+        catch (e) { share.textContent = 'Clipboard blocked'; }
+      });
+    }
     const menu = el('button', 'btn', 'Main menu');
     menu.addEventListener('click', () => WS.Game.quitToMenu());
     const banked = el('div', 'bank');
     banked.append(el('span', 'label', 'Banked this run'),
       el('span', 'v', WS.formatNumber(run.gold) + ' gold'));
-    s.foot.append(banked, el('div', 'spacer'), menu, again);
+    s.foot.append(banked, el('div', 'spacer'), menu);
+    if (share) s.foot.append(share);
+    s.foot.append(again);
     this.show(s.inner);
   };
 
@@ -3399,8 +3733,19 @@
   };
 
   /* ------------------------------------------------------------- wiring -- */
+  /** Text size (Settings): every step of the type scale, multiplied. */
+  const TYPE_SCALE = { '--t-micro': 10, '--t-small': 11.5, '--t-body': 13.5, '--t-lead': 15,
+    '--t-title': 18, '--t-head': 28, '--t-hero': 40 };
+  UI.applyTextScale = function () {
+    const k = WS.Save.settings.textScale || 1;
+    const root = document.documentElement;
+    for (const [v, px] of Object.entries(TYPE_SCALE)) root.style.setProperty(v, (px * k).toFixed(2) + 'px');
+    root.classList.toggle('text-large', k > 1);
+  };
+
   UI.init = function (root, overlay, hud) {
     this.root = root; this.overlay = overlay; this.hud = hud;
+    this.applyTextScale();
     this.buildHUD();
     this.applyHudLayout();
     this.wireHover(overlay);
@@ -3415,7 +3760,9 @@
         const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.code];
         if (d) { this.navigate(d[0], d[1]); return; }
       }
-      if (e.code === 'Escape') {
+      if (UI.capturing) return;       // a key is being bound in Settings
+      const act = WS.Input.action(e.code);
+      if (act === 'pause') {
         if (WS.Game.state === 'playing') WS.Game.pause();
         else if (WS.Game.state === 'paused') WS.Game.resume();
         return;
@@ -3425,8 +3772,8 @@
         const idx = { Digit1: 0, Digit2: 1, Digit3: 2 }[e.code];
         const cards = this.overlay.querySelectorAll('.card');
         if (idx !== undefined && cards[idx]) { cards[idx].click(); return; }
-        if (e.code === 'KeyR' && WS.Game.state === 'levelup') WS.Game.rerollLevelUp();
-        if (e.code === 'KeyB' && WS.Game.state === 'levelup') {
+        if (act === 'reroll' && WS.Game.state === 'levelup') WS.Game.rerollLevelUp();
+        if (act === 'banish' && WS.Game.state === 'levelup') {
           this.setBanishMode(!this.banishMode);
         }
       }

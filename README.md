@@ -166,6 +166,30 @@ green, a spinning Eclipse Cross, and Umbral Chains you break by running through
 their anchors. You arrive with a ready-made kit, so it tests the fight rather
 than the build. Phase 2 at 60% health, Total Darkness and a hard enrage at 20%.
 
+## The ledger, the Nightly and the Oaths
+
+- **Score.** Every night is scored: time held, kills, bosses and how it ended,
+  multiplied by the battlefield, the difficulty, Hyper and any Oaths sworn
+  (`src/game/runs.js`). **Statistics** keeps the last sixty nights and the
+  best score on every battlefield and with every survivor.
+- **Oaths** (`src/data/oaths.js`) open once any battlefield has been held to
+  dawn: eight opt-in hardships, each adding to the score multiplier. They
+  never apply in the Eclipse Arena.
+- **The Nightly** is one run a day, the same for everyone: a battlefield, a
+  survivor, two Oaths, Veteran, and every blessing and level-up offer dealt
+  from the day's own seed, so the same picks see the same cards.
+- **Report a problem** (pause menu, and Settings) builds a JSON report of the
+  run, the kit, settings, frame timings and any errors, to copy or save and
+  send with a bug report.
+
+### Accessibility
+
+Settings → Accessibility: a **Vivid** danger palette that paints every
+telegraph and hazard in one magenta that no colour-vision type confuses with
+the ground, **Reduce flashes**, **Text size** (100/115/130%) and **Keys**
+(rebind movement, pause, reroll and banish; the arrow keys always move and Esc
+always pauses).
+
 ## Architecture
 
 Classic `<script>` tags in dependency order (see `index.html`), everything

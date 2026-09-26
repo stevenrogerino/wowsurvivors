@@ -509,6 +509,15 @@
     difficultyOrder: ['beginner', 'veteran', 'professional'],
 
     defaultSettings: {
+      /* Accessibility. The danger palette recolours every telegraph and
+         hazard (see Renderer.danger), reduceFlashes softens full-screen
+         flashes and strobing telegraphs, textScale sizes the interface
+         type, and keys are the player's own bindings (arrows always move
+         as well). */
+      dangerPalette: 'ember',
+      reduceFlashes: false,
+      textScale: 1,
+      keys: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', pause: 'Escape', reroll: 'KeyR', banish: 'KeyB' },
       sound: true,
       music: true,
       effectsVolume: 0.7,

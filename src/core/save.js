@@ -150,6 +150,12 @@
          you WHICH, so it cannot tell you what is left to hunt. */
       evolved: {},
       unions: {},
+      /* The ledger (WS.Runs): the last sixty nights, the best score per
+         battlefield and per survivor, today's Nightly, and the Oaths armed. */
+      history: [],
+      records: { map: {}, char: {} },
+      nightly: {},
+      oaths: {},
       settings: Object.assign({}, WS.Config.defaultSettings),
       statistics: {
         totalKills: 0,
@@ -284,6 +290,22 @@
        nothing of the right shape to check against. The shape check still
        drops anything that is not a flag. */
     db.unions = scrubMap(db.unions, 'flag');
+    db.oaths = scrubMap(db.oaths, 'flag', WS.Oaths);
+    /* The ledger is a list of small records; any that is not the right shape
+       is dropped on its own. */
+    if (!Array.isArray(db.history)) db.history = [];
+    db.history = db.history.filter((h) => isPlain(h) && typeof h.map === 'string'
+      && typeof h.char === 'string' && Number.isFinite(h.score) && Number.isFinite(h.time)
+      && Number.isFinite(h.at)).slice(0, 60);
+    if (!isPlain(db.records)) db.records = { map: {}, char: {} };
+    for (const k of ['map', 'char']) {
+      if (!isPlain(db.records[k])) db.records[k] = {};
+      for (const id of Object.keys(db.records[k])) {
+        const r = db.records[k][id];
+        if (!isPlain(r) || !Number.isFinite(r.score)) delete db.records[k][id];
+      }
+    }
+    if (!isPlain(db.nightly) || (db.nightly.day !== undefined && !Number.isFinite(db.nightly.score))) db.nightly = {};
     db.unlocks.characters = scrubMap(db.unlocks.characters, 'flag', WS.Characters);
     db.unlocks.maps = scrubMap(db.unlocks.maps, 'flag', WS.Maps);
     db.unlocks.hyper = scrubMap(db.unlocks.hyper, 'flag', WS.Maps);
@@ -309,6 +331,14 @@
     if (st.hudLayout !== 'strip' && st.hudLayout !== 'rail') st.hudLayout = 'strip';
     if (st.quality !== 'high' && st.quality !== 'balanced') st.quality = 'high';
     if (st.cinematic !== 1 && st.cinematic !== 2) st.cinematic = 2;
+    if (st.dangerPalette !== 'ember' && st.dangerPalette !== 'vivid') st.dangerPalette = 'ember';
+    if (![1, 1.15, 1.3].includes(st.textScale)) st.textScale = 1;
+    const KD = WS.Config.defaultSettings.keys;
+    if (!isPlain(st.keys)) st.keys = Object.assign({}, KD);
+    for (const k of Object.keys(KD)) {
+      if (typeof st.keys[k] !== 'string' || !/^[A-Za-z0-9]{1,24}$/.test(st.keys[k])) st.keys[k] = KD[k];
+    }
+    for (const k of Object.keys(st.keys)) if (!(k in KD)) delete st.keys[k];
 
     // The starting roster is a floor, not a stored fact: a save that lost it
     // would otherwise leave the player with nothing they are allowed to play.

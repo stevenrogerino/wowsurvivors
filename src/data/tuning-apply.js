@@ -33,7 +33,7 @@
    * system rather than only at the top level. */
   const ROOTS = ['Config', 'CONST', 'Characters', 'Weapons', 'Unions', 'Enemies',
     'Elites', 'Bosses', 'Maps', 'Upgrades', 'MetaUpgrades', 'Blessings',
-    'Combos', 'Achievements', 'Lore', 'Arena.tuning', 'Familiar.tuning',
+    'Combos', 'Achievements', 'Lore', 'Oaths', 'Arena.tuning', 'Familiar.tuning',
     // The map finales: each fight's tuning and script, its parts, its cast.
     'Finales', 'FinaleUnits', 'FinaleSpeakers'];
   /* A Set, not an object literal. `{ __proto__: 1 }` does not create a key

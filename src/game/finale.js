@@ -145,6 +145,8 @@
     e.health = e.maxHealth;
     e.damage = t.damage * this.dmgScale;
     e.finaleTag = ++this.tagCounter;
+    // The spawn applied tonight's Oaths to stats this has just replaced.
+    if (WS.Runs) WS.Runs.applyToEnemy(e, true);
     this.units.push(e);
     return e;
   };
