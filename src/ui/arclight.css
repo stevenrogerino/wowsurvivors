@@ -395,6 +395,9 @@ html, body {
               box-shadow .18s var(--ease), opacity .16s var(--ease),
               filter .16s var(--ease);
   position: relative; overflow: hidden;
+  /* Clipped, but with room below for the hover strip (see the lift, below):
+     a hidden overflow clips hit-testing too, and the strip must be hit. */
+  overflow: clip; overflow-clip-margin: 10px;
   animation: card-in .34s var(--ease-out) both;
 }
 .card:nth-child(2) { animation-delay: .05s; }
@@ -436,6 +439,17 @@ html, body {
   transform: translateY(-5px);
   border-color: var(--q, var(--arc));
   box-shadow: var(--bevel-deep), var(--lift-2), 0 0 42px -14px var(--q, var(--arc));
+}
+/* The lift must not move the card out from under the pointer. A hovered card
+   rises 5px and takes its hit box with it, so a pointer resting in its last
+   few pixels found itself below the card, un-hovered it, and the card fell
+   back under the pointer: a strobe, many times a second. While hovered, a
+   strip hangs from the inlay across exactly the gap the lift opens; it only
+   exists while hovered, so it never catches a pointer the card has not
+   already got. (tools/check-hover.js) */
+.card:is(:hover, :focus-visible):not(.locked) .card-inlay::after {
+  content: ""; position: absolute; left: -8px; right: -8px; top: 100%; height: 14px;
+  pointer-events: auto;
 }
 /* The inlay, and four corner ticks that pick up the quality colour on hover. */
 .card .card-inlay {
@@ -629,9 +643,13 @@ html, body {
   background: var(--q, var(--arc)); opacity: .5;
   transition: opacity .16s var(--ease);
 }
+.pick > * { transition: translate .14s var(--ease-out); }
+/* The contents rise, not the tile: a tile that moves takes its hit box with
+   it and strobes under a pointer on its bottom edge, and this one clips its
+   overflow, so it cannot hang a strip across the gap the way a card does. */
+.pick:hover > * { translate: 0 -2px; }
 .pick:hover {
   border-color: color-mix(in srgb, var(--q, var(--arc)) 55%, transparent);
-  transform: translateY(-2px);
   box-shadow: var(--bevel), var(--lift-1), 0 0 30px -16px var(--q, var(--arc));
 }
 .pick:hover::after { opacity: .9; }
@@ -2525,6 +2543,9 @@ body.hud-rail #hud-passives { gap: 9px; }
 .book-tab.unknown img { filter: brightness(.7); }
 .book-tab.boss { border-image-source: var(--frame-a); }
 .book-tab:hover { transform: translateY(-2px); border-image-source: var(--frame-quiet-lit); }
+/* ...and hangs a strip across the gap the lift opens, as the cards do. */
+.book-tab { position: relative; }
+.book-tab:hover::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 3px; }
 .book-tab.selected { border-image-source: var(--frame-slot-gilt); }
 
 .book-page {

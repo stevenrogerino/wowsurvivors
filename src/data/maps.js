@@ -57,14 +57,15 @@
         { at: 90, interval: 0.85, count: 3, roster: [{ id: 'coyote', weight: 25 }, { id: 'kerchief', weight: 30 }, { id: 'kerchief_pillager', weight: 25 }, { id: 'fleshripper', weight: 20 }] },
         { at: 210, interval: 0.75, count: 3, roster: [{ id: 'harvest_reaper', weight: 25 }, { id: 'kerchief_pillager', weight: 25 }, { id: 'bruiser', weight: 25 }, { id: 'coyote', weight: 25 }], elite: 'kerchief_enforcer', eliteChance: 0.05 },
         { at: 390, interval: 0.65, count: 4, roster: [{ id: 'bruiser', weight: 30 }, { id: 'harvest_reaper', weight: 25 }, { id: 'kerchief_pillager', weight: 25 }, { id: 'fleshripper', weight: 20 }], elite: 'kerchief_enforcer', eliteChance: 0.07 },
-        { at: 600, interval: 0.55, count: 5, roster: [{ id: 'bruiser', weight: 35 }, { id: 'kerchief_pillager', weight: 30 }, { id: 'harvest_reaper', weight: 35 }], elite: 'kerchief_enforcer', eliteChance: 0.08 },
-        { at: 840, interval: 0.48, count: 6, roster: [{ id: 'bruiser', weight: 40 }, { id: 'kerchief_pillager', weight: 30 }, { id: 'harvest_reaper', weight: 30 }], elite: 'kerchief_enforcer', eliteChance: 0.10 },
-        { at: 1050, interval: 0.42, count: 7, roster: [{ id: 'bruiser', weight: 40 }, { id: 'kerchief_pillager', weight: 35 }, { id: 'harvest_reaper', weight: 25 }], elite: 'kerchief_enforcer', eliteChance: 0.12 },
+        { at: 600, interval: 0.55, count: 5, roster: [{ id: 'bruiser', weight: 30 }, { id: 'rumblegut', weight: 10 }, { id: 'kerchief_pillager', weight: 28 }, { id: 'harvest_reaper', weight: 32 }], elite: 'kerchief_enforcer', eliteChance: 0.08 },
+        { at: 840, interval: 0.48, count: 6, roster: [{ id: 'bruiser', weight: 30 }, { id: 'rumblegut', weight: 15 }, { id: 'kerchief_pillager', weight: 28 }, { id: 'harvest_reaper', weight: 27 }], elite: 'kerchief_enforcer', eliteChance: 0.10 },
+        { at: 1050, interval: 0.42, count: 7, roster: [{ id: 'bruiser', weight: 30 }, { id: 'rumblegut', weight: 20 }, { id: 'kerchief_pillager', weight: 30 }, { id: 'harvest_reaper', weight: 20 }], elite: 'rumblegut_bouncer', eliteChance: 0.12 },
       ],
       events: [
         { at: 260, text: 'Vultures wheel and descend!', id: 'fleshripper', count: 20 },
         { at: 580, text: 'The fields walk! Harvest reapers advance!', id: 'harvest_reaper', count: 14 },
         { at: 880, text: 'A Kerchiefs war party surrounds you!', id: 'bruiser', count: 20 },
+        { at: 1180, text: 'A Rumblegut stampede! Here they come, rolling!', id: 'rumblegut', count: 12 },
       ],
       bosses: [
         { at: 300, id: 'murkgill' }, { at: 630, id: 'harvestking' },

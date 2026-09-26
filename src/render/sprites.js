@@ -140,6 +140,69 @@
    *  pauldrons, a banner - and it is hung on the creature where the creature
    *  actually is.
    */
+  /** Beans' frog: a small green pond frog, round and pleased with itself,
+   *  who follows her stall around trying to eat the stock. Sitting, or in
+   *  the air mid-hop with its legs thrown out behind. Facing left. The
+   *  tongue is not drawn here: the renderer flicks it at whatever the frog
+   *  is after. */
+  function drawFrog(g, s, p, hop) {
+    const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+    const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+    const belly = { hi: '#fffbe0', mid: '#f1e7a6', lo: '#c9bc6c', dark: '#8a7c3a', line: p.line, glow: '#fff' };
+    const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+    g.save();
+    if (hop) { g.translate(X(50), Y(62)); g.rotate(-0.32); g.translate(-X(50), -Y(62)); }
+    // hind legs: folded under when sitting, thrown out behind in the air
+    if (hop) {
+      limb(g, P([[64, 66], [78, 72], [90, 70], [97, 74]]), [8, 5.4, 3.6, 3.2].map(X), far);
+      limb(g, P([[62, 70], [76, 80], [88, 82], [96, 86]]), [9, 6, 4, 3.4].map(X), p);
+      for (const [fx, fy] of [[97, 74], [96, 86]]) poly(g, P([[fx, fy - 2.4], [fx + 5, fy - 3], [fx + 5.6, fy + 0.6], [fx + 4.6, fy + 3.2], [fx, fy + 2]]), p.mid, p.line, u * 0.5);
+    } else {
+      shaded(g, X(66), Y(76), X(14), X(10), far, -0.2);
+      shaded(g, X(62), Y(80), X(15), X(10.4), p, -0.25);
+      poly(g, P([[48, 86], [66, 86], [70, 89], [64, 91], [58, 89.4], [52, 91], [46, 89]]), p.mid, p.line, u * 0.6);
+    }
+    // the body: a round low teardrop, the head part of it
+    const body = mass(g, P([[18, 60], [24, 50], [36, 45], [52, 47], [66, 54], [72, 66], [66, 78], [50, 83], [32, 82], [20, 74]]), p);
+    g.save(); body(); g.clip();
+    shaded(g, X(38), Y(76), X(20), X(9), belly);
+    // spots, darker, of different sizes
+    for (const [sx, sy, r] of [[50, 56, 3.4], [60, 62, 2.6], [42, 52, 2.2], [56, 71, 2.8], [66, 58, 1.8]]) {
+      shaded(g, X(sx), Y(sy), X(r), X(r * 0.8), far);
+    }
+    g.restore();
+    // the eyes: two domes on top, gold with a bar pupil, a catchlight each
+    for (const [ex, ey, r] of [[31, 45, 7], [45, 43.4, 7.4]]) {
+      shaded(g, X(ex), Y(ey), X(r), X(r * 0.92), p);
+      const iris = g.createRadialGradient(X(ex - 1.4), Y(ey - 1.6), X(0.4), X(ex), Y(ey), X(r * 0.7));
+      iris.addColorStop(0, '#fff6c0'); iris.addColorStop(0.6, '#e8c040'); iris.addColorStop(1, '#9a6a10');
+      g.fillStyle = iris;
+      g.beginPath(); g.arc(X(ex), Y(ey), X(r * 0.68), 0, WS.TAU); g.fill();
+      g.fillStyle = '#0d0a06';
+      g.beginPath(); g.ellipse(X(ex), Y(ey + 0.2), X(r * 0.42), X(r * 0.2), 0, 0, WS.TAU); g.fill();
+      g.fillStyle = '#fff';
+      g.beginPath(); g.arc(X(ex - r * 0.28), Y(ey - r * 0.3), X(r * 0.16), 0, WS.TAU); g.fill();
+      g.strokeStyle = p.line; g.lineWidth = u * 0.8;
+      g.beginPath(); g.arc(X(ex), Y(ey), X(r * 0.68), WS.PI * 1.1, WS.PI * 1.9); g.stroke();
+    }
+    // the mouth: a long pleased line, a nostril, a blush
+    g.strokeStyle = p.line; g.lineWidth = u * 1; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(X(19), Y(61)); g.quadraticCurveTo(X(30), Y(67), X(44), Y(62)); g.stroke();
+    g.fillStyle = p.line;
+    g.beginPath(); g.arc(X(21.4), Y(54.4), X(0.7), 0, WS.TAU); g.fill();
+    g.fillStyle = 'rgba(255,140,140,.3)';
+    g.beginPath(); g.ellipse(X(40), Y(62), X(3), X(1.6), 0, 0, WS.TAU); g.fill();
+    // front legs: planted when sitting, reaching forward in the air
+    if (hop) {
+      limb(g, P([[26, 72], [16, 78], [8, 76]]), [4.4, 3.4, 3].map(X), p);
+      poly(g, P([[8, 73.6], [2, 72.6], [1.4, 76.4], [3.4, 79], [8, 78.4]]), p.mid, p.line, u * 0.5);
+    } else {
+      limb(g, P([[28, 74], [26, 82], [24, 88]]), [4.6, 3.6, 3.2].map(X), p);
+      poly(g, P([[18, 88], [30, 88], [31, 90.6], [18.6, 91]]), p.mid, p.line, u * 0.5);
+    }
+    g.restore();
+  }
+
   /** Where the head (and the shoulders) are, in the 100-unit box, for arts
    *  the crown line cannot find by width alone: [x, y, width] of each row. */
   const HEAD_AT = {
@@ -1313,6 +1376,107 @@
       shaded(g, X(25), Y(61), X(7.4), X(6.6), skin);
       for (let k = 0; k < 4; k++) shaded(g, X(20.5 + k * 3), Y(63.6), X(1.8), X(1.5), brass);
       poly(g, P([[19, 62.4], [31.5, 62.4], [31.5, 64.4], [19, 64.4]]), brass.mid, brass.line, u * 0.5);
+    },
+
+    rumblegut(g, s, p) {
+      /* THE RUMBLEGUT: the Kerchiefs' old brute, back by popular demand.
+         The Bruiser and the Enforcer were redrawn as men in 335cfd7, and a
+         tester missed the round red thing they used to be - so it came back
+         as a creature of its own rather than being lost. Drawn exactly as it
+         was: one round mass, a head sunk into it, iron knuckles, and eyes. */
+      /* ONE round mass, wide.
+       *
+       * Separating the shoulders from the trunk gave each of them its own
+       * shaded edge, and two stacked domes with a seam between them read as a
+       * cooking pot with a lid on it - which is what this had become. Wide is
+       * what tells a brute from a mongrel; ROUND is what made it likeable,
+       * and roundness is one continuous surface or it is nothing. The
+       * shoulders are a swell in the same body now, not a second body. */
+      const cx = s / 2, cy = s * 0.54, u = s / 100;
+      legs(g, p, cx, cy + 24 * u, u, [-13, 13], 8, 8);
+      shaded(g, cx - 30 * u, cy + 4 * u, 9 * u, 17 * u, p, -0.16);
+      shaded(g, cx + 30 * u, cy + 4 * u, 9 * u, 17 * u, p, 0.16);
+      // the arms carry the same coat the body does - they were the last bare
+      // masses on him and they are a fifth of his area
+      for (const dir of [-1, 1]) {
+        pelt(g, p, cx + dir * 30 * u, cy + 4 * u, 9 * u, 17 * u, dir * 0.16, 3, 0.3, 0.3);
+      }
+      shaded(g, cx, cy + 2 * u, 31 * u, 25 * u, p);               // the one mass
+      pelt(g, p, cx, cy + 2 * u, 31 * u, 25 * u, 0, 8, 0.4, 0.34);
+      /* The shoulders, as a light on the same form rather than a shape on top
+         of it: a highlight across the top of the mass, clipped inside it. */
+      g.save();
+      g.beginPath(); g.ellipse(cx, cy + 2 * u, 31 * u, 25 * u, 0, 0, WS.TAU); g.clip();
+      const yoke = g.createRadialGradient(cx, cy - 14 * u, 2 * u, cx, cy - 8 * u, 30 * u);
+      yoke.addColorStop(0, 'rgba(255,255,255,.16)');
+      yoke.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = yoke;
+      g.beginPath(); g.ellipse(cx, cy - 12 * u, 26 * u, 13 * u, 0, 0, WS.TAU); g.fill();
+      // and a fold under them, which is where a neckless thing creases
+      g.strokeStyle = p.line; g.globalAlpha = 0.28; g.lineWidth = 1.4 * u;
+      g.beginPath();
+      g.moveTo(cx - 22 * u, cy - 2 * u);
+      g.quadraticCurveTo(cx, cy + 4 * u, cx + 22 * u, cy - 2 * u);
+      g.stroke();
+      /* HIDE, on the one mass - the brute is deliberately one continuous
+         surface, so everything here has to be marks ON it rather than shapes
+         cutting it up. Old scars across the shoulder, a pale chest, and the
+         creases where a fat thing folds at the sides.
+
+         Measured against the bestiary's own interior-detail metric, brute
+         came out at 32.8% against an average of 41% - every mark here was
+         real but faint, 0.2 to 0.3 alpha on a body that is otherwise one
+         smooth gradient, and the belly below the shoulder scars had nothing
+         on it at all. Strengthened rather than redrawn, and given two more
+         scars low on the gut, where a brute actually takes most of its
+         hits. */
+      g.globalAlpha = 0.5;
+      g.lineWidth = 1.2 * u;
+      for (const [x0, y0, x1, y1] of [[-18, -14, -6, -6], [-14, -17, -3, -10],
+        [12, -12, 20, -3], [-16, 12, -4, 18], [6, 16, 18, 10]]) {
+        g.beginPath();
+        g.moveTo(cx + x0 * u, cy + y0 * u);
+        g.quadraticCurveTo(cx + (x0 + x1) / 2 * u, cy + (y0 + y1) / 2 * u - 2 * u,
+          cx + x1 * u, cy + y1 * u);
+        g.stroke();
+      }
+      /* The side folds were struck as arcs centred outside the body, which
+         drew two big circles ON him rather than creases IN him. A fold on a
+         round animal is a short comma that follows the surface, not a ring. */
+      g.globalAlpha = 0.32;
+      for (const dir of [-1, 1]) {
+        for (const dy of [2, 10]) {
+          g.beginPath();
+          g.moveTo(cx + dir * 24 * u, cy + (dy - 4) * u);
+          g.quadraticCurveTo(cx + dir * 20 * u, cy + dy * u,
+            cx + dir * 23 * u, cy + (dy + 5) * u);
+          g.stroke();
+        }
+      }
+      const chest = g.createRadialGradient(cx, cy + 14 * u, 2 * u, cx, cy + 14 * u, 24 * u);
+      chest.addColorStop(0, 'rgba(255,238,214,.16)');
+      chest.addColorStop(1, 'rgba(255,238,214,0)');
+      g.globalAlpha = 1;
+      g.fillStyle = chest;
+      g.beginPath(); g.ellipse(cx, cy + 14 * u, 19 * u, 12 * u, 0, 0, WS.TAU); g.fill();
+      g.restore();
+      shaded(g, cx - 31 * u, cy + 19 * u, 9 * u, 8 * u, STONE);   // knuckles down
+      shaded(g, cx + 31 * u, cy + 19 * u, 9 * u, 8 * u, STONE);
+      shaded(g, cx, cy - 16 * u, 11 * u, 9 * u, p);               // head, sunk in
+      g.fillStyle = p.lo; g.fillRect(cx - 12 * u, cy - 18 * u, 24 * u, 4 * u);
+      g.save();
+      g.strokeStyle = p.line; g.globalAlpha = 0.5; g.lineWidth = 1.2 * u;
+      g.beginPath();                                               // the jaw
+      g.moveTo(cx - 8 * u, cy - 11 * u);
+      g.quadraticCurveTo(cx, cy - 8 * u, cx + 8 * u, cy - 11 * u);
+      g.stroke();
+      g.globalAlpha = 0.3; g.strokeStyle = p.hi;
+      g.beginPath();
+      g.moveTo(cx - 8 * u, cy - 12.4 * u);
+      g.quadraticCurveTo(cx, cy - 9.4 * u, cx + 8 * u, cy - 12.4 * u);
+      g.stroke();
+      g.restore();
+      eyes(g, cx, cy - 17 * u, 4.5 * u, 1.7 * u, '#ff8f6b');
     },
 
     gilkin(g, s, p) {
@@ -2662,169 +2826,292 @@
       g.beginPath(); g.moveTo(X(17.4), Y(48.6)); g.lineTo(X(22.6), Y(48.2)); g.stroke();
     },
 
+    frog(g, s, p) { drawFrog(g, s, p, false); },
+    frog_hop(g, s, p) { drawFrog(g, s, p, true); },
+
     beans(g, s, p) {
-      /* Beans: the cat druid who runs the egg stall. A sitting pose rather
-         than the prowling cat's arched-and-running one, because a merchant
-         has to read as WAITING rather than about to move - haunches down,
-         tail curled round to the front paws, staff planted and idle. The
-         druid identity is a cloak and a leaf-topped staff laid over the same
-         cat skeleton above, not a second body: robe and satchel are flat
-         polys on top of a creature that is still unmistakably a cat first. */
-      const cx = s / 2, cy = s * 0.60, u = s / 100;
-      const robe = palette([0.36, 0.56, 0.30]);   // druid green, independent of fur tint
-      const wood = palette([0.42, 0.30, 0.20]);   // staff
+      /* BEANS, the cat druid who keeps the egg stall - drawn to the same
+         standard as the creatures around her rather than as the flat polygon
+         sketch she started as. A tabby sat up behind her basket with both
+         forepaws on the rim, the way a cat drapes itself over whatever it is
+         guarding; a hooded druid's cloak thrown over the back of her with a
+         leaf-stitched hem; a strap across the chest and a pouch of her own
+         namesake beans at the hip; a vine-wound staff planted beside her with
+         a seed glowing in its crook and a little painted shop tag hanging off
+         it. The eggs are what she is FOR, so they are the brightest things
+         on her: five curious eggs in a woven basket, each its own colour and
+         pattern, on a gingham cloth. Facing left, like the wild cat. */
+      const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+      const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const robe = palette([0.34, 0.58, 0.32]);
+      const robeIn = palette([0.16, 0.30, 0.18]);
+      const wood = palette([0.46, 0.32, 0.20]);
+      const wicker = palette([0.78, 0.60, 0.34]);
+      const leather = palette([0.42, 0.26, 0.16]);
+      const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+      const pale = { hi: '#fff8ec', mid: '#f6e4c8', lo: '#d9bc94', dark: '#a88a64', line: p.line, glow: '#fff' };
 
-      // the tail, curled round in front rather than up - a sitting curl, not
-      // a hunting hook - drawn first so the body sits in front of its base
-      g.strokeStyle = p.lo; g.lineWidth = 4.4 * u; g.lineCap = 'round';
+      /* ---- the staff, planted behind her right side ---- */
+      limb(g, P([[86, 97], [84, 76], [87, 54], [84, 34], [86, 18]]), [3.4, 3.2, 3.0, 2.8, 2.6].map(X), wood);
+      // knots, and a vine climbing it
+      g.fillStyle = wood.dark;
+      for (const [kx, ky] of [[85.2, 66], [86, 44], [84.6, 27]]) { g.beginPath(); g.ellipse(X(kx), Y(ky), X(1.1), X(0.7), 0.3, 0, WS.TAU); g.fill(); }
+      g.strokeStyle = robe.mid; g.lineWidth = u * 1.1; g.lineCap = 'round';
       g.beginPath();
-      g.moveTo(cx + 20 * u, cy + 8 * u);
-      g.quadraticCurveTo(cx + 30 * u, cy + 18 * u, cx + 22 * u, cy + 26 * u);
-      g.quadraticCurveTo(cx + 14 * u, cy + 33 * u, cx + 2 * u, cy + 28 * u);
+      for (let k = 0; k <= 24; k++) {
+        const t = k / 24, y = 88 - t * 66, x = 85.6 + Math.sin(t * 13) * 2.4;
+        if (!k) g.moveTo(X(x), Y(y)); else g.lineTo(X(x), Y(y));
+      }
       g.stroke();
-
-      // haunches: the seat. Wide and low, the mass a sitting cat rests on.
-      shaded(g, cx + 6 * u, cy + 9 * u, 20 * u, 17 * u, p);
-      pelt(g, p, cx + 6 * u, cy + 9 * u, 20 * u, 17 * u, 0, 7, 0.35, 0.32);
-      // chest, up and forward of the haunches, narrower and carried high
-      shaded(g, cx - 6 * u, cy - 8 * u, 15 * u, 18 * u, p);
-      pelt(g, p, cx - 6 * u, cy - 8 * u, 15 * u, 18 * u, 0, 5, 0.3, 0.26);
-      // a pale chest patch, so the silhouette isn't one flat colour front-on
-      g.save();
-      g.beginPath(); g.ellipse(cx - 6 * u, cy - 8 * u, 15 * u, 18 * u, 0, 0, WS.TAU); g.clip();
-      g.globalAlpha = 0.55;
-      g.fillStyle = p.hi;
-      g.beginPath(); g.ellipse(cx - 7 * u, cy - 1 * u, 8 * u, 12 * u, 0, 0, WS.TAU); g.fill();
+      for (let k = 0; k < 6; k++) {
+        const t = (k + 0.5) / 6, y = 88 - t * 66, x = 85.6 + Math.sin(t * 13) * 2.4;
+        const d = k % 2 ? 1 : -1;
+        poly(g, P([[x, y], [x + d * 3.2, y - 2.2], [x + d * 4.2, y + 0.6], [x + d * 1.4, y + 1.2]]), robe.hi, robe.line, u * 0.4);
+      }
+      // the crook, holding a glowing seed between two leaves
+      g.strokeStyle = wood.mid; g.lineWidth = u * 2.4;
+      g.beginPath(); g.moveTo(X(86), Y(19)); g.quadraticCurveTo(X(88), Y(8), X(81.6), Y(8.4)); g.stroke();
+      const orb = g.createRadialGradient(X(84), Y(14), 0.4 * u, X(84), Y(14), 8 * u);
+      orb.addColorStop(0, '#fbfff0'); orb.addColorStop(0.3, '#d8f79c'); orb.addColorStop(0.62, 'rgba(160,226,96,.45)'); orb.addColorStop(1, 'rgba(160,226,96,0)');
+      g.fillStyle = orb; g.beginPath(); g.arc(X(84), Y(14), X(8), 0, WS.TAU); g.fill();
+      shaded(g, X(84), Y(14), X(2.4), X(2.8), { hi: '#ffffff', mid: '#e4fbb8', lo: '#9ed45a', dark: '#6a9a38', line: '#3c5a1c', glow: '#fff' });
+      poly(g, P([[84, 16], [78.6, 19.4], [80.4, 14.6]]), robe.hi, robe.line, u * 0.5);
+      poly(g, P([[84, 16], [89.6, 19], [88, 14.2]]), robe.mid, robe.line, u * 0.5);
+      // the shop tag: a little board on a string, an egg and a bean painted on
+      g.strokeStyle = '#2a1d12'; g.lineWidth = u * 0.5;
+      g.beginPath(); g.moveTo(X(85.6), Y(30)); g.lineTo(X(80.6), Y(35)); g.moveTo(X(85.6), Y(30)); g.lineTo(X(90.6), Y(35)); g.stroke();
+      poly(g, P([[78.6, 35], [92.6, 35], [92, 44], [79.2, 44]]), '#caa46a', '#4a3218', u * 0.6);
+      shaded(g, X(82.8), Y(39.6), X(1.9), X(2.5), { hi: '#fffaf0', mid: '#f3e2c8', lo: '#c9a878', dark: '#8a6a44', line: '#4a3218', glow: '#fff' });
+      g.save(); g.translate(X(88.6), Y(39.8)); g.rotate(-0.5);
+      g.fillStyle = '#7a4a1e'; g.beginPath(); g.ellipse(0, 0, X(2.2), X(1.4), 0, 0, WS.TAU); g.fill();
+      g.strokeStyle = '#e8c48a'; g.lineWidth = u * 0.4; g.beginPath(); g.moveTo(-X(1), -X(0.2)); g.quadraticCurveTo(0, X(0.5), X(1), -X(0.2)); g.stroke();
       g.restore();
-      // stripes over the haunch, the same tabby marks as the wild cat
-      g.strokeStyle = p.dark; g.lineWidth = 2.4 * u;
-      for (let i = 0; i < 3; i++) {
-        g.beginPath();
-        g.moveTo(cx + (2 + i * 8) * u, cy - 2 * u);
-        g.lineTo(cx + (5 + i * 8) * u, cy + 14 * u);
-        g.stroke();
-      }
-      // a little drawstring pouch at her hip - a few of her own namesake
-      // beans painted right on the character, not just thrown around her
-      poly(g, [[cx + 17 * u, cy + 1 * u], [cx + 25 * u, cy + 2 * u],
-        [cx + 24 * u, cy + 11 * u], [cx + 16 * u, cy + 10 * u]], wood.lo, wood.line, u * 0.7);
-      g.strokeStyle = wood.dark; g.lineWidth = 1 * u;
-      g.beginPath(); g.moveTo(cx + 17 * u, cy + 2 * u); g.lineTo(cx + 24 * u, cy + 3 * u); g.stroke();
-      const beanC = palette([0.62, 0.42, 0.20]);
-      for (const [bx2, by2, br2] of [[20, 6.5, 1.6], [22.6, 8, 1.4], [18.3, 8.6, 1.3]]) {
-        shaded(g, cx + bx2 * u, cy + by2 * u, br2 * u, br2 * 0.78 * u, beanC);
-      }
-      /* Front paws were here, but they sat in exactly the footprint the
-         crate of eggs is drawn in a few lines down - the crate is drawn
-         AFTER the body, so it always won, and the paws underneath it just
-         muddled the edge between orange fur and brown crate into one messy
-         patch. The crate reads as her forepaws' resting place now, the way
-         a real cat drapes a paw over whatever it's sitting behind. */
 
-      // the druid cloak: draped over the back and one shoulder, NOT the
-      // face - the eyes stay the focal point, the same rule the hood-cast
-      // survivors follow. A low hood-peak behind the head reads as
-      // "druid" without ever competing with the cat's own head shape.
-      poly(g, [
-        [cx + 20 * u, cy - 2 * u], [cx + 10 * u, cy - 24 * u], [cx - 4 * u, cy - 30 * u],
-        [cx - 16 * u, cy - 23 * u], [cx - 21 * u, cy - 6 * u], [cx - 15 * u, cy + 6 * u],
-        [cx - 4 * u, cy - 2 * u], [cx + 8 * u, cy + 4 * u],
-      ], robe.mid, robe.line, u * 1.1);
-      g.save();
-      g.globalAlpha = 0.4; g.strokeStyle = robe.hi; g.lineWidth = u * 1.3;
-      g.beginPath();
-      g.moveTo(cx + 16 * u, cy - 6 * u);
-      g.quadraticCurveTo(cx, cy - 26 * u, cx - 13 * u, cy - 20 * u);
-      g.stroke();
-      g.restore();
-      // a small leaf clasp where the cloak crosses the chest
-      poly(g, [[cx - 3 * u, cy - 3 * u], [cx + 2 * u, cy - 8 * u], [cx + 6 * u, cy - 2 * u],
-        [cx + 1 * u, cy + 2 * u]], robe.hi, robe.line, u * 0.7);
-
-      // head, carried high and clear of the cloak
-      shaded(g, cx - 20 * u, cy - 17 * u, 11 * u, 10 * u, p);
-      pelt(g, p, cx - 20 * u, cy - 17 * u, 11 * u, 10 * u, 0, 4, 0.35, 0.24);
-      poly(g, [[cx - 28 * u, cy - 24 * u], [cx - 29 * u, cy - 36 * u],
-        [cx - 20 * u, cy - 25 * u]], p.lo, p.line, u);
-      poly(g, [[cx - 16 * u, cy - 25 * u], [cx - 13 * u, cy - 36 * u],
-        [cx - 9 * u, cy - 24 * u]], p.lo, p.line, u);
-      // a soft hood-peak, low behind the ears rather than over them
-      poly(g, [[cx - 24 * u, cy - 27 * u], [cx - 19 * u, cy - 39 * u], [cx - 12 * u, cy - 28 * u]],
-        robe.mid, robe.line, u * 0.9);
-      poly(g, [[cx - 27 * u, cy - 15 * u], [cx - 33 * u, cy - 13 * u],
-        [cx - 27 * u, cy - 11 * u]], p.hi, p.line, u);      // muzzle
-      // nose and whiskers - the two marks that turn a muzzle into a face
-      g.fillStyle = p.dark;
-      g.beginPath(); g.moveTo(cx - 31 * u, cy - 14 * u); g.lineTo(cx - 28.5 * u, cy - 15 * u);
-      g.lineTo(cx - 28.5 * u, cy - 12.6 * u); g.closePath(); g.fill();
-      g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 0.5 * u; g.lineCap = 'round';
-      for (const wy of [-15.6, -13.6, -11.6]) {
-        g.beginPath(); g.moveTo(cx - 30 * u, cy + wy * u); g.lineTo(cx - 40 * u, cy + (wy - 1.2) * u); g.stroke();
+      /* ---- the tail, curled round the base of the staff ---- */
+      const tailPts = [[76, 88], [86, 90], [92, 86], [93.6, 80], [90.4, 76.4]];
+      limb(g, P(tailPts), [5.2, 4.8, 4.4, 4, 3.6].map(X), p);
+      g.strokeStyle = p.dark; g.globalAlpha = 0.55; g.lineWidth = u * 1.3;
+      for (const [x0, y0, x1, y1] of [[84, 87.6, 83.4, 92.4], [89.4, 85.4, 91.6, 89.8], [91.2, 79, 95.4, 81.4]]) {
+        g.beginPath(); g.moveTo(X(x0), Y(y0)); g.lineTo(X(x1), Y(y1)); g.stroke();
       }
-      eyes(g, cx - 22 * u, cy - 18 * u, 4.5 * u, 1.9 * u, '#a8f26a');
+      g.globalAlpha = 1;
+      shaded(g, X(90), Y(75.6), X(3.2), X(2.8), pale);
 
-      // the staff: planted beside the stall, a gnarled length of wood
-      // topped with a leaf-wrapped glow - the "shop sign" a passer-by
-      // actually reads before they ever look at the crate of eggs.
-      g.save();
-      g.strokeStyle = wood.dark; g.lineWidth = 3 * u; g.lineCap = 'round';
-      g.beginPath();
-      g.moveTo(cx + 26 * u, cy + 24 * u);
-      g.quadraticCurveTo(cx + 22 * u, cy - 4 * u, cx + 27 * u, cy - 30 * u);
-      g.stroke();
-      g.strokeStyle = wood.lo; g.lineWidth = 1.1 * u; g.globalAlpha = 0.6;
-      g.beginPath();
-      g.moveTo(cx + 25 * u, cy + 18 * u);
-      g.quadraticCurveTo(cx + 21 * u, cy - 4 * u, cx + 26 * u, cy - 26 * u);
-      g.stroke();
-      g.restore();
-      const orb = g.createRadialGradient(cx + 27 * u, cy - 32 * u, 0.5 * u, cx + 27 * u, cy - 32 * u, 8 * u);
-      orb.addColorStop(0, '#eafccb'); orb.addColorStop(0.5, '#a8e06a'); orb.addColorStop(1, 'rgba(168,224,106,0)');
-      g.fillStyle = orb;
-      g.beginPath(); g.arc(cx + 27 * u, cy - 32 * u, 8 * u, 0, WS.TAU); g.fill();
-      poly(g, [[cx + 27 * u, cy - 32 * u], [cx + 20 * u, cy - 36 * u], [cx + 24 * u, cy - 27 * u]],
-        robe.hi, robe.line, u * 0.6);
-      poly(g, [[cx + 27 * u, cy - 32 * u], [cx + 34 * u, cy - 35 * u], [cx + 31 * u, cy - 26 * u]],
-        robe.mid, robe.line, u * 0.6);
-
-      /* The stall. This used to be a small crate tucked beside her - correct
-         in idea, wrong in scale: from across the field the eggs are what
-         she's FOR, and a shape a third the size of her own head read as an
-         afterthought. It now takes the whole lower body, the way a market
-         stall's actual counter would, with a woven basket in place of the
-         old plain wooden box - a handle arc, and hatching instead of grain,
-         so it reads as basket rather than crate at a glance. */
-      const basket = [[cx - 19 * u, cy + 13 * u], [cx + 22 * u, cy + 11 * u],
-        [cx + 25 * u, cy + 26 * u], [cx + 19 * u, cy + 38 * u],
-        [cx - 16 * u, cy + 39 * u], [cx - 23 * u, cy + 25 * u]];
-      poly(g, basket, wood.mid, wood.line, u * 1.1);
-      g.save();
-      g.beginPath();
-      g.moveTo(basket[0][0], basket[0][1]);
-      for (let i = 1; i < basket.length; i++) g.lineTo(basket[i][0], basket[i][1]);
-      g.closePath(); g.clip();
-      g.strokeStyle = wood.line; g.globalAlpha = 0.45; g.lineWidth = 0.8 * u;
-      for (let i = -3; i < 9; i++) {
-        g.beginPath();
-        g.moveTo(cx - 24 * u + i * 6 * u, cy + 8 * u); g.lineTo(cx - 34 * u + i * 6 * u, cy + 42 * u);
-        g.stroke();
-      }
-      g.strokeStyle = wood.dark; g.globalAlpha = 0.5;
-      for (const hy of [19, 27, 34]) {
-        g.beginPath(); g.moveTo(cx - 24 * u, cy + hy * u); g.lineTo(cx + 26 * u, cy + (hy - 2) * u); g.stroke();
+      /* ---- the haunches, sat down ---- */
+      const haunch = mass(g, P([[52, 62], [66, 55], [78, 60], [83, 72], [80, 88], [66, 94], [50, 92], [45, 78]]), p);
+      g.save(); haunch(); g.clip();
+      pelt(g, p, X(66), Y(76), X(17), X(17), 0.05, 5, 0.4, 0.3);
+      g.strokeStyle = p.dark; g.globalAlpha = 0.38; g.lineCap = 'round';
+      for (let i = 0; i < 4; i++) {
+        g.lineWidth = u * (2 - i * 0.2);
+        g.beginPath(); g.moveTo(X(62 + i * 5), Y(60 + i * 1.5)); g.quadraticCurveTo(X(66 + i * 5), Y(68), X(63 + i * 5), Y(76)); g.stroke();
       }
       g.restore();
-      // the handle, arcing over the rim
-      g.strokeStyle = wood.dark; g.lineWidth = 1.6 * u; g.globalAlpha = 1;
-      g.beginPath();
-      g.moveTo(cx - 14 * u, cy + 13 * u);
-      g.quadraticCurveTo(cx + 2 * u, cy + 1 * u, cx + 17 * u, cy + 12 * u);
-      g.stroke();
 
-      const eggC = palette([0.94, 0.88, 0.72]);
-      shaded(g, cx - 6 * u, cy + 10 * u, 5.6 * u, 6.8 * u, eggC);
-      shaded(g, cx + 4 * u, cy + 7 * u, 5.2 * u, 6.4 * u, eggC);
-      shaded(g, cx + 13 * u, cy + 10 * u, 5.4 * u, 6.6 * u, eggC);
+      /* ---- the cloak over her back, and the hood hanging behind her head ---- */
+      // The hood, thrown back: a fold of cloth framing the head from behind,
+      // lined dark, with its lit edge showing where it turns.
+      const hood = mass(g, P([[12, 38], [13, 20], [26, 7], [44, 6], [58, 18], [60, 36], [52, 48], [30, 50], [16, 48]]), robe);
+      g.save(); hood(); g.clip();
+      g.fillStyle = robeIn.mid; g.globalAlpha = 0.9;
+      g.beginPath(); g.ellipse(X(35), Y(30), X(20), X(17), 0, 0, WS.TAU); g.fill();
+      g.restore();
+      g.strokeStyle = robe.hi; g.globalAlpha = 0.55; g.lineWidth = u * 1.2; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(X(14.6), Y(30)); g.quadraticCurveTo(X(18), Y(12), X(36), Y(8.4)); g.quadraticCurveTo(X(52), Y(9), X(58), Y(24)); g.stroke();
+      g.globalAlpha = 1;
+      const cloak = mass(g, P([[40, 38], [52, 30], [64, 36], [76, 50], [84, 66], [86, 82], [78, 90], [70, 86],
+        [62, 72], [54, 62], [44, 56], [36, 50]]), robe);
+      g.save(); cloak(); g.clip();
+      // folds falling from the shoulder
+      g.lineCap = 'round';
+      for (const [x0, y0, x1, y1, x2, y2] of [[52, 34, 60, 54, 58, 70], [60, 38, 70, 56, 72, 80], [68, 44, 78, 62, 80, 84]]) {
+        g.strokeStyle = robe.dark; g.globalAlpha = 0.45; g.lineWidth = u * 1.8;
+        g.beginPath(); g.moveTo(X(x0), Y(y0)); g.quadraticCurveTo(X(x1), Y(y1), X(x2), Y(y2)); g.stroke();
+        g.strokeStyle = robe.hi; g.globalAlpha = 0.35; g.lineWidth = u * 0.9;
+        g.beginPath(); g.moveTo(X(x0 + 1.6), Y(y0)); g.quadraticCurveTo(X(x1 + 1.6), Y(y1), X(x2 + 1.6), Y(y2)); g.stroke();
+      }
+      g.restore();
+      // the hem: a gold stitched band, and leaves worked into it
+      g.strokeStyle = '#d9b45a'; g.lineWidth = u * 1.3; g.globalAlpha = 0.9;
+      g.beginPath(); g.moveTo(X(86), Y(80.4)); g.quadraticCurveTo(X(83), Y(88), X(78), Y(88.4)); g.quadraticCurveTo(X(72), Y(86), X(69), Y(82)); g.stroke();
+      g.globalAlpha = 1;
+      for (const [lx, ly, r] of [[84.4, 84.6, -0.6], [79.6, 87.4, 0.2], [73.4, 85.6, 0.8]]) {
+        g.save(); g.translate(X(lx), Y(ly)); g.rotate(r);
+        g.fillStyle = '#e8d07a'; g.beginPath(); g.ellipse(0, 0, X(1.5), X(0.8), 0, 0, WS.TAU); g.fill();
+        g.restore();
+      }
+
+      /* ---- the chest, and a strap across it ---- */
+      const chest = mass(g, P([[30, 48], [40, 42], [50, 46], [56, 60], [52, 74], [38, 78], [28, 68]]), p);
+      g.save(); chest(); g.clip();
+      shaded(g, X(40), Y(62), X(9), X(13), pale);
+      pelt(g, pale, X(40), Y(62), X(9), X(13), 0, 3, 0.2, 0.25);
+      g.restore();
+      poly(g, P([[38, 44], [42, 43], [66, 76], [62, 78]]), leather.mid, leather.line, u * 0.6);
+      // the cloak's front edge, over the near shoulder, and the clasp
+      poly(g, P([[44, 44], [54, 40], [58, 50], [56, 64], [52, 60], [48, 52]]), robe.mid, robe.line, u * 0.8);
+      g.strokeStyle = '#d9b45a'; g.lineWidth = u * 1; g.globalAlpha = 0.85;
+      g.beginPath(); g.moveTo(X(44.6), Y(45)); g.quadraticCurveTo(X(49), Y(50), X(52.4), Y(60)); g.stroke();
+      g.globalAlpha = 1;
+      shaded(g, X(45.4), Y(46), X(2.6), X(2.6), { hi: '#fff2c0', mid: '#e0b84a', lo: '#8a6a1a', dark: '#5a4210', line: '#3a2a08', glow: '#fff' });
+      poly(g, P([[45.4, 43.8], [46.8, 46], [45.4, 48.2], [44, 46]]), '#7ac25a', '#2a4a18', u * 0.4);
+      poly(g, P([[48.6, 57.4], [52.6, 57.4], [52.6, 61.4], [48.6, 61.4]]), '#d9b45a', '#5a4214', u * 0.5);
+      // the bean pouch at her hip, open, a few beans showing at the neck
+      const pouch = mass(g, P([[60, 72], [70, 71], [73, 78], [70, 85], [61, 85], [58, 78]]), leather);
+      void pouch;
+      g.strokeStyle = leather.dark; g.lineWidth = u * 0.9;
+      g.beginPath(); g.moveTo(X(60.4), Y(74.6)); g.quadraticCurveTo(X(65.4), Y(76.6), X(71), Y(74.4)); g.stroke();
+      const beanC = { hi: '#f0c070', mid: '#c2873c', lo: '#7a4a1e', dark: '#4a2a10', line: '#2a160a', glow: '#fff' };
+      for (const [bx, by, br, rot] of [[62.6, 72.4, 1.7, 0.4], [65.6, 71.4, 1.6, -0.3], [68.4, 72.4, 1.5, 0.7]]) {
+        shaded(g, X(bx), Y(by), X(br), X(br * 0.7), beanC, rot);
+      }
+
+      /* ---- the head: big, round and friendly, in the mouth of the hood ---- */
+      poly(g, P([[18, 28], [15.6, 11], [28.6, 21]]), p.mid, p.line, u * 0.6);     // far ear
+      g.fillStyle = '#f2a3a0'; g.globalAlpha = 0.8;
+      g.beginPath(); g.moveTo(X(19.4), Y(25)); g.lineTo(X(17.6), Y(15.4)); g.lineTo(X(25), Y(21.4)); g.closePath(); g.fill();
+      g.globalAlpha = 1;
+      const head = mass(g, P([[14, 34], [18, 24], [28, 19], [40, 20], [47, 28], [47, 39], [41, 46], [29, 48], [19, 44]]), p);
+      g.save(); head(); g.clip();
+      pelt(g, p, X(31), X(33), X(15), X(13), 0.05, 4, 0.3, 0.22);
+      // tabby marks on the brow
+      g.strokeStyle = p.dark; g.globalAlpha = 0.5; g.lineWidth = u * 1.3; g.lineCap = 'round';
+      for (const [x0, y0, x1, y1] of [[28, 20.6, 29, 25.4], [32, 20.4, 32.4, 25.6], [36, 21, 35.4, 25.6]]) {
+        g.beginPath(); g.moveTo(X(x0), Y(y0)); g.lineTo(X(x1), Y(y1)); g.stroke();
+      }
+      // the pale muzzle and cheeks
+      g.globalAlpha = 1;
+      shaded(g, X(27), Y(40.6), X(8.4), X(5.4), pale);
+      g.restore();
+      poly(g, P([[34, 22], [40, 6], [45, 25]]), p.lo, p.line, u * 0.6);           // near ear
+      g.fillStyle = '#f2a3a0'; g.globalAlpha = 0.85;
+      g.beginPath(); g.moveTo(X(36.4), Y(21.4)); g.lineTo(X(40), Y(10.6)); g.lineTo(X(43), Y(23.2)); g.closePath(); g.fill();
+      g.globalAlpha = 1;
+      // a circlet of leaves across the brow: the druid, in one line
+      g.strokeStyle = robe.lo; g.lineWidth = u * 1.2;
+      g.beginPath(); g.moveTo(X(17.4), Y(27)); g.quadraticCurveTo(X(30), Y(19.6), X(45.6), Y(26)); g.stroke();
+      for (const [lx, ly, r, c] of [[21, 24.4, -0.8, robe.hi], [29, 21.6, -0.2, robe.mid], [37, 21.8, 0.4, robe.hi], [43.6, 24.4, 0.9, robe.mid]]) {
+        g.save(); g.translate(X(lx), Y(ly)); g.rotate(r);
+        poly(g, [[0, -X(2.6)], [X(1.4), 0], [0, X(1.2)], [-X(1.4), 0]], c, robe.line, u * 0.4);
+        g.restore();
+      }
+      // the eyes: big and bright, pupils slit, a catchlight each
+      for (const [ex, ey, rx] of [[23.6, 33.2, 3.2], [35.4, 33.2, 3.4]]) {
+        g.fillStyle = 'rgba(20,10,6,.55)';
+        g.beginPath(); g.ellipse(X(ex), Y(ey), X(rx + 0.8), X(rx + 0.4), 0, 0, WS.TAU); g.fill();
+        const iris = g.createRadialGradient(X(ex - 0.6), Y(ey - 0.8), X(0.3), X(ex), Y(ey), X(rx));
+        iris.addColorStop(0, '#f4ffb0'); iris.addColorStop(0.55, '#a8e04a'); iris.addColorStop(1, '#4e8a1c');
+        g.fillStyle = iris;
+        g.beginPath(); g.ellipse(X(ex), Y(ey), X(rx), X(rx * 0.95), 0, 0, WS.TAU); g.fill();
+        g.fillStyle = '#0d0806';
+        g.beginPath(); g.ellipse(X(ex + 0.2), Y(ey + 0.2), X(0.8), X(rx * 0.78), 0, 0, WS.TAU); g.fill();
+        g.fillStyle = '#ffffff';
+        g.beginPath(); g.arc(X(ex - 1.1), Y(ey - 1.2), X(0.9), 0, WS.TAU); g.fill();
+        g.beginPath(); g.arc(X(ex + 1), Y(ey + 1), X(0.4), 0, WS.TAU); g.fill();
+        g.strokeStyle = p.line; g.lineWidth = u * 0.7;
+        g.beginPath(); g.ellipse(X(ex), Y(ey), X(rx), X(rx * 0.95), 0, WS.PI * 1.08, WS.PI * 1.92); g.stroke();
+      }
+      // blush, nose, a smile, whiskers
+      g.fillStyle = 'rgba(255,120,120,.28)';
+      g.beginPath(); g.ellipse(X(19.6), Y(39.6), X(2.6), X(1.4), 0, 0, WS.TAU); g.fill();
+      g.beginPath(); g.ellipse(X(39.6), Y(39.6), X(2.6), X(1.4), 0, 0, WS.TAU); g.fill();
+      poly(g, P([[27.4, 38], [31, 38], [29.2, 40.2]]), '#e07a86', '#4a1c1c', u * 0.4);
+      g.strokeStyle = '#3a1e18'; g.lineWidth = u * 0.7; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(X(29.2), Y(40.2)); g.lineTo(X(29.2), Y(41.4));
+      g.quadraticCurveTo(X(27.2), Y(43.6), X(25.4), Y(41.8));
+      g.moveTo(X(29.2), Y(41.4)); g.quadraticCurveTo(X(31.2), Y(43.6), X(33), Y(41.8)); g.stroke();
+      g.strokeStyle = 'rgba(255,250,240,.75)'; g.lineWidth = u * 0.4;
+      for (const [x0, y0, x1, y1] of [[24, 40.6, 12, 38.4], [24, 41.8, 11.6, 42.4], [34.4, 40.6, 45.6, 38.6], [34.4, 41.8, 46, 42.6]]) {
+        g.beginPath(); g.moveTo(X(x0), Y(y0)); g.lineTo(X(x1), Y(y1)); g.stroke();
+      }
+
+      /* ---- the stall: a woven basket, a gingham cloth, five curious eggs ---- */
+      // the back rim first, so the eggs sit IN the basket rather than on it
+      g.fillStyle = wicker.dark;
+      g.beginPath(); g.ellipse(X(35), Y(74.4), X(24), X(3.6), 0, 0, WS.TAU); g.fill();
+      const EGGS = [
+        [17.6, 71.4, 4.2, 5.4, ['#9fd0f2', '#5a9ad0'], 'dots'],
+        [26.6, 69.2, 4.6, 5.8, ['#f7b4cf', '#d86a98'], 'zig'],
+        [36, 70.6, 4.4, 5.6, ['#f6d774', '#c99a2c'], 'dots'],
+        [45, 69.6, 4.2, 5.4, ['#a8e0a0', '#58a458'], 'swirl'],
+        [53, 71.6, 3.8, 5, ['#fff4e2', '#d8c09a'], 'plain'],
+      ];
+      for (const [ex, ey, rx, ry, [c0, c1], pat] of EGGS) {
+        const eg = g.createRadialGradient(X(ex - rx * 0.35), Y(ey - ry * 0.4), X(0.4), X(ex), Y(ey), X(ry * 1.2));
+        eg.addColorStop(0, '#ffffff'); eg.addColorStop(0.35, c0); eg.addColorStop(1, c1);
+        g.save();
+        g.beginPath(); g.ellipse(X(ex), Y(ey), X(rx), X(ry), 0, 0, WS.TAU);
+        g.fillStyle = eg; g.fill();
+        g.clip();
+        g.fillStyle = c1; g.strokeStyle = c1; g.lineWidth = u * 0.8; g.globalAlpha = 0.8;
+        if (pat === 'dots') {
+          for (const [dx, dy, dr] of [[-1.6, -1.8, 0.8], [1.4, -0.6, 0.7], [-0.4, 1.6, 0.9], [2, 2.4, 0.6], [-2.2, 1, 0.5]]) {
+            g.beginPath(); g.arc(X(ex + dx), Y(ey + dy), X(dr), 0, WS.TAU); g.fill();
+          }
+        } else if (pat === 'zig') {
+          g.beginPath();
+          for (let k = 0; k <= 6; k++) g.lineTo(X(ex - rx + k * rx / 3), Y(ey + (k % 2 ? -1 : 1) * 1.1));
+          g.stroke();
+        } else if (pat === 'swirl') {
+          g.beginPath(); g.arc(X(ex), Y(ey), X(1.8), 0.2, WS.TAU * 0.85); g.stroke();
+        }
+        g.restore();
+        g.strokeStyle = 'rgba(40,24,12,.55)'; g.lineWidth = u * 0.6;
+        g.beginPath(); g.ellipse(X(ex), Y(ey), X(rx), X(ry), 0, 0, WS.TAU); g.stroke();
+      }
+      // the basket body, woven: stakes down, weavers across, over and under
+      const body = P([[11, 74], [59, 74], [55, 96], [15, 97]]);
+      poly(g, body, wicker.mid, wicker.line, u * 1);
+      g.save();
+      g.beginPath(); g.moveTo(body[0][0], body[0][1]); body.slice(1).forEach(([x, y]) => g.lineTo(x, y)); g.closePath(); g.clip();
+      for (let row = 0; row < 5; row++) {
+        const y0 = 76 + row * 4.2;
+        for (let col = 0; col < 12; col++) {
+          const x0 = 11 + col * 4.2 + (row % 2) * 2.1;
+          const wv = g.createLinearGradient(0, Y(y0), 0, Y(y0 + 3.6));
+          wv.addColorStop(0, wicker.hi); wv.addColorStop(0.5, wicker.mid); wv.addColorStop(1, wicker.lo);
+          g.fillStyle = wv;
+          g.beginPath(); g.ellipse(X(x0 + 2), Y(y0 + 1.8), X(2.1), X(1.7), 0, 0, WS.TAU); g.fill();
+        }
+      }
+      g.strokeStyle = wicker.dark; g.globalAlpha = 0.6; g.lineWidth = u * 0.7;
+      for (let col = 0; col < 13; col++) {
+        const x = 12 + col * 3.8;
+        g.beginPath(); g.moveTo(X(x), Y(74)); g.lineTo(X(x + (35 - x) * 0.08), Y(97)); g.stroke();
+      }
+      g.globalAlpha = 1;
+      const shade = g.createLinearGradient(X(11), 0, X(59), 0);
+      shade.addColorStop(0, 'rgba(0,0,0,.28)'); shade.addColorStop(0.4, 'rgba(0,0,0,0)'); shade.addColorStop(1, 'rgba(0,0,0,.22)');
+      g.fillStyle = shade; g.fillRect(X(10), Y(73), X(50), Y(26));
+      g.restore();
+      // the front rim: a braided roll
+      g.strokeStyle = wicker.lo; g.lineWidth = u * 3.4; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(X(11.4), Y(74.6)); g.lineTo(X(58.6), Y(74.6)); g.stroke();
+      g.strokeStyle = wicker.hi; g.lineWidth = u * 1;
+      for (let k = 0; k < 12; k++) {
+        const x = 12.6 + k * 3.9;
+        g.beginPath(); g.moveTo(X(x), Y(73.2)); g.lineTo(X(x + 2.4), Y(75.8)); g.stroke();
+      }
+      // the gingham cloth, tucked over the front with a scalloped edge
+      const cloth = P([[18, 75], [40, 75], [38, 84], [34, 82.6], [30, 85], [26, 82.8], [22, 85.2], [19, 83]]);
+      poly(g, cloth, '#f2e6d2', '#6a2a22', u * 0.7);
+      g.save();
+      g.beginPath(); g.moveTo(cloth[0][0], cloth[0][1]); cloth.slice(1).forEach(([x, y]) => g.lineTo(x, y)); g.closePath(); g.clip();
+      g.fillStyle = 'rgba(200,52,48,.55)';
+      for (let k = 0; k < 6; k++) g.fillRect(X(18 + k * 4), Y(74), X(2), Y(12));
+      for (let k = 0; k < 3; k++) g.fillRect(X(17), Y(75.6 + k * 4), X(24), Y(2));
+      g.restore();
+
+      /* ---- her forepaws, on the rim ---- */
+      for (const [px, py] of [[46.6, 72.8], [56, 72.4]]) {
+        // an orange paw with pale toes, so it reads as HER rather than a
+        // sixth egg sat on the rim
+        shaded(g, X(px), Y(py - 0.6), X(4.2), X(3), p);
+        shaded(g, X(px - 0.6), Y(py + 0.8), X(3.2), X(1.7), pale);
+        g.strokeStyle = p.line; g.lineWidth = u * 0.55;
+        for (const dx of [-2, -0.4, 1.2]) { g.beginPath(); g.moveTo(X(px + dx), Y(py + 0.2)); g.lineTo(X(px + dx), Y(py + 2.2)); g.stroke(); }
+      }
+      void far;
     },
 
     boar(g, s, p) {

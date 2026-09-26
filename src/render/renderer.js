@@ -2416,6 +2416,8 @@
         // the field rather than an object lying on it. Her own canvas is
         // centred lower than the icon field (the cloak and staff reach well
         // above her head), so the blit offset is tuned to her, not shared.
+        const frog = this.beansFrog(p, y, size, time);
+        if (frog.y < p.y) this.drawBeansFrog(ctx, frog, size);
         const spr = WS.Sprites.creature('beans', p.type.tint, size);
         ctx.drawImage(spr, p.x - size * 0.50, y - size * 0.60, size, size);
       } else if (p.kind === 'watcher') {
@@ -2501,14 +2503,13 @@
          * restarts, rather than orbiting her forever: a real toss reads as
          * a toss because it lands and stops, even if the next one is a
          * third of a second behind it. */
-        const originX = p.x - size * 0.065, originY = y + size * 0.165;
+        const frog = p.frog;
         for (let i = 0; i < 3; i++) {
-          const t = (time * 0.6 + i * 0.333) % 1;
-          if (t > 0.82) continue;            // a beat of rest between throws
-          const tt = t / 0.82;
-          const dir = i % 2 === 0 ? -1 : 1;
-          const bx = originX + dir * tt * size * 0.42;
-          const by = originY - WS.sin(tt * WS.PI) * size * 0.32 + tt * size * 0.1;
+          const bean = this.beanAt(p, y, size, time, i);
+          if (!bean) continue;
+          // the frog got this one
+          if (frog && frog.ate[i] === bean.cycle) continue;
+          const { tt, dir } = bean, bx = bean.x, by = bean.y;
           ctx.save();
           ctx.globalAlpha = tt < 0.85 ? 1 : (1 - tt) / 0.15;   // settles rather than pops
           ctx.translate(bx, by);
@@ -2518,14 +2519,191 @@
           ctx.fillStyle = '#e0a850';
           ctx.strokeStyle = '#5c3a1a';
           ctx.lineWidth = WS.max(0.8, size * 0.012);
-          ctx.beginPath(); ctx.ellipse(0, 0, size * 0.075, size * 0.05, 0, 0, WS.TAU);
+          ctx.beginPath(); ctx.ellipse(0, 0, size * 0.058, size * 0.038, 0, 0, WS.TAU);
           ctx.fill(); ctx.stroke();
           ctx.fillStyle = 'rgba(255,255,255,.65)';
-          ctx.beginPath(); ctx.ellipse(-size * 0.02, -size * 0.015, size * 0.028, size * 0.015, 0, 0, WS.TAU); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(-size * 0.016, -size * 0.012, size * 0.022, size * 0.012, 0, 0, WS.TAU); ctx.fill();
           ctx.restore();
+        }
+        if (frog && frog.y >= p.y) this.drawBeansFrog(ctx, frog, size);
+        if (frog && frog.caught > 0) {
+          // Caught at the eggs: Beans has seen it.
+          const k = WS.min(1, frog.caught / 0.2) * WS.min(1, (1.1 - frog.caughtT) / 0.25);
+          if (k > 0) {
+            ctx.save();
+            ctx.globalAlpha = WS.clamp(k, 0, 1);
+            const bx = p.x - size * 0.2, by = y - size * 0.62 - WS.min(1, frog.caughtT / 0.15) * size * 0.08;
+            ctx.font = `800 ${WS.round(size * 0.34)}px ${UI_FONT}`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+            ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.85)';
+            ctx.strokeText('!', bx, by); ctx.fillStyle = '#ffcf5a'; ctx.fillText('!', bx, by);
+            ctx.restore();
+          }
         }
       }
       ctx.globalAlpha = 1;
+    }
+  };
+
+  /** Where Beans' i-th thrown bean is right now, or null between throws.
+   *  Shared by the toss and the frog, so the frog can catch what is drawn. */
+  R.beanAt = function (p, y, size, time, i) {
+    const phase = time * 0.6 + i * 0.333;
+    const t = phase % 1;
+    if (t > 0.82) return null;             // a beat of rest between throws
+    const tt = t / 0.82;
+    const dir = 1;
+    /* Tossed from the pouch at her hip, out to her right and low, three
+       lengths of throw. Thrown from the paw they crossed her face. */
+    const originX = p.x + size * 0.16, originY = y + size * 0.13;
+    const reach = [0.34, 0.5, 0.42][i];
+    return { tt, dir, cycle: WS.floor(phase),
+      x: originX + tt * size * reach,
+      y: originY - WS.sin(tt * WS.PI) * size * 0.2 + tt * size * 0.16 };
+  };
+
+  /* BEANS' FROG. A small pond frog that follows the stall around trying to
+   * eat the stock: it hops about her in short arcs, snaps her thrown beans
+   * out of the air with its tongue, and now and then sneaks up to the basket
+   * and licks an egg, which Beans sees (a "!" over her head) and it bolts.
+   *
+   * Purely a picture: it lives on the pickup, is stepped by the renderer's
+   * clock, and draws its choices from its own little hash rather than the
+   * game's random stream, so it cannot change a seeded run. */
+  const EGG_AT = [[-0.324, 0.114], [-0.234, 0.092], [-0.14, 0.106], [-0.05, 0.096], [0.03, 0.116]];
+  R.beansFrog = function (p, y, size, time) {
+    let f = p.frog;
+    if (!f) {
+      f = p.frog = { x: p.x + size * 0.55, y: p.y + size * 0.3, from: null, to: null, hopT: 0, hopDur: 0.34,
+        wait: 0.6, last: time, seed: (p.x * 7.31 + p.y * 3.17) | 0, facing: -1, ate: [-1, -1, -1],
+        tongue: 0, tongueT: 0, aim: null, plan: null, caught: 0, caughtT: 0, flee: 0 };
+    }
+    const dt = WS.clamp(time - f.last, 0, 0.1);
+    f.last = time;
+    const rnd = () => { f.seed = (f.seed * 1103515245 + 12345) & 0x7fffffff; return f.seed / 0x7fffffff; };
+    const home = (a, r) => ({ x: p.x + WS.cos(a) * size * r, y: p.y + size * 0.18 + WS.sin(a) * size * r * 0.55 });
+    // keep it off Beans and her basket: a ring round the stall
+    const ring = (pt) => {
+      const dx = pt.x - p.x, dy = (pt.y - p.y - size * 0.18) / 0.55;
+      const d = Math.hypot(dx, dy) || 1, min = size * 0.62, max = size * 1.25;
+      const k = WS.clamp(d, min, max) / d;
+      return { x: p.x + dx * k, y: p.y + size * 0.18 + dy * k * 0.55 };
+    };
+    const hopTo = (pt, dur) => {
+      f.from = { x: f.x, y: f.y }; f.to = pt; f.hopT = 0; f.hopDur = dur || 0.34;
+      f.facing = pt.x < f.x ? -1 : 1;
+    };
+
+    if (f.caught > 0) { f.caught += dt; f.caughtT += dt; if (f.caughtT > 1.1) f.caught = 0; }
+
+    if (f.to) {
+      // mid-hop
+      f.hopT += dt;
+      const k = WS.min(1, f.hopT / f.hopDur);
+      f.x = f.from.x + (f.to.x - f.from.x) * k;
+      f.y = f.from.y + (f.to.y - f.from.y) * k;
+      f.air = WS.sin(k * WS.PI) * size * (0.16 + (f.flee ? 0.08 : 0));
+      if (k >= 1) {
+        f.to = null; f.air = 0;
+        f.wait = f.flee ? 0.12 : 0.35 + rnd() * 0.9;
+        if (f.flee) f.flee--;
+        // arriving somewhere with a purpose: open the mouth
+        if (f.plan && f.plan.kind === 'bean') f.aim = { kind: 'bean', i: f.plan.i };
+        else if (f.plan && f.plan.kind === 'egg') f.aim = { kind: 'egg', e: f.plan.e };
+        f.plan = null;
+        if (f.aim) { f.tongue = 0; f.tongueT = 0; }
+      }
+    } else if (f.aim) {
+      // the tongue: out in 0.12s, a beat, back in 0.12s
+      f.tongueT += dt;
+      const T = f.tongueT;
+      f.tongue = T < 0.12 ? T / 0.12 : T < 0.2 ? 1 : WS.max(0, 1 - (T - 0.2) / 0.12);
+      let tx, ty;
+      if (f.aim.kind === 'bean') {
+        const b = this.beanAt(p, y, size, time, f.aim.i);
+        if (!b || f.ate[f.aim.i] === (b && b.cycle)) { f.aim.miss = true; }
+        else { tx = b.x; ty = b.y; if (T >= 0.12 && !f.aim.got && Math.hypot(tx - f.x, ty - f.y) < size * 0.6) { f.ate[f.aim.i] = b.cycle; f.aim.got = true; } }
+      } else {
+        const [ex, ey] = EGG_AT[f.aim.e];
+        tx = p.x + ex * size; ty = y + ey * size;
+        if (T >= 0.12 && !f.aim.got) { f.aim.got = true; f.caught = 0.001; f.caughtT = 0; }
+      }
+      if (tx !== undefined) { f.tongueTo = { x: tx, y: ty }; f.facing = tx < f.x ? -1 : 1; }
+      if (T > 0.34 || f.aim.miss) {
+        const wasEgg = f.aim.kind === 'egg';
+        f.aim = null; f.tongue = 0; f.tongueTo = null;
+        if (wasEgg) {
+          // bolt: two quick hops away from her
+          f.flee = 1;
+          const a = Math.atan2(f.y - p.y, f.x - p.x);
+          hopTo(ring(home(a + (rnd() - 0.5) * 0.6, 1.25)), 0.26);
+        }
+      }
+    } else {
+      f.wait -= dt;
+      if (f.wait <= 0) {
+        const roll = rnd();
+        if (roll < 0.45) {
+          // go for a bean early in its flight, landing under where it will be
+          let best = null;
+          for (let i = 0; i < 3; i++) {
+            const b = this.beanAt(p, y, size, time, i);
+            if (b && b.tt > 0.05 && b.tt < 0.45 && f.ate[i] !== b.cycle) { best = { i, b }; break; }
+          }
+          if (best) {
+            const ahead = this.beanAt(p, y, size, time + 0.45, best.i) || best.b;
+            f.plan = { kind: 'bean', i: best.i };
+            hopTo(ring({ x: ahead.x + best.b.dir * size * 0.12, y: ahead.y + size * 0.28 }), 0.3);
+          } else f.wait = 0.2;
+        } else if (roll < 0.72) {
+          // sneak up on the basket, from the left of it
+          const e = WS.floor(rnd() * 3);
+          f.plan = { kind: 'egg', e };
+          hopTo({ x: p.x - size * 0.66 + rnd() * size * 0.06, y: p.y + size * 0.34 }, 0.36);
+        } else {
+          hopTo(ring(home(rnd() * WS.TAU, 0.8 + rnd() * 0.45)), 0.34);
+        }
+      }
+    }
+    return f;
+  };
+
+  R.drawBeansFrog = function (ctx, f, size) {
+    const fs = size * 0.4;
+    const tint = [0.42, 0.72, 0.30];
+    const air = f.air || 0;
+    // its shadow stays on the ground while it is up
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.ellipse(f.x, f.y, fs * 0.3 * (1 - air / (size * 0.5)), fs * 0.1, 0, 0, WS.TAU); ctx.fill();
+    ctx.restore();
+    const spr = WS.Sprites.creature(air > size * 0.02 ? 'frog_hop' : 'frog', tint, WS.round(fs));
+    ctx.save();
+    ctx.translate(f.x, f.y - air);
+    if (f.facing > 0) ctx.scale(-1, 1);
+    ctx.drawImage(spr, -fs / 2, -fs * 0.9, fs, fs);
+    ctx.restore();
+    if (f.tongue > 0 && f.tongueTo) {
+      // the mouth, on the side it faces
+      // the mouth: toward the front of the face, whichever way it faces
+      const mx = f.x + f.facing * fs * 0.26;
+      const my = f.y - air - fs * 0.28;
+      const k = f.tongue;
+      const tx = mx + (f.tongueTo.x - mx) * k, ty = my + (f.tongueTo.y - my) * k;
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#7a2a3a'; ctx.lineWidth = WS.max(2, fs * 0.09);
+      ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(tx, ty); ctx.stroke();
+      ctx.strokeStyle = '#f07a96'; ctx.lineWidth = WS.max(1.2, fs * 0.055);
+      ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(tx, ty); ctx.stroke();
+      ctx.fillStyle = '#f07a96';
+      ctx.beginPath(); ctx.arc(tx, ty, WS.max(1.6, fs * 0.07), 0, WS.TAU); ctx.fill();
+      // a caught bean rides back in on the tip
+      if (f.aim && f.aim.kind === 'bean' && f.aim.got) {
+        ctx.fillStyle = '#e0a850'; ctx.strokeStyle = '#5c3a1a'; ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.ellipse(tx, ty, size * 0.05, size * 0.034, 0, 0, WS.TAU); ctx.fill(); ctx.stroke();
+      }
+      ctx.restore();
     }
   };
 

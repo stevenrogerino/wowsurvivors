@@ -85,6 +85,12 @@
       // shambler. Visual only - the hitbox is the radius and it has not moved.
       health: 86, speed: 78, damage: 17, xp: 10, radius: 17, spriteScale: 1.2,
     },
+    /* The Kerchiefs' old muscle, kept when the Bruiser was redrawn as a man:
+       a round red thing with iron fists that the Kerchiefs feed and point. */
+    rumblegut: {
+      name: 'Rumblegut', family: 'kerchief', art: 'rumblegut', tint: [0.92, 0.42, 0.34],
+      health: 110, speed: 64, damage: 18, xp: 12, radius: 18, spriteScale: 1.25,
+    },
     /* ------------------------------------------------------ Mourneholt ---- */
     ghoul: {
       name: 'Rotting Shambler', family: 'undead', art: 'ghoul', tint: [0.60, 0.80, 0.50],
@@ -196,6 +202,13 @@
       tint: [1.00, 0.45, 0.30], health: 518, speed: 72, damage: 28, xp: 44, radius: 28,
       spriteScale: 1.2,
       lunge: { range: 300, cooldown: 5.0, windup: 0.7, time: 0.45 },
+    },
+    rumblegut_bouncer: {
+      name: 'Rumblegut Bouncer', family: 'kerchief', elite: true, art: 'rumblegut', bossKit: ['pauldrons'],
+      tint: [1.00, 0.40, 0.28], health: 560, speed: 66, damage: 28, xp: 48, radius: 30,
+      spriteScale: 1.3,
+      // It does not charge so much as bounce: a long wind-up, then all of it.
+      lunge: { range: 320, cooldown: 5.5, windup: 0.8, time: 0.5 },
     },
     bone_sentinel: {
       name: 'Bone Sentinel', family: 'undead', elite: true, art: 'skeleton', bossKit: ['horns'],

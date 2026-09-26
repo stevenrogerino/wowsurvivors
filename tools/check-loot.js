@@ -232,9 +232,16 @@ const LOUDER = 2.0;      // how much more presence a run-changing pickup needs
       if (v > 0) {
         xpIn += v;
         let near = false;
+        /* Measured from where the gem is MEANT to land: the corpse, pulled
+           inside the field (src/game/xp.js). A creature killed out past the
+           edge drops its gem at the edge on purpose - where the survivor can
+           walk to it - and that is not the drop folding into something
+           off-screen, which is what this guards against. */
+        const W = WS.CONST.WORLD_WIDTH, H = WS.CONST.WORLD_HEIGHT;
+        const cx = WS.clamp(x, 14, W - 14), cy = WS.clamp(y, 14, H - 14);
         for (let i = 0; i < this.pool.count; i++) {
           const g = this.pool.active[i];
-          const dx = g.x - x, dy = g.y - y;
+          const dx = g.x - cx, dy = g.y - cy;
           if (dx * dx + dy * dy < 40 * 40) { near = true; break; }
         }
         if (near) hit++; else miss++;

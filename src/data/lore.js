@@ -186,6 +186,7 @@
       fleshripper: 'Circles until you tire, then lands. The trick is not to tire.',
       coyote: 'You will hear them laughing before you see them. Keep walking.',
       bruiser: 'What the Kerchiefs send when the footpads come back empty-handed.',
+      rumblegut: 'Round, red and very sure of its fists. The Kerchiefs feed it, point it, and stand well back. Nobody has ever seen one sit down.',
       // Mourneholt
       ghoul: 'Slow, stupid, and there are always more of them than you left behind.',
       skeleton: 'Still holding the sword it was buried with. Most of them are still holding the grudge, too.',
@@ -214,6 +215,7 @@
       thunderscale: 'Sleeps in the thunderheads and comes down with them. Plants, picks you, and runs the line. Be off the line.',
       snarlpack_bonesnapper: 'The Snarlpack\'s biggest, fed first and meanest for it.',
       kerchief_enforcer: 'Plants its feet, picks you, and comes straight down the line. Step off the line.',
+      rumblegut_bouncer: 'A Rumblegut someone put shoulder spikes on, which was a mistake. It crouches, wobbles, and bounces the whole of itself at you. Watch for the wobble.',
       bone_sentinel: 'A knight once, and still standing a knight\'s watch, over the wrong side.',
       karrash_battlelord: 'Charges once it has chosen you: everything the Karrash believe about glory, in one straight line. Be somewhere else when it arrives.',
       deathbound_vanguard: 'The front rank of the Pale. It does not break, because there is nothing left in it to break.',

@@ -18,7 +18,7 @@
     twinglaive: { art: 'twinglaive', tint: [0.55, 1.0, 0.25], size: 30, noMagnet: true },
     // One of the Lost Calves - see src/game/trials.js. It wanders.
     calf: { art: 'calf', tint: [0.95, 0.88, 0.74], size: 40, noMagnet: true },
-    merchant: { art: 'beans', tint: [0.90, 0.52, 0.22], size: 56, noMagnet: true },
+    merchant: { art: 'beans', tint: [0.90, 0.52, 0.22], size: 76, noMagnet: true },
     // A watcher, met on the field - see src/game/encounters.js. Tinted per person.
     watcher: { art: 'rune', tint: [1.0, 0.85, 0.5], size: 46, noMagnet: true },
   };
