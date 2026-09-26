@@ -4224,124 +4224,280 @@
 
     bearform(g, s, p) {
       /* THE BEAR, as a survivor wears it: reared up on its hind legs, one
-         forepaw raised to swing, head low and forward. Upright on purpose -
-         every creature that comes at you walks on four, and the one on your
-         side should not be mistaken for any of them. Faces left like every
-         creature; the renderer turns it with the survivor. */
+         forepaw raised to swing, head low and forward and roaring. Upright on
+         purpose - every creature that comes at you walks on four, and the one
+         on your side should not be mistaken for any of them. A grizzly's
+         shoulder hump and a shaggy fringe to the coat; a pale muzzle round an
+         open mouth; heavy paws, the raised one showing its pads; a necklace
+         of teeth and beads round a carved totem; and the Old Shapes' claw
+         marks glowing green in the fur of the shoulder, which is what says
+         this bear is somebody. Faces left like every creature; the renderer
+         turns it with the survivor. */
       const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
       const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
       const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
-      const CLAW = '#efe8d8', CLAW_LINE = '#5e5648';
-      const claws = (x, y, dir, n) => {
+      const pale = { hi: '#f6e6cc', mid: '#dcc0a0', lo: '#a88866', dark: '#6e5438', line: p.line, glow: '#fff' };
+      const CLAW = '#f2ecdc', CLAW_LINE = '#4e463a';
+      const claws = (x, y, dir, n, len, spread) => {
         for (let i = 0; i < n; i++) {
-          const ox = x + (i - (n - 1) / 2) * 2.4;
-          poly(g, P([[ox - 1, y], [ox + dir * 1.8, y + 4.2], [ox + 1, y + 0.4]]), CLAW, CLAW_LINE, u * 0.4);
+          const ox = x + (i - (n - 1) / 2) * (spread || 2.4);
+          const L = len || 4.6;
+          const tip = [ox + dir * L * 0.55, y + L];
+          g.fillStyle = CLAW; g.strokeStyle = CLAW_LINE; g.lineWidth = u * 0.4;
+          g.beginPath(); g.moveTo(X(ox - 1.1), Y(y));
+          g.quadraticCurveTo(X(ox - 1 + dir * L * 0.2), Y(y + L * 0.7), X(tip[0]), Y(tip[1]));
+          g.quadraticCurveTo(X(ox + 0.6 + dir * L * 0.1), Y(y + L * 0.5), X(ox + 1.1), Y(y + 0.2));
+          g.closePath(); g.fill(); g.stroke();
         }
       };
+      const fringe = (pts, pal, len, n) => {
+        // a shaggy edge: short tufts standing off a line of the coat
+        g.fillStyle = pal.lo; g.strokeStyle = pal.line; g.lineWidth = u * 0.4;
+        for (let k = 0; k < pts.length - 1; k++) {
+          const [x0, y0] = pts[k], [x1, y1] = pts[k + 1];
+          const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy) || 1, nx = dy / d, ny = -dx / d;
+          for (let i = 0; i < n; i++) {
+            const t = (i + 0.5) / n, x = x0 + dx * t, y = y0 + dy * t, l = len * (0.7 + 0.5 * Math.abs(Math.sin((k + t) * 7.3)));
+            g.beginPath();
+            g.moveTo(X(x - dx / d * 1.4), Y(y - dy / d * 1.4));
+            g.lineTo(X(x + nx * l + dx / d * 0.8), Y(y + ny * l + dy / d * 0.8));
+            g.lineTo(X(x + dx / d * 1.4), Y(y + dy / d * 1.4));
+            g.closePath(); g.fill();
+          }
+        }
+      };
+
       // far arm and far leg, in the shade of the body
-      limb(g, P([[60, 36], [68, 48], [66, 58]]), [10, 8, 7].map(X), far);
-      limb(g, P([[58, 68], [62, 78], [60, 87]]), [13, 10, 8].map(X), far);
-      shaded(g, X(58), Y(88.4), X(6), X(2.4), far);
-      // the body: a heavy pear, shoulders hunched high
-      const body = mass(g, P([[34, 42], [38, 30], [50, 24], [63, 28], [70, 42], [71, 58], [66, 72],
-        [54, 80], [42, 77], [34, 66], [31, 54]]), p);
+      limb(g, P([[60, 36], [69, 47], [68, 58]]), [11, 9, 8].map(X), far);
+      shaded(g, X(68), Y(59.6), X(4.6), X(3.6), far);
+      claws(68, 61, -0.3, 3, 3.6, 2.2);
+      limb(g, P([[58, 68], [62, 78], [60, 87]]), [14, 11, 9].map(X), far);
+      shaded(g, X(58), Y(88.4), X(6.4), X(2.6), far);
+      claws(53.4, 87.4, -1, 3, 3.4, 2.2);
+
+      // the body: a heavy pear with a grizzly's hump over the shoulders
+      const body = mass(g, P([[34, 42], [37, 30], [46, 21], [58, 20], [67, 28], [71, 42], [72, 58], [67, 72],
+        [55, 81], [42, 78], [34, 67], [31, 54]]), p);
       g.save(); body(); g.clip();
-      pelt(g, p, X(52), Y(52), X(22), X(30), 0.1, 7, 0.4, 0.46);
-      g.fillStyle = 'rgba(255,240,214,.14)';
-      g.beginPath(); g.ellipse(X(44), Y(60), X(9), X(14), 0.2, 0, WS.TAU); g.fill();
-      g.restore();
-      // near leg: a thick haunch and a flat, clawed foot
-      limb(g, P([[46, 68], [44, 79], [44, 87]]), [16, 12, 9].map(X), p);
-      shaded(g, X(42), Y(88.6), X(7), X(2.6), p);
-      claws(37, 87.6, -1, 3);
-      // the head, low and forward, a long snout
-      const head = mass(g, P([[26, 24], [30, 14], [40, 10], [50, 13], [55, 22], [51, 31], [40, 34], [30, 32]]), p);
-      g.save(); head(); g.clip(); pelt(g, p, X(41), Y(22), X(15), X(12), 0, 4, 0.3, 0.3); g.restore();
-      for (const [x, y] of [[33, 12], [48, 11]]) {
-        shaded(g, X(x), Y(y), X(5), X(4.6), p);
-        g.fillStyle = 'rgba(40,20,14,.55)';
-        g.beginPath(); g.ellipse(X(x), Y(y + 0.6), X(2.4), X(2.2), 0, 0, WS.TAU); g.fill();
+      pelt(g, p, X(52), Y(52), X(22), X(30), 0.1, 8, 0.4, 0.5);
+      pelt(g, p, X(56), Y(34), X(14), X(10), -0.2, 5, -0.3, 0.4);
+      // the pale chest blaze
+      shaded(g, X(44), Y(60), X(9), X(15), pale, 0.2);
+      pelt(g, pale, X(44), Y(60), X(8), X(14), 0.2, 3, 0.2, 0.3);
+      // the Old Shapes' claw marks, glowing in the fur of the shoulder
+      g.save();
+      g.shadowColor = '#9cf06a'; g.shadowBlur = X(3);
+      g.strokeStyle = 'rgba(170,250,120,.85)'; g.lineWidth = u * 1.1; g.lineCap = 'round';
+      for (let k = 0; k < 3; k++) {
+        g.beginPath(); g.moveTo(X(57 + k * 3), Y(27 + k * 0.6)); g.quadraticCurveTo(X(59.6 + k * 3), Y(33), X(58 + k * 3), Y(39)); g.stroke();
       }
-      const muzzle = { hi: '#f2dcc0', mid: p.glow, lo: p.hi, dark: p.mid, line: p.line, glow: '#fff' };
-      mass(g, P([[28, 21], [17, 23], [15, 28], [19, 31], [29, 31]]), muzzle);
-      g.fillStyle = '#16100c';
-      g.beginPath(); g.ellipse(X(16.4), Y(24.6), X(2.2), X(1.7), 0, 0, WS.TAU); g.fill();
-      g.strokeStyle = '#2a1812'; g.lineWidth = u * 0.8; g.lineCap = 'round';
-      g.beginPath(); g.moveTo(X(17), Y(29.4)); g.quadraticCurveTo(X(22), Y(31.4), X(28), Y(30)); g.stroke();
-      for (let i = 0; i < 3; i++) poly(g, P([[19 + i * 2.6, 29.8], [19.6 + i * 2.6, 32.2], [20.3 + i * 2.6, 29.9]]), '#fffaf0', '#8a847a', u * 0.3);
-      eyes(g, X(34), Y(19.6), X(0.01), X(1.6), '#ffd070');
-      g.strokeStyle = p.line; g.lineWidth = u;
-      g.beginPath(); g.moveTo(X(30), Y(17.6)); g.lineTo(X(37), Y(17)); g.stroke();
-      // the near arm, raised to swing, claws out
-      limb(g, P([[44, 38], [33, 44], [23, 44]]), [12, 9, 8].map(X), p);
-      shaded(g, X(21), Y(44), X(5.4), X(4.6), p, -0.2);
-      claws(17, 46, -1, 4);
+      g.restore();
+      g.restore();
+      fringe([[38, 30], [46, 21], [58, 20], [67, 28], [71, 40]], far, 2.2, 3);
+      fringe([[71, 44], [72, 58], [68, 70]], far, 1.8, 3);
+
+      // near leg: a thick haunch and a flat, clawed foot
+      limb(g, P([[46, 68], [44, 79], [44, 87]]), [17, 13, 10].map(X), p);
+      g.save();
+      g.beginPath(); g.ellipse(X(45.6), Y(74), X(8), X(9), 0, 0, WS.TAU); g.clip();
+      pelt(g, p, X(45.6), Y(74), X(8), X(9), 0, 3, 0.2, 0.4);
+      g.restore();
+      shaded(g, X(41.6), Y(88.6), X(7.6), X(2.8), p);
+      claws(36, 87.4, -1, 4, 3.8, 2.3);
+
+      // the necklace: a cord, teeth and beads, a carved totem at the throat
+      g.strokeStyle = '#3a2a1a'; g.lineWidth = u * 0.8;
+      g.beginPath(); g.moveTo(X(34), Y(36)); g.quadraticCurveTo(X(42), Y(44), X(52), Y(38)); g.stroke();
+      for (let k = 0; k < 7; k++) {
+        const t = k / 6, x = 34 + t * 18, y = 36 + Math.sin(t * WS.PI) * 6.6 - t * 2;
+        if (k % 2) shaded(g, X(x), Y(y + 0.6), X(1.3), X(1.3), { hi: '#9ae0c0', mid: '#4aa080', lo: '#2a6048', dark: '#1a3a2a', line: '#10241a', glow: '#fff' });
+        else poly(g, P([[x - 0.9, y], [x + 0.9, y], [x + 0.2, y + 3.4]]), '#f2ecdc', '#6a6254', u * 0.35);
+      }
+      poly(g, P([[41.6, 42], [45.4, 42], [45.8, 47], [43.6, 49], [41.2, 47]]), '#a8784a', '#3a2412', u * 0.5);
+      g.strokeStyle = '#3a2412'; g.lineWidth = u * 0.5;
+      g.beginPath(); g.moveTo(X(42.4), Y(44)); g.lineTo(X(44.8), Y(44)); g.moveTo(X(43.6), Y(45)); g.lineTo(X(43.6), Y(47.4)); g.stroke();
+
+      // the head: low and forward, a heavy brow, round ears
+      const head = mass(g, P([[26, 24], [29, 14], [39, 9], [50, 12], [55, 21], [52, 31], [41, 35], [30, 33]]), p);
+      g.save(); head(); g.clip(); pelt(g, p, X(42), Y(21), X(15), X(12), 0, 5, 0.3, 0.34); g.restore();
+      for (const [x, y] of [[33, 11.6], [48, 10.6]]) {
+        shaded(g, X(x), Y(y), X(5.2), X(4.8), p);
+        g.fillStyle = 'rgba(60,30,20,.6)';
+        g.beginPath(); g.ellipse(X(x), Y(y + 0.8), X(2.6), X(2.4), 0, 0, WS.TAU); g.fill();
+      }
+      fringe([[52, 30], [46, 34], [38, 35.6]], p, 2.4, 3);
+      // the muzzle, the jaw dropped open in a roar
+      const muzzle = pale;
+      mass(g, P([[29, 19], [18, 20.6], [14, 25], [17, 28], [29, 28]]), muzzle);
+      // the open mouth: the lower jaw, the dark inside, teeth and a tongue
+      poly(g, P([[16.4, 28], [29, 28.4], [28, 35], [20, 35.6], [16, 32]]), '#3a1614', '#140606', u * 0.6);
+      poly(g, P([[19.6, 32.4], [26.4, 32], [25.6, 34.6], [20.6, 34.8]]), '#d86a6e', '#6a2020', u * 0.4);
+      for (const [tx, dn] of [[17.6, 1], [20.2, 1], [22.8, 1], [25.4, 1], [19, -1], [24, -1]]) {
+        const ty = dn > 0 ? 28.2 : 35;
+        poly(g, P([[tx - 0.9, ty], [tx + 0.9, ty], [tx, ty + dn * 2.2]]), '#fffaf0', '#8a847a', u * 0.3);
+      }
+      mass(g, P([[16, 32], [28.6, 33.6], [28, 37.4], [19, 37.6], [15.6, 35]]), p);   // the lower jaw
+      // the nose, wet
+      g.fillStyle = '#140c0a';
+      g.beginPath(); g.ellipse(X(15.4), Y(22.4), X(2.6), X(1.9), -0.2, 0, WS.TAU); g.fill();
+      g.fillStyle = 'rgba(255,255,255,.55)';
+      g.beginPath(); g.ellipse(X(14.8), Y(21.6), X(0.9), X(0.5), -0.2, 0, WS.TAU); g.fill();
+      // the eye under a heavy brow
+      eyes(g, X(34), Y(19.2), X(0.01), X(1.7), '#ffd070');
+      g.fillStyle = p.dark;
+      poly(g, P([[29.4, 16.4], [38.6, 15.2], [37.6, 17.4], [30.4, 18]]), p.dark, p.line, u * 0.4);
+
+      // the near arm, raised to swing, the paw open, pads and claws out
+      limb(g, P([[44, 38], [33, 43], [23, 42]]), [13, 10, 9].map(X), p);
+      fringe([[42, 46], [33, 48.4], [25, 46.6]], p, 2.4, 3);
+      shaded(g, X(20.4), Y(42), X(6.4), X(5.4), p, -0.2);
+      g.fillStyle = '#3a2a24';
+      g.beginPath(); g.ellipse(X(18.6), Y(43.4), X(3), X(2.4), -0.2, 0, WS.TAU); g.fill();
+      for (const [px, py] of [[15.4, 40], [17.4, 38.2], [20, 37.6]]) { g.beginPath(); g.arc(X(px), Y(py), X(1.1), 0, WS.TAU); g.fill(); }
+      claws(15.6, 44, -1, 4, 5.4, 2.6);
     },
 
     owlbearform(g, s, p) {
-      /* THE OWLBEAR: the bear's weight with an owl's face on it - a round
-         feathered face-disc, great eyes, a hooked beak and two ear-tufts -
-         and a chest of scalloped feathers where the bear has fur. Its forelimbs
-         end in talons and trail a fringe of pinions, so when it lifts them
-         it looks half about to fly and half about to tear something open. */
+      /* THE OWLBEAR: the bear's weight with an owl's head on it. The face is
+         a proper owl's - a disc ringed by a ruff of short feathers, great
+         eyes with gold irises, an angry V of brow feathers, a hooked beak -
+         and two tall layered ear-tufts above it. A mantle of scalloped
+         feathers over the shoulders and chest where the bear has fur, a
+         folded wing at the back, forearms feathered down to a bear's paw and
+         claws, and a bird's talons for feet. It calls down stars, so a few
+         of them are caught in its feathers. Faces left. */
       const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
       const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
       const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+      const cream = { hi: '#fffaf0', mid: '#ece2d0', lo: '#bcae98', dark: '#857a68', line: p.line, glow: '#fff' };
       const TALON = '#2a2430', TALON_LINE = '#0c0a10';
-      const pinions = (pts, pal) => {
-        for (let i = 0; i < pts.length; i++) {
-          const [x, y, len, a] = pts[i];
-          const nx = Math.cos(a), ny = Math.sin(a);
-          poly(g, P([[x - ny * 1.8, y + nx * 1.8], [x + nx * len, y + ny * len], [x + ny * 1.8, y - nx * 1.8]]),
-            i % 2 ? pal.lo : pal.mid, pal.line, u * 0.5);
-        }
+      const feather = (x, y, len, w, a, pal) => {
+        g.save(); g.translate(X(x), Y(y)); g.rotate(a);
+        g.beginPath();
+        g.moveTo(0, -X(w)); g.quadraticCurveTo(X(len * 0.6), -X(w * 1.1), X(len), 0);
+        g.quadraticCurveTo(X(len * 0.6), X(w * 1.1), 0, X(w)); g.closePath();
+        const gr = g.createLinearGradient(0, 0, X(len), 0);
+        gr.addColorStop(0, pal.lo); gr.addColorStop(0.55, pal.mid); gr.addColorStop(1, pal.hi);
+        g.fillStyle = gr; g.fill();
+        g.strokeStyle = pal.line; g.lineWidth = u * 0.4; g.stroke();
+        g.strokeStyle = pal.dark; g.globalAlpha = 0.7; g.lineWidth = u * 0.35;
+        g.beginPath(); g.moveTo(0, 0); g.lineTo(X(len * 0.92), 0); g.stroke();
+        g.restore();
       };
-      // far wing-arm and leg
-      pinions([[64, 48, 12, 1.2], [66, 52, 12, 1.35], [66, 44, 10, 1.05]], far);
+      const star = (x, y, r) => {
+        g.save(); g.shadowColor = '#c8b8ff'; g.shadowBlur = X(r * 3);
+        g.fillStyle = '#f4f0ff';
+        g.beginPath();
+        for (let k = 0; k < 8; k++) {
+          const rr = k % 2 ? r * 0.35 : r, a = k * WS.PI / 4;
+          g.lineTo(X(x + Math.cos(a) * rr), Y(y + Math.sin(a) * rr));
+        }
+        g.closePath(); g.fill(); g.restore();
+      };
+
+      // the folded wing at the back: long primaries fanned down
+      for (let k = 0; k < 5; k++) feather(64, 32 + k * 3.2, 22 - k * 1.6, 2.2, 1.2 + k * 0.12, far);
+      star(78, 50, 1.2);
+      // far arm and leg
       limb(g, P([[60, 36], [68, 46], [66, 56]]), [10, 8, 7].map(X), far);
-      limb(g, P([[58, 68], [62, 78], [60, 87]]), [12, 9, 7].map(X), far);
-      poly(g, P([[55, 86], [64, 86], [65, 89.6], [53, 89.8]]), TALON, TALON_LINE, u * 0.5);
-      const body = mass(g, P([[34, 42], [38, 30], [50, 25], [63, 29], [69, 42], [70, 58], [65, 72],
+      limb(g, P([[58, 68], [62, 78], [60, 86]]), [12, 9, 6].map(X), far);
+      // far talons: three toes forward, one back
+      for (const [dx, a] of [[-5, 0.3], [-2, 0.1], [1.4, -0.1]]) {
+        g.save(); g.translate(X(60 + dx * 0.3), Y(86.4)); g.rotate(WS.PI - 0.2 + a);
+        poly(g, [[0, -X(1)], [X(5), -X(0.6)], [X(6.6), X(1.4)], [X(4.6), X(0.8)], [0, X(1)]], TALON, TALON_LINE, u * 0.4);
+        g.restore();
+      }
+
+      const body = mass(g, P([[34, 42], [37, 30], [48, 24], [62, 28], [69, 42], [70, 58], [65, 72],
         [54, 80], [42, 77], [34, 66], [31, 54]]), p);
-      // a chest of scalloped feathers, pale, over the fur of the flanks
       g.save(); body(); g.clip();
-      pelt(g, p, X(56), Y(56), X(18), X(28), 0.1, 5, 0.4, 0.34);
-      g.fillStyle = 'rgba(255,250,240,.2)';
-      g.beginPath(); g.ellipse(X(44), Y(56), X(11), X(19), 0.15, 0, WS.TAU); g.fill();
-      g.strokeStyle = p.lo; g.lineWidth = u * 0.9; g.globalAlpha = 0.7;
-      for (let r = 0; r < 6; r++) {
-        for (let i = 0; i < 3; i++) {
-          g.beginPath(); g.arc(X(37 + i * 5 + (r % 2) * 2.5), Y(40 + r * 5.6), X(2.8), 0.2, WS.PI - 0.2); g.stroke();
+      pelt(g, p, X(58), Y(58), X(16), X(26), 0.1, 5, 0.4, 0.4);
+      // the feathered front: scalloped cream feathers in overlapping rows
+      for (let r = 0; r < 9; r++) {
+        for (let i = 0; i < 4; i++) {
+          const x = 34 + i * 5.2 + (r % 2) * 2.6, y = 34 + r * 4.8;
+          if (x > 56 - r * 0.4) continue;
+          const pal = r < 2 ? p : cream;
+          g.beginPath(); g.moveTo(X(x - 2.8), Y(y));
+          g.quadraticCurveTo(X(x - 2.6), Y(y + 4.2), X(x), Y(y + 4.8));
+          g.quadraticCurveTo(X(x + 2.6), Y(y + 4.2), X(x + 2.8), Y(y));
+          g.closePath();
+          const gr = g.createLinearGradient(0, Y(y), 0, Y(y + 4.8));
+          gr.addColorStop(0, pal.mid); gr.addColorStop(1, pal.lo);
+          g.fillStyle = gr; g.fill();
+          g.strokeStyle = pal.dark; g.lineWidth = u * 0.45; g.globalAlpha = 0.7; g.stroke(); g.globalAlpha = 1;
+          if ((r + i) % 3 === 0) { g.fillStyle = 'rgba(80,60,40,.35)'; g.beginPath(); g.ellipse(X(x), Y(y + 2.8), X(0.9), X(0.7), 0, 0, WS.TAU); g.fill(); }
         }
       }
       g.restore();
-      limb(g, P([[46, 68], [44, 79], [44, 87]]), [15, 11, 8].map(X), p);
-      poly(g, P([[36, 86], [47, 86], [48, 89.8], [34, 90]]), TALON, TALON_LINE, u * 0.5);
-      for (let i = 0; i < 3; i++) poly(g, P([[35.4 + i * 3, 89], [33.4 + i * 3, 91.6], [36.6 + i * 3, 90.2]]), TALON, TALON_LINE, u * 0.3);
-      // the head: an owl's disc on a bear's neck
-      const head = mass(g, P([[27, 22], [30, 12], [40, 8], [51, 11], [55, 20], [52, 30], [41, 34], [30, 31]]), p);
-      // ear-tufts, swept back
-      poly(g, P([[31, 13], [27, 1], [37, 10]]), p.lo, p.line, u * 0.6);
-      poly(g, P([[44, 9], [47, -0.5], [51, 11]]), p.mid, p.line, u * 0.6);
-      const disc = { hi: '#faf4ea', mid: p.glow, lo: p.hi, dark: p.mid, line: p.line, glow: '#fff' };
-      const face = mass(g, P([[28, 20], [32, 13], [39, 12], [44, 16], [44, 25], [39, 31], [31, 30], [27, 26]]), disc);
-      g.save(); face(); g.clip();
-      g.strokeStyle = p.mid; g.globalAlpha = 0.45; g.lineWidth = u * 0.6;
-      for (let r = 4; r <= 9; r += 2.5) { g.beginPath(); g.arc(X(36), Y(21), X(r), 0, WS.TAU); g.stroke(); }
-      g.restore();
-      // great eyes, the owl's whole face, and the beak between them
-      for (const x of [32.4, 39.6]) {
-        g.fillStyle = '#1a1206';
-        g.beginPath(); g.arc(X(x), Y(19.6), X(3.2), 0, WS.TAU); g.fill();
+      // the mantle: a cape of feathers laid down the back of the shoulder
+      for (let k = 0; k < 5; k++) feather(52 + k * 3.2, 27 + k * 1.8, 11 - k * 0.6, 2.6, 1.3 + k * 0.06, k % 2 ? far : p);
+      star(62, 44, 1.1); star(56, 36, 0.8);
+
+      // near leg, and a bird's foot on a bear's leg
+      limb(g, P([[46, 68], [44, 79], [44, 86]]), [15, 11, 7].map(X), p);
+      for (const [dx, a] of [[-6, 0.35], [-3, 0.12], [0, -0.1]]) {
+        g.save(); g.translate(X(44 + dx * 0.3), Y(86.8)); g.rotate(WS.PI - 0.2 + a);
+        poly(g, [[0, -X(1.2)], [X(6), -X(0.8)], [X(8), X(1.8)], [X(5.6), X(1)], [0, X(1.2)]], TALON, TALON_LINE, u * 0.45);
+        g.restore();
       }
-      eyes(g, X(36), Y(19.6), X(3.6), X(2.2), '#ffb02e');
-      poly(g, P([[34.6, 22], [37.4, 22], [36.6, 28], [35.2, 27.2]]), '#e8c070', '#5a3c10', u * 0.5);
-      // the near wing-arm, raised, talons and a fringe of pinions
-      pinions([[34, 42, 13, 1.9], [30, 44, 12, 2.05], [26, 42, 11, 2.2], [23, 38, 10, 2.4]], p);
-      limb(g, P([[44, 36], [32, 38], [22, 30]]), [12, 9, 7].map(X), p);
-      for (let i = 0; i < 3; i++) {
-        const ox = 20 + i * 2.4;
-        poly(g, P([[ox - 1, 28], [ox - 3, 23], [ox + 1, 27.4]]), TALON, TALON_LINE, u * 0.4);
+      poly(g, P([[46, 86], [51, 85.4], [52, 87.4]]), TALON, TALON_LINE, u * 0.4);
+
+      // the ear-tufts, tall and layered, behind the head
+      for (const [x, y, a, pal] of [[31, 12, -2.0, p], [34, 11, -1.8, far], [45, 9, -1.35, p], [48, 10, -1.2, far]]) {
+        feather(x, y, 11, 2.2, a, pal);
+      }
+      // the head
+      const head = mass(g, P([[27, 22], [30, 12], [40, 8], [51, 11], [55, 20], [52, 30], [41, 34], [30, 31]]), p);
+      g.save(); head(); g.clip(); pelt(g, p, X(46), Y(22), X(10), X(10), 0, 3, 0.3, 0.3); g.restore();
+      // the face disc, and the ruff of short feathers round it
+      g.save();
+      g.fillStyle = p.lo;
+      for (let k = 0; k < 18; k++) {
+        const a = k / 18 * WS.TAU, cx = 36, cy = 21;
+        g.beginPath();
+        g.moveTo(X(cx + Math.cos(a - 0.18) * 9.4), Y(cy + Math.sin(a - 0.18) * 10));
+        g.lineTo(X(cx + Math.cos(a) * 11.4), Y(cy + Math.sin(a) * 12));
+        g.lineTo(X(cx + Math.cos(a + 0.18) * 9.4), Y(cy + Math.sin(a + 0.18) * 10));
+        g.closePath(); g.fill();
+      }
+      g.restore();
+      const disc = mass(g, P([[27, 19], [30, 12.4], [36, 11], [42, 12.4], [45, 19], [43.6, 26.6], [36, 31], [28.4, 26.6]]), cream);
+      g.save(); disc(); g.clip();
+      g.strokeStyle = cream.dark; g.globalAlpha = 0.4; g.lineWidth = u * 0.5;
+      for (let k = 0; k < 14; k++) {
+        const a = k / 14 * WS.TAU;
+        g.beginPath(); g.moveTo(X(36 + Math.cos(a) * 3), Y(20 + Math.sin(a) * 3)); g.lineTo(X(36 + Math.cos(a) * 11), Y(20 + Math.sin(a) * 11)); g.stroke();
+      }
+      g.restore();
+      // the great eyes: gold irises, black pupils, a catchlight each
+      for (const x of [32.2, 39.8]) {
+        g.fillStyle = '#1a1206';
+        g.beginPath(); g.arc(X(x), Y(19.4), X(3.4), 0, WS.TAU); g.fill();
+        const iris = g.createRadialGradient(X(x - 0.6), Y(18.8), X(0.3), X(x), Y(19.4), X(2.8));
+        iris.addColorStop(0, '#fff2b0'); iris.addColorStop(0.5, '#ffb02e'); iris.addColorStop(1, '#b0600c');
+        g.save(); g.shadowColor = '#ffb02e'; g.shadowBlur = X(2.4);
+        g.fillStyle = iris; g.beginPath(); g.arc(X(x), Y(19.4), X(2.7), 0, WS.TAU); g.fill();
+        g.restore();
+        g.fillStyle = '#0a0604'; g.beginPath(); g.arc(X(x), Y(19.6), X(1.4), 0, WS.TAU); g.fill();
+        g.fillStyle = '#fff'; g.beginPath(); g.arc(X(x - 0.9), Y(18.4), X(0.6), 0, WS.TAU); g.fill();
+      }
+      // the angry V of brow feathers
+      poly(g, P([[28.6, 14.6], [35.8, 17.2], [36, 15.4], [30, 13]]), p.mid, p.line, u * 0.4);
+      poly(g, P([[43.4, 14.6], [36.2, 17.2], [36, 15.4], [42, 13]]), p.mid, p.line, u * 0.4);
+      // the hooked beak, with a shine
+      poly(g, P([[34.4, 21.4], [37.6, 21.4], [37.4, 25], [35.8, 28.4], [34.6, 25.4]]), '#e8c070', '#5a3c10', u * 0.5);
+      g.strokeStyle = 'rgba(255,250,220,.7)'; g.lineWidth = u * 0.5;
+      g.beginPath(); g.moveTo(X(35.4), Y(22.2)); g.lineTo(X(35.4), Y(25)); g.stroke();
+
+      // the near wing-arm, raised: feathered forearm, a bear's paw and claws
+      limb(g, P([[44, 36], [32, 38], [22, 31]]), [12, 9, 7.6].map(X), p);
+      for (let k = 0; k < 5; k++) feather(40 - k * 4, 38 + k * 0.2, 12 - k * 0.6, 2.2, 1.75 + k * 0.1, k % 2 ? p : far);
+      star(30, 48, 1.0);
+      shaded(g, X(20.6), Y(29.6), X(5), X(4.4), p, -0.4);
+      for (let i = 0; i < 4; i++) {
+        const ox = 16.6 + i * 2.2;
+        poly(g, P([[ox - 1, 27.4], [ox - 3.4, 22.6], [ox + 1, 26.6]]), TALON, TALON_LINE, u * 0.4);
       }
     },
 
