@@ -12,9 +12,10 @@
  *   node tools/steam-assets.js --only art        capsules and library art
  *   node tools/steam-assets.js --only shots      screenshots
  *   node tools/steam-assets.js --only achievements
- *   node tools/steam-assets.js --only trailer    a silent 1080p trailer (MP4)
+ *   node tools/steam-assets.js --only trailer    the 1080p trailer, scored, with the game's sound
  *
- * Writes steam/store, steam/library, steam/screenshots, steam/achievements
+ * Writes steam/store, steam/library, steam/screenshots, steam/achievements,
+ * steam/wallpapers
  * and (the trailer) steam/trailer, which is not committed. The trailer needs
  * ffmpeg: on PATH, in FFMPEG, or from the ffmpeg-static package.
  *
@@ -93,6 +94,22 @@ const CAST7 = [
   { id: 'shaman', x: 0.13, y: 0.92, k: 0.92 },
   { id: 'monk', x: 0.87, y: 0.92, k: 0.92 },
 ];
+/* The whole cast at 16:9: six at the back, six at the front with the fire
+   between them. The trailer's cards use the same group. */
+const CAST12 = [
+  { id: 'mage', x: 0.155, y: 0.765, k: 0.72 }, { id: 'warlock', x: 0.27, y: 0.76, k: 0.72 },
+  { id: 'warrior', x: 0.43, y: 0.75, k: 0.74 }, { id: 'paladin', x: 0.57, y: 0.75, k: 0.74 },
+  { id: 'graveblade', x: 0.73, y: 0.76, k: 0.72 }, { id: 'ruinseeker', x: 0.845, y: 0.765, k: 0.72 },
+  { id: 'shaman', x: 0.1, y: 0.92, k: 0.86 }, { id: 'priest', x: 0.21, y: 0.9, k: 0.86 },
+  { id: 'hunter', x: 0.33, y: 0.885, k: 0.86 }, { id: 'rogue', x: 0.67, y: 0.885, k: 0.86 },
+  { id: 'monk', x: 0.79, y: 0.9, k: 0.86 }, { id: 'druid', x: 0.9, y: 0.92, k: 0.86 },
+];
+/* The whole cast in one shallow arc, for the very wide library hero. */
+const ARC12 = ['druid', 'mage', 'shaman', 'priest', 'hunter', 'warrior', 'rogue', 'ruinseeker',
+  'warlock', 'monk', 'graveblade', 'paladin'].map((id, i) => {
+  const d = Math.abs(i - 5.5) / 5.5;
+  return { id, x: 0.6 + (i - 5.5) * 0.058, y: 0.79 + 0.15 * Math.pow(d, 1.4), k: 0.78 };
+});
 const HORDE = (spread) => [
   { art: 'wolf', x: 0.04 * spread, y: 0.76, k: 1.1 },
   { art: 'skeleton', x: 0.09 * spread, y: 0.67, k: 0.8 },
@@ -138,13 +155,7 @@ const ART = [
     logo: { x: 0.5, y: 0.06, size: 0.12, align: 'center', stack: true } },
   { file: 'library/library_hero.png', w: 3840, h: 1240, note: 'Library hero (no text: Steam lays the logo over it)',
     o: { horizon: 0.5, moon: { x: 0.12, y: 0.2, k: 1 }, fire: { x: 0.6, y: 0.95, k: 1.3 },
-      cast: [
-        { id: 'warrior', x: 0.6, y: 0.8, k: 0.8 }, { id: 'hunter', x: 0.53, y: 0.82, k: 0.8 },
-        { id: 'rogue', x: 0.67, y: 0.82, k: 0.8 }, { id: 'priest', x: 0.465, y: 0.86, k: 0.8 },
-        { id: 'ruinseeker', x: 0.735, y: 0.86, k: 0.8 }, { id: 'shaman', x: 0.4, y: 0.91, k: 0.8 },
-        { id: 'monk', x: 0.8, y: 0.91, k: 0.8 }, { id: 'druid', x: 0.335, y: 0.95, k: 0.8 },
-        { id: 'paladin', x: 0.865, y: 0.95, k: 0.8 },
-      ],
+      cast: ARC12,
       horde: [
         { art: 'wolf', x: 0.24, y: 0.78, k: 1.1 }, { art: 'skeleton', x: 0.2, y: 0.66, k: 0.8 },
         { art: 'ghoul', x: 0.15, y: 0.72, k: 1 }, { art: 'brute', x: 0.08, y: 0.64, k: 1.1 },
@@ -152,6 +163,12 @@ const ART = [
         { art: 'moonwretch', x: 0.95, y: 0.74, k: 1.1, flip: true }, { art: 'geist', x: 0.91, y: 0.64, k: 0.9, flip: true },
         { art: 'abomination', x: 0.99, y: 0.66, k: 1.2, flip: true },
       ] } },
+  // Desktop wallpapers: the whole cast and the name, at the common sizes.
+  ...[[3840, 2160], [2560, 1440], [1920, 1080]].map(([w, h]) => ({
+    file: `wallpapers/the-ember-watch-${w}x${h}.jpg`, w, h, note: 'Wallpaper',
+    o: { horizon: 0.56, moon: { x: 0.86, y: 0.14 }, fire: { x: 0.5, y: 0.97, k: 1.5 },
+      cast: CAST12, horde: HORDE(1) },
+    logo: { x: 0.5, y: 0.05, size: 0.12, align: 'center', sub: true } })),
 ];
 
 async function art(browser) {
@@ -163,7 +180,7 @@ async function art(browser) {
       const g = c.getContext('2d');
       WS.Vignette.keyArt(g, a.w, a.h, a.o);
       if (a.logo) WS.Vignette.logo(g, a.logo.x * a.w, a.logo.y * a.h, a.logo.size * a.h, a.logo);
-      return c.toDataURL('image/png');
+      return a.file.endsWith('.jpg') ? c.toDataURL('image/jpeg', 0.95) : c.toDataURL('image/png');
     }, a);
     write(path.join(OUT, a.file), url);
     made.push(`${a.file} (${a.w}x${a.h}) ${a.note}`);
@@ -438,7 +455,7 @@ function ffmpegPath() {
     const ff = ffmpegPath();
     if (!ff) { console.log('trailer: no ffmpeg (set FFMPEG, put it on PATH, or npm i ffmpeg-static)'); process.exitCode = 1; }
     else {
-      const r = await trailer.make(browser, { openGame, stageFns, ffmpeg: ff, spawn, out: path.join(OUT, 'trailer') });
+      const r = await trailer.make(browser, { openGame, stageFns, cast: CAST12, ffmpeg: ff, spawn, out: path.join(OUT, 'trailer') });
       report.push(...r.made); errors.push(...r.errors);
     }
   }

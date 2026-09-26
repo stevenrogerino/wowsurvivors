@@ -154,16 +154,33 @@ any time with `node tools/steam-assets.js` (Chromium required):
 | Screenshots (8) | `steam/screenshots/*.jpg` | 1920x1080 |
 | Trailer | `steam/trailer/the-ember-watch-trailer.mp4` | 1920x1080, H.264 |
 
-The trailer is generated separately, since it takes a few minutes and is not
-committed: `node tools/steam-assets.js --only trailer`. It needs ffmpeg on
-the PATH (or `FFMPEG=/path/to/ffmpeg`, or `npm i ffmpeg-static`).
+Wallpapers of the whole cast (3840x2160, 2560x1440, 1920x1080) are in
+`steam/wallpapers/`, for the store page's description, social posts, or a
+desktop.
 
-**The trailer is silent.** Headless Chromium cannot record sound. Record a
-minute of the game's music and effects on your own machine (OBS, or any
-screen recorder with desktop audio), lay it under the video in any editor,
-and export H.264 MP4 at 1920x1080. The captions mark the beats to cut on.
-Steam also shows the first seconds of the trailer on hover in some places,
-so keep the opening (the fire and the title) as it is.
+The trailer is generated separately, since it takes about ten minutes and is
+too large to commit: `node tools/steam-assets.js --only trailer` writes the
+full-quality master to `steam/trailer/`. It needs Chromium (Playwright) and
+ffmpeg (on the PATH, `FFMPEG=/path/to/ffmpeg`, or `npm i ffmpeg-static`).
+Run it on your own computer and you have the master locally, at any size.
+
+**The trailer has sound, and all of it is the game's.** Two layers, both
+rendered offline, so nothing is recorded and nothing needs a microphone:
+
+- **The score** (`tools/steam-score.js`): a 56-second orchestral cue
+  synthesised for this cut. It is in D minor at 120 bpm, so every cut lands
+  on a bar line. It drops to silence (with the picture going black) before
+  the boss, the finale and the end card, and it resolves to D major on the
+  title: the dawn.
+- **The game's own effects**: while the trailer is filmed, every sound the
+  game asks for is logged with the frame it happened on, then replayed
+  through the game's real audio engine. The hits, level-up, boss horn and
+  finale voices are exactly the game's, exactly in sync.
+
+`steam/trailer/` also gets `trailer-score.wav` and `trailer-effects.wav`
+separately, if you ever want to remix it or swap in other music. Steam
+shows the first seconds of the trailer on hover in some places, so keep the
+opening (the fire and the title) as it is.
 
 **In Steamworks > Store Page Admin (you):**
 
@@ -280,7 +297,7 @@ normal and shows in the wishlist emails that go out on release day.
 - [ ] Steam Input default set to Gamepad (step 5)
 - [ ] Store page text, tags, requirements, content survey (step 6)
 - [ ] Capsules, library art, 5+ screenshots uploaded (step 6)
-- [ ] Trailer with sound laid in, uploaded (step 6)
+- [ ] Trailer uploaded (step 6)
 - [ ] Store page reviewed and set to Coming Soon (step 6)
 - [ ] Launch options and depots (step 7)
 - [ ] Builds uploaded and tested on a beta branch, including the Deck (step 8)
