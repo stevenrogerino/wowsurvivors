@@ -2017,16 +2017,18 @@
     /* A COLLAR. The garment ran straight into the neck with no edge on it -
        and the neckline is the one part of a costume everybody looks at,
        because it is next to the face. */
-    panel(g, [[cx - b.sh * 0.58, SHOULDER_Y - 2.6], [cx + b.sh * 0.58, SHOULDER_Y - 2.6],
+    if (!cfg.neckline) panel(g, [[cx - b.sh * 0.58, SHOULDER_Y - 2.6], [cx + b.sh * 0.58, SHOULDER_Y - 2.6],
       [cx + b.sh * 0.48, SHOULDER_Y + 2.4], [cx - b.sh * 0.48, SHOULDER_Y + 2.4]],
       C.trimRamp);
-    g.save();
-    g.strokeStyle = C.trimRamp.line; g.globalAlpha = 0.5; g.lineWidth = 0.8;
-    g.beginPath();
-    g.moveTo(cx - b.sh * 0.5, SHOULDER_Y + 0.4);
-    g.lineTo(cx + b.sh * 0.5, SHOULDER_Y + 0.4);
-    g.stroke();
-    g.restore();
+    if (!cfg.neckline) {
+      g.save();
+      g.strokeStyle = C.trimRamp.line; g.globalAlpha = 0.5; g.lineWidth = 0.8;
+      g.beginPath();
+      g.moveTo(cx - b.sh * 0.5, SHOULDER_Y + 0.4);
+      g.lineTo(cx + b.sh * 0.5, SHOULDER_Y + 0.4);
+      g.stroke();
+      g.restore();
+    }
     if (!cfg.pauldrons && !cfg.gi && !cfg.bodice) {
       /* A GAMBESON on everyone who is not in plate.
        *
@@ -2143,6 +2145,40 @@
       }
       g.strokeStyle = 'rgba(0,0,0,.4)'; g.lineWidth = 0.8;
       g.beginPath(); g.moveTo(cx, by - 3.2); g.quadraticCurveTo(cx - 0.3, by, cx, by + 3.6); g.stroke();
+    }
+    if (cfg.neckline === 'v') {
+      /* A laced V at the neck, open to the top of the chest: skin from the
+         collar down between the two forms, a soft shadow where they meet,
+         and the jerkin's edge turned back along both sides of the opening. */
+      const vy = SHOULDER_Y + 10.5;
+      const vee = [[cx - 6, SHOULDER_Y - 2.6], [cx + 6, SHOULDER_Y - 2.6], [cx + 0.6, vy], [cx - 0.6, vy]];
+      panel(g, vee, cfg.skin || SKIN);
+      g.save();
+      g.beginPath(); g.moveTo(vee[0][0], vee[0][1]);
+      for (let i = 1; i < vee.length; i++) g.lineTo(vee[i][0], vee[i][1]);
+      g.closePath(); g.clip();
+      for (const dir of [-1, 1]) {
+        const hl = g.createRadialGradient(cx + dir * 3.4, SHOULDER_Y + 5.4, 0.2, cx + dir * 3.4, SHOULDER_Y + 5.4, 3.6);
+        hl.addColorStop(0, 'rgba(255,236,214,.35)'); hl.addColorStop(1, 'rgba(255,236,214,0)');
+        g.fillStyle = hl; g.fillRect(cx - 6, SHOULDER_Y - 3, 12, 14);
+      }
+      g.strokeStyle = 'rgba(70,36,24,.55)'; g.lineWidth = 0.75;
+      g.beginPath(); g.moveTo(cx, SHOULDER_Y + 4.4); g.quadraticCurveTo(cx - 0.25, SHOULDER_Y + 7, cx, vy); g.stroke();
+      for (const dir of [-1, 1]) {
+        g.strokeStyle = 'rgba(70,36,24,.3)'; g.lineWidth = 0.6;
+        g.beginPath(); g.moveTo(cx + dir * 0.4, SHOULDER_Y + 4.6); g.quadraticCurveTo(cx + dir * 2.6, SHOULDER_Y + 3.2, cx + dir * 4.6, SHOULDER_Y + 3.6); g.stroke();
+      }
+      g.restore();
+      for (const dir of [-1, 1]) {
+        panel(g, [[cx + dir * 6, SHOULDER_Y - 2.8], [cx + dir * 8, SHOULDER_Y - 2.4],
+          [cx + dir * 1.4, vy + 0.6], [cx + dir * 0.4, vy]], C.trimRamp);
+      }
+      // two crossings of lace at the bottom of the V
+      g.strokeStyle = '#e8dcc4'; g.lineWidth = 0.5;
+      g.beginPath();
+      g.moveTo(cx - 1.6, vy - 3.4); g.lineTo(cx + 1.6, vy - 1.2);
+      g.moveTo(cx + 1.6, vy - 3.4); g.lineTo(cx - 1.6, vy - 1.2);
+      g.stroke();
     }
     if (cfg.bodice) {
       /* A milkmaid's blouse and bodice. Linen from the collar to the bust,
@@ -2304,12 +2340,15 @@
        * otherwise made of cut cloth and plate, and the fastest way to say
        * somebody lives outdoors. */
       const px = cx - b.sh - 1;
+      // Kept to the shoulder on a full figure, where it would otherwise
+      // cover half the chest.
+      const span = cfg.bust ? 6 : 12;
       for (let i = 0; i < 5; i++) {
         const t2 = i / 4;
-        panel(g, [[px - 4 + t2 * 12, SHOULDER_Y - 5 + t2 * 2],
-          [px - 1 + t2 * 12, SHOULDER_Y - 6 + t2 * 2],
-          [px + 1 + t2 * 11, SHOULDER_Y + 7 + t2 * 3],
-          [px - 4 + t2 * 11, SHOULDER_Y + 6 + t2 * 3]],
+        panel(g, [[px - 4 + t2 * span, SHOULDER_Y - 5 + t2 * 2],
+          [px - 1 + t2 * span, SHOULDER_Y - 6 + t2 * 2],
+          [px + 1 + t2 * span * 0.92, SHOULDER_Y + 7 + t2 * 3],
+          [px - 4 + t2 * span * 0.92, SHOULDER_Y + 6 + t2 * 3]],
           i % 2 ? C.furRamp : C.furDark);
       }
     }
@@ -2367,8 +2406,20 @@
     if (cfg.strap) {
       // A strap across the chest, the other way from a sash - it is holding
       // the quiver on, and it says so by running to the shoulder it hangs off.
-      panel(g, [[cx + b.sh - 2, SHOULDER_Y - 1], [cx + b.sh - 7, SHOULDER_Y - 2],
-        [cx - b.waist - 1, WAIST_Y - 3], [cx - b.waist + 4, WAIST_Y - 2]], LEATHER);
+      if (cfg.bust) {
+        /* On a full figure the strap does what a strap does: it drops from
+           the shoulder into the middle of the chest and out again to the
+           hip, rather than cutting straight across. */
+        const my = SHOULDER_Y + 12.5;
+        panel(g, [[cx + b.sh - 2, SHOULDER_Y - 1], [cx + b.sh - 6, SHOULDER_Y - 2],
+          [cx - 1.4, my - 1.2], [cx - b.waist - 1, WAIST_Y - 3], [cx - b.waist + 3.5, WAIST_Y - 2],
+          [cx + 1.6, my + 1.6]], LEATHER);
+        g.fillStyle = GOLD.key;
+        g.beginPath(); g.arc(cx + 0.1, my + 0.2, 1.1, 0, WS.TAU); g.fill();
+      } else {
+        panel(g, [[cx + b.sh - 2, SHOULDER_Y - 1], [cx + b.sh - 7, SHOULDER_Y - 2],
+          [cx - b.waist - 1, WAIST_Y - 3], [cx - b.waist + 4, WAIST_Y - 2]], LEATHER);
+      }
     }
     if (cfg.bootknife) {
       // A knife strapped to the outside of the near boot.
@@ -2437,6 +2488,14 @@
        * reads as being behind him - drawn in the head pass it sat in front and
        * spread into a bib across his chest, which is neither a hood up nor a
        * hood down but a bath towel. Small, and it only has to peek. */
+      // With an open neckline only its two ends show, bunched either side of
+      // the neck, so the V in front of it is not covered.
+      if (cfg.neckline) {
+        for (const dir of [-1, 1]) {
+          panel(g, [[cx + dir * 12, SHOULDER_Y + 1], [cx + dir * 10.5, SHOULDER_Y - 5], [cx + dir * 5, SHOULDER_Y - 7.5],
+            [cx + dir * 6.2, SHOULDER_Y - 2.2], [cx + dir * 8.6, SHOULDER_Y + 1.6]], C.trimRamp);
+        }
+      } else
       panel(g, [[cx - 12, SHOULDER_Y + 3], [cx - 10.5, SHOULDER_Y - 5],
         [cx - 4, SHOULDER_Y - 8], [cx + 4, SHOULDER_Y - 8],
         [cx + 10.5, SHOULDER_Y - 5], [cx + 12, SHOULDER_Y + 3],
@@ -2542,7 +2601,8 @@
       g.restore();
     }
     // Collar last, over the torso and under the head: it closes the neck.
-    panel(g, [[cx - 8, SHOULDER_Y - 3], [cx + 8, SHOULDER_Y - 3],
+    // (An open neckline has its own edge instead.)
+    if (!cfg.neckline) panel(g, [[cx - 8, SHOULDER_Y - 3], [cx + 8, SHOULDER_Y - 3],
       [cx + 6, SHOULDER_Y + 2], [cx - 6, SHOULDER_Y + 2]], C.collarRamp);
 
     if (cfg.sleeves) {
@@ -3409,6 +3469,7 @@
       sheaths: true, bracer: true, brand: 'rogue', crownPoints: 9 },
     hunter: { build: 'normal', head: 'bare', weapon: 'bow', hoodDown: true, pelt: true, fem: true,
       bracer: true, strap: true, bootknife: true, hair: ramp([0.30, 0.26, 0.18]), longHair: 8, braids: 'one',
+      bust: 'full', neckline: 'v',
       brand: 'hunter', elephant: true },
     /* One hand. The other is gone, which is what "The Fallen Hero" is about,
        and it is stated here rather than left to the drawing code to remember
@@ -4283,13 +4344,16 @@
   /** Maeca's elephant: a pink calf the size of a cat, riding her far
    *  shoulder with its trunk up. A second living thing on the figure - the
    *  only one in the cast - and nobody has ever asked her about it twice. */
-  function elephant(g, b, w, C) {
-    const x = 50 - b.sh + 2, y = SHOULDER_Y - 3 + (w.lift || 0) * 0.3;
+  function elephant(g, x, y, w, C) {
+    // Its own little walk, a half-step out of time with hers: the diagonal
+    // pairs swing together, the way anything on four legs walks.
+    const st = (w.swing || 0) * 1.3;
     const pink = ramp([0.94, 0.62, 0.72], 'skin');
     const far = ramp([0.78, 0.48, 0.58], 'skin');
     // the far legs and the tail, behind everything
-    for (const lx of [-1.4, 4.4]) {
-      panel(g, [[x + lx - 1.5, y - 1], [x + lx + 1.6, y - 1], [x + lx + 1.5, y + 3.8], [x + lx - 1.4, y + 3.8]], far);
+    for (const [lx, k] of [[-1.4, -1], [4.4, 1]]) {
+      const f = st * k;
+      panel(g, [[x + lx - 1.5, y - 1], [x + lx + 1.6, y - 1], [x + lx + 1.5 + f, y + 3.8], [x + lx - 1.4 + f, y + 3.8]], far);
     }
     g.strokeStyle = far.line; g.lineWidth = 0.7; g.lineCap = 'round';
     g.beginPath(); g.moveTo(x + 7.2, y - 2.2); g.quadraticCurveTo(x + 9, y - 0.6, x + 8.6, y + 1.8); g.stroke();
@@ -4305,10 +4369,11 @@
     g.beginPath(); g.moveTo(x + 6.2, y - 1.6); g.lineTo(x + 2.6, y - 0.4); g.lineTo(x - 1.2, y - 1.8); g.stroke();
     g.globalAlpha = 1;
     // near legs, with pale toenails
-    for (const lx of [-3, 2.8]) {
-      panel(g, [[x + lx - 1.8, y - 1.4], [x + lx + 1.8, y - 1.4], [x + lx + 1.7, y + 4.2], [x + lx - 1.7, y + 4.2]], pink);
+    for (const [lx, k] of [[-3, 1], [2.8, -1]]) {
+      const f = st * k;
+      panel(g, [[x + lx - 1.8, y - 1.4], [x + lx + 1.8, y - 1.4], [x + lx + 1.7 + f, y + 4.2], [x + lx - 1.7 + f, y + 4.2]], pink);
       g.fillStyle = '#fbe9e4';
-      for (const t of [-0.8, 0, 0.8]) { g.beginPath(); g.arc(x + lx + t, y + 3.9, 0.42, 0, WS.TAU); g.fill(); }
+      for (const t of [-0.8, 0, 0.8]) { g.beginPath(); g.arc(x + lx + t + f, y + 3.9, 0.42, 0, WS.TAU); g.fill(); }
     }
     // the head, forward and up
     lit(g, pink, x - 8.5, y - 10, x - 1, y - 2);
@@ -4388,8 +4453,12 @@
       cx + HEAD_RX + 0.5, HEAD_CY - 4);
     g.bezierCurveTo(cx + HEAD_RX + 3.5, HEAD_CY + 8, cx + HEAD_RX + 3, bot - 6, cx + HEAD_RX + 1.5, bot);
     g.lineTo(cx + HEAD_RX - 2.5, bot - 2.5);
-    g.lineTo(cx + HEAD_RX - 5, bot + 0.5);
-    g.lineTo(cx - HEAD_RX + 5, bot + 0.5);
+    g.lineTo(cx + HEAD_RX - 4.5, bot);
+    /* Not across the middle: behind the neck it would show in the gap
+       between the jaw and the shoulders as a dark band under the chin. */
+    g.quadraticCurveTo(cx + 6.5, HEAD_CY + 12, cx + 4.5, HEAD_CY + 8);
+    g.lineTo(cx - 4.5, HEAD_CY + 8);
+    g.quadraticCurveTo(cx - 6.5, HEAD_CY + 12, cx - HEAD_RX + 4.5, bot);
     g.lineTo(cx - HEAD_RX + 2.5, bot - 2.5);
     g.lineTo(cx - HEAD_RX - 1.5, bot);
     g.bezierCurveTo(cx - HEAD_RX - 3, bot - 6, cx - HEAD_RX - 3.5, HEAD_CY + 8, cx - HEAD_RX - 0.5, HEAD_CY - 4);
@@ -4538,14 +4607,20 @@
     if (off) off(g, C, b);
     const wp = WEAPONS[cfg.weapon];
     if (wp) wp(g, C, b);
-    // The elephant sits in front of the quiver, where the hawk used to.
+    g.restore();
+    /* The elephant walks between her feet, on the ground, so it takes no
+       part in her lift - it has its own. Drawn last: at the floor, in front
+       of her boots, nothing of hers is in front of it. */
     if (cfg.elephant) {
-      const hx = 50 - b.sh + 2, hy = SHOULDER_Y - 3;
-      g.save(); g.translate(hx, hy); g.scale(1.4, 1.4); g.translate(-hx, -hy);
-      elephant(g, b, w, C);
+      const ex = 51, ey = FOOT_Y - 4.6 - WS.max(0, w.lift || 0) * 0.5;
+      const sh = g.createRadialGradient(ex + 1, FOOT_Y, 0, ex + 1, FOOT_Y, 10);
+      sh.addColorStop(0, 'rgba(0,0,0,.35)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = sh;
+      g.beginPath(); g.ellipse(ex + 1, FOOT_Y - 0.5, 10, 2.4, 0, 0, WS.TAU); g.fill();
+      g.save(); g.translate(ex, ey); g.scale(1.05, 1.05); g.translate(-ex, -ey);
+      elephant(g, ex, ey, w, C);
       g.restore();
     }
-    g.restore();
   }
 
   const Hero = {
