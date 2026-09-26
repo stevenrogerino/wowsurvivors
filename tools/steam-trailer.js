@@ -38,8 +38,11 @@ function overlayFns() {
   window.__count = () => ({
     survivors: Object.keys(WS.Characters).length,
     fields: Object.values(WS.Maps).filter((m) => !m.arena).length,
-    bosses: Object.keys(WS.Bosses).length,
-    weapons: Object.keys(WS.Weapons).length,
+    // The ones that walk onto a battlefield on the clock; the finales, their
+    // phases and the arena are counted apart, not padded into this.
+    bosses: new Set(Object.values(WS.Maps).flatMap((m) => (m.bosses || []).map((b) => b.id))).size,
+    finales: Object.keys(WS.Finales || {}).length,
+    weapons: Object.keys(WS.Weapons).filter((k) => !k.startsWith('union_')).length,
   });
 
   const CAST = [
@@ -192,7 +195,7 @@ async function make(browser, env) {
     } });
   await play(6, { map: 'mourneholt', char: 'warrior', time: 280, settle: 4, bossAgo: 0,
     kit: [['axe_gyre', 1], ['reaving_arc', 0], ['cinderfall', 1], ['blightfield', 0]] },
-    `${n.bosses} bosses stalk the night`, { before: () => { WS.Game.run.time = WS.Game.run.map.bosses[0].at - 1; } });
+    `${n.bosses} bosses stalk the night, and ${n.finales} wait for dawn`, { before: () => { WS.Game.run.time = WS.Game.run.map.bosses[0].at - 1; } });
   await play(5, { map: 'highmoor', char: 'shaman', time: 1260, settle: 30,
     kit: [['arcweb', 1], ['gale_chakram', 1], ['dawnpulse', 0], ['seeking_motes', 1]] },
     `${n.fields} battlefields, each with its own weather`);
