@@ -268,9 +268,9 @@
       },
       priest: {
         record: [
-          'The Order of the Morning Light named him the Fool as an insult. He blessed a well that had already run dry, and it filled. He took the name as a rank and has signed it that way ever since.',
-          'Chid heals because nobody has ever managed to explain to him why he should not be able to. The Light seems to have given up arguing.',
-          'He was the first to sit down at the Watch\'s fire and the last to leave it, every night, for as long as anyone there can remember.',
+          'The Order of the Morning Light named her the Fool as an insult. She blessed a well that had already run dry, and it filled. She took the name as a rank and has signed it that way ever since.',
+          'Chid heals because nobody has ever managed to explain to her why she should not be able to. The Light seems to have given up arguing.',
+          'She was the first to sit down at the Watch\'s fire and the last to leave it, every night, for as long as anyone there can remember.',
         ],
         says: 'The dark is only the Light, waiting for somebody to be foolish enough.',
       },

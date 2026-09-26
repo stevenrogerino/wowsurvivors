@@ -7078,9 +7078,9 @@ window.WS = window.WS || {};
       },
       priest: {
         record: [
-          'The Order of the Morning Light named him the Fool as an insult. He blessed a well that had already run dry, and it filled. He took the name as a rank and has signed it that way ever since.',
-          'Chid heals because nobody has ever managed to explain to him why he should not be able to. The Light seems to have given up arguing.',
-          'He was the first to sit down at the Watch\'s fire and the last to leave it, every night, for as long as anyone there can remember.',
+          'The Order of the Morning Light named her the Fool as an insult. She blessed a well that had already run dry, and it filled. She took the name as a rank and has signed it that way ever since.',
+          'Chid heals because nobody has ever managed to explain to her why she should not be able to. The Light seems to have given up arguing.',
+          'She was the first to sit down at the Watch\'s fire and the last to leave it, every night, for as long as anyone there can remember.',
         ],
         says: 'The dark is only the Light, waiting for somebody to be foolish enough.',
       },
@@ -8462,14 +8462,24 @@ window.WS = window.WS || {};
   /* --------------------------------------------------------------- head --- */
   /** The skull, as one path, so the fill and every clip that follows agree on
    *  where the head actually is. Wide at the cranium, tapering to a jaw. */
+  /* WHO IS DRAWN. Set once per head by drawHead from the kit, and read by
+   * the skull, the eyes and the mouth, which all need it and none of which
+   * is handed the kit. The women of the Watch get a narrower chin, lashes,
+   * a finer arched brow and a mouth with colour in it; the men a squarer
+   * jaw, a heavier level brow and a shadow of stubble where there is no
+   * beard. Small marks, all inside the outline, and together they are the
+   * difference between twelve people and twelve of the same doll. */
+  let FEM = false;
+  let JAW = 0.42, JAW_Y = 0.66;
+
   function skull(g, cx) {
     g.beginPath();
     g.moveTo(cx - HEAD_RX, HEAD_CY - 2);
     g.bezierCurveTo(cx - HEAD_RX, HEAD_CY - HEAD_RY * 1.42, cx + HEAD_RX, HEAD_CY - HEAD_RY * 1.42,
       cx + HEAD_RX, HEAD_CY - 2);
-    g.bezierCurveTo(cx + HEAD_RX, HEAD_CY + HEAD_RY * 0.66, cx + HEAD_RX * 0.42, HEAD_CY + HEAD_RY,
+    g.bezierCurveTo(cx + HEAD_RX, HEAD_CY + HEAD_RY * JAW_Y, cx + HEAD_RX * JAW, HEAD_CY + HEAD_RY,
       cx, HEAD_CY + HEAD_RY);
-    g.bezierCurveTo(cx - HEAD_RX * 0.42, HEAD_CY + HEAD_RY, cx - HEAD_RX, HEAD_CY + HEAD_RY * 0.66,
+    g.bezierCurveTo(cx - HEAD_RX * JAW, HEAD_CY + HEAD_RY, cx - HEAD_RX, HEAD_CY + HEAD_RY * JAW_Y,
       cx - HEAD_RX, HEAD_CY - 2);
     g.closePath();
   }
@@ -8538,6 +8548,13 @@ window.WS = window.WS || {};
         g.quadraticCurveTo(0, -2.1, dir * 2.3, -0.3);
         g.lineTo(dir * 2.9, -0.7);
         g.stroke();
+        if (FEM) {
+          // lashes: three flicks off the outer half of the lid, the longest last
+          g.lineWidth = 0.55;
+          for (const [lx, ly, ex, ey] of [[0.7, -1.35, 1.1, -2.5], [1.6, -1.0, 2.4, -2.1], [2.4, -0.5, 3.6, -1.3]]) {
+            g.beginPath(); g.moveTo(dir * lx, ly); g.lineTo(dir * ex, ey); g.stroke();
+          }
+        }
       }
       g.restore();
       if (lit2) glow(g, cx + dir * dx, y, 5.5, C.eye, 0.5);
@@ -8547,11 +8564,21 @@ window.WS = window.WS || {};
     /* Set low at the inner end and arched out, which is resolve; the other
        way up - inner end high - read, once the eyes had lids, as worry. */
     g.strokeStyle = tight ? 'rgba(26,18,12,.45)' : 'rgba(34,22,14,.7)';
-    g.lineWidth = tight ? 1.1 : 1.25; g.lineCap = 'round';
+    g.lineWidth = tight ? 1.1 : FEM ? 0.8 : 1.7; g.lineCap = 'round';
     for (const dir of [-1, 1]) {
       g.beginPath();
-      g.moveTo(cx + dir * 1.8, y - 2.9);
-      g.quadraticCurveTo(cx + dir * 4.2, y - 4.4, cx + dir * 6.4, y - 3.6);
+      if (!tight && FEM) {
+        // finer, and arched higher: the whole of a softer look is in this
+        g.moveTo(cx + dir * 2.0, y - 3.4);
+        g.quadraticCurveTo(cx + dir * 4.4, y - 5.5, cx + dir * 6.6, y - 3.9);
+      } else if (!tight) {
+        // heavy, low and nearly level: a brow that has frowned for years
+        g.moveTo(cx + dir * 1.5, y - 2.6);
+        g.quadraticCurveTo(cx + dir * 4.2, y - 3.9, cx + dir * 6.7, y - 3.4);
+      } else {
+        g.moveTo(cx + dir * 1.8, y - 2.9);
+        g.quadraticCurveTo(cx + dir * 4.2, y - 4.4, cx + dir * 6.4, y - 3.6);
+      }
       g.stroke();
     }
     if (!tight) {
@@ -8592,11 +8619,45 @@ window.WS = window.WS || {};
     g.save();
     for (const dir of [-1, 1]) {
       const bl = g.createRadialGradient(cx + dir * 6.2, y + 4.4, 0, cx + dir * 6.2, y + 4.4, 3.4);
-      bl.addColorStop(0, 'rgba(214,110,96,.26)'); bl.addColorStop(1, 'rgba(214,110,96,0)');
+      const a = FEM ? 0.36 : 0.14;
+      bl.addColorStop(0, `rgba(214,110,96,${a})`); bl.addColorStop(1, 'rgba(214,110,96,0)');
       g.fillStyle = bl;
       g.beginPath(); g.arc(cx + dir * 6.2, y + 4.4, 3.4, 0, WS.TAU); g.fill();
     }
     g.lineCap = 'round';
+    if (FEM) {
+      /* A mouth with colour in it: a bowed upper lip and a fuller lower one,
+         a line between them, and one catch of light on the lower lip. */
+      g.fillStyle = 'rgba(186,70,84,.9)';
+      g.beginPath();
+      g.moveTo(cx - 2.5, my);
+      g.quadraticCurveTo(cx - 1.2, my - 1.3, cx, my - 0.6);
+      g.quadraticCurveTo(cx + 1.2, my - 1.3, cx + 2.5, my);
+      g.quadraticCurveTo(cx, my + 2.4, cx - 2.5, my);
+      g.closePath(); g.fill();
+      g.strokeStyle = 'rgba(96,26,34,.8)'; g.lineWidth = 0.5;
+      g.beginPath(); g.moveTo(cx - 2.4, my + 0.05); g.quadraticCurveTo(cx, my + 0.7, cx + 2.4, my + 0.05); g.stroke();
+      g.fillStyle = 'rgba(255,214,214,.55)';
+      g.beginPath(); g.ellipse(cx - 0.3, my + 1.1, 0.9, 0.35, 0, 0, WS.TAU); g.fill();
+      g.restore();
+      return;
+    }
+    /* Stubble: a shadow along the jaw and round the mouth, clipped to the
+       face, with a little grain in it so it reads as hair and not dirt. */
+    g.save();
+    skull(g, cx); g.clip();
+    const st = g.createLinearGradient(0, y + 3.5, 0, HEAD_CY + HEAD_RY);
+    st.addColorStop(0, 'rgba(46,36,32,0)'); st.addColorStop(0.45, 'rgba(46,36,32,.22)');
+    st.addColorStop(1, 'rgba(46,36,32,.34)');
+    g.fillStyle = st;
+    g.fillRect(cx - HEAD_RX, y + 3.5, HEAD_RX * 2, HEAD_RY);
+    g.fillStyle = 'rgba(40,30,26,.35)';
+    for (let i = 0; i < 26; i++) {
+      const a = (i * 2.399) % WS.TAU, r = 3.5 + (i * 7 % 11) * 0.5;
+      const px = cx + WS.cos(a) * r * 0.95, py = my + 1.2 + WS.abs(WS.sin(a)) * r * 0.42;
+      g.fillRect(px, py, 0.35, 0.35);
+    }
+    g.restore();
     g.strokeStyle = 'rgba(70,32,26,.8)'; g.lineWidth = 0.8;
     // a half smile, the right corner up: they have made it through worse
     g.beginPath();
@@ -8613,6 +8674,9 @@ window.WS = window.WS || {};
 
   function drawHead(g, cfg, C) {
     const cx = 50;
+    FEM = !!cfg.fem;
+    JAW = FEM ? 0.3 : 0.5;
+    JAW_Y = FEM ? 0.6 : 0.76;
     const hooded = cfg.head === 'hood';
     const helmed = cfg.head === 'helm';
     const eyeY = HEAD_CY + 2;
@@ -8714,9 +8778,24 @@ window.WS = window.WS || {};
       /* The mantle goes down FIRST, and darker, so the cowl lands on top of it.
        * Drawn last and lit like a face-on panel it caught the key light across
        * its whole width and read as a pale bib hung on the chest. */
-      panel(g, [[cx - 17, mantle - 3], [cx + 15, mantle - 3],
-        [cx + 12, mantle + 6], [cx - 14, mantle + 6]],
-        { key: hr.shade, core: hr.deep, shade: hr.line });
+      if (cfg.hoodFace) {
+        /* Rav's capelet: cut ragged at the bottom and lit along the top, so
+           a dark cowl over dark cloth is still two things. A clean trapezoid
+           in a hood this dark was a black slab across the chest. */
+        panel(g, [[cx - 17, mantle - 3], [cx + 15, mantle - 3], [cx + 12.5, mantle + 6.5],
+          [cx + 8, mantle + 3.6], [cx + 4, mantle + 8], [cx - 0.5, mantle + 4.2],
+          [cx - 5, mantle + 8.6], [cx - 9.5, mantle + 4.6], [cx - 14, mantle + 7]], hr);
+        g.save();
+        g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 0.8;
+        for (const x of [cx + 8, cx - 0.5, cx - 9.5]) {
+          g.beginPath(); g.moveTo(x, mantle - 2); g.lineTo(x + 0.4, mantle + 3.6); g.stroke();
+        }
+        g.restore();
+      } else {
+        panel(g, [[cx - 17, mantle - 3], [cx + 15, mantle - 3],
+          [cx + 12, mantle + 6], [cx - 14, mantle + 6]],
+          { key: hr.shade, core: hr.deep, shade: hr.line });
+      }
       lit(g, hr, cx - 15, crown, cx + 13, mantle);
       g.beginPath();
       g.moveTo(cx - 17, mantle);                       // the mantle spreads wide
@@ -8771,35 +8850,77 @@ window.WS = window.WS || {};
       g.ellipse(cx, HEAD_CY + 1.5, 8.4, 8.4, 0, 0, WS.TAU);
       g.clip();
       if (cfg.hoodFace) {
-        /* A face in the hood, not a void. The rogue and the warlock were the
-           two hooded survivors and both were a black hole with two lights in
-           it - the same head. The warlock keeps the dark; the rogue shows a
-           face, shadowed from the brow down, with a red kerchief over the
-           nose and mouth: the colours of the gang he walked out on. */
-        lit(g, SKIN, cx - 9, HEAD_CY - 7, cx + 7, HEAD_CY + 10);
+        /* Rav: the dark back in the hood, and the gang's red over the face.
+           For a while he showed a plain face above the kerchief, which told
+           the rogue from the warlock but lost the menace; the warlock's void
+           is a round glow, his is two narrow slits cut low and angled in, and
+           the bandana tied over the lower half says outlaw before anything
+           else about him does. */
+        const void_ = g.createRadialGradient(cx, HEAD_CY + 3, 1, cx, HEAD_CY + 1.5, 10);
+        void_.addColorStop(0, 'rgba(5,6,10,1)');
+        void_.addColorStop(0.72, 'rgba(5,6,10,.98)');
+        void_.addColorStop(1, 'rgba(5,6,10,.6)');
+        g.fillStyle = void_;
         g.fillRect(cx - 10, HEAD_CY - 10, 20, 22);
-        const shade = g.createLinearGradient(0, HEAD_CY - 7, 0, HEAD_CY + 3);
-        shade.addColorStop(0, 'rgba(8,8,14,.85)');
-        shade.addColorStop(1, 'rgba(8,8,14,0)');
-        g.fillStyle = shade;
-        g.fillRect(cx - 10, HEAD_CY - 10, 20, 14);
         g.restore();
-        eyes(g, cx, eyeY, C, false, false);
-        const red = ramp([0.74, 0.16, 0.14]);
-        panel(g, [[cx - 8.6, eyeY + 2.4], [cx + 8.4, eyeY + 1.9], [cx + 7.2, HEAD_CY + 9],
-          [cx, HEAD_CY + 12.2], [cx - 7.4, HEAD_CY + 9.4]], red);
+        for (const dir of [-1, 1]) {
+          g.save();
+          g.translate(cx + dir * 3.7, eyeY - 0.6);
+          g.scale(dir, 1);
+          // a slit whose top edge drops toward the nose: a glare, not a glow
+          const slit = () => {
+            g.beginPath();
+            g.moveTo(-2.1, 0.5);
+            g.lineTo(2.6, -1.5);
+            g.quadraticCurveTo(1.4, 1.3, -2.1, 0.5);
+            g.closePath();
+          };
+          g.fillStyle = C.eye;
+          slit(); g.fill();
+          g.globalAlpha = 0.8; g.fillStyle = '#fffbe8';
+          g.beginPath(); g.ellipse(0.4, -0.2, 0.9, 0.35, -0.35, 0, WS.TAU); g.fill();
+          g.restore();
+          glow(g, cx + dir * 3.9, eyeY - 0.8, 5.5, C.eye, 0.55);
+        }
+        const red = ramp([0.62, 0.11, 0.11]);
+        // the tails of the knot, flicking out from behind the far temple
+        panel(g, [[cx - 8.5, eyeY + 2.6], [cx - 15.5, eyeY + 4.2], [cx - 17.2, eyeY + 8.8],
+          [cx - 13, eyeY + 6.6], [cx - 9.5, eyeY + 5.4]], ramp([0.5, 0.09, 0.09]));
+        panel(g, [[cx - 9, eyeY + 3.6], [cx - 13.6, eyeY + 9.4], [cx - 12.2, eyeY + 12.6],
+          [cx - 10.6, eyeY + 8.6]], ramp([0.44, 0.08, 0.08]));
+        // the mask: up over the bridge of the nose, down to a point on the chest
+        const mask = [[cx - 9.6, eyeY + 2.9], [cx - 3, eyeY + 1.9], [cx, eyeY + 1.2], [cx + 3, eyeY + 1.9],
+          [cx + 9.4, eyeY + 2.6], [cx + 8.6, HEAD_CY + 8.4], [cx + 1, NECK_Y + 6.5],
+          [cx - 8.8, HEAD_CY + 8.8]];
+        panel(g, mask, red);
         g.save();
-        g.strokeStyle = red.line; g.globalAlpha = 0.55; g.lineWidth = 0.6;
+        g.beginPath(); g.moveTo(mask[0][0], mask[0][1]);
+        for (let i = 1; i < mask.length; i++) g.lineTo(mask[i][0], mask[i][1]);
+        g.closePath(); g.clip();
+        // folds converging on the point, and the ridge of the nose under it
+        g.strokeStyle = red.line; g.globalAlpha = 0.6; g.lineWidth = 0.7;
         g.beginPath();
-        g.moveTo(cx - 6, eyeY + 4.6); g.quadraticCurveTo(cx, eyeY + 6.4, cx + 6, eyeY + 4.2);
-        g.moveTo(cx - 3.5, HEAD_CY + 9.4); g.lineTo(cx, HEAD_CY + 11.2); g.lineTo(cx + 3.4, HEAD_CY + 9);
+        g.moveTo(cx - 7.5, eyeY + 4.4); g.quadraticCurveTo(cx - 3, eyeY + 8.6, cx + 0.6, NECK_Y + 5.6);
+        g.moveTo(cx + 7.2, eyeY + 4.2); g.quadraticCurveTo(cx + 3.2, eyeY + 8.2, cx + 1.2, NECK_Y + 5.4);
+        g.moveTo(cx - 3.6, HEAD_CY + 7.6); g.quadraticCurveTo(cx, HEAD_CY + 9.4, cx + 3.6, HEAD_CY + 7.4);
         g.stroke();
-        // white dots, the kerchief's pattern
-        g.globalAlpha = 0.7; g.fillStyle = '#f2e6d8';
-        for (const [dx, dy] of [[-4.5, 4.2], [-1, 5.4], [2.6, 4.8], [-2.6, 7.6], [1.4, 8.4], [4.6, 6.8]]) {
-          g.beginPath(); g.arc(cx + dx, eyeY + dy, 0.55, 0, WS.TAU); g.fill();
+        g.strokeStyle = red.key; g.globalAlpha = 0.45; g.lineWidth = 0.8;
+        g.beginPath(); g.moveTo(cx - 8.4, eyeY + 3.3); g.lineTo(cx, eyeY + 1.8); g.lineTo(cx + 8.2, eyeY + 3.1); g.stroke();
+        // the pattern: white dots and a paisley tear or two
+        g.globalAlpha = 0.72; g.fillStyle = '#f2e6d8';
+        for (const [dx, dy] of [[-5.6, 4.6], [-1.8, 5.2], [2.2, 4.8], [5.8, 4.6], [-3.6, 8.2], [0.4, 8.8],
+          [4.2, 8], [-1.6, 11.8], [2.2, 12.2], [0.6, 15.2]]) {
+          g.beginPath(); g.arc(cx + dx, eyeY + dy, 0.5, 0, WS.TAU); g.fill();
+        }
+        g.globalAlpha = 0.55; g.strokeStyle = '#f2e6d8'; g.lineWidth = 0.45;
+        for (const [dx, dy, rot] of [[-6, 8.4, 0.6], [6.2, 8, -0.6]]) {
+          g.save(); g.translate(cx + dx, eyeY + dy); g.rotate(rot);
+          g.beginPath(); g.arc(0, 0, 1.1, 0.3, WS.TAU - 0.9); g.lineTo(1.9, 1.2); g.stroke();
+          g.restore();
         }
         g.restore();
+        // the knot itself, at the far temple, over the hood's edge
+        blob(g, cx - 9.2, eyeY + 3.6, 1.9, 1.5, red);
       } else {
         const void_ = g.createRadialGradient(cx, HEAD_CY + 3, 1, cx, HEAD_CY + 1.5, 10);
         void_.addColorStop(0, 'rgba(6,8,14,1)');
@@ -8913,6 +9034,30 @@ window.WS = window.WS || {};
       } else {
         eyes(g, cx, eyeY, C, false, false);
         if (!cfg.beard && !cfg.mustache) face(g, cx, eyeY);
+        if (cfg.goatee) {
+          /* A sage's beard: a single long point off the chin, grey going to
+             white, the one thing on his head he has let grow. */
+          const gr = cfg.goatee, top = eyeY + 9.2, tip = NECK_Y + 9;
+          lit(g, gr, cx - 3.4, top, cx + 3.4, tip);
+          const goat = () => {
+            g.beginPath();
+            g.moveTo(cx - 3.4, top);
+            g.quadraticCurveTo(cx - 3.8, top + 5.5, cx + 0.8, tip);
+            g.quadraticCurveTo(cx + 3.6, top + 5.5, cx + 3.2, top);
+            g.quadraticCurveTo(cx, top + 1.4, cx - 3.4, top);
+            g.closePath();
+          };
+          goat(); g.fill();
+          g.save(); goat(); g.clip();
+          g.strokeStyle = gr.line; g.globalAlpha = 0.5; g.lineWidth = 0.45;
+          for (let i = -2; i <= 2; i++) {
+            g.beginPath(); g.moveTo(cx + i * 1.2, top + 0.6); g.quadraticCurveTo(cx + i * 1.1, top + 5, cx + 0.8 + i * 0.3, tip - 0.5); g.stroke();
+          }
+          g.restore();
+          g.strokeStyle = gr.line; g.lineWidth = 0.6; g.globalAlpha = 0.7;
+          goat(); g.stroke();
+          g.globalAlpha = 1;
+        }
         if (cfg.beard) {
           /* A beard reads by its BOTTOM EDGE and by the fact that it is made
              of strands. The first one was a rounded slab with a separate
@@ -9261,14 +9406,31 @@ window.WS = window.WS || {};
     // forelock, between the horns
     panel(g, [[cx - 5, hy - ry + 1], [cx - 1, hy - ry - 3.5], [cx + 3, hy - ry - 1.5],
       [cx + 5.5, hy - ry + 2], [cx + 1, hy - ry + 5.5], [cx - 3, hy - ry + 4.5]], cfg.hair || WOOD);
-    // eyes: gentle, set wide
+    // eyes: big, gentle, set wide - and on her, lashed
     for (const dir of [-1, 1]) {
       g.fillStyle = 'rgba(14,10,8,.95)';
-      g.beginPath(); g.ellipse(cx + dir * 6, eyeY - 1.5, 1.7, 1.9, 0, 0, WS.TAU); g.fill();
-      g.fillStyle = 'rgba(255,255,255,.85)';
-      g.beginPath(); g.arc(cx + dir * 6 - 0.5, eyeY - 2.2, 0.55, 0, WS.TAU); g.fill();
-      g.strokeStyle = 'rgba(14,10,8,.6)'; g.lineWidth = 0.7;
-      g.beginPath(); g.moveTo(cx + dir * 4.2, eyeY - 3.6); g.lineTo(cx + dir * 7.8, eyeY - 3.9); g.stroke();
+      g.beginPath(); g.ellipse(cx + dir * 6, eyeY - 1.5, 1.9, 2.2, 0, 0, WS.TAU); g.fill();
+      g.fillStyle = 'rgba(92,58,40,.9)';
+      g.beginPath(); g.arc(cx + dir * 6, eyeY - 1.2, 1.1, 0, WS.TAU); g.fill();
+      g.fillStyle = 'rgba(14,10,8,.95)';
+      g.beginPath(); g.arc(cx + dir * 6, eyeY - 1.2, 0.55, 0, WS.TAU); g.fill();
+      g.fillStyle = 'rgba(255,255,255,.9)';
+      g.beginPath(); g.arc(cx + dir * 6 - 0.6, eyeY - 2.3, 0.6, 0, WS.TAU); g.fill();
+      g.strokeStyle = 'rgba(14,10,8,.9)'; g.lineWidth = 0.7; g.lineCap = 'round';
+      if (cfg.fem) {
+        g.beginPath(); g.ellipse(cx + dir * 6, eyeY - 1.5, 2.0, 2.3, 0, WS.PI * 1.05, WS.PI * 1.95); g.stroke();
+        g.lineWidth = 0.6;
+        for (const [a, l] of [[-0.3, 1.6], [0.25, 1.9], [0.8, 2.1]]) {
+          const ang = -WS.PI / 2 + dir * a;
+          const x0 = cx + dir * 6 + WS.cos(ang) * 2.1, y0 = eyeY - 1.5 + WS.sin(ang) * 2.3;
+          g.beginPath(); g.moveTo(x0, y0);
+          g.lineTo(x0 + WS.cos(ang) * l + dir * 0.5, y0 + WS.sin(ang) * l); g.stroke();
+        }
+      } else {
+        g.globalAlpha = 0.6;
+        g.beginPath(); g.moveTo(cx + dir * 4.2, eyeY - 3.6); g.lineTo(cx + dir * 7.8, eyeY - 3.9); g.stroke();
+        g.globalAlpha = 1;
+      }
     }
     // the muzzle: broad, soft, pink, and a little in front of the face
     const my = hy + ry - 4.2;
@@ -9280,11 +9442,41 @@ window.WS = window.WS || {};
     for (const dir of [-1, 1]) {
       g.beginPath(); g.ellipse(cx + dir * 3.3, my - 0.6, 1.3, 1.8, dir * 0.5, 0, WS.TAU); g.fill();
     }
-    // the ring
-    g.strokeStyle = GOLD.key; g.lineWidth = 1.2;
-    g.beginPath(); g.arc(cx, my + 2.6, 2.6, 0.15, WS.PI - 0.15); g.stroke();
-    g.strokeStyle = GOLD.line; g.lineWidth = 0.5;
-    g.beginPath(); g.arc(cx, my + 2.6, 3.2, 0.3, WS.PI - 0.3); g.stroke();
+    if (!cfg.fem) {
+      // the ring
+      g.strokeStyle = GOLD.key; g.lineWidth = 1.2;
+      g.beginPath(); g.arc(cx, my + 2.6, 2.6, 0.15, WS.PI - 0.15); g.stroke();
+      g.strokeStyle = GOLD.line; g.lineWidth = 0.5;
+      g.beginPath(); g.arc(cx, my + 2.6, 3.2, 0.3, WS.PI - 0.3); g.stroke();
+      return;
+    }
+    /* A bull wears a ring; she wears daisies. A blush either side of the
+       muzzle, a smile under it, and a crown of flowers from the pasture
+       across the poll between the horns. */
+    for (const dir of [-1, 1]) {
+      const bl = g.createRadialGradient(cx + dir * 7.8, my - 2.6, 0, cx + dir * 7.8, my - 2.6, 3);
+      bl.addColorStop(0, 'rgba(236,120,140,.55)'); bl.addColorStop(1, 'rgba(236,120,140,0)');
+      g.fillStyle = bl;
+      g.beginPath(); g.arc(cx + dir * 7.8, my - 2.6, 3, 0, WS.TAU); g.fill();
+    }
+    g.strokeStyle = 'rgba(80,30,34,.75)'; g.lineWidth = 0.6; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(cx - 2.6, my + 2.4); g.quadraticCurveTo(cx, my + 3.9, cx + 2.6, my + 2.4); g.stroke();
+    const daisy = (x, y, r, hub) => {
+      g.fillStyle = '#fbf7ec';
+      for (let k = 0; k < 6; k++) {
+        const a = k / 6 * WS.TAU;
+        g.beginPath(); g.ellipse(x + WS.cos(a) * r * 0.62, y + WS.sin(a) * r * 0.62, r * 0.48, r * 0.26, a, 0, WS.TAU); g.fill();
+      }
+      g.fillStyle = hub;
+      g.beginPath(); g.arc(x, y, r * 0.34, 0, WS.TAU); g.fill();
+    };
+    const top = hy - ry + 0.6;
+    g.strokeStyle = 'rgba(74,120,52,.9)'; g.lineWidth = 0.9;
+    g.beginPath(); g.moveTo(cx - 10, top + 2.8); g.quadraticCurveTo(cx, top - 3.2, cx + 10, top + 2.8); g.stroke();
+    for (const [dx, dy, r, hub] of [[-9, 2.2, 1.9, '#f2c230'], [-4.6, -0.6, 2.1, '#f2c230'], [0, -1.6, 2.4, '#ef8fb0'],
+      [4.6, -0.6, 2.1, '#f2c230'], [9, 2.2, 1.9, '#f2c230']]) {
+      daisy(cx + dx, top + dy, r, hub);
+    }
   }
 
   /** Bound hands: cloth wrapped round the knuckles in bands, and the colour
@@ -9502,6 +9694,40 @@ window.WS = window.WS || {};
         g.stroke();
       }
       g.restore();
+      if (cfg.apron) {
+        /* A milkmaid's apron over the robe: pale linen from the belt to
+           just above the hem, a scalloped lace edge, one pocket and a
+           daisy stitched on it. Nothing else in the cast wears white below
+           the waist, so it is hers at any size. */
+        const ax0 = b.waist + 0.5, ax1 = b.hip + 3.5, ay0 = WAIST_Y - 2 - lift, ay1 = FOOT_Y - 9;
+        const apr = ramp([0.92, 0.90, 0.85]);
+        const d2 = w.swing * 2.5;
+        panel(g, [[cx - ax0, ay0], [cx + ax0, ay0], [cx + ax1 + d2, ay1], [cx - ax1 + d2, ay1]], apr);
+        g.fillStyle = apr.key;
+        for (let k = 0; k < 7; k++) {
+          const x = cx - ax1 + d2 + (k + 0.5) * (ax1 * 2 / 7);
+          g.beginPath(); g.arc(x, ay1, ax1 / 7, 0, WS.PI); g.fill();
+        }
+        g.strokeStyle = apr.line; g.globalAlpha = 0.5; g.lineWidth = 0.6;
+        for (let k = 0; k < 7; k++) {
+          const x = cx - ax1 + d2 + (k + 0.5) * (ax1 * 2 / 7);
+          g.beginPath(); g.arc(x, ay1, ax1 / 7, 0, WS.PI); g.stroke();
+        }
+        // two soft folds
+        for (const u of [-0.45, 0.4]) {
+          g.beginPath(); g.moveTo(cx + u * ax0, ay0 + 2); g.lineTo(cx + u * ax1 + d2, ay1 - 1); g.stroke();
+        }
+        g.globalAlpha = 1;
+        const px = cx + 3 + d2 * 0.5, py = ay0 + 9;
+        panel(g, [[px - 3.4, py], [px + 3.4, py], [px + 3.2, py + 6], [px - 3.2, py + 6]], ramp([0.86, 0.84, 0.79]));
+        g.fillStyle = '#f2c230';
+        g.beginPath(); g.arc(px, py + 3, 0.7, 0, WS.TAU); g.fill();
+        g.fillStyle = '#ef8fb0';
+        for (let k = 0; k < 5; k++) {
+          const a = k / 5 * WS.TAU;
+          g.beginPath(); g.arc(px + WS.cos(a) * 1.3, py + 3 + WS.sin(a) * 1.3, 0.6, 0, WS.TAU); g.fill();
+        }
+      }
     } else {
       for (const dir of [-1, 1]) {
         const hx = cx + dir * (b.hip - b.leg * 0.5);
@@ -9642,8 +9868,11 @@ window.WS = window.WS || {};
 
     // Torso: shoulders down to waist, tapered. One shape, so the outline is one
     // shape, which is the whole point of the silhouette rule.
-    const torso = [[cx - b.sh, SHOULDER_Y - 2], [cx + b.sh, SHOULDER_Y - 2],
-      [cx + b.waist, WAIST_Y], [cx - b.waist, WAIST_Y]];
+    const torso = cfg.fem
+      ? [[cx - b.sh, SHOULDER_Y - 2], [cx + b.sh, SHOULDER_Y - 2], [cx + b.sh - 0.4, SHOULDER_Y + 7],
+        [cx + b.waist, WAIST_Y], [cx - b.waist, WAIST_Y], [cx - b.sh + 0.4, SHOULDER_Y + 7]]
+      : [[cx - b.sh, SHOULDER_Y - 2], [cx + b.sh, SHOULDER_Y - 2],
+        [cx + b.waist, WAIST_Y], [cx - b.waist, WAIST_Y]];
     panel(g, torso, C.bodyRamp);
     /* A COLLAR. The garment ran straight into the neck with no edge on it -
        and the neckline is the one part of a costume everybody looks at,
@@ -9658,7 +9887,7 @@ window.WS = window.WS || {};
     g.lineTo(cx + b.sh * 0.5, SHOULDER_Y + 0.4);
     g.stroke();
     g.restore();
-    if (!cfg.pauldrons) {
+    if (!cfg.pauldrons && !cfg.gi && !cfg.bodice) {
       /* A GAMBESON on everyone who is not in plate.
        *
        * Cloth is not a flat field either. Padded armour is quilted, and the
@@ -9702,6 +9931,122 @@ window.WS = window.WS || {};
         g.stroke();
         g.restore();
       }
+    }
+    if (!cfg.pauldrons) {
+      g.save();
+      g.beginPath();
+      g.moveTo(torso[0][0], torso[0][1]);
+      for (let i = 1; i < torso.length; i++) g.lineTo(torso[i][0], torso[i][1]);
+      g.closePath(); g.clip();
+      if (cfg.fem) {
+        /* A bust, drawn the way everything else here is: light on the upper
+           curve and a shadow under it. No outline - the form is in the
+           value change, and it stays inside the silhouette. */
+        for (const dir of [-1, 1]) {
+          const bx = cx + dir * 3.9, by = SHOULDER_Y + 6.2;
+          const hl = g.createRadialGradient(bx - 1, by - 1.4, 0.3, bx, by, 4.4);
+          hl.addColorStop(0, 'rgba(255,240,224,.26)'); hl.addColorStop(1, 'rgba(255,240,224,0)');
+          g.fillStyle = hl;
+          g.beginPath(); g.arc(bx, by, 4.4, 0, WS.TAU); g.fill();
+          g.strokeStyle = 'rgba(0,0,0,.26)'; g.lineWidth = 1;
+          g.beginPath();
+          g.moveTo(bx + dir * 3.4, by + 2.2);
+          g.quadraticCurveTo(bx + dir * 1.2, by + 4.4, bx - dir * 2.2, by + 3.6);
+          g.stroke();
+        }
+        // and the waist drawn in above the belt
+        for (const dir of [-1, 1]) {
+          const sh = g.createLinearGradient(cx + dir * b.waist, 0, cx + dir * (b.waist - 3), 0);
+          sh.addColorStop(0, 'rgba(0,0,0,.28)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
+          g.fillStyle = sh;
+          g.fillRect(WS.min(cx + dir * b.waist, cx + dir * (b.waist - 3)), SHOULDER_Y + 10, 3, WAIST_Y - SHOULDER_Y - 10);
+        }
+      } else {
+        // A chest: the pectoral shelf and the line down the sternum.
+        g.strokeStyle = 'rgba(0,0,0,.26)'; g.lineWidth = 1;
+        for (const dir of [-1, 1]) {
+          g.beginPath();
+          g.moveTo(cx + dir * (b.sh - 3), SHOULDER_Y + 6.5);
+          g.quadraticCurveTo(cx + dir * 4.5, SHOULDER_Y + 9.6, cx + dir * 0.6, SHOULDER_Y + 8.2);
+          g.stroke();
+        }
+        g.globalAlpha = 0.8; g.lineWidth = 0.7;
+        g.beginPath(); g.moveTo(cx, SHOULDER_Y + 2); g.lineTo(cx, SHOULDER_Y + 8); g.stroke();
+      }
+      g.restore();
+    }
+    if (cfg.bodice) {
+      /* A milkmaid's blouse and bodice. Linen from the collar to the bust,
+         gathered at the neckline, and a laced bodice from there to the
+         waist - the dairy's working dress, and the one torso in the cast
+         laced up the front. */
+      g.save();
+      g.beginPath();
+      g.moveTo(torso[0][0], torso[0][1]);
+      for (let i = 1; i < torso.length; i++) g.lineTo(torso[i][0], torso[i][1]);
+      g.closePath(); g.clip();
+      const linen = ramp([0.93, 0.91, 0.86]);
+      lit(g, linen, cx - b.sh, SHOULDER_Y - 2, cx + b.sh, SHOULDER_Y + 10);
+      g.fillRect(cx - b.sh - 1, SHOULDER_Y - 3, b.sh * 2 + 2, 13);
+      g.strokeStyle = linen.line; g.globalAlpha = 0.45; g.lineWidth = 0.6;
+      for (let k = -3; k <= 3; k++) {
+        g.beginPath(); g.moveTo(cx + k * 3, SHOULDER_Y - 1); g.lineTo(cx + k * 3.4, SHOULDER_Y + 9); g.stroke();
+      }
+      g.globalAlpha = 1;
+      const bod = ramp([0.46, 0.22, 0.16], 'leather');
+      const top = SHOULDER_Y + 8;
+      const bp = [[cx - b.sh + 1, top + 1], [cx - 3, top - 1.5], [cx, top + 1.2], [cx + 3, top - 1.5], [cx + b.sh - 1, top + 1],
+        [cx + b.waist + 0.5, WAIST_Y], [cx - b.waist - 0.5, WAIST_Y]];
+      panel(g, bp, bod);
+      g.restore();
+      // the lacing: eyelets down each side of the front and the cord crossing between them
+      g.strokeStyle = '#efe6d2'; g.lineWidth = 0.6;
+      g.beginPath();
+      for (let k = 0; k < 3; k++) {
+        const y = top + 1.6 + k * 2.6;
+        g.moveTo(cx - 1.9, y); g.lineTo(cx + 1.9, y + 2.6);
+        g.moveTo(cx + 1.9, y); g.lineTo(cx - 1.9, y + 2.6);
+      }
+      g.stroke();
+      g.fillStyle = GOLD.key;
+      for (let k = 0; k <= 3; k++) {
+        for (const dir of [-1, 1]) { g.beginPath(); g.arc(cx + dir * 2.1, top + 1.6 + k * 2.6, 0.45, 0, WS.TAU); g.fill(); }
+      }
+    }
+    if (cfg.gi) {
+      /* A monk's gi: cloth wrapped left over right and open to the sternum,
+         not padded armour. Plain weave with two long folds where the wrap
+         pulls across, a bare chest in the V, and the lapels as two bands of
+         his colour. The only survivor who shows skin below the neck. */
+      g.save();
+      g.beginPath();
+      g.moveTo(torso[0][0], torso[0][1]);
+      for (let i = 1; i < torso.length; i++) g.lineTo(torso[i][0], torso[i][1]);
+      g.closePath(); g.clip();
+      g.strokeStyle = 'rgba(0,0,0,.28)'; g.lineWidth = 0.9;
+      for (const dir of [-1, 1]) {
+        g.beginPath();
+        g.moveTo(cx + dir * (b.sh - 1), SHOULDER_Y + 1);
+        g.quadraticCurveTo(cx + dir * (b.sh - 5), SHOULDER_Y + 10, cx - dir * 2, WAIST_Y - 3);
+        g.stroke();
+      }
+      g.restore();
+      const vee = [[cx - 5.4, SHOULDER_Y - 2.8], [cx + 5.4, SHOULDER_Y - 2.8], [cx + 0.8, SHOULDER_Y + 12.5], [cx - 1, SHOULDER_Y + 12.5]];
+      panel(g, vee, cfg.skin || SKIN);
+      g.save();
+      g.strokeStyle = 'rgba(60,34,22,.45)'; g.lineWidth = 0.8;
+      for (const dir of [-1, 1]) {
+        g.beginPath(); g.moveTo(cx + dir * 3.6, SHOULDER_Y + 3.2); g.quadraticCurveTo(cx + dir * 1.8, SHOULDER_Y + 5.4, cx, SHOULDER_Y + 5); g.stroke();
+      }
+      g.beginPath(); g.moveTo(cx, SHOULDER_Y + 5.4); g.lineTo(cx, SHOULDER_Y + 10.5); g.stroke();
+      g.restore();
+      // the under lapel, then the one that wraps over it
+      panel(g, [[cx + 5.4, SHOULDER_Y - 3], [cx + 8.2, SHOULDER_Y - 2.6], [cx + 0.6, WAIST_Y - 3.6], [cx - 2.2, WAIST_Y - 3.8]], C.accentRamp);
+      panel(g, [[cx - 8.2, SHOULDER_Y - 2.6], [cx - 5.4, SHOULDER_Y - 3], [cx + 3.4, WAIST_Y - 3.8], [cx + 0.4, WAIST_Y - 3.4]], C.accentRamp);
+      g.save();
+      g.strokeStyle = C.accentRamp.key; g.globalAlpha = 0.6; g.lineWidth = 0.5;
+      g.beginPath(); g.moveTo(cx - 7, SHOULDER_Y - 2.2); g.lineTo(cx + 1.6, WAIST_Y - 3.8); g.stroke();
+      g.restore();
     }
     if (cfg.pauldrons) {
       /* A CUIRASS on anyone wearing plate on their shoulders. The torso is the
@@ -9823,6 +10168,26 @@ window.WS = window.WS || {};
       g.beginPath(); g.ellipse(qx, WAIST_Y - 0.6, 1.1, 0.9, 0, 0, WS.TAU); g.fill();
     }
 
+    if (cfg.bandolier) {
+      /* A bandolier of throwing knives, shoulder to hip. The blades in his
+         hands are the ones you see coming; these are the rest of the
+         argument. Hilts up out of their loops, so the chest reads as a row
+         of steel at any size. */
+      const p0 = [cx + b.sh - 3, SHOULDER_Y - 1.5], p1 = [cx - b.waist - 1.5, WAIST_Y - 2.5];
+      panel(g, [[p0[0] + 2.6, p0[1] - 0.8], [p0[0] - 2.6, p0[1] - 0.2],
+        [p1[0] - 1, p1[1] + 0.6], [p1[0] + 4.2, p1[1] + 0.4]], ramp([0.2, 0.16, 0.13], 'leather'));
+      for (let k = 0; k < 4; k++) {
+        const t = 0.16 + k * 0.2;
+        const x = p0[0] + (p1[0] - p0[0]) * t + 0.8, y = p0[1] + (p1[1] - p0[1]) * t;
+        g.save(); g.translate(x, y); g.rotate(-0.62);
+        panel(g, [[-1.1, -5.4], [1.1, -5.4], [1.3, 0.6], [-1.3, 0.6]], ramp([0.30, 0.10, 0.10], 'leather'));
+        panel(g, [[-2, 0.2], [2, 0.2], [1.8, 1.6], [-1.8, 1.6]], STEEL);
+        g.fillStyle = STEEL.key;
+        g.beginPath(); g.arc(0, -5.8, 0.9, 0, WS.TAU); g.fill();
+        g.restore();
+      }
+      rivets(g, GOLD, p0[0] - 1, p0[1] + 2, p1[0] + 2, p1[1] - 1, 3);
+    }
     if (cfg.strap) {
       // A strap across the chest, the other way from a sash - it is holding
       // the quiver on, and it says so by running to the shoulder it hangs off.
@@ -10408,21 +10773,25 @@ window.WS = window.WS || {};
         const hx = 50 + dir * (b.sh + 2.5);
         g.save();
         g.translate(hx, WAIST_Y - 1); g.rotate(dir * 2.75);
-        panel(g, [[-2.4, 0], [2.4, 0], [1.6, -19], [0, -24], [-1.6, -19]], STEEL);
+        /* Long, and with a belly: a fighting knife is wider a third of the
+           way down and sweeps to its point, where a straight wedge is a
+           letter-opener. A clip on the back edge gives it the bite. */
+        panel(g, [[-2.5, 0], [2.5, 0], [3.1, -10], [2.2, -20], [0, -28], [-1.4, -23.5], [-2.2, -21], [-1.9, -10]], STEEL);
         // A fuller down the middle, not a pale triangle laid over the face:
         // the groove is what makes a blade read as forged rather than cut out
         // of paper, and it is a dark line with a light one beside it.
         g.strokeStyle = 'rgba(18,22,30,.45)'; g.lineWidth = 0.9;
-        g.beginPath(); g.moveTo(0, -2.5); g.lineTo(0, -19); g.stroke();
-        g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 0.7;
-        g.beginPath(); g.moveTo(1.15, -3); g.lineTo(0.8, -18.5); g.lineTo(0, -22.6);
+        g.beginPath(); g.moveTo(0, -2.5); g.lineTo(0.2, -21); g.stroke();
+        g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 0.7;
+        g.beginPath(); g.moveTo(1.5, -3); g.lineTo(2.1, -12); g.lineTo(1.4, -21); g.lineTo(0, -26.4);
         g.stroke();
         /* A hilt, which this did not have: the blade ran straight into a
            leather block. A knife is a crossguard, a bound grip and a pommel,
            and those three marks are most of what tells it from a shard. */
         panel(g, [[-4.2, -0.6], [4.2, -0.6], [3.6, 1.8], [-3.6, 1.8]],
           ramp([0.40, 0.42, 0.48], 'metal'));
-        panel(g, [[-2.3, 1.6], [2.3, 1.6], [2, 6.4], [-2, 6.4]], LEATHER);
+        // bound in the same red as the mask
+        panel(g, [[-2.3, 1.6], [2.3, 1.6], [2, 6.4], [-2, 6.4]], ramp([0.5, 0.1, 0.1], 'leather'));
         g.save();
         g.strokeStyle = LEATHER.line; g.globalAlpha = 0.6; g.lineWidth = 0.65;
         for (const y of [2.8, 4.1, 5.4]) {
@@ -10856,14 +11225,15 @@ window.WS = window.WS || {};
     /* No tabard: the stole sits exactly where one goes and the two together
      * made the whole front of her one pale slab. Two bands with the robe
      * showing between them is the reading; three overlapping ones is a bib. */
-    priest: { build: 'slim', head: 'bare', robe: true, cloak: 'short', halo: true,
-      weapon: 'censer', stole: true, hair: ramp([0.55, 0.46, 0.33]),
+    priest: { build: 'slim', head: 'bare', robe: true, cloak: 'short', halo: true, fem: true,
+      weapon: 'censer', stole: true, hair: ramp([0.55, 0.46, 0.33]), locks: true,
       brand: 'priest', crownPoints: 13, veil: true },
     rogue: { build: 'slim', head: 'hood', cloak: 'cut', weapon: 'daggers', hoodFace: true,
+      hood: ramp([0.2, 0.19, 0.21]), bandolier: true, downRoom: 0.86,
       sheaths: true, bracer: true, brand: 'rogue', crownPoints: 9 },
-    hunter: { build: 'normal', head: 'bare', weapon: 'bow', hoodDown: true, pelt: true,
-      bracer: true, strap: true, bootknife: true, hair: ramp([0.30, 0.26, 0.18]),
-      brand: 'hunter', hawk: true },
+    hunter: { build: 'normal', head: 'bare', weapon: 'bow', hoodDown: true, pelt: true, fem: true,
+      bracer: true, strap: true, bootknife: true, hair: ramp([0.30, 0.26, 0.18]), longHair: 8, braids: 'one',
+      brand: 'hunter', elephant: true },
     /* One hand. The other is gone, which is what "The Fallen Hero" is about,
        and it is stated here rather than left to the drawing code to remember
        - a survivor's anatomy is part of who they are. The off arm ends in a
@@ -10881,13 +11251,13 @@ window.WS = window.WS || {};
       weapon: 'orb', chains: true, tome: true, wisp: true, hood: DARKCLOTH,
       brand: 'warlock', crownPoints: 10 },
     /* The shaman used to be a robed slim silhouette with a long cloak, which
-     * put him inside 83% of the mage's outline and 81% of the warlock's -
-     * three survivors sharing one shape. Legs and a ragged hem take him out of
-     * that cluster without touching anything else about him.
+     * put her inside 83% of the mage's outline and 81% of the warlock's -
+     * three survivors sharing one shape. Legs and a ragged hem take her out of
+     * that cluster without touching anything else about her.
      * The moustache is Vonnra's own mark in the same sense the crown is
      * graveblade's - it is drawn nowhere else in the cast. */
-    shaman: { build: 'normal', head: 'bare', cloak: 'tattered', weapon: 'totem',
-      mantle: true, warpaint: true, armwraps: true, hair: ramp([0.22, 0.24, 0.30]),
+    shaman: { build: 'normal', head: 'bare', cloak: 'tattered', weapon: 'totem', fem: true,
+      mantle: true, warpaint: true, armwraps: true, hair: ramp([0.22, 0.24, 0.30]), longHair: 14, braids: 'two',
       mustache: true, brand: 'shaman', crownPoints: 7 },
     paladin: { build: 'heavy', head: 'helm', pauldrons: 2.4, halo: true, tabard: true,
       weapon: 'hammer', offhand: 'shield', device: true,
@@ -10897,19 +11267,20 @@ window.WS = window.WS || {};
       gauntlets: true, eyeColour: [0.32, 0.72, 1.0],
       brand: 'graveblade', crownPoints: 4 },
     ruinseeker: { build: 'normal', head: 'bare', horns: true, cloak: 'tattered',
-      weapon: 'glaives', blindfold: true, sigils: true, bracer: true, legwraps: true,
+      weapon: 'glaives', blindfold: true, sigils: true, bracer: true, legwraps: true, downRoom: 0.93,
       hair: DARKCLOTH, brand: 'ruinseeker' },
     /* Milksupply: the one head in the cast that is not a person's. Heavy,
        robed to the floor, the bell at the throat and the crook's hook over
        the shoulder. Pale hide, so her own hands and neck are hide too. */
-    druid: { build: 'heavy', head: 'bovine', robe: true, robeFlare: 3, cloak: 'short', weapon: 'crook',
-      bell: true, skin: ramp([0.90, 0.86, 0.80], 'skin'), skinBase: [0.90, 0.86, 0.80],
+    druid: { build: 'heavy', head: 'bovine', robe: true, robeFlare: 3, cloak: 'short', weapon: 'crook', fem: true,
+      bell: true, apron: true, bodice: true, skin: ramp([0.90, 0.86, 0.80], 'skin'), skinBase: [0.90, 0.86, 0.80],
       hair: ramp([0.34, 0.24, 0.16]), brand: 'druid', crownPoints: 5 },
     /* Abbot Eisen: bald, barefoot, nothing in his hands but the wraps on
        them, and the mala across his chest. The only slim survivor with no
        cloak and no weapon - the gap where everyone else carries something is
        his silhouette. */
     monk: { build: 'slim', head: 'bare', bald: true, sash: true, weapon: 'mala', wraps: true,
+      gi: true, goatee: ramp([0.80, 0.79, 0.76]),
       legwraps: true, brand: 'monk', crownPoints: 12 },
   };
 
@@ -11665,7 +12036,7 @@ window.WS = window.WS || {};
    *  worn on a head in the cast, and it frames the face instead of hiding
    *  it. Drawn in two parts: the fall behind the head, and the band across
    *  the brow in front of the hair. */
-  function veil(g, C, front) {
+  function veil(g, C, front, hr) {
     const cx = 50;
     const linen = ramp([0.9, 0.88, 0.84]);
     if (!front) {
@@ -11691,6 +12062,34 @@ window.WS = window.WS || {};
         g.beginPath(); g.moveTo(cx + d * 12, HEAD_CY - 4); g.quadraticCurveTo(cx + d * 14.5, HEAD_CY + 8, cx + d * 12.5, SHOULDER_Y + 4); g.stroke();
       }
       g.restore();
+      /* The inside of the veil is her hair, not more linen. Seen past a
+         narrow chin, white linen under the jaw read as a white beard. */
+      if (hr) {
+        // her hair down the inside of the veil, either side...
+        lit(g, hr, cx - 11, HEAD_CY - 6, cx + 11, SHOULDER_Y + 4);
+        g.beginPath();
+        g.moveTo(cx - 10.5, HEAD_CY - 6);
+        g.quadraticCurveTo(cx - 12.5, HEAD_CY + 10, cx - 9, SHOULDER_Y + 4);
+        g.lineTo(cx + 9, SHOULDER_Y + 4);
+        g.quadraticCurveTo(cx + 12.5, HEAD_CY + 10, cx + 10.5, HEAD_CY - 6);
+        g.closePath(); g.fill();
+        // ...and her neck between them, in the shadow of the jaw
+        const nk = g.createLinearGradient(0, HEAD_CY + 8, 0, SHOULDER_Y + 3);
+        nk.addColorStop(0, 'rgb(112,78,58)'); nk.addColorStop(0.45, 'rgb(176,128,98)'); nk.addColorStop(1, 'rgb(196,148,114)');
+        g.fillStyle = nk;
+        g.beginPath();
+        g.moveTo(cx - 4.4, HEAD_CY + 6);
+        g.quadraticCurveTo(cx - 5.4, SHOULDER_Y - 3, cx - 8.2, SHOULDER_Y + 4);
+        g.lineTo(cx + 8.2, SHOULDER_Y + 4);
+        g.quadraticCurveTo(cx + 5.4, SHOULDER_Y - 3, cx + 4.4, HEAD_CY + 6);
+        g.closePath(); g.fill();
+        // a fine chain with the Morning Light's sun on it
+        g.strokeStyle = GOLD.key; g.lineWidth = 0.55;
+        g.beginPath(); g.moveTo(cx - 5.8, NECK_Y - 1); g.quadraticCurveTo(cx, SHOULDER_Y + 2.6, cx + 5.8, NECK_Y - 1); g.stroke();
+        g.fillStyle = GOLD.key;
+        g.beginPath(); g.arc(cx, SHOULDER_Y + 1.6, 1.25, 0, WS.TAU); g.fill();
+        glow(g, cx, SHOULDER_Y + 1.6, 3, C.accent, 0.5);
+      }
     } else {
       // the band across the brow, over the hair
       const by = HEAD_CY - HEAD_RY + 3.4;
@@ -11705,43 +12104,83 @@ window.WS = window.WS || {};
     }
   }
 
-  /** The hunter's hawk, on the far shoulder, watching the other way. A
-   *  second living thing on the figure - the only one in the cast - and the
-   *  one mark that says "ranger" before the bow does. */
-  function hawk(g, b, w) {
+  /** Maeca's elephant: a pink calf the size of a cat, riding her far
+   *  shoulder with its trunk up. A second living thing on the figure - the
+   *  only one in the cast - and nobody has ever asked her about it twice. */
+  function elephant(g, b, w, C) {
     const x = 50 - b.sh + 2, y = SHOULDER_Y - 3 + (w.lift || 0) * 0.3;
-    const brown = ramp([0.46, 0.32, 0.2], 'leather');
-    const pale = ramp([0.88, 0.84, 0.76]);
-    // tail, down the back of the shoulder
-    panel(g, [[x + 1, y + 3], [x + 4, y + 3], [x + 3.4, y + 12], [x + 0.4, y + 11]], brown);
-    // body
-    lit(g, brown, x - 5, y - 6, x + 5, y + 5);
-    g.beginPath(); g.ellipse(x + 1, y - 1, 4.6, 6, 0.25, 0, WS.TAU); g.fill();
-    finish(g, brown, x - 4, y - 7, x + 6, y + 5);
-    // pale breast with bars
-    g.save();
-    g.beginPath(); g.ellipse(x - 1.2, y, 2.6, 4.4, 0.2, 0, WS.TAU); g.clip();
-    lit(g, pale, x - 4, y - 4, x + 1, y + 4); g.fillRect(x - 5, y - 5, 7, 10);
-    g.strokeStyle = brown.line; g.globalAlpha = 0.5; g.lineWidth = 0.5;
-    for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(x - 3.5, y - 2 + i * 1.6); g.lineTo(x + 0.5, y - 2.4 + i * 1.6); g.stroke(); }
+    const pink = ramp([0.94, 0.62, 0.72], 'skin');
+    const far = ramp([0.78, 0.48, 0.58], 'skin');
+    // the far legs and the tail, behind everything
+    for (const lx of [-1.4, 4.4]) {
+      panel(g, [[x + lx - 1.5, y - 1], [x + lx + 1.6, y - 1], [x + lx + 1.5, y + 3.8], [x + lx - 1.4, y + 3.8]], far);
+    }
+    g.strokeStyle = far.line; g.lineWidth = 0.7; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(x + 7.2, y - 2.2); g.quadraticCurveTo(x + 9, y - 0.6, x + 8.6, y + 1.8); g.stroke();
+    g.fillStyle = far.shade;
+    g.beginPath(); g.ellipse(x + 8.6, y + 2.2, 0.8, 1.1, 0, 0, WS.TAU); g.fill();
+    // body: round, a little higher behind than in front
+    lit(g, pink, x - 5, y - 7, x + 7.5, y + 2.5);
+    g.beginPath(); g.ellipse(x + 1.6, y - 2, 6.2, 4.5, -0.08, 0, WS.TAU); g.fill();
+    finish(g, pink, x - 4.6, y - 6.6, x + 7.8, y + 2.6);
+    // a saddle cloth in her own colour, trimmed in gold
+    panel(g, [[x - 0.8, y - 6.2], [x + 5.6, y - 6], [x + 6.2, y - 1.6], [x + 2.6, y - 0.4], [x - 1.2, y - 1.8]], C.accentRamp);
+    g.strokeStyle = GOLD.key; g.lineWidth = 0.55; g.globalAlpha = 0.9;
+    g.beginPath(); g.moveTo(x + 6.2, y - 1.6); g.lineTo(x + 2.6, y - 0.4); g.lineTo(x - 1.2, y - 1.8); g.stroke();
+    g.globalAlpha = 1;
+    // near legs, with pale toenails
+    for (const lx of [-3, 2.8]) {
+      panel(g, [[x + lx - 1.8, y - 1.4], [x + lx + 1.8, y - 1.4], [x + lx + 1.7, y + 4.2], [x + lx - 1.7, y + 4.2]], pink);
+      g.fillStyle = '#fbe9e4';
+      for (const t of [-0.8, 0, 0.8]) { g.beginPath(); g.arc(x + lx + t, y + 3.9, 0.42, 0, WS.TAU); g.fill(); }
+    }
+    // the head, forward and up
+    lit(g, pink, x - 8.5, y - 10, x - 1, y - 2);
+    g.beginPath(); g.ellipse(x - 4.4, y - 6, 3.8, 3.5, 0, 0, WS.TAU); g.fill();
+    // the trunk: down off the face, then up in a curl - it is trumpeting
+    const P = (t) => {
+      const u = 1 - t;
+      const p0 = [x - 7.4, y - 5], c1 = [x - 10.8, y - 2.4], p2 = [x - 10.6, y - 10.6];
+      return [u * u * p0[0] + 2 * u * t * c1[0] + t * t * p2[0], u * u * p0[1] + 2 * u * t * c1[1] + t * t * p2[1]];
+    };
+    const W = (t) => 1.45 * (1 - t) + 0.55;
+    lit(g, pink, x - 11, y - 11, x - 7, y - 3);
+    sweptPath(g, P, W, 14); g.fill();
+    g.save(); g.strokeStyle = pink.line; g.globalAlpha = 0.5; g.lineWidth = 0.35;
+    for (let i = 1; i < 6; i++) {
+      const [px, py] = P(i / 6);
+      g.beginPath(); g.moveTo(px - 0.9, py); g.lineTo(px + 0.9, py - 0.2); g.stroke();
+    }
     g.restore();
-    // the folded wing, a darker panel with a feathered edge
-    panel(g, [[x + 0.5, y - 5], [x + 5.4, y - 2.5], [x + 5, y + 4.5], [x + 2.2, y + 6], [x + 0.6, y + 2]],
-      ramp([0.34, 0.24, 0.16], 'leather'));
-    // head, looking out to the left, with a hooked beak
-    lit(g, brown, x - 5, y - 10, x + 1, y - 4);
-    g.beginPath(); g.ellipse(x - 1.5, y - 7.2, 3, 2.7, 0, 0, WS.TAU); g.fill();
-    g.fillStyle = '#e8c048';
-    g.beginPath(); g.moveTo(x - 4.2, y - 7.8); g.lineTo(x - 6.6, y - 6.8); g.lineTo(x - 4.6, y - 6); g.closePath(); g.fill();
-    g.fillStyle = '#1c140c';
-    g.beginPath(); g.moveTo(x - 6.6, y - 6.8); g.lineTo(x - 6.1, y - 5.6); g.lineTo(x - 5.4, y - 6.4); g.closePath(); g.fill();
-    g.fillStyle = '#fff4c0';
-    g.beginPath(); g.arc(x - 2.6, y - 7.8, 0.75, 0, WS.TAU); g.fill();
-    g.fillStyle = '#140c06';
-    g.beginPath(); g.arc(x - 2.7, y - 7.8, 0.4, 0, WS.TAU); g.fill();
-    // talons on the pauldron
-    g.strokeStyle = '#d8b048'; g.lineWidth = 0.7; g.lineCap = 'round';
-    for (const dx of [-0.5, 1.5]) { g.beginPath(); g.moveTo(x + dx, y + 4.5); g.lineTo(x + dx - 0.6, y + 6.2); g.stroke(); }
+    g.fillStyle = pink.line;
+    g.beginPath(); g.ellipse(x - 10.6, y - 10.8, 0.7, 0.45, 0, 0, WS.TAU); g.fill();
+    // the ear, big and soft, over the neck
+    const ear = ramp([0.96, 0.70, 0.78], 'skin');
+    lit(g, ear, x - 3.6, y - 9.6, x + 1.8, y - 1.8);
+    g.beginPath();
+    g.moveTo(x - 2.6, y - 8.6);
+    g.bezierCurveTo(x + 1.6, y - 10.4, x + 2.8, y - 4.6, x + 0.4, y - 2.2);
+    g.bezierCurveTo(x - 1.4, y - 1, x - 3.2, y - 3.6, x - 2.6, y - 8.6);
+    g.closePath(); g.fill();
+    g.fillStyle = 'rgba(214,110,140,.45)';
+    g.beginPath(); g.ellipse(x - 0.8, y - 5.6, 1.5, 2.4, 0.2, 0, WS.TAU); g.fill();
+    g.strokeStyle = pink.line; g.lineWidth = 0.5; g.globalAlpha = 0.7;
+    g.beginPath();
+    g.moveTo(x - 2.6, y - 8.6);
+    g.bezierCurveTo(x + 1.6, y - 10.4, x + 2.8, y - 4.6, x + 0.4, y - 2.2);
+    g.stroke();
+    g.globalAlpha = 1;
+    // an eye with a catchlight and two lashes, and a cheek
+    g.fillStyle = '#1c1014';
+    g.beginPath(); g.ellipse(x - 5.4, y - 6.9, 0.75, 0.9, 0, 0, WS.TAU); g.fill();
+    g.fillStyle = '#fff';
+    g.beginPath(); g.arc(x - 5.6, y - 7.2, 0.28, 0, WS.TAU); g.fill();
+    g.strokeStyle = '#1c1014'; g.lineWidth = 0.4;
+    for (const [dx, dy] of [[-0.2, -1.6], [0.6, -1.4]]) {
+      g.beginPath(); g.moveTo(x - 5.4 + dx * 0.3, y - 7.7); g.lineTo(x - 5.4 + dx, y - 6.9 + dy); g.stroke();
+    }
+    g.fillStyle = 'rgba(230,110,130,.45)';
+    g.beginPath(); g.arc(x - 6.4, y - 5.2, 0.9, 0, WS.TAU); g.fill();
   }
 
   /** A brass bell on a strap at the throat. You hear Milksupply before you
@@ -11760,8 +12199,100 @@ window.WS = window.WS || {};
     g.beginPath(); g.arc(x, by + 6.9, 1, 0, WS.TAU); g.fill();
   }
 
+  /* ------------------------------------------------------------ hair --- */
+  /** Hair that falls past the shoulders, behind them. Drawn before the body,
+   *  so the torso and the head cover all but the fall at either side. */
+  function longHair(g, cfg, len) {
+    const cx = 50, hr = cfg.hair || DARKCLOTH;
+    const bot = SHOULDER_Y + len;
+    lit(g, hr, cx - 15, HEAD_CY - HEAD_RY, cx + 15, bot);
+    g.beginPath();
+    g.moveTo(cx - HEAD_RX - 0.5, HEAD_CY - 4);
+    g.bezierCurveTo(cx - HEAD_RX - 1, HEAD_CY - HEAD_RY * 1.4, cx + HEAD_RX + 1, HEAD_CY - HEAD_RY * 1.4,
+      cx + HEAD_RX + 0.5, HEAD_CY - 4);
+    g.bezierCurveTo(cx + HEAD_RX + 3.5, HEAD_CY + 8, cx + HEAD_RX + 3, bot - 6, cx + HEAD_RX + 1.5, bot);
+    g.lineTo(cx + HEAD_RX - 2.5, bot - 2.5);
+    g.lineTo(cx + HEAD_RX - 5, bot + 0.5);
+    g.lineTo(cx - HEAD_RX + 5, bot + 0.5);
+    g.lineTo(cx - HEAD_RX + 2.5, bot - 2.5);
+    g.lineTo(cx - HEAD_RX - 1.5, bot);
+    g.bezierCurveTo(cx - HEAD_RX - 3, bot - 6, cx - HEAD_RX - 3.5, HEAD_CY + 8, cx - HEAD_RX - 0.5, HEAD_CY - 4);
+    g.closePath(); g.fill();
+    finish(g, hr, cx - HEAD_RX - 4, HEAD_CY - HEAD_RY * 1.2, cx + HEAD_RX + 4, bot + 1);
+    // strands, the way it falls
+    g.save();
+    g.strokeStyle = hr.line; g.globalAlpha = 0.45; g.lineWidth = 0.6;
+    for (const dir of [-1, 1]) {
+      for (const o of [0.5, 2.2]) {
+        g.beginPath();
+        g.moveTo(cx + dir * (HEAD_RX - 1 + o), HEAD_CY + 2);
+        g.quadraticCurveTo(cx + dir * (HEAD_RX + 2 + o), HEAD_CY + 14, cx + dir * (HEAD_RX + o * 0.6), bot - 1);
+        g.stroke();
+      }
+    }
+    g.restore();
+  }
+
+  /** A plait: a chain of lobes along a curve, each tilted the other way from
+   *  the last, tied off at the end with a tuft. `beads` threads one of the
+   *  survivor's colour on every other lobe. */
+  function braid(g, hr, x0, y0, cxp, cyp, x1, y1, n, beads) {
+    const P = (t) => {
+      const u = 1 - t;
+      return [u * u * x0 + 2 * u * t * cxp + t * t * x1, u * u * y0 + 2 * u * t * cyp + t * t * y1];
+    };
+    for (let i = 0; i < n; i++) {
+      const t = (i + 0.5) / n;
+      const [x, y] = P(t);
+      const r = 2.5 - t * 0.7;
+      lit(g, hr, x - r, y - r, x + r, y + r);
+      g.beginPath(); g.ellipse(x, y, r, r * 0.78, (i % 2 ? 0.55 : -0.55), 0, WS.TAU); g.fill();
+      g.strokeStyle = hr.line; g.globalAlpha = 0.55; g.lineWidth = 0.5;
+      g.beginPath(); g.ellipse(x, y, r, r * 0.78, (i % 2 ? 0.55 : -0.55), 0, WS.TAU); g.stroke();
+      g.globalAlpha = 1;
+      if (beads && i % 2) {
+        g.fillStyle = beads.core;
+        g.beginPath(); g.arc(x, y, 1.15, 0, WS.TAU); g.fill();
+        g.fillStyle = 'rgba(255,255,255,.6)';
+        g.beginPath(); g.arc(x - 0.35, y - 0.35, 0.4, 0, WS.TAU); g.fill();
+      }
+    }
+    // the tie and the tuft
+    const [ex, ey] = P(1);
+    panel(g, [[ex - 1.6, ey - 1.2], [ex + 1.6, ey - 1.2], [ex + 1.4, ey + 0.6], [ex - 1.4, ey + 0.6]], beads || LEATHER);
+    panel(g, [[ex - 1.4, ey + 0.4], [ex + 1.4, ey + 0.4], [ex + 2.2, ey + 4.4], [ex, ey + 3.2], [ex - 2, ey + 4.6]], hr);
+  }
+
+  /** Loose locks at either side of the face, from under a veil or a band. */
+  function faceLocks(g, hr) {
+    const cx = 50;
+    for (const dir of [-1, 1]) {
+      lit(g, hr, cx + dir * 8, HEAD_CY - 6, cx + dir * 12, SHOULDER_Y + 3);
+      g.beginPath();
+      g.moveTo(cx + dir * 7.4, HEAD_CY - 6);
+      g.bezierCurveTo(cx + dir * 10.6, HEAD_CY + 1, cx + dir * 8.6, HEAD_CY + 8, cx + dir * 11.2, SHOULDER_Y + 3);
+      g.bezierCurveTo(cx + dir * 12.4, HEAD_CY + 8, cx + dir * 13.2, HEAD_CY, cx + dir * 11.2, HEAD_CY - 7);
+      g.closePath(); g.fill();
+      g.strokeStyle = hr.line; g.globalAlpha = 0.5; g.lineWidth = 0.5;
+      g.beginPath();
+      g.moveTo(cx + dir * 9.6, HEAD_CY - 4);
+      g.bezierCurveTo(cx + dir * 11.6, HEAD_CY + 2, cx + dir * 10, HEAD_CY + 8, cx + dir * 11.6, SHOULDER_Y + 1);
+      g.stroke();
+      g.globalAlpha = 1;
+    }
+  }
+
   function figure(g, cfg, C, w) {
-    const b = BUILDS[cfg.build] || BUILDS.normal;
+    let b = BUILDS[cfg.build] || BUILDS.normal;
+    /* The frame under the clothes. Narrower shoulders, a drawn-in waist and
+       more hip for the women; for the men who are not already built like a
+       door, a little more shoulder over the same waist - the taper is what
+       says it, not the size. */
+    if (cfg.fem) {
+      b = Object.assign({}, b, { sh: b.sh - 1.4, waist: b.waist - 1.3, hip: b.hip + 1.2, arm: b.arm - 0.3 });
+    } else if (cfg.build !== 'heavy') {
+      b = Object.assign({}, b, { sh: b.sh + 1.2, arm: b.arm + 0.3 });
+    }
     /* THE FEET OWN THE FLOOR.
      *
      * The body rides up on the passing beats and drops onto each contact -
@@ -11792,7 +12323,25 @@ window.WS = window.WS || {};
       emberWings(g, cfg, C, b);
       g.restore();
     }
+    if (cfg.longHair) {
+      g.save(); g.translate(0, -lift);
+      longHair(g, cfg, cfg.longHair);
+      g.restore();
+    }
     drawBody(g, cfg, C, b, w, lift);
+    if (cfg.braids) {
+      g.save(); g.translate(0, -lift);
+      const hr = cfg.hair || DARKCLOTH;
+      if (cfg.braids === 'one') {
+        // one plait over the near shoulder, the way a ranger keeps it out of the string
+        braid(g, hr, 58.5, HEAD_CY + 4, 62, SHOULDER_Y + 2, 59, WAIST_Y - 8, 7, null);
+      } else {
+        for (const dir of [-1, 1]) {
+          braid(g, hr, 50 + dir * 9.6, HEAD_CY + 4, 50 + dir * 12.4, SHOULDER_Y, 50 + dir * 9.4, SHOULDER_Y + 13, 6, C.accentRamp);
+        }
+      }
+      g.restore();
+    }
     if (cfg.emberBrand) {
       g.save(); g.translate(0, -lift);
       emberBrand(g, cfg, C, b, cfg.emberBrand);
@@ -11801,8 +12350,9 @@ window.WS = window.WS || {};
     if (cfg.emberHem) { g.save(); g.translate(0, -cloakLift); emberHem(g, cfg, C, b, w); g.restore(); }
     g.save(); g.translate(0, -lift);
     emberMantle(g, cfg, C, b, cfg.emberMantle || 0);
-    if (cfg.veil) veil(g, C, false);
+    if (cfg.veil) veil(g, C, false, cfg.hair);
     drawHead(g, cfg, C);
+    if (cfg.locks) faceLocks(g, cfg.hair || DARKCLOTH);
     if (cfg.veil) veil(g, C, true);
     if (cfg.bell) cowbell(g, C);
     if (cfg.hat === 'wizard') wizardHat(g, C);
@@ -11812,11 +12362,11 @@ window.WS = window.WS || {};
     if (off) off(g, C, b);
     const wp = WEAPONS[cfg.weapon];
     if (wp) wp(g, C, b);
-    // The hawk sits in front of the quiver, or it is a quiver with a beak.
-    if (cfg.hawk) {
+    // The elephant sits in front of the quiver, where the hawk used to.
+    if (cfg.elephant) {
       const hx = 50 - b.sh + 2, hy = SHOULDER_Y - 3;
       g.save(); g.translate(hx, hy); g.scale(1.4, 1.4); g.translate(-hx, -hy);
-      hawk(g, b, w);
+      elephant(g, b, w, C);
       g.restore();
     }
     g.restore();
@@ -11843,8 +12393,15 @@ window.WS = window.WS || {};
     draw(g, size, id, tint, demon, phase, pose, rank) {
       const cfg = kitFor(id, rank);
       const posed = pose && POSES[pose.kind];
-      const w = posed ? POSES[pose.kind](pose.k)
+      let w = posed ? POSES[pose.kind](pose.k)
         : (phase === undefined ? STILL : stride(phase));
+      /* A survivor who carries something long enough to leave the tile as
+         they go over asks for a little more of the shrink, in proportion to
+         how far down they are (CAST.downRoom). */
+      if (posed && pose.kind === 'down' && cfg.downRoom) {
+        const k = (1 - w.shrink) / 0.26;
+        w = Object.assign({}, w, { shrink: w.shrink * (1 - (1 - cfg.downRoom) * k) });
+      }
       const C = colours(tint, demon, cfg.eyeColour);
       const u = size / 100;
 
