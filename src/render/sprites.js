@@ -4222,7 +4222,7 @@
       poly(g, P([[33.5, 51], [37.5, 51], [38.6, 57], [32.4, 57]]), '#d8a840', '#5a3e10', u * 0.6);
     },
 
-    bearform(g, s, p) {
+    bearform(g, s, p, t) {
       /* THE BEAR, as a survivor wears it: down on all fours and FAT - a
          great round barrel of a thing, belly slung low, a grizzly's hump over
          the shoulders, short thick legs planted wide, and a big head carried
@@ -4232,9 +4232,34 @@
          you by the Old Shapes' claw marks glowing green in its fur and the
          totem at its throat.) The claws are hooked crescents off the ends of
          the toes, curving down to the ground, not blades stuck to the paw.
-         Faces left like every creature; the renderer turns it. */
+         Faces left like every creature; the renderer turns it.
+
+         `t` is where it is in a stride, 0..1, or undefined standing. It
+         walks the way a bear does, one foot at a time - near hind, near
+         front, far hind, far front, a quarter of a stride apart - each foot
+         planted and pushed back under it, then lifted and carried forward.
+         The barrel rides the legs: it dips twice a stride as the weight
+         comes onto each side, the head nods a beat behind it, and the belly
+         swings a beat behind that, because it is fat. */
       const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
       const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+      const walking = t !== undefined, ph = walking ? t * WS.TAU : 0;
+      const by = walking ? 0.9 * Math.cos(2 * ph) : 0;                // the body's rise and fall
+      const hy = walking ? by + 0.7 * Math.sin(2 * ph - 0.9) : 0;     // the head, a beat behind
+      const sway = walking ? 1.6 * Math.sin(2 * ph - 1.8) : 0;       // the belly, behind that
+      /** One leg: hip rides the body, the foot swings about where it stands.
+       *  `o` is the leg's place in the stride, `bend` which way the joint
+       *  folds as the foot comes up (a front wrist back, a hind hock forward). */
+      const leg = (hip, knee, foot, o, bend, w, pal, pawY) => {
+        const a = ph + o * WS.TAU;
+        const dx = walking ? -8 * Math.sin(a) : 0;
+        const lift = walking ? 5 * Math.max(0, Math.cos(a)) : 0;
+        const fx = foot[0] + dx, fy = foot[1] - lift;
+        const hx = hip[0] + dx * 0.25, hyy = hip[1] + by;
+        const kx = knee[0] + dx * 0.6 + bend * lift * 0.7, ky = knee[1] + by * 0.5 - lift * 0.55;
+        limb(g, P([[hx, hyy], [kx, ky], [fx, fy]]), w.map(X), pal);
+        paw(fx - (foot[0] - pawY[0]), pawY[1] - lift, pal, pawY[2]);
+      };
       const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
       const pale = { hi: '#f6e6cc', mid: '#dcc0a0', lo: '#a88866', dark: '#6e5438', line: p.line, glow: '#fff' };
       /** A paw: a round pad of fur, toes, and a hooked claw off each toe. */
@@ -4269,12 +4294,11 @@
       };
 
       // the far legs, in shade: short, thick, planted
-      limb(g, P([[62, 66], [63, 76], [62, 85]]), [15, 12, 11].map(X), far);
-      paw(61, 85.6, far, 5.6);
-      limb(g, P([[48, 64], [49, 75], [49, 85]]), [13, 11, 10].map(X), far);
-      paw(48, 85.6, far, 5.2);
+      leg([62, 66], [63, 76], [62, 85], 0.5, -1, [15, 12, 11], far, [61, 85.6, 5.6]);
+      leg([48, 64], [49, 75], [49, 85], 0.75, 1, [13, 11, 10], far, [48, 85.6, 5.2]);
 
       // the body: one great round barrel, the belly slung low, the hump high
+      g.save(); g.translate(0, Y(by));
       const body = mass(g, P([[24, 50], [30, 38], [40, 30], [52, 28], [64, 32], [78, 38], [88, 50],
         [90, 64], [84, 76], [70, 81], [52, 82], [36, 80], [26, 72]]), p);
       g.save(); body(); g.clip();
@@ -4282,7 +4306,7 @@
       pelt(g, p, X(46), X(36), X(14), X(8), -0.2, 5, -0.3, 0.4);
       // the pale belly, underneath the barrel
       g.fillStyle = 'rgba(240,214,176,.28)';
-      g.beginPath(); g.ellipse(X(56), Y(82), X(24), X(7), 0, 0, WS.TAU); g.fill();
+      g.beginPath(); g.ellipse(X(56 + sway * 0.5), Y(82 + Math.abs(sway) * 0.4), X(24), X(7), 0, 0, WS.TAU); g.fill();
       // a roll of fat behind the shoulder, and the haunch
       g.strokeStyle = p.lo; g.globalAlpha = 0.55; g.lineWidth = u * 1.4; g.lineCap = 'round';
       g.beginPath(); g.moveTo(X(46), Y(46)); g.quadraticCurveTo(X(42), Y(60), X(46), Y(74)); g.stroke();
@@ -4302,15 +4326,15 @@
       fringe([[30, 38], [40, 30], [52, 28], [64, 32], [78, 38], [87, 48]], far, 2.2, 3);
       fringe([[36, 80], [52, 82], [70, 81]], far, 1.8, 3);
       // a stub of a tail
-      shaded(g, X(89), Y(50), X(3.4), X(2.8), p);
+      shaded(g, X(89 + sway * 0.4), Y(50), X(3.4), X(2.8), p);
+      g.restore();
 
       // the near legs, round at the top where the fat sits on them
-      limb(g, P([[74, 68], [76, 79], [75, 87]]), [17, 13, 12].map(X), p);
-      paw(74, 88.4, p, 6.4);
-      limb(g, P([[40, 66], [38, 78], [38, 87]]), [15, 12, 11].map(X), p);
-      paw(37, 88.4, p, 6);
+      leg([74, 68], [76, 79], [75, 87], 0, -1, [17, 13, 12], p, [74, 88.4, 6.4]);
+      leg([40, 66], [38, 78], [38, 87], 0.25, 1, [15, 12, 11], p, [37, 88.4, 6]);
 
       // the head, carried low and forward, the neck lost in fat
+      g.save(); g.translate(0, Y(hy));
       const head = mass(g, P([[10, 48], [14, 38], [24, 33], [34, 36], [38, 46], [36, 56], [26, 62], [15, 60]]), p);
       g.save(); head(); g.clip(); pelt(g, p, X(25), X(47), X(13), X(12), 0, 4, 0.3, 0.34); g.restore();
       for (const [x, y] of [[18, 36], [30, 34.4]]) {
@@ -4342,6 +4366,7 @@
       g.beginPath(); g.ellipse(X(4), Y(46.8), X(0.8), X(0.5), -0.2, 0, WS.TAU); g.fill();
       eyes(g, X(21), Y(44), X(0.01), X(1.6), '#ffd070');
       poly(g, P([[16.6, 41.4], [25.4, 40.4], [24.6, 42.4], [17.6, 43]]), p.dark, p.line, u * 0.4);
+      g.restore();
     },
 
     owlbearform(g, s, p) {
@@ -4724,6 +4749,13 @@
       }
     }
   };
+  /* The bear's stride, baked like the survivor's: one canvas per frame,
+     because what moves is inside the drawing - four legs swinging from the
+     hip under a body that rides them. */
+  const BEAR_STRIDE = 8;
+  for (let i = 0; i < BEAR_STRIDE; i++) {
+    CREATURES['bearform_w' + i] = (g, s, p) => CREATURES.bearform(g, s, p, i / BEAR_STRIDE);
+  }
 
   /* --------------------------------------------------------- the survivor - */
   // Player sprites share one frame and differ by robe/armour colour, silhouette
@@ -5534,6 +5566,8 @@
     /** Adds an art from outside this file - the finale's machines are drawn
      *  by src/render/finale-art.js and their portraits come through here. */
     define(art, painter) { CREATURES[art] = painter; },
+    /** Frames in the bear's walk (arts bearform_w0 ..). */
+    bearStride: BEAR_STRIDE,
     clear() { cache.clear(); },
   };
 

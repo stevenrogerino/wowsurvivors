@@ -1274,9 +1274,18 @@
       const bear = p.form === 'bear';
       const tint = WS.mix(bear ? [0.52, 0.34, 0.20] : [0.46, 0.40, 0.64], p.character.color, 0.18);
       const fs = WS.round(size * 1.28);
-      sprite = WS.Sprites.creature(bear ? 'bearform' : 'owlbearform', tint, fs);
+      /* The bear walks on four legs, baked frame by frame; it takes
+         three strides to the survivor's five, a heavier gait, and the
+         frames already carry its rise and fall. The owlbear, upright,
+         still heaves as a whole. */
+      let art = bear ? 'bearform' : 'owlbearform';
+      if (bear && p.moving) {
+        const n = WS.Sprites.bearStride;
+        art = 'bearform_w' + WS.floor(((p.walkCycle * 0.6 / WS.TAU) % 1 + 1) % 1 * n);
+      }
+      sprite = WS.Sprites.creature(art, tint, fs);
       ctx.scale(-1, 1);
-      const heave = p.moving ? WS.abs(WS.sin(p.walkCycle * 0.5)) * 2.4 : WS.sin(time * 2) * 1;
+      const heave = p.moving ? (bear ? 0 : WS.abs(WS.sin(p.walkCycle * 0.5)) * 2.4) : WS.sin(time * 2) * 1;
       ctx.drawImage(sprite, -fs / 2, -fs * 0.72 - heave, fs, fs);
     } else {
       sprite = WS.Sprites.hero(p.characterId, p.character.color, size, demon, frame, pose,
