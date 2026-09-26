@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Patch Notes · The Ember Watch</title>
+<meta name="description" content="The Ember Watch balance patch: sunrise pressure on finales, boss damage factors, eased-in difficulty, tougher survivors and finale retries.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,500;0,700;0,800;1,500&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root {
+  color-scheme: dark;
+  --void: #06070b;
+  --obsidian: #0b0d12;
+  --panel: #12141b;
+  --panel-2: #181a22;
+  --rule: #262a35;
+  --arc: #f5c56b;
+  --arc-hot: #ffe6ae;
+  --arc-deep: #b98c3c;
+  --buff: #3ddc7a;
+  --nerf: #e2483d;
+  --fix: #59bfff;
+  --new: #b34ff2;
+  --ink: #e9edf6;
+  --ink-dim: #9aa2b5;
+  --ink-faint: #6f7789;
+  --voice: 'Alegreya', Georgia, 'Times New Roman', serif;
+  --ui: 'Archivo', 'Segoe UI', Roboto, system-ui, sans-serif;
+  --fig: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html { background: var(--void); }
+body {
+  background: var(--void);
+  color: var(--ink);
+  font: 400 15px/1.55 var(--ui);
+  margin: 0;
+  padding-inline: 16px;
+  padding-block: 0 64px;
+}
+nav.back { position: sticky; top: 0; z-index: 5; margin-inline: -16px; padding-inline: 16px;
+  background: rgba(6,7,11,.86); backdrop-filter: blur(8px); border-bottom: 1px solid var(--rule); }
+.back-in { max-width: 1080px; margin: 0 auto; min-height: 48px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; padding-block: 8px; }
+nav.back a { text-decoration: none; }
+nav.back .mark { font: 800 13px var(--ui); letter-spacing: .08em; color: var(--arc-hot); white-space: nowrap; }
+nav.back .mark b { color: var(--ink); }
+nav.back .links { display: flex; gap: 6px; }
+nav.back .links a { font: 600 13px var(--ui); color: var(--ink-dim); padding: 6px 10px; border-radius: 6px; }
+nav.back .links a:hover, nav.back .links a:focus-visible { color: var(--ink); background: var(--panel-2); }
+nav.back .links a.go { color: var(--arc-hot); border: 1px solid rgba(245,197,107,.45); }
+a:focus-visible { outline: 2px solid var(--arc); outline-offset: 2px; }
+.wrap { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 56px; }
+img { max-width: 100%; display: block; }
+h1, h2, h3 { font-family: var(--voice); text-wrap: balance; margin: 0; font-weight: 700; }
+p { margin: 0; max-width: 66ch; }
+.fig { font-family: var(--fig); font-variant-numeric: tabular-nums; }
+.eyebrow { font: 600 11px/1 var(--ui); letter-spacing: .24em; text-transform: uppercase; color: var(--arc-deep); }
+
+/* ---- hero ---- */
+.hero {
+  position: relative; overflow: hidden;
+  margin-inline: -16px; padding: 64px 16px 44px;
+  background:
+    radial-gradient(120% 90% at 50% 118%, rgba(245,197,107,.34), rgba(245,197,107,.08) 42%, transparent 64%),
+    linear-gradient(180deg, #05060a 0%, #0b0d14 60%, #1a1410 100%);
+  border-bottom: 1px solid var(--rule);
+}
+.hero-in { position: relative; z-index: 1; max-width: 1080px; margin: 0 auto; display: grid; grid-template-columns: 1.25fr 1fr; gap: 32px; align-items: end; }
+.sun {
+  position: absolute; left: 72%; bottom: -230px; width: 420px; height: 420px; margin-left: -210px; z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff3d0 0%, #ffd98a 30%, rgba(245,197,107,.35) 55%, transparent 70%);
+  animation: rise 2.4s cubic-bezier(.16,1,.3,1) both;
+  pointer-events: none;
+}
+@keyframes rise { from { transform: translateY(120px); opacity: .4; } to { transform: none; opacity: 1; } }
+.hero h1 { font-size: clamp(44px, 7.6vw, 86px); line-height: .95; letter-spacing: -.01em; color: var(--arc-hot); font-weight: 800; }
+.hero h1 em { font-style: italic; font-weight: 500; color: var(--arc); }
+.hero .lede { margin-top: 18px; font-size: 17px; color: var(--ink-dim); }
+.hero .lede b { color: var(--ink); font-weight: 600; }
+.patchtag { display: inline-flex; gap: 10px; align-items: center; margin-bottom: 18px; }
+.patchtag .fig { font-size: 12px; color: var(--ink-dim); border: 1px solid var(--rule); padding: 4px 8px; border-radius: 3px; background: rgba(0,0,0,.35); }
+.hero-art { display: flex; justify-content: flex-end; align-items: end; gap: 0; position: relative; z-index: 1; }
+.hero-art img { width: 50%; border-radius: 6px; border: 1px solid rgba(245,197,107,.25); box-shadow: 0 20px 50px rgba(0,0,0,.6); }
+.hero-art img + img { margin-left: -12%; margin-bottom: -18px; transform: rotate(3deg); }
+.hero-art img:first-child { transform: rotate(-4deg); }
+
+/* ---- headline figures ---- */
+.tally { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+.tally > div { background: var(--obsidian); padding: 18px 18px 16px; display: flex; flex-direction: column; gap: 6px; }
+.tally .from { font: 500 14px var(--fig); color: var(--ink-faint); text-decoration: line-through; text-decoration-color: rgba(226,72,61,.7); }
+.tally .to { font: 600 34px/1 var(--fig); color: var(--arc-hot); }
+.tally .to small { font-size: 15px; color: var(--arc); }
+.tally .what { font-size: 13px; color: var(--ink-dim); line-height: 1.35; }
+
+/* ---- section heads ---- */
+.sec { display: flex; flex-direction: column; gap: 20px; }
+.sec-head { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--rule); padding-top: 20px; }
+.sec-head h2 { font-size: clamp(28px, 4vw, 38px); line-height: 1.05; color: var(--ink); }
+.sec-head p { color: var(--ink-dim); }
+
+/* ---- stamps ---- */
+.stamp { display: inline-block; font: 700 10.5px/1 var(--ui); letter-spacing: .2em; text-transform: uppercase; padding: 5px 7px 4px; border-radius: 2px; border: 1px solid currentColor; }
+.stamp.buff { color: var(--buff); } .stamp.nerf { color: var(--nerf); } .stamp.fix { color: var(--fix); } .stamp.new { color: var(--new); } .stamp.kept { color: var(--arc); }
+
+/* ---- notices ---- */
+.grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.notice {
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  border: 1px solid var(--rule); border-radius: 6px; padding: 18px;
+  display: flex; flex-direction: column; gap: 12px;
+  box-shadow: inset 0 1px 0 rgba(255,244,224,.06), inset 0 -1px 0 rgba(0,0,0,.5);
+}
+.notice h3 { font-size: 21px; line-height: 1.15; }
+.notice p { font-size: 14px; color: var(--ink-dim); }
+.notice p b { color: var(--ink); font-weight: 600; }
+.pair { display: grid; grid-template-columns: 96px 1fr; gap: 14px; align-items: center; }
+.pair img { width: 96px; height: 96px; object-fit: cover; border-radius: 4px; border: 1px solid var(--rule); background: #000; }
+.chg { display: flex; flex-wrap: wrap; gap: 6px 14px; font: 500 13px var(--fig); color: var(--ink-dim); }
+.chg span b { color: var(--ink); font-weight: 600; }
+.chg .up { color: var(--buff); } .chg .down { color: var(--nerf); }
+
+/* ---- sunrise ---- */
+.sunrise { display: grid; grid-template-columns: 1fr 1.25fr; gap: 24px; align-items: center; }
+.chart { background: var(--obsidian); border: 1px solid var(--rule); border-radius: 6px; padding: 14px; }
+.chart svg { width: 100%; height: auto; display: block; }
+.chart text { font-family: var(--fig); font-size: 11px; fill: var(--ink-faint); }
+.chart .lab { fill: var(--ink-dim); font-family: var(--ui); font-size: 12px; }
+
+/* ---- finale gallery ---- */
+.finales { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.fin { position: relative; border-radius: 6px; overflow: hidden; border: 1px solid var(--rule); background: #000; }
+.fin img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; opacity: .92; }
+.fin .cap { position: absolute; inset: auto 0 0 0; padding: 26px 12px 10px; background: linear-gradient(180deg, transparent, rgba(4,5,8,.94) 55%); display: flex; flex-direction: column; gap: 2px; }
+.fin .cap b { font: 700 16px/1.15 var(--voice); color: var(--arc-hot); }
+.fin .cap span { font: 500 12px var(--fig); color: var(--ink-dim); }
+
+/* ---- boss factor bars ---- */
+.bars { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 28px; }
+.bar { display: grid; grid-template-columns: 34px 132px 1fr 46px; gap: 10px; align-items: center; min-height: 36px; }
+.bar img { width: 34px; height: 34px; }
+.bar .n { font-size: 13.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar .track { height: 10px; background: #0a0b10; border-radius: 5px; box-shadow: inset 0 1px 2px rgba(0,0,0,.7); overflow: hidden; }
+.bar .fill { display: block; height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--arc-deep), var(--arc) 70%, var(--arc-hot)); }
+.bar .x { font: 600 13px var(--fig); color: var(--arc); text-align: right; }
+
+/* ---- map survival ---- */
+.maps { display: flex; flex-direction: column; gap: 10px; }
+.maprow { display: grid; grid-template-columns: 110px 1fr 1fr; gap: 12px; align-items: center; font-size: 13.5px; }
+.maprow .m { color: var(--ink); }
+.dual { position: relative; height: 22px; background: #0a0b10; border-radius: 3px; overflow: hidden; }
+.dual i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; }
+.dual .now { background: rgba(226,72,61,.55); }
+.dual .new { background: linear-gradient(90deg, rgba(61,220,122,.55), rgba(61,220,122,.9)); }
+.dual em { position: absolute; right: 8px; top: 3px; font: 600 12px var(--fig); font-style: normal; color: var(--ink); }
+.legend { display: flex; gap: 18px; font-size: 12.5px; color: var(--ink-dim); flex-wrap: wrap; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 6px; }
+
+/* ---- survivors ---- */
+.surv { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.surv .notice img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 4px; }
+.hp { display: flex; flex-direction: column; gap: 6px; }
+.hpbar { height: 12px; background: #0a0b10; border-radius: 2px; position: relative; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,.7); }
+.hpbar i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(180deg, #e8574b, #a52a20); }
+.hpbar b { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, var(--buff) 0 4px, #25a45a 4px 8px); }
+
+/* ---- retry panel mock ---- */
+.retry { display: grid; grid-template-columns: 1.1fr 1fr; gap: 24px; align-items: center; }
+.mock { background: linear-gradient(180deg, #16120f, #0d0c0e); border: 1px solid rgba(226,72,61,.35); border-radius: 6px; padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 24px 60px rgba(0,0,0,.55); }
+.mock .t { font: 700 26px/1.1 var(--voice); color: #f0b3ac; }
+.mock p { font-size: 13.5px; color: var(--ink-dim); }
+.mock .btns { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+.mock .btn { font: 600 13px var(--ui); padding: 9px 16px; border-radius: 3px; border: 1px solid var(--rule); color: var(--ink); background: #1b1d25; }
+.mock .btn.primary { border-color: var(--arc-deep); background: linear-gradient(180deg, #3a2c14, #231a0c); color: var(--arc-hot); }
+
+/* ---- verdict ---- */
+.verdict { display: grid; grid-template-columns: 120px 1fr; gap: 20px; align-items: start; }
+.verdict img { width: 120px; height: 120px; border-radius: 6px; border: 1px solid rgba(179,79,242,.4); background: #000; }
+.dps { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.dps .bar { grid-template-columns: 110px 1fr 54px; min-height: 22px; }
+.dps .fill.ruin { background: linear-gradient(90deg, #6b2a96, var(--new)); }
+
+.fine { font-size: 12.5px; color: var(--ink-faint); max-width: 80ch; }
+footer { border-top: 1px solid var(--rule); padding-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+
+@media (max-width: 860px) {
+  .hero-in, .sunrise, .retry { grid-template-columns: 1fr; }
+  .hero-art { justify-content: center; }
+  .tally { grid-template-columns: repeat(2, 1fr); }
+  .grid3, .surv, .finales { grid-template-columns: repeat(2, 1fr); }
+  .bars, .grid2 { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+  .grid3, .surv, .finales { grid-template-columns: 1fr; }
+  .tally .to { font-size: 28px; }
+  .bar { grid-template-columns: 30px 104px 1fr 42px; }
+  .maprow { grid-template-columns: 1fr; gap: 4px; }
+  .verdict { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { .sun { animation: none; } }
+</style>
+</head>
+<body>
+<nav class="back"><div class="back-in">
+  <a class="mark" href="index.html"><b>THE EMBER WATCH</b> · Codex</a>
+  <span class="links"><a href="index.html">Back to the codex</a><a class="go" href="https://emberwatch.online/">Play</a></span>
+</div></nav>
+
+<div class="wrap">
+
+<header class="hero">
+  <div class="sun" aria-hidden="true"></div>
+  <div class="hero-in">
+    <div>
+      <div class="patchtag"><span class="eyebrow">The Ember Watch · Balance patch</span></div>
+      <h1>The sun <em>also</em> rises.</h1>
+      <p class="lede">Bosses that would not die. Survivors who could not live. Aura builds that flattened the horde and then spent twelve minutes chipping at one machine. We sent <b>3,897 bot games</b> through every survivor, battlefield and difficulty to find out why, then fixed it.</p>
+    </div>
+    <div class="hero-art">
+      <img src="img/finale_palewastes.webp" alt="The Heart-Drill, the Pale Wastes finale">
+      <img src="img/finale_highmoor.webp" alt="Brother Kael, the Stormbound, the Highmoor finale">
+    </div>
+  </div>
+</header>
+
+<section class="tally" aria-label="Headline results">
+  <div><span class="from">42%</span><span class="to">0<small>%</small></span><span class="what">of Professional Hyper finales ended in a stalemate</span></div>
+  <div><span class="from">14%</span><span class="to">55<small>%</small></span><span class="what">of Professional Hyper finales won</span></div>
+  <div><span class="from">7:13</span><span class="to">3:32</span><span class="what">median finale fight on Professional Hyper</span></div>
+  <div><span class="from">64%</span><span class="to">96<small>%</small></span><span class="what">of Professional Hyper runs still alive at 1:00</span></div>
+</section>
+
+<!-- ============================================================ sunrise -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="eyebrow">The stalemate</span>
+    <h2>Nobody sits there forever now.</h2>
+    <p>A tester sent a video: a finale boss that could not kill the survivor, and a survivor who could not kill the boss. Twelve minutes of nothing. Now the dawn takes a side.</p>
+  </div>
+  <div class="sunrise">
+    <div class="notice">
+      <span class="stamp new">New</span>
+      <h3>The sun is rising</h3>
+      <p>After <b>3:00</b> of finale fight, the boss and everything bolted to it take <b>+50% damage for every minute</b> that passes. A toast tells you when it starts. A build that opens the gates quickly never sees it.</p>
+      <p>On Veteran, stalemates fell from <b>15% to 1%</b> of finales. On Professional Hyper, from <b>42% to none</b>.</p>
+    </div>
+    <div class="chart">
+      <svg viewBox="0 0 520 240" role="img" aria-label="Damage the finale boss takes, by minute of fight: 1x until 3:00, then rising by 0.5x per minute to 3x at 7:00">
+        <defs>
+          <linearGradient id="sunfill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#f5c56b" stop-opacity=".45"/>
+            <stop offset="1" stop-color="#f5c56b" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <!-- plot: x 50..500 for 0..7 min ; y 200..30 for 0..3x -->
+        <g stroke="#262a35" stroke-width="1">
+          <line x1="50" y1="200" x2="500" y2="200"/>
+          <line x1="50" y1="143.3" x2="500" y2="143.3" stroke-dasharray="3 4"/>
+          <line x1="50" y1="86.7" x2="500" y2="86.7" stroke-dasharray="3 4"/>
+          <line x1="50" y1="30" x2="500" y2="30" stroke-dasharray="3 4"/>
+        </g>
+        <g text-anchor="end">
+          <text x="42" y="204">0×</text><text x="42" y="147">1×</text><text x="42" y="91">2×</text><text x="42" y="34">3×</text>
+        </g>
+        <g text-anchor="middle">
+          <text x="50" y="220">0:00</text><text x="114.3" y="220">1:00</text><text x="178.6" y="220">2:00</text><text x="242.9" y="220">3:00</text>
+          <text x="307.1" y="220">4:00</text><text x="371.4" y="220">5:00</text><text x="435.7" y="220">6:00</text><text x="500" y="220">7:00</text>
+        </g>
+        <rect x="242.9" y="24" width="257.1" height="176" fill="#f5c56b" opacity=".05"/>
+        <path d="M50 143.3 L242.9 143.3 L500 30 L500 200 L50 200 Z" fill="url(#sunfill)"/>
+        <path d="M50 143.3 L242.9 143.3 L500 30" fill="none" stroke="#ffe6ae" stroke-width="2.5" stroke-linejoin="round"/>
+        <circle cx="242.9" cy="143.3" r="4.5" fill="#f5c56b"/>
+        <circle cx="500" cy="30" r="4.5" fill="#ffe6ae"/>
+        <text class="lab" x="252" y="168">The sun is rising</text>
+        <text class="lab" x="492" y="50" text-anchor="end">3× at 7:00</text>
+        <text class="lab" x="58" y="134">Damage the boss takes</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ finale sizing -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="eyebrow">Finale health</span>
+    <h2>The fight measures the right thing.</h2>
+    <p>Finale bosses grow tougher for strong builds ("It has taken your measure"). They used to measure <b>all</b> your damage, so a build that cleared screens of fodder brought a boss with up to <b>20×</b> the health and no way to kill it. Now they measure what your kit does to <b>one target</b>, capped at <b>×6</b>.</p>
+  </div>
+  <div class="finales">
+    <div class="fin"><img src="img/finale_thornhollow.webp" alt=""><div class="cap"><b>Foreman Grimtunnel</b><span>Thornhollow</span></div></div>
+    <div class="fin"><img src="img/finale_dustreach.webp" alt=""><div class="cap"><b>The Masked Admiral</b><span>dash 50 → 42 · powder keg 46 → 40</span></div></div>
+    <div class="fin"><img src="img/finale_mourneholt.webp" alt=""><div class="cap"><b>Mordecai, Lantern-Bound</b><span>Mourneholt</span></div></div>
+    <div class="fin"><img src="img/finale_ochre.webp" alt=""><div class="cap"><b>Grimtunnel, again</b><span>Ochre Plains</span></div></div>
+    <div class="fin"><img src="img/finale_palewastes.webp" alt=""><div class="cap"><b>The Heart-Drill</b><span>Frost Nova 50 → 40 · stuck at 40% fixed</span></div></div>
+    <div class="fin"><img src="img/finale_highmoor.webp" alt=""><div class="cap"><b>Brother Kael, the Stormbound</b><span>every hit ×12.5 → ×9.5</span></div></div>
+  </div>
+  <div class="grid3">
+    <div class="notice"><span class="stamp buff">Easier</span><h3>Harder settings, not longer fights</h3><p>Difficulty and Hyper now raise finale health by the <b>square root</b> of their product. Their damage still counts in full, so Professional Hyper is deadlier, not a sponge.</p></div>
+    <div class="notice"><span class="stamp fix">Fix</span><h3>The Pale Lord stops sulking at 40%</h3><p>A rounding error meant about <b>one health total in sixteen</b> left him stuck on his winter line forever. 8 of 219 test finales hit it. Same guard added to four other phase lines.</p></div>
+    <div class="notice"><span class="stamp kept">Kept</span><h3>Professional Hyper still bites</h3><p>About <b>45%</b> of Professional Hyper finale attempts still end in death. That is the hardest setting in the game working as intended.</p></div>
+  </div>
+</section>
+
+<!-- ============================================================ boss factor -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="eyebrow">Weapons vs bosses</span>
+    <h2>Aura builds finally hit bosses hard enough.</h2>
+    <p>Measured on real bosses, the best and worst weapons were <b>17×</b> apart. Area weapons that shred a crowd barely scratched a single big target. Seventeen weapons now deal extra damage to <b>bosses, elites and finale machines</b>, shown in the tooltip as <span class="fig">Vs bosses ×2.9</span>.</p>
+  </div>
+  <div class="bars">
+    <div class="bar"><img src="img/icon_union_sanctuary.png" alt=""><span class="n">Sanctuary</span><span class="track"><span class="fill" style="width:100%"></span></span><span class="x">×3.7</span></div>
+    <div class="bar"><img src="img/icon_arcweb.png" alt=""><span class="n">Arcweb</span><span class="track"><span class="fill" style="width:94.6%"></span></span><span class="x">×3.5</span></div>
+    <div class="bar"><img src="img/icon_reaving_arc.png" alt=""><span class="n">Reaving Arc</span><span class="track"><span class="fill" style="width:78.4%"></span></span><span class="x">×2.9</span></div>
+    <div class="bar"><img src="img/icon_knifestorm.png" alt=""><span class="n">Knifestorm</span><span class="track"><span class="fill" style="width:78.4%"></span></span><span class="x">×2.9</span></div>
+    <div class="bar"><img src="img/icon_verdant_lance.png" alt=""><span class="n">Verdant Lance</span><span class="track"><span class="fill" style="width:66.2%"></span></span><span class="x">×2.45</span></div>
+    <div class="bar"><img src="img/icon_judgement_disc.png" alt=""><span class="n">Judgement Disc</span><span class="track"><span class="fill" style="width:66.2%"></span></span><span class="x">×2.45</span></div>
+    <div class="bar"><img src="img/icon_dawnpulse.png" alt=""><span class="n">Dawnpulse</span><span class="track"><span class="fill" style="width:64.9%"></span></span><span class="x">×2.4</span></div>
+    <div class="bar"><img src="img/icon_spirit_herd.png" alt=""><span class="n">Spirit Herd</span><span class="track"><span class="fill" style="width:48.6%"></span></span><span class="x">×1.8</span></div>
+    <div class="bar"><img src="img/icon_union_tempest_kata.png" alt=""><span class="n">Tempest Kata</span><span class="track"><span class="fill" style="width:48.6%"></span></span><span class="x">×1.8</span></div>
+    <div class="bar"><img src="img/icon_hallowed_ring.png" alt=""><span class="n">Hallowed Ring</span><span class="track"><span class="fill" style="width:45.9%"></span></span><span class="x">×1.7</span></div>
+    <div class="bar"><img src="img/icon_seeking_motes.png" alt=""><span class="n">Seeking Motes</span><span class="track"><span class="fill" style="width:45.9%"></span></span><span class="x">×1.7</span></div>
+    <div class="bar"><img src="img/icon_union_steel.png" alt=""><span class="n">Storm of Steel</span><span class="track"><span class="fill" style="width:43.2%"></span></span><span class="x">×1.6</span></div>
+    <div class="bar"><img src="img/icon_union_wild_hunt.png" alt=""><span class="n">The Wild Hunt</span><span class="track"><span class="fill" style="width:41.9%"></span></span><span class="x">×1.55</span></div>
+    <div class="bar"><img src="img/icon_gale_chakram.png" alt=""><span class="n">Gale Chakram</span><span class="track"><span class="fill" style="width:37.8%"></span></span><span class="x">×1.4</span></div>
+    <div class="bar"><img src="img/icon_volley.png" alt=""><span class="n">Volley</span><span class="track"><span class="fill" style="width:37.8%"></span></span><span class="x">×1.4</span></div>
+    <div class="bar"><img src="img/icon_iron_palms.png" alt=""><span class="n">Iron Palms</span><span class="track"><span class="fill" style="width:31.1%"></span></span><span class="x">×1.15</span></div>
+    <div class="bar"><img src="img/icon_rimeshard.png" alt=""><span class="n">Rimeshard</span><span class="track"><span class="fill" style="width:29.7%"></span></span><span class="x">×1.1</span></div>
+  </div>
+  <p class="fine">Bars are drawn to scale from ×0 to ×3.7. Every other weapon stays at ×1.</p>
+</section>
+
+<!-- ============================================================ early game -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="eyebrow">The first minute</span>
+    <h2>The hardest maps stop ending at 0:40.</h2>
+    <p>On Professional Hyper, the Pale Wastes and Highmoor killed almost everyone in the first minute. Difficulty now <b>eases in</b>: 35% of the extra toughness at 0:00, all of it by 6:00. The top early killers also got a fairer tell.</p>
+  </div>
+  <div class="grid2">
+    <div class="chart">
+      <div class="legend" style="margin-bottom:12px"><span><i style="background:rgba(226,72,61,.55)"></i>Before</span><span><i style="background:#3ddc7a"></i>After</span><span>Professional Hyper runs still alive at 1:00</span></div>
+      <div class="maps">
+        <div class="maprow"><span class="m">Thornhollow</span><span class="dual"><i class="now" style="width:100%"></i><em>100%</em></span><span class="dual"><i class="new" style="width:100%"></i><em>100%</em></span></div>
+        <div class="maprow"><span class="m">Dustreach</span><span class="dual"><i class="now" style="width:100%"></i><em>100%</em></span><span class="dual"><i class="new" style="width:100%"></i><em>100%</em></span></div>
+        <div class="maprow"><span class="m">Mourneholt</span><span class="dual"><i class="now" style="width:100%"></i><em>100%</em></span><span class="dual"><i class="new" style="width:100%"></i><em>100%</em></span></div>
+        <div class="maprow"><span class="m">Ochre Plains</span><span class="dual"><i class="now" style="width:60%"></i><em>60%</em></span><span class="dual"><i class="new" style="width:100%"></i><em>100%</em></span></div>
+        <div class="maprow"><span class="m">Pale Wastes</span><span class="dual"><i class="now" style="width:7%"></i><em>7%</em></span><span class="dual"><i class="new" style="width:80%"></i><em>80%</em></span></div>
+        <div class="maprow"><span class="m">Highmoor</span><span class="dual"><i class="now" style="width:20%"></i><em>20%</em></span><span class="dual"><i class="new" style="width:93%"></i><em>93%</em></span></div>
+      </div>
+    </div>
+    <div class="chart">
+      <svg viewBox="0 0 440 200" role="img" aria-label="Share of the difficulty's extra toughness applied: 35% at 0:00 rising in a straight line to 100% at 6:00, then flat">
+        <!-- x 46..420 for 0..8 min ; y 160..20 for 0..100% -->
+        <g stroke="#262a35"><line x1="46" y1="160" x2="420" y2="160"/><line x1="46" y1="90" x2="420" y2="90" stroke-dasharray="3 4"/><line x1="46" y1="20" x2="420" y2="20" stroke-dasharray="3 4"/></g>
+        <g text-anchor="end"><text x="38" y="164">0%</text><text x="38" y="94">50%</text><text x="38" y="24">100%</text></g>
+        <g text-anchor="middle"><text x="46" y="180">0:00</text><text x="139.5" y="180">2:00</text><text x="233" y="180">4:00</text><text x="326.5" y="180">6:00</text><text x="420" y="180">8:00</text></g>
+        <path d="M46 111 L326.5 20 L420 20 L420 160 L46 160 Z" fill="#59bfff" opacity=".12"/>
+        <path d="M46 111 L326.5 20 L420 20" fill="none" stroke="#59bfff" stroke-width="2.5" stroke-linejoin="round"/>
+        <circle cx="46" cy="111" r="4.5" fill="#59bfff"/><circle cx="326.5" cy="20" r="4.5" fill="#59bfff"/>
+        <text class="lab" x="56" y="130">35% at the start</text>
+        <text class="lab" x="334" y="42">all of it by 6:00</text>
+      </svg>
+      <p class="fine" style="margin-top:8px">Extra toughness is what the map, difficulty and Hyper add on top of a plain Veteran run.</p>
+    </div>
+  </div>
+  <div class="grid3">
+    <div class="notice"><div class="pair"><img src="img/beast_geist.webp" alt=""><div><span class="stamp nerf">Slower tell</span><h3>Hungering Geist</h3></div></div><p>The #1 early killer on Hyper. Its burst now hits for less and gives you longer to step out.</p><div class="chg"><span>burst <b>0.9 → 0.6</b></span><span>fuse <b>0.55s → 0.7s</b></span></div></div>
+    <div class="notice"><div class="pair"><img src="img/beast_stormwisp.webp" alt=""><div><span class="stamp nerf">Slower tell</span><h3>Stormwisp</h3></div></div><p>The #2 early killer. Same fix as the Geist.</p><div class="chg"><span>burst <b>0.9 → 0.6</b></span><span>fuse <b>0.55s → 0.7s</b></span></div></div>
+    <div class="notice"><div class="pair"><img src="img/beast_harvest_reaper.webp" alt=""><div><span class="stamp nerf">Softer</span><h3>Harvest Reaper</h3></div></div><p>Its burst took more than its own contact damage. Not any more.</p><div class="chg"><span>burst <b>1.1 → 0.8</b></span></div></div>
+    <div class="notice"><div class="pair"><img src="img/beast_karrash_battlelord.webp" alt=""><div><span class="stamp nerf">Longer wind-up</span><h3>Karrash Battlelord</h3></div></div><p>Fast elites with the shortest tell in the game. You can see the lunge coming now.</p><div class="chg"><span>lunge wind-up <b>0.55s → 0.75s</b></span></div></div>
+    <div class="notice"><div class="pair"><img src="img/beast_thunderscale.webp" alt=""><div><span class="stamp nerf">Longer wind-up</span><h3>Thunderscale Drake</h3></div></div><p>Highmoor's charger gets the same breathing room.</p><div class="chg"><span>lunge wind-up <b>0.55s → 0.75s</b></span></div></div>
+    <div class="notice"><div class="pair"><img src="img/beast_kerchief_enforcer.webp" alt=""><div><span class="stamp nerf">Longer wind-up</span><h3>Kerchief Enforcer</h3></div></div><p>A little more warning before the shoulder lands.</p><div class="chg"><span>lunge wind-up <b>0.55s → 0.7s</b></span></div></div>
+  </div>
+</section>
+
+<!-- ============================================================ survivors -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="eyebrow">Survivors</span>
+    <h2>Three survivors get a thicker hide.</h2>
+    <p>The frailest survivors had the least room for a single mistake on the hardest settings. More health, same armour.</p>
+  </div>
+  <div class="surv">
+    <div class="notice"><img src="img/surv_shaman.webp" alt="Vonnra Hydrocheck, the Shaman"><span class="stamp buff">Buff</span><h3>Vonnra Hydrocheck <span style="color:var(--ink-faint);font-weight:500">· Shaman</span></h3>
+      <div class="hp"><div class="hpbar"><i style="width:78.1%"></i><b style="left:78.1%;width:12.5%"></b></div><div class="chg"><span>health <b>125 → 145</b></span><span class="up">+20</span></div></div></div>
+    <div class="notice"><img src="img/surv_hunter.webp" alt="Maeca Barefoot, the Hunter"><span class="stamp buff">Buff</span><h3>Maeca Barefoot <span style="color:var(--ink-faint);font-weight:500">· Hunter</span></h3>
+      <div class="hp"><div class="hpbar"><i style="width:71.9%"></i><b style="left:71.9%;width:9.4%"></b></div><div class="chg"><span>health <b>115 → 130</b></span><span class="up">+15</span></div></div></div>
+    <div class="notice"><img src="img/surv_rogue.webp" alt="Dr. Rav McBreathless, the Rogue"><span class="stamp buff">Buff</span><h3>Dr. Rav McBreathless <span style="color:var(--ink-faint);font-weight:500">· Rogue</span></h3>
+      <div class="hp"><div class="hpbar"><i style="width:62.5%"></i><b style="left:62.5%;width:9.4%"></b></div><div class="chg"><span>health <b>100 → 115</b></span><span class="up">+15</span></div></div></div>
+  </div>
+  <p class="fine">Health bars are drawn on one scale, where a full bar is 160 health (the toughest starting survivor).</p>
+</section>
+
+<!-- ============================================================ retry -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="eyebrow">New</span>
+    <h2>Fell in the finale? Try again.</h2>
+  </div>
+  <div class="retry">
+    <div class="notice">
+      <span class="stamp new">New</span>
+      <h3>Retry the finale as often as you like</h3>
+      <p>The dawn is banked the moment you reach 30:00, so dying to the finale boss no longer ends the run. You can <b>Try again</b>: back on your feet at full health with the kit you fell with, a six-second breath, and the fight from the top.</p>
+      <p>No second blessing and no Beans. A win on a retry still plays the ending, but it <b>does not count</b> toward the finale record or its achievement.</p>
+    </div>
+    <div class="mock" aria-label="Preview of the retry panel">
+      <span class="eyebrow" style="color:#b2403a">Highmoor · Professional · Hyper</span>
+      <span class="t">Brother Kael, the Stormbound, still stands</span>
+      <p>The storm got through. The dawn is banked either way. Try again as often as you like: you keep the kit you fell with, but a win on a retry does not count toward the record or its achievement.</p>
+      <div class="btns"><span class="btn">End the run</span><span class="btn primary">Try again</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ arena -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="eyebrow">The Eclipse Arena</span>
+    <h2>Aethelgard respects the difficulty setting.</h2>
+  </div>
+  <div class="grid2">
+    <div class="notice"><div class="pair"><img src="img/boss_aethelgard.webp" alt=""><div><span class="stamp fix">Rebalanced</span><h3>Aethelgard, the Eclipse Sovereign</h3></div></div>
+      <p>The arena used to ignore your difficulty. With the new boss damage, Priest, Paladin and Shaman could not break it before the enrage. Now every survivor wins it in the lab, in <b>2:53 to 3:59</b>.</p>
+      <div class="chg"><span>health <b>324,000 → 520,000</b></span></div></div>
+    <div class="notice"><span class="stamp new">New</span><h3>What each difficulty does in the arena</h3>
+      <p>Solar Flare, Sunfall Spears and the Eclipse Cross hit for the full difficulty factor. Aethelgard's health grows by its square root.</p>
+      <div class="chg" style="flex-direction:column;gap:4px">
+        <span>Beginner <b>hazards ×0.75 · health ×0.87</b></span>
+        <span>Veteran <b>hazards ×1.00 · health ×1.00</b></span>
+        <span>Professional <b>hazards ×1.30 · health ×1.14</b></span>
+      </div></div>
+  </div>
+</section>
+
+<!-- ============================================================ ruin -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="eyebrow">Asked and answered</span>
+    <h2>Is Ruin Unbound broken?</h2>
+  </div>
+  <div class="notice">
+    <div class="verdict">
+      <img src="img/icon_union_ruin.png" alt="Ruin Unbound">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <span class="stamp kept" style="align-self:flex-start">Checked, not changed</span>
+        <p>It tops the real-game boss chart because of <b>where it lives</b>, not what it is. The builds that forge it stack 40% crit, 2.5× damage and the Ruinous Pact, and its homing bolts never miss while you dodge. Give every weapon the same kit on a training dummy and Ruin Unbound lands in the middle:</p>
+        <div class="dps">
+          <div class="bar"><span class="n">Axe Gyre</span><span class="track"><span class="fill" style="width:100%"></span></span><span class="x">3,321</span></div>
+          <div class="bar"><span class="n">Umbral Bolt</span><span class="track"><span class="fill" style="width:85.2%"></span></span><span class="x">2,831</span></div>
+          <div class="bar"><span class="n">Cinderfall</span><span class="track"><span class="fill" style="width:66%"></span></span><span class="x">2,193</span></div>
+          <div class="bar"><span class="n">Stormcall</span><span class="track"><span class="fill" style="width:56%"></span></span><span class="x">1,861</span></div>
+          <div class="bar"><span class="n">Ruin Unbound</span><span class="track"><span class="fill ruin" style="width:53.8%"></span></span><span class="x">1,788</span></div>
+          <div class="bar"><span class="n">Firmament</span><span class="track"><span class="fill" style="width:52.4%"></span></span><span class="x">1,739</span></div>
+        </div>
+        <p class="fine">Damage per second on one boss, same late-game kit for every weapon, 30 seconds each. Ruin Unbound is weaker on a single target than either of the two weapons it is forged from. Builds that carry it kill late bosses in a median 27 to 34 seconds; the field runs from 20 to 41.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ fixes -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="eyebrow">Small things</span>
+    <h2>Also in this patch</h2>
+  </div>
+  <div class="grid3">
+    <div class="notice"><span class="stamp fix">Fix</span><h3>Gems stay on the field</h3><p>Kills right at the edge dropped experience you could not reach. Gems now land inside the field.</p></div>
+    <div class="notice"><span class="stamp new">New</span><h3>"Vs bosses" in the tooltip</h3><p>Weapons with a boss factor show it with the rest of their stats, so you can plan a boss-killing slot.</p></div>
+    <div class="notice"><span class="stamp fix">Fix</span><h3>Finale hits trimmed</h3><p>The three hits that took the most health per minute in their fights: Kael's storm, the Heart-Drill's Frost Nova, and the Admiral's dash and powder keg.</p></div>
+  </div>
+</section>
+
+<footer>
+  <span class="eyebrow">How we tested</span>
+  <p class="fine">3,897 simulated games, run by a bot that dodges telegraphs and plays each survivor's build: every survivor, all six battlefields, Beginner to Professional Hyper, full 30-minute runs, finale replays from the same dawn kits, and the Eclipse Arena. Figures on this page compare the game before and after this patch on matching runs. The survivor health and arena difficulty changes are new in this patch and were not part of those runs.</p>
+</footer>
+
+</div>
+</body>
+</html>

@@ -128,6 +128,7 @@
   .hero a.play{display:inline-block; font-weight:700; text-decoration:none;
     border:1px solid rgba(245,197,107,.45); border-radius:100px; padding:7px 16px;}
   .hero a.play:hover{background:rgba(245,197,107,.1);}
+  .hero a.play.notes{margin-left:8px; color:var(--ink); border-color:var(--rim-lit);}
   nav.top .links a.go{color:var(--arc-hot); border:1px solid rgba(245,197,107,.45); margin-left:6px;}
   nav.top .links a.go:hover{background:rgba(245,197,107,.1);}
   .stitle{font-family:var(--voice); font-weight:800; letter-spacing:0;}

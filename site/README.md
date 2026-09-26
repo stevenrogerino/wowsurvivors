@@ -7,6 +7,7 @@ site/
   index.html       <- the game (dist/the-ember-watch.html, renamed)
   wiki/
     index.html     <- the companion codex/wiki
+    patch-notes.html <- the latest patch notes (tools/patch-notes.html, copied in by tools/wiki.js)
     img/            <- its pictures, drawn by the game's own painters
 ```
 

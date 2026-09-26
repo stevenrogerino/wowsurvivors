@@ -431,6 +431,7 @@ ${css}
     <a href="#vigil">The Vigil</a><a href="#survivors">Survivors</a><a href="#arsenal">Arsenal</a>
     <a href="#bestiary">Bestiary</a><a href="#bosses">Bosses</a><a href="#dawn">At Dawn</a>
     <a href="#battlefields">Battlefields</a><a href="#ledger">Ledger</a>
+    <a class="go" href="patch-notes.html">Patch notes</a>
     <a class="go" href="https://emberwatch.online/">Play</a>
   </div>
 </div></nav>
@@ -441,7 +442,8 @@ ${css}
   <div class="sub">Thirty minutes until dawn</div>
   <p class="lede">${D.counts.survivors} survivors, ${D.counts.maps} battlefields, ${D.counts.weapons} weapons and ${D.counts.bosses} bosses,
     and the light that holds the dark back. <b>You only move.</b> Everything you carry fights on its own.</p>
-  <p class="cta"><a class="play" href="https://emberwatch.online/">Play it in your browser →</a></p>
+  <p class="cta"><a class="play" href="https://emberwatch.online/">Play it in your browser →</a>
+    <a class="play notes" href="patch-notes.html">Read the patch notes</a></p>
 </header>
 
 <main class="wrap">
@@ -541,6 +543,14 @@ ${css}
 </html>
 `;
   fs.writeFileSync(path.join(OUT, 'index.html'), html);
+  /* The patch notes are a hand-written page (tools/patch-notes.html) that
+     borrows the codex's pictures, so it is copied in after they are drawn -
+     and refused if it names one this run did not draw. */
+  const notes = fs.readFileSync(path.join(__dirname, 'patch-notes.html'), 'utf8');
+  const missing = [...new Set(notes.match(/img\/[\w-]+\.(?:webp|png)/g) || [])]
+    .filter((f) => !fs.existsSync(path.join(OUT, f)));
+  if (missing.length) { console.error('patch-notes.html names pictures the codex does not draw:\n  ' + missing.join('\n  ')); process.exit(1); }
+  fs.writeFileSync(path.join(OUT, 'patch-notes.html'), notes);
   const kb = Math.round(fs.readdirSync(IMG).reduce((s, f) => s + fs.statSync(path.join(IMG, f)).size, 0) / 1024);
   console.log(`wiki: ${D.survivors.length} survivors, ${D.arsenal.length} weapons, ${D.unions.length} unions, `
     + `${D.discoveries.length} discoveries, ${D.regions.reduce((s, r) => s + r.list.length + r.elites.length, 0)} creatures, `
