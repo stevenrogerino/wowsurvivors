@@ -1414,17 +1414,52 @@
     const bankValue = el('span', 'v', '');
     bank.append(el('span', 'label', 'Banked'), bankValue);
 
-    const render = () => {
+    /* A new tab starts at the top; the SAME tab redrawn - a Trainer purchase,
+     * a setting changed - stays exactly where it was. The pane is rebuilt
+     * whole on every change, and render() used to send the scroll back to
+     * zero every time: a tester buying ten ranks of Curious Egg at the
+     * bottom of the Trainer was thrown back to the top after each click and
+     * had to scroll down again for the next. So a redraw notes every
+     * scrolled surface in the pane (the body and any list that scrolls
+     * inside it) and the button that had focus, and puts all of it back on
+     * the new pane - a keyboard or a pad can buy the next rank straight
+     * away. (tools/check-ui.js) */
+    const scrolled = () => {
+      const out = [];
+      const body = s.inner.querySelector('.overlay-body');
+      if (body && body.scrollTop) out.push(['body', 0, body.scrollTop]);
+      const all = panes.querySelectorAll('*');
+      for (let i = 0; i < all.length; i++) if (all[i].scrollTop) out.push(['pane', i, all[i].scrollTop]);
+      return out;
+    };
+    const render = (same) => {
       for (const btn of tabs.children) btn.classList.toggle('active', btn.dataset.tab === UI.tab);
-      panes.replaceChildren(UI.buildPane(UI.tab, render));
+      const keep = same === true ? scrolled() : [];
+      const buttons = same === true ? [...panes.querySelectorAll('button')] : [];
+      const focused = buttons.indexOf(document.activeElement);
+      panes.replaceChildren(UI.buildPane(UI.tab, redraw));
       bankValue.textContent = WS.formatNumber(WS.Save.db.gold) + ' gold';
-      requestAnimationFrame(() => {
+      const place = () => {
         const body = s.inner.querySelector('.overlay-body');
         if (!body) return;
-        body.scrollTop = 0;
+        if (same !== true) body.scrollTop = 0;
+        const all = panes.querySelectorAll('*');
+        for (const [where, i, top] of keep) {
+          const node = where === 'body' ? body : all[i];
+          if (node) node.scrollTop = top;
+        }
+        if (focused >= 0) {
+          const again = panes.querySelectorAll('button')[focused];
+          if (again && !again.disabled) again.focus({ preventScroll: true });
+        }
+      };
+      place();                         // before the frame paints: no flash of the top
+      requestAnimationFrame(() => {
+        place();
         UI.wireScroll(s.inner);      // re-seats the scrim behind the new pane
       });
     };
+    const redraw = () => render(true);
     for (const [id, label] of TABS) {
       const b = el('button', 'tab', label);
       b.dataset.tab = id;

@@ -388,6 +388,59 @@ const path = require('path');
     }
   }
 
+  /* ---- keep your place: a purchase does not scroll the Trainer ---------- *
+   * A tester scrolled to the bottom of the Trainer to put several ranks into
+   * Curious Egg and was thrown back to the top after every click, because
+   * the pane is rebuilt whole and the rebuild reset the scroll. Scroll to the
+   * LAST affordable rank, buy it three times by real clicks, and the
+   * scrolled surface must still be where it was, the button still on screen
+   * - and a tab switch must still start the next tab at the top.
+   *
+   * NEGATIVE TEST: with render() resetting scrollTop on every redraw (the
+   * shipped bug), this reports "keep: the Trainer jumped from 900px to 0". */
+  const keep = await page.evaluate(async () => {
+    const frame = () => new Promise((r) => requestAnimationFrame(r));
+    WS.Save.db.meta = {};
+    WS.Save.db.gold = 1e7;
+    WS.UI.tab = 'trainer';
+    WS.UI.openMenu();
+    await frame(); await frame();
+    const surface = () => {
+      // whichever element actually scrolls the Trainer's list
+      const body = document.querySelector('#overlay .overlay-body');
+      const inner = [...document.querySelectorAll('#overlay .overlay-body *')]
+        .find((e) => e.scrollHeight > e.clientHeight + 4 && /(auto|scroll)/.test(getComputedStyle(e).overflowY));
+      return inner || body;
+    };
+    let sc = surface();
+    sc.scrollTop = sc.scrollHeight;
+    await frame();
+    const was = sc.scrollTop;
+    const out = { was, after: [], visible: true };
+    for (let i = 0; i < 3; i++) {
+      const buys = [...document.querySelectorAll('#overlay .btn.buy:not([disabled])')];
+      const last = buys[buys.length - 1];
+      if (!last) break;
+      last.click();
+      await frame(); await frame();
+      sc = surface();
+      out.after.push(sc.scrollTop);
+      const again = [...document.querySelectorAll('#overlay .btn.buy')].pop();
+      const r = again.getBoundingClientRect(), v = sc.getBoundingClientRect();
+      if (r.bottom < v.top || r.top > v.bottom) out.visible = false;
+    }
+    // and a tab switch still starts at the top
+    const other = [...document.querySelectorAll('.tabs .tab')].find((t) => t.dataset.tab === 'codex');
+    if (other) { other.click(); await frame(); await frame(); out.tabTop = surface().scrollTop; }
+    return out;
+  });
+  if (!keep.was) seen.add('keep: the Trainer did not scroll, so the check proved nothing');
+  for (const top of keep.after) {
+    if (Math.abs(top - keep.was) > 2) { seen.add(`keep: the Trainer jumped from ${keep.was}px to ${top} on a purchase`); break; }
+  }
+  if (!keep.visible) seen.add('keep: after a purchase the rank just bought was off screen');
+  if (keep.tabTop) seen.add(`keep: switching tab left the new tab scrolled to ${keep.tabTop}px, not the top`);
+
   /* ---- framing: nothing with an edge may scroll ------------------------- *
    * Walked on the run summary and the pause build sheet, which are where the
    * panels live and where the overflow actually happens.
@@ -426,7 +479,8 @@ const path = require('path');
       + ` the Hyper control agrees with the run it starts on all ${modes.length} `
       + 'battlefields,'
       + ` arming banish moves nothing, and ${ledger.length} purchases totalling `
-      + `${spent}g each land on the footer's banked total, and `
+      + `${spent}g each land on the footer's banked total, three more at the bottom of `
+      + `the Trainer leave it scrolled where it was, and `
       + `${framing.panels} framed surfaces scroll from the inside`);
   await b.close();
   process.exitCode = seen.size ? 1 : 0;
