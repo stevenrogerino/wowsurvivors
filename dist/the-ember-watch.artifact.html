@@ -9942,7 +9942,7 @@ window.WS = window.WS || {};
         /* A bust, drawn the way everything else here is: light on the upper
            curve and a shadow under it. No outline - the form is in the
            value change, and it stays inside the silhouette. */
-        for (const dir of [-1, 1]) {
+        for (const dir of (cfg.bust === 'full' ? [] : [-1, 1])) {
           const bx = cx + dir * 3.9, by = SHOULDER_Y + 6.2;
           const hl = g.createRadialGradient(bx - 1, by - 1.4, 0.3, bx, by, 4.4);
           hl.addColorStop(0, 'rgba(255,240,224,.26)'); hl.addColorStop(1, 'rgba(255,240,224,0)');
@@ -9974,6 +9974,35 @@ window.WS = window.WS || {};
         g.beginPath(); g.moveTo(cx, SHOULDER_Y + 2); g.lineTo(cx, SHOULDER_Y + 8); g.stroke();
       }
       g.restore();
+    }
+    if (cfg.bust === 'full') {
+      /* A full figure under the robe: two rounded forms in the robe's own
+         cloth, lit on the upper curve, shadowed beneath where the cloth
+         falls away, with a fold between them. Drawn as shapes rather than
+         shading so it reads as volume at play size, and set just wide of
+         the torso so it is in the outline too. */
+      const by = SHOULDER_Y + 8.4, rx = 5.9, ry = 4.9;
+      for (const dir of [-1, 1]) {
+        const bx = cx + dir * 4.9;
+        g.save();
+        g.fillStyle = 'rgba(0,0,0,.32)';
+        g.beginPath(); g.ellipse(bx + dir * 0.3, by + 1.4, rx, ry * 0.9, 0, 0, WS.TAU); g.fill();
+        lit(g, C.bodyRamp, bx - rx, by - ry, bx + rx, by + ry);
+        g.beginPath(); g.ellipse(bx, by, rx, ry, dir * 0.12, 0, WS.TAU); g.fill();
+        g.beginPath(); g.ellipse(bx, by, rx, ry, dir * 0.12, 0, WS.TAU); g.clip();
+        const hl = g.createRadialGradient(bx - 1.6, by - 2, 0.4, bx - 0.6, by - 1, rx);
+        hl.addColorStop(0, 'rgba(255,244,228,.42)'); hl.addColorStop(1, 'rgba(255,244,228,0)');
+        g.fillStyle = hl; g.fillRect(bx - rx, by - ry, rx * 2, ry * 2);
+        const un = g.createLinearGradient(0, by + 0.5, 0, by + ry);
+        un.addColorStop(0, 'rgba(0,0,0,0)'); un.addColorStop(1, 'rgba(0,0,0,.4)');
+        g.fillStyle = un; g.fillRect(bx - rx, by, rx * 2, ry);
+        g.restore();
+        g.strokeStyle = C.bodyRamp.line; g.globalAlpha = 0.55; g.lineWidth = 0.7;
+        g.beginPath(); g.ellipse(bx, by, rx, ry, dir * 0.12, WS.PI * 0.1, WS.PI * 0.9); g.stroke();
+        g.globalAlpha = 1;
+      }
+      g.strokeStyle = 'rgba(0,0,0,.4)'; g.lineWidth = 0.8;
+      g.beginPath(); g.moveTo(cx, by - 3.2); g.quadraticCurveTo(cx - 0.3, by, cx, by + 3.6); g.stroke();
     }
     if (cfg.bodice) {
       /* A milkmaid's blouse and bodice. Linen from the collar to the bust,
@@ -10116,6 +10145,13 @@ window.WS = window.WS || {};
       // Two bands hanging from the collar, ending in a hem device.
       for (const dir of [-1, 1]) {
         const x = cx + dir * 6.5;
+        if (cfg.bust === 'full') {
+          // lying over the curve: out and round the chest, then straight down
+          const path = [[dir * 1.2, SHOULDER_Y - 1], [dir * 3.4, SHOULDER_Y + 4.5], [dir * 4.6, SHOULDER_Y + 9],
+            [dir * 3.4, SHOULDER_Y + 13.5], [dir * 1.2, WAIST_Y], [dir * 1.2, WAIST_Y + 9]];
+          const L = path.map(([dx, y]) => [x + dx - 1.6, y]), R = path.map(([dx, y]) => [x + dx + 1.6, y]).reverse();
+          panel(g, L.concat(R), C.trimRamp);
+        } else
         panel(g, [[x - 2.3, SHOULDER_Y - 1], [x + 2.3, SHOULDER_Y - 1],
           [x + 2.6, WAIST_Y + 9], [x - 2.6, WAIST_Y + 9]], C.trimRamp);
         g.fillStyle = GOLD.core;
@@ -11226,7 +11262,7 @@ window.WS = window.WS || {};
      * made the whole front of her one pale slab. Two bands with the robe
      * showing between them is the reading; three overlapping ones is a bib. */
     priest: { build: 'slim', head: 'bare', robe: true, cloak: 'short', halo: true, fem: true,
-      weapon: 'censer', stole: true, hair: ramp([0.55, 0.46, 0.33]), locks: true,
+      weapon: 'censer', stole: true, hair: ramp([0.55, 0.46, 0.33]), locks: true, bust: 'full',
       brand: 'priest', crownPoints: 13, veil: true },
     rogue: { build: 'slim', head: 'hood', cloak: 'cut', weapon: 'daggers', hoodFace: true,
       hood: ramp([0.2, 0.19, 0.21]), bandolier: true, downRoom: 0.86,
