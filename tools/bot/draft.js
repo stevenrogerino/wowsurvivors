@@ -27,6 +27,9 @@ function installDrafter(opts) {
     blessing: null,       // id forced at the first draft (the experiment)
     midnight: null,       // id forced at the 15:00 draft; else chosen
     reroll: true,
+    mode: 'dps',          // 'dps' values cards by what they add; 'simple' by fixed preference
+    defence: 1.0,         // how much defence is worth against damage, in dps mode
+    newBonus: 8,          // what an open slot's future is worth, in dps mode
   }, opts || {});
   const D = window.__draft = { opts: O, picks: [] };
   const OFFENCE = { might: 52, haste: 52, area: 48, quantity: 50, precision: 42, ferocity: 40, velocity: 30 };
@@ -109,14 +112,91 @@ function installDrafter(opts) {
     }
   };
 
+  /* ---- dps mode: what each card adds, in the game's own damage model ---- */
+  const STATS = ['damageMultiplier', 'cooldownMultiplier', 'areaMultiplier', 'projectileBonus',
+    'projectileSpeed', 'critChance', 'critDamage', 'durationMult'];
+  // Only these touch nothing but the stats above, so only these are measured
+  // by applying them; everything else is valued by what it is for.
+  const MEASURED = { might: 1, haste: 1, precision: 1, ferocity: 1, area: 1, quantity: 1, velocity: 1, perennial: 1 };
+  const FIXED = { spirit_companion: 7, grave_call: 7, dread_command: 6, serration: 5, chilling_presence: 5 };
+  function crowd() { return Math.max(8, Math.min(40, WS.Enemy.pool.count)); }
+  function dpsOf(p, id, level, evolved) {
+    const r = WS.Weapon.reach(id, level, evolved, crowd(), p);
+    return r && isFinite(r.dps) ? r.dps : 0;
+  }
+  function total(p) {
+    let t = 0;
+    for (const w of p.weapons) t += dpsOf(p, w.id, w.level, w.evolved);
+    return t;
+  }
+  /** Damage gained by a passive, measured by applying it and putting it back. */
+  function statGain(p, id, base) {
+    const up = WS.Upgrades[id];
+    if (!up) return 0;
+    const saved = STATS.map((k) => p[k]);
+    try { up.apply(p, up); } catch (e) { /* not every passive applies cleanly */ }
+    const after = total(p);
+    STATS.forEach((k, i) => { p[k] = saved[i]; });
+    return Math.max(0, after - base);
+  }
+  // Passives whose apply() touches more than the damage stats: never applied
+  // to measure, valued as defence or by what they unlock instead.
+  const DEF_VALUE = { vitality: 0.8, armor: 1.0, recovery: 0.6, dodge: 0.8, warding_light: 0.9,
+    thorns: 0.5, searing: 0.6, fleetfoot: 0.5, chilling_presence: 0.3 };
+  D.scoreDps = function (p, c, press) {
+    const hp = p.health / Math.max(1, p.maxHealth);
+    const base = Math.max(1, total(p));
+    const pct = (gain) => 100 * gain / base;
+    switch (c.type) {
+      case 'union': return 400;
+      case 'evolve': { const w = WS.Player.getWeapon(p, c.id); return 30 + pct(dpsOf(p, c.id, w.level, true) - dpsOf(p, c.id, w.level, false)); }
+      case 'weapon_rank': { const w = WS.Player.getWeapon(p, c.id); return pct(dpsOf(p, c.id, w.level + 1, w.evolved) - dpsOf(p, c.id, w.level, w.evolved)); }
+      case 'new_weapon': {
+        let s = pct(dpsOf(p, c.id, 1, false)) + O.newBonus * (WS.MAX_WEAPONS - p.weapons.length) / WS.MAX_WEAPONS;
+        for (const q of partners(c.id)) if (owns(p, q)) s += 4;
+        return s;
+      }
+      case 'stat': {
+        const id = c.id, up = WS.Upgrades[id];
+        if (up && up.max && (p.upgradeLevels[id] || 0) >= up.max) return 0;
+        if (id === 'dark_bargain') return 0;
+        if (SYSTEM[id]) return SYSTEM[id](p) ? 12 : 0;
+        let s = 0;
+        if (DEF_VALUE[id] !== undefined) {
+          // Defence is worth what the night is taking: a fifth of the bar a
+          // second is desperate, a hundredth is nothing.
+          s = DEF_VALUE[id] * O.defence * Math.min(40, press * 1500) + (hp < 0.4 ? 6 : 0);
+        } else if (UTILITY[id]) {
+          s = id === 'magnet' || id === 'wisdom' ? Math.max(0, 6 - p.level / 8) : 1;
+        } else if (MEASURED[id]) {
+          s = pct(statGain(p, id, base));
+        }
+        if (FIXED[id]) s += FIXED[id];
+        // The passive an owned, unevolved weapon is waiting on: worth its
+        // evolution, discounted by how far the weapon still has to climb.
+        for (const w of p.weapons) {
+          if (!w.evolved && w.data.evolvePairing === id && !(p.upgradeLevels[id] > 0)) {
+            s += (30 + pct(dpsOf(p, w.id, 8, true) - dpsOf(p, w.id, 8, false))) * (w.level / 8) * 0.5;
+          }
+        }
+        return s;
+      }
+      case 'bread': return hp < 0.4 ? 60 : hp < 0.7 ? 8 : 0;
+      case 'breaking_point': return 3;
+      default: return 1;
+    }
+  };
+
   D.pickLevel = function (p, choices) {
     const press = pressure(p);
+    const dps = O.mode === 'dps';
     let best = null, bestS = -1;
     for (const c of choices) {
-      const s = D.score(p, c, press);
+      let s;
+      try { s = dps ? D.scoreDps(p, c, press) : D.score(p, c, press); } catch (e) { s = D.score(p, c, press) / 10; }
       if (s > bestS) { bestS = s; best = c; }
     }
-    if (O.reroll && bestS < 30 && p.rerolls > 0 && WS.Game.rerollLevelUp()) {
+    if (O.reroll && bestS < (dps ? 2 : 30) && p.rerolls > 0 && WS.Game.rerollLevelUp()) {
       return D.pickLevel(p, WS.Game.levelChoices || choices);
     }
     D.picks.push([Math.round(WS.Game.run.time), best && best.type, best && best.id]);

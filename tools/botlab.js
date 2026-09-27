@@ -23,6 +23,7 @@
  *   MODE=full HEROES=mage,warrior DIFF=professional SEEDS=6 node tools/botlab.js
  *   PILOT=kite node tools/botlab.js                       the old bot, for comparison
  *   PILOT_OPTS='{"replan":0.2,"noise":20}'                a sloppier player
+ *   DRAFT_OPTS='{"mode":"simple"}'                        the drafter's knobs (tools/bot/draft.js)
  *   BLESS=kings,stillwater                                force the first blessing (one cell each)
  *   MODE=window TIME=1320 LIMIT=90 SAME=1 ...             the fixed-window instrument
  *   OUT=/tmp/x.json ... ; node tools/botlab.js --report /tmp/x.json
@@ -48,6 +49,7 @@ function settings() {
     HYPER: env('HYPER', '0') === '1',
     PILOT: env('PILOT', 'plan'),
     PILOT_OPTS: JSON.parse(env('PILOT_OPTS', '{}')),
+    DRAFT_OPTS: JSON.parse(env('DRAFT_OPTS', '{}')),
     FINALE: env('FINALE', '0') === '1',
     TIME: +env('TIME', 1320),
     LIMIT: +env('LIMIT', env('MODE', 'full') === 'full' ? 1800 : 90),
@@ -153,7 +155,7 @@ function inPage(S, job, sources) {
   WS.Game.startRun(S.MAP, hero);
   const G = WS.Game;
   const pilot = S.PILOT === 'kite' ? installKiter() : installPilot(S.PILOT_OPTS);
-  const draft = installDrafter({ blessing: blessing === 'auto' ? null : blessing, midnight: S.MIDNIGHT });
+  const draft = installDrafter(Object.assign({ blessing: blessing === 'auto' ? null : blessing, midnight: S.MIDNIGHT }, S.DRAFT_OPTS));
   WS.Input.poll = function () {};
   let p = G.player;
 
