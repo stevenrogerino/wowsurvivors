@@ -110,8 +110,14 @@ function setup(WS, id, opts) {
     p.curdled = 0;
     const b2 = WS.Game.run.overhealDone;
     p.lifesteal = 0.5;
+    // Lifesteal heals from an allowance that refills at Config.lifestealCapPct
+    // of max health a second; let a second of it fill before drawing on it.
+    for (let i = 0; i < 60; i++) WS.Game.update(STEP);
+    const b3 = WS.Game.run.overhealDone;
     for (let i = 0; i < 40; i++) WS.Player.lifesteal(p, 10);
-    out.lifesteal = WS.Game.run.overhealDone - b2;
+    out.lifesteal = WS.Game.run.overhealDone - b3;
+    out.leechCap = p.maxHealth * WS.Config.lifestealCapPct;
+    void b2;
 
     // and the meter has to attribute it, not just total it
     out.sources = Object.keys(WS.Game.run.overhealBySource);
@@ -125,6 +131,9 @@ function setup(WS, id, opts) {
   }
   if (!(heal.lifesteal > 0)) {
     fail.push(`lifesteal at full health recorded ${heal.lifesteal} overheal`);
+  } else if (heal.lifesteal > heal.leechCap + 1) {
+    // 400 asked for in one burst; a second's allowance is all that may land.
+    fail.push(`lifesteal healed ${heal.lifesteal} in one burst, past its cap of ${heal.leechCap.toFixed(1)}`);
   }
   if (heal.regenHealed !== 0) {
     fail.push(`healing at full health recorded ${heal.regenHealed} of real healing - `

@@ -369,21 +369,27 @@
        instead of a cycle. For anyone holding the Ruinous Pact it bottoms out
        at metaRecoveryFloor and never reaches zero, so max Ruin Hunger off
        the class gets close to permanent and cannot be permanent. */
-    metaRecovery: 5.0,
-    metaRecoveryBorn: 3.5,
+    metaRecovery: 8.0,
+    metaRecoveryBorn: 6.4,
     metaRecoveryPerRank: 0.5,
     /* At max Ruin Hunger (rank 5) with metaDuration+metaDurationPerRank*5 = 13s
-     * of uptime per form: metaRecoveryBornFloor gives the ruinborn 13/15.5 =
-     * 83.9% uptime, and metaRecoveryFloor gives everyone else 13/17.5 = 74.3%
-     * - about ten points apart, so the ruinborn is reliably ahead but never
-     * unkillable-while-transformed. (Was 89.7% / 79.3% at floors 1.5 / 3.4;
-     * lowered on playtest, "Ruinform is still too good".) */
-    metaRecoveryBornFloor: 2.5,
-    metaRecoveryFloor: 4.5,
+     * of uptime per form: metaRecoveryBornFloor gives the ruinborn 13/17.4 =
+     * 74.7% uptime, and metaRecoveryFloor gives everyone else 13/18.5 = 70.3%.
+     * Without Ruin Hunger: 55.6% and 50%. The ruinborn's rest is a fifth
+     * shorter, one number, like every survivor's edge.
+     *
+     * Was 5.0 / 3.5 with floors 4.5 / 2.5 and x1.85 damage: the Pact was the
+     * strongest signature in the draft for anyone (+30s of survival at 22:00
+     * over a plain blessing, 30 seeds) and the Ruinseeker's shorter rest was
+     * +19s on top, where every other survivor's edge measures within noise
+     * of zero (tools/blessing-matrix.js). Now +19s for anyone, level with
+     * Stillwater Step, and the edge within noise. */
+    metaRecoveryBornFloor: 4.4,
+    metaRecoveryFloor: 5.5,
     metaDuration: 8.0,
-    /* The steroid: x1.85 damage and x0.60 cooldown while transformed, about
-       x3.1 output (was x2.00, x3.3). */
-    metaDamageMult: 1.85,
+    /* The steroid: x1.6 damage and x0.60 cooldown while transformed, about
+       x2.7 output (was x1.85, x3.1; x2.00, x3.3 before that). */
+    metaDamageMult: 1.6,
     metaCooldownMult: 0.60,
     metaDurationPerRank: 1.0,
     glaiveMetas: 3,
@@ -454,11 +460,12 @@
        flowRecharge seconds, flowRechargePerRank sooner per Serenity rank, not
        below flowRechargeFloor; Serenity also adds serenityStrike to the palm.
 
-       It is a dodge that hits back, rationed: two steps every five and a
-       half seconds turns roughly one blow in three into damage done, where
-       Evasion at four ranks turns one in three into nothing. */
+       It is a dodge that hits back, rationed: two steps every seven seconds. */
     flowSteps: 2,
-    flowRecharge: 5.5,
+    // Was 5.5: Stillwater was +24s of survival for anyone at 22:00, the
+    // strongest signature with the Pact. At 7 it is +17s, level with the
+    // strongest plain legendary (tools/blessing-matrix.js).
+    flowRecharge: 7.0,
     flowRechargePerRank: 0.5,
     flowRechargeFloor: 2.5,
     flowDistance: 120,
@@ -572,8 +579,10 @@
     // healed 15 health a second, more than any other blessing but one; the
     // rest caps how often without touching a late run, where the price is
     // the limit (tools/blessing-matrix.js).
+    // rendHealCap was 0.25: still +15s at 4:00 on Pale Waste Hyper with the
+    // rest in place; at 0.15 it is +9s there and +4s late.
     soulNeedBase: 50, soulNeedPerMinute: 10, soulBoss: 25, soulElite: 6, soulEmpower: 0.15, soulLock: 5,
-    rendRadius: 240, rendBase: 90, rendPerLevel: 9, rendHealPer: 0.015, rendHealCap: 0.25,
+    rendRadius: 240, rendBase: 90, rendPerLevel: 9, rendHealPer: 0.015, rendHealCap: 0.15,
     // Waystones: one every totemEvery seconds, cycling ember / spring / gale,
     // each standing totemLife (one of a kind at a time).
     totemEvery: 3, totemLife: 10, totemRadius: 200,
