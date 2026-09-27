@@ -53,7 +53,8 @@ function installPilot(opts) {
     // Rescue pickups, priced in hits: a bomb is worth bombK x the danger of
     // the field it would clear, an hourglass freezeK x the danger it would
     // stop. 0 turns the idea off (they are then ordinary loot).
-    bombK: 1.0, freezeK: 0.7, rescueMin: 120,
+    bombK: 1.0, freezeK: 0.7, rescueMin: 400,
+    bank: 40,           // what walking over a rescue that is worth little costs (0: take them whenever)
     lowHp: 0.5,         // below this share of health, only potions are worth a detour (fitted)
   }, opts || {});
   const S8 = Math.SQRT1_2;
@@ -143,7 +144,38 @@ function installPilot(opts) {
       const h = pool.active[i];
       if (Math.hypot(h.x - p.x, h.y - p.y) < reach + h.radius) hz.push(h);
     }
-    return { foes, bolts, hz };
+    const W = { foes, bolts, hz, rescues: [] };
+    priceRescues(p, W);
+    return W;
+  }
+
+  /* RESCUES. A bomb clears every creature on the field but the bosses, and
+     an hourglass freezes them all: worth nothing on an empty field and
+     everything when the crowd is closing. Each is priced in the currency of
+     a hit - the hit-cost of every creature near enough to reach us soon,
+     weighted by how near - and a player who knows the game BANKS them: walks
+     round one while it is worth little, so it is still lying there when it
+     is worth a lot. */
+  function priceRescues(p, W) {
+    if (!O.bombK && !O.freezeK) return;
+    const frozen = WS.Enemy.freezeTimer > 0;
+    let threat = 0, threatAll = 0;
+    for (const f of W.foes) {
+      const d = Math.max(0, Math.hypot(f.x - p.x, f.y - p.y) - f.r - p.radius);
+      const w = Math.max(0, 1 - d / 420);
+      const h = hitCost(p, f.dmg) * w * w;
+      threatAll += h;
+      if (!f.e.boss && !f.e.part) threat += h;
+    }
+    const bomb = O.bombK * threat * (frozen ? 0.4 : 1);
+    const freeze = frozen ? 0 : O.freezeK * threatAll;
+    const pk = WS.Pickup.pool;
+    for (let i = 0; i < pk.count; i++) {
+      const q = pk.active[i];
+      const V = q.kind === 'bomb' ? bomb : q.kind === 'hourglass' ? freeze
+        : q.kind === 'cache' ? 0.25 * bomb + 0.25 * freeze + 40 : -1;
+      if (V >= 0) W.rescues.push({ x: q.x, y: q.y, kind: q.kind, V });
+    }
   }
 
   /** Where a creature will be at time t if the survivor is at (qx, qy). */
@@ -211,7 +243,7 @@ function installPilot(opts) {
         case 'chest': v = 90; break;
         case 'cache': v = O.bombK ? 0 : 120; break;
         case 'stone': v = 45; break;       // the lodestone: every gem on the field
-        case 'hourglass': v = O.freezeK ? 0 : 40; break;   // priced as rescues below
+        case 'hourglass': v = O.freezeK ? 0 : 40; break;   // priced as rescues
         case 'bomb': v = O.bombK ? 0 : 30; break;
         case 'coin': v = 6; break;
         default: v = 0;                   // story objects are not the bot's errand
@@ -227,28 +259,13 @@ function installPilot(opts) {
        becomes the goal, even through the crowd. The plan cost then does the
        trade honestly: each plan earns the share of the rescue it covers, and
        every hit on the way still costs what it always costs. */
-    if (O.bombK || O.freezeK) {
-      const frozen = WS.Enemy.freezeTimer > 0;
-      let threat = 0, threatAll = 0;
-      for (const f of W.foes) {
-        const d = Math.max(0, Math.hypot(f.x - p.x, f.y - p.y) - f.r - p.radius);
-        const w = Math.max(0, 1 - d / 420);
-        const h = hitCost(p, f.dmg) * w * w;
-        threatAll += h;
-        if (!f.e.boss && !f.e.part) threat += h;
-      }
-      const bomb = O.bombK * threat * (frozen ? 0.4 : 1);
-      const freeze = frozen ? 0 : O.freezeK * threatAll;
+    {
       let rescue = null, bestR = 0;
-      const pk2 = WS.Pickup.pool;
-      for (let i = 0; i < pk2.count; i++) {
-        const q = pk2.active[i];
-        const V = q.kind === 'bomb' ? bomb : q.kind === 'hourglass' ? freeze
-          : q.kind === 'cache' ? 0.25 * bomb + 0.25 * freeze + 40 : 0;
-        if (V < O.rescueMin) continue;
+      for (const q of W.rescues) {
+        if (q.V < O.rescueMin) continue;
         const d = Math.max(0, Math.hypot(q.x - p.x, q.y - p.y) - pr * 0.9);
-        const r = V / (1 + d / 250);
-        if (r > bestR) { bestR = r; rescue = { x: q.x, y: q.y, reach: pr * 0.9, kind: q.kind, value: V, rescue: true }; }
+        const r = q.V / (1 + d / 250);
+        if (r > bestR) { bestR = r; rescue = { x: q.x, y: q.y, reach: pr * 0.9, kind: q.kind, value: q.V, rescue: true }; }
       }
       if (rescue) { P.rescues = (P.rescues || 0) + 1; return rescue; }
     }
@@ -374,6 +391,16 @@ function installPilot(opts) {
     }
 
     // What it gets closer to.
+    // Banking: do not walk over a rescue that is worth little right now.
+    if (O.bank) {
+      const reach = p.pickupRadius * 0.9 + 6;
+      for (const q of W.rescues) {
+        if (q.V >= O.rescueMin || (goal && goal.rescue && goal.x === q.x && goal.y === q.y)) continue;
+        for (const pt of path) {
+          if (Math.hypot(pt[0] - q.x, pt[1] - q.y) < reach) { c += O.bank * (1 - q.V / O.rescueMin); break; }
+        }
+      }
+    }
     if (goal && goal.rescue) {
       const d0 = Math.max(0, Math.hypot(goal.x - p.x, goal.y - p.y) - goal.reach);
       let d1 = Infinity;
