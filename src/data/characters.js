@@ -156,12 +156,17 @@
       name: 'Abbot Eisen', title: 'Of the Quiet Ascent', className: 'Monk',
       art: 'monk', color: [0.42, 0.86, 0.66], weapon: 'iron_palms',
       description: 'Bald by vow and barefoot by preference. Has not been struck since the spring before last and would like to keep it that way.',
-      perk: 'The step is his by long practice: take up Stillwater Step and he has '
-        + '{perkSteps} more step than anyone else, and his steps come back {perkRecharge~%}% sooner.',
+      perk: 'The step is his by long practice: take up Stillwater Step and his steps '
+        + 'come back {perkRecharge~%}% sooner than anyone else\'s.',
       maxHealth: 120, moveSpeed: 245, armor: 1, pickupRadius: 58, healthRegen: 0,
-      perkSteps: 1, perkRecharge: 0.80,
+      /* One number, like everyone's: a fifth off the wait is a quarter more
+         steps. He used to have a third step on top, which with the shorter
+         wait was nearly twice the steps a second anyone else gets - worth
+         +18s of survival on its own at 22:00, more than any other survivor's
+         whole signature (tools/blessing-matrix.js). */
+      perkRecharge: 0.80,
       signatureBlessing: 'stillwater',
-      apply: (p, c) => { p.flowBonusSteps += c.perkSteps; p.flowRechargeMult *= c.perkRecharge; },
+      apply: (p, c) => { p.flowRechargeMult *= c.perkRecharge; },
       unlockHint: 'A still hand, among many blows.',
     },
   };

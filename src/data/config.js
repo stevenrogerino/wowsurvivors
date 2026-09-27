@@ -56,6 +56,16 @@
     hurtBeat: 0.30,
     deathBeat: 1.55,
 
+    /* Leech Pact and Bloodthirst heal with your damage and your kill rate,
+       both of which grow without end, so both are capped. Uncapped, at 22:00
+       the Pact healed 25-32 health a second (the whole of what a kiting
+       build takes) and Bloodthirst 15-18: +61s and +25s of survival over a
+       plain blessing, where the rest of the draft sits at -6..+16s
+       (tools/blessing-matrix.js). Lifesteal now heals at most
+       lifestealCapPct of max health a second; Bloodthirst at most once every
+       bloodthirstCooldown seconds. */
+    lifestealCapPct: 0.012,
+    bloodthirstCooldown: 4,
     hitInvulnerable: 0.45,
     dodgeInvulnerable: 0.2,
 
@@ -556,7 +566,13 @@
     // Reaper's Tithe: kills pay it (it asks more as the night goes on). Over
     // half paid, +soulEmpower damage; paid in full, a Reaping heals rendHealPer
     // of max health for each enemy it strikes, up to rendHealCap.
-    soulNeedBase: 50, soulNeedPerMinute: 10, soulBoss: 25, soulElite: 6, soulEmpower: 0.15,
+    // After a Reaping the tithe rests soulLock seconds before it gathers
+    // again. The price grows with the clock, not with the crowd, so on a dense
+    // field early (Pale Waste on Hyper at 4:00) Reapings came back to back and
+    // healed 15 health a second, more than any other blessing but one; the
+    // rest caps how often without touching a late run, where the price is
+    // the limit (tools/blessing-matrix.js).
+    soulNeedBase: 50, soulNeedPerMinute: 10, soulBoss: 25, soulElite: 6, soulEmpower: 0.15, soulLock: 5,
     rendRadius: 240, rendBase: 90, rendPerLevel: 9, rendHealPer: 0.015, rendHealCap: 0.25,
     // Waystones: one every totemEvery seconds, cycling ember / spring / gale,
     // each standing totemLife (one of a kind at a time).

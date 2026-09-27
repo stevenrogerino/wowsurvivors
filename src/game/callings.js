@@ -225,7 +225,7 @@
         if (p.rage >= C().rageNeed) enrage(p);
       }
     }
-    if (p.soulAttuned > 0) {
+    if (p.soulAttuned > 0 && p.soulLock <= 0) {
       p.souls += (e.boss ? C().soulBoss : e.elite ? C().soulElite : 1) * (1 + p.soulBonus);
       if (p.souls >= K.soulNeed()) soulRend(p);
     }
@@ -242,6 +242,7 @@
   function soulRend(p) {
     const cfg = C();
     p.souls = 0;
+    p.soulLock = cfg.soulLock;
     const r = cfg.rendRadius * p.areaMultiplier;
     const struck = WS.Enemy.damageArea(p.x, p.y, r, strike(p, cfg.rendBase, cfg.rendPerLevel), null, 18, 'reapers_tithe');
     WS.Player.heal(p, WS.min(p.maxHealth * cfg.rendHealCap, p.maxHealth * cfg.rendHealPer * struck), 'reapers_tithe');
@@ -304,6 +305,7 @@
     if (p.comboLock > 0) p.comboLock = WS.max(0, p.comboLock - dt);
     if (p.vanishTimer > 0) p.vanishTimer = WS.max(0, p.vanishTimer - dt);
     if (p.holyLock > 0) p.holyLock = WS.max(0, p.holyLock - dt);
+    if (p.soulLock > 0) p.soulLock = WS.max(0, p.soulLock - dt);
     if (p.divineTimer > 0) p.divineTimer = WS.max(0, p.divineTimer - dt);
 
     // The mark: keep it while the quarry lives and it has not run out.
@@ -403,7 +405,9 @@
     }
     if (p.soulAttuned > 0) {
       const need = K.soulNeed();
-      out.push({ key: 'souls', cls: 'calling soul', label: p.souls >= need * 0.5 ? 'Tithe · empowered' : 'Tithe', pct: p.souls / need });
+      out.push(p.soulLock > 0
+        ? { key: 'soulwait', cls: 'calling soul waiting', label: 'Reaped', pct: 1 - p.soulLock / cfg.soulLock }
+        : { key: 'souls', cls: 'calling soul', label: p.souls >= need * 0.5 ? 'Tithe · empowered' : 'Tithe', pct: p.souls / need });
     }
     if (p.totemAttuned > 0) {
       out.push({ key: 'totem', cls: 'calling totem', label: 'Next stone: ' + STONE_NAME[TOTEMS[p.totemNext % 3]],

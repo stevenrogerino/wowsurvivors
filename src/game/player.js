@@ -97,7 +97,7 @@
       limitBreaks: 0,
       runEggs: 0,
 
-      bloodthirst: false, momentum: false, overflow: 0,
+      bloodthirst: false, bloodthirstTimer: 0, leechBudget: 0, momentum: false, overflow: 0,
       // The callings - see src/game/callings.js. `*Attuned` turns one on;
       // `*Bonus` / `*Haste` / `*Reach` is the owning survivor's edge, inert
       // until then.
@@ -106,7 +106,7 @@
       comboAttuned: 0, combo: 0, comboBonus: 0, comboGate: 0, comboLock: 0, vanishTimer: 0,
       markAttuned: 0, markTarget: null, markSpawn: 0, markLife: 0, markTimer: 1.5, markHaste: 0,
       rageAttuned: 0, rage: 0, rageBonus: 0, rageIdle: 0, rageLock: 0, enrageTimer: 0,
-      soulAttuned: 0, souls: 0, soulBonus: 0,
+      soulAttuned: 0, souls: 0, soulBonus: 0, soulLock: 0,
       totemAttuned: 0, totems: [], totemTimer: 0.5, totemNext: 0, totemReach: 0,
       holyAttuned: 0, holyPower: 0, holyBonus: 0, holyHit: 0, holyHeal: 0, holyLock: 0, divineTimer: 0,
     };
@@ -322,6 +322,13 @@
     }
 
     if (p.invulnerable > 0) p.invulnerable -= dt;
+    if (p.bloodthirstTimer > 0) p.bloodthirstTimer -= dt;
+    // Lifesteal's allowance refills at its cap per second, a second's worth
+    // at most, so a burst can spend what a quiet moment saved and no more.
+    if (p.lifesteal > 0) {
+      const cap = p.maxHealth * WS.Config.lifestealCapPct;
+      p.leechBudget = WS.min(cap, p.leechBudget + cap * dt);
+    }
 
     // Searing Aura: sears everything nearby twice a second.
     if (p.retRank > 0) {
@@ -431,6 +438,9 @@
     if (amount <= 0) return;
     // No full-health gate, for the same reason regen has none: the heal is
     // what triggers, and whether it lands or is wasted is applyHeal's answer.
+    amount = WS.min(amount, p.leechBudget);
+    if (amount <= 0) return;
+    p.leechBudget -= amount;
     p.lifestealCarry += amount;
     const whole = WS.floor(p.lifestealCarry);
     if (whole >= 1) {

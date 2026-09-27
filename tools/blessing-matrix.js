@@ -27,6 +27,9 @@
  *   stand  Thornhollow, Professional, Hyper, from 25:00, standing still, a
  *          tank build (thorns, Searing Aura, Ironhide) instead of the spread
  *
+ * SAME=1 gives everyone the same four weapons instead of their own first:
+ * the baselines then compare the survivors themselves.
+ *
  * Runs are split across processes with SHARDS (default: the CPU count) and
  * the grid is written to OUT as JSON; tools/blessing-matrix.js --report OUT
  * prints the tables again from a saved grid.
@@ -119,7 +122,8 @@ async function worker(scen, jobs, seeds) {
       if (noEdge) off[hero](pl);
       const start = pl.weapons[0] && pl.weapons[0].id;
       pl.weapons.length = 0; pl.weaponLevels = {};
-      const ids = [start];
+      // SAME=1: everyone carries the same four, so what is left is the survivor.
+      const ids = S.SAME ? [] : [start];
       for (const id of FILL) if (ids.length < 4 && !ids.includes(id)) ids.push(id);
       for (const id of ids) {
         const w = WS.Player.addWeapon(pl, id);
@@ -143,6 +147,7 @@ async function worker(scen, jobs, seeds) {
         return rd.apply(this, arguments);
       };
       const taken0 = WS.Game.run.damageTaken;
+      const heal0 = Object.assign({}, WS.Game.run.healingBySource);
       for (let i = 0; i < 60 * S.LIMIT; i++) {
         keepPlaying();
         if (S.STILL) still(); else kite(pl);
@@ -151,7 +156,12 @@ async function worker(scen, jobs, seeds) {
         if (WS.Game.state === 'dying' || WS.Game.state === 'over' || pl.health <= 0) break;
       }
       WS.Enemy.damage = rd;
-      return { t, dps: eff / t, taken: (WS.Game.run.damageTaken - taken0) / t };
+      const heals = {};
+      for (const [k, v] of Object.entries(WS.Game.run.healingBySource)) {
+        const d = (v - (heal0[k] || 0)) / t;
+        if (d > 0.05) heals[k] = +d.toFixed(2);
+      }
+      return { t, dps: eff / t, taken: (WS.Game.run.damageTaken - taken0) / t, heals, maxHp: pl.maxHealth };
     };
     const res = [];
     for (const [hero, bl, noEdge] of jobs) {
@@ -173,6 +183,18 @@ function report(grid, scenName) {
     const base = cell(h, 'kings'), w = cell(h, b, noEdge);
     return { dt: avg(w, 't') - avg(base, 't'), dps: avg(w, 'dps') / avg(base, 'dps') - 1, t: avg(w, 't'), base: avg(base, 't') };
   };
+  // Paired by seed: the same waves with and without, so the spread is the
+  // blessing's, not the seed's. Returns the mean difference and its standard
+  // error - survival is close to all-or-nothing, and at a handful of seeds a
+  // ten-second difference can be nothing at all.
+  const paired = (a, b, k) => {
+    const d = [];
+    for (const r of a) { const q = b.find((x) => x.seed === r.seed); if (q) d.push(r[k] - q[k]); }
+    const m = avg(d.map((x) => ({ v: x })), 'v');
+    const sd = Math.sqrt(d.reduce((acc, x) => acc + (x - m) * (x - m), 0) / WS_MAX(1, d.length - 1));
+    return { m, se: sd / Math.sqrt(WS_MAX(1, d.length)) };
+  };
+  const WS_MAX = Math.max;
   const owners = JSON.parse(process.env.__OWNERS || '{}');
   const s = (x) => (x >= 0 ? '+' : '') + x.toFixed(1);
   const p = (x) => (x >= 0 ? '+' : '') + (x * 100).toFixed(0) + '%';
@@ -197,7 +219,7 @@ function report(grid, scenName) {
   console.log('  (* a signature: median over the eleven who do not own it)');
   console.log(`\n== ${scenName}: owner's gain on their own signature vs everyone else's ==`);
   console.log('  ' + 'survivor'.padEnd(11) + 'signature'.padEnd(17) + 'owner'.padStart(9) + 'others'.padStart(9) + 'owner+'.padStart(9)
-    + '  dps: owner  others' + '   edge alone: survived  dps');
+    + '  dps: owner  others' + '   edge alone: survived (± se)   dps');
   for (const h of heroes) {
     const b = owners[h];
     if (!b || !bls.includes(b)) continue;
@@ -206,7 +228,8 @@ function report(grid, scenName) {
     const ne = cell(h, b, true).length ? gain(h, b, true) : null;
     console.log('  ' + h.padEnd(11) + b.padEnd(17) + (s(o.dt) + 's').padStart(9) + (s(oth) + 's').padStart(9) + (s(o.dt - oth) + 's').padStart(9)
       + p(o.dps).padStart(11) + p(othD).padStart(8)
-      + (ne ? (s(o.t - ne.t) + 's').padStart(22) + p((1 + o.dps) / (1 + ne.dps) - 1).padStart(7) : ''));
+      + (ne ? (() => { const e = paired(cell(h, b), cell(h, b, true), 't'); return (s(e.m) + 's ±' + e.se.toFixed(1)).padStart(28); })()
+        + p((1 + o.dps) / (1 + ne.dps) - 1).padStart(7) : ''));
   }
 }
 
@@ -223,6 +246,7 @@ function report(grid, scenName) {
   if (process.env.TIME) scen.TIME = +process.env.TIME;
   if (process.env.LIMIT) scen.LIMIT = +process.env.LIMIT;
   if (process.env.HYPER) scen.HYPER = process.env.HYPER === '1';
+  scen.SAME = process.env.SAME === '1';
   const N = +(process.env.SEEDS || 6);
   const seeds = Array.from({ length: N }, (_, i) => 5 + i * 23);
 

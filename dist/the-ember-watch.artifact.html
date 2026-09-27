@@ -3891,6 +3891,16 @@ window.WS = window.WS || {};
     hurtBeat: 0.30,
     deathBeat: 1.55,
 
+    /* Leech Pact and Bloodthirst heal with your damage and your kill rate,
+       both of which grow without end, so both are capped. Uncapped, at 22:00
+       the Pact healed 25-32 health a second (the whole of what a kiting
+       build takes) and Bloodthirst 15-18: +61s and +25s of survival over a
+       plain blessing, where the rest of the draft sits at -6..+16s
+       (tools/blessing-matrix.js). Lifesteal now heals at most
+       lifestealCapPct of max health a second; Bloodthirst at most once every
+       bloodthirstCooldown seconds. */
+    lifestealCapPct: 0.012,
+    bloodthirstCooldown: 4,
     hitInvulnerable: 0.45,
     dodgeInvulnerable: 0.2,
 
@@ -4391,7 +4401,13 @@ window.WS = window.WS || {};
     // Reaper's Tithe: kills pay it (it asks more as the night goes on). Over
     // half paid, +soulEmpower damage; paid in full, a Reaping heals rendHealPer
     // of max health for each enemy it strikes, up to rendHealCap.
-    soulNeedBase: 50, soulNeedPerMinute: 10, soulBoss: 25, soulElite: 6, soulEmpower: 0.15,
+    // After a Reaping the tithe rests soulLock seconds before it gathers
+    // again. The price grows with the clock, not with the crowd, so on a dense
+    // field early (Pale Waste on Hyper at 4:00) Reapings came back to back and
+    // healed 15 health a second, more than any other blessing but one; the
+    // rest caps how often without touching a late run, where the price is
+    // the limit (tools/blessing-matrix.js).
+    soulNeedBase: 50, soulNeedPerMinute: 10, soulBoss: 25, soulElite: 6, soulEmpower: 0.15, soulLock: 5,
     rendRadius: 240, rendBase: 90, rendPerLevel: 9, rendHealPer: 0.015, rendHealCap: 0.25,
     // Waystones: one every totemEvery seconds, cycling ember / spring / gale,
     // each standing totemLife (one of a kind at a time).
@@ -5468,12 +5484,17 @@ window.WS = window.WS || {};
       name: 'Abbot Eisen', title: 'Of the Quiet Ascent', className: 'Monk',
       art: 'monk', color: [0.42, 0.86, 0.66], weapon: 'iron_palms',
       description: 'Bald by vow and barefoot by preference. Has not been struck since the spring before last and would like to keep it that way.',
-      perk: 'The step is his by long practice: take up Stillwater Step and he has '
-        + '{perkSteps} more step than anyone else, and his steps come back {perkRecharge~%}% sooner.',
+      perk: 'The step is his by long practice: take up Stillwater Step and his steps '
+        + 'come back {perkRecharge~%}% sooner than anyone else\'s.',
       maxHealth: 120, moveSpeed: 245, armor: 1, pickupRadius: 58, healthRegen: 0,
-      perkSteps: 1, perkRecharge: 0.80,
+      /* One number, like everyone's: a fifth off the wait is a quarter more
+         steps. He used to have a third step on top, which with the shorter
+         wait was nearly twice the steps a second anyone else gets - worth
+         +18s of survival on its own at 22:00, more than any other survivor's
+         whole signature (tools/blessing-matrix.js). */
+      perkRecharge: 0.80,
       signatureBlessing: 'stillwater',
-      apply: (p, c) => { p.flowBonusSteps += c.perkSteps; p.flowRechargeMult *= c.perkRecharge; },
+      apply: (p, c) => { p.flowRechargeMult *= c.perkRecharge; },
       unlockHint: 'A still hand, among many blows.',
     },
   };
@@ -7023,7 +7044,7 @@ window.WS = window.WS || {};
     },
     fel: {
       name: 'Leech Pact', art: 'drain', quality: 'rare',
-      description: 'Your projectiles drain life: heal for {lifesteal%}% of the damage they deal.',
+      description: 'Your projectiles drain life: heal for {lifesteal%}% of the damage they deal, up to {Config.lifestealCapPct%}% of your max health each second.',
       lifesteal: 0.02,
       apply: (p, b) => { p.lifesteal += b.lifesteal; },
     },
@@ -7047,7 +7068,7 @@ window.WS = window.WS || {};
     },
     bloodthirst: {
       name: 'Bloodthirst', art: 'drain', quality: 'legendary',
-      description: 'Every {killInterval} kills restore {healPct%}% +{healFlat} health. The horde is your medicine.',
+      description: 'Every {killInterval} kills restore {healPct%}% +{healFlat} health, at most once every {Config.bloodthirstCooldown}s. The horde is your medicine.',
       killInterval: 25, healPct: 0.06, healFlat: 3,
       apply: (p, b) => {
         p.bloodthirst = true;
@@ -7122,6 +7143,7 @@ window.WS = window.WS || {};
       description: 'Every kill pays into the Tithe. Over half paid it empowers you; paid in full, a Reaping tears at everything near and heals you for it.',
       detail: 'Over half paid: +{Config.soulEmpower%}% damage\n'
         + 'The Reaping heals {Config.rendHealPer%}% of max health per enemy struck (up to {Config.rendHealCap%}%)\n'
+        + 'After a Reaping the Tithe rests {Config.soulLock}s before it gathers again\n'
         + 'The Tithe asks more as the night goes on\n'
         + "Nim's Tithe fills {Config.callingEdge%}% faster",
       apply: (p) => { p.soulAttuned += 1; },
@@ -26274,7 +26296,8 @@ window.WS = window.WS || {};
     WS.Calling.onKill(player, e);
     WS.Audio.play('enemyHit', e.x);
 
-    if (player.bloodthirst && run.kills % player.bloodthirstInterval === 0) {
+    if (player.bloodthirst && run.kills % player.bloodthirstInterval === 0 && player.bloodthirstTimer <= 0) {
+      player.bloodthirstTimer = WS.Config.bloodthirstCooldown;
       WS.Player.heal(player,
         WS.floor(player.maxHealth * player.bloodthirstHealPct) + player.bloodthirstHealFlat,
         'bloodthirst');
@@ -27479,7 +27502,7 @@ window.WS = window.WS || {};
       limitBreaks: 0,
       runEggs: 0,
 
-      bloodthirst: false, momentum: false, overflow: 0,
+      bloodthirst: false, bloodthirstTimer: 0, leechBudget: 0, momentum: false, overflow: 0,
       // The callings - see src/game/callings.js. `*Attuned` turns one on;
       // `*Bonus` / `*Haste` / `*Reach` is the owning survivor's edge, inert
       // until then.
@@ -27488,7 +27511,7 @@ window.WS = window.WS || {};
       comboAttuned: 0, combo: 0, comboBonus: 0, comboGate: 0, comboLock: 0, vanishTimer: 0,
       markAttuned: 0, markTarget: null, markSpawn: 0, markLife: 0, markTimer: 1.5, markHaste: 0,
       rageAttuned: 0, rage: 0, rageBonus: 0, rageIdle: 0, rageLock: 0, enrageTimer: 0,
-      soulAttuned: 0, souls: 0, soulBonus: 0,
+      soulAttuned: 0, souls: 0, soulBonus: 0, soulLock: 0,
       totemAttuned: 0, totems: [], totemTimer: 0.5, totemNext: 0, totemReach: 0,
       holyAttuned: 0, holyPower: 0, holyBonus: 0, holyHit: 0, holyHeal: 0, holyLock: 0, divineTimer: 0,
     };
@@ -27704,6 +27727,13 @@ window.WS = window.WS || {};
     }
 
     if (p.invulnerable > 0) p.invulnerable -= dt;
+    if (p.bloodthirstTimer > 0) p.bloodthirstTimer -= dt;
+    // Lifesteal's allowance refills at its cap per second, a second's worth
+    // at most, so a burst can spend what a quiet moment saved and no more.
+    if (p.lifesteal > 0) {
+      const cap = p.maxHealth * WS.Config.lifestealCapPct;
+      p.leechBudget = WS.min(cap, p.leechBudget + cap * dt);
+    }
 
     // Searing Aura: sears everything nearby twice a second.
     if (p.retRank > 0) {
@@ -27813,6 +27843,9 @@ window.WS = window.WS || {};
     if (amount <= 0) return;
     // No full-health gate, for the same reason regen has none: the heal is
     // what triggers, and whether it lands or is wasted is applyHeal's answer.
+    amount = WS.min(amount, p.leechBudget);
+    if (amount <= 0) return;
+    p.leechBudget -= amount;
     p.lifestealCarry += amount;
     const whole = WS.floor(p.lifestealCarry);
     if (whole >= 1) {
@@ -28441,7 +28474,7 @@ window.WS = window.WS || {};
         if (p.rage >= C().rageNeed) enrage(p);
       }
     }
-    if (p.soulAttuned > 0) {
+    if (p.soulAttuned > 0 && p.soulLock <= 0) {
       p.souls += (e.boss ? C().soulBoss : e.elite ? C().soulElite : 1) * (1 + p.soulBonus);
       if (p.souls >= K.soulNeed()) soulRend(p);
     }
@@ -28458,6 +28491,7 @@ window.WS = window.WS || {};
   function soulRend(p) {
     const cfg = C();
     p.souls = 0;
+    p.soulLock = cfg.soulLock;
     const r = cfg.rendRadius * p.areaMultiplier;
     const struck = WS.Enemy.damageArea(p.x, p.y, r, strike(p, cfg.rendBase, cfg.rendPerLevel), null, 18, 'reapers_tithe');
     WS.Player.heal(p, WS.min(p.maxHealth * cfg.rendHealCap, p.maxHealth * cfg.rendHealPer * struck), 'reapers_tithe');
@@ -28520,6 +28554,7 @@ window.WS = window.WS || {};
     if (p.comboLock > 0) p.comboLock = WS.max(0, p.comboLock - dt);
     if (p.vanishTimer > 0) p.vanishTimer = WS.max(0, p.vanishTimer - dt);
     if (p.holyLock > 0) p.holyLock = WS.max(0, p.holyLock - dt);
+    if (p.soulLock > 0) p.soulLock = WS.max(0, p.soulLock - dt);
     if (p.divineTimer > 0) p.divineTimer = WS.max(0, p.divineTimer - dt);
 
     // The mark: keep it while the quarry lives and it has not run out.
@@ -28619,7 +28654,9 @@ window.WS = window.WS || {};
     }
     if (p.soulAttuned > 0) {
       const need = K.soulNeed();
-      out.push({ key: 'souls', cls: 'calling soul', label: p.souls >= need * 0.5 ? 'Tithe · empowered' : 'Tithe', pct: p.souls / need });
+      out.push(p.soulLock > 0
+        ? { key: 'soulwait', cls: 'calling soul waiting', label: 'Reaped', pct: 1 - p.soulLock / cfg.soulLock }
+        : { key: 'souls', cls: 'calling soul', label: p.souls >= need * 0.5 ? 'Tithe · empowered' : 'Tithe', pct: p.souls / need });
     }
     if (p.totemAttuned > 0) {
       out.push({ key: 'totem', cls: 'calling totem', label: 'Next stone: ' + STONE_NAME[TOTEMS[p.totemNext % 3]],

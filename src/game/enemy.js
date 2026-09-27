@@ -664,7 +664,8 @@
     WS.Calling.onKill(player, e);
     WS.Audio.play('enemyHit', e.x);
 
-    if (player.bloodthirst && run.kills % player.bloodthirstInterval === 0) {
+    if (player.bloodthirst && run.kills % player.bloodthirstInterval === 0 && player.bloodthirstTimer <= 0) {
+      player.bloodthirstTimer = WS.Config.bloodthirstCooldown;
       WS.Player.heal(player,
         WS.floor(player.maxHealth * player.bloodthirstHealPct) + player.bloodthirstHealFlat,
         'bloodthirst');

@@ -42,7 +42,7 @@
     },
     fel: {
       name: 'Leech Pact', art: 'drain', quality: 'rare',
-      description: 'Your projectiles drain life: heal for {lifesteal%}% of the damage they deal.',
+      description: 'Your projectiles drain life: heal for {lifesteal%}% of the damage they deal, up to {Config.lifestealCapPct%}% of your max health each second.',
       lifesteal: 0.02,
       apply: (p, b) => { p.lifesteal += b.lifesteal; },
     },
@@ -66,7 +66,7 @@
     },
     bloodthirst: {
       name: 'Bloodthirst', art: 'drain', quality: 'legendary',
-      description: 'Every {killInterval} kills restore {healPct%}% +{healFlat} health. The horde is your medicine.',
+      description: 'Every {killInterval} kills restore {healPct%}% +{healFlat} health, at most once every {Config.bloodthirstCooldown}s. The horde is your medicine.',
       killInterval: 25, healPct: 0.06, healFlat: 3,
       apply: (p, b) => {
         p.bloodthirst = true;
@@ -141,6 +141,7 @@
       description: 'Every kill pays into the Tithe. Over half paid it empowers you; paid in full, a Reaping tears at everything near and heals you for it.',
       detail: 'Over half paid: +{Config.soulEmpower%}% damage\n'
         + 'The Reaping heals {Config.rendHealPer%}% of max health per enemy struck (up to {Config.rendHealCap%}%)\n'
+        + 'After a Reaping the Tithe rests {Config.soulLock}s before it gathers again\n'
         + 'The Tithe asks more as the night goes on\n'
         + "Nim's Tithe fills {Config.callingEdge%}% faster",
       apply: (p) => { p.soulAttuned += 1; },
