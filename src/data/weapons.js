@@ -53,7 +53,9 @@
       cooldown: 2.638, damage: 27.3, radius: 150, expandTime: 0.35, knockback: 26,
       description: 'A ring of Light erupts outward from the survivor.',
       evolveName: 'Circle of Dawn', evolvePairing: 'vitality',
-      evolveDescription: 'Each dawn mends the faithful.', evolvedHeal: 3,
+      evolveDescription: 'Each dawn mends the faithful.',
+      // Heals per enemy struck, capped per pulse (Weapon.healOf).
+      healPer: 3, evolvedHealPer: 2, healCap: 30, healCapRank: 8, evolvedHealCap: 44,
     },
     verdant_lance: {
       bossDamage: 2.45,
@@ -67,10 +69,12 @@
     grave_tether: {
       name: 'Grave Tether', school: 'shadow', behavior: 'aimed', art: 'coil',
       cooldown: 1.594, damage: 25.48, speed: 382, projectiles: 1, pierce: 2,
-      range: 600, life: 2.4, radius: 10, heal: 4, color: [0.55, 0.20, 0.75],
+      range: 600, life: 2.4, radius: 10, color: [0.55, 0.20, 0.75],
+      // Per enemy the coils strike, capped per volley: it used to have no cap.
+      healPer: 5, evolvedHealPer: 4, healCap: 20, healCapRank: 6, evolvedHealCap: 18,
       description: 'A coil of dark magic that wounds the living and knits your own flesh back together.',
       evolveName: 'Tether of Anguish', evolvePairing: 'wisdom',
-      evolveDescription: 'The tether takes more, and gives more back.', evolvedHeal: 5,
+      evolveDescription: 'The tether takes more, and gives more back.',
     },
     blightfield: {
       name: 'Blightfield', school: 'shadow', behavior: 'zone', art: 'zone',
@@ -78,16 +82,19 @@
       color: [0.45, 0.85, 0.35],
       description: 'Corrupts the ground underfoot; anything standing in it rots.',
       evolveName: 'Blighted Earth', evolvePairing: 'chilling_presence',
-      evolveDescription: 'The blight spreads wider the longer it feeds.', evolvedHeal: 1,
+      evolveDescription: 'The blight spreads wider the longer it feeds.',
+      // While you stand in it: per enemy it rots, capped per tick.
+      healPer: 1, evolvedHealPer: 1, healCap: 4, healCapRank: 1.2, evolvedHealCap: 3.6,
     },
     reaving_arc: {
       bossDamage: 2.9,
       name: 'Reaving Arc', school: 'shadow', behavior: 'nova', art: 'ring',
       cooldown: 2.418, damage: 30.94, radius: 130, expandTime: 0.28, knockback: 20,
-      heal: 6, color: [0.85, 0.15, 0.20],
+      color: [0.85, 0.15, 0.20],
+      healPer: 3, evolvedHealPer: 2, healCap: 28, healCapRank: 7, evolvedHealCap: 43,
       description: 'A sweeping graveblade that carves health out of the wound it makes.',
       evolveName: 'Rend and Mend', evolvePairing: 'recovery',
-      evolveDescription: 'The blade drinks deeper than any wound can hold.', evolvedHeal: 6,
+      evolveDescription: 'The blade drinks deeper than any wound can hold.',
     },
     hallowed_ring: {
       bossDamage: 1.7,
@@ -95,7 +102,9 @@
       cooldown: 3.956, damage: 10.01, radius: 120, duration: 4.0, tickRate: 0.5,
       description: "Hallows the ground beneath the survivor's feet.",
       evolveName: 'Hallowed Ground', evolvePairing: 'armor',
-      evolveDescription: 'Sacred ground that shelters as it burns.', evolvedHeal: 1,
+      evolveDescription: 'Sacred ground that shelters as it burns.',
+      // While you stand in it: per enemy it burns, capped per tick.
+      healPer: 2, evolvedHealPer: 1, healCap: 6, healCapRank: 2, evolvedHealCap: 3,
     },
     umbral_bolt: {
       name: 'Umbral Bolt', school: 'shadow', behavior: 'aimed', art: 'bolt',
@@ -280,10 +289,16 @@
       cooldown: 1.154, damage: 18.2, strikes: 8, stormRadius: 270, splash: 72, radius: 12,
       description: 'Sun and moon rain from the heavens without end.',
     },
+    /* A tester: "every time I used it, it was 50% of my damage". Measured on
+       the hardest night at 21:00 (tools/tune-unions.js): 148% of the pair it
+       eats and 59% of a five-weapon build's meter, because homing, piercing,
+       splashing bolts reach the crowd first and take every kill. Damage
+       25.5 -> 20.4 and splash 82 -> 55 put it at 55% of its pair and 27% of
+       the meter, beside Firmament. */
     union_ruin: {
       name: 'Ruin Unbound', school: 'shadow', behavior: 'aimed', isUnion: true, art: 'chaos',
-      cooldown: 0.989, damage: 25.48, speed: 428, projectiles: 2, pierce: 4, range: 620,
-      splash: 82, homing: true, life: 2.6, radius: 12, color: [0.60, 0.30, 1.00],
+      cooldown: 0.989, damage: 20.38, speed: 428, projectiles: 2, pierce: 4, range: 620,
+      splash: 55, homing: true, life: 2.6, radius: 12, color: [0.60, 0.30, 1.00],
       description: 'Ruin that devours everything in its path.',
     },
     union_steel: {
@@ -296,7 +311,10 @@
       bossDamage: 3.7,
       name: 'Sanctuary', school: 'holy', behavior: 'nova', isUnion: true, art: 'ring',
       cooldown: 1.978, damage: 23.66, radius: 205, expandTime: 0.4, knockback: 34,
-      description: 'The Light claims this ground as its own.',
+      // Forged from the two holy healers, and it used to heal not at all:
+      // taking it threw your healing away. It mends as they did together.
+      healPer: 5, healCap: 130,
+      description: 'The Light claims this ground as its own, and mends whoever keeps it.',
     },
     union_stormcall: {
       name: 'Stormcall', school: 'nature', behavior: 'orbit', isUnion: true, art: 'sword',

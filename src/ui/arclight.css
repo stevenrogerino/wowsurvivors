@@ -1308,11 +1308,13 @@ body.hud-rail #hud-toasts { left: 76px; bottom: 20px; }
   box-shadow: var(--bevel);
 }
 
-.choice-bar { display: flex; gap: 10px; align-items: center; justify-content: center; }
+.choice-bar { display: flex; gap: 10px; align-items: center; justify-content: center; position: relative; margin: 0 auto 14px; }
 /* The banish hint is always in the bar at its full width, and only fades. If
    it appeared on demand it would widen the bar and re-centre the two buttons
    under the cursor that just clicked one of them. Nothing may move. */
 .choice-hint {
+  /* Beside the buttons, not among them: the buttons stay centred on the cards. */
+  position: absolute; left: 100%; margin-left: 14px; white-space: nowrap;
   font-size: var(--t-small); color: var(--blood); letter-spacing: .04em;
   opacity: 0; transition: opacity .16s var(--ease); pointer-events: none;
 }
@@ -3054,6 +3056,13 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .card .card-reacts { width: 100%; height: calc(2 * 1.5em + 4px); overflow: hidden; }
 .card .card-reacts .react { white-space: nowrap; overflow: hidden; max-width: 100%; }
 .card .card-reacts .react > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A lone reaction has both lines of the block to itself, so it wraps there
+   rather than being cut off; two share them a line each. */
+.card .card-reacts .react:only-child { white-space: normal; align-items: flex-start; }
+.card .card-reacts .react:only-child > span {
+  white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+}
+.card .card-reacts .react:only-child .react-mark { margin-top: .45em; }
 .card .card-foot {
   width: 100%; margin-top: auto; height: 78px; overflow: hidden;
   border-top: 1px solid var(--rim); padding-top: 8px;
@@ -3069,7 +3078,7 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 @media (min-width: 721px) and (max-height: 680px) {
   .card { height: 342px; padding: 14px 20px 12px; gap: 6px; }
   .card .card-body { height: calc(2 * 1.4em); -webkit-line-clamp: 2; }
-  .tray-slot { margin-top: 0; }
+  .tray-slot { margin-top: -8px; }
   .card .icon-plate, .card .icon-plate img { width: 60px; height: 60px; }
   .card .icon-plate { margin-bottom: 0; }
 }
@@ -3091,7 +3100,7 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 
 /* ================================================= THE BUILD, IN VIEW ===
  * Along the bottom of the level-up and blessing screens: what you have. */
-.tray-slot { display: flex; justify-content: center; margin-top: 4px; }
+.tray-slot { display: flex; justify-content: center; margin-top: -10px; }
 .build-tray {
   display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 22px;
   padding: 10px 16px; border: 1px solid var(--rim); border-radius: 2px;
@@ -3135,14 +3144,16 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .bt-drawer.open .build-tray { margin-top: 6px; animation: bt-drop .2s var(--ease) both; }
 @keyframes bt-drop { from { opacity: 0; transform: translateY(-8px); } }
 .bt-toggle {
-  display: inline-flex; align-items: center; gap: 10px; padding: 5px 16px 6px 8px;
-  border: 1px solid var(--rim); border-top-color: transparent; border-radius: 0 0 14px 14px;
+  /* As wide as the middle card and just into the two beside it. */
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  min-width: 360px; padding: 5px 16px 6px 12px;
+  border: 1px solid var(--rim); border-radius: 2px 2px 14px 14px;
   background: linear-gradient(180deg, rgba(8,9,14,.5), rgba(14,16,24,.85));
   box-shadow: var(--bevel); color: inherit; font: inherit; cursor: pointer;
   transition: border-color .15s var(--ease), box-shadow .15s var(--ease);
 }
 .bt-toggle:hover, .bt-toggle:focus-visible {
-  border-color: var(--gilt, #f5c56b); border-top-color: transparent;
+  border-color: var(--gilt, #f5c56b);
   box-shadow: var(--bevel), 0 6px 18px -8px var(--gilt, #f5c56b);
 }
 .bt-chev {
@@ -3195,6 +3206,11 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
     animation-name: bt-drop-abs;
   }
   .overlay-body:has(> .tray-slot) .scroll-scrim { display: none; }
+  /* ...and has to fit under the cards on a 600px window. */
+  .choice-bar { margin-bottom: 6px; }
+  .bt-drawer.open .build-tray { padding: 5px 12px; gap: 6px 16px; }
+  .build-tray .bt-slot { width: 34px; height: 34px; }
+  .build-tray .bt-slot.small { width: 28px; height: 28px; }
   @keyframes bt-drop-abs { from { opacity: 0; transform: translate(-50%, -8px); } }
 }
 

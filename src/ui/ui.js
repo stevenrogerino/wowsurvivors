@@ -3228,9 +3228,11 @@
     const hint = el('span', 'choice-hint', 'Pick a card to banish it from this run');
     bar.append(reroll, banish, auto, hint);
 
+    // Reroll and Banish sit over the cards, centred on them, and the build
+    // drawer under them: the choice is framed by what changes it.
     const tray = el('div', 'tray-slot');
-    s.body.append(row, tray);
-    s.foot.append(el('div', 'spacer'), bar, el('div', 'spacer'));
+    s.body.append(bar, row, tray);
+    s.foot.style.display = 'none';
     this._levelUI = {
       row, bar, banish, reroll, auto, hint, tray,
       title: s.head.querySelector('h1'), sub: s.head.querySelector('.sub'),

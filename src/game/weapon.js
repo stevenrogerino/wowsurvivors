@@ -117,6 +117,29 @@
   }
   Weapon.behaviorOf = behaviorOf;
 
+  /* HEALING. A healer mends you for every enemy it strikes, up to a cap on
+     each cast that grows with rank and again on evolving - so a crowd still
+     feeds it, but no crowd can make it bottomless. Grave Tether used to heal
+     for every body its coil pierced with no ceiling at all, and on the hard
+     nights measured 170-270 health a second against 2-7 for every other
+     healer (tools/heal-sim.js): not a choice, a requirement. Now every healer
+     mends from its first rank and they sit within a band of each other.
+     A discovery's healBonus is a flat mend on every cast, on top. */
+  function healOf(w) {
+    const d = w.data;
+    const per = (d.healPer || 0) + (w.evolved ? (d.evolvedHealPer || 0) : 0);
+    const cap = (d.healCap || 0) + (d.healCapRank || 0) * (w.level - 1)
+      + (w.evolved ? (d.evolvedHealCap || 0) : 0);
+    return { per, cap, flat: w.mods.healBonus || 0 };
+  }
+  Weapon.healOf = healOf;
+  /** One cast's mend: `struck` enemies' worth, capped, plus any flat bonus. */
+  function mend(player, w, struck) {
+    const h = healOf(w);
+    const amount = WS.min(h.cap, h.per * struck) + h.flat;
+    if (amount > 0) WS.Player.heal(player, amount, w.id);
+  }
+
   function fillSpec(player, w) {
     const d = w.data, cfg = WS.Config;
     spec.damage = damageOf(player, w);
@@ -147,7 +170,13 @@
     spec.slowDuration = d.slowDuration || w.mods.slowDuration;
     spec.bounces = 0;
     spec.source = w.id;
-    spec.heal = (w.evolved ? (d.evolvedHeal || 0) : 0) + (w.mods.healBonus || 0) + (d.heal || 0);
+    // A healing shot mends per enemy struck, all the shots of one cast
+    // drawing on one purse (see healOf).
+    // A burst's later shots come from player.js, not a new cast, so the purse
+    // is the cast's (Weapon.fire opens it) and every shot of the burst shares it.
+    const h = healOf(w);
+    spec.healPer = h.per;
+    spec.healPool = h.per > 0 ? (w._healPool || (w._healPool = { left: h.cap })) : null;
     spec.procChain = d.procChain || w.mods.procChain || 0;
     spec.spinRate = d.art === 'dagger' || d.art === 'axe' ? 14 : 0;
     // The newer behaviours' own fields, cleared here so no shot inherits them.
@@ -318,9 +347,7 @@
     const radius = areaOf(player, w, d.radius || 150);
     const damage = damageOf(player, w);
     const colour = schoolColour(w);
-    const heal = (w.evolved ? (d.evolvedHeal || 0) : 0) + (w.mods.healBonus || 0) + (d.heal || 0);
-
-    WS.Enemy.damageArea(player.x, player.y, radius, damage, null, d.knockback, w.id);
+    const struck = WS.Enemy.damageArea(player.x, player.y, radius, damage, null, d.knockback, w.id);
     /* A nova's reach is its damage area and must not move, so rank buys it
        RINGS instead: one more wave of light past each of the ranks where
        other weapons gain a projectile, and a longer bloom. None of these
@@ -367,7 +394,7 @@
       }
       WS.FX.flash(player.x, player.y, radius * 0.22, w.mods.blend, hold * 0.9);
     }
-    if (heal > 0) WS.Player.heal(player, heal, w.id);
+    mend(player, w, struck);
     WS.Audio.play('cast', undefined, w.data.school);
     return true;
   };
@@ -388,8 +415,7 @@
       damageOf(player, w),
       durationOf(player, w, d.duration || 4),
       d.tickRate || 0.5,
-      schoolColour(w), w.id,
-      (w.evolved ? (d.evolvedHeal || 0) : 0) + (w.mods.healBonus || 0));
+      schoolColour(w), w.id, healOf(w));
     mark(WS.Projectile.zones, w);
     const slow = WS.min(d.slowFactor || 1, w.mods.slowFactor || 1);
     if (z && slow < 1) z.slowFactor = slow;
@@ -478,7 +504,7 @@
     fillSpec(player, w);
     const speed = d.waveSpeed || 520;
     spec.damage *= d.waveDamage || 0.8;
-    spec.pierce = 2; spec.heal = 0;
+    spec.pierce = 2; spec.healPer = 0; spec.healPool = null;
     spec.radius = 13 * (w.evolved ? 1.3 : 1);
     spec.life = (reach * (d.waveReach || 2.8)) / speed;
     spec.spinRate = 0;
@@ -926,6 +952,7 @@
   Weapon.fire = function (player, w) {
     const handler = Weapon.behaviors[behaviorOf(w)];
     if (!handler) return;
+    w._healPool = null;     // a new cast, a new purse (see fillSpec)
     const fired = handler(player, w);
     if (fired === false) return;
     // A muzzle flash in the weapon's own colour, so a six-weapon build reads
@@ -993,6 +1020,13 @@
       rows.push(['Area', WS.round(areaOf(player, w, 1) * 100) + '%']);
     }
     if (b === 'zone') rows.push(['Duration', durationOf(player, w, data.duration || 4).toFixed(1) + 's']);
+    // A healer's mend goes up front, after damage and cooldown: a card shows
+    // six rows, and this is the reason to take it.
+    const h = healOf(w);
+    if (h.per > 0) {
+      rows.splice(2, 0, ['Heals', `${+h.per.toFixed(1)}/foe`],
+        [b === 'zone' ? 'Heal cap/tick' : 'Heal cap', String(+h.cap.toFixed(1))]);
+    }
     if (b === 'orbit') rows.push(['Duration', durationOf(player, w, data.duration || 3.2).toFixed(1) + 's']);
     return rows;
   };

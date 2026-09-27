@@ -254,8 +254,16 @@
     deathTime: 1800,
     deathInterval: 60,
 
+    /* Standing and taking it. Measured (tools/tank-sim.js) on the hardest
+       night: a warrior with every defensive passive at max, 760 health and
+       23 armour, stood in the crowd exactly as long as a glass mage with 360
+       health and 5 - ten seconds - because armour took 43% off a hit and the
+       aura, which never grew past its rank, did 3% of the killing. So armour
+       bites harder, thorns throw more back, and the aura burns in proportion
+       to the armour of whoever wears it: the heavier the tank, the hotter. */
     thornsFlat: 10,
-    thornsDamagePct: 0.40,
+    thornsDamagePct: 0.60,
+    retributionArmorScale: 0.12,   // +12% aura damage per point of armour
     retributionBase: 4.55,
     retributionPerRank: 3.64,
     retributionRange: 60,
@@ -266,7 +274,7 @@
     chillSlowPerRank: 0.10,
 
     // Armor is a diminishing reduction: 1 - armor/(armor + K).
-    armorConstant: 30,
+    armorConstant: 16,
 
     // Curdled Light: healing that curdles into shadow damage.
     curdleOverheal: 1.00,

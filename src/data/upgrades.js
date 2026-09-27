@@ -36,7 +36,7 @@
     },
     armor: {
       name: 'Ironhide', art: 'shield', quality: 'common',
-      description: '+{v} armor (diminishing damage reduction)', max: 5, v: 2,
+      description: '+{v} armor (diminishing damage reduction)', max: 5, v: 3,
       detail: 'Every hit is cut by a share based on your armor. Each point helps a little less than the last, and it never blocks a hit completely.',
       apply: (p, up) => { p.armor += up.v; },
     },
@@ -208,7 +208,7 @@
     searing: {
       name: 'Searing Aura', art: 'retaura', quality: 'rare',
       description: 'A holy aura sears nearby enemies.', max: 4,
-      detail: 'Burns enemies around you twice per second (damage grows with rank and Damage; the radius grows with rank and Area). Lets tanks deal damage while standing firm.',
+      detail: 'Burns enemies around you twice per second. Damage grows with rank, Damage and your armor (+{Config.retributionArmorScale%}% per point); the radius grows with rank and Area. The heavier the tank, the hotter it burns.',
       apply: (p) => { p.retRank += 1; },
     },
     dodge: {

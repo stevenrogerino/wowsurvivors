@@ -73,7 +73,8 @@
     // must never be allowed to change it - see the turn in P.update.
     b.speed = WS.sqrt(vx * vx + vy * vy);
     b.source = spec.source;
-    b.heal = spec.heal || 0;
+    b.healPer = spec.healPer || 0;
+    b.healPool = spec.healPool || null;     // shared by every shot of one cast
     b.procChain = spec.procChain || 0;
     b.spin = WS.random() * WS.TAU;
     b.spinRate = spec.spinRate === undefined ? 0 : spec.spinRate;
@@ -98,7 +99,7 @@
     z.x = x; z.y = y; z.radius = radius; z.damage = damage;
     z.life = duration; z.maxLife = duration;
     z.tickRate = tickRate; z.tick = 0;
-    z.colour = colour; z.source = source; z.heal = heal || 0;
+    z.colour = colour; z.source = source; z.heal = heal || null;   // Weapon.healOf
     z.phase = WS.random() * WS.TAU;
     z.rank = 1; z.evolved = false; z.blend = null;   // set by the weapon
     z.slowFactor = 0;
@@ -190,7 +191,11 @@
       const [kx, ky] = WS.normalize(b.vx, b.vy);
       e.x += kx * b.knock; e.y += ky * b.knock;
     }
-    if (b.heal) WS.Player.heal(player, b.heal, b.source || 'holy');
+    if (b.healPer && b.healPool && b.healPool.left > 0) {
+      const amount = WS.min(b.healPer, b.healPool.left);
+      b.healPool.left -= amount;
+      WS.Player.heal(player, amount, b.source || 'holy');
+    }
     if (player.lifesteal > 0) WS.Player.lifesteal(player, dealt * player.lifesteal);
     if (b.procChain > 0 && WS.random() < b.procChain) {
       WS.Weapon.chainFrom(e.x, e.y, b.damage * 0.6, 3, 220, b.source);
@@ -384,14 +389,18 @@
       if (z.tick <= 0) {
         z.tick = z.tickRate;
         z.hitBy.clear();
-        WS.Enemy.damageArea(z.x, z.y, z.radius, z.damage, z.hitBy, null, z.source);
+        const struck = WS.Enemy.damageArea(z.x, z.y, z.radius, z.damage, z.hitBy, null, z.source);
         if (z.slowFactor) {
           for (const [e, id] of z.hitBy) {
             if (!e._dead && e.spawnId === id) WS.Enemy.applySlow(e, z.slowFactor, z.tickRate + 0.2);
           }
         }
-        if (z.heal && WS.dist2(z.x, z.y, player.x, player.y) < z.radius * z.radius) {
-          WS.Player.heal(player, z.heal, z.source || 'holy');
+        // Ground that heals mends whoever stands in it, per enemy it burns
+        // this tick, up to its cap.
+        const h = z.heal;
+        if (h && (h.per > 0 || h.flat > 0) && WS.dist2(z.x, z.y, player.x, player.y) < z.radius * z.radius) {
+          const amount = WS.min(h.cap, h.per * struck) + h.flat;
+          if (amount > 0) WS.Player.heal(player, amount, z.source || 'holy');
         }
       }
       i++;

@@ -319,7 +319,8 @@
       if (p.retTimer <= 0) {
         p.retTimer = cfg.retributionTick;
         const dmg = (cfg.retributionBase + cfg.retributionPerRank * p.retRank)
-          * p.damageMultiplier * WS.CONST.PLAYER_DAMAGE_SCALE;
+          * p.damageMultiplier * WS.CONST.PLAYER_DAMAGE_SCALE
+          * (1 + cfg.retributionArmorScale * WS.max(0, p.armor || 0));
         WS.Enemy.damageArea(p.x, p.y, range, dmg, null, null, 'searing');
       }
     }

@@ -1392,11 +1392,13 @@ body.hud-rail #hud-toasts { left: 76px; bottom: 20px; }
   box-shadow: var(--bevel);
 }
 
-.choice-bar { display: flex; gap: 10px; align-items: center; justify-content: center; }
+.choice-bar { display: flex; gap: 10px; align-items: center; justify-content: center; position: relative; margin: 0 auto 14px; }
 /* The banish hint is always in the bar at its full width, and only fades. If
    it appeared on demand it would widen the bar and re-centre the two buttons
    under the cursor that just clicked one of them. Nothing may move. */
 .choice-hint {
+  /* Beside the buttons, not among them: the buttons stay centred on the cards. */
+  position: absolute; left: 100%; margin-left: 14px; white-space: nowrap;
   font-size: var(--t-small); color: var(--blood); letter-spacing: .04em;
   opacity: 0; transition: opacity .16s var(--ease); pointer-events: none;
 }
@@ -3138,6 +3140,13 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .card .card-reacts { width: 100%; height: calc(2 * 1.5em + 4px); overflow: hidden; }
 .card .card-reacts .react { white-space: nowrap; overflow: hidden; max-width: 100%; }
 .card .card-reacts .react > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A lone reaction has both lines of the block to itself, so it wraps there
+   rather than being cut off; two share them a line each. */
+.card .card-reacts .react:only-child { white-space: normal; align-items: flex-start; }
+.card .card-reacts .react:only-child > span {
+  white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+}
+.card .card-reacts .react:only-child .react-mark { margin-top: .45em; }
 .card .card-foot {
   width: 100%; margin-top: auto; height: 78px; overflow: hidden;
   border-top: 1px solid var(--rim); padding-top: 8px;
@@ -3153,7 +3162,7 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 @media (min-width: 721px) and (max-height: 680px) {
   .card { height: 342px; padding: 14px 20px 12px; gap: 6px; }
   .card .card-body { height: calc(2 * 1.4em); -webkit-line-clamp: 2; }
-  .tray-slot { margin-top: 0; }
+  .tray-slot { margin-top: -8px; }
   .card .icon-plate, .card .icon-plate img { width: 60px; height: 60px; }
   .card .icon-plate { margin-bottom: 0; }
 }
@@ -3175,7 +3184,7 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 
 /* ================================================= THE BUILD, IN VIEW ===
  * Along the bottom of the level-up and blessing screens: what you have. */
-.tray-slot { display: flex; justify-content: center; margin-top: 4px; }
+.tray-slot { display: flex; justify-content: center; margin-top: -10px; }
 .build-tray {
   display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 22px;
   padding: 10px 16px; border: 1px solid var(--rim); border-radius: 2px;
@@ -3219,14 +3228,16 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .bt-drawer.open .build-tray { margin-top: 6px; animation: bt-drop .2s var(--ease) both; }
 @keyframes bt-drop { from { opacity: 0; transform: translateY(-8px); } }
 .bt-toggle {
-  display: inline-flex; align-items: center; gap: 10px; padding: 5px 16px 6px 8px;
-  border: 1px solid var(--rim); border-top-color: transparent; border-radius: 0 0 14px 14px;
+  /* As wide as the middle card and just into the two beside it. */
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  min-width: 360px; padding: 5px 16px 6px 12px;
+  border: 1px solid var(--rim); border-radius: 2px 2px 14px 14px;
   background: linear-gradient(180deg, rgba(8,9,14,.5), rgba(14,16,24,.85));
   box-shadow: var(--bevel); color: inherit; font: inherit; cursor: pointer;
   transition: border-color .15s var(--ease), box-shadow .15s var(--ease);
 }
 .bt-toggle:hover, .bt-toggle:focus-visible {
-  border-color: var(--gilt, #f5c56b); border-top-color: transparent;
+  border-color: var(--gilt, #f5c56b);
   box-shadow: var(--bevel), 0 6px 18px -8px var(--gilt, #f5c56b);
 }
 .bt-chev {
@@ -3279,6 +3290,11 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
     animation-name: bt-drop-abs;
   }
   .overlay-body:has(> .tray-slot) .scroll-scrim { display: none; }
+  /* ...and has to fit under the cards on a 600px window. */
+  .choice-bar { margin-bottom: 6px; }
+  .bt-drawer.open .build-tray { padding: 5px 12px; gap: 6px 16px; }
+  .build-tray .bt-slot { width: 34px; height: 34px; }
+  .build-tray .bt-slot.small { width: 28px; height: 28px; }
   @keyframes bt-drop-abs { from { opacity: 0; transform: translate(-50%, -8px); } }
 }
 
@@ -4028,8 +4044,16 @@ window.WS = window.WS || {};
     deathTime: 1800,
     deathInterval: 60,
 
+    /* Standing and taking it. Measured (tools/tank-sim.js) on the hardest
+       night: a warrior with every defensive passive at max, 760 health and
+       23 armour, stood in the crowd exactly as long as a glass mage with 360
+       health and 5 - ten seconds - because armour took 43% off a hit and the
+       aura, which never grew past its rank, did 3% of the killing. So armour
+       bites harder, thorns throw more back, and the aura burns in proportion
+       to the armour of whoever wears it: the heavier the tank, the hotter. */
     thornsFlat: 10,
-    thornsDamagePct: 0.40,
+    thornsDamagePct: 0.60,
+    retributionArmorScale: 0.12,   // +12% aura damage per point of armour
     retributionBase: 4.55,
     retributionPerRank: 3.64,
     retributionRange: 60,
@@ -4040,7 +4064,7 @@ window.WS = window.WS || {};
     chillSlowPerRank: 0.10,
 
     // Armor is a diminishing reduction: 1 - armor/(armor + K).
-    armorConstant: 30,
+    armorConstant: 16,
 
     // Curdled Light: healing that curdles into shadow damage.
     curdleOverheal: 1.00,
@@ -5415,7 +5439,9 @@ window.WS = window.WS || {};
       cooldown: 2.638, damage: 27.3, radius: 150, expandTime: 0.35, knockback: 26,
       description: 'A ring of Light erupts outward from the survivor.',
       evolveName: 'Circle of Dawn', evolvePairing: 'vitality',
-      evolveDescription: 'Each dawn mends the faithful.', evolvedHeal: 3,
+      evolveDescription: 'Each dawn mends the faithful.',
+      // Heals per enemy struck, capped per pulse (Weapon.healOf).
+      healPer: 3, evolvedHealPer: 2, healCap: 30, healCapRank: 8, evolvedHealCap: 44,
     },
     verdant_lance: {
       bossDamage: 2.45,
@@ -5429,10 +5455,12 @@ window.WS = window.WS || {};
     grave_tether: {
       name: 'Grave Tether', school: 'shadow', behavior: 'aimed', art: 'coil',
       cooldown: 1.594, damage: 25.48, speed: 382, projectiles: 1, pierce: 2,
-      range: 600, life: 2.4, radius: 10, heal: 4, color: [0.55, 0.20, 0.75],
+      range: 600, life: 2.4, radius: 10, color: [0.55, 0.20, 0.75],
+      // Per enemy the coils strike, capped per volley: it used to have no cap.
+      healPer: 5, evolvedHealPer: 4, healCap: 20, healCapRank: 6, evolvedHealCap: 18,
       description: 'A coil of dark magic that wounds the living and knits your own flesh back together.',
       evolveName: 'Tether of Anguish', evolvePairing: 'wisdom',
-      evolveDescription: 'The tether takes more, and gives more back.', evolvedHeal: 5,
+      evolveDescription: 'The tether takes more, and gives more back.',
     },
     blightfield: {
       name: 'Blightfield', school: 'shadow', behavior: 'zone', art: 'zone',
@@ -5440,16 +5468,19 @@ window.WS = window.WS || {};
       color: [0.45, 0.85, 0.35],
       description: 'Corrupts the ground underfoot; anything standing in it rots.',
       evolveName: 'Blighted Earth', evolvePairing: 'chilling_presence',
-      evolveDescription: 'The blight spreads wider the longer it feeds.', evolvedHeal: 1,
+      evolveDescription: 'The blight spreads wider the longer it feeds.',
+      // While you stand in it: per enemy it rots, capped per tick.
+      healPer: 1, evolvedHealPer: 1, healCap: 4, healCapRank: 1.2, evolvedHealCap: 3.6,
     },
     reaving_arc: {
       bossDamage: 2.9,
       name: 'Reaving Arc', school: 'shadow', behavior: 'nova', art: 'ring',
       cooldown: 2.418, damage: 30.94, radius: 130, expandTime: 0.28, knockback: 20,
-      heal: 6, color: [0.85, 0.15, 0.20],
+      color: [0.85, 0.15, 0.20],
+      healPer: 3, evolvedHealPer: 2, healCap: 28, healCapRank: 7, evolvedHealCap: 43,
       description: 'A sweeping graveblade that carves health out of the wound it makes.',
       evolveName: 'Rend and Mend', evolvePairing: 'recovery',
-      evolveDescription: 'The blade drinks deeper than any wound can hold.', evolvedHeal: 6,
+      evolveDescription: 'The blade drinks deeper than any wound can hold.',
     },
     hallowed_ring: {
       bossDamage: 1.7,
@@ -5457,7 +5488,9 @@ window.WS = window.WS || {};
       cooldown: 3.956, damage: 10.01, radius: 120, duration: 4.0, tickRate: 0.5,
       description: "Hallows the ground beneath the survivor's feet.",
       evolveName: 'Hallowed Ground', evolvePairing: 'armor',
-      evolveDescription: 'Sacred ground that shelters as it burns.', evolvedHeal: 1,
+      evolveDescription: 'Sacred ground that shelters as it burns.',
+      // While you stand in it: per enemy it burns, capped per tick.
+      healPer: 2, evolvedHealPer: 1, healCap: 6, healCapRank: 2, evolvedHealCap: 3,
     },
     umbral_bolt: {
       name: 'Umbral Bolt', school: 'shadow', behavior: 'aimed', art: 'bolt',
@@ -5642,10 +5675,16 @@ window.WS = window.WS || {};
       cooldown: 1.154, damage: 18.2, strikes: 8, stormRadius: 270, splash: 72, radius: 12,
       description: 'Sun and moon rain from the heavens without end.',
     },
+    /* A tester: "every time I used it, it was 50% of my damage". Measured on
+       the hardest night at 21:00 (tools/tune-unions.js): 148% of the pair it
+       eats and 59% of a five-weapon build's meter, because homing, piercing,
+       splashing bolts reach the crowd first and take every kill. Damage
+       25.5 -> 20.4 and splash 82 -> 55 put it at 55% of its pair and 27% of
+       the meter, beside Firmament. */
     union_ruin: {
       name: 'Ruin Unbound', school: 'shadow', behavior: 'aimed', isUnion: true, art: 'chaos',
-      cooldown: 0.989, damage: 25.48, speed: 428, projectiles: 2, pierce: 4, range: 620,
-      splash: 82, homing: true, life: 2.6, radius: 12, color: [0.60, 0.30, 1.00],
+      cooldown: 0.989, damage: 20.38, speed: 428, projectiles: 2, pierce: 4, range: 620,
+      splash: 55, homing: true, life: 2.6, radius: 12, color: [0.60, 0.30, 1.00],
       description: 'Ruin that devours everything in its path.',
     },
     union_steel: {
@@ -5658,7 +5697,10 @@ window.WS = window.WS || {};
       bossDamage: 3.7,
       name: 'Sanctuary', school: 'holy', behavior: 'nova', isUnion: true, art: 'ring',
       cooldown: 1.978, damage: 23.66, radius: 205, expandTime: 0.4, knockback: 34,
-      description: 'The Light claims this ground as its own.',
+      // Forged from the two holy healers, and it used to heal not at all:
+      // taking it threw your healing away. It mends as they did together.
+      healPer: 5, healCap: 130,
+      description: 'The Light claims this ground as its own, and mends whoever keeps it.',
     },
     union_stormcall: {
       name: 'Stormcall', school: 'nature', behavior: 'orbit', isUnion: true, art: 'sword',
@@ -6552,7 +6594,7 @@ window.WS = window.WS || {};
     },
     armor: {
       name: 'Ironhide', art: 'shield', quality: 'common',
-      description: '+{v} armor (diminishing damage reduction)', max: 5, v: 2,
+      description: '+{v} armor (diminishing damage reduction)', max: 5, v: 3,
       detail: 'Every hit is cut by a share based on your armor. Each point helps a little less than the last, and it never blocks a hit completely.',
       apply: (p, up) => { p.armor += up.v; },
     },
@@ -6724,7 +6766,7 @@ window.WS = window.WS || {};
     searing: {
       name: 'Searing Aura', art: 'retaura', quality: 'rare',
       description: 'A holy aura sears nearby enemies.', max: 4,
-      detail: 'Burns enemies around you twice per second (damage grows with rank and Damage; the radius grows with rank and Area). Lets tanks deal damage while standing firm.',
+      detail: 'Burns enemies around you twice per second. Damage grows with rank, Damage and your armor (+{Config.retributionArmorScale%}% per point); the radius grows with rank and Area. The heavier the tank, the hotter it burns.',
       apply: (p) => { p.retRank += 1; },
     },
     dodge: {
@@ -24974,7 +25016,8 @@ window.WS = window.WS || {};
     // must never be allowed to change it - see the turn in P.update.
     b.speed = WS.sqrt(vx * vx + vy * vy);
     b.source = spec.source;
-    b.heal = spec.heal || 0;
+    b.healPer = spec.healPer || 0;
+    b.healPool = spec.healPool || null;     // shared by every shot of one cast
     b.procChain = spec.procChain || 0;
     b.spin = WS.random() * WS.TAU;
     b.spinRate = spec.spinRate === undefined ? 0 : spec.spinRate;
@@ -24999,7 +25042,7 @@ window.WS = window.WS || {};
     z.x = x; z.y = y; z.radius = radius; z.damage = damage;
     z.life = duration; z.maxLife = duration;
     z.tickRate = tickRate; z.tick = 0;
-    z.colour = colour; z.source = source; z.heal = heal || 0;
+    z.colour = colour; z.source = source; z.heal = heal || null;   // Weapon.healOf
     z.phase = WS.random() * WS.TAU;
     z.rank = 1; z.evolved = false; z.blend = null;   // set by the weapon
     z.slowFactor = 0;
@@ -25091,7 +25134,11 @@ window.WS = window.WS || {};
       const [kx, ky] = WS.normalize(b.vx, b.vy);
       e.x += kx * b.knock; e.y += ky * b.knock;
     }
-    if (b.heal) WS.Player.heal(player, b.heal, b.source || 'holy');
+    if (b.healPer && b.healPool && b.healPool.left > 0) {
+      const amount = WS.min(b.healPer, b.healPool.left);
+      b.healPool.left -= amount;
+      WS.Player.heal(player, amount, b.source || 'holy');
+    }
     if (player.lifesteal > 0) WS.Player.lifesteal(player, dealt * player.lifesteal);
     if (b.procChain > 0 && WS.random() < b.procChain) {
       WS.Weapon.chainFrom(e.x, e.y, b.damage * 0.6, 3, 220, b.source);
@@ -25285,14 +25332,18 @@ window.WS = window.WS || {};
       if (z.tick <= 0) {
         z.tick = z.tickRate;
         z.hitBy.clear();
-        WS.Enemy.damageArea(z.x, z.y, z.radius, z.damage, z.hitBy, null, z.source);
+        const struck = WS.Enemy.damageArea(z.x, z.y, z.radius, z.damage, z.hitBy, null, z.source);
         if (z.slowFactor) {
           for (const [e, id] of z.hitBy) {
             if (!e._dead && e.spawnId === id) WS.Enemy.applySlow(e, z.slowFactor, z.tickRate + 0.2);
           }
         }
-        if (z.heal && WS.dist2(z.x, z.y, player.x, player.y) < z.radius * z.radius) {
-          WS.Player.heal(player, z.heal, z.source || 'holy');
+        // Ground that heals mends whoever stands in it, per enemy it burns
+        // this tick, up to its cap.
+        const h = z.heal;
+        if (h && (h.per > 0 || h.flat > 0) && WS.dist2(z.x, z.y, player.x, player.y) < z.radius * z.radius) {
+          const amount = WS.min(h.cap, h.per * struck) + h.flat;
+          if (amount > 0) WS.Player.heal(player, amount, z.source || 'holy');
         }
       }
       i++;
@@ -26200,6 +26251,29 @@ window.WS = window.WS || {};
   }
   Weapon.behaviorOf = behaviorOf;
 
+  /* HEALING. A healer mends you for every enemy it strikes, up to a cap on
+     each cast that grows with rank and again on evolving - so a crowd still
+     feeds it, but no crowd can make it bottomless. Grave Tether used to heal
+     for every body its coil pierced with no ceiling at all, and on the hard
+     nights measured 170-270 health a second against 2-7 for every other
+     healer (tools/heal-sim.js): not a choice, a requirement. Now every healer
+     mends from its first rank and they sit within a band of each other.
+     A discovery's healBonus is a flat mend on every cast, on top. */
+  function healOf(w) {
+    const d = w.data;
+    const per = (d.healPer || 0) + (w.evolved ? (d.evolvedHealPer || 0) : 0);
+    const cap = (d.healCap || 0) + (d.healCapRank || 0) * (w.level - 1)
+      + (w.evolved ? (d.evolvedHealCap || 0) : 0);
+    return { per, cap, flat: w.mods.healBonus || 0 };
+  }
+  Weapon.healOf = healOf;
+  /** One cast's mend: `struck` enemies' worth, capped, plus any flat bonus. */
+  function mend(player, w, struck) {
+    const h = healOf(w);
+    const amount = WS.min(h.cap, h.per * struck) + h.flat;
+    if (amount > 0) WS.Player.heal(player, amount, w.id);
+  }
+
   function fillSpec(player, w) {
     const d = w.data, cfg = WS.Config;
     spec.damage = damageOf(player, w);
@@ -26230,7 +26304,13 @@ window.WS = window.WS || {};
     spec.slowDuration = d.slowDuration || w.mods.slowDuration;
     spec.bounces = 0;
     spec.source = w.id;
-    spec.heal = (w.evolved ? (d.evolvedHeal || 0) : 0) + (w.mods.healBonus || 0) + (d.heal || 0);
+    // A healing shot mends per enemy struck, all the shots of one cast
+    // drawing on one purse (see healOf).
+    // A burst's later shots come from player.js, not a new cast, so the purse
+    // is the cast's (Weapon.fire opens it) and every shot of the burst shares it.
+    const h = healOf(w);
+    spec.healPer = h.per;
+    spec.healPool = h.per > 0 ? (w._healPool || (w._healPool = { left: h.cap })) : null;
     spec.procChain = d.procChain || w.mods.procChain || 0;
     spec.spinRate = d.art === 'dagger' || d.art === 'axe' ? 14 : 0;
     // The newer behaviours' own fields, cleared here so no shot inherits them.
@@ -26401,9 +26481,7 @@ window.WS = window.WS || {};
     const radius = areaOf(player, w, d.radius || 150);
     const damage = damageOf(player, w);
     const colour = schoolColour(w);
-    const heal = (w.evolved ? (d.evolvedHeal || 0) : 0) + (w.mods.healBonus || 0) + (d.heal || 0);
-
-    WS.Enemy.damageArea(player.x, player.y, radius, damage, null, d.knockback, w.id);
+    const struck = WS.Enemy.damageArea(player.x, player.y, radius, damage, null, d.knockback, w.id);
     /* A nova's reach is its damage area and must not move, so rank buys it
        RINGS instead: one more wave of light past each of the ranks where
        other weapons gain a projectile, and a longer bloom. None of these
@@ -26450,7 +26528,7 @@ window.WS = window.WS || {};
       }
       WS.FX.flash(player.x, player.y, radius * 0.22, w.mods.blend, hold * 0.9);
     }
-    if (heal > 0) WS.Player.heal(player, heal, w.id);
+    mend(player, w, struck);
     WS.Audio.play('cast', undefined, w.data.school);
     return true;
   };
@@ -26471,8 +26549,7 @@ window.WS = window.WS || {};
       damageOf(player, w),
       durationOf(player, w, d.duration || 4),
       d.tickRate || 0.5,
-      schoolColour(w), w.id,
-      (w.evolved ? (d.evolvedHeal || 0) : 0) + (w.mods.healBonus || 0));
+      schoolColour(w), w.id, healOf(w));
     mark(WS.Projectile.zones, w);
     const slow = WS.min(d.slowFactor || 1, w.mods.slowFactor || 1);
     if (z && slow < 1) z.slowFactor = slow;
@@ -26561,7 +26638,7 @@ window.WS = window.WS || {};
     fillSpec(player, w);
     const speed = d.waveSpeed || 520;
     spec.damage *= d.waveDamage || 0.8;
-    spec.pierce = 2; spec.heal = 0;
+    spec.pierce = 2; spec.healPer = 0; spec.healPool = null;
     spec.radius = 13 * (w.evolved ? 1.3 : 1);
     spec.life = (reach * (d.waveReach || 2.8)) / speed;
     spec.spinRate = 0;
@@ -27009,6 +27086,7 @@ window.WS = window.WS || {};
   Weapon.fire = function (player, w) {
     const handler = Weapon.behaviors[behaviorOf(w)];
     if (!handler) return;
+    w._healPool = null;     // a new cast, a new purse (see fillSpec)
     const fired = handler(player, w);
     if (fired === false) return;
     // A muzzle flash in the weapon's own colour, so a six-weapon build reads
@@ -27076,6 +27154,13 @@ window.WS = window.WS || {};
       rows.push(['Area', WS.round(areaOf(player, w, 1) * 100) + '%']);
     }
     if (b === 'zone') rows.push(['Duration', durationOf(player, w, data.duration || 4).toFixed(1) + 's']);
+    // A healer's mend goes up front, after damage and cooldown: a card shows
+    // six rows, and this is the reason to take it.
+    const h = healOf(w);
+    if (h.per > 0) {
+      rows.splice(2, 0, ['Heals', `${+h.per.toFixed(1)}/foe`],
+        [b === 'zone' ? 'Heal cap/tick' : 'Heal cap', String(+h.cap.toFixed(1))]);
+    }
     if (b === 'orbit') rows.push(['Duration', durationOf(player, w, data.duration || 3.2).toFixed(1) + 's']);
     return rows;
   };
@@ -27418,7 +27503,8 @@ window.WS = window.WS || {};
       if (p.retTimer <= 0) {
         p.retTimer = cfg.retributionTick;
         const dmg = (cfg.retributionBase + cfg.retributionPerRank * p.retRank)
-          * p.damageMultiplier * WS.CONST.PLAYER_DAMAGE_SCALE;
+          * p.damageMultiplier * WS.CONST.PLAYER_DAMAGE_SCALE
+          * (1 + cfg.retributionArmorScale * WS.max(0, p.armor || 0));
         WS.Enemy.damageArea(p.x, p.y, range, dmg, null, null, 'searing');
       }
     }
@@ -48340,9 +48426,11 @@ window.WS = window.WS || {};
     const hint = el('span', 'choice-hint', 'Pick a card to banish it from this run');
     bar.append(reroll, banish, auto, hint);
 
+    // Reroll and Banish sit over the cards, centred on them, and the build
+    // drawer under them: the choice is framed by what changes it.
     const tray = el('div', 'tray-slot');
-    s.body.append(row, tray);
-    s.foot.append(el('div', 'spacer'), bar, el('div', 'spacer'));
+    s.body.append(bar, row, tray);
+    s.foot.style.display = 'none';
     this._levelUI = {
       row, bar, banish, reroll, auto, hint, tray,
       title: s.head.querySelector('h1'), sub: s.head.querySelector('.sub'),
