@@ -897,6 +897,7 @@
     this.drawTelegraphs(ctx, time);
     this.drawPlayerMark(ctx, player, time);
     this.drawAuras(ctx, player, time);
+    this.drawCallingGround(ctx, player, time);
     if (WS.Arena.active) this.drawArena(ctx, time);
     if (WS.Finale.stage !== 'idle') WS.FinaleArt.drawGround(ctx, time);
 
@@ -911,6 +912,7 @@
     const draws = [];
     for (let i = 0; i < WS.Enemy.pool.count; i++) draws.push(WS.Enemy.pool.active[i]);
     for (const f of WS.Familiar.list) draws.push(f);
+    for (const t of player.totems || []) draws.push(t);
     draws.push(player);
     draws.sort((a, b) => a.y - b.y);
 
@@ -934,10 +936,12 @@
     this._shadowsDone = true;
     for (const e of draws) {
       if (e === player) this.drawPlayer(ctx, player, time);
+      else if (e.kind && e.max) this.drawTotem(ctx, e, time);
       else if (e.spec) this.drawFamiliar(ctx, e, time);
       else this.drawEnemy(ctx, e, time);
     }
     this._shadowsDone = false;
+    this.drawMark(ctx, player, time);
 
     /* ---- air: bolts, orbits, beams -------------------------------------- */
     this.drawOrbits(ctx, player);
@@ -1241,7 +1245,9 @@
     /* The invulnerability flicker is suppressed while a pose is playing: it
        was the ONLY sign of being hit, and now that there is a flinch to watch,
        strobing the figure through it just hides the thing worth seeing. */
-    if (p.invulnerable > 0 && !pose) {
+    // Slipped from sight (Opportunist): a shade of themselves, steady, not a flicker.
+    if (p.vanishTimer > 0) ctx.globalAlpha = 0.3;
+    else if (p.invulnerable > 0 && !pose && !(p.divineTimer > 0)) {
       ctx.globalAlpha = (WS.floor(p.invulnerable * 12) % 2 === 0) ? 0.45 : 0.95;
     }
     ctx.translate(p.x, p.y + bob);
@@ -1353,6 +1359,132 @@
       ctx.beginPath(); ctx.arc(p.x, p.y, p.radius + 9, 0, WS.TAU); ctx.stroke();
       ctx.restore();
     }
+    this.drawCallingOn(ctx, p, time);
+  };
+
+  /* ------------------------------------------------------- the callings - */
+  /** What a calling looks like ON the survivor: the barrier as a shell of
+   *  light as thick as it is full, the Flood tide as an arcane corona,
+   *  Seething Blood as a red heat, the Aegis as a gold dome. */
+  R.drawCallingOn = function (ctx, p, time) {
+    const cx = p.x, cy = p.y - 16;
+    const glow = (r, inner, outer) => {
+      const g = ctx.createRadialGradient(cx, cy, 6, cx, cy, r);
+      g.addColorStop(0, inner); g.addColorStop(1, outer);
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, WS.TAU); ctx.fill();
+    };
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    if (p.surgeTimer > 0) glow(56 + 6 * WS.sin(time * 10), 'rgba(170,140,255,.34)', 'rgba(170,140,255,0)');
+    if (p.enrageTimer > 0) glow(60 + 8 * WS.sin(time * 12), 'rgba(255,70,40,.32)', 'rgba(255,70,40,0)');
+    else if (p.rage > 0) glow(40, `rgba(255,70,40,${(0.16 * p.rage / WS.Config.rageNeed).toFixed(3)})`, 'rgba(255,70,40,0)');
+    if (p.soulAttuned > 0 && p.souls >= WS.Calling.soulNeed() * 0.5) glow(46, 'rgba(160,90,230,.2)', 'rgba(160,90,230,0)');
+    ctx.restore();
+    if (p.barrier > 0) {
+      const k = WS.clamp(p.barrier / WS.max(1, WS.Calling.barrierCap(p)), 0, 1);
+      ctx.save();
+      ctx.globalAlpha = 0.25 + 0.5 * k;
+      ctx.strokeStyle = '#ffe9b0';
+      ctx.lineWidth = 1 + 2.5 * k;
+      ctx.beginPath(); ctx.ellipse(cx, cy + 4, 30, 38, 0, 0, WS.TAU); ctx.stroke();
+      ctx.globalAlpha = 0.08 + 0.1 * k;
+      ctx.fillStyle = '#fff2c8'; ctx.fill();
+      ctx.restore();
+    }
+    if (p.divineTimer > 0) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      glow(52, 'rgba(255,220,130,.45)', 'rgba(255,220,130,0)');
+      ctx.globalAlpha = 0.8;
+      ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(cx, cy + 6, 40, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+      ctx.restore();
+    }
+  };
+
+  /** Waystone auras on the ground: a ring each, in the kind's colour. */
+  R.drawCallingGround = function (ctx, p, time) {
+    if (!p.totems || !p.totems.length) return;
+    const r = WS.Calling.totemReach(p);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const t of p.totems) {
+      const c = WS.Calling.TOTEM_COL[t.kind];
+      const fade = WS.min(1, t.life / 0.6, (t.max - t.life) / 0.3 + 0.2);
+      const rgb = `${WS.floor(c[0] * 255)},${WS.floor(c[1] * 255)},${WS.floor(c[2] * 255)}`;
+      const g = ctx.createRadialGradient(t.x, t.y, r * 0.2, t.x, t.y, r);
+      g.addColorStop(0, `rgba(${rgb},${(0.05 * fade).toFixed(3)})`);
+      g.addColorStop(1, `rgba(${rgb},0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.ellipse(t.x, t.y, r, r * 0.8, 0, 0, WS.TAU); ctx.fill();
+      ctx.setLineDash([6, 8]);
+      ctx.lineDashOffset = -time * 20;
+      ctx.strokeStyle = `rgba(${rgb},${(0.4 * fade).toFixed(3)})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.ellipse(t.x, t.y, r, r * 0.8, 0, 0, WS.TAU); ctx.stroke();
+    }
+    ctx.restore();
+  };
+
+  /** A waystone: a carved post with its kind's crown. */
+  R.drawTotem = function (ctx, t, time) {
+    const c = WS.Calling.TOTEM_COL[t.kind];
+    const col = WS.hex(c);
+    const rise = WS.min(1, (t.max - t.life) / 0.25);
+    const fade = WS.min(1, t.life / 0.6);
+    const h = 44 * rise;
+    ctx.save();
+    ctx.globalAlpha = fade;
+    shadow(ctx, t.x, t.y, 10);
+    ctx.fillStyle = '#5a3c24';
+    ctx.fillRect(t.x - 6, t.y - h, 12, h);
+    ctx.fillStyle = '#7a5434';
+    ctx.fillRect(t.x - 6, t.y - h, 4, h);
+    for (let k = 0; k < 3 && rise > 0.6; k++) {
+      const y = t.y - h + 10 + k * 12;
+      ctx.fillStyle = col;
+      ctx.fillRect(t.x - 4, y, 2.5, 2.5); ctx.fillRect(t.x + 1.5, y, 2.5, 2.5);
+      ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(t.x - 6, y + 7, 12, 1.5);
+    }
+    // Wings and a lit crown in the kind's colour.
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(t.x - 6, t.y - h + 4); ctx.lineTo(t.x - 17, t.y - h - 4); ctx.lineTo(t.x - 6, t.y - h + 10);
+    ctx.moveTo(t.x + 6, t.y - h + 4); ctx.lineTo(t.x + 17, t.y - h - 4); ctx.lineTo(t.x + 6, t.y - h + 10);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'lighter';
+    const pulse = 9 + 2 * WS.sin(time * 5 + t.x);
+    const g = ctx.createRadialGradient(t.x, t.y - h - 2, 1, t.x, t.y - h - 2, pulse * 1.8);
+    g.addColorStop(0, `rgba(255,255,255,.9)`);
+    g.addColorStop(0.3, WS.rgb(c, 0.8));
+    g.addColorStop(1, WS.rgb(c, 0));
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(t.x, t.y - h - 2, pulse * 1.8, 0, WS.TAU); ctx.fill();
+    ctx.restore();
+  };
+
+  /** The Quarry: a turning reticle over it. */
+  R.drawMark = function (ctx, p, time) {
+    const e = p.markTarget;
+    if (!e || e._dead) return;
+    const r = e.radius + 14;
+    const y = e.y - e.radius * 0.4;
+    ctx.save();
+    ctx.translate(e.x, y);
+    ctx.rotate(time * 1.2);
+    ctx.strokeStyle = 'rgba(255,207,106,.9)';
+    ctx.lineWidth = 2;
+    for (let k = 0; k < 4; k++) {
+      ctx.beginPath(); ctx.arc(0, 0, r, k * Math.PI / 2 + 0.25, k * Math.PI / 2 + Math.PI / 2 - 0.25); ctx.stroke();
+    }
+    ctx.rotate(-time * 2.4);
+    ctx.lineWidth = 1.5;
+    for (let k = 0; k < 4; k++) {
+      const a = k * Math.PI / 2;
+      ctx.beginPath(); ctx.moveTo(Math.cos(a) * (r - 7), Math.sin(a) * (r - 7));
+      ctx.lineTo(Math.cos(a) * (r + 6), Math.sin(a) * (r + 6)); ctx.stroke();
+    }
+    ctx.restore();
   };
 
   /* ------------------------------------------------------------- effects - */

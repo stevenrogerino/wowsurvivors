@@ -520,6 +520,54 @@
     evolveOrbitBlades: 4,
     evolveOrbitSpeed: 1.25,
 
+    /* CALLINGS - the first eight survivors' own powers (src/game/callings.js).
+       Each is a legendary blessing anyone can take; the survivor it belongs
+       to is a quarter further along ONE number of it (callingEdge), never
+       handed a second copy of the thing. Strikes grow with level and Damage
+       like a shape's maul: base + perLevel x level. */
+    callingEdge: 0.25,
+    // Spellflood: gems swell it; full, every weapon fires and the tide runs
+    // cooldowns fast for surgeDuration seconds.
+    overflowNeedBase: 18, overflowNeedPerMinute: 2.5,
+    surgeDuration: 5, surgeCooldownMult: 0.5,
+    // Radiant Barrier: wasted healing, and a share of healing that lands,
+    // becomes a barrier up to a share of max health; breaking, it bursts.
+    barrierCapPct: 0.30, barrierFromHeal: 0.20,
+    barrierBurstRadius: 160, barrierBurstBase: 90, barrierBurstPerLevel: 9, barrierBurstMin: 0.25,
+    // Opportunist: a crit is a point of Edge (no more than one per comboGate
+    // seconds); comboNeed and the toughest enemy within reach takes a
+    // Cutthroat blow, then a Slip, then comboLock to regroup.
+    comboNeed: 5, comboGate: 0.35, comboLock: 3,
+    eviscerateRange: 420, eviscerateBase: 140, eviscerateLevel: 14, vanishTime: 1.2,
+    // The Quarry: every markEvery seconds the toughest thing within markRange
+    // becomes the Quarry for up to markLife: +markBonus damage taken from
+    // everything (bosses markBossBonus). Killing it readies every weapon
+    // (cooldowns down to markRefund) and mends markHeal of max health.
+    markEvery: 7, markLife: 10, markRange: 560, markBonus: 0.35, markBossBonus: 0.20,
+    markRefund: 0.15, markHeal: 0.05,
+    // Seething Blood: a hit you take is ragePerHit of heat, a kill within
+    // rageCloseRange ragePerCloseKill; heat holds rageHold
+    // seconds then cools at rageDecay a second. Heat is up to rageArmor armour
+    // and +rageDamage damage; full, Boil Over for enrageTime.
+    ragePerHit: 14, rageNeed: 100, rageHold: 2.5, rageDecay: 8,
+    ragePerCloseKill: 2, rageCloseRange: 150,   // brawling feeds it too
+    rageArmor: 6, rageDamage: 0.20,
+    enrageTime: 6, enrageArmor: 8, enrageDamage: 0.25, enrageThorns: 2, enrageRegen: 0.03, rageLock: 4,
+    // Reaper's Tithe: kills pay it (it asks more as the night goes on). Over
+    // half paid, +soulEmpower damage; paid in full, a Reaping heals rendHealPer
+    // of max health for each enemy it strikes, up to rendHealCap.
+    soulNeedBase: 50, soulNeedPerMinute: 10, soulBoss: 25, soulElite: 6, soulEmpower: 0.15,
+    rendRadius: 240, rendBase: 90, rendPerLevel: 9, rendHealPer: 0.015, rendHealCap: 0.25,
+    // Waystones: one every totemEvery seconds, cycling ember / spring / gale,
+    // each standing totemLife (one of a kind at a time).
+    totemEvery: 3, totemLife: 10, totemRadius: 200,
+    totemSearTick: 0.5, totemSearBase: 10, totemSearPerLevel: 1.2,
+    totemHeal: 0.015, totemHaste: 0.8,
+    // Conviction: holyPerHit for each hit taken, one for every holyHealPer
+    // health healed. holyNeed, and a Hammerfall with an Aegis.
+    holyNeed: 3, holyPerHit: 0.5, holyHealPer: 25, holyLock: 4,
+    stormRadius: 190, stormBase: 110, stormPerLevel: 11, divineShield: 2.0,
+
     difficulties: {
       beginner: { label: 'Beginner', scale: 0.75, gold: 0.85, interval: 1.1 },
       veteran: { label: 'Veteran', scale: 1.0, gold: 1.0, interval: 1.0 },

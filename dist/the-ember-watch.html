@@ -2974,6 +2974,20 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .meter.steps .meter-fill { background: linear-gradient(90deg, #6aa6c8, #d8f2ff); opacity: .55; }
 .meter.steps .pip.ready .meter-fill { opacity: 1; box-shadow: 0 0 6px rgba(190,236,255,.55); }
 
+/* The callings (src/game/callings.js), each in the colour of its power. A
+   meter that is waiting - a lock, a regroup - dims like the others do. */
+.meter.calling.arcane .meter-fill { background: linear-gradient(90deg, #5a4ab4, #d6c8ff); }
+.meter.calling.holy .meter-fill { background: linear-gradient(90deg, #b48a3a, #fff0c0); }
+.meter.calling.combo .meter-fill { background: linear-gradient(90deg, #a88a2a, #ffe27a); opacity: .55; }
+.meter.calling.combo .pip.ready .meter-fill { opacity: 1; box-shadow: 0 0 6px rgba(255,226,122,.55); }
+.meter.calling.holy .pip .meter-fill { opacity: .55; }
+.meter.calling.holy .pip.ready .meter-fill { opacity: 1; box-shadow: 0 0 6px rgba(255,236,170,.6); }
+.meter.calling.mark .meter-fill { background: linear-gradient(90deg, #8a6a2a, #ffcf6a); }
+.meter.calling.rage .meter-fill { background: linear-gradient(90deg, #8a1e14, #ff7a5a); }
+.meter.calling.soul .meter-fill { background: linear-gradient(90deg, #4a2270, #c89aff); }
+.meter.calling.totem .meter-fill { background: linear-gradient(90deg, #2a6a8a, #9fe0ff); }
+.meter.calling.waiting .meter-fill { opacity: .6; filter: saturate(.6); }
+
 /* A trial under way (the Lost Calves, the Still Hand) and a Highmoor shrine's
    boon: the first is a count running down, cream for the pasture and pale
    blue for the mountain; the second burns in the colour of its stones. */
@@ -4320,6 +4334,54 @@ window.WS = window.WS || {};
     evolveOrbitBlades: 4,
     evolveOrbitSpeed: 1.25,
 
+    /* CALLINGS - the first eight survivors' own powers (src/game/callings.js).
+       Each is a legendary blessing anyone can take; the survivor it belongs
+       to is a quarter further along ONE number of it (callingEdge), never
+       handed a second copy of the thing. Strikes grow with level and Damage
+       like a shape's maul: base + perLevel x level. */
+    callingEdge: 0.25,
+    // Spellflood: gems swell it; full, every weapon fires and the tide runs
+    // cooldowns fast for surgeDuration seconds.
+    overflowNeedBase: 18, overflowNeedPerMinute: 2.5,
+    surgeDuration: 5, surgeCooldownMult: 0.5,
+    // Radiant Barrier: wasted healing, and a share of healing that lands,
+    // becomes a barrier up to a share of max health; breaking, it bursts.
+    barrierCapPct: 0.30, barrierFromHeal: 0.20,
+    barrierBurstRadius: 160, barrierBurstBase: 90, barrierBurstPerLevel: 9, barrierBurstMin: 0.25,
+    // Opportunist: a crit is a point of Edge (no more than one per comboGate
+    // seconds); comboNeed and the toughest enemy within reach takes a
+    // Cutthroat blow, then a Slip, then comboLock to regroup.
+    comboNeed: 5, comboGate: 0.35, comboLock: 3,
+    eviscerateRange: 420, eviscerateBase: 140, eviscerateLevel: 14, vanishTime: 1.2,
+    // The Quarry: every markEvery seconds the toughest thing within markRange
+    // becomes the Quarry for up to markLife: +markBonus damage taken from
+    // everything (bosses markBossBonus). Killing it readies every weapon
+    // (cooldowns down to markRefund) and mends markHeal of max health.
+    markEvery: 7, markLife: 10, markRange: 560, markBonus: 0.35, markBossBonus: 0.20,
+    markRefund: 0.15, markHeal: 0.05,
+    // Seething Blood: a hit you take is ragePerHit of heat, a kill within
+    // rageCloseRange ragePerCloseKill; heat holds rageHold
+    // seconds then cools at rageDecay a second. Heat is up to rageArmor armour
+    // and +rageDamage damage; full, Boil Over for enrageTime.
+    ragePerHit: 14, rageNeed: 100, rageHold: 2.5, rageDecay: 8,
+    ragePerCloseKill: 2, rageCloseRange: 150,   // brawling feeds it too
+    rageArmor: 6, rageDamage: 0.20,
+    enrageTime: 6, enrageArmor: 8, enrageDamage: 0.25, enrageThorns: 2, enrageRegen: 0.03, rageLock: 4,
+    // Reaper's Tithe: kills pay it (it asks more as the night goes on). Over
+    // half paid, +soulEmpower damage; paid in full, a Reaping heals rendHealPer
+    // of max health for each enemy it strikes, up to rendHealCap.
+    soulNeedBase: 50, soulNeedPerMinute: 10, soulBoss: 25, soulElite: 6, soulEmpower: 0.15,
+    rendRadius: 240, rendBase: 90, rendPerLevel: 9, rendHealPer: 0.015, rendHealCap: 0.25,
+    // Waystones: one every totemEvery seconds, cycling ember / spring / gale,
+    // each standing totemLife (one of a kind at a time).
+    totemEvery: 3, totemLife: 10, totemRadius: 200,
+    totemSearTick: 0.5, totemSearBase: 10, totemSearPerLevel: 1.2,
+    totemHeal: 0.015, totemHaste: 0.8,
+    // Conviction: holyPerHit for each hit taken, one for every holyHealPer
+    // health healed. holyNeed, and a Hammerfall with an Aegis.
+    holyNeed: 3, holyPerHit: 0.5, holyHealPer: 25, holyLock: 4,
+    stormRadius: 190, stormBase: 110, stormPerLevel: 11, divineShield: 2.0,
+
     difficulties: {
       beginner: { label: 'Beginner', scale: 0.75, gold: 0.85, interval: 1.1 },
       veteran: { label: 'Veteran', scale: 1.0, gold: 1.0, interval: 1.0 },
@@ -5236,78 +5298,87 @@ window.WS = window.WS || {};
       name: 'Baron Zul', title: 'Apprentice of the Low Cloister', className: 'Mage',
       art: 'mage', color: [0.41, 0.80, 0.94], weapon: 'seeking_motes',
       description: 'A gifted novice whose missiles hunt his foes on their own.',
-      perk: 'Weapon cooldowns reduced by {perkCooldownMult~%}%.',
+      perk: 'Weapon cooldowns reduced by {perkCooldownMult~%}%. Take up Spellflood and it fills {Config.callingEdge%}% faster for him.',
       maxHealth: 110, moveSpeed: 225, armor: 0, pickupRadius: 60, healthRegen: 0,
       perkCooldownMult: 0.92,
-      apply: (p, c) => { p.cooldownMultiplier *= c.perkCooldownMult; },
+      signatureBlessing: 'arcane_surge',
+      apply: (p, c) => { p.cooldownMultiplier *= c.perkCooldownMult; p.overflowBonus += WS.Config.callingEdge; },
     },
     priest: {
       name: 'Chid', title: 'The Fool', className: 'Priest',
       art: 'priest', color: [1.00, 1.00, 1.00], weapon: 'dawnpulse',
       description: 'A stalwart healer wreathed in rings of searing Light.',
-      perk: 'Regenerates {perkRegen} health per second.',
+      perk: 'Regenerates {perkRegen} health per second. Take up the Radiant Barrier and his holds {Config.callingEdge%}% more.',
       maxHealth: 135, moveSpeed: 205, armor: 1, pickupRadius: 64, healthRegen: 0,
       perkRegen: 1.0,
-      apply: (p, c) => { p.healthRegen += c.perkRegen; },
+      signatureBlessing: 'radiant_barrier',
+      apply: (p, c) => { p.healthRegen += c.perkRegen; p.barrierBonus += WS.Config.callingEdge; },
     },
     rogue: {
       name: 'Dr. Rav McBreathless', title: 'Kerchief Defector', className: 'Rogue',
       art: 'rogue', color: [1.00, 0.96, 0.41], weapon: 'knifestorm',
       description: 'A quick-fingered cutpurse who fills the field with steel.',
-      perk: '+{perkSpeedMult*%}% movement speed and +{perkCrit%}% critical strike chance.',
+      perk: '+{perkSpeedMult*%}% movement speed and +{perkCrit%}% critical strike chance. Take up Opportunist and his Edge builds {Config.callingEdge%}% faster.',
       maxHealth: 115, moveSpeed: 250, armor: 0, pickupRadius: 56, healthRegen: 0,
       perkSpeedMult: 1.10, perkCrit: 0.05,
-      apply: (p, c) => { p.moveSpeed *= c.perkSpeedMult; p.critChance += c.perkCrit; },
+      signatureBlessing: 'opportunist',
+      apply: (p, c) => { p.moveSpeed *= c.perkSpeedMult; p.critChance += c.perkCrit; p.comboBonus += WS.Config.callingEdge; },
       unlockHint: 'Held prisoner by the Kerchiefs.',
     },
     hunter: {
       name: 'Maeca Barefoot', title: 'Ranger of the Ashford Garrison', className: 'Hunter',
       art: 'hunter', color: [0.67, 0.83, 0.45], weapon: 'volley',
       description: 'A keen-eyed ranger who never wastes an arrow.',
-      perk: '+{perkPickup} pickup radius and +{perkSpeedMult*%}% movement speed.',
+      perk: '+{perkPickup} pickup radius and +{perkSpeedMult*%}% movement speed. Take up The Quarry and she finds hers {Config.callingEdge%}% sooner.',
       maxHealth: 130, moveSpeed: 230, armor: 0, pickupRadius: 60, healthRegen: 0,
       perkPickup: 30, perkSpeedMult: 1.05,
-      apply: (p, c) => { p.pickupRadius += c.perkPickup; p.moveSpeed *= c.perkSpeedMult; },
+      signatureBlessing: 'quarry',
+      // "A quarter sooner": the wait for a new Quarry is a fifth shorter.
+      apply: (p, c) => { p.pickupRadius += c.perkPickup; p.moveSpeed *= c.perkSpeedMult; p.markHaste += 1 - 1 / (1 + WS.Config.callingEdge); },
       unlockHint: 'Holding out against the pack.',
     },
     warrior: {
       name: 'AAAAAAAAA', title: 'The Fallen Hero', className: 'Warrior',
       art: 'warrior', color: [0.78, 0.61, 0.43], weapon: 'axe_gyre',
       description: 'An old soldier who solves most problems with spinning axes.',
-      perk: '+{perkArmor} armor and +{perkHealth} maximum health.',
+      perk: '+{perkArmor} armor and +{perkHealth} maximum health. Take up Seething Blood and he heats {Config.callingEdge%}% faster.',
       maxHealth: 160, moveSpeed: 210, armor: 3, pickupRadius: 54, healthRegen: 0,
       perkArmor: 2, perkHealth: 25,
-      apply: (p, c) => { p.armor += c.perkArmor; p.maxHealth += c.perkHealth; p.health += c.perkHealth; },
+      signatureBlessing: 'seething_blood',
+      apply: (p, c) => { p.armor += c.perkArmor; p.maxHealth += c.perkHealth; p.health += c.perkHealth; p.rageBonus += WS.Config.callingEdge; },
       unlockHint: 'Screaming under a cairn.',
     },
     warlock: {
       name: "Nim B'ladin", title: 'Exile of the Gloaming Grove', className: 'Warlock',
       art: 'warlock', color: [0.58, 0.51, 0.79], weapon: 'umbral_bolt',
       description: 'A banished scholar whose bolts drink the life of many at once.',
-      perk: '+{perkDamage%}% weapon damage.',
+      perk: '+{perkDamage%}% weapon damage. Take up the Reaper\'s Tithe and his fills {Config.callingEdge%}% faster.',
       maxHealth: 115, moveSpeed: 215, armor: 0, pickupRadius: 58, healthRegen: 0,
       perkDamage: 0.10,
-      apply: (p, c) => { p.damageMultiplier += c.perkDamage; },
+      signatureBlessing: 'reapers_tithe',
+      apply: (p, c) => { p.damageMultiplier += c.perkDamage; p.soulBonus += WS.Config.callingEdge; },
       unlockHint: 'Waiting at the edge of a slaughter.',
     },
     shaman: {
       name: 'Vonnra Hydrocheck', title: 'Far Seer of the Waystation', className: 'Shaman',
       art: 'shaman', color: [0.00, 0.44, 0.87], weapon: 'arcweb',
       description: 'A far seer who calls the storm down on whole warbands.',
-      perk: '+{perkLuck%}% luck and +{perkArea%}% Area.',
+      perk: '+{perkLuck%}% luck and +{perkArea%}% Area. Take up the Waystones and hers reach {Config.callingEdge%}% farther.',
       maxHealth: 145, moveSpeed: 215, armor: 1, pickupRadius: 58, healthRegen: 0,
       perkLuck: 0.075, perkArea: 0.08,
-      apply: (p, c) => { p.luck += c.perkLuck; p.areaMultiplier += c.perkArea; },
+      signatureBlessing: 'waystones',
+      apply: (p, c) => { p.luck += c.perkLuck; p.areaMultiplier += c.perkArea; p.totemReach += WS.Config.callingEdge; },
       unlockHint: 'Reading fortunes in the storm.',
     },
     paladin: {
       name: 'Professor Keegan', title: 'Knight of the Argent Vigil (Probationary)', className: 'Paladin',
       art: 'paladin', color: [0.96, 0.55, 0.73], weapon: 'judgement_disc',
       description: 'Buried by mistake. Dug himself out. Filed a complaint. Kept the shield.',
-      perk: '+{perkArmor} armor and +{perkHealing%}% healing received.',
+      perk: '+{perkArmor} armor and +{perkHealing%}% healing received. Take up Conviction and he builds it {Config.callingEdge%}% faster.',
       maxHealth: 145, moveSpeed: 210, armor: 2, pickupRadius: 56, healthRegen: 0,
       perkArmor: 1, perkHealing: 0.20,
-      apply: (p, c) => { p.armor += c.perkArmor; p.healingMult += c.perkHealing; },
+      signatureBlessing: 'conviction',
+      apply: (p, c) => { p.armor += c.perkArmor; p.healingMult += c.perkHealing; p.holyBonus += WS.Config.callingEdge; },
       unlockHint: 'Buried in Thornhollow, by mistake.',
     },
     graveblade: {
@@ -6976,6 +7047,82 @@ window.WS = window.WS || {};
       overflow: 0.08,
       apply: (p, b) => { p.overflow = b.overflow; },
     },
+    /* THE CALLINGS - the first eight survivors' own powers, run by
+       src/game/callings.js with their numbers in Config under CALLINGS. Like
+       the four above them, anyone can take one; the survivor it belongs to
+       (characters.js) is a quarter further along one number of it. The
+       description says how to get there; `detail`, in the hover tooltip,
+       says what you get. */
+    arcane_surge: {
+      name: 'Spellflood', art: 'arcane', quality: 'legendary',
+      description: 'Every gem you gather swells the Flood. Full, all your weapons fire at once and the tide runs fast for a while.',
+      detail: 'Flood tide, {Config.surgeDuration}s: weapons {Config.surgeCooldownMult~%}% faster\n'
+        + 'The Flood needs more gems as the night goes on\n'
+        + 'Baron Zul fills it {Config.callingEdge%}% faster',
+      apply: (p) => { p.overflowAttuned += 1; },
+    },
+    radiant_barrier: {
+      name: 'Radiant Barrier', art: 'ankh', quality: 'legendary',
+      description: 'Healing you cannot use is not wasted: it becomes a barrier that takes hits before you do, and bursts as Light when it breaks.',
+      detail: 'All overheal and {Config.barrierFromHeal%}% of healing that lands feed the barrier\n'
+        + 'Holds up to {Config.barrierCapPct%}% of your max health\n'
+        + 'Broken after filling past {Config.barrierBurstMin%}%, it sears everything near you\n'
+        + "Chid's barrier holds {Config.callingEdge%}% more",
+      apply: (p) => { p.barrierAttuned += 1; },
+    },
+    opportunist: {
+      name: 'Opportunist', art: 'mask', quality: 'legendary',
+      description: 'Critical hits build your Edge. At full, a Cutthroat blow on the toughest thing near you, and you Slip out of sight for a moment.',
+      detail: '{Config.comboNeed} Edge, at most one every {Config.comboGate}s\n'
+        + 'Cutthroat: a critical strike that grows with level and Damage\n'
+        + 'Slip: untouchable for {Config.vanishTime}s, then {Config.comboLock}s to regroup\n'
+        + 'Rav builds Edge {Config.callingEdge%}% faster',
+      apply: (p) => { p.comboAttuned += 1; },
+    },
+    quarry: {
+      name: 'The Quarry', art: 'crosshair', quality: 'legendary',
+      description: 'Every few seconds the toughest enemy in sight becomes your Quarry. It takes more from everything, and bringing it down readies every weapon and mends you.',
+      detail: 'A new Quarry every {Config.markEvery}s, held up to {Config.markLife}s (a boss only when nothing else is near)\n'
+        + 'Quarry: +{Config.markBonus%}% damage taken (bosses +{Config.markBossBonus%}%)\n'
+        + 'The kill: every weapon ready, +{Config.markHeal%}% health\n'
+        + 'Maeca finds her Quarry {Config.callingEdge%}% sooner',
+      apply: (p) => { p.markAttuned += 1; },
+    },
+    seething_blood: {
+      name: 'Seething Blood', art: 'claw', quality: 'legendary',
+      description: 'Every blow you take heats your blood, and every kill at arm\'s length. The heat is armor and fury. Fill it and you Boil Over.',
+      detail: 'Heat: up to +{Config.rageArmor} armor and +{Config.rageDamage%}% damage; it cools when the blows stop\n'
+        + 'Boil Over, {Config.enrageTime}s: +{Config.enrageArmor} armor, +{Config.enrageDamage%}% damage, thorns x{Config.enrageThorns}, mending {Config.enrageRegen%}% health a second\n'
+        + 'AAAAAAAAA heats {Config.callingEdge%}% faster',
+      apply: (p) => { p.rageAttuned += 1; },
+    },
+    reapers_tithe: {
+      name: "Reaper's Tithe", art: 'skull', quality: 'legendary',
+      description: 'Every kill pays into the Tithe. Over half paid it empowers you; paid in full, a Reaping tears at everything near and heals you for it.',
+      detail: 'Over half paid: +{Config.soulEmpower%}% damage\n'
+        + 'The Reaping heals {Config.rendHealPer%}% of max health per enemy struck (up to {Config.rendHealCap%}%)\n'
+        + 'The Tithe asks more as the night goes on\n'
+        + "Nim's Tithe fills {Config.callingEdge%}% faster",
+      apply: (p) => { p.soulAttuned += 1; },
+    },
+    waystones: {
+      name: 'Waystones', art: 'totem', quality: 'legendary',
+      description: 'Every few seconds a waystone rises where you stand: ember, then spring, then gale. Fight beside them.',
+      detail: 'A stone every {Config.totemEvery}s, standing {Config.totemLife}s; one of each kind at a time\n'
+        + 'Ember: burns everything near it. Spring: {Config.totemHeal%}% health a second while you are near. '
+        + 'Gale: weapons {Config.totemHaste~%}% faster while you are near\n'
+        + "Vonnra's stones reach {Config.callingEdge%}% farther",
+      apply: (p) => { p.totemAttuned += 1; },
+    },
+    conviction: {
+      name: 'Conviction', art: 'sun', quality: 'legendary',
+      description: 'Blows you take and healing you receive build Conviction. At {Config.holyNeed}, a Hammerfall around you and an Aegis over you.',
+      detail: 'A hit taken: {Config.holyPerHit} Conviction. Every {Config.holyHealPer} health healed: one more\n'
+        + 'Hammerfall: Light crashes down around you. Aegis: untouchable for {Config.divineShield}s\n'
+        + 'Then {Config.holyLock}s to gather again\n'
+        + 'Keegan builds Conviction {Config.callingEdge%}% faster',
+      apply: (p) => { p.holyAttuned += 1; },
+    },
     blood_rite: {
       name: 'Blood Rite', art: 'desecrate', quality: 'legendary',
       description: 'Healing curdles. Every point of overheal erupts as shadow, and {share%}% of the healing that does land lashes out too.',
@@ -7040,6 +7187,7 @@ window.WS = window.WS || {};
     'kings', 'wisdom', 'moonlit', 'fortune', 'wild', 'air', 'fel', 'ancestors',
     'glass_cannon', 'bloodthirst', 'momentum', 'arcane_overflow', 'blood_rite',
     'ruinous_pact', 'unyielding', 'wildshape', 'stillwater',
+    'arcane_surge', 'radiant_barrier', 'opportunist', 'quarry', 'seething_blood', 'reapers_tithe', 'waystones', 'conviction',
   ];
 
 })(window.WS);
@@ -21541,6 +21689,21 @@ window.WS = window.WS || {};
     },
 
     /* ---- world objects and achievements --------------------------------- */
+    totem(g, c) {
+      // A carved post: three stacked faces, wings on the crown.
+      const col = c || '#5fb0e8';
+      g.fillStyle = '#6a4a2e';
+      g.beginPath(); g.roundRect(40, 30, 20, 60, 3); g.fill();
+      for (const y of [36, 54, 72]) {
+        g.fillStyle = '#00000044'; g.fillRect(40, y + 12, 20, 3);
+        disc(g, 45, y + 4, 2.6, col); disc(g, 55, y + 4, 2.6, col);
+        g.fillStyle = '#00000066'; g.fillRect(45, y + 9, 10, 2);
+      }
+      shape(g, [[40, 32], [14, 20], [24, 34], [40, 38]], col);
+      shape(g, [[60, 32], [86, 20], [76, 34], [60, 38]], col);
+      disc(g, 50, 22, 7, col);
+      disc(g, 50, 22, 3, lit);
+    },
     candle(g, c) {
       g.fillStyle = '#e8dfc8';
       g.beginPath(); g.roundRect(38, 44, 24, 42, 3); g.fill();
@@ -25321,7 +25484,8 @@ window.WS = window.WS || {};
            bolt was consumed either way; only the reflection went missing. */
         if (player.thornsRank > 0 && h.srcEnemy && !h.srcEnemy._dead) {
           WS.Enemy.hit(h.srcEnemy,
-            (WS.Config.thornsFlat + h.damage * WS.Config.thornsDamagePct) * player.thornsRank, 'thorns');
+            (WS.Config.thornsFlat + h.damage * WS.Config.thornsDamagePct) * player.thornsRank
+            * WS.Calling.thornsMult(player), 'thorns');
         }
         if (h.slowFactor) WS.Player.applySlow(player, h.slowFactor, h.slowDuration);
         WS.FX.flash(h.x, h.y, 22, h.colour, 0.2);
@@ -25850,7 +26014,8 @@ window.WS = window.WS || {};
 
       // Thorns last, so reflecting a fatal hit cannot corrupt this update.
       if (struck && player.thornsRank > 0) {
-        this.hit(e, (cfg.thornsFlat + e.damage * cfg.thornsDamagePct) * player.thornsRank, 'thorns');
+        this.hit(e, (cfg.thornsFlat + e.damage * cfg.thornsDamagePct) * player.thornsRank
+          * WS.Calling.thornsMult(player), 'thorns');
       }
 
       if (!e._dead) i++;
@@ -25951,8 +26116,9 @@ window.WS = window.WS || {};
     }
     // The finale's own, under a rising sun (Finale.sunriseMult).
     if (e.finaleTag) amount *= WS.Finale.sunriseMult();
+    amount *= WS.Calling.markMult(e);
     const crit = WS.random() < player.critChance;
-    if (crit) amount *= player.critDamage;
+    if (crit) { amount *= player.critDamage; WS.Calling.onCrit(player); }
     if (e.dmgTaken !== 1) amount *= e.dmgTaken;
     /* Serration: a crit opens a wound that bleeds a share of the blow over
        the next few seconds. A fresh crit reopens it at whichever is worse. */
@@ -26084,6 +26250,7 @@ window.WS = window.WS || {};
     WS.Encounters.onKill(t);
     run.kills++;
     WS.Primal.onKill(player, e);
+    WS.Calling.onKill(player, e);
     WS.Audio.play('enemyHit', e.x);
 
     if (player.bloodthirst && run.kills % player.bloodthirstInterval === 0) {
@@ -26163,7 +26330,7 @@ window.WS = window.WS || {};
       * player.damageMultiplier * (w.mods.damageMult || 1);
     if (w.evolved) base *= (d.evolveDamageMult || cfg.evolveDamageMult);
     if (player.metaTimer > 0) base *= cfg.metaDamageMult;
-    base *= WS.Primal.damageMult(player, w);
+    base *= WS.Primal.damageMult(player, w) * WS.Calling.damageMult(player);
     if (!d.noNerf) base *= WS.CONST.PLAYER_DAMAGE_SCALE;
     return base;
   }
@@ -26201,7 +26368,7 @@ window.WS = window.WS || {};
       * (w.evolved ? (d.evolveCooldownMult || cfg.evolveCooldownMult) : 1);
     if (!d.noNerf) base *= WS.CONST.PLAYER_COOLDOWN_SCALE;
     if (player.metaTimer > 0) base *= cfg.metaCooldownMult;
-    base *= WS.Primal.cooldownMult(player, w) * WS.Moor.cooldownMult();
+    base *= WS.Primal.cooldownMult(player, w) * WS.Moor.cooldownMult() * WS.Calling.cooldownMult(player);
     // A runaway multiplier must never silently switch a weapon off.
     if (!(base > 0) || base > 20) base = 20;
     if (base < 0.05) base = 0.05;
@@ -27292,6 +27459,17 @@ window.WS = window.WS || {};
       runEggs: 0,
 
       bloodthirst: false, momentum: false, overflow: 0,
+      // The callings - see src/game/callings.js. `*Attuned` turns one on;
+      // `*Bonus` / `*Haste` / `*Reach` is the owning survivor's edge, inert
+      // until then.
+      overflowAttuned: 0, overflowCharge: 0, overflowBonus: 0, surgeTimer: 0,
+      barrierAttuned: 0, barrier: 0, barrierBonus: 0, barrierPeak: 0,
+      comboAttuned: 0, combo: 0, comboBonus: 0, comboGate: 0, comboLock: 0, vanishTimer: 0,
+      markAttuned: 0, markTarget: null, markSpawn: 0, markLife: 0, markTimer: 1.5, markHaste: 0,
+      rageAttuned: 0, rage: 0, rageBonus: 0, rageIdle: 0, rageLock: 0, enrageTimer: 0,
+      soulAttuned: 0, souls: 0, soulBonus: 0,
+      totemAttuned: 0, totems: [], totemTimer: 0.5, totemNext: 0, totemReach: 0,
+      holyAttuned: 0, holyPower: 0, holyBonus: 0, holyHit: 0, holyHeal: 0, holyLock: 0, divineTimer: 0,
     };
 
     // Trainer lessons first, then the survivor's own perk, so percentages
@@ -27419,6 +27597,7 @@ window.WS = window.WS || {};
 
     if (p.spinTimer > 0) p.spinTimer -= dt;
     WS.Primal.update(p, dt);
+    WS.Calling.update(p, dt);
 
     // Warding Light recharges over time and flares when it comes back up.
     if (p.blockRank > 0 && !p.blockReady) {
@@ -27545,6 +27724,8 @@ window.WS = window.WS || {};
       for (const w of p.weapons) WS.Weapon.fire(p, w);
       WS.FX.flash(p.x, p.y, 60, WS.CONST.COLORS.arcane, 0.3);
     }
+    // Arcane Surge: every gathered gem charges it (callings.js).
+    WS.Calling.onGem(p);
 
     p.xp += amount * p.xpMultiplier * WS.Runs.oath('xp');
     while (p.xp >= p.xpToNext) {
@@ -27590,6 +27771,7 @@ window.WS = window.WS || {};
     if (p.curdled > 0) {
       Player.desecrate(p, wasted * p.curdleOverheal + gained * p.curdleShare);
     }
+    WS.Calling.onHeal(p, gained, wasted);
     if (gained <= 0) return 0;
     p.health += gained;
     Player.recordHeal(gained, source);
@@ -27713,11 +27895,14 @@ window.WS = window.WS || {};
 
     // Armor is a diminishing % reduction, never a flat subtraction, so it
     // matters against big hits and cannot trivialise small ones.
-    const armor = p.armor || 0;
+    const armor = (p.armor || 0) + WS.Calling.armor(p);
     const reduction = armor > 0 ? armor / (armor + WS.Config.armorConstant) : 0;
     // The bear's hide takes its share before the armour does.
     const hide = WS.Moor.mitigate(WS.Primal.mitigate(p, amount));
-    const taken = WS.max(1, WS.floor(hide * (1 - reduction)));
+    const blow = WS.max(1, WS.floor(hide * (1 - reduction)));
+    // A Radiant Barrier takes its share before the health does.
+    const taken = WS.floor(WS.Calling.absorb(p, blow));
+    WS.Calling.onHurt(p, taken);
     run.damagePrevented += (amount - taken);
     run.damageTaken += taken;
     p.health -= taken;
@@ -28001,6 +28186,431 @@ window.WS = window.WS || {};
   };
 
   WS.Primal = Primal;
+
+})(window.WS);
+
+/* ===== src/game/callings.js ===== */
+/* THE CALLINGS: the first eight survivors' own powers.
+ *
+ * The four who came last - the Graveblade, the Ruinseeker, the Druid and the
+ * Monk - each carry a power that is a whole system of its own (Blood Rite,
+ * the Ruinous Pact, The Old Shapes, Stillwater Step), and a tester noticed
+ * that those four were the strongest in the roster, which was not a
+ * coincidence. These are the same thing for the other eight. Like theirs,
+ * each is a legendary blessing ANYONE can take, and the survivor whose
+ * calling it is gets one small edge on it: one number, about a quarter
+ * better, never a second copy of the thing.
+ *
+ *   SPELLFLOOD (Mage). Gems swell the Flood. Full, every weapon fires at
+ *     once and the tide runs fast for a while. Baron Zul: fills a quarter
+ *     faster. (Arcane Overflow, the old gamble on every gem, is still there
+ *     for anyone - this is not it.)
+ *   RADIANT BARRIER (Priest). Healing that would be wasted becomes a barrier
+ *     that takes hits before you do; when a real one breaks it bursts as
+ *     Light. Chid: the barrier holds a quarter more.
+ *   OPPORTUNIST (Rogue). Critical hits build Edge. At full, a Cutthroat blow
+ *     on the toughest thing near you, and you Slip from sight for a moment.
+ *     Rav: Edge builds a quarter faster.
+ *   THE QUARRY (Hunter). The toughest enemy in sight becomes your Quarry: it
+ *     takes more from everything, and killing it readies every weapon and
+ *     mends you. Maeca: finds a Quarry a quarter sooner.
+ *   SEETHING BLOOD (Warrior). Blows you take heat the blood, and heat is
+ *     armour and damage. Full, you Boil Over: heavier still, thorns doubled,
+ *     mending. AAAAAAAAA: heats a quarter faster.
+ *   REAPER'S TITHE (Warlock). Kills pay the Tithe. Over half paid it
+ *     empowers you; paid in full, a Reaping tears at everything near and
+ *     heals you for what it takes. Nim: fills a quarter faster.
+ *   WAYSTONES (Shaman). Every few seconds a stone rises where you stand -
+ *     ember, spring, then gale - and fighting beside them pays. Vonnra:
+ *     their reach is a quarter farther.
+ *   CONVICTION (Paladin). Hits taken and healing received build Conviction.
+ *     At full, a Hammerfall and an Aegis. Keegan: builds a quarter faster.
+ *
+ * The code keeps plain working names for the fields (rage, souls, totems,
+ * holy) - what the player reads is in blessings.js and the meters below.
+ * Every number is in Config under CALLINGS. */
+'use strict';
+(function (WS) {
+
+  const K = {};
+  const C = () => WS.Config;
+
+  /** A calling's own strike, grown with level and Damage the way a shape's
+   *  is (primal.js), so it is never a tickle at 25:00. */
+  function strike(p, base, perLevel) {
+    return (base + perLevel * p.level) * p.damageMultiplier * WS.CONST.PLAYER_DAMAGE_SCALE;
+  }
+  function minutes() {
+    const run = WS.Game.run;
+    return run ? WS.WaveManager.clock(run) / 60 : 0;
+  }
+  function count(key) {
+    const run = WS.Game.run;
+    if (run) run[key] = (run[key] || 0) + 1;
+  }
+
+  /* ----------------------------------------------------------- spellflood -- */
+  K.overflowNeed = () => C().overflowNeedBase + C().overflowNeedPerMinute * minutes();
+  K.onGem = function (p) {
+    if (p.overflowAttuned <= 0 || p.surgeTimer > 0) return;
+    p.overflowCharge += 1 + p.overflowBonus;
+    if (p.overflowCharge < K.overflowNeed()) return;
+    p.overflowCharge = 0;
+    p.surgeTimer = C().surgeDuration;
+    for (const w of p.weapons) WS.Weapon.fire(p, w);
+    count('overflows');
+    WS.FX.flash(p.x, p.y, 70, WS.CONST.COLORS.arcane, 0.35);
+    WS.FX.flash(p.x, p.y, 170, WS.CONST.COLORS.arcane, 0.5, 9, 'arcane');
+    WS.FX.shake(4, 0.2);
+    WS.Audio.play('evolve');
+  };
+
+  /* ------------------------------------------------------ radiant barrier -- */
+  K.barrierCap = (p) => p.maxHealth * C().barrierCapPct * (1 + p.barrierBonus);
+  K.onHeal = function (p, gained, wasted) {
+    if (p.barrierAttuned > 0) {
+      const add = wasted + gained * C().barrierFromHeal;
+      if (add > 0) {
+        p.barrier = WS.min(K.barrierCap(p), p.barrier + add);
+        p.barrierPeak = WS.max(p.barrierPeak || 0, p.barrier);
+      }
+    }
+    if (p.holyAttuned > 0 && gained > 0 && p.holyLock <= 0) {
+      p.holyHeal += gained * (1 + p.holyBonus);
+      const per = C().holyHealPer;
+      while (p.holyHeal >= per) { p.holyHeal -= per; K.addHoly(p, 1); }
+    }
+  };
+  /* A barrier bursts in proportion to how much of one it was: a sliver of
+     regeneration's overheal broken by the next blow is not a detonation.
+     Below barrierBurstMin of the cap there is no burst at all. */
+  function barrierBurst(p) {
+    const cfg = C();
+    const k = WS.min(1, (p.barrierPeak || 0) / WS.max(1, K.barrierCap(p)));
+    p.barrierPeak = 0;
+    if (k < cfg.barrierBurstMin) return;
+    const r = cfg.barrierBurstRadius * p.areaMultiplier;
+    WS.Enemy.damageArea(p.x, p.y, r, strike(p, cfg.barrierBurstBase, cfg.barrierBurstPerLevel) * k, null, 24, 'radiant_barrier');
+    WS.FX.flash(p.x, p.y, r, WS.CONST.COLORS.holy, 0.4, 10, 'holy');
+    WS.FX.flash(p.x, p.y, r * 0.5, [1, 0.96, 0.8], 0.25);
+    WS.Audio.play('cast', undefined, 'holy');
+    count('barriersBroken');
+  }
+
+  /** A blow, after armour, meets the barrier and the rage before the health.
+   *  Returns what is left to take. */
+  K.absorb = function (p, taken) {
+    if (p.barrier > 0) {
+      const soak = WS.min(p.barrier, taken);
+      p.barrier -= soak;
+      taken -= soak;
+      if (p.barrier <= 0.5) { p.barrier = 0; barrierBurst(p); }
+    }
+    return taken;
+  };
+
+  /* ---------------------------------------------------- opportunist: edge -- */
+  K.onCrit = function (p) {
+    if (p.comboAttuned <= 0 || p.comboLock > 0 || p.comboGate > 0) return;
+    p.comboGate = C().comboGate;
+    p.combo += 1 + p.comboBonus;
+    if (p.combo >= C().comboNeed) eviscerate(p);
+  };
+  function eviscerate(p) {
+    const cfg = C();
+    p.combo = 0;
+    p.comboLock = cfg.comboLock;
+    // The toughest thing within reach, bosses included: that is the point.
+    let best = null, most = -1;
+    const r2 = cfg.eviscerateRange * cfg.eviscerateRange;
+    for (let i = 0; i < WS.Enemy.pool.count; i++) {
+      const e = WS.Enemy.pool.active[i];
+      if (e._dead || e.untargetable || e.hidden) continue;
+      if (WS.dist2(e.x, e.y, p.x, p.y) > r2) continue;
+      if (e.health > most) { most = e.health; best = e; }
+    }
+    if (best) {
+      WS.Enemy.hit(best, strike(p, cfg.eviscerateBase, cfg.eviscerateLevel) * p.critDamage, 'opportunist');
+      WS.FX.flash(best.x, best.y, 46, [1.0, 0.92, 0.45], 0.3, 6, 'physical');
+      WS.FX.burst(best.x, best.y, 14, '#ffe27a', 220, 0.4, 3);
+    }
+    p.vanishTimer = cfg.vanishTime;
+    p.invulnerable = WS.max(p.invulnerable, cfg.vanishTime);
+    count('eviscerates');
+    WS.Audio.play('crit', p.x);
+  }
+
+  /* ------------------------------------------------------------ the quarry -- */
+  K.markMult = function (e) {
+    const p = WS.Game.player;
+    if (!p || p.markTarget !== e) return 1;
+    return 1 + (e.boss || e.finale ? C().markBossBonus : C().markBonus);
+  };
+  /* The quarry is the toughest thing in sight that a hunt can actually
+     bring down: an elite, a heavy - not the boss, whose health would outlast
+     every mark and never pay the refund. A boss is marked only when it is
+     all there is. */
+  function chooseMark(p) {
+    const cfg = C();
+    let best = null, most = -1, boss = null;
+    const r2 = cfg.markRange * cfg.markRange;
+    for (let i = 0; i < WS.Enemy.pool.count; i++) {
+      const e = WS.Enemy.pool.active[i];
+      if (e._dead || e.untargetable || e.hidden) continue;
+      if (WS.dist2(e.x, e.y, p.x, p.y) > r2) continue;
+      if (e.boss || e.finale) { boss = boss || e; continue; }
+      if (e.maxHealth > most) { most = e.maxHealth; best = e; }
+    }
+    best = best || boss;
+    if (!best) return;
+    p.markTarget = best; p.markSpawn = best.spawnId;
+    p.markLife = cfg.markLife;
+    WS.FX.notice(best.x, best.y - best.radius - 10, 'Quarry', '#ffcf6a');
+  }
+  function markEvery(p) { return C().markEvery * (1 - p.markHaste); }
+
+  /* -------------------------------------------------------- seething blood -- */
+  K.onHurt = function (p, landed) {
+    const cfg = C();
+    if (p.rageAttuned > 0 && p.enrageTimer <= 0 && p.rageLock <= 0) {
+      p.rage += cfg.ragePerHit * (1 + p.rageBonus);
+      p.rageIdle = cfg.rageHold;
+      if (p.rage >= cfg.rageNeed) enrage(p);
+    }
+    if (p.holyAttuned > 0 && p.holyLock <= 0) {
+      p.holyHit += cfg.holyPerHit * (1 + p.holyBonus);
+      while (p.holyHit >= 1) { p.holyHit -= 1; K.addHoly(p, 1); }
+    }
+    void landed;
+  };
+  function enrage(p) {
+    const cfg = C();
+    p.rage = 0;
+    p.enrageTimer = cfg.enrageTime;
+    count('enrages');
+    WS.FX.flash(p.x, p.y, 120, [1.0, 0.3, 0.2], 0.4, 8, 'physical');
+    WS.FX.shake(7, 0.35);
+    WS.FX.notice(p.x, p.y - 30, 'BOILING OVER', '#ff7a5a');
+    WS.Audio.play('shift');
+  }
+  /** Armour a calling lends right now. */
+  K.armor = function (p) {
+    let a = 0;
+    if (p.rageAttuned > 0) {
+      a += C().rageArmor * (p.rage / C().rageNeed);
+      if (p.enrageTimer > 0) a += C().enrageArmor;
+    }
+    return a;
+  };
+  K.thornsMult = (p) => (p.enrageTimer > 0 ? C().enrageThorns : 1);
+
+  /* -------------------------------------------------------- reaper's tithe -- */
+  K.soulNeed = () => C().soulNeedBase + C().soulNeedPerMinute * minutes();
+  K.onKill = function (p, e) {
+    if (!p) return;
+    // Seething Blood: a kill at arm's length heats the blood as a blow does.
+    if (p.rageAttuned > 0 && p.enrageTimer <= 0 && p.rageLock <= 0) {
+      const r = C().rageCloseRange;
+      if (WS.dist2(e.x, e.y, p.x, p.y) <= r * r) {
+        p.rage += C().ragePerCloseKill * (1 + p.rageBonus);
+        p.rageIdle = WS.max(p.rageIdle, 1);
+        if (p.rage >= C().rageNeed) enrage(p);
+      }
+    }
+    if (p.soulAttuned > 0) {
+      p.souls += (e.boss ? C().soulBoss : e.elite ? C().soulElite : 1) * (1 + p.soulBonus);
+      if (p.souls >= K.soulNeed()) soulRend(p);
+    }
+    if (p.markTarget === e) {
+      // The quarry is down: every weapon is ready again, and it mends.
+      p.markTarget = null;
+      p.markTimer = WS.min(p.markTimer, 1.2);
+      for (const w of p.weapons) w.cooldown = WS.min(w.cooldown, C().markRefund);
+      WS.Player.heal(p, p.maxHealth * C().markHeal, 'quarry');
+      count('marksClaimed');
+      WS.FX.flash(e.x, e.y, 60, [1.0, 0.8, 0.35], 0.3, 6, 'nature');
+    }
+  };
+  function soulRend(p) {
+    const cfg = C();
+    p.souls = 0;
+    const r = cfg.rendRadius * p.areaMultiplier;
+    const struck = WS.Enemy.damageArea(p.x, p.y, r, strike(p, cfg.rendBase, cfg.rendPerLevel), null, 18, 'reapers_tithe');
+    WS.Player.heal(p, WS.min(p.maxHealth * cfg.rendHealCap, p.maxHealth * cfg.rendHealPer * struck), 'reapers_tithe');
+    count('rends');
+    WS.FX.flash(p.x, p.y, r, [0.62, 0.3, 0.9], 0.45, 11, 'shadow');
+    WS.FX.flash(p.x, p.y, r * 0.4, [0.85, 0.6, 1.0], 0.3);
+    WS.FX.shake(5, 0.3);
+    WS.Audio.play('cast', undefined, 'shadow');
+  }
+
+  /* ------------------------------------------------------------ waystones -- */
+  const TOTEMS = ['searing', 'healing', 'windfury'];
+  const STONE_NAME = { searing: 'ember', healing: 'spring', windfury: 'gale' };
+  K.totemReach = (p) => C().totemRadius * p.areaMultiplier * (1 + p.totemReach);
+  function plant(p) {
+    const kind = TOTEMS[p.totemNext % TOTEMS.length];
+    p.totemNext++;
+    // One of each at most: a new one of a kind replaces the old.
+    for (let i = p.totems.length - 1; i >= 0; i--) if (p.totems[i].kind === kind) p.totems.splice(i, 1);
+    p.totems.push({ kind, x: p.x, y: p.y + 6, life: C().totemLife, max: C().totemLife, tick: 0 });
+    count('waystones');
+    WS.FX.flash(p.x, p.y, 40, TOTEM_COL[kind], 0.25, 5, 'nature');
+    WS.Audio.play('cast', undefined, 'nature');
+  }
+  const TOTEM_COL = { searing: [1.0, 0.5, 0.2], healing: [0.4, 0.9, 0.7], windfury: [0.55, 0.8, 1.0] };
+  K.TOTEM_COL = TOTEM_COL;
+  function nearTotem(p, kind) {
+    const r = K.totemReach(p);
+    for (const t of p.totems) {
+      if (t.kind === kind && WS.dist2(t.x, t.y, p.x, p.y) <= r * r) return t;
+    }
+    return null;
+  }
+
+  /* ------------------------------------------------------------ conviction -- */
+  K.addHoly = function (p, n) {
+    p.holyPower = WS.min(C().holyNeed, p.holyPower + n);
+    if (p.holyPower >= C().holyNeed) divineStorm(p);
+  };
+  function divineStorm(p) {
+    const cfg = C();
+    p.holyPower = 0; p.holyHit = 0; p.holyHeal = 0;
+    p.holyLock = cfg.holyLock;
+    const r = cfg.stormRadius * p.areaMultiplier;
+    WS.Enemy.damageArea(p.x, p.y, r, strike(p, cfg.stormBase, cfg.stormPerLevel), null, 40, 'conviction');
+    p.divineTimer = cfg.divineShield;
+    p.invulnerable = WS.max(p.invulnerable, cfg.divineShield);
+    count('storms');
+    WS.FX.flash(p.x, p.y, r, WS.CONST.COLORS.holy, 0.45, 12, 'holy');
+    WS.FX.flash(p.x, p.y, 70, [1, 0.95, 0.75], 0.4);
+    WS.FX.shake(6, 0.3);
+    WS.Audio.play('evolve');
+  }
+
+  /* ------------------------------------------------------------ per frame -- */
+  K.update = function (p, dt) {
+    const cfg = C();
+    if (p.surgeTimer > 0) p.surgeTimer = WS.max(0, p.surgeTimer - dt);
+    if (p.comboGate > 0) p.comboGate -= dt;
+    if (p.comboLock > 0) p.comboLock = WS.max(0, p.comboLock - dt);
+    if (p.vanishTimer > 0) p.vanishTimer = WS.max(0, p.vanishTimer - dt);
+    if (p.holyLock > 0) p.holyLock = WS.max(0, p.holyLock - dt);
+    if (p.divineTimer > 0) p.divineTimer = WS.max(0, p.divineTimer - dt);
+
+    // The mark: keep it while the quarry lives and it has not run out.
+    if (p.markAttuned > 0) {
+      const t = p.markTarget;
+      if (t && (t._dead || t.spawnId !== p.markSpawn || !WS.Enemy.pool.active.includes(t))) p.markTarget = null;
+      if (p.markTarget) {
+        p.markLife -= dt;
+        if (p.markLife <= 0) { p.markTarget = null; p.markTimer = markEvery(p); }
+      } else {
+        p.markTimer -= dt;
+        if (p.markTimer <= 0) { p.markTimer = markEvery(p); chooseMark(p); }
+      }
+    }
+
+    // Rage cools when the blows stop coming.
+    if (p.rageAttuned > 0) {
+      if (p.enrageTimer > 0) {
+        p.enrageTimer -= dt;
+        WS.Player.heal(p, p.maxHealth * cfg.enrageRegen * dt, 'seething_blood');
+        if (p.enrageTimer <= 0) { p.enrageTimer = 0; p.rageLock = cfg.rageLock; }
+      } else if (p.rageLock > 0) {
+        p.rageLock = WS.max(0, p.rageLock - dt);
+      } else if (p.rageIdle > 0) {
+        p.rageIdle -= dt;
+      } else if (p.rage > 0) {
+        p.rage = WS.max(0, p.rage - cfg.rageDecay * dt);
+      }
+    }
+
+    // Totems: plant, and let the ones standing work.
+    if (p.totemAttuned > 0) {
+      p.totemTimer -= dt;
+      if (p.totemTimer <= 0) { p.totemTimer = cfg.totemEvery; plant(p); }
+      const r = K.totemReach(p);
+      for (let i = p.totems.length - 1; i >= 0; i--) {
+        const t = p.totems[i];
+        t.life -= dt;
+        if (t.life <= 0) { p.totems.splice(i, 1); continue; }
+        if (t.kind === 'searing') {
+          t.tick -= dt;
+          if (t.tick <= 0) {
+            t.tick = cfg.totemSearTick;
+            WS.Enemy.damageArea(t.x, t.y, r, strike(p, cfg.totemSearBase, cfg.totemSearPerLevel), null, null, 'waystones');
+          }
+        }
+      }
+      if (nearTotem(p, 'healing')) WS.Player.heal(p, p.maxHealth * cfg.totemHeal * dt, 'waystones');
+    }
+  };
+
+  /* --------------------------------------------------- what they change -- */
+  K.damageMult = function (p) {
+    let m = 1;
+    if (p.rageAttuned > 0) {
+      m *= 1 + C().rageDamage * (p.rage / C().rageNeed);
+      if (p.enrageTimer > 0) m *= 1 + C().enrageDamage;
+    }
+    if (p.soulAttuned > 0 && p.souls >= K.soulNeed() * 0.5) m *= 1 + C().soulEmpower;
+    return m;
+  };
+  K.cooldownMult = function (p) {
+    let m = 1;
+    if (p.surgeTimer > 0) m *= C().surgeCooldownMult;
+    if (p.totemAttuned > 0 && nearTotem(p, 'windfury')) m *= C().totemHaste;
+    return m;
+  };
+
+  /* ------------------------------------------------------------ the HUD -- */
+  K.meters = function (p) {
+    const out = [];
+    const cfg = C();
+    if (p.overflowAttuned > 0) {
+      out.push(p.surgeTimer > 0
+        ? { key: 'surge', cls: 'calling arcane', label: 'Flood tide', pct: p.surgeTimer / cfg.surgeDuration }
+        : { key: 'overflow', cls: 'calling arcane', label: 'Flood', pct: p.overflowCharge / K.overflowNeed() });
+    }
+    if (p.barrierAttuned > 0) {
+      out.push({ key: 'barrier', cls: 'calling holy', label: 'Barrier ' + WS.round(p.barrier), pct: p.barrier / WS.max(1, K.barrierCap(p)) });
+    }
+    if (p.comboAttuned > 0) {
+      out.push(p.comboLock > 0
+        ? { key: 'combowait', cls: 'calling combo waiting', label: 'Regrouping', pct: 1 - p.comboLock / cfg.comboLock }
+        : { key: 'combo', cls: 'calling combo', label: 'Edge', pips: cfg.comboNeed, full: WS.floor(p.combo), pct: p.combo % 1 });
+    }
+    if (p.markAttuned > 0) {
+      out.push(p.markTarget
+        ? { key: 'marked', cls: 'calling mark', label: 'Quarry', pct: p.markLife / cfg.markLife }
+        : { key: 'mark', cls: 'calling mark waiting', label: 'Next quarry', pct: 1 - p.markTimer / markEvery(p) });
+    }
+    if (p.rageAttuned > 0) {
+      out.push(p.enrageTimer > 0
+        ? { key: 'enraged', cls: 'calling rage', label: 'Boiling over', pct: p.enrageTimer / cfg.enrageTime }
+        : p.rageLock > 0
+          ? { key: 'ragewait', cls: 'calling rage waiting', label: 'Spent', pct: 1 - p.rageLock / cfg.rageLock }
+          : { key: 'rage', cls: 'calling rage', label: 'Heat', pct: p.rage / cfg.rageNeed });
+    }
+    if (p.soulAttuned > 0) {
+      const need = K.soulNeed();
+      out.push({ key: 'souls', cls: 'calling soul', label: p.souls >= need * 0.5 ? 'Tithe · empowered' : 'Tithe', pct: p.souls / need });
+    }
+    if (p.totemAttuned > 0) {
+      out.push({ key: 'totem', cls: 'calling totem', label: 'Next stone: ' + STONE_NAME[TOTEMS[p.totemNext % 3]],
+        pct: 1 - p.totemTimer / cfg.totemEvery });
+    }
+    if (p.holyAttuned > 0) {
+      out.push(p.holyLock > 0
+        ? { key: 'holywait', cls: 'calling holy waiting', label: p.divineTimer > 0 ? 'Aegis' : 'Gathering', pct: 1 - p.holyLock / cfg.holyLock }
+        : { key: 'holy', cls: 'calling holy', label: 'Conviction', pips: cfg.holyNeed, full: WS.floor(p.holyPower),
+          pct: WS.max(p.holyHit, p.holyHeal / cfg.holyHealPer) });
+    }
+    return out;
+  };
+
+  WS.Calling = K;
 
 })(window.WS);
 
@@ -41397,6 +42007,7 @@ window.WS = window.WS || {};
     this.drawTelegraphs(ctx, time);
     this.drawPlayerMark(ctx, player, time);
     this.drawAuras(ctx, player, time);
+    this.drawCallingGround(ctx, player, time);
     if (WS.Arena.active) this.drawArena(ctx, time);
     if (WS.Finale.stage !== 'idle') WS.FinaleArt.drawGround(ctx, time);
 
@@ -41411,6 +42022,7 @@ window.WS = window.WS || {};
     const draws = [];
     for (let i = 0; i < WS.Enemy.pool.count; i++) draws.push(WS.Enemy.pool.active[i]);
     for (const f of WS.Familiar.list) draws.push(f);
+    for (const t of player.totems || []) draws.push(t);
     draws.push(player);
     draws.sort((a, b) => a.y - b.y);
 
@@ -41434,10 +42046,12 @@ window.WS = window.WS || {};
     this._shadowsDone = true;
     for (const e of draws) {
       if (e === player) this.drawPlayer(ctx, player, time);
+      else if (e.kind && e.max) this.drawTotem(ctx, e, time);
       else if (e.spec) this.drawFamiliar(ctx, e, time);
       else this.drawEnemy(ctx, e, time);
     }
     this._shadowsDone = false;
+    this.drawMark(ctx, player, time);
 
     /* ---- air: bolts, orbits, beams -------------------------------------- */
     this.drawOrbits(ctx, player);
@@ -41741,7 +42355,9 @@ window.WS = window.WS || {};
     /* The invulnerability flicker is suppressed while a pose is playing: it
        was the ONLY sign of being hit, and now that there is a flinch to watch,
        strobing the figure through it just hides the thing worth seeing. */
-    if (p.invulnerable > 0 && !pose) {
+    // Slipped from sight (Opportunist): a shade of themselves, steady, not a flicker.
+    if (p.vanishTimer > 0) ctx.globalAlpha = 0.3;
+    else if (p.invulnerable > 0 && !pose && !(p.divineTimer > 0)) {
       ctx.globalAlpha = (WS.floor(p.invulnerable * 12) % 2 === 0) ? 0.45 : 0.95;
     }
     ctx.translate(p.x, p.y + bob);
@@ -41853,6 +42469,132 @@ window.WS = window.WS || {};
       ctx.beginPath(); ctx.arc(p.x, p.y, p.radius + 9, 0, WS.TAU); ctx.stroke();
       ctx.restore();
     }
+    this.drawCallingOn(ctx, p, time);
+  };
+
+  /* ------------------------------------------------------- the callings - */
+  /** What a calling looks like ON the survivor: the barrier as a shell of
+   *  light as thick as it is full, the Flood tide as an arcane corona,
+   *  Seething Blood as a red heat, the Aegis as a gold dome. */
+  R.drawCallingOn = function (ctx, p, time) {
+    const cx = p.x, cy = p.y - 16;
+    const glow = (r, inner, outer) => {
+      const g = ctx.createRadialGradient(cx, cy, 6, cx, cy, r);
+      g.addColorStop(0, inner); g.addColorStop(1, outer);
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, WS.TAU); ctx.fill();
+    };
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    if (p.surgeTimer > 0) glow(56 + 6 * WS.sin(time * 10), 'rgba(170,140,255,.34)', 'rgba(170,140,255,0)');
+    if (p.enrageTimer > 0) glow(60 + 8 * WS.sin(time * 12), 'rgba(255,70,40,.32)', 'rgba(255,70,40,0)');
+    else if (p.rage > 0) glow(40, `rgba(255,70,40,${(0.16 * p.rage / WS.Config.rageNeed).toFixed(3)})`, 'rgba(255,70,40,0)');
+    if (p.soulAttuned > 0 && p.souls >= WS.Calling.soulNeed() * 0.5) glow(46, 'rgba(160,90,230,.2)', 'rgba(160,90,230,0)');
+    ctx.restore();
+    if (p.barrier > 0) {
+      const k = WS.clamp(p.barrier / WS.max(1, WS.Calling.barrierCap(p)), 0, 1);
+      ctx.save();
+      ctx.globalAlpha = 0.25 + 0.5 * k;
+      ctx.strokeStyle = '#ffe9b0';
+      ctx.lineWidth = 1 + 2.5 * k;
+      ctx.beginPath(); ctx.ellipse(cx, cy + 4, 30, 38, 0, 0, WS.TAU); ctx.stroke();
+      ctx.globalAlpha = 0.08 + 0.1 * k;
+      ctx.fillStyle = '#fff2c8'; ctx.fill();
+      ctx.restore();
+    }
+    if (p.divineTimer > 0) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      glow(52, 'rgba(255,220,130,.45)', 'rgba(255,220,130,0)');
+      ctx.globalAlpha = 0.8;
+      ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(cx, cy + 6, 40, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+      ctx.restore();
+    }
+  };
+
+  /** Waystone auras on the ground: a ring each, in the kind's colour. */
+  R.drawCallingGround = function (ctx, p, time) {
+    if (!p.totems || !p.totems.length) return;
+    const r = WS.Calling.totemReach(p);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const t of p.totems) {
+      const c = WS.Calling.TOTEM_COL[t.kind];
+      const fade = WS.min(1, t.life / 0.6, (t.max - t.life) / 0.3 + 0.2);
+      const rgb = `${WS.floor(c[0] * 255)},${WS.floor(c[1] * 255)},${WS.floor(c[2] * 255)}`;
+      const g = ctx.createRadialGradient(t.x, t.y, r * 0.2, t.x, t.y, r);
+      g.addColorStop(0, `rgba(${rgb},${(0.05 * fade).toFixed(3)})`);
+      g.addColorStop(1, `rgba(${rgb},0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.ellipse(t.x, t.y, r, r * 0.8, 0, 0, WS.TAU); ctx.fill();
+      ctx.setLineDash([6, 8]);
+      ctx.lineDashOffset = -time * 20;
+      ctx.strokeStyle = `rgba(${rgb},${(0.4 * fade).toFixed(3)})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.ellipse(t.x, t.y, r, r * 0.8, 0, 0, WS.TAU); ctx.stroke();
+    }
+    ctx.restore();
+  };
+
+  /** A waystone: a carved post with its kind's crown. */
+  R.drawTotem = function (ctx, t, time) {
+    const c = WS.Calling.TOTEM_COL[t.kind];
+    const col = WS.hex(c);
+    const rise = WS.min(1, (t.max - t.life) / 0.25);
+    const fade = WS.min(1, t.life / 0.6);
+    const h = 44 * rise;
+    ctx.save();
+    ctx.globalAlpha = fade;
+    shadow(ctx, t.x, t.y, 10);
+    ctx.fillStyle = '#5a3c24';
+    ctx.fillRect(t.x - 6, t.y - h, 12, h);
+    ctx.fillStyle = '#7a5434';
+    ctx.fillRect(t.x - 6, t.y - h, 4, h);
+    for (let k = 0; k < 3 && rise > 0.6; k++) {
+      const y = t.y - h + 10 + k * 12;
+      ctx.fillStyle = col;
+      ctx.fillRect(t.x - 4, y, 2.5, 2.5); ctx.fillRect(t.x + 1.5, y, 2.5, 2.5);
+      ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(t.x - 6, y + 7, 12, 1.5);
+    }
+    // Wings and a lit crown in the kind's colour.
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(t.x - 6, t.y - h + 4); ctx.lineTo(t.x - 17, t.y - h - 4); ctx.lineTo(t.x - 6, t.y - h + 10);
+    ctx.moveTo(t.x + 6, t.y - h + 4); ctx.lineTo(t.x + 17, t.y - h - 4); ctx.lineTo(t.x + 6, t.y - h + 10);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'lighter';
+    const pulse = 9 + 2 * WS.sin(time * 5 + t.x);
+    const g = ctx.createRadialGradient(t.x, t.y - h - 2, 1, t.x, t.y - h - 2, pulse * 1.8);
+    g.addColorStop(0, `rgba(255,255,255,.9)`);
+    g.addColorStop(0.3, WS.rgb(c, 0.8));
+    g.addColorStop(1, WS.rgb(c, 0));
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(t.x, t.y - h - 2, pulse * 1.8, 0, WS.TAU); ctx.fill();
+    ctx.restore();
+  };
+
+  /** The Quarry: a turning reticle over it. */
+  R.drawMark = function (ctx, p, time) {
+    const e = p.markTarget;
+    if (!e || e._dead) return;
+    const r = e.radius + 14;
+    const y = e.y - e.radius * 0.4;
+    ctx.save();
+    ctx.translate(e.x, y);
+    ctx.rotate(time * 1.2);
+    ctx.strokeStyle = 'rgba(255,207,106,.9)';
+    ctx.lineWidth = 2;
+    for (let k = 0; k < 4; k++) {
+      ctx.beginPath(); ctx.arc(0, 0, r, k * Math.PI / 2 + 0.25, k * Math.PI / 2 + Math.PI / 2 - 0.25); ctx.stroke();
+    }
+    ctx.rotate(-time * 2.4);
+    ctx.lineWidth = 1.5;
+    for (let k = 0; k < 4; k++) {
+      const a = k * Math.PI / 2;
+      ctx.beginPath(); ctx.moveTo(Math.cos(a) * (r - 7), Math.sin(a) * (r - 7));
+      ctx.lineTo(Math.cos(a) * (r + 6), Math.sin(a) * (r + 6)); ctx.stroke();
+    }
+    ctx.restore();
   };
 
   /* ------------------------------------------------------------- effects - */
@@ -46125,6 +46867,8 @@ window.WS = window.WS || {};
         pips: max, full: p.flowSteps,
         pct: p.flowSteps < max ? 1 - p.flowTimer / WS.max(0.001, WS.Primal.stepRecharge(p)) : 1 });
     }
+    // The callings - src/game/callings.js.
+    for (const m of WS.Calling.meters(p)) want.push(m);
     // A trial under way (the Lost Calves, the Still Hand) - src/game/trials.js.
     const trial = WS.Trials.meter();
     if (trial) want.push(trial);
@@ -48790,6 +49534,15 @@ window.WS = window.WS || {};
     if (p.felAttuned > 0) kv('Metamorphoses', p.metamorphoses);
     if (p.wildAttuned > 0) kv('Shapes taken', p.shifts);
     if (p.flowAttuned > 0) kv('Steps taken', p.dashes);
+    const run0 = WS.Game.run || {};
+    if (p.overflowAttuned > 0) kv('Floods', run0.overflows || 0);
+    if (p.barrierAttuned > 0) kv('Barriers broken', run0.barriersBroken || 0);
+    if (p.comboAttuned > 0) kv('Cutthroats', run0.eviscerates || 0);
+    if (p.markAttuned > 0) kv('Quarry taken', run0.marksClaimed || 0);
+    if (p.rageAttuned > 0) kv('Boil overs', run0.enrages || 0);
+    if (p.soulAttuned > 0) kv('Reapings', run0.rends || 0);
+    if (p.totemAttuned > 0) kv('Waystones raised', run0.waystones || 0);
+    if (p.holyAttuned > 0) kv('Hammerfalls', run0.storms || 0);
 
     /* The blessings, one to a line with their marks. They were a single
        key-value row - "Blessings" and then every name joined by commas - and

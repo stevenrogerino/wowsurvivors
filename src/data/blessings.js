@@ -87,6 +87,82 @@
       overflow: 0.08,
       apply: (p, b) => { p.overflow = b.overflow; },
     },
+    /* THE CALLINGS - the first eight survivors' own powers, run by
+       src/game/callings.js with their numbers in Config under CALLINGS. Like
+       the four above them, anyone can take one; the survivor it belongs to
+       (characters.js) is a quarter further along one number of it. The
+       description says how to get there; `detail`, in the hover tooltip,
+       says what you get. */
+    arcane_surge: {
+      name: 'Spellflood', art: 'arcane', quality: 'legendary',
+      description: 'Every gem you gather swells the Flood. Full, all your weapons fire at once and the tide runs fast for a while.',
+      detail: 'Flood tide, {Config.surgeDuration}s: weapons {Config.surgeCooldownMult~%}% faster\n'
+        + 'The Flood needs more gems as the night goes on\n'
+        + 'Baron Zul fills it {Config.callingEdge%}% faster',
+      apply: (p) => { p.overflowAttuned += 1; },
+    },
+    radiant_barrier: {
+      name: 'Radiant Barrier', art: 'ankh', quality: 'legendary',
+      description: 'Healing you cannot use is not wasted: it becomes a barrier that takes hits before you do, and bursts as Light when it breaks.',
+      detail: 'All overheal and {Config.barrierFromHeal%}% of healing that lands feed the barrier\n'
+        + 'Holds up to {Config.barrierCapPct%}% of your max health\n'
+        + 'Broken after filling past {Config.barrierBurstMin%}%, it sears everything near you\n'
+        + "Chid's barrier holds {Config.callingEdge%}% more",
+      apply: (p) => { p.barrierAttuned += 1; },
+    },
+    opportunist: {
+      name: 'Opportunist', art: 'mask', quality: 'legendary',
+      description: 'Critical hits build your Edge. At full, a Cutthroat blow on the toughest thing near you, and you Slip out of sight for a moment.',
+      detail: '{Config.comboNeed} Edge, at most one every {Config.comboGate}s\n'
+        + 'Cutthroat: a critical strike that grows with level and Damage\n'
+        + 'Slip: untouchable for {Config.vanishTime}s, then {Config.comboLock}s to regroup\n'
+        + 'Rav builds Edge {Config.callingEdge%}% faster',
+      apply: (p) => { p.comboAttuned += 1; },
+    },
+    quarry: {
+      name: 'The Quarry', art: 'crosshair', quality: 'legendary',
+      description: 'Every few seconds the toughest enemy in sight becomes your Quarry. It takes more from everything, and bringing it down readies every weapon and mends you.',
+      detail: 'A new Quarry every {Config.markEvery}s, held up to {Config.markLife}s (a boss only when nothing else is near)\n'
+        + 'Quarry: +{Config.markBonus%}% damage taken (bosses +{Config.markBossBonus%}%)\n'
+        + 'The kill: every weapon ready, +{Config.markHeal%}% health\n'
+        + 'Maeca finds her Quarry {Config.callingEdge%}% sooner',
+      apply: (p) => { p.markAttuned += 1; },
+    },
+    seething_blood: {
+      name: 'Seething Blood', art: 'claw', quality: 'legendary',
+      description: 'Every blow you take heats your blood, and every kill at arm\'s length. The heat is armor and fury. Fill it and you Boil Over.',
+      detail: 'Heat: up to +{Config.rageArmor} armor and +{Config.rageDamage%}% damage; it cools when the blows stop\n'
+        + 'Boil Over, {Config.enrageTime}s: +{Config.enrageArmor} armor, +{Config.enrageDamage%}% damage, thorns x{Config.enrageThorns}, mending {Config.enrageRegen%}% health a second\n'
+        + 'AAAAAAAAA heats {Config.callingEdge%}% faster',
+      apply: (p) => { p.rageAttuned += 1; },
+    },
+    reapers_tithe: {
+      name: "Reaper's Tithe", art: 'skull', quality: 'legendary',
+      description: 'Every kill pays into the Tithe. Over half paid it empowers you; paid in full, a Reaping tears at everything near and heals you for it.',
+      detail: 'Over half paid: +{Config.soulEmpower%}% damage\n'
+        + 'The Reaping heals {Config.rendHealPer%}% of max health per enemy struck (up to {Config.rendHealCap%}%)\n'
+        + 'The Tithe asks more as the night goes on\n'
+        + "Nim's Tithe fills {Config.callingEdge%}% faster",
+      apply: (p) => { p.soulAttuned += 1; },
+    },
+    waystones: {
+      name: 'Waystones', art: 'totem', quality: 'legendary',
+      description: 'Every few seconds a waystone rises where you stand: ember, then spring, then gale. Fight beside them.',
+      detail: 'A stone every {Config.totemEvery}s, standing {Config.totemLife}s; one of each kind at a time\n'
+        + 'Ember: burns everything near it. Spring: {Config.totemHeal%}% health a second while you are near. '
+        + 'Gale: weapons {Config.totemHaste~%}% faster while you are near\n'
+        + "Vonnra's stones reach {Config.callingEdge%}% farther",
+      apply: (p) => { p.totemAttuned += 1; },
+    },
+    conviction: {
+      name: 'Conviction', art: 'sun', quality: 'legendary',
+      description: 'Blows you take and healing you receive build Conviction. At {Config.holyNeed}, a Hammerfall around you and an Aegis over you.',
+      detail: 'A hit taken: {Config.holyPerHit} Conviction. Every {Config.holyHealPer} health healed: one more\n'
+        + 'Hammerfall: Light crashes down around you. Aegis: untouchable for {Config.divineShield}s\n'
+        + 'Then {Config.holyLock}s to gather again\n'
+        + 'Keegan builds Conviction {Config.callingEdge%}% faster',
+      apply: (p) => { p.holyAttuned += 1; },
+    },
     blood_rite: {
       name: 'Blood Rite', art: 'desecrate', quality: 'legendary',
       description: 'Healing curdles. Every point of overheal erupts as shadow, and {share%}% of the healing that does land lashes out too.',
@@ -151,6 +227,7 @@
     'kings', 'wisdom', 'moonlit', 'fortune', 'wild', 'air', 'fel', 'ancestors',
     'glass_cannon', 'bloodthirst', 'momentum', 'arcane_overflow', 'blood_rite',
     'ruinous_pact', 'unyielding', 'wildshape', 'stillwater',
+    'arcane_surge', 'radiant_barrier', 'opportunist', 'quarry', 'seething_blood', 'reapers_tithe', 'waystones', 'conviction',
   ];
 
 })(window.WS);

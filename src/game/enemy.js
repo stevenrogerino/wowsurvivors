@@ -425,7 +425,8 @@
 
       // Thorns last, so reflecting a fatal hit cannot corrupt this update.
       if (struck && player.thornsRank > 0) {
-        this.hit(e, (cfg.thornsFlat + e.damage * cfg.thornsDamagePct) * player.thornsRank, 'thorns');
+        this.hit(e, (cfg.thornsFlat + e.damage * cfg.thornsDamagePct) * player.thornsRank
+          * WS.Calling.thornsMult(player), 'thorns');
       }
 
       if (!e._dead) i++;
@@ -526,8 +527,9 @@
     }
     // The finale's own, under a rising sun (Finale.sunriseMult).
     if (e.finaleTag) amount *= WS.Finale.sunriseMult();
+    amount *= WS.Calling.markMult(e);
     const crit = WS.random() < player.critChance;
-    if (crit) amount *= player.critDamage;
+    if (crit) { amount *= player.critDamage; WS.Calling.onCrit(player); }
     if (e.dmgTaken !== 1) amount *= e.dmgTaken;
     /* Serration: a crit opens a wound that bleeds a share of the blow over
        the next few seconds. A fresh crit reopens it at whichever is worse. */
@@ -659,6 +661,7 @@
     WS.Encounters.onKill(t);
     run.kills++;
     WS.Primal.onKill(player, e);
+    WS.Calling.onKill(player, e);
     WS.Audio.play('enemyHit', e.x);
 
     if (player.bloodthirst && run.kills % player.bloodthirstInterval === 0) {

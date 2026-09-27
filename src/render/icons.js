@@ -727,6 +727,21 @@
     },
 
     /* ---- world objects and achievements --------------------------------- */
+    totem(g, c) {
+      // A carved post: three stacked faces, wings on the crown.
+      const col = c || '#5fb0e8';
+      g.fillStyle = '#6a4a2e';
+      g.beginPath(); g.roundRect(40, 30, 20, 60, 3); g.fill();
+      for (const y of [36, 54, 72]) {
+        g.fillStyle = '#00000044'; g.fillRect(40, y + 12, 20, 3);
+        disc(g, 45, y + 4, 2.6, col); disc(g, 55, y + 4, 2.6, col);
+        g.fillStyle = '#00000066'; g.fillRect(45, y + 9, 10, 2);
+      }
+      shape(g, [[40, 32], [14, 20], [24, 34], [40, 38]], col);
+      shape(g, [[60, 32], [86, 20], [76, 34], [60, 38]], col);
+      disc(g, 50, 22, 7, col);
+      disc(g, 50, 22, 3, lit);
+    },
     candle(g, c) {
       g.fillStyle = '#e8dfc8';
       g.beginPath(); g.roundRect(38, 44, 24, 42, 3); g.fill();

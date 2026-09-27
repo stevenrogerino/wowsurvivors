@@ -19,7 +19,7 @@
       * player.damageMultiplier * (w.mods.damageMult || 1);
     if (w.evolved) base *= (d.evolveDamageMult || cfg.evolveDamageMult);
     if (player.metaTimer > 0) base *= cfg.metaDamageMult;
-    base *= WS.Primal.damageMult(player, w);
+    base *= WS.Primal.damageMult(player, w) * WS.Calling.damageMult(player);
     if (!d.noNerf) base *= WS.CONST.PLAYER_DAMAGE_SCALE;
     return base;
   }
@@ -57,7 +57,7 @@
       * (w.evolved ? (d.evolveCooldownMult || cfg.evolveCooldownMult) : 1);
     if (!d.noNerf) base *= WS.CONST.PLAYER_COOLDOWN_SCALE;
     if (player.metaTimer > 0) base *= cfg.metaCooldownMult;
-    base *= WS.Primal.cooldownMult(player, w) * WS.Moor.cooldownMult();
+    base *= WS.Primal.cooldownMult(player, w) * WS.Moor.cooldownMult() * WS.Calling.cooldownMult(player);
     // A runaway multiplier must never silently switch a weapon off.
     if (!(base > 0) || base > 20) base = 20;
     if (base < 0.05) base = 0.05;

@@ -368,7 +368,8 @@
            bolt was consumed either way; only the reflection went missing. */
         if (player.thornsRank > 0 && h.srcEnemy && !h.srcEnemy._dead) {
           WS.Enemy.hit(h.srcEnemy,
-            (WS.Config.thornsFlat + h.damage * WS.Config.thornsDamagePct) * player.thornsRank, 'thorns');
+            (WS.Config.thornsFlat + h.damage * WS.Config.thornsDamagePct) * player.thornsRank
+            * WS.Calling.thornsMult(player), 'thorns');
         }
         if (h.slowFactor) WS.Player.applySlow(player, h.slowFactor, h.slowDuration);
         WS.FX.flash(h.x, h.y, 22, h.colour, 0.2);

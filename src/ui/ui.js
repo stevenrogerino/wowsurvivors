@@ -917,6 +917,8 @@
         pips: max, full: p.flowSteps,
         pct: p.flowSteps < max ? 1 - p.flowTimer / WS.max(0.001, WS.Primal.stepRecharge(p)) : 1 });
     }
+    // The callings - src/game/callings.js.
+    for (const m of WS.Calling.meters(p)) want.push(m);
     // A trial under way (the Lost Calves, the Still Hand) - src/game/trials.js.
     const trial = WS.Trials.meter();
     if (trial) want.push(trial);
@@ -3582,6 +3584,15 @@
     if (p.felAttuned > 0) kv('Metamorphoses', p.metamorphoses);
     if (p.wildAttuned > 0) kv('Shapes taken', p.shifts);
     if (p.flowAttuned > 0) kv('Steps taken', p.dashes);
+    const run0 = WS.Game.run || {};
+    if (p.overflowAttuned > 0) kv('Floods', run0.overflows || 0);
+    if (p.barrierAttuned > 0) kv('Barriers broken', run0.barriersBroken || 0);
+    if (p.comboAttuned > 0) kv('Cutthroats', run0.eviscerates || 0);
+    if (p.markAttuned > 0) kv('Quarry taken', run0.marksClaimed || 0);
+    if (p.rageAttuned > 0) kv('Boil overs', run0.enrages || 0);
+    if (p.soulAttuned > 0) kv('Reapings', run0.rends || 0);
+    if (p.totemAttuned > 0) kv('Waystones raised', run0.waystones || 0);
+    if (p.holyAttuned > 0) kv('Hammerfalls', run0.storms || 0);
 
     /* The blessings, one to a line with their marks. They were a single
        key-value row - "Blessings" and then every name joined by commas - and

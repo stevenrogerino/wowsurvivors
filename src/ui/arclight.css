@@ -2883,6 +2883,20 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .meter.steps .meter-fill { background: linear-gradient(90deg, #6aa6c8, #d8f2ff); opacity: .55; }
 .meter.steps .pip.ready .meter-fill { opacity: 1; box-shadow: 0 0 6px rgba(190,236,255,.55); }
 
+/* The callings (src/game/callings.js), each in the colour of its power. A
+   meter that is waiting - a lock, a regroup - dims like the others do. */
+.meter.calling.arcane .meter-fill { background: linear-gradient(90deg, #5a4ab4, #d6c8ff); }
+.meter.calling.holy .meter-fill { background: linear-gradient(90deg, #b48a3a, #fff0c0); }
+.meter.calling.combo .meter-fill { background: linear-gradient(90deg, #a88a2a, #ffe27a); opacity: .55; }
+.meter.calling.combo .pip.ready .meter-fill { opacity: 1; box-shadow: 0 0 6px rgba(255,226,122,.55); }
+.meter.calling.holy .pip .meter-fill { opacity: .55; }
+.meter.calling.holy .pip.ready .meter-fill { opacity: 1; box-shadow: 0 0 6px rgba(255,236,170,.6); }
+.meter.calling.mark .meter-fill { background: linear-gradient(90deg, #8a6a2a, #ffcf6a); }
+.meter.calling.rage .meter-fill { background: linear-gradient(90deg, #8a1e14, #ff7a5a); }
+.meter.calling.soul .meter-fill { background: linear-gradient(90deg, #4a2270, #c89aff); }
+.meter.calling.totem .meter-fill { background: linear-gradient(90deg, #2a6a8a, #9fe0ff); }
+.meter.calling.waiting .meter-fill { opacity: .6; filter: saturate(.6); }
+
 /* A trial under way (the Lost Calves, the Still Hand) and a Highmoor shrine's
    boon: the first is a count running down, cream for the pasture and pale
    blue for the mountain; the second burns in the colour of its stones. */

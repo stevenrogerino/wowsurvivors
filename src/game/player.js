@@ -98,6 +98,17 @@
       runEggs: 0,
 
       bloodthirst: false, momentum: false, overflow: 0,
+      // The callings - see src/game/callings.js. `*Attuned` turns one on;
+      // `*Bonus` / `*Haste` / `*Reach` is the owning survivor's edge, inert
+      // until then.
+      overflowAttuned: 0, overflowCharge: 0, overflowBonus: 0, surgeTimer: 0,
+      barrierAttuned: 0, barrier: 0, barrierBonus: 0, barrierPeak: 0,
+      comboAttuned: 0, combo: 0, comboBonus: 0, comboGate: 0, comboLock: 0, vanishTimer: 0,
+      markAttuned: 0, markTarget: null, markSpawn: 0, markLife: 0, markTimer: 1.5, markHaste: 0,
+      rageAttuned: 0, rage: 0, rageBonus: 0, rageIdle: 0, rageLock: 0, enrageTimer: 0,
+      soulAttuned: 0, souls: 0, soulBonus: 0,
+      totemAttuned: 0, totems: [], totemTimer: 0.5, totemNext: 0, totemReach: 0,
+      holyAttuned: 0, holyPower: 0, holyBonus: 0, holyHit: 0, holyHeal: 0, holyLock: 0, divineTimer: 0,
     };
 
     // Trainer lessons first, then the survivor's own perk, so percentages
@@ -225,6 +236,7 @@
 
     if (p.spinTimer > 0) p.spinTimer -= dt;
     WS.Primal.update(p, dt);
+    WS.Calling.update(p, dt);
 
     // Warding Light recharges over time and flares when it comes back up.
     if (p.blockRank > 0 && !p.blockReady) {
@@ -351,6 +363,8 @@
       for (const w of p.weapons) WS.Weapon.fire(p, w);
       WS.FX.flash(p.x, p.y, 60, WS.CONST.COLORS.arcane, 0.3);
     }
+    // Arcane Surge: every gathered gem charges it (callings.js).
+    WS.Calling.onGem(p);
 
     p.xp += amount * p.xpMultiplier * WS.Runs.oath('xp');
     while (p.xp >= p.xpToNext) {
@@ -396,6 +410,7 @@
     if (p.curdled > 0) {
       Player.desecrate(p, wasted * p.curdleOverheal + gained * p.curdleShare);
     }
+    WS.Calling.onHeal(p, gained, wasted);
     if (gained <= 0) return 0;
     p.health += gained;
     Player.recordHeal(gained, source);
@@ -519,11 +534,14 @@
 
     // Armor is a diminishing % reduction, never a flat subtraction, so it
     // matters against big hits and cannot trivialise small ones.
-    const armor = p.armor || 0;
+    const armor = (p.armor || 0) + WS.Calling.armor(p);
     const reduction = armor > 0 ? armor / (armor + WS.Config.armorConstant) : 0;
     // The bear's hide takes its share before the armour does.
     const hide = WS.Moor.mitigate(WS.Primal.mitigate(p, amount));
-    const taken = WS.max(1, WS.floor(hide * (1 - reduction)));
+    const blow = WS.max(1, WS.floor(hide * (1 - reduction)));
+    // A Radiant Barrier takes its share before the health does.
+    const taken = WS.floor(WS.Calling.absorb(p, blow));
+    WS.Calling.onHurt(p, taken);
     run.damagePrevented += (amount - taken);
     run.damageTaken += taken;
     p.health -= taken;
