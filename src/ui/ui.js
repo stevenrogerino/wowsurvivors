@@ -28,6 +28,30 @@
     return img;
   }
 
+  /* A discovery's mark: the two weapons it joins, one over the other's
+     shoulder. A discovery IS a pairing, and one shared book glyph for all
+     seventeen said nothing about which. Composed once per pair and size. */
+  const PAIR_MARKS = {};
+  function pairIcon(c, size) {
+    const key = c.weapons.join('+') + ':' + size;
+    let url = PAIR_MARKS[key];
+    if (!url) {
+      const px = size * 2, s2 = WS.round(px * 0.6);
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = px;
+      const g = cv.getContext('2d');
+      const col = (d) => d.color || WS.CONST.COLORS[d.school] || [1, 1, 1];
+      const [a, b] = c.weapons.map((id) => WS.Weapons[id]);
+      g.drawImage(WS.Icons.get(a.art, col(a), s2), 0, 0, s2, s2);
+      g.shadowColor = 'rgba(0,0,0,.7)'; g.shadowBlur = px * 0.06;
+      g.drawImage(WS.Icons.get(b.art, col(b), s2), px - s2, px - s2, s2, s2);
+      url = PAIR_MARKS[key] = cv.toDataURL();
+    }
+    const img = new Image();
+    img.src = url; img.width = img.height = size; img.alt = '';
+    return img;
+  }
+
   function qualityColour(key) {
     return WS.CONST.QUALITY[key] || WS.CONST.QUALITY.common;
   }
@@ -2117,7 +2141,7 @@
       const c = WS.Combos[id];
       const found = !!WS.Save.db.combos[id];
       const row = el('div', 'row ' + (found ? 'done' : 'undone'));
-      row.append(icon(found ? 'arcane' : 'rune', found ? WS.CONST.QUALITY.epic : [0.35, 0.38, 0.45], 40));
+      row.append(found ? pairIcon(c, 40) : icon('rune', [0.35, 0.38, 0.45], 40));
       const main = el('div', 'row-main');
       main.append(el('div', 'row-name', found ? c.name : '? ? ?'));
       main.append(el('div', 'row-sub', found
@@ -3511,14 +3535,18 @@
     const found = WS.ComboOrder.filter((id) => p.combosActive && p.combosActive[id]);
     if (found.length) {
       left.append(el('h3', null, 'Discoveries'));
-      const list = el('div', 'sheet-blessings');
+      // Two across: each is its pair's mark, its name, and what it joins -
+      // or, once a union has eaten both, the union still carrying it.
+      const list = el('div', 'sheet-discoveries');
       for (const id of found) {
         const c = WS.Combos[id];
-        const item = el('div', 'sheet-blessing');
-        const im = icon('book', WS.CONST.COLORS.arcane, 24);
-        im.width = im.height = 24;
+        const item = el('div', 'sheet-discovery');
         const host = c.weapons.map((w) => WS.ComboSystem.find(p, w)).find((w) => w && w.standsFor);
-        item.append(im, el('span', null, c.name + (host ? ' \u00b7 in ' + host.data.name : '')));
+        const text = el('div', 'sd-text');
+        text.append(el('div', 'sd-name', c.name),
+          el('div', 'sd-sub', host ? 'in ' + host.data.name
+            : WS.Weapons[c.weapons[0]].name + ' + ' + WS.Weapons[c.weapons[1]].name));
+        item.append(pairIcon(c, 36), text);
         item.dataset.tip = WS.template(c.description, c);
         list.append(item);
       }
@@ -3601,13 +3629,21 @@
     const taken = Object.keys(p.blessingsTaken || {}).filter((id) => WS.Blessings[id]);
     if (taken.length) {
       right.append(el('h3', null, 'Blessings'));
-      const list = el('div', 'sheet-blessings');
+      /* There is room here, so each blessing gets it: its mark at a size
+         that reads, its name in its quality's colour, and what it does in a
+         line or two. The survivor's own calling says so. */
+      const list = el('div', 'sheet-blessings rich');
+      const sig = p.character && p.character.signatureBlessing;
       for (const id of taken) {
         const bl = WS.Blessings[id];
-        const item = el('div', 'sheet-blessing');
-        const im = icon(bl.art, qualityColour(bl.quality || 'legendary'), 24);
-        im.width = im.height = 24;
-        item.append(im, el('span', null, bl.name));
+        const q = qualityColour(bl.quality || 'legendary');
+        const item = el('div', 'sheet-blessing rich');
+        item.style.setProperty('--q', WS.rgb(q, 1));
+        const text = el('div', 'sb-text');
+        const name = el('div', 'sb-name', bl.name);
+        if (id === sig) name.append(el('span', 'sb-own', 'Your calling'));
+        text.append(name, el('div', 'sb-desc', WS.template(bl.description, bl)));
+        item.append(icon(bl.art, q, 38), text);
         item.dataset.tip = WS.template(bl.description, bl) + (bl.detail ? '\n' + WS.template(bl.detail, bl) : '');
         list.append(item);
       }
@@ -3726,7 +3762,7 @@
      * menu belongs mid-run - you cannot change survivor or battlefield
      * without ending what you are in. */
     const tabs = el('div', 'tabs');
-    const pane = el('div');
+    const pane = el('div', 'pause-pane');
     let view = 'build';
     const render = () => {
       for (const b of tabs.children) b.classList.toggle('active', b.dataset.view === view);

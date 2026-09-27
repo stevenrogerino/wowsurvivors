@@ -474,6 +474,38 @@ const path = require('path');
     seen.add('framing: no panel actually overflowed, so the check proved nothing');
   }
 
+  /* ---- the pause sheet fits and scrolls inside -------------------------- *
+   * Its pane is the part that fills the body; when that rule stopped matching
+   * (the scrim wireScroll appends became the body's last child) the panels
+   * grew to their full height and the body cut them off at 720p, with no
+   * scrollbar anywhere - the blessings were simply out of reach.
+   *
+   * NEGATIVE TEST: dropping the .pause-pane rule from arclight.css reports
+   * "pause: the body clips 552px of the build sheet and no panel scrolls". */
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const pause = await page.evaluate(async () => {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    WS.UI.closeOverlay();
+    WS.Game.startRun('thornhollow', 'mage');
+    const p = WS.Game.player;
+    WS.Game.pendingLevelUps = 0; WS.Game.leveling = false;
+    p.blessingsTaken = p.blessingsTaken || {};
+    for (const id of WS.BlessingOrder.slice(0, 5)) p.blessingsTaken[id] = true;
+    for (const id of ['volley', 'arcweb', 'axe_gyre', 'knifestorm', 'cinderfall']) WS.Player.addWeapon(p, id);
+    WS.UI.closeOverlay(); WS.Game.state = 'paused'; WS.UI.openPause();
+    await sleep(300);
+    const body = document.querySelector('.overlay-body.fitted');
+    const clipped = body ? body.scrollHeight - body.clientHeight : -1;
+    const scrolls = [...document.querySelectorAll('.pause-pane .panel-scroll')]
+      .filter((n) => n.scrollHeight - n.clientHeight > 2).length;
+    WS.UI.closeOverlay();
+    return { clipped, scrolls };
+  });
+  if (pause.clipped < 0) seen.add('pause: the build sheet did not open fitted');
+  else if (pause.clipped > 2) {
+    seen.add(`pause: the body clips ${pause.clipped}px of the build sheet${pause.scrolls ? '' : ' and no panel scrolls'}`);
+  } else if (!pause.scrolls) seen.add('pause: no panel overflowed at 720p, so the check proved nothing');
+
   console.log(seen.size ? [...seen].join('\n')
     : 'ok: no bracket collisions, no false scrims, a maxed save lays out clean,'
       + ` the Hyper control agrees with the run it starts on all ${modes.length} `
@@ -481,7 +513,7 @@ const path = require('path');
       + ` arming banish moves nothing, and ${ledger.length} purchases totalling `
       + `${spent}g each land on the footer's banked total, three more at the bottom of `
       + `the Trainer leave it scrolled where it was, and `
-      + `${framing.panels} framed surfaces scroll from the inside`);
+      + `${framing.panels} framed surfaces scroll from the inside, the pause sheet's too`);
   await b.close();
   process.exitCode = seen.size ? 1 : 0;
 })();

@@ -1386,9 +1386,12 @@ body.hud-rail #hud-toasts { left: 76px; bottom: 20px; }
    carries the run's figures, and flex was squeezing them to nothing. */
 .overlay-body.fitted > * { flex: none; }
 /* The pause screen puts its tabs inside the body, above the sheet, so the
-   pane below them is the part that fills and scrolls. */
-.overlay-body.fitted > div:last-child { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.overlay-body.fitted > div:last-child > .sheet { flex: 1 1 auto; min-height: 0; }
+   pane below them is the part that fills and scrolls.
+   (It is named, not found as the body's last child: wireScroll appends its
+   scrim and sentinel after it, and the last-child rule silently stopped
+   matching - at 720p the panels were cut off with nothing to scroll.) */
+.overlay-body.fitted > .pause-pane { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.overlay-body.fitted > .pause-pane > .sheet { flex: 1 1 auto; min-height: 0; }
 .overlay-body.fitted .sheet { flex: 1 1 auto; min-height: 0; }
 /* The frame holds still; the inside scrolls.
    The panel used to scroll itself, which put its scrollbar on top of its own
@@ -2517,6 +2520,34 @@ body.hud-rail #hud-passives { gap: 9px; }
 .sheet-blessing { display: flex; align-items: center; gap: 9px; cursor: default;
   font-family: var(--voice); font-weight: 700; font-size: 15px; color: var(--ink); }
 .sheet-blessing img { flex: none; }
+/* Discoveries two across, each its pair's mark and a name over what it joins. */
+.sheet-discoveries { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 14px; margin: 4px 0 2px; }
+.sheet-discovery { display: flex; align-items: center; gap: 9px; min-width: 0; cursor: default; }
+.sheet-discovery img { flex: none; border-radius: 3px; }
+.sheet-discovery .sd-text { min-width: 0; }
+.sheet-discovery .sd-name { font-family: var(--voice); font-weight: 700; font-size: 14.5px; color: #e9d7ff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sheet-discovery .sd-sub { font-family: var(--voice); font-style: italic; font-size: 12.5px; color: var(--ink-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Blessings with room to breathe: a mark that reads, the name in its
+   quality's colour, and what it does. */
+.sheet-blessings.rich { gap: 9px; margin: 6px 0 4px; }
+.sheet-blessing.rich {
+  align-items: flex-start; gap: 12px; padding: 8px 10px;
+  border: 1px solid rgba(255,240,214,.07); border-left: 2px solid var(--q, var(--arc)); border-radius: 2px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--q, var(--arc)) 8%, transparent), transparent 70%);
+  font-weight: 400;
+}
+.sheet-blessing.rich .sb-text { min-width: 0; }
+.sheet-blessing.rich .sb-name { font-family: var(--voice); font-weight: 700; font-size: 16px; color: var(--q, var(--ink)); }
+.sheet-blessing.rich .sb-own {
+  margin-left: 8px; font-family: var(--voice); font-style: italic; font-weight: 500; font-size: 12px;
+  color: var(--ink-dim); letter-spacing: .02em;
+}
+.sheet-blessing.rich .sb-desc {
+  margin-top: 2px; font-family: var(--voice); font-size: 13.5px; line-height: 1.35; color: var(--ink-dim);
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+}
 .sheet-empty { font-family: var(--voice); font-style: italic; color: var(--ink-dim); margin: 6px 0 0; }
 .sheet .row, .sheet-passive { cursor: default; }
 
