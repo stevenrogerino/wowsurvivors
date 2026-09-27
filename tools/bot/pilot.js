@@ -49,11 +49,13 @@ function installPilot(opts) {
     // A certain hit costs hit0 + hitSev * (the share of health it takes);
     // the rest are guesses about hits to come, and must not outvote one.
     hit0: 60, hitSev: 500, press: 14, enclose: 22, edge: 1.2, centre: 0.01, steady: 3,
+    gemWeight: 3,       // how much a gem cluster pulls, per root of what it holds
+    lowHp: 0.35,        // below this share of health, only potions are worth a detour
   }, opts || {});
   const S8 = Math.SQRT1_2;
   // Index 0 is standing still; 1..8 walk round the compass, so +-1 is a 45° turn.
   const DIRS = [[0, 0], [1, 0], [S8, S8], [0, 1], [-S8, S8], [-1, 0], [-S8, -S8], [0, -1], [S8, -S8]];
-  const TS = [0.1, 0.2, 0.3, 0.45, 0.6, 0.9].filter((t) => t <= O.horizon + 1e-9);
+  const TS = [0.1, 0.2, 0.3, 0.45, 0.6, 0.9, 1.2, 1.5].filter((t) => t <= O.horizon + 1e-9);
   const P = window.__pilot = {
     opts: O, dir: 0, replan: 0, goal: null,
     stats: { plans: 0, ms: 0 },
@@ -176,11 +178,24 @@ function installPilot(opts) {
       const u = value / (d + 120) / (1 + crowd * 0.6);
       if (u > bestU) { bestU = u; best = { x, y, reach, kind, value }; }
     };
-    // Experience: the gems, weighted by what they hold.
+    // Low on health, only healing is worth a detour: a chest across the
+    // field is not, and neither is a gem in the crowd.
+    const desperate = hp < O.lowHp;
+    // Experience: the gems, valued by the cluster each sits in - one walk
+    // collects everything within reach of the magnet.
     const gems = WS.XP.pool;
-    for (let i = 0; i < gems.count; i++) {
-      const g = gems.active[i];
-      consider(g.x, g.y, 4 + Math.sqrt(g.value) * 3, pr * 0.9, 'gem');
+    const R2 = Math.pow(Math.max(60, pr), 2);
+    if (!desperate) {
+      for (let i = 0; i < gems.count; i++) {
+        const g = gems.active[i];
+        let v = 0;
+        for (let j = 0; j < gems.count; j++) {
+          const h = gems.active[j];
+          const dx = h.x - g.x, dy = h.y - g.y;
+          if (dx * dx + dy * dy < R2) v += h.value;
+        }
+        consider(g.x, g.y, 4 + Math.sqrt(v) * O.gemWeight, pr * 0.9, 'gem');
+      }
     }
     const pk = WS.Pickup.pool;
     for (let i = 0; i < pk.count; i++) {
@@ -197,11 +212,12 @@ function installPilot(opts) {
         case 'coin': v = 6; break;
         default: v = 0;                   // story objects are not the bot's errand
       }
+      if (desperate && q.kind !== 'potion') v = 0;
       if (v > 0) consider(q.x, q.y, v, reach, q.kind);
     }
     // Highmoor's standing stones: stand in the ring.
     for (const sh of WS.Moor.shrines || []) {
-      if (sh.gone || sh.taken) continue;
+      if (sh.gone || sh.taken || desperate) continue;
       consider(sh.x, sh.y, 70, sh.r * 0.5, 'shrine');
     }
     return best;
