@@ -82,7 +82,7 @@ function inPage(S, job, sources) {
 
   /* The ledger: which system was running when the blow landed says what
      kind of blow it was. */
-  const L = { byKind: {}, bySource: {}, last: [], hits: 0, lost: 0, potions: 0, lowest: 1, bolts: [],
+  const L = { byKind: {}, bySource: {}, last: [], hits: 0, lost: 0, potions: 0, lowest: 1, bolts: [], bombs: 0, freezes: 0,
     lowTime: 0, heal: 0 };
   if (!window.__ledgered) {
     window.__ledgered = true;
@@ -143,6 +143,11 @@ function inPage(S, job, sources) {
       }
       return r;
     };
+    // Rescues used: bombs set off and time stopped.
+    const det = WS.Pickup.detonate;
+    WS.Pickup.detonate = function () { if (window.__led) window.__led.bombs++; return det.apply(this, arguments); };
+    const frz = WS.Enemy.freezeAll;
+    WS.Enemy.freezeAll = function () { if (window.__led) window.__led.freezes++; return frz.apply(this, arguments); };
     const heal = WS.Player.heal;
     WS.Player.heal = function (pl, amount, source) {
       if (source === 'potion' && window.__led) window.__led.potions++;
@@ -235,7 +240,8 @@ function inPage(S, job, sources) {
     taken: Math.round(L.lost), hits: L.hits, byKind: L.byKind,
     bySource: Object.fromEntries(Object.entries(L.bySource).sort((a, b) => b[1] - a[1]).slice(0, 6)),
     last: L.last, lowest: Math.round(L.lowest * 100), lowTime: Math.round(L.lowTime),
-    potions: L.potions, healed: Math.round(run.healingDone),
+    potions: L.potions, healed: Math.round(run.healingDone), bombs: L.bombs, freezes: L.freezes,
+    rescueGoals: pilot.rescues || 0,
     weapons: p.weapons.map((w) => w.id + ':' + w.level + (w.evolved ? 'E' : '')),
     blessings: Object.keys(p.blessingsTaken || {}),
     curve, pilotMs: Math.round(wall), plans: pilot.stats.plans || 1, bolts: L.bolts,
@@ -295,6 +301,7 @@ function report(data) {
       + (full ? `${(t / 60).toFixed(1)}m`.padStart(7) + `${won}/${rs.length} dawn`.padStart(11)
         : `${t.toFixed(1)}s`.padStart(7) + `${rs.filter((r) => !r.dead).length}/${rs.length} lived`.padStart(12))
       + `  lvl ${mean(rs, (r) => r.level).toFixed(0).padStart(3)}  potions ${mean(rs, (r) => r.potions).toFixed(1).padStart(4)}`
+      + `  bombs ${mean(rs, (r) => r.bombs || 0).toFixed(1).padStart(4)}  freezes ${mean(rs, (r) => r.freezes || 0).toFixed(1).padStart(4)}`
       + `  low ${mean(rs, (r) => r.lowest).toFixed(0).padStart(3)}%  hurt: ${top}`;
   };
   console.log('\n by survivor');

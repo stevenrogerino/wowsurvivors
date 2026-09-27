@@ -50,6 +50,10 @@ function installPilot(opts) {
     // the rest are guesses about hits to come, and must not outvote one.
     hit0: 60, hitSev: 500, press: 14, enclose: 22, edge: 1.2, centre: 0.01, steady: 3,
     gemWeight: 3,       // how much a gem cluster pulls, per root of what it holds
+    // Rescue pickups, priced in hits: a bomb is worth bombK x the danger of
+    // the field it would clear, an hourglass freezeK x the danger it would
+    // stop. 0 turns the idea off (they are then ordinary loot).
+    bombK: 1.0, freezeK: 0.7, rescueMin: 120,
     lowHp: 0.5,         // below this share of health, only potions are worth a detour (fitted)
   }, opts || {});
   const S8 = Math.SQRT1_2;
@@ -205,15 +209,48 @@ function installPilot(opts) {
       switch (q.kind) {
         case 'potion': v = hp < 0.95 ? 20 + 260 * (1 - hp) * (1 - hp) * 4 : 1; break;
         case 'chest': v = 90; break;
-        case 'cache': v = 120; break;
+        case 'cache': v = O.bombK ? 0 : 120; break;
         case 'stone': v = 45; break;       // the lodestone: every gem on the field
-        case 'hourglass': v = 40; break;
-        case 'bomb': v = 30; break;
+        case 'hourglass': v = O.freezeK ? 0 : 40; break;   // priced as rescues below
+        case 'bomb': v = O.bombK ? 0 : 30; break;
         case 'coin': v = 6; break;
         default: v = 0;                   // story objects are not the bot's errand
       }
       if (desperate && q.kind !== 'potion') v = 0;
       if (v > 0) consider(q.x, q.y, v, reach, q.kind);
+    }
+    /* RESCUES. A bomb clears every creature on the field but the bosses, and
+       an hourglass freezes them all: worth nothing on an empty field and
+       everything when the crowd is closing. So each is priced in the same
+       currency as a hit - the hit-cost of every creature near enough to
+       reach us soon, weighted by how near - and when that is big enough it
+       becomes the goal, even through the crowd. The plan cost then does the
+       trade honestly: each plan earns the share of the rescue it covers, and
+       every hit on the way still costs what it always costs. */
+    if (O.bombK || O.freezeK) {
+      const frozen = WS.Enemy.freezeTimer > 0;
+      let threat = 0, threatAll = 0;
+      for (const f of W.foes) {
+        const d = Math.max(0, Math.hypot(f.x - p.x, f.y - p.y) - f.r - p.radius);
+        const w = Math.max(0, 1 - d / 420);
+        const h = hitCost(p, f.dmg) * w * w;
+        threatAll += h;
+        if (!f.e.boss && !f.e.part) threat += h;
+      }
+      const bomb = O.bombK * threat * (frozen ? 0.4 : 1);
+      const freeze = frozen ? 0 : O.freezeK * threatAll;
+      let rescue = null, bestR = 0;
+      const pk2 = WS.Pickup.pool;
+      for (let i = 0; i < pk2.count; i++) {
+        const q = pk2.active[i];
+        const V = q.kind === 'bomb' ? bomb : q.kind === 'hourglass' ? freeze
+          : q.kind === 'cache' ? 0.25 * bomb + 0.25 * freeze + 40 : 0;
+        if (V < O.rescueMin) continue;
+        const d = Math.max(0, Math.hypot(q.x - p.x, q.y - p.y) - pr * 0.9);
+        const r = V / (1 + d / 250);
+        if (r > bestR) { bestR = r; rescue = { x: q.x, y: q.y, reach: pr * 0.9, kind: q.kind, value: V, rescue: true }; }
+      }
+      if (rescue) { P.rescues = (P.rescues || 0) + 1; return rescue; }
     }
     // Highmoor's standing stones: stand in the ring.
     for (const sh of WS.Moor.shrines || []) {
@@ -337,7 +374,12 @@ function installPilot(opts) {
     }
 
     // What it gets closer to.
-    if (goal) {
+    if (goal && goal.rescue) {
+      const d0 = Math.max(0, Math.hypot(goal.x - p.x, goal.y - p.y) - goal.reach);
+      let d1 = Infinity;
+      for (const q of path) d1 = Math.min(d1, Math.max(0, Math.hypot(goal.x - q[0], goal.y - q[1]) - goal.reach));
+      c -= goal.value * clamp((d0 - d1) / Math.max(d0, 1), -1, 1);
+    } else if (goal) {
       const d0 = Math.max(0, Math.hypot(goal.x - p.x, goal.y - p.y) - goal.reach);
       const d1 = Math.max(0, Math.hypot(goal.x - ex, goal.y - ey) - goal.reach);
       const u = Math.min(goal.value, 400) / 4;
@@ -450,7 +492,7 @@ function installPilot(opts) {
     const b = bounds(p);
     const W = observe(p, speed);
     // Hold a goal for a moment; drop it if it is gone or taken.
-    if (!P.goal || P.goalAge > 1.0) { P.goal = chooseGoal(p, W); P.goalAge = 0; }
+    if (!P.goal || P.goalAge > (P.goal.rescue ? 0.3 : 1.0)) { P.goal = chooseGoal(p, W); P.goalAge = 0; }
     let best = 0, bestC = Infinity;
     for (let d1 = 0; d1 < 9; d1++) {
       const turns = d1 === 0 ? [0] : [d1, 1 + ((d1 + 6) % 8), 1 + (d1 % 8)];
