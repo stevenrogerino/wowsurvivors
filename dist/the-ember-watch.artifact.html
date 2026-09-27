@@ -3114,6 +3114,145 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 /* Details written as lines (a form per line) keep their breaks. */
 .card .card-detail, .tip-desc { white-space: pre-line; }
 
+/* ============================================ CARDS: ONE FIXED SKELETON ===
+ * Every card the same height, every block the same height on every card
+ * (ui.js cardFor), so a row reads as a row: the name, the pips, the
+ * description, the reactions and the footer line up across all of them, and
+ * nothing moves when the cards are re-dealt. What does not fit is clipped
+ * here and whole in the card's tooltip. */
+@media (min-width: 721px) {
+  .card-row { align-items: stretch; }
+  .card { height: 410px; min-height: 0; justify-content: flex-start; }
+}
+.card .icon-plate, .card .card-name, .card .card-note, .card .card-pips,
+.card .card-body, .card .card-reacts, .card .card-foot { flex: none; }
+.card .card-name { width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .card-name.long { font-size: 19px; }
+.card .card-note { width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 1.35em; }
+.card .card-pips.empty { height: 4px; visibility: hidden; }
+.card .card-body {
+  width: 100%;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3;
+  overflow: hidden; height: calc(3 * 1.4em);
+}
+.card .card-reacts { width: 100%; height: calc(2 * 1.5em + 4px); overflow: hidden; }
+.card .card-reacts .react { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .card-foot {
+  width: 100%; margin-top: auto; height: 78px; overflow: hidden;
+  border-top: 1px solid var(--rim); padding-top: 8px;
+}
+.card .card-foot .card-detail {
+  border: 0; padding: 0; margin: 0; min-height: 0;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
+}
+.card .card-foot .card-stats { margin: 0; padding: 0; border: 0; }
+/* A short screen (a 600px-tall laptop window) keeps the whole skeleton and
+   the build under it in view: the same blocks, a smaller picture and less
+   air, rather than a scroll port with the build hidden below the fold. */
+@media (min-width: 721px) and (max-height: 680px) {
+  .card { height: 342px; padding: 14px 20px 12px; gap: 6px; }
+  .card .card-body { height: calc(2 * 1.4em); -webkit-line-clamp: 2; }
+  .tray-slot { margin-top: 0; }
+  .card .icon-plate, .card .icon-plate img { width: 60px; height: 60px; }
+  .card .icon-plate { margin-bottom: 0; }
+}
+@media (max-width: 720px) {
+  .card .card-body { height: auto; -webkit-line-clamp: 4; }
+  .card .card-reacts { height: auto; }
+  .card .card-foot { height: auto; }
+}
+/* The watch button on a weapon's card: top left, opposite the key. */
+.card .card-watch {
+  position: absolute; top: 10px; left: 12px; z-index: 2;
+  width: 24px; height: 24px; display: grid; place-items: center;
+  font-size: 11px; color: var(--ink-dim);
+  border: 1px solid var(--rim); border-radius: 50%;
+  background: rgba(8,10,15,.5); cursor: pointer;
+  transition: color .15s var(--ease), border-color .15s var(--ease);
+}
+.card .card-watch:hover { color: var(--gilt, #f5c56b); border-color: var(--gilt, #f5c56b); }
+
+/* ================================================= THE BUILD, IN VIEW ===
+ * Along the bottom of the level-up and blessing screens: what you have. */
+.tray-slot { display: flex; justify-content: center; margin-top: 4px; }
+.build-tray {
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 22px;
+  padding: 10px 16px; border: 1px solid var(--rim); border-radius: 2px;
+  background: linear-gradient(180deg, rgba(14,16,24,.72), rgba(8,9,14,.82));
+  box-shadow: var(--bevel-deep);
+}
+.build-tray .bt-group { display: flex; align-items: center; gap: 6px; }
+.build-tray .bt-label {
+  font-family: var(--voice); font-style: italic; font-size: 13px; color: var(--ink-faint);
+  margin-right: 4px;
+}
+.build-tray .bt-slot {
+  position: relative; width: 40px; height: 40px; padding: 0;
+  display: grid; place-items: center;
+  border: 1px solid var(--rim); border-radius: 2px; background: rgba(8,10,15,.6);
+  color: inherit; font: inherit;
+}
+.build-tray button.bt-slot { cursor: pointer; }
+.build-tray button.bt-slot:hover, .build-tray button.bt-slot:focus-visible {
+  border-color: var(--gilt, #f5c56b); box-shadow: 0 0 14px -4px var(--gilt, #f5c56b);
+}
+.build-tray .bt-slot.small { width: 32px; height: 32px; }
+.build-tray .bt-slot.empty { opacity: .35; border-style: dashed; }
+.build-tray .bt-slot canvas, .build-tray .bt-slot img { display: block; }
+.build-tray .bt-rank {
+  position: absolute; right: -4px; bottom: -5px; min-width: 15px; padding: 0 3px;
+  font-family: var(--voice); font-size: 11px; line-height: 15px; text-align: center;
+  color: #f4ead6; background: #121620; border: 1px solid var(--rim); border-radius: 8px;
+}
+.build-tray .bt-chip {
+  min-width: 26px; height: 26px; display: grid; place-items: center; padding: 0 8px;
+  font-family: var(--voice); font-size: 14px; color: #e9d7ff;
+  border: 1px solid rgba(190,150,255,.5); border-radius: 13px; background: rgba(60,40,90,.35);
+}
+
+/* SPOTLIGHT: a weapon in the tray is hovered, so the screen thins out to let
+   the field through, where everything but that weapon has been dimmed. */
+#overlay.peek { background: rgba(6,7,11,.12); backdrop-filter: none; transition: background .18s var(--ease); }
+#overlay.peek .card-row, #overlay.peek .overlay-head, #overlay.peek .overlay-foot { opacity: .12; transition: opacity .18s var(--ease); }
+
+/* =================================================== THE SPELL CLIPS === */
+.clip-box {
+  position: fixed; inset: 0; z-index: 60;
+  display: grid; place-items: center;
+  background: rgba(4,5,8,.66); backdrop-filter: blur(2px);
+}
+.clip-panel {
+  width: min(520px, 92vw); padding: 16px 18px 18px;
+  border: 1px solid var(--rim); border-radius: 2px;
+  background: linear-gradient(180deg, var(--obsidian-2), var(--obsidian));
+  box-shadow: var(--bevel-deep), 0 30px 80px -30px #000;
+}
+.clip-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.clip-head h3 { flex: 1; margin: 0; font-family: var(--voice); font-size: 22px; color: #f4ead6; }
+.clip-frame {
+  aspect-ratio: 560 / 360; width: 100%; display: grid; place-items: center;
+  border: 1px solid var(--rim); background: #0b0d12; overflow: hidden;
+}
+.clip-img { width: 100%; height: 100%; object-fit: cover; image-rendering: auto; }
+.clip-miss { font-family: var(--voice); font-style: italic; color: var(--ink-faint); padding: 20px; }
+.clip-tabs { display: flex; gap: 8px; justify-content: center; margin: 10px 0 6px; flex-wrap: wrap; }
+.clip-tab.on { border-color: var(--gilt, #f5c56b); color: var(--gilt, #f5c56b); }
+.clip-desc { margin: 4px 0 0; text-align: center; font-family: var(--voice); font-size: 15px; color: var(--ink-dim); }
+
+/* The Spellbook, in the codex. */
+.spellbook { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 8px; margin-top: 8px; }
+.sb-spell {
+  display: flex; align-items: center; gap: 10px; padding: 6px 10px;
+  border: 1px solid var(--rim); border-radius: 2px; background: rgba(10,12,18,.55);
+  color: #e6ddcc; font-family: var(--voice); font-size: 15px; text-align: left; cursor: pointer;
+}
+.sb-spell:hover, .sb-spell:focus-visible { border-color: var(--gilt, #f5c56b); }
+.sb-spell.union { border-color: rgba(245,197,107,.45); }
+/* The pause sheet's arsenal rows play their clip. */
+.row.clip-link { cursor: pointer; }
+.row .row-watch { margin-left: auto; font-size: 11px; color: var(--ink-faint); padding-left: 8px; }
+.row.clip-link:hover .row-watch { color: var(--gilt, #f5c56b); }
+
 </style>
 <div id="stage">
     <canvas id="game-canvas"></canvas>
@@ -24493,6 +24632,8 @@ window.WS = window.WS || {};
     f.spikes = spikes || 0;
     // A nova's school, so its wave can look like what it is (see drawFlashes).
     f.style = style || null;
+    // Whose it is, for the spotlight (Weapon.fire sets FX.tag while it fires).
+    f.source = FX.tag || null;
   };
 
   /** A struck palm (Iron Palms and its union): a shockwave crescent at the
@@ -24502,6 +24643,7 @@ window.WS = window.WS || {};
     const s = FX.strikes.acquire();
     if (!s) return;
     const o = opts || {};
+    s.source = FX.tag || null;
     s.x = x; s.y = y; s.aim = aim; s.reach = reach; s.arc = arc;
     s.colour = colour; s.evolved = !!o.evolved; s.blend = o.blend || null;
     s.life = o.life || 0.26; s.maxLife = s.life;
@@ -26010,6 +26152,7 @@ window.WS = window.WS || {};
        the same diamond whatever the card called it - an Axe Gyre with no
        axe in it. This is the same one field, stamped the same way. */
     o.art = w.data.art || null;
+    o.source = w.id;           // whose it is, for the spotlight (beams had none)
   }
 
   function fireAimedShot(player, w, target, fan) {
@@ -26748,7 +26891,10 @@ window.WS = window.WS || {};
   Weapon.fire = function (player, w) {
     const handler = Weapon.behaviors[behaviorOf(w)];
     if (!handler) return;
-    const fired = handler(player, w);
+    // Every flash and strike made while this fires is this weapon's (FX.tag).
+    WS.FX.tag = w.id;
+    let fired;
+    try { fired = handler(player, w); } finally { WS.FX.tag = null; }
     if (fired === false) return;
     // A muzzle flash in the weapon's own colour, so a six-weapon build reads
     // as six distinct instruments rather than one undifferentiated stream.
@@ -41111,6 +41257,26 @@ window.WS = window.WS || {};
        round anyway - they come from him. */
     this.drawPlayer(ctx, player, time);
 
+    /* THE SPOTLIGHT. A weapon is hovered in the build tray: veil the field,
+       then draw that weapon's own effects again on top of the veil, and the
+       survivor they come from. Everything else stays under it. */
+    if (R.spotlight && game.player) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(4,5,8,.78)';
+      ctx.fillRect(-4000, -4000, 12000, 12000);
+      ctx.restore();
+      R._only = R.spotlight;
+      try {
+        this.drawZones(ctx, time);
+        this.drawOrbits(ctx, player);
+        this.drawBolts(ctx);
+        this.drawBeams(ctx);
+        this.drawFlashes(ctx);
+        this.drawStrikes(ctx);
+      } finally { R._only = null; }
+      this.drawPlayer(ctx, player, time);
+    }
+
     // Edennil and the crate, in the air over everything on the field.
     this.drawAirdropSky(ctx, time);
 
@@ -42130,6 +42296,7 @@ window.WS = window.WS || {};
     ctx.save();
     for (let i = 0; i < zones.count; i++) {
       const z = zones.active[i];
+      if (R._only && z.source !== R._only) continue;   // spotlight pass
       const fade = WS.clamp(z.life / z.maxLife, 0, 1);
       const R = z.radius;
       if (z.life < fillAt) {
@@ -43094,6 +43261,7 @@ window.WS = window.WS || {};
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < bolts.count; i++) {
       const b = bolts.active[i];
+      if (R._only && b.source !== R._only) continue;   // spotlight pass
       const r = b.radius;
       /* WHAT THIS SHOT IS, as opposed to where it is.
        *
@@ -43368,6 +43536,7 @@ window.WS = window.WS || {};
     }
     for (let i = 0; i < orbits.count; i++) {
       const o = orbits.active[i];
+      if (R._only && o.source !== R._only) continue;   // spotlight pass
       if (o._hidden) continue;
       for (let n = 0; n < o.count; n++) {
         const a = o.angle + (n / o.count) * WS.TAU;
@@ -43523,6 +43692,7 @@ window.WS = window.WS || {};
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < beams.count; i++) {
       const b = beams.active[i];
+      if (R._only && b.source !== R._only) continue;   // spotlight pass
       const fade = WS.clamp(b.life / b.maxLife, 0, 1);
       const dx = b.x2 - b.x1, dy = b.y2 - b.y1;
       const len = WS.sqrt(dx * dx + dy * dy);
@@ -43750,6 +43920,7 @@ window.WS = window.WS || {};
     ctx.lineCap = 'round';
     for (let i = 0; i < pool.count; i++) {
       const s = pool.active[i];
+      if (R._only && s.source !== R._only) continue;   // spotlight pass
       const t = 1 - WS.clamp(s.life / s.maxLife, 0, 1);
       const e = 1 - (1 - t) * (1 - t);
       const full = s.arc >= WS.TAU - 0.01;
@@ -43821,6 +43992,7 @@ window.WS = window.WS || {};
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < flashes.count; i++) {
       const f = flashes.active[i];
+      if (R._only && f.source !== R._only) continue;   // spotlight pass
       const t = 1 - WS.clamp(f.life / f.maxLife, 0, 1);
       /* An impact leaves fast and slows, so the radius eases out rather than
          travelling at a constant rate, and the ring THINS as it grows. A ring
@@ -46117,8 +46289,18 @@ window.WS = window.WS || {};
     plate.append(icon(choice.art || 'rune', colour, 66));
     card.append(plate);
 
-    card.append(el('div', 'card-name', choice.name));
-    if (choice.note) card.append(el('div', 'card-note', choice.note));
+    /* ONE SKELETON FOR EVERY CARD. Name, note, pips, a three-line
+       description, two lines of reactions, and a footer of fixed height -
+       every card has every block, empty or not, so in a row of three the
+       dividing line and the numbers sit at the same height on each, and a
+       re-deal moves nothing. What does not fit (a long description, a third
+       reaction, a long detail) is clipped on the card and whole in its
+       hover tooltip. Cards were growing to fit their longest text, and a
+       row came out ragged, with gaps wherever a card had less to say. */
+    const name = el('div', 'card-name', choice.name);
+    if ((choice.name || '').length > 17) name.classList.add('long');
+    card.append(name);
+    card.append(el('div', 'card-note', choice.note || '\u00a0'));
 
     /* THE RANK, AS A ROW OF PIPS.
      *
@@ -46128,6 +46310,7 @@ window.WS = window.WS || {};
      * along this thing is without being read, and gives the card something to
      * escalate: past two thirds the card takes a gilt edge, and the one that
      * finishes a track takes the full treatment. */
+    if (!(choice.maxRank > 1)) card.append(el('div', 'card-pips empty'));
     if (choice.maxRank > 1) {
       const pips = el('div', 'card-pips');
       const at = choice.rank || 1;
@@ -46146,10 +46329,11 @@ window.WS = window.WS || {};
     card.append(el('div', 'card-body', choice.description || ''));
 
     /* What this will react with. See LevelUp.reactionsFor - the whole game is
-       built on things combining and the card used to say none of it. */
-    if (choice.reacts && choice.reacts.length) {
+       built on things combining and the card used to say none of it. Two on
+       the card; all of them in the tooltip. */
+    {
       const row = el('div', 'card-reacts');
-      for (const r of choice.reacts) {
+      for (const r of (choice.reacts || []).slice(0, 2)) {
         const tag = el('div', 'react' + (r.ready ? ' ready' : ''));
         tag.append(el('i', 'react-mark'), el('span', null, r.text));
         row.append(tag);
@@ -46157,8 +46341,10 @@ window.WS = window.WS || {};
       card.append(row);
     }
 
-    if (choice.detail && WS.Save.settings.levelUpTooltips) {
-      card.append(el('div', 'card-detail', choice.detail));
+    const foot = el('div', 'card-foot');
+    card.append(foot);
+    if (choice.detail && WS.Save.settings.levelUpTooltips && !(choice.stats && choice.stats.length)) {
+      foot.append(el('div', 'card-detail', choice.detail));
     }
     /* A weapon's numbers, on the card (Detailed level-up cards). The pause
        sheet had them and the card - the one place a choice is made - did
@@ -46175,11 +46361,19 @@ window.WS = window.WS || {};
         row.append(el('span', 'cs-k', s.label), val);
         box.append(row);
       }
-      card.append(box);
+      foot.append(box);
     }
     if (index !== undefined) {
       const key = index < 4 ? WS.Input.keyName(WS.Input.keyFor('pick' + (index + 1))) : '';
       if (key) card.append(el('div', 'card-key', key));
+    }
+    // A weapon on offer can be watched before it is taken.
+    if (['new_weapon', 'weapon_rank', 'evolve', 'union'].includes(choice.type) && WS.Weapons[choice.id]) {
+      const watch = el('span', 'card-watch', '\u25B6');
+      watch.setAttribute('role', 'button');
+      watch.dataset.tip = 'Watch it in action';
+      watch.addEventListener('click', (e) => { e.stopPropagation(); UI.openClip(choice.id); });
+      card.append(watch);
     }
     card.addEventListener('click', () => { hideTip(); onPick(choice, card); });
 
@@ -46188,11 +46382,12 @@ window.WS = window.WS || {};
     const p = WS.Game.player;
     if (p) {
       let build = null;
-      // Only when it adds something: a card whose thing works with nothing
-      // would get a tip that repeats the card and covers its neighbour.
-      if (choice.type === 'weapon_rank' || choice.type === 'new_weapon') build = tipWeapon(p, null, choice.id, choice.rank, true);
-      else if (choice.type === 'evolve') build = tipWeapon(p, WS.Player.getWeapon(p, choice.id), null, null, true);
-      else if (choice.type === 'stat') build = tipPassive(p, choice.id, choice.rank, true);
+      // The whole of it: the card is a fixed height and clips what does not
+      // fit (see the skeleton above), so the tooltip carries all of it.
+      if (choice.type === 'weapon_rank' || choice.type === 'new_weapon') build = tipWeapon(p, null, choice.id, choice.rank, false);
+      else if (choice.type === 'evolve') build = tipWeapon(p, WS.Player.getWeapon(p, choice.id), null, null, false);
+      else if (choice.type === 'union') build = tipWeapon(p, null, choice.id, WS.WEAPON_MAX_LEVEL, false);
+      else if (choice.type === 'stat') build = tipPassive(p, choice.id, choice.rank, false);
       else if (choice.type === 'blessing' && (WS.Scaling.BLESSING_STAT[choice.id] || WS.Blessings[choice.id].detail)) build = tipBlessing(p, choice.id);
       if (build) tipOn(card, build, { prefer: ['below', 'above', 'right', 'left'], delay: 260 });
     }
@@ -46867,8 +47062,25 @@ window.WS = window.WS || {};
 
     /* Each section says where you stand. A codex without a count is a list you
        scroll to find out whether you are nearly done. */
+    /* The Spellbook: every weapon and union, each a click away from its
+       clip - what it looks like at rank 1, rank 5 and evolved. */
+    const bookHead = el('div', 'codex-head');
+    bookHead.append(el('h3', 'panel-title', 'Spellbook'));
+    bookHead.append(el('div', 'codex-count', 'Click one to watch it'));
+    const book = el('div', 'spellbook');
+    for (const id of WS.WeaponOrder.concat(WS.Unions.map((u) => u.result))) {
+      const d = WS.Weapons[id];
+      const b = el('button', 'sb-spell' + (d.isUnion ? ' union' : ''));
+      b.type = 'button';
+      b.append(icon(d.art, d.color || WS.CONST.COLORS[d.school] || [1, 1, 1], 36), el('span', null, d.name));
+      b.dataset.tip = WS.template(d.description, d);
+      b.addEventListener('click', () => { WS.Audio.play('ui'); UI.openClip(id); });
+      book.append(b);
+    }
+    wrap.append(bookHead, book);
     const achDone = WS.AchievementOrder.filter((id) => WS.Save.db.achievements[id]).length;
     const achHead = el('div', 'codex-head');
+    achHead.style.marginTop = '22px';
     achHead.append(el('h3', 'panel-title', 'Achievements'));
     achHead.append(el('div', 'codex-count', `${achDone} / ${WS.AchievementOrder.length}`));
     const achRows = el('div', 'rows');
@@ -47775,7 +47987,9 @@ window.WS = window.WS || {};
     choices.forEach((c, i) => row.append(cardFor(c, (choice, card) => {
       this.commitCard(card, () => WS.Game.chooseBlessing(choice));
     }, i)));
-    s.body.append(row);
+    const tray = el('div', 'tray-slot');
+    tray.append(buildTray(WS.Game.player));
+    s.body.append(row, tray);
     this.show(s.inner);
   };
 
@@ -47806,6 +48020,124 @@ window.WS = window.WS || {};
     return WS.Game.pendingLevelUps > 1
       ? `${WS.Game.pendingLevelUps} more after this one.` : 'Take what you need.';
   }
+
+  /* ------------------------------------------------ your build, in view -- */
+  /* A TESTER: "I can't see what I have equipped while I'm choosing - I'd
+     like to use that time to plan." The level-up and blessing screens now
+     carry the build along the bottom: every weapon with its rank, every
+     passive, the discoveries at work. Each is hoverable for the same tooltip
+     the pause sheet gives. A weapon also SPOTLIGHTS: while it is hovered the
+     screen thins out and everything on the field that is not that weapon's
+     dims, so the player can see which of the effects out there is which -
+     the other half of the same report. A click plays its clip. */
+  function buildTray(p) {
+    const tray = el('div', 'build-tray');
+    if (!p) return tray;
+    const group = (label) => {
+      const g = el('div', 'bt-group');
+      g.append(el('span', 'bt-label', label));
+      tray.append(g);
+      return g;
+    };
+    const wg = group('Arsenal');
+    for (const w of p.weapons) {
+      const b = el('button', 'bt-slot');
+      b.type = 'button';
+      b.setAttribute('aria-label', (w.evolved ? w.data.evolveName : w.data.name) + ', watch it');
+      b.append(icon(w.data.art, WS.Weapon.colour(w), 34),
+        el('span', 'bt-rank', w.evolved ? '\u2605' : String(w.level)));
+      tipOn(b, tipWeapon(p, w), { prefer: ['above', 'below'], delay: 120 });
+      const on = () => UI.spotlight(w.id), off = () => UI.spotlight(null);
+      b.addEventListener('mouseenter', on); b.addEventListener('mouseleave', off);
+      b.addEventListener('focus', on); b.addEventListener('blur', off);
+      b.addEventListener('click', (e) => { e.stopPropagation(); UI.spotlight(null); UI.openClip(w.id); });
+      wg.append(b);
+    }
+    for (let i = p.weapons.length; i < WS.MAX_WEAPONS; i++) wg.append(el('span', 'bt-slot empty'));
+    const learned = WS.UpgradeOrder.filter((id) => p.upgradeLevels[id]);
+    if (learned.length) {
+      const pg = group('Passives');
+      for (const id of learned) {
+        const up = WS.Upgrades[id];
+        const b = el('span', 'bt-slot small');
+        b.append(icon(up.art, qualityColour(up.quality), 26), el('span', 'bt-rank', String(p.upgradeLevels[id])));
+        tipOn(b, tipPassive(p, id, p.upgradeLevels[id]), { prefer: ['above', 'below'], delay: 120 });
+        pg.append(b);
+      }
+    }
+    const found = WS.ComboOrder.filter((id) => p.combosActive && p.combosActive[id]);
+    if (found.length) {
+      const dg = group('Discoveries');
+      const chip = el('span', 'bt-chip', String(found.length));
+      chip.dataset.tip = found.map((id) => WS.Combos[id].name + ': ' + WS.template(WS.Combos[id].description, WS.Combos[id])).join('\n');
+      dg.append(chip);
+    }
+    return tray;
+  }
+
+  /** Spotlight one weapon's effects on the field (null for none). */
+  UI.spotlight = function (id) {
+    WS.Renderer.spotlight = id || null;
+    this.overlay.classList.toggle('peek', !!id);
+  };
+
+  /* ---------------------------------------------------- spell clips -- */
+  /* A click on a spell plays it: the real game, filmed by tools/spell-clips.js
+     at rank 1, rank 5, and rank 8 evolved, so a player sees what it looks
+     like when first taken as well as what it grows into. The clips are files
+     beside the game (spells/), loaded only when asked for; a build without
+     them says so rather than showing a broken image. */
+  UI.closeClip = function () {
+    if (this._clip) { this._clip.remove(); this._clip = null; }
+    if (this._clipKey) { window.removeEventListener('keydown', this._clipKey, true); this._clipKey = null; }
+  };
+  UI.openClip = function (id, tier) {
+    const d = WS.Weapons[id];
+    if (!d) return;
+    this.closeClip();
+    hideTip();
+    const tiers = d.isUnion ? [['late', 'As forged']]
+      : [['early', 'Early \u00b7 rank 1'], ['middle', 'Middle \u00b7 rank 5'],
+        ['late', d.evolveName ? 'Late \u00b7 ' + d.evolveName : 'Late \u00b7 rank ' + WS.WEAPON_MAX_LEVEL]];
+    const box = el('div', 'clip-box');
+    const panel = el('div', 'clip-panel');
+    const head = el('div', 'clip-head');
+    head.append(icon(d.art, d.color || WS.CONST.COLORS[d.school] || [1, 1, 1], 30), el('h3', null, d.name));
+    const close = el('button', 'btn small clip-close', 'Close');
+    close.type = 'button';
+    close.addEventListener('click', () => this.closeClip());
+    head.append(close);
+    const frame = el('div', 'clip-frame');
+    const img = el('img', 'clip-img');
+    img.alt = d.name + ' in action';
+    const miss = el('div', 'clip-miss', 'No clip in this build of the game.');
+    miss.hidden = true;
+    img.addEventListener('error', () => { img.hidden = true; miss.hidden = false; });
+    frame.append(img, miss);
+    const tabs = el('div', 'clip-tabs');
+    const set = (t) => {
+      img.hidden = false; miss.hidden = true;
+      img.src = 'spells/' + id + '_' + t + '.webp';
+      for (const b of tabs.children) b.classList.toggle('on', b.dataset.tier === t);
+    };
+    for (const [t, label] of tiers) {
+      const b = el('button', 'btn small clip-tab', label);
+      b.type = 'button'; b.dataset.tier = t;
+      b.addEventListener('click', () => { WS.Audio.play('ui'); set(t); });
+      tabs.append(b);
+    }
+    panel.append(head, frame, tabs, el('p', 'clip-desc', WS.template(d.description, d)));
+    box.append(panel);
+    box.addEventListener('click', (e) => { if (e.target === box) this.closeClip(); });
+    this._clipKey = (e) => {
+      if (e.code === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); this.closeClip(); }
+    };
+    window.addEventListener('keydown', this._clipKey, true);
+    document.body.append(box);
+    this._clip = box;
+    set(tier || (tiers.length > 1 ? 'early' : 'late'));
+    close.focus();
+  };
 
   UI.openLevelUp = function (choices) {
     const p = WS.Game.player;
@@ -47866,10 +48198,11 @@ window.WS = window.WS || {};
     const hint = el('span', 'choice-hint', 'Pick a card to banish it from this run');
     bar.append(reroll, banish, auto, hint);
 
-    s.body.append(row);
+    const tray = el('div', 'tray-slot');
+    s.body.append(row, tray);
     s.foot.append(el('div', 'spacer'), bar, el('div', 'spacer'));
     this._levelUI = {
-      row, bar, banish, reroll, auto, hint,
+      row, bar, banish, reroll, auto, hint, tray,
       title: s.head.querySelector('h1'), sub: s.head.querySelector('.sub'),
     };
     this.fillLevelChoices(choices);
@@ -47926,6 +48259,8 @@ window.WS = window.WS || {};
     this._committing = false;
     ui.row.classList.remove('committing');
     ui.row.replaceChildren();
+    // The build as it stands now - a second level-up in a row has one more rank in it.
+    if (ui.tray) { this.spotlight(null); ui.tray.replaceChildren(buildTray(WS.Game.player)); }
     choices.forEach((c, i) => {
       ui.row.append(cardFor(c, (choice, card) => {
         if (this.banishMode) {
@@ -48126,6 +48461,11 @@ window.WS = window.WS || {};
           `Evolves with ${pair.name}${has ? ' (learned)' : ''} into ${w.data.evolveName}`));
       }
       row.append(main);
+      // Click to watch it (spell clips).
+      const watch = el('span', 'row-watch', '\u25B6');
+      row.append(watch);
+      row.classList.add('clip-link');
+      row.addEventListener('click', () => UI.openClip(w.id));
       tipOn(row, tipWeapon(p, w), { prefer: ['right', 'below'], focus: false });
       left.append(row);
     }

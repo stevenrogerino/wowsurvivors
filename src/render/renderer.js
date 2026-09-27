@@ -968,6 +968,26 @@
        round anyway - they come from him. */
     this.drawPlayer(ctx, player, time);
 
+    /* THE SPOTLIGHT. A weapon is hovered in the build tray: veil the field,
+       then draw that weapon's own effects again on top of the veil, and the
+       survivor they come from. Everything else stays under it. */
+    if (R.spotlight && game.player) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(4,5,8,.78)';
+      ctx.fillRect(-4000, -4000, 12000, 12000);
+      ctx.restore();
+      R._only = R.spotlight;
+      try {
+        this.drawZones(ctx, time);
+        this.drawOrbits(ctx, player);
+        this.drawBolts(ctx);
+        this.drawBeams(ctx);
+        this.drawFlashes(ctx);
+        this.drawStrikes(ctx);
+      } finally { R._only = null; }
+      this.drawPlayer(ctx, player, time);
+    }
+
     // Edennil and the crate, in the air over everything on the field.
     this.drawAirdropSky(ctx, time);
 
@@ -1987,6 +2007,7 @@
     ctx.save();
     for (let i = 0; i < zones.count; i++) {
       const z = zones.active[i];
+      if (R._only && z.source !== R._only) continue;   // spotlight pass
       const fade = WS.clamp(z.life / z.maxLife, 0, 1);
       const R = z.radius;
       if (z.life < fillAt) {
@@ -2951,6 +2972,7 @@
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < bolts.count; i++) {
       const b = bolts.active[i];
+      if (R._only && b.source !== R._only) continue;   // spotlight pass
       const r = b.radius;
       /* WHAT THIS SHOT IS, as opposed to where it is.
        *
@@ -3225,6 +3247,7 @@
     }
     for (let i = 0; i < orbits.count; i++) {
       const o = orbits.active[i];
+      if (R._only && o.source !== R._only) continue;   // spotlight pass
       if (o._hidden) continue;
       for (let n = 0; n < o.count; n++) {
         const a = o.angle + (n / o.count) * WS.TAU;
@@ -3380,6 +3403,7 @@
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < beams.count; i++) {
       const b = beams.active[i];
+      if (R._only && b.source !== R._only) continue;   // spotlight pass
       const fade = WS.clamp(b.life / b.maxLife, 0, 1);
       const dx = b.x2 - b.x1, dy = b.y2 - b.y1;
       const len = WS.sqrt(dx * dx + dy * dy);
@@ -3607,6 +3631,7 @@
     ctx.lineCap = 'round';
     for (let i = 0; i < pool.count; i++) {
       const s = pool.active[i];
+      if (R._only && s.source !== R._only) continue;   // spotlight pass
       const t = 1 - WS.clamp(s.life / s.maxLife, 0, 1);
       const e = 1 - (1 - t) * (1 - t);
       const full = s.arc >= WS.TAU - 0.01;
@@ -3678,6 +3703,7 @@
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < flashes.count; i++) {
       const f = flashes.active[i];
+      if (R._only && f.source !== R._only) continue;   // spotlight pass
       const t = 1 - WS.clamp(f.life / f.maxLife, 0, 1);
       /* An impact leaves fast and slows, so the radius eases out rather than
          travelling at a constant rate, and the ring THINS as it grows. A ring

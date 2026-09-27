@@ -188,6 +188,7 @@
        the same diamond whatever the card called it - an Axe Gyre with no
        axe in it. This is the same one field, stamped the same way. */
     o.art = w.data.art || null;
+    o.source = w.id;           // whose it is, for the spotlight (beams had none)
   }
 
   function fireAimedShot(player, w, target, fan) {
@@ -926,7 +927,10 @@
   Weapon.fire = function (player, w) {
     const handler = Weapon.behaviors[behaviorOf(w)];
     if (!handler) return;
-    const fired = handler(player, w);
+    // Every flash and strike made while this fires is this weapon's (FX.tag).
+    WS.FX.tag = w.id;
+    let fired;
+    try { fired = handler(player, w); } finally { WS.FX.tag = null; }
     if (fired === false) return;
     // A muzzle flash in the weapon's own colour, so a six-weapon build reads
     // as six distinct instruments rather than one undifferentiated stream.

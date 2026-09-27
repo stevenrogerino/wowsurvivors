@@ -1294,8 +1294,18 @@
     plate.append(icon(choice.art || 'rune', colour, 66));
     card.append(plate);
 
-    card.append(el('div', 'card-name', choice.name));
-    if (choice.note) card.append(el('div', 'card-note', choice.note));
+    /* ONE SKELETON FOR EVERY CARD. Name, note, pips, a three-line
+       description, two lines of reactions, and a footer of fixed height -
+       every card has every block, empty or not, so in a row of three the
+       dividing line and the numbers sit at the same height on each, and a
+       re-deal moves nothing. What does not fit (a long description, a third
+       reaction, a long detail) is clipped on the card and whole in its
+       hover tooltip. Cards were growing to fit their longest text, and a
+       row came out ragged, with gaps wherever a card had less to say. */
+    const name = el('div', 'card-name', choice.name);
+    if ((choice.name || '').length > 17) name.classList.add('long');
+    card.append(name);
+    card.append(el('div', 'card-note', choice.note || '\u00a0'));
 
     /* THE RANK, AS A ROW OF PIPS.
      *
@@ -1305,6 +1315,7 @@
      * along this thing is without being read, and gives the card something to
      * escalate: past two thirds the card takes a gilt edge, and the one that
      * finishes a track takes the full treatment. */
+    if (!(choice.maxRank > 1)) card.append(el('div', 'card-pips empty'));
     if (choice.maxRank > 1) {
       const pips = el('div', 'card-pips');
       const at = choice.rank || 1;
@@ -1323,10 +1334,11 @@
     card.append(el('div', 'card-body', choice.description || ''));
 
     /* What this will react with. See LevelUp.reactionsFor - the whole game is
-       built on things combining and the card used to say none of it. */
-    if (choice.reacts && choice.reacts.length) {
+       built on things combining and the card used to say none of it. Two on
+       the card; all of them in the tooltip. */
+    {
       const row = el('div', 'card-reacts');
-      for (const r of choice.reacts) {
+      for (const r of (choice.reacts || []).slice(0, 2)) {
         const tag = el('div', 'react' + (r.ready ? ' ready' : ''));
         tag.append(el('i', 'react-mark'), el('span', null, r.text));
         row.append(tag);
@@ -1334,8 +1346,10 @@
       card.append(row);
     }
 
-    if (choice.detail && WS.Save.settings.levelUpTooltips) {
-      card.append(el('div', 'card-detail', choice.detail));
+    const foot = el('div', 'card-foot');
+    card.append(foot);
+    if (choice.detail && WS.Save.settings.levelUpTooltips && !(choice.stats && choice.stats.length)) {
+      foot.append(el('div', 'card-detail', choice.detail));
     }
     /* A weapon's numbers, on the card (Detailed level-up cards). The pause
        sheet had them and the card - the one place a choice is made - did
@@ -1352,11 +1366,19 @@
         row.append(el('span', 'cs-k', s.label), val);
         box.append(row);
       }
-      card.append(box);
+      foot.append(box);
     }
     if (index !== undefined) {
       const key = index < 4 ? WS.Input.keyName(WS.Input.keyFor('pick' + (index + 1))) : '';
       if (key) card.append(el('div', 'card-key', key));
+    }
+    // A weapon on offer can be watched before it is taken.
+    if (['new_weapon', 'weapon_rank', 'evolve', 'union'].includes(choice.type) && WS.Weapons[choice.id]) {
+      const watch = el('span', 'card-watch', '\u25B6');
+      watch.setAttribute('role', 'button');
+      watch.dataset.tip = 'Watch it in action';
+      watch.addEventListener('click', (e) => { e.stopPropagation(); UI.openClip(choice.id); });
+      card.append(watch);
     }
     card.addEventListener('click', () => { hideTip(); onPick(choice, card); });
 
@@ -1365,11 +1387,12 @@
     const p = WS.Game.player;
     if (p) {
       let build = null;
-      // Only when it adds something: a card whose thing works with nothing
-      // would get a tip that repeats the card and covers its neighbour.
-      if (choice.type === 'weapon_rank' || choice.type === 'new_weapon') build = tipWeapon(p, null, choice.id, choice.rank, true);
-      else if (choice.type === 'evolve') build = tipWeapon(p, WS.Player.getWeapon(p, choice.id), null, null, true);
-      else if (choice.type === 'stat') build = tipPassive(p, choice.id, choice.rank, true);
+      // The whole of it: the card is a fixed height and clips what does not
+      // fit (see the skeleton above), so the tooltip carries all of it.
+      if (choice.type === 'weapon_rank' || choice.type === 'new_weapon') build = tipWeapon(p, null, choice.id, choice.rank, false);
+      else if (choice.type === 'evolve') build = tipWeapon(p, WS.Player.getWeapon(p, choice.id), null, null, false);
+      else if (choice.type === 'union') build = tipWeapon(p, null, choice.id, WS.WEAPON_MAX_LEVEL, false);
+      else if (choice.type === 'stat') build = tipPassive(p, choice.id, choice.rank, false);
       else if (choice.type === 'blessing' && (WS.Scaling.BLESSING_STAT[choice.id] || WS.Blessings[choice.id].detail)) build = tipBlessing(p, choice.id);
       if (build) tipOn(card, build, { prefer: ['below', 'above', 'right', 'left'], delay: 260 });
     }
@@ -2044,8 +2067,25 @@
 
     /* Each section says where you stand. A codex without a count is a list you
        scroll to find out whether you are nearly done. */
+    /* The Spellbook: every weapon and union, each a click away from its
+       clip - what it looks like at rank 1, rank 5 and evolved. */
+    const bookHead = el('div', 'codex-head');
+    bookHead.append(el('h3', 'panel-title', 'Spellbook'));
+    bookHead.append(el('div', 'codex-count', 'Click one to watch it'));
+    const book = el('div', 'spellbook');
+    for (const id of WS.WeaponOrder.concat(WS.Unions.map((u) => u.result))) {
+      const d = WS.Weapons[id];
+      const b = el('button', 'sb-spell' + (d.isUnion ? ' union' : ''));
+      b.type = 'button';
+      b.append(icon(d.art, d.color || WS.CONST.COLORS[d.school] || [1, 1, 1], 36), el('span', null, d.name));
+      b.dataset.tip = WS.template(d.description, d);
+      b.addEventListener('click', () => { WS.Audio.play('ui'); UI.openClip(id); });
+      book.append(b);
+    }
+    wrap.append(bookHead, book);
     const achDone = WS.AchievementOrder.filter((id) => WS.Save.db.achievements[id]).length;
     const achHead = el('div', 'codex-head');
+    achHead.style.marginTop = '22px';
     achHead.append(el('h3', 'panel-title', 'Achievements'));
     achHead.append(el('div', 'codex-count', `${achDone} / ${WS.AchievementOrder.length}`));
     const achRows = el('div', 'rows');
@@ -2952,7 +2992,9 @@
     choices.forEach((c, i) => row.append(cardFor(c, (choice, card) => {
       this.commitCard(card, () => WS.Game.chooseBlessing(choice));
     }, i)));
-    s.body.append(row);
+    const tray = el('div', 'tray-slot');
+    tray.append(buildTray(WS.Game.player));
+    s.body.append(row, tray);
     this.show(s.inner);
   };
 
@@ -2983,6 +3025,124 @@
     return WS.Game.pendingLevelUps > 1
       ? `${WS.Game.pendingLevelUps} more after this one.` : 'Take what you need.';
   }
+
+  /* ------------------------------------------------ your build, in view -- */
+  /* A TESTER: "I can't see what I have equipped while I'm choosing - I'd
+     like to use that time to plan." The level-up and blessing screens now
+     carry the build along the bottom: every weapon with its rank, every
+     passive, the discoveries at work. Each is hoverable for the same tooltip
+     the pause sheet gives. A weapon also SPOTLIGHTS: while it is hovered the
+     screen thins out and everything on the field that is not that weapon's
+     dims, so the player can see which of the effects out there is which -
+     the other half of the same report. A click plays its clip. */
+  function buildTray(p) {
+    const tray = el('div', 'build-tray');
+    if (!p) return tray;
+    const group = (label) => {
+      const g = el('div', 'bt-group');
+      g.append(el('span', 'bt-label', label));
+      tray.append(g);
+      return g;
+    };
+    const wg = group('Arsenal');
+    for (const w of p.weapons) {
+      const b = el('button', 'bt-slot');
+      b.type = 'button';
+      b.setAttribute('aria-label', (w.evolved ? w.data.evolveName : w.data.name) + ', watch it');
+      b.append(icon(w.data.art, WS.Weapon.colour(w), 34),
+        el('span', 'bt-rank', w.evolved ? '\u2605' : String(w.level)));
+      tipOn(b, tipWeapon(p, w), { prefer: ['above', 'below'], delay: 120 });
+      const on = () => UI.spotlight(w.id), off = () => UI.spotlight(null);
+      b.addEventListener('mouseenter', on); b.addEventListener('mouseleave', off);
+      b.addEventListener('focus', on); b.addEventListener('blur', off);
+      b.addEventListener('click', (e) => { e.stopPropagation(); UI.spotlight(null); UI.openClip(w.id); });
+      wg.append(b);
+    }
+    for (let i = p.weapons.length; i < WS.MAX_WEAPONS; i++) wg.append(el('span', 'bt-slot empty'));
+    const learned = WS.UpgradeOrder.filter((id) => p.upgradeLevels[id]);
+    if (learned.length) {
+      const pg = group('Passives');
+      for (const id of learned) {
+        const up = WS.Upgrades[id];
+        const b = el('span', 'bt-slot small');
+        b.append(icon(up.art, qualityColour(up.quality), 26), el('span', 'bt-rank', String(p.upgradeLevels[id])));
+        tipOn(b, tipPassive(p, id, p.upgradeLevels[id]), { prefer: ['above', 'below'], delay: 120 });
+        pg.append(b);
+      }
+    }
+    const found = WS.ComboOrder.filter((id) => p.combosActive && p.combosActive[id]);
+    if (found.length) {
+      const dg = group('Discoveries');
+      const chip = el('span', 'bt-chip', String(found.length));
+      chip.dataset.tip = found.map((id) => WS.Combos[id].name + ': ' + WS.template(WS.Combos[id].description, WS.Combos[id])).join('\n');
+      dg.append(chip);
+    }
+    return tray;
+  }
+
+  /** Spotlight one weapon's effects on the field (null for none). */
+  UI.spotlight = function (id) {
+    WS.Renderer.spotlight = id || null;
+    this.overlay.classList.toggle('peek', !!id);
+  };
+
+  /* ---------------------------------------------------- spell clips -- */
+  /* A click on a spell plays it: the real game, filmed by tools/spell-clips.js
+     at rank 1, rank 5, and rank 8 evolved, so a player sees what it looks
+     like when first taken as well as what it grows into. The clips are files
+     beside the game (spells/), loaded only when asked for; a build without
+     them says so rather than showing a broken image. */
+  UI.closeClip = function () {
+    if (this._clip) { this._clip.remove(); this._clip = null; }
+    if (this._clipKey) { window.removeEventListener('keydown', this._clipKey, true); this._clipKey = null; }
+  };
+  UI.openClip = function (id, tier) {
+    const d = WS.Weapons[id];
+    if (!d) return;
+    this.closeClip();
+    hideTip();
+    const tiers = d.isUnion ? [['late', 'As forged']]
+      : [['early', 'Early \u00b7 rank 1'], ['middle', 'Middle \u00b7 rank 5'],
+        ['late', d.evolveName ? 'Late \u00b7 ' + d.evolveName : 'Late \u00b7 rank ' + WS.WEAPON_MAX_LEVEL]];
+    const box = el('div', 'clip-box');
+    const panel = el('div', 'clip-panel');
+    const head = el('div', 'clip-head');
+    head.append(icon(d.art, d.color || WS.CONST.COLORS[d.school] || [1, 1, 1], 30), el('h3', null, d.name));
+    const close = el('button', 'btn small clip-close', 'Close');
+    close.type = 'button';
+    close.addEventListener('click', () => this.closeClip());
+    head.append(close);
+    const frame = el('div', 'clip-frame');
+    const img = el('img', 'clip-img');
+    img.alt = d.name + ' in action';
+    const miss = el('div', 'clip-miss', 'No clip in this build of the game.');
+    miss.hidden = true;
+    img.addEventListener('error', () => { img.hidden = true; miss.hidden = false; });
+    frame.append(img, miss);
+    const tabs = el('div', 'clip-tabs');
+    const set = (t) => {
+      img.hidden = false; miss.hidden = true;
+      img.src = 'spells/' + id + '_' + t + '.webp';
+      for (const b of tabs.children) b.classList.toggle('on', b.dataset.tier === t);
+    };
+    for (const [t, label] of tiers) {
+      const b = el('button', 'btn small clip-tab', label);
+      b.type = 'button'; b.dataset.tier = t;
+      b.addEventListener('click', () => { WS.Audio.play('ui'); set(t); });
+      tabs.append(b);
+    }
+    panel.append(head, frame, tabs, el('p', 'clip-desc', WS.template(d.description, d)));
+    box.append(panel);
+    box.addEventListener('click', (e) => { if (e.target === box) this.closeClip(); });
+    this._clipKey = (e) => {
+      if (e.code === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); this.closeClip(); }
+    };
+    window.addEventListener('keydown', this._clipKey, true);
+    document.body.append(box);
+    this._clip = box;
+    set(tier || (tiers.length > 1 ? 'early' : 'late'));
+    close.focus();
+  };
 
   UI.openLevelUp = function (choices) {
     const p = WS.Game.player;
@@ -3043,10 +3203,11 @@
     const hint = el('span', 'choice-hint', 'Pick a card to banish it from this run');
     bar.append(reroll, banish, auto, hint);
 
-    s.body.append(row);
+    const tray = el('div', 'tray-slot');
+    s.body.append(row, tray);
     s.foot.append(el('div', 'spacer'), bar, el('div', 'spacer'));
     this._levelUI = {
-      row, bar, banish, reroll, auto, hint,
+      row, bar, banish, reroll, auto, hint, tray,
       title: s.head.querySelector('h1'), sub: s.head.querySelector('.sub'),
     };
     this.fillLevelChoices(choices);
@@ -3103,6 +3264,8 @@
     this._committing = false;
     ui.row.classList.remove('committing');
     ui.row.replaceChildren();
+    // The build as it stands now - a second level-up in a row has one more rank in it.
+    if (ui.tray) { this.spotlight(null); ui.tray.replaceChildren(buildTray(WS.Game.player)); }
     choices.forEach((c, i) => {
       ui.row.append(cardFor(c, (choice, card) => {
         if (this.banishMode) {
@@ -3303,6 +3466,11 @@
           `Evolves with ${pair.name}${has ? ' (learned)' : ''} into ${w.data.evolveName}`));
       }
       row.append(main);
+      // Click to watch it (spell clips).
+      const watch = el('span', 'row-watch', '\u25B6');
+      row.append(watch);
+      row.classList.add('clip-link');
+      row.addEventListener('click', () => UI.openClip(w.id));
       tipOn(row, tipWeapon(p, w), { prefer: ['right', 'below'], focus: false });
       left.append(row);
     }

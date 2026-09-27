@@ -107,7 +107,8 @@ function createWindow() {
 app.whenReady().then(() => {
   /* Serve the bundle over the registered scheme. The path is resolved inside
    * ROOT and anything that climbs out of it is refused - the game only ever
-   * asks for one file, so a request for anything else is not the game asking. */
+   * asks for its page and the spell clips in spells/ beside it, so a request
+   * outside the folder is not the game asking. */
   protocol.handle(SCHEME, (request) => {
     const wanted = decodeURIComponent(new URL(request.url).pathname).replace(/^\/+/, '');
     const file = path.join(ROOT, wanted || ENTRY);

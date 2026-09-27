@@ -210,6 +210,8 @@
     f.spikes = spikes || 0;
     // A nova's school, so its wave can look like what it is (see drawFlashes).
     f.style = style || null;
+    // Whose it is, for the spotlight (Weapon.fire sets FX.tag while it fires).
+    f.source = FX.tag || null;
   };
 
   /** A struck palm (Iron Palms and its union): a shockwave crescent at the
@@ -219,6 +221,7 @@
     const s = FX.strikes.acquire();
     if (!s) return;
     const o = opts || {};
+    s.source = FX.tag || null;
     s.x = x; s.y = y; s.aim = aim; s.reach = reach; s.arc = arc;
     s.colour = colour; s.evolved = !!o.evolved; s.blend = o.blend || null;
     s.life = o.life || 0.26; s.maxLife = s.life;

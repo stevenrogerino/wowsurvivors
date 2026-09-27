@@ -63,3 +63,13 @@ fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
 fs.writeFileSync(out, result);
 console.log(`bundled ${scripts.length} scripts + ${sheets.length} stylesheets -> ${path.relative(root, out)} (${(result.length / 1024).toFixed(0)} KB)`);
+
+// A page written somewhere to be played from (the desktop build's game/)
+// takes the spell clips with it: they are loaded from ./spells/ beside the
+// page, only when a clip is asked for, and are the one thing not inlined.
+const clips = path.join(root, 'spells');
+if (named && !artifact && fs.existsSync(clips)) {
+  const dest = path.join(path.dirname(path.resolve(out)), 'spells');
+  fs.mkdirSync(dest, { recursive: true });
+  for (const f of fs.readdirSync(clips)) fs.copyFileSync(path.join(clips, f), path.join(dest, f));
+}
