@@ -3052,7 +3052,8 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
   overflow: hidden; height: calc(3 * 1.4em);
 }
 .card .card-reacts { width: 100%; height: calc(2 * 1.5em + 4px); overflow: hidden; }
-.card .card-reacts .react { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .card-reacts .react { white-space: nowrap; overflow: hidden; max-width: 100%; }
+.card .card-reacts .react > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card .card-foot {
   width: 100%; margin-top: auto; height: 78px; overflow: hidden;
   border-top: 1px solid var(--rim); padding-top: 8px;
@@ -3126,10 +3127,59 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
   border: 1px solid rgba(190,150,255,.5); border-radius: 13px; background: rgba(60,40,90,.35);
 }
 
-/* SPOTLIGHT: a weapon in the tray is hovered, so the screen thins out to let
-   the field through, where everything but that weapon has been dimmed. */
-#overlay.peek { background: rgba(6,7,11,.12); backdrop-filter: none; transition: background .18s var(--ease); }
-#overlay.peek .card-row, #overlay.peek .overlay-head, #overlay.peek .overlay-foot { opacity: .12; transition: opacity .18s var(--ease); }
+/* Folded, the build is one tab hanging under the cards: a chevron, a name
+   and what you carry. Opened, the strip drops out beneath it - below the
+   cards, so it never sits over one. */
+.bt-drawer { display: flex; flex-direction: column; align-items: center; }
+.bt-drawer:not(.open) .build-tray { display: none; }
+.bt-drawer.open .build-tray { margin-top: 6px; animation: bt-drop .2s var(--ease) both; }
+@keyframes bt-drop { from { opacity: 0; transform: translateY(-8px); } }
+.bt-toggle {
+  display: inline-flex; align-items: center; gap: 10px; padding: 5px 16px 6px 8px;
+  border: 1px solid var(--rim); border-top-color: transparent; border-radius: 0 0 14px 14px;
+  background: linear-gradient(180deg, rgba(8,9,14,.5), rgba(14,16,24,.85));
+  box-shadow: var(--bevel); color: inherit; font: inherit; cursor: pointer;
+  transition: border-color .15s var(--ease), box-shadow .15s var(--ease);
+}
+.bt-toggle:hover, .bt-toggle:focus-visible {
+  border-color: var(--gilt, #f5c56b); border-top-color: transparent;
+  box-shadow: var(--bevel), 0 6px 18px -8px var(--gilt, #f5c56b);
+}
+.bt-chev {
+  position: relative; width: 20px; height: 20px; flex: none;
+  border: 1px solid var(--rim); border-radius: 50%; background: rgba(4,5,8,.6);
+}
+.bt-chev::before {
+  content: ''; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px;
+  border: solid var(--gilt, #f5c56b); border-width: 0 1.5px 1.5px 0;
+  transform: translate(-50%, -70%) rotate(45deg);
+  transition: transform .2s var(--ease);
+}
+.bt-drawer.open .bt-chev::before { transform: translate(-50%, -25%) rotate(225deg); }
+.bt-title { font-family: var(--voice); font-weight: 700; font-size: 15px; color: #f1dfb6; }
+.bt-sum { font-family: var(--voice); font-style: italic; font-size: 13px; color: var(--ink-faint); }
+
+/* A card with nothing for its footer (a blessing) gives the room to its
+   description rather than showing an empty ruled box under a cut sentence. */
+.card.no-foot .card-foot { display: none; }
+@media (min-width: 721px) {
+  .card.no-foot .card-body { flex: 1 1 0; min-height: 0; height: auto; -webkit-line-clamp: 7; }
+}
+@media (min-width: 721px) and (max-height: 680px) {
+  .card.no-foot .card-body { -webkit-line-clamp: 5; }
+  /* No room to push anything down on a short screen: the opened strip drops
+     over the reroll row instead, so the cards above never move. */
+  .overlay-body:has(> .tray-slot) { overflow: visible; }
+  .tray-slot { position: relative; z-index: 3; }
+  .bt-drawer.open .build-tray {
+    position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    width: max-content; max-width: 94vw;
+    background: linear-gradient(180deg, #0e1018, #08090e);
+    animation-name: bt-drop-abs;
+  }
+  .overlay-body:has(> .tray-slot) .scroll-scrim { display: none; }
+  @keyframes bt-drop-abs { from { opacity: 0; transform: translate(-50%, -8px); } }
+}
 
 /* =================================================== THE SPELL CLIPS === */
 .clip-box {
@@ -3138,7 +3188,7 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
   background: rgba(4,5,8,.66); backdrop-filter: blur(2px);
 }
 .clip-panel {
-  width: min(520px, 92vw); padding: 16px 18px 18px;
+  width: min(700px, 94vw, calc((100vh - 180px) * 1.6 + 36px)); padding: 16px 18px 18px;
   border: 1px solid var(--rim); border-radius: 2px;
   background: linear-gradient(180deg, var(--obsidian-2), var(--obsidian));
   box-shadow: var(--bevel-deep), 0 30px 80px -30px #000;
@@ -3146,10 +3196,10 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .clip-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .clip-head h3 { flex: 1; margin: 0; font-family: var(--voice); font-size: 22px; color: #f4ead6; }
 .clip-frame {
-  aspect-ratio: 560 / 360; width: 100%; display: grid; place-items: center;
+  aspect-ratio: 16 / 10; width: 100%; display: grid; place-items: center;
   border: 1px solid var(--rim); background: #0b0d12; overflow: hidden;
 }
-.clip-img { width: 100%; height: 100%; object-fit: cover; image-rendering: auto; }
+.clip-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .clip-miss { font-family: var(--voice); font-style: italic; color: var(--ink-faint); padding: 20px; }
 .clip-tabs { display: flex; gap: 8px; justify-content: center; margin: 10px 0 6px; flex-wrap: wrap; }
 .clip-tab.on { border-color: var(--gilt, #f5c56b); color: var(--gilt, #f5c56b); }

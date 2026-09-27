@@ -968,26 +968,6 @@
        round anyway - they come from him. */
     this.drawPlayer(ctx, player, time);
 
-    /* THE SPOTLIGHT. A weapon is hovered in the build tray: veil the field,
-       then draw that weapon's own effects again on top of the veil, and the
-       survivor they come from. Everything else stays under it. */
-    if (R.spotlight && game.player) {
-      ctx.save();
-      ctx.fillStyle = 'rgba(4,5,8,.78)';
-      ctx.fillRect(-4000, -4000, 12000, 12000);
-      ctx.restore();
-      R._only = R.spotlight;
-      try {
-        this.drawZones(ctx, time);
-        this.drawOrbits(ctx, player);
-        this.drawBolts(ctx);
-        this.drawBeams(ctx);
-        this.drawFlashes(ctx);
-        this.drawStrikes(ctx);
-      } finally { R._only = null; }
-      this.drawPlayer(ctx, player, time);
-    }
-
     // Edennil and the crate, in the air over everything on the field.
     this.drawAirdropSky(ctx, time);
 
@@ -1520,9 +1500,19 @@
     g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height);
     return (OWL_SHADE[key] = c);
   }
+  /* A big owl does not flap the whole way: four beats, then a glide on
+     spread wings, then four more. `d.flap` counts beats; this maps it to
+     where in a beat the wings are, holding them fully open (a quarter of the
+     way through, the top of the stroke) for the glide. */
+  function owlPhase(d) {
+    const t = ((d.flap % 5) + 5) % 5;
+    if (t < 3.25) return t % 1;
+    if (t < 4.25) return 0.25;
+    return (t - 1) % 1;
+  }
   function owlFrame(d) {
     const n = WS.EdennilArt.frames;
-    return WS.floor(((d.flap % 1) + 1) % 1 * n) % n;
+    return WS.floor(owlPhase(d) * n) % n;
   }
 
   /** The canopy: gores of the Watch's cream and ember, cords to the crate.
@@ -1650,6 +1640,8 @@
       ctx.translate(gx + 24, gy + 10);
       ctx.rotate(d.heading + Math.PI / 2);
       ctx.drawImage(shade, -size * 0.45, -size * 0.45, size * 0.9, size * 0.9);
+      ctx.beginPath(); ctx.ellipse(0, -size * 0.17, size * 0.075, size * 0.07, 0, 0, WS.TAU);
+      ctx.fillStyle = '#000'; ctx.fill();
       ctx.restore();
     }
   };
@@ -1680,19 +1672,35 @@
         ctx.drawImage(spr, -cs / 2, -cs * 0.5, cs, cs);
         ctx.restore();
       }
-      // Edennil: the body along the heading, the head turned to look down.
+      // Edennil: the body along the heading, and the head on its neck,
+      // turning to keep the survivor in sight as he passes over - an owl
+      // can look nearly straight back, so it follows him well past.
       const gx = d.x + d.dx * d.s, gy = d.y + d.dy * d.s;
-      const bx = gx, by = gy - alt + WS.sin(d.flap * WS.TAU) * 3;
+      const bx = gx, by = gy - alt + WS.sin(owlPhase(d) * WS.TAU) * 3;
       const body = WS.Sprites.creature('edennil_w' + owlFrame(d), [0.5, 0.5, 0.5], WS.round(size));
+      const turn = d.heading + Math.PI / 2;
       ctx.save();
       ctx.translate(bx, by);
-      ctx.rotate(d.heading + Math.PI / 2);
+      ctx.rotate(turn);
       ctx.drawImage(body, -size / 2, -size / 2, size, size);
       ctx.restore();
-      const fs = size * 0.36;
-      const hx = bx + d.dx * size * 0.24, hy = by + d.dy * size * 0.24 - 4;
-      const face = WS.Sprites.creature('edennil_face', [0.5, 0.5, 0.5], WS.round(fs));
-      ctx.drawImage(face, hx - fs / 2, hy - fs * 0.55, fs, fs);
+      const p = WS.Game.player;
+      let want = 0;
+      if (p) {
+        const rel = Math.atan2(p.y - gy, p.x - gx) - d.heading;
+        want = WS.clamp(Math.atan2(WS.sin(rel), WS.cos(rel)), -2.1, 2.1);
+      }
+      const dt = d._seen !== undefined ? WS.clamp(time - d._seen, 0, 0.1) : 0;
+      d._seen = time;
+      d.look = (d.look || 0) + (want - (d.look || 0)) * WS.min(1, dt * 3.5);
+      const hs = size * 0.32;
+      const nx = bx + d.dx * size * 0.19, ny = by + d.dy * size * 0.19;
+      const headArt = WS.Sprites.creature('edennil_head', [0.5, 0.5, 0.5], WS.round(hs));
+      ctx.save();
+      ctx.translate(nx, ny);
+      ctx.rotate(turn + d.look);
+      ctx.drawImage(headArt, -hs / 2, -hs * 0.56, hs, hs);
+      ctx.restore();
     }
   };
 
@@ -2007,7 +2015,6 @@
     ctx.save();
     for (let i = 0; i < zones.count; i++) {
       const z = zones.active[i];
-      if (R._only && z.source !== R._only) continue;   // spotlight pass
       const fade = WS.clamp(z.life / z.maxLife, 0, 1);
       const R = z.radius;
       if (z.life < fillAt) {
@@ -2972,7 +2979,6 @@
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < bolts.count; i++) {
       const b = bolts.active[i];
-      if (R._only && b.source !== R._only) continue;   // spotlight pass
       const r = b.radius;
       /* WHAT THIS SHOT IS, as opposed to where it is.
        *
@@ -3247,7 +3253,6 @@
     }
     for (let i = 0; i < orbits.count; i++) {
       const o = orbits.active[i];
-      if (R._only && o.source !== R._only) continue;   // spotlight pass
       if (o._hidden) continue;
       for (let n = 0; n < o.count; n++) {
         const a = o.angle + (n / o.count) * WS.TAU;
@@ -3403,7 +3408,6 @@
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < beams.count; i++) {
       const b = beams.active[i];
-      if (R._only && b.source !== R._only) continue;   // spotlight pass
       const fade = WS.clamp(b.life / b.maxLife, 0, 1);
       const dx = b.x2 - b.x1, dy = b.y2 - b.y1;
       const len = WS.sqrt(dx * dx + dy * dy);
@@ -3631,7 +3635,6 @@
     ctx.lineCap = 'round';
     for (let i = 0; i < pool.count; i++) {
       const s = pool.active[i];
-      if (R._only && s.source !== R._only) continue;   // spotlight pass
       const t = 1 - WS.clamp(s.life / s.maxLife, 0, 1);
       const e = 1 - (1 - t) * (1 - t);
       const full = s.arc >= WS.TAU - 0.01;
@@ -3703,7 +3706,6 @@
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < flashes.count; i++) {
       const f = flashes.active[i];
-      if (R._only && f.source !== R._only) continue;   // spotlight pass
       const t = 1 - WS.clamp(f.life / f.maxLife, 0, 1);
       /* An impact leaves fast and slows, so the radius eases out rather than
          travelling at a constant rate, and the ring THINS as it grows. A ring

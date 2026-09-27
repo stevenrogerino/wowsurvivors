@@ -177,7 +177,7 @@
        the survivor; the owl enters and leaves airdropMargin past the field's
        edge; airdropSize is its wingspan; airdropFlap wingbeats a second. */
     airdropSpeed: 300, airdropAltitude: 170, airdropFreefall: 0.3, airdropFall: 2.2,
-    airdropNear: 180, airdropFar: 380, airdropMargin: 180, airdropSize: 190, airdropFlap: 1.3,
+    airdropNear: 180, airdropFar: 380, airdropMargin: 180, airdropSize: 230, airdropFlap: 1.3,
     eggVendorFirst: 150,
     eggVendorDistance: 400,
     coffinTime: 120,

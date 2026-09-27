@@ -129,7 +129,10 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     .forEach((rel) => {
       const dst = path.join(work, rel);
       fs.mkdirSync(path.dirname(dst), { recursive: true });
-      fs.copyFileSync(path.join(REPO, rel), dst);
+      const src = path.join(REPO, rel);
+      // A tracked link (spells/ -> site/spells) stays a link.
+      if (fs.lstatSync(src).isSymbolicLink()) fs.symlinkSync(fs.readlinkSync(src), dst);
+      else fs.copyFileSync(src, dst);
     });
 
   const shippedBefore = fs.readFileSync(path.join(work, 'src/data/weapons.js'), 'utf8');

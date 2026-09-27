@@ -1368,6 +1368,8 @@
       }
       foot.append(box);
     }
+    // Nothing for the footer (a blessing): the description has its room.
+    if (!foot.childElementCount) card.classList.add('no-foot');
     if (index !== undefined) {
       const key = index < 4 ? WS.Input.keyName(WS.Input.keyFor('pick' + (index + 1))) : '';
       if (key) card.append(el('div', 'card-key', key));
@@ -3035,9 +3037,33 @@
      screen thins out and everything on the field that is not that weapon's
      dims, so the player can see which of the effects out there is which -
      the other half of the same report. A click plays its clip. */
+  /* The build, under the cards, folded away until asked for: a card's tip
+     drops below the card, and a strip of icons there was always under it.
+     Folded it is one line saying what you carry; opened, the icons, each
+     with its full tip. Whether it is open is kept for the rest of the
+     session, so a player who wants it up has it up at every level. */
   function buildTray(p) {
+    const drawer = el('div', 'bt-drawer' + (UI._trayOpen ? ' open' : ''));
     const tray = el('div', 'build-tray');
-    if (!p) return tray;
+    if (!p) return drawer;
+    const toggle = el('button', 'bt-toggle');
+    toggle.type = 'button';
+    toggle.setAttribute('aria-expanded', String(!!UI._trayOpen));
+    const count = (n, one) => n + ' ' + one + (n === 1 ? '' : 's');
+    const learnedN = WS.UpgradeOrder.filter((id) => p.upgradeLevels[id]).length;
+    const foundN = WS.ComboOrder.filter((id) => p.combosActive && p.combosActive[id]).length;
+    const sum = [count(p.weapons.length, 'weapon'), count(learnedN, 'passive')];
+    if (foundN) sum.push(foundN + (foundN === 1 ? ' discovery' : ' discoveries'));
+    toggle.append(el('span', 'bt-chev'), el('span', 'bt-title', 'Your build'),
+      el('span', 'bt-sum', sum.join(' \u00b7 ')));
+    toggle.addEventListener('click', () => {
+      UI._trayOpen = !UI._trayOpen;
+      drawer.classList.toggle('open', UI._trayOpen);
+      toggle.setAttribute('aria-expanded', String(UI._trayOpen));
+      WS.Audio.play('ui');
+      if (UI._trayOpen) tray.scrollIntoView({ block: 'nearest' });
+    });
+    drawer.append(toggle, tray);
     const group = (label) => {
       const g = el('div', 'bt-group');
       g.append(el('span', 'bt-label', label));
@@ -3052,10 +3078,7 @@
       b.append(icon(w.data.art, WS.Weapon.colour(w), 34),
         el('span', 'bt-rank', w.evolved ? '\u2605' : String(w.level)));
       tipOn(b, tipWeapon(p, w), { prefer: ['above', 'below'], delay: 120 });
-      const on = () => UI.spotlight(w.id), off = () => UI.spotlight(null);
-      b.addEventListener('mouseenter', on); b.addEventListener('mouseleave', off);
-      b.addEventListener('focus', on); b.addEventListener('blur', off);
-      b.addEventListener('click', (e) => { e.stopPropagation(); UI.spotlight(null); UI.openClip(w.id); });
+      b.addEventListener('click', (e) => { e.stopPropagation(); UI.openClip(w.id); });
       wg.append(b);
     }
     for (let i = p.weapons.length; i < WS.MAX_WEAPONS; i++) wg.append(el('span', 'bt-slot empty'));
@@ -3077,14 +3100,8 @@
       chip.dataset.tip = found.map((id) => WS.Combos[id].name + ': ' + WS.template(WS.Combos[id].description, WS.Combos[id])).join('\n');
       dg.append(chip);
     }
-    return tray;
+    return drawer;
   }
-
-  /** Spotlight one weapon's effects on the field (null for none). */
-  UI.spotlight = function (id) {
-    WS.Renderer.spotlight = id || null;
-    this.overlay.classList.toggle('peek', !!id);
-  };
 
   /* ---------------------------------------------------- spell clips -- */
   /* A click on a spell plays it: the real game, filmed by tools/spell-clips.js
@@ -3093,7 +3110,11 @@
      beside the game (spells/), loaded only when asked for; a build without
      them says so rather than showing a broken image. */
   UI.closeClip = function () {
-    if (this._clip) { this._clip.remove(); this._clip = null; }
+    if (this._clip) {
+      const v = this._clip.querySelector('video');
+      if (v) { v.pause(); v.removeAttribute('src'); v.load(); }
+      this._clip.remove(); this._clip = null;
+    }
     if (this._clipKey) { window.removeEventListener('keydown', this._clipKey, true); this._clipKey = null; }
   };
   UI.openClip = function (id, tier) {
@@ -3113,8 +3134,9 @@
     close.addEventListener('click', () => this.closeClip());
     head.append(close);
     const frame = el('div', 'clip-frame');
-    const img = el('img', 'clip-img');
-    img.alt = d.name + ' in action';
+    const img = el('video', 'clip-img');
+    img.muted = true; img.loop = true; img.autoplay = true; img.playsInline = true;
+    img.setAttribute('aria-label', d.name + ' in action');
     const miss = el('div', 'clip-miss', 'No clip in this build of the game.');
     miss.hidden = true;
     img.addEventListener('error', () => { img.hidden = true; miss.hidden = false; });
@@ -3122,7 +3144,9 @@
     const tabs = el('div', 'clip-tabs');
     const set = (t) => {
       img.hidden = false; miss.hidden = true;
-      img.src = 'spells/' + id + '_' + t + '.webp';
+      img.src = 'spells/' + id + '_' + t + '.webm';
+      const go = img.play();
+      if (go && go.catch) go.catch(() => { /* autoplay refused: the first frame stands */ });
       for (const b of tabs.children) b.classList.toggle('on', b.dataset.tier === t);
     };
     for (const [t, label] of tiers) {
@@ -3265,7 +3289,7 @@
     ui.row.classList.remove('committing');
     ui.row.replaceChildren();
     // The build as it stands now - a second level-up in a row has one more rank in it.
-    if (ui.tray) { this.spotlight(null); ui.tray.replaceChildren(buildTray(WS.Game.player)); }
+    if (ui.tray) { ui.tray.replaceChildren(buildTray(WS.Game.player)); }
     choices.forEach((c, i) => {
       ui.row.append(cardFor(c, (choice, card) => {
         if (this.banishMode) {

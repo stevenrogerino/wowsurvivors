@@ -3143,7 +3143,8 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
   overflow: hidden; height: calc(3 * 1.4em);
 }
 .card .card-reacts { width: 100%; height: calc(2 * 1.5em + 4px); overflow: hidden; }
-.card .card-reacts .react { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .card-reacts .react { white-space: nowrap; overflow: hidden; max-width: 100%; }
+.card .card-reacts .react > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card .card-foot {
   width: 100%; margin-top: auto; height: 78px; overflow: hidden;
   border-top: 1px solid var(--rim); padding-top: 8px;
@@ -3217,10 +3218,59 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
   border: 1px solid rgba(190,150,255,.5); border-radius: 13px; background: rgba(60,40,90,.35);
 }
 
-/* SPOTLIGHT: a weapon in the tray is hovered, so the screen thins out to let
-   the field through, where everything but that weapon has been dimmed. */
-#overlay.peek { background: rgba(6,7,11,.12); backdrop-filter: none; transition: background .18s var(--ease); }
-#overlay.peek .card-row, #overlay.peek .overlay-head, #overlay.peek .overlay-foot { opacity: .12; transition: opacity .18s var(--ease); }
+/* Folded, the build is one tab hanging under the cards: a chevron, a name
+   and what you carry. Opened, the strip drops out beneath it - below the
+   cards, so it never sits over one. */
+.bt-drawer { display: flex; flex-direction: column; align-items: center; }
+.bt-drawer:not(.open) .build-tray { display: none; }
+.bt-drawer.open .build-tray { margin-top: 6px; animation: bt-drop .2s var(--ease) both; }
+@keyframes bt-drop { from { opacity: 0; transform: translateY(-8px); } }
+.bt-toggle {
+  display: inline-flex; align-items: center; gap: 10px; padding: 5px 16px 6px 8px;
+  border: 1px solid var(--rim); border-top-color: transparent; border-radius: 0 0 14px 14px;
+  background: linear-gradient(180deg, rgba(8,9,14,.5), rgba(14,16,24,.85));
+  box-shadow: var(--bevel); color: inherit; font: inherit; cursor: pointer;
+  transition: border-color .15s var(--ease), box-shadow .15s var(--ease);
+}
+.bt-toggle:hover, .bt-toggle:focus-visible {
+  border-color: var(--gilt, #f5c56b); border-top-color: transparent;
+  box-shadow: var(--bevel), 0 6px 18px -8px var(--gilt, #f5c56b);
+}
+.bt-chev {
+  position: relative; width: 20px; height: 20px; flex: none;
+  border: 1px solid var(--rim); border-radius: 50%; background: rgba(4,5,8,.6);
+}
+.bt-chev::before {
+  content: ''; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px;
+  border: solid var(--gilt, #f5c56b); border-width: 0 1.5px 1.5px 0;
+  transform: translate(-50%, -70%) rotate(45deg);
+  transition: transform .2s var(--ease);
+}
+.bt-drawer.open .bt-chev::before { transform: translate(-50%, -25%) rotate(225deg); }
+.bt-title { font-family: var(--voice); font-weight: 700; font-size: 15px; color: #f1dfb6; }
+.bt-sum { font-family: var(--voice); font-style: italic; font-size: 13px; color: var(--ink-faint); }
+
+/* A card with nothing for its footer (a blessing) gives the room to its
+   description rather than showing an empty ruled box under a cut sentence. */
+.card.no-foot .card-foot { display: none; }
+@media (min-width: 721px) {
+  .card.no-foot .card-body { flex: 1 1 0; min-height: 0; height: auto; -webkit-line-clamp: 7; }
+}
+@media (min-width: 721px) and (max-height: 680px) {
+  .card.no-foot .card-body { -webkit-line-clamp: 5; }
+  /* No room to push anything down on a short screen: the opened strip drops
+     over the reroll row instead, so the cards above never move. */
+  .overlay-body:has(> .tray-slot) { overflow: visible; }
+  .tray-slot { position: relative; z-index: 3; }
+  .bt-drawer.open .build-tray {
+    position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    width: max-content; max-width: 94vw;
+    background: linear-gradient(180deg, #0e1018, #08090e);
+    animation-name: bt-drop-abs;
+  }
+  .overlay-body:has(> .tray-slot) .scroll-scrim { display: none; }
+  @keyframes bt-drop-abs { from { opacity: 0; transform: translate(-50%, -8px); } }
+}
 
 /* =================================================== THE SPELL CLIPS === */
 .clip-box {
@@ -3229,7 +3279,7 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
   background: rgba(4,5,8,.66); backdrop-filter: blur(2px);
 }
 .clip-panel {
-  width: min(520px, 92vw); padding: 16px 18px 18px;
+  width: min(700px, 94vw, calc((100vh - 180px) * 1.6 + 36px)); padding: 16px 18px 18px;
   border: 1px solid var(--rim); border-radius: 2px;
   background: linear-gradient(180deg, var(--obsidian-2), var(--obsidian));
   box-shadow: var(--bevel-deep), 0 30px 80px -30px #000;
@@ -3237,10 +3287,10 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .clip-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .clip-head h3 { flex: 1; margin: 0; font-family: var(--voice); font-size: 22px; color: #f4ead6; }
 .clip-frame {
-  aspect-ratio: 560 / 360; width: 100%; display: grid; place-items: center;
+  aspect-ratio: 16 / 10; width: 100%; display: grid; place-items: center;
   border: 1px solid var(--rim); background: #0b0d12; overflow: hidden;
 }
-.clip-img { width: 100%; height: 100%; object-fit: cover; image-rendering: auto; }
+.clip-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .clip-miss { font-family: var(--voice); font-style: italic; color: var(--ink-faint); padding: 20px; }
 .clip-tabs { display: flex; gap: 8px; justify-content: center; margin: 10px 0 6px; flex-wrap: wrap; }
 .clip-tab.on { border-color: var(--gilt, #f5c56b); color: var(--gilt, #f5c56b); }
@@ -3894,7 +3944,7 @@ window.WS = window.WS || {};
        the survivor; the owl enters and leaves airdropMargin past the field's
        edge; airdropSize is its wingspan; airdropFlap wingbeats a second. */
     airdropSpeed: 300, airdropAltitude: 170, airdropFreefall: 0.3, airdropFall: 2.2,
-    airdropNear: 180, airdropFar: 380, airdropMargin: 180, airdropSize: 190, airdropFlap: 1.3,
+    airdropNear: 180, airdropFar: 380, airdropMargin: 180, airdropSize: 230, airdropFlap: 1.3,
     eggVendorFirst: 150,
     eggVendorDistance: 400,
     coffinTime: 120,
@@ -18751,28 +18801,33 @@ window.WS = window.WS || {};
 /* ===== src/render/edennil.js ===== */
 /* Edennil, who brings the Watch its supplies, and the crate Edennil brings.
  *
- * An eagle owl: tawny and dark-mottled, ear tufts up, a pale throat, eyes the
- * colour of a banked fire. Seen from above in flight, because the field is
- * seen from above - body and wings along the heading, the tail fanned, the
- * primaries fingered at the wingtips and barred across - with the head drawn
- * separately and turned to look DOWN at the survivor, which is the one thing
- * an owl can do that no other bird can and the thing that makes it Edennil
- * rather than a bird going past.
+ * A horned owl, near black above and broken up with bold cream blotches, a
+ * grey face, black ear tufts edged in cream, and eyes the colour of a banked
+ * fire - the brightest thing on him. Seen from above in flight, because the field
+ * is seen from above: long broad wings along the heading, the leading edge
+ * clean, the coverts laid over the arm, a scalloped row of secondaries along
+ * the trailing edge, and ten barred primaries fanned out to fingered tips.
  *
- *   edennil_w0 .. edennil_w5   the body and wings, heading up the tile, one
- *                              frame per sixth of a wingbeat
- *   edennil_face               the head, turned to the camera
- *   supply_crate               what it carries: an iron-cornered crate with
+ * The head is its own sprite, seen from above too - crown, tufts, and at the
+ * front the rim of the facial disc with the eyes under the brow - because it
+ * TURNS: the renderer swivels it on the neck to watch the survivor as he
+ * passes over, which is the one thing an owl does that no other bird can.
+ *
+ *   edennil_w0 .. edennil_w7   body and wings, heading up the tile, one frame
+ *                              per eighth of a wingbeat
+ *   edennil_head               the head from above, facing up the tile
+ *   supply_crate               what he carries: an iron-cornered crate with
  *                              the Watch's ember burned into the lid
  *
  * The parachute is not a sprite: it breathes and sways and collapses, so the
- * renderer draws it (Renderer.drawAirdrops). */
+ * renderer draws it (Renderer.drawAirdropSky). */
 'use strict';
 (function (WS) {
 
-  const TAWNY = '#9a6436', DARK = '#3a2414', MID = '#6e4526', BUFF = '#d8b07a', PALE = '#efdcb6';
-  const INK = '#1c120a';
-  const FRAMES = 6;
+  // Near black to cream, a grey face, and one ember.
+  const BLACK = '#0f0c0a', CHAR = '#1e1916', SLATE = '#2f2722', GREY = '#4d443d';
+  const ASH = '#8e8a85', SILVER = '#c3c1bc', PALE = '#e9dfcc', CREAM = 'rgba(226,210,178,';
+  const FRAMES = 8;
 
   function path(g, pts, close) {
     g.beginPath();
@@ -18785,156 +18840,201 @@ window.WS = window.WS || {};
     if (close !== false) g.closePath();
   }
 
-  /** One feather: a long rounded blade from (x, y) at `ang`, barred. */
-  function feather(g, u, x, y, ang, len, wid, bars) {
+  /* A cheap, repeatable scatter, so every frame of the wingbeat carries the
+     same flecks in the same places and the plumage does not boil. */
+  function hash(i) { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+
+  /** One flight feather from (x, y) at `ang`: a soft rounded blade, dark
+   *  bars across it, a pale shaft, and - for a primary - a narrowed tip, the
+   *  "finger" an owl's wingtip is made of. */
+  function feather(g, u, x, y, ang, len, wid, o) {
     g.save();
     g.translate(x * u, y * u); g.rotate(ang);
-    const L = len * u, W = wid * u;
+    const L = len * u, W = wid * u, nip = o.finger ? 0.55 : 1;
     g.beginPath();
-    g.moveTo(0, -W * 0.45);
-    g.quadraticCurveTo(L * 0.7, -W * 0.62, L, -W * 0.08);
-    g.quadraticCurveTo(L * 1.02, W * 0.3, L * 0.86, W * 0.44);
-    g.quadraticCurveTo(L * 0.5, W * 0.62, 0, W * 0.45);
+    g.moveTo(0, -W * 0.5);
+    g.bezierCurveTo(L * 0.45, -W * 0.56, L * 0.8, -W * 0.5 * nip, L, -W * 0.1);
+    g.quadraticCurveTo(L * 1.03, W * 0.2 * nip, L * 0.92, W * 0.42 * nip);
+    g.bezierCurveTo(L * 0.7, W * 0.56, L * 0.3, W * 0.56, 0, W * 0.5);
     g.closePath();
-    const gr = g.createLinearGradient(0, 0, L, 0);
-    gr.addColorStop(0, MID); gr.addColorStop(0.55, TAWNY); gr.addColorStop(1, BUFF);
+    const gr = g.createLinearGradient(0, -W * 0.5, 0, W * 0.5);
+    gr.addColorStop(0, o.lite || GREY); gr.addColorStop(1, o.base || SLATE);
     g.fillStyle = gr; g.fill();
     g.save(); g.clip();
-    g.fillStyle = 'rgba(40,24,12,.55)';
-    for (let i = 1; i <= bars; i++) g.fillRect(L * (i / (bars + 1)) - u * 0.8, -W, u * 1.6, W * 2);
-    // the shaft
-    g.strokeStyle = 'rgba(239,220,182,.45)'; g.lineWidth = u * 0.45;
-    g.beginPath(); g.moveTo(0, 0); g.lineTo(L * 0.92, 0); g.stroke();
+    // Bars: soft dark bands, a little curved, as an owl's flight feathers are.
+    g.fillStyle = 'rgba(14,16,20,.62)';
+    for (let i = 1; i <= o.bars; i++) {
+      const bx = L * (i / (o.bars + 0.6));
+      g.beginPath(); g.ellipse(bx, 0, u * 1.1, W * 0.7, 0, 0, WS.TAU); g.fill();
+    }
+    // The pale margin on the outer vane, which is what makes a wing of dark
+    // feathers read as feathers rather than a dark wing.
+    g.strokeStyle = 'rgba(214,219,225,.32)'; g.lineWidth = u * 0.7;
+    g.beginPath(); g.moveTo(L * 0.1, -W * 0.44); g.bezierCurveTo(L * 0.5, -W * 0.5, L * 0.8, -W * 0.44 * nip, L * 0.98, -W * 0.08); g.stroke();
+    g.strokeStyle = 'rgba(230,232,235,.35)'; g.lineWidth = u * 0.35;
+    g.beginPath(); g.moveTo(0, 0); g.lineTo(L * 0.9, 0); g.stroke();
     g.restore();
-    g.strokeStyle = INK; g.lineWidth = u * 0.7; g.stroke();
+    g.strokeStyle = 'rgba(10,11,14,.55)'; g.lineWidth = u * 0.45; g.stroke();
     g.restore();
   }
 
-  /** One wing, the left, spread by `k` (about 0.6 .. 1). Built the way a
-   *  wing is: the long primaries fanned from the wrist like fingers, a row
-   *  of rounded secondaries along the trailing edge, and the coverts laid
-   *  over the bases of both. */
-  function wing(g, u, k, beat) {
+  /** The left wing at full spread; body() foreshortens it for the beat.
+   *  `fan` 0..1 is how far the primaries open, `lift` raises the hand. */
+  function wing(g, u, fan, lift) {
     const X = (x) => x * u, Y = (y) => y * u;
-    const wx = 50 - 20 * k, wy = 38 - 2 * beat;   // the wrist
-    // Primaries: seven, fanned from the wrist into a broad rounded tip -
-    // the forward ones reaching out, the back ones sweeping toward the tail.
-    const fan = 0.75 + 0.35 * k;
-    for (let i = 6; i >= 0; i--) {
-      const t = i / 6;
-      const ang = Math.PI - 0.22 + t * fan;
-      const len = (25 + 9 * Math.sin(t * Math.PI * 0.85 + 0.25)) * (0.7 + 0.3 * k);
-      feather(g, u, wx + t * 5, wy + 1 + t * 8, ang, len, 9.5, 4);
+    const rootX = 42, wx = 17, wy = 32 - lift;                 // the wrist
+    // Primaries: nine, from the hand, reaching OUT - a tapered, fingered tip,
+    // not a fan. Innermost first, so the outer ones lie over them.
+    for (let i = 8; i >= 0; i--) {
+      const t = i / 8;
+      const ang = Math.PI + 0.16 - t * (0.42 + 0.28 * fan);
+      const len = 15 + 8 * Math.sin(0.5 + t * 1.9) - t * 3;
+      feather(g, u, wx + 1 + t * 4, wy + 1 + t * 8.5, ang, len, 5.2,
+        { bars: 4, finger: i < 5, base: CHAR, lite: GREY });
     }
-    // Secondaries: deep, along the trailing edge, pointing back.
-    for (let i = 0; i < 7; i++) {
-      const t = i / 6;
-      const x = wx + 4 + t * (45 - wx - 4), y = wy + 4 + t * 4;
-      feather(g, u, x, y, Math.PI / 2 + 0.3 - t * 0.28, 19 - t * 4, 8, 3);
+    // Secondaries: a scalloped row along the trailing edge, pointing back.
+    for (let i = 0; i < 9; i++) {
+      const t = i / 8;
+      const x = wx + 6 + t * (rootX - 1 - wx - 6), y = 43 + t * 6 - lift * 0.6 * (1 - t);
+      feather(g, u, x, y, Math.PI / 2 + 0.3 - t * 0.24, 11 - t * 1.5, 6.2,
+        { bars: 3, base: SLATE, lite: GREY });
     }
-    // Coverts: the arm of the wing, over the bases of both.
-    const cov = [[X(46), Y(34)], [X(38), Y(28), X(wx - 3), Y(wy - 4)],
-      [X(wx - 6), Y(wy + 4), X(wx + 6), Y(wy + 8)], [X(34), Y(50), X(46), Y(49)]];
-    const cg = g.createLinearGradient(X(wx), Y(wy - 4), X(44), Y(58));
-    cg.addColorStop(0, MID); cg.addColorStop(1, TAWNY);
-    path(g, cov); g.fillStyle = cg; g.fill();
-    g.save(); path(g, cov); g.clip();
-    // Mottling: dark flecks and pale spots, as an eagle owl is.
-    for (let i = 0; i < 30; i++) {
-      const x = wx - 4 + ((i * 37) % 100) / 100 * (50 - wx), y = wy - 4 + ((i * 53) % 100) / 100 * 13;
-      g.fillStyle = i % 3 ? 'rgba(40,24,12,.5)' : 'rgba(239,220,182,.55)';
-      g.beginPath(); g.ellipse(X(x), Y(y), u * (0.9 + (i % 2) * 0.6), u * 0.65, 0.3, 0, WS.TAU); g.fill();
+    // Greater coverts over their bases, each tipped with cream.
+    for (let i = 0; i < 8; i++) {
+      const t = i / 7;
+      const x = wx + 5 + t * (rootX - 2 - wx - 5), y = 39.5 + t * 5.5 - lift * 0.6 * (1 - t);
+      feather(g, u, x, y, Math.PI / 2 + 0.22 - t * 0.16, 6.5, 5.4, { bars: 1, base: CHAR, lite: SLATE });
+      g.fillStyle = CREAM + '.75)';
+      g.beginPath(); g.ellipse(X(x + 0.6), Y(y + 5.2), u * 1.4, u * 0.95, 0, 0, WS.TAU); g.fill();
     }
-    // A pale bar where the coverts end: the line an owl's wing shows in flight.
-    g.strokeStyle = 'rgba(239,220,182,.35)'; g.lineWidth = u * 1.4;
-    g.beginPath(); g.moveTo(X(wx), Y(wy + 5)); g.quadraticCurveTo(X(36), Y(48), X(46), Y(47)); g.stroke();
+    // The arm: lesser coverts from the leading edge back, near black and
+    // broken with bold cream blotches.
+    const arm = [[X(rootX), Y(34)], [X((rootX + wx) / 2), Y(wy - 3.2), X(wx - 1), Y(wy - 0.5)],
+      [X(wx - 2), Y(wy + 3.5), X(wx + 5), Y(wy + 8)], [X((rootX + wx) / 2 + 3), Y(43), X(rootX), Y(46)]];
+    const ag = g.createLinearGradient(0, Y(wy - 3), 0, Y(46));
+    ag.addColorStop(0, GREY); ag.addColorStop(0.3, SLATE); ag.addColorStop(1, CHAR);
+    path(g, arm); g.fillStyle = ag; g.fill();
+    g.save(); path(g, arm); g.clip();
+    for (let i = 0; i < 34; i++) {
+      const x = wx - 1 + hash(i) * (rootX - wx + 1), y = wy - 3 + hash(i + 50) * 14;
+      const cream = hash(i + 99) >= 0.5;
+      g.fillStyle = cream ? CREAM + (0.6 + hash(i + 5) * 0.3) + ')' : 'rgba(10,8,6,.65)';
+      g.beginPath();
+      g.ellipse(X(x), Y(y), u * (cream ? 1.2 + hash(i + 7) * 1.2 : 0.8 + hash(i + 7) * 0.7), u * (cream ? 0.85 : 0.55), -0.2, 0, WS.TAU);
+      g.fill();
+    }
     g.restore();
-    path(g, cov); g.strokeStyle = INK; g.lineWidth = u * 0.8; g.stroke();
+    // Primary coverts: short feathers over the base of the hand, laid along
+    // the primaries rather than a patch on top of them.
+    for (let i = 0; i < 4; i++) {
+      const t = i / 3;
+      feather(g, u, wx + 3 + t * 3, wy + 1.5 + t * 6, Math.PI + 0.05 - t * 0.5, 6, 4.2, { bars: 1, base: SLATE, lite: GREY });
+    }
+    // The leading edge, catching the light.
+    g.strokeStyle = CREAM + '.5)'; g.lineWidth = u * 0.9;
+    g.beginPath(); g.moveTo(X(rootX - 1), Y(34.2)); g.quadraticCurveTo(X((rootX + wx) / 2), Y(wy - 2.4), X(wx), Y(wy + 0.2)); g.stroke();
   }
 
   /** The body and both wings, heading up. `ph` is 0..1 of a wingbeat. */
   function body(g, s, ph) {
     const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
-    const beat = Math.sin(ph * WS.TAU);             // +1 top of the stroke
-    const k = 0.82 + 0.18 * beat;
-    // Tail: a barred fan.
-    const tail = [[X(44), Y(64)], [X(40), Y(80), X(45), Y(84)], [X(50), Y(86), X(55), Y(84)], [X(60), Y(80), X(56), Y(64)]];
-    path(g, tail); g.fillStyle = TAWNY; g.fill();
+    const beat = Math.sin(ph * WS.TAU);                 // +1 top of the stroke
+    // Seen from above, a wing sweeping down and away is a wing foreshortened:
+    // the whole of it squeezed toward the shoulder, most at the bottom of
+    // the stroke, and its primaries closing as they push.
+    const sp = 0.8 + 0.2 * beat;
+    const fan = 0.5 + 0.5 * beat;
+    const lift = 1.4 * beat;
+    // Tail: short and rounded, barred, the feathers just parted.
+    const tail = [[X(45), Y(58)], [X(41.5), Y(69), X(44.5), Y(74)], [X(50), Y(76.5), X(55.5), Y(74)], [X(58.5), Y(69), X(55), Y(58)]];
+    const tg = g.createLinearGradient(0, Y(58), 0, Y(76));
+    tg.addColorStop(0, CHAR); tg.addColorStop(1, SLATE);
+    path(g, tail); g.fillStyle = tg; g.fill();
     g.save(); path(g, tail); g.clip();
-    g.strokeStyle = 'rgba(40,24,12,.6)'; g.lineWidth = u * 1.6;
-    for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(X(40), Y(69 + i * 4)); g.lineTo(X(60), Y(69 + i * 4)); g.stroke(); }
+    g.strokeStyle = 'rgba(226,210,178,.18)'; g.lineWidth = u * 1;
+    for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(X(40), Y(63 + i * 4)); g.quadraticCurveTo(X(50), Y(65 + i * 4), X(60), Y(63 + i * 4)); g.stroke(); }
+    g.strokeStyle = 'rgba(10,8,6,.5)'; g.lineWidth = u * 0.4;
+    for (let i = -2; i <= 2; i++) { g.beginPath(); g.moveTo(X(50), Y(59)); g.lineTo(X(50 + i * 3.2), Y(76)); g.stroke(); }
     g.restore();
-    path(g, tail); g.strokeStyle = INK; g.lineWidth = u * 0.8; g.stroke();
-    // Wings, the right one mirrored.
-    wing(g, u, k, beat);
-    g.save(); g.translate(s, 0); g.scale(-1, 1); wing(g, u, k, beat); g.restore();
-    // Body: a heavy teardrop, streaked.
-    const bodyPts = [[X(50), Y(26)], [X(62), Y(34), X(60), Y(52)], [X(58), Y(66), X(50), Y(68)], [X(42), Y(66), X(40), Y(52)], [X(38), Y(34), X(50), Y(26)]];
-    const bg = g.createLinearGradient(X(40), Y(30), X(60), Y(66));
-    bg.addColorStop(0, TAWNY); bg.addColorStop(1, MID);
+    // Wings, foreshortened about the shoulder; the right one mirrored.
+    for (const side of [1, -1]) {
+      g.save();
+      if (side < 0) { g.translate(s, 0); g.scale(-1, 1); }
+      g.translate(X(42), 0); g.scale(sp, 1); g.translate(-X(42), 0);
+      wing(g, u, fan, lift);
+      g.restore();
+    }
+    // Body: compact and broad-shouldered, as an owl is.
+    const bodyPts = [[X(50), Y(29)], [X(60), Y(31), X(60.5), Y(41)], [X(60), Y(53), X(54.5), Y(60)],
+      [X(50), Y(62), X(45.5), Y(60)], [X(40), Y(53), X(39.5), Y(41)], [X(40), Y(31), X(50), Y(29)]];
+    const bg = g.createRadialGradient(X(47), Y(37), X(2), X(50), Y(45), X(18));
+    bg.addColorStop(0, GREY); bg.addColorStop(0.5, SLATE); bg.addColorStop(1, CHAR);
     path(g, bodyPts); g.fillStyle = bg; g.fill();
     g.save(); path(g, bodyPts); g.clip();
-    g.strokeStyle = 'rgba(40,24,12,.65)'; g.lineWidth = u * 1.1;
-    for (let i = 0; i < 7; i++) {
-      const x = 43 + i * 2.4;
-      g.beginPath(); g.moveTo(X(x), Y(36 + (i % 2) * 3)); g.lineTo(X(x + 0.4), Y(46 + (i % 3) * 3)); g.stroke();
+    for (let i = 0; i < 18; i++) {
+      const cream = hash(i + 11) > 0.35;
+      g.fillStyle = cream ? CREAM + (0.55 + hash(i + 3) * 0.35) + ')' : 'rgba(10,8,6,.6)';
+      g.beginPath();
+      g.ellipse(X(41 + hash(i + 30) * 18), Y(32 + hash(i + 60) * 27), u * (1 + hash(i + 2)), u * 0.8, hash(i) - 0.5, 0, WS.TAU);
+      g.fill();
     }
-    g.fillStyle = 'rgba(239,220,182,.35)';
-    g.beginPath(); g.ellipse(X(50), Y(40), X(5), Y(8), 0, 0, WS.TAU); g.fill();
+    // The scapulars: a cream line each side where the wing meets the back.
+    g.strokeStyle = CREAM + '.22)'; g.lineWidth = u * 0.9;
+    for (const side of [-1, 1]) {
+      g.beginPath(); g.moveTo(X(50 + side * 8), Y(35)); g.quadraticCurveTo(X(50 + side * 9.5), Y(44), X(50 + side * 6.5), Y(53)); g.stroke();
+    }
     g.restore();
-    path(g, bodyPts); g.strokeStyle = INK; g.lineWidth = u * 0.8; g.stroke();
+    // The neck ruff the head sits in.
+    g.fillStyle = CHAR;
+    g.beginPath(); g.ellipse(X(50), Y(31), X(8.5), Y(5), 0, 0, WS.TAU); g.fill();
   }
 
-  /** The head, turned to look down at the field. */
-  function face(g, s) {
+  /** The head from above, facing up the tile. The renderer turns it. */
+  function head(g, s) {
     const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
-    // Ear tufts.
+    // Ear tufts: broad-based, feathered, black with cream on the inside edge.
     for (const side of [-1, 1]) {
-      path(g, [[X(50 + side * 12), Y(34)], [X(50 + side * 22), Y(14), X(50 + side * 26), Y(8)],
-        [X(50 + side * 22), Y(24), X(50 + side * 20), Y(36)]]);
-      g.fillStyle = MID; g.fill(); g.strokeStyle = INK; g.lineWidth = u * 1.2; g.stroke();
+      const tuft = [[X(50 + side * 8), Y(38)], [X(50 + side * 15), Y(22), X(50 + side * 24), Y(15)],
+        [X(50 + side * 25), Y(26), X(50 + side * 22), Y(40)]];
+      path(g, tuft); g.fillStyle = BLACK; g.fill();
+      g.strokeStyle = CREAM + '.8)'; g.lineWidth = u * 1.6;
+      g.beginPath(); g.moveTo(X(50 + side * 11), Y(36)); g.quadraticCurveTo(X(50 + side * 16), Y(24), X(50 + side * 23), Y(17)); g.stroke();
     }
-    // The head.
-    g.beginPath(); g.ellipse(X(50), Y(52), X(30), Y(28), 0, 0, WS.TAU);
-    const hg = g.createRadialGradient(X(46), Y(44), X(4), X(50), Y(52), X(32));
-    hg.addColorStop(0, TAWNY); hg.addColorStop(1, MID);
+    // The crown: round, near black, with cream flecks.
+    const cx = X(50), cy = Y(55), rx = X(26), ry = Y(25);
+    g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, WS.TAU);
+    const hg = g.createRadialGradient(X(46), Y(47), X(3), cx, cy, X(28));
+    hg.addColorStop(0, GREY); hg.addColorStop(0.5, SLATE); hg.addColorStop(1, CHAR);
     g.fillStyle = hg; g.fill();
-    g.strokeStyle = INK; g.lineWidth = u * 1.4; g.stroke();
-    // Streaks on the crown.
-    g.strokeStyle = 'rgba(40,24,12,.6)'; g.lineWidth = u * 1.3;
-    for (let i = 0; i < 6; i++) {
-      const x = 38 + i * 5;
-      g.beginPath(); g.moveTo(X(x), Y(28 + (i % 2) * 2)); g.lineTo(X(x + 1), Y(35)); g.stroke();
-    }
-    // The facial disc: two buff rounds with a dark rim.
-    for (const side of [-1, 1]) {
-      g.beginPath(); g.ellipse(X(50 + side * 12), Y(54), X(15), Y(15), 0, 0, WS.TAU);
-      g.fillStyle = BUFF; g.fill();
-      g.strokeStyle = DARK; g.lineWidth = u * 2.2; g.stroke();
-    }
-    // A pale brow between the eyes, down to the beak.
-    path(g, [[X(44), Y(40)], [X(50), Y(48), X(56), Y(40)], [X(53), Y(58)], [X(47), Y(58)]]);
-    g.fillStyle = PALE; g.fill();
-    // Eyes: banked fire, huge, with a hard black pupil and a catchlight.
-    for (const side of [-1, 1]) {
-      const ex = X(50 + side * 12), ey = Y(53);
-      const eg = g.createRadialGradient(ex, ey, X(1), ex, ey, X(8.5));
-      eg.addColorStop(0, '#ffcf5a'); eg.addColorStop(0.7, '#f08a1c'); eg.addColorStop(1, '#a8480e');
-      g.beginPath(); g.arc(ex, ey, X(8.5), 0, WS.TAU); g.fillStyle = eg; g.fill();
-      g.strokeStyle = INK; g.lineWidth = u * 1.6; g.stroke();
-      g.beginPath(); g.arc(ex, ey, X(4.2), 0, WS.TAU); g.fillStyle = '#0c0704'; g.fill();
-      g.beginPath(); g.arc(ex - X(2.4), ey - X(2.6), X(1.6), 0, WS.TAU); g.fillStyle = 'rgba(255,255,255,.9)'; g.fill();
-      // A heavy lid, which is where the owl's glare comes from.
+    g.save(); g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, WS.TAU); g.clip();
+    for (let i = 0; i < 26; i++) {
+      const cream = hash(i + 21) > 0.3;
+      g.fillStyle = cream ? CREAM + (0.55 + hash(i + 8) * 0.35) + ')' : 'rgba(10,8,6,.6)';
       g.beginPath();
-      g.moveTo(ex - X(9.5), ey - X(2.5)); g.quadraticCurveTo(ex, ey - X(10 + side * 0), ex + X(9.5), ey - X(2.5 + side * 1.5));
-      g.strokeStyle = DARK; g.lineWidth = u * 2.6; g.stroke();
+      g.ellipse(X(28 + hash(i + 3) * 44), Y(44 + hash(i + 40) * 34), u * (1.3 + hash(i + 8) * 1.3), u * 1, hash(i) * 2, 0, WS.TAU);
+      g.fill();
     }
-    // Beak: dark, hooked, between the eyes.
-    path(g, [[X(47), Y(58)], [X(50), Y(56)], [X(53), Y(58)], [X(51), Y(66), X(50), Y(68)], [X(48), Y(64)]]);
-    g.fillStyle = '#2a1e18'; g.fill(); g.strokeStyle = INK; g.lineWidth = u * 0.8; g.stroke();
-    // The white throat, under the disc.
-    g.beginPath(); g.ellipse(X(50), Y(76), X(12), Y(4.5), 0, 0, WS.TAU);
-    g.fillStyle = PALE; g.fill();
+    g.restore();
+    // At the front, the top of a face looking down: the grey facial disc
+    // showing as a rim, the eyes under heavy brows, the beak's hook.
+    g.beginPath(); g.ellipse(X(50), Y(38), X(22), Y(9.5), 0, Math.PI, WS.TAU);
+    g.lineTo(X(72), Y(40)); g.ellipse(X(50), Y(40), X(22), Y(4), 0, 0, Math.PI); g.closePath();
+    g.fillStyle = ASH; g.fill();
+    for (const side of [-1, 1]) {
+      const ex = X(50 + side * 10), ey = Y(36);
+      const eg = g.createRadialGradient(ex, ey + u, u * 0.5, ex, ey, X(6.8));
+      eg.addColorStop(0, '#ffd27a'); eg.addColorStop(0.55, '#f08a1c'); eg.addColorStop(1, '#9c420c');
+      g.beginPath(); g.ellipse(ex, ey, X(6.6), Y(4.6), 0, Math.PI * 0.92, Math.PI * 2.08);
+      g.fillStyle = eg; g.fill();
+      g.beginPath(); g.ellipse(ex, ey - u * 0.8, X(2.8), Y(2), 0, Math.PI, WS.TAU); g.fillStyle = BLACK; g.fill();
+      g.strokeStyle = BLACK; g.lineWidth = u * 2.6;
+      g.beginPath(); g.moveTo(ex - side * X(7.5), ey + u * 0.8); g.quadraticCurveTo(ex, ey + Y(5.2), ex + side * X(6.5), ey - u * 0.2); g.stroke();
+    }
+    // Pale brows meeting over the beak - soft, not a mask.
+    g.strokeStyle = 'rgba(233,223,204,.6)'; g.lineWidth = u * 1.3;
+    g.beginPath(); g.moveTo(X(39), Y(44)); g.quadraticCurveTo(X(46), Y(41.5), X(50), Y(35)); g.quadraticCurveTo(X(54), Y(41.5), X(61), Y(44)); g.stroke();
+    path(g, [[X(47.5), Y(34)], [X(52.5), Y(34)], [X(51), Y(28.5), X(50), Y(27.5)], [X(49), Y(28.5)]]);
+    g.fillStyle = '#34302e'; g.fill();
   }
 
   /** The crate: planks, iron corners, rope, the Watch's ember on the lid. */
@@ -18982,7 +19082,7 @@ window.WS = window.WS || {};
   for (let i = 0; i < FRAMES; i++) {
     WS.Sprites.define('edennil_w' + i, (g, s) => body(g, s, i / FRAMES));
   }
-  WS.Sprites.define('edennil_face', (g, s) => face(g, s));
+  WS.Sprites.define('edennil_head', (g, s) => head(g, s));
   WS.Sprites.define('supply_crate', (g, s) => crate(g, s));
 
   WS.EdennilArt = { frames: FRAMES };
@@ -24642,8 +24742,6 @@ window.WS = window.WS || {};
     f.spikes = spikes || 0;
     // A nova's school, so its wave can look like what it is (see drawFlashes).
     f.style = style || null;
-    // Whose it is, for the spotlight (Weapon.fire sets FX.tag while it fires).
-    f.source = FX.tag || null;
   };
 
   /** A struck palm (Iron Palms and its union): a shockwave crescent at the
@@ -24653,7 +24751,6 @@ window.WS = window.WS || {};
     const s = FX.strikes.acquire();
     if (!s) return;
     const o = opts || {};
-    s.source = FX.tag || null;
     s.x = x; s.y = y; s.aim = aim; s.reach = reach; s.arc = arc;
     s.colour = colour; s.evolved = !!o.evolved; s.blend = o.blend || null;
     s.life = o.life || 0.26; s.maxLife = s.life;
@@ -26162,7 +26259,6 @@ window.WS = window.WS || {};
        the same diamond whatever the card called it - an Axe Gyre with no
        axe in it. This is the same one field, stamped the same way. */
     o.art = w.data.art || null;
-    o.source = w.id;           // whose it is, for the spotlight (beams had none)
   }
 
   function fireAimedShot(player, w, target, fan) {
@@ -26901,10 +26997,7 @@ window.WS = window.WS || {};
   Weapon.fire = function (player, w) {
     const handler = Weapon.behaviors[behaviorOf(w)];
     if (!handler) return;
-    // Every flash and strike made while this fires is this weapon's (FX.tag).
-    WS.FX.tag = w.id;
-    let fired;
-    try { fired = handler(player, w); } finally { WS.FX.tag = null; }
+    const fired = handler(player, w);
     if (fired === false) return;
     // A muzzle flash in the weapon's own colour, so a six-weapon build reads
     // as six distinct instruments rather than one undifferentiated stream.
@@ -41267,26 +41360,6 @@ window.WS = window.WS || {};
        round anyway - they come from him. */
     this.drawPlayer(ctx, player, time);
 
-    /* THE SPOTLIGHT. A weapon is hovered in the build tray: veil the field,
-       then draw that weapon's own effects again on top of the veil, and the
-       survivor they come from. Everything else stays under it. */
-    if (R.spotlight && game.player) {
-      ctx.save();
-      ctx.fillStyle = 'rgba(4,5,8,.78)';
-      ctx.fillRect(-4000, -4000, 12000, 12000);
-      ctx.restore();
-      R._only = R.spotlight;
-      try {
-        this.drawZones(ctx, time);
-        this.drawOrbits(ctx, player);
-        this.drawBolts(ctx);
-        this.drawBeams(ctx);
-        this.drawFlashes(ctx);
-        this.drawStrikes(ctx);
-      } finally { R._only = null; }
-      this.drawPlayer(ctx, player, time);
-    }
-
     // Edennil and the crate, in the air over everything on the field.
     this.drawAirdropSky(ctx, time);
 
@@ -41819,9 +41892,19 @@ window.WS = window.WS || {};
     g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height);
     return (OWL_SHADE[key] = c);
   }
+  /* A big owl does not flap the whole way: four beats, then a glide on
+     spread wings, then four more. `d.flap` counts beats; this maps it to
+     where in a beat the wings are, holding them fully open (a quarter of the
+     way through, the top of the stroke) for the glide. */
+  function owlPhase(d) {
+    const t = ((d.flap % 5) + 5) % 5;
+    if (t < 3.25) return t % 1;
+    if (t < 4.25) return 0.25;
+    return (t - 1) % 1;
+  }
   function owlFrame(d) {
     const n = WS.EdennilArt.frames;
-    return WS.floor(((d.flap % 1) + 1) % 1 * n) % n;
+    return WS.floor(owlPhase(d) * n) % n;
   }
 
   /** The canopy: gores of the Watch's cream and ember, cords to the crate.
@@ -41949,6 +42032,8 @@ window.WS = window.WS || {};
       ctx.translate(gx + 24, gy + 10);
       ctx.rotate(d.heading + Math.PI / 2);
       ctx.drawImage(shade, -size * 0.45, -size * 0.45, size * 0.9, size * 0.9);
+      ctx.beginPath(); ctx.ellipse(0, -size * 0.17, size * 0.075, size * 0.07, 0, 0, WS.TAU);
+      ctx.fillStyle = '#000'; ctx.fill();
       ctx.restore();
     }
   };
@@ -41979,19 +42064,35 @@ window.WS = window.WS || {};
         ctx.drawImage(spr, -cs / 2, -cs * 0.5, cs, cs);
         ctx.restore();
       }
-      // Edennil: the body along the heading, the head turned to look down.
+      // Edennil: the body along the heading, and the head on its neck,
+      // turning to keep the survivor in sight as he passes over - an owl
+      // can look nearly straight back, so it follows him well past.
       const gx = d.x + d.dx * d.s, gy = d.y + d.dy * d.s;
-      const bx = gx, by = gy - alt + WS.sin(d.flap * WS.TAU) * 3;
+      const bx = gx, by = gy - alt + WS.sin(owlPhase(d) * WS.TAU) * 3;
       const body = WS.Sprites.creature('edennil_w' + owlFrame(d), [0.5, 0.5, 0.5], WS.round(size));
+      const turn = d.heading + Math.PI / 2;
       ctx.save();
       ctx.translate(bx, by);
-      ctx.rotate(d.heading + Math.PI / 2);
+      ctx.rotate(turn);
       ctx.drawImage(body, -size / 2, -size / 2, size, size);
       ctx.restore();
-      const fs = size * 0.36;
-      const hx = bx + d.dx * size * 0.24, hy = by + d.dy * size * 0.24 - 4;
-      const face = WS.Sprites.creature('edennil_face', [0.5, 0.5, 0.5], WS.round(fs));
-      ctx.drawImage(face, hx - fs / 2, hy - fs * 0.55, fs, fs);
+      const p = WS.Game.player;
+      let want = 0;
+      if (p) {
+        const rel = Math.atan2(p.y - gy, p.x - gx) - d.heading;
+        want = WS.clamp(Math.atan2(WS.sin(rel), WS.cos(rel)), -2.1, 2.1);
+      }
+      const dt = d._seen !== undefined ? WS.clamp(time - d._seen, 0, 0.1) : 0;
+      d._seen = time;
+      d.look = (d.look || 0) + (want - (d.look || 0)) * WS.min(1, dt * 3.5);
+      const hs = size * 0.32;
+      const nx = bx + d.dx * size * 0.19, ny = by + d.dy * size * 0.19;
+      const headArt = WS.Sprites.creature('edennil_head', [0.5, 0.5, 0.5], WS.round(hs));
+      ctx.save();
+      ctx.translate(nx, ny);
+      ctx.rotate(turn + d.look);
+      ctx.drawImage(headArt, -hs / 2, -hs * 0.56, hs, hs);
+      ctx.restore();
     }
   };
 
@@ -42306,7 +42407,6 @@ window.WS = window.WS || {};
     ctx.save();
     for (let i = 0; i < zones.count; i++) {
       const z = zones.active[i];
-      if (R._only && z.source !== R._only) continue;   // spotlight pass
       const fade = WS.clamp(z.life / z.maxLife, 0, 1);
       const R = z.radius;
       if (z.life < fillAt) {
@@ -43271,7 +43371,6 @@ window.WS = window.WS || {};
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < bolts.count; i++) {
       const b = bolts.active[i];
-      if (R._only && b.source !== R._only) continue;   // spotlight pass
       const r = b.radius;
       /* WHAT THIS SHOT IS, as opposed to where it is.
        *
@@ -43546,7 +43645,6 @@ window.WS = window.WS || {};
     }
     for (let i = 0; i < orbits.count; i++) {
       const o = orbits.active[i];
-      if (R._only && o.source !== R._only) continue;   // spotlight pass
       if (o._hidden) continue;
       for (let n = 0; n < o.count; n++) {
         const a = o.angle + (n / o.count) * WS.TAU;
@@ -43702,7 +43800,6 @@ window.WS = window.WS || {};
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < beams.count; i++) {
       const b = beams.active[i];
-      if (R._only && b.source !== R._only) continue;   // spotlight pass
       const fade = WS.clamp(b.life / b.maxLife, 0, 1);
       const dx = b.x2 - b.x1, dy = b.y2 - b.y1;
       const len = WS.sqrt(dx * dx + dy * dy);
@@ -43930,7 +44027,6 @@ window.WS = window.WS || {};
     ctx.lineCap = 'round';
     for (let i = 0; i < pool.count; i++) {
       const s = pool.active[i];
-      if (R._only && s.source !== R._only) continue;   // spotlight pass
       const t = 1 - WS.clamp(s.life / s.maxLife, 0, 1);
       const e = 1 - (1 - t) * (1 - t);
       const full = s.arc >= WS.TAU - 0.01;
@@ -44002,7 +44098,6 @@ window.WS = window.WS || {};
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < flashes.count; i++) {
       const f = flashes.active[i];
-      if (R._only && f.source !== R._only) continue;   // spotlight pass
       const t = 1 - WS.clamp(f.life / f.maxLife, 0, 1);
       /* An impact leaves fast and slows, so the radius eases out rather than
          travelling at a constant rate, and the ring THINS as it grows. A ring
@@ -46373,6 +46468,8 @@ window.WS = window.WS || {};
       }
       foot.append(box);
     }
+    // Nothing for the footer (a blessing): the description has its room.
+    if (!foot.childElementCount) card.classList.add('no-foot');
     if (index !== undefined) {
       const key = index < 4 ? WS.Input.keyName(WS.Input.keyFor('pick' + (index + 1))) : '';
       if (key) card.append(el('div', 'card-key', key));
@@ -48040,9 +48137,33 @@ window.WS = window.WS || {};
      screen thins out and everything on the field that is not that weapon's
      dims, so the player can see which of the effects out there is which -
      the other half of the same report. A click plays its clip. */
+  /* The build, under the cards, folded away until asked for: a card's tip
+     drops below the card, and a strip of icons there was always under it.
+     Folded it is one line saying what you carry; opened, the icons, each
+     with its full tip. Whether it is open is kept for the rest of the
+     session, so a player who wants it up has it up at every level. */
   function buildTray(p) {
+    const drawer = el('div', 'bt-drawer' + (UI._trayOpen ? ' open' : ''));
     const tray = el('div', 'build-tray');
-    if (!p) return tray;
+    if (!p) return drawer;
+    const toggle = el('button', 'bt-toggle');
+    toggle.type = 'button';
+    toggle.setAttribute('aria-expanded', String(!!UI._trayOpen));
+    const count = (n, one) => n + ' ' + one + (n === 1 ? '' : 's');
+    const learnedN = WS.UpgradeOrder.filter((id) => p.upgradeLevels[id]).length;
+    const foundN = WS.ComboOrder.filter((id) => p.combosActive && p.combosActive[id]).length;
+    const sum = [count(p.weapons.length, 'weapon'), count(learnedN, 'passive')];
+    if (foundN) sum.push(foundN + (foundN === 1 ? ' discovery' : ' discoveries'));
+    toggle.append(el('span', 'bt-chev'), el('span', 'bt-title', 'Your build'),
+      el('span', 'bt-sum', sum.join(' \u00b7 ')));
+    toggle.addEventListener('click', () => {
+      UI._trayOpen = !UI._trayOpen;
+      drawer.classList.toggle('open', UI._trayOpen);
+      toggle.setAttribute('aria-expanded', String(UI._trayOpen));
+      WS.Audio.play('ui');
+      if (UI._trayOpen) tray.scrollIntoView({ block: 'nearest' });
+    });
+    drawer.append(toggle, tray);
     const group = (label) => {
       const g = el('div', 'bt-group');
       g.append(el('span', 'bt-label', label));
@@ -48057,10 +48178,7 @@ window.WS = window.WS || {};
       b.append(icon(w.data.art, WS.Weapon.colour(w), 34),
         el('span', 'bt-rank', w.evolved ? '\u2605' : String(w.level)));
       tipOn(b, tipWeapon(p, w), { prefer: ['above', 'below'], delay: 120 });
-      const on = () => UI.spotlight(w.id), off = () => UI.spotlight(null);
-      b.addEventListener('mouseenter', on); b.addEventListener('mouseleave', off);
-      b.addEventListener('focus', on); b.addEventListener('blur', off);
-      b.addEventListener('click', (e) => { e.stopPropagation(); UI.spotlight(null); UI.openClip(w.id); });
+      b.addEventListener('click', (e) => { e.stopPropagation(); UI.openClip(w.id); });
       wg.append(b);
     }
     for (let i = p.weapons.length; i < WS.MAX_WEAPONS; i++) wg.append(el('span', 'bt-slot empty'));
@@ -48082,14 +48200,8 @@ window.WS = window.WS || {};
       chip.dataset.tip = found.map((id) => WS.Combos[id].name + ': ' + WS.template(WS.Combos[id].description, WS.Combos[id])).join('\n');
       dg.append(chip);
     }
-    return tray;
+    return drawer;
   }
-
-  /** Spotlight one weapon's effects on the field (null for none). */
-  UI.spotlight = function (id) {
-    WS.Renderer.spotlight = id || null;
-    this.overlay.classList.toggle('peek', !!id);
-  };
 
   /* ---------------------------------------------------- spell clips -- */
   /* A click on a spell plays it: the real game, filmed by tools/spell-clips.js
@@ -48098,7 +48210,11 @@ window.WS = window.WS || {};
      beside the game (spells/), loaded only when asked for; a build without
      them says so rather than showing a broken image. */
   UI.closeClip = function () {
-    if (this._clip) { this._clip.remove(); this._clip = null; }
+    if (this._clip) {
+      const v = this._clip.querySelector('video');
+      if (v) { v.pause(); v.removeAttribute('src'); v.load(); }
+      this._clip.remove(); this._clip = null;
+    }
     if (this._clipKey) { window.removeEventListener('keydown', this._clipKey, true); this._clipKey = null; }
   };
   UI.openClip = function (id, tier) {
@@ -48118,8 +48234,9 @@ window.WS = window.WS || {};
     close.addEventListener('click', () => this.closeClip());
     head.append(close);
     const frame = el('div', 'clip-frame');
-    const img = el('img', 'clip-img');
-    img.alt = d.name + ' in action';
+    const img = el('video', 'clip-img');
+    img.muted = true; img.loop = true; img.autoplay = true; img.playsInline = true;
+    img.setAttribute('aria-label', d.name + ' in action');
     const miss = el('div', 'clip-miss', 'No clip in this build of the game.');
     miss.hidden = true;
     img.addEventListener('error', () => { img.hidden = true; miss.hidden = false; });
@@ -48127,7 +48244,9 @@ window.WS = window.WS || {};
     const tabs = el('div', 'clip-tabs');
     const set = (t) => {
       img.hidden = false; miss.hidden = true;
-      img.src = 'spells/' + id + '_' + t + '.webp';
+      img.src = 'spells/' + id + '_' + t + '.webm';
+      const go = img.play();
+      if (go && go.catch) go.catch(() => { /* autoplay refused: the first frame stands */ });
       for (const b of tabs.children) b.classList.toggle('on', b.dataset.tier === t);
     };
     for (const [t, label] of tiers) {
@@ -48270,7 +48389,7 @@ window.WS = window.WS || {};
     ui.row.classList.remove('committing');
     ui.row.replaceChildren();
     // The build as it stands now - a second level-up in a row has one more rank in it.
-    if (ui.tray) { this.spotlight(null); ui.tray.replaceChildren(buildTray(WS.Game.player)); }
+    if (ui.tray) { ui.tray.replaceChildren(buildTray(WS.Game.player)); }
     choices.forEach((c, i) => {
       ui.row.append(cardFor(c, (choice, card) => {
         if (this.banishMode) {
