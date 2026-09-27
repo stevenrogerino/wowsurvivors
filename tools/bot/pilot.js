@@ -40,7 +40,7 @@
 function installPilot(opts) {
   const O = Object.assign({
     replan: 0.1,        // seconds between decisions (a human's reaction is ~0.15-0.25)
-    horizon: 0.9,       // how far ahead a plan is walked
+    horizon: 1.2,       // how far ahead a plan is walked (fitted: 0.9 and 1.5 both do worse)
     turnAt: 0.3,        // when a plan may turn
     noise: 0,           // random cost jitter: 0 plays its best, 20+ plays sloppily
     goals: true,        // go for gems, potions, chests, crates, shrines
@@ -50,7 +50,7 @@ function installPilot(opts) {
     // the rest are guesses about hits to come, and must not outvote one.
     hit0: 60, hitSev: 500, press: 14, enclose: 22, edge: 1.2, centre: 0.01, steady: 3,
     gemWeight: 3,       // how much a gem cluster pulls, per root of what it holds
-    lowHp: 0.35,        // below this share of health, only potions are worth a detour
+    lowHp: 0.5,         // below this share of health, only potions are worth a detour (fitted)
   }, opts || {});
   const S8 = Math.SQRT1_2;
   // Index 0 is standing still; 1..8 walk round the compass, so +-1 is a 45° turn.

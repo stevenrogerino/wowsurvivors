@@ -25,6 +25,7 @@
  *   PILOT_OPTS='{"replan":0.2,"noise":20}'                a sloppier player
  *   DRAFT_OPTS='{"mode":"simple"}'                        the drafter's knobs (tools/bot/draft.js)
  *   BLESS=kings,stillwater                                force the first blessing (one cell each)
+ *   BLESS=all MIDNIGHT=kings                              the blessing matrix: every blessing, every survivor
  *   MODE=window TIME=1320 LIMIT=90 SAME=1 ...             the fixed-window instrument
  *   OUT=/tmp/x.json ... ; node tools/botlab.js --report /tmp/x.json
  *
@@ -326,9 +327,56 @@ function report(data) {
   console.log(`\n pilot: ${ms.toFixed(2)}ms a decision`);
 }
 
+/* The blessing matrix, from full runs: each blessing forced as the first
+   pick on every survivor. Ranked by minutes survived and dawns reached, and
+   for each survivor's own signature, what it is worth on them against the
+   median of everyone else who took it. Standard errors are over runs. */
+function matrix(data, owners) {
+  const { runs } = data;
+  const heroes = [...new Set(runs.map((r) => r.hero))];
+  const bls = [...new Set(runs.map((r) => r.blessing))];
+  const mins = (rs) => rs.reduce((s, r) => s + r.t, 0) / (rs.length || 1) / 60;
+  const se = (rs) => {
+    const m = mins(rs);
+    const v = rs.reduce((s, r) => s + Math.pow(r.t / 60 - m, 2), 0) / Math.max(1, rs.length - 1);
+    return Math.sqrt(v / Math.max(1, rs.length));
+  };
+  const med = (a) => { const s = [...a].sort((x, y) => x - y); const n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; };
+  const cell = (h, b) => runs.filter((r) => r.hero === h && r.blessing === b);
+  const own = Object.fromEntries(Object.entries(owners).map(([h, b]) => [b, h]));
+  console.log('\n blessings, every survivor (a signature counted only on the eleven it does not belong to)');
+  const rows = bls.map((b) => {
+    const rs = runs.filter((r) => r.blessing === b && owners[r.hero] !== b);
+    return { b, m: mins(rs), se: se(rs), dawn: rs.filter((r) => r.dawn).length / (rs.length || 1), n: rs.length };
+  }).sort((a, b) => b.m - a.m);
+  for (const r of rows) {
+    console.log('  ' + (r.b + (own[r.b] ? ' *' : '')).padEnd(20) + `${r.m.toFixed(1)}m ±${r.se.toFixed(1)}`.padStart(12)
+      + `${Math.round(r.dawn * 100)}% dawn`.padStart(11) + `  (${r.n} runs)`);
+  }
+  console.log('\n each survivor on their own signature, against the others who took it');
+  for (const h of heroes) {
+    const b = owners[h];
+    if (!b || !bls.includes(b)) continue;
+    const mine = cell(h, b), base = bls.includes('kings') ? cell(h, 'kings') : [];
+    const others = heroes.filter((x) => x !== h).map((x) => {
+      const c = cell(x, b), k = bls.includes('kings') ? cell(x, 'kings') : [];
+      return k.length ? mins(c) - mins(k) : mins(c);
+    });
+    const gain = base.length ? mins(mine) - mins(base) : mins(mine);
+    console.log('  ' + h.padEnd(11) + b.padEnd(17) + `own ${gain >= 0 ? '+' : ''}${gain.toFixed(1)}m`.padStart(12)
+      + `others ${med(others) >= 0 ? '+' : ''}${med(others).toFixed(1)}m`.padStart(15)
+      + `  edge ${(gain - med(others) >= 0 ? '+' : '')}${(gain - med(others)).toFixed(1)}m` + (base.length ? '  (gains over Warden\'s Charge)' : ''));
+  }
+}
+
 /* --------------------------------------------------------------- main -- */
 (async () => {
-  if (process.argv[2] === '--report') { report(JSON.parse(fs.readFileSync(process.argv[3], 'utf8'))); return; }
+  if (process.argv[2] === '--report') {
+    const data = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'));
+    report(data);
+    if (data.owners) matrix(data, data.owners);
+    return;
+  }
   const S = settings();
   if (process.env.__WORKER) {
     const out = await worker(S, JSON.parse(process.env.__JOBS));
@@ -340,9 +388,11 @@ function report(data) {
   await page.goto(GAME);
   await page.waitForFunction(() => window.WS && WS.Game);
   const roster = await page.evaluate(() => WS.CharacterOrder.slice());
+  const owners = await page.evaluate(() => Object.fromEntries(WS.CharacterOrder.map((h) => [h, WS.Characters[h].signatureBlessing])));
+  const allBless = await page.evaluate(() => WS.BlessingOrder.slice());
   await b.close();
   const heroes = env('HEROES', 'all') === 'all' ? roster : env('HEROES').split(',');
-  const bls = env('BLESS', 'auto').split(',');
+  const bls = env('BLESS', 'auto') === 'all' ? allBless : env('BLESS', 'auto').split(',');
   const N = +env('SEEDS', 4);
   const seeds = Array.from({ length: N }, (_, i) => 101 + i * 7919);
   const jobs = [];
@@ -360,8 +410,9 @@ function report(data) {
     ch.stdout.on('data', (d) => { buf += d; });
     ch.on('close', (code) => (code ? reject(new Error('worker failed')) : resolve(JSON.parse(buf))));
   })));
-  const data = { S, runs: results.flat(), secs: Math.round((Date.now() - t0) / 1000) };
+  const data = { S, runs: results.flat(), secs: Math.round((Date.now() - t0) / 1000), owners };
   console.log(`${data.runs.length} runs in ${data.secs}s`);
   if (env('OUT', null)) fs.writeFileSync(env('OUT'), JSON.stringify(data));
   report(data);
+  if (bls.length > 1) matrix(data, owners);
 })();
