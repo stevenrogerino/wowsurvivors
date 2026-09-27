@@ -3159,6 +3159,23 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .bt-title { font-family: var(--voice); font-weight: 700; font-size: 15px; color: #f1dfb6; }
 .bt-sum { font-family: var(--voice); font-style: italic; font-size: 13px; color: var(--ink-faint); }
 
+/* The mottle tiled every 320px, and a card is taller than that now: the
+   second tile's seam read as a dark band across the foot of every card. On
+   a card it is laid once, over the whole of it. */
+.card { background-size: 100% 100%, 100% 100%; }
+
+/* A row where no card has anything for the footer - the blessings - does not
+   need the footer's room at all: the cards take the height their words need
+   (the tallest sets the row, so tops and bottoms still line up) and the
+   empty reactions line goes. */
+@media (min-width: 721px) {
+  .card-row:not(:has(.card:not(.no-foot))) .card { height: auto; min-height: 0; }
+  .card-row:not(:has(.card:not(.no-foot))) .card .card-body {
+    flex: none; height: auto; -webkit-line-clamp: 8; padding-bottom: 6px;
+  }
+}
+.card-row:not(:has(.card:not(.no-foot))) .card-reacts.empty { display: none; }
+
 /* A card with nothing for its footer (a blessing) gives the room to its
    description rather than showing an empty ruled box under a cut sentence. */
 .card.no-foot .card-foot { display: none; }

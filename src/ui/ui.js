@@ -1343,6 +1343,7 @@
         tag.append(el('i', 'react-mark'), el('span', null, r.text));
         row.append(tag);
       }
+      if (!row.childElementCount) row.classList.add('empty');
       card.append(row);
     }
 

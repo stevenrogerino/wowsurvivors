@@ -7,8 +7,9 @@
  * clean, the coverts laid over the arm, a scalloped row of secondaries along
  * the trailing edge, and ten barred primaries fanned out to fingered tips.
  *
- * The head is its own sprite, seen from above too - crown, tufts, and at the
- * front the rim of the facial disc with the eyes under the brow - because it
+ * The head is its own sprite, seen from above too - the crown with the ear
+ * tufts laid back along it, and at the front the rim of the facial disc with
+ * the eyes under the brow - because it
  * TURNS: the renderer swivels it on the neck to watch the survivor as he
  * passes over, which is the one thing an owl does that no other bird can.
  *
@@ -191,14 +192,6 @@
   /** The head from above, facing up the tile. The renderer turns it. */
   function head(g, s) {
     const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
-    // Ear tufts: broad-based, feathered, black with cream on the inside edge.
-    for (const side of [-1, 1]) {
-      const tuft = [[X(50 + side * 8), Y(38)], [X(50 + side * 15), Y(22), X(50 + side * 24), Y(15)],
-        [X(50 + side * 25), Y(26), X(50 + side * 22), Y(40)]];
-      path(g, tuft); g.fillStyle = BLACK; g.fill();
-      g.strokeStyle = CREAM + '.8)'; g.lineWidth = u * 1.6;
-      g.beginPath(); g.moveTo(X(50 + side * 11), Y(36)); g.quadraticCurveTo(X(50 + side * 16), Y(24), X(50 + side * 23), Y(17)); g.stroke();
-    }
     // The crown: round, near black, with cream flecks.
     const cx = X(50), cy = Y(55), rx = X(26), ry = Y(25);
     g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, WS.TAU);
@@ -234,6 +227,18 @@
     g.beginPath(); g.moveTo(X(39), Y(44)); g.quadraticCurveTo(X(46), Y(41.5), X(50), Y(35)); g.quadraticCurveTo(X(54), Y(41.5), X(61), Y(44)); g.stroke();
     path(g, [[X(47.5), Y(34)], [X(52.5), Y(34)], [X(51), Y(28.5), X(50), Y(27.5)], [X(49), Y(28.5)]]);
     g.fillStyle = '#34302e'; g.fill();
+    // Ear tufts: rising from the brow BEHIND the eyes and laid back along the
+    // crown by the wind of flight, the way a flying owl carries them - black,
+    // broad at the root, cream along the inner edge. Drawn last: they stand
+    // up off the head, so they lie over it.
+    for (const side of [-1, 1]) {
+      const tuft = [[X(50 + side * 8), Y(44)], [X(50 + side * 14), Y(42), X(50 + side * 20), Y(45)],
+        [X(50 + side * 24), Y(56), X(50 + side * 25), Y(70)],
+        [X(50 + side * 19), Y(61), X(50 + side * 11), Y(52)]];
+      path(g, tuft); g.fillStyle = BLACK; g.fill();
+      g.strokeStyle = CREAM + '.6)'; g.lineWidth = u * 1.1;
+      g.beginPath(); g.moveTo(X(50 + side * 10), Y(48)); g.quadraticCurveTo(X(50 + side * 18), Y(55), X(50 + side * 24), Y(68)); g.stroke();
+    }
   }
 
   /** The crate: planks, iron corners, rope, the Watch's ember on the lid. */
