@@ -28,7 +28,7 @@ function installDrafter(opts) {
     midnight: null,       // id forced at the 15:00 draft; else chosen
     reroll: true,
     mode: 'dps',          // 'dps' values cards by what they add; 'simple' by fixed preference
-    defence: 1.0,         // how much defence is worth against damage, in dps mode
+    defence: 0.3,         // how much defence is worth against damage (fitted: 0 and 1 both do worse)
     newBonus: 8,          // what an open slot's future is worth, in dps mode
   }, opts || {});
   const D = window.__draft = { opts: O, picks: [] };
