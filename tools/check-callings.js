@@ -53,6 +53,23 @@ const path = require('path');
       if (!sig || !WS.Blessings[sig]) fail.push(id + ' has no signature blessing');
     }
 
+    // The Aegis is untouchable for as long as it shows. It is raised by the
+    // blow that fills Conviction, inside takeDamage - and the hit's own
+    // half-second grace used to overwrite its two seconds, so the dome stood
+    // over a survivor who was taking hits again.
+    WS.setSeed(3); WS.Game.startRun('thornhollow', 'paladin');
+    WS.Game.chooseBlessing({ type: 'blessing', id: 'conviction' });
+    {
+      const p = WS.Game.player;
+      p.maxHealth = p.health = 99999; p.invulnerable = 0;
+      p.holyPower = WS.Config.holyNeed - 1; p.holyHit = 0.99;
+      WS.Player.takeDamage(p, 10, 'test');
+      if (!(p.divineTimer > 0)) fail.push('the blow that filled Conviction raised no Aegis');
+      else if (p.invulnerable < p.divineTimer) {
+        fail.push(`the Aegis shows for ${p.divineTimer}s but guards only ${p.invulnerable}s`);
+      }
+    }
+
     const CALLINGS = {
       mage: ['arcane_surge', 'overflowAttuned', 'overflowBonus', 'overflows'],
       priest: ['radiant_barrier', 'barrierAttuned', 'barrierBonus', 'barriersBroken'],

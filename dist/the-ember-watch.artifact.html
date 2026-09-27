@@ -27927,7 +27927,10 @@ window.WS = window.WS || {};
     run.damagePrevented += (amount - taken);
     run.damageTaken += taken;
     p.health -= taken;
-    p.invulnerable = WS.Config.hitInvulnerable;
+    // Never shorten a grace already running: the blow above can raise an
+    // Aegis (onHurt fills Conviction), and a flat assignment here cut its two
+    // seconds down to this half-second while the dome stayed up.
+    p.invulnerable = WS.max(p.invulnerable, WS.Config.hitInvulnerable);
     run.noHitStreak = 0;
     WS.Trials.onHurt(p);
     p.hurtTimer = WS.Config.hurtBeat;
@@ -27940,7 +27943,7 @@ window.WS = window.WS || {};
         p.revives--;
         const cfg = WS.Config;
         p.health = WS.floor(p.maxHealth * cfg.secondWindHeal);
-        p.invulnerable = cfg.secondWindGrace;
+        p.invulnerable = WS.max(p.invulnerable, cfg.secondWindGrace);
         WS.FX.flash(p.x, p.y, 130, WS.CONST.COLORS.nature, 0.6);
         WS.Enemy.damageArea(p.x, p.y, cfg.secondWindRadius, cfg.secondWindDamage, null,
           cfg.secondWindKnock, 'second_wind');
