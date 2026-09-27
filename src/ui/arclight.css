@@ -3026,3 +3026,6 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .card .card-stats .cs-row.up .cs-v i { font-style: normal; color: var(--ink-faint); }
 .card .card-stats .cs-row.up .cs-v b { color: var(--gilt, #f5c56b); font-weight: 700; }
 .card .card-detail + .card-stats { margin-top: 8px; }
+
+/* Details written as lines (a form per line) keep their breaks. */
+.card .card-detail, .tip-desc { white-space: pre-line; }

@@ -100,6 +100,12 @@
     ruinous_pact: {
       name: 'Ruinous Pact', art: 'soulrend', quality: 'legendary',
       description: 'Overkill is no longer wasted: damage past the killing blow feeds the ruin, and it feeds {felGain%}% faster. Fill the meter and you become the monster.',
+      /* What the monster IS, shown in the card's hover tooltip (not on the
+         card, which stays its usual height). The line above says how to get
+         there and the card never said what you get. */
+      detail: 'Ruinform, {Config.metaDuration}s: x{Config.metaDamageMult} damage · weapons {Config.metaCooldownMult~%}% faster · wider beams\n'
+        + 'Then the ruin rests {Config.metaRecovery}s ({Config.metaRecoveryBorn}s for a Ruinseeker)\n'
+        + 'Ruin Hunger: longer form, shorter rest',
       felGain: 0.30,
       apply: (p, b) => {
         p.felAttuned += 1; p.felBonus += b.felGain;
@@ -112,6 +118,9 @@
     wildshape: {
       name: 'The Old Shapes', art: 'paw', quality: 'legendary',
       description: 'The hunt wakes the beast in you. Every kill feeds the Wild, close kills twice over; fill it and you take the shape your arsenal leans to: a Bear if you fight with steel, an Owlbear if you fight with spells.',
+      detail: 'Bear (steel): -{Config.bearMitigation%}% damage taken · +{Config.bearPhysical%}% physical damage · a maul around you every {Config.maulEvery}s · {Config.bearMoveMult~%}% slower\n'
+        + 'Owlbear (spells): +{Config.owlMagic%}% spell damage · weapons {Config.owlCooldownMult~%}% faster · a falling star every {Config.owlStarEvery}s\n'
+        + 'A shape lasts {Config.formDuration}s, then the Wild sleeps {Config.wildLock}s. Your weapons keep firing.',
       apply: (p) => { p.wildAttuned += 1; },
     },
     stillwater: {

@@ -170,6 +170,14 @@
     cacheEvery: 75,
     cacheJitter: 45,
     cacheDistance: 320,
+    /* Edennil's drops (src/game/airdrop.js). The owl crosses at airdropSpeed
+       px/s, airdropAltitude above its shadow; the crate falls freely for
+       airdropFreefall s, then the canopy opens, landing airdropFall s after
+       release. The mark goes down between airdropNear and airdropFar from
+       the survivor; the owl enters and leaves airdropMargin past the field's
+       edge; airdropSize is its wingspan; airdropFlap wingbeats a second. */
+    airdropSpeed: 300, airdropAltitude: 170, airdropFreefall: 0.3, airdropFall: 2.2,
+    airdropNear: 180, airdropFar: 380, airdropMargin: 180, airdropSize: 190, airdropFlap: 1.3,
     eggVendorFirst: 150,
     eggVendorDistance: 400,
     coffinTime: 120,

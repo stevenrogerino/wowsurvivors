@@ -473,6 +473,31 @@
       tone({ type: 'sine', freq: 400, to: vary(900, 0.18), decay: vary(0.25, 0.28), gain: 0.14 });
       tone({ type: 'sine', freq: 600, to: vary(1350, 0.18), decay: vary(0.3, 0.28), gain: 0.09, delay: vary(0.05, 0.4) });
     },
+    /* EDENNIL, and what Edennil brings.
+       An eagle owl's call is two low notes, the second longer and falling -
+       "hoo-HOOO" - with breath in it; the wingbeats are air being pushed,
+       slow and heavy, sweeping as the bird goes over; the canopy snaps open
+       with a soft cloth thump; the crate lands in the grass with a wooden
+       knock over a low thud. */
+    owlHoot() {
+      tone({ type: 'sine', freq: vary(310, 0.04), to: 285, decay: 0.2, attack: 0.05, gain: 0.13, filter: 'lowpass', cutoff: 900 });
+      tone({ type: 'sine', freq: vary(330, 0.04), to: 250, decay: 0.55, attack: 0.08, gain: 0.16, delay: 0.34, filter: 'lowpass', cutoff: 900 });
+      noise({ freq: 520, to: 380, decay: 0.5, attack: 0.08, gain: 0.035, filter: 'bandpass', q: 3, delay: 0.34 });
+    },
+    wingBeat() {
+      for (let i = 0; i < 3; i++) {
+        noise({ freq: 380, to: vary(900, 0.15), decay: 0.28, attack: 0.09, gain: 0.07, filter: 'bandpass', q: 0.8, delay: i * 0.36 });
+      }
+    },
+    chuteOpen() {
+      noise({ freq: 1400, to: 260, decay: 0.22, attack: 0.01, gain: 0.12, filter: 'lowpass', q: 0.7 });
+      tone({ type: 'triangle', freq: 150, to: 80, decay: 0.16, gain: 0.07 });
+    },
+    crateLand() {
+      tone({ type: 'sine', freq: 120, to: 48, decay: 0.3, gain: 0.26 });
+      noise({ freq: 600, to: 180, decay: 0.16, gain: 0.12, filter: 'lowpass' });
+      tone({ type: 'triangle', freq: vary(260, 0.06), to: 210, decay: 0.07, gain: 0.07, delay: 0.02 });
+    },
     chest() {
       // A lid thrown back, then coins falling out of it in a bright run.
       tone({ type: 'triangle', freq: 180, to: 120, decay: 0.12, gain: 0.08, filter: 'lowpass', cutoff: 900 });

@@ -109,6 +109,7 @@
     WS.Pickup.clear();
     WS.Hazard.clear();
     WS.Moor.clear();
+    WS.Airdrop.clear();
     WS.Familiar.reset();
     this.timeScale = 1;
     this.toasts.length = 0;
@@ -213,6 +214,7 @@
     WS.Pickup.clear();
     WS.Hazard.clear();
     WS.Moor.clear();
+    WS.Airdrop.clear();
     WS.Familiar.reset();
     WS.Audio.playMusic('menu');
     WS.UI.openMenu();
@@ -655,6 +657,7 @@
     else if (WS.Finale.running()) WS.Finale.update(dt);
     else WS.WaveManager.update(dt, run);
     if (!this.running) return;
+    WS.Airdrop.update(dt);
     WS.Encounters.update(dt, run);
     WS.Trials.update(dt, run);
     WS.Moor.update(dt, run);

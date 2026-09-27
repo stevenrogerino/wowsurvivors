@@ -162,19 +162,21 @@
          COPY of Config.felPerRank that nothing read. A duplicated number is
          a number that will disagree with itself eventually. */
       description: '+{Config.felPerRank%}% fel from overkill, +{Config.metaDurationPerRank}s of Ruinform, '
-        + 'and a shorter wait before it can answer again', max: 5,
-      detail: 'Every scrap of overkill feeds the ruin faster, the transformation holds a second longer '
-        + 'per rank, and the recovery window after it ends shrinks too, though it never fully closes '
-        + 'unless the ruin is already part of you.',
+        + 'and the ruin rests {Config.metaRecoveryPerRank}s less after it', max: 5,
+      detail: 'For the Ruinous Pact. Ruinform is x{Config.metaDamageMult} damage and '
+        + '{Config.metaCooldownMult~%}% faster weapons; every rank fills it faster, holds it a second longer '
+        + 'and shortens the rest after it, down to {Config.metaRecoveryFloor}s '
+        + '({Config.metaRecoveryBornFloor}s for a Ruinseeker).',
       offer: (p) => p.felAttuned > 0,
       apply: (p) => { p.soulRending += 1; },
     },
     primal_kinship: {
       name: 'Primal Kinship', art: 'paw', quality: 'epic',
       description: '+{Config.wildPerRank%}% Wild from every kill, +{Config.formDurationPerRank}s in a shape, '
-        + '+{Config.kinshipDamage%}% damage while you wear one, and the Wild wakes sooner', max: 5,
-      detail: 'The shapes come quicker, hold longer and hit harder, and the wait after one ends shrinks by '
-        + '{Config.wildLockPerRank}s a rank, down to {Config.wildLockFloor}s.',
+        + '+{Config.kinshipDamage%}% damage while you wear one, and the Wild wakes {Config.wildLockPerRank}s sooner', max: 5,
+      detail: 'For The Old Shapes. Every rank makes the Bear and the Owlbear come sooner, last longer and '
+        + 'hit harder, and shortens the Wild\'s sleep after a shape (never below {Config.wildLockFloor}s). '
+        + 'What the shapes themselves give is on the blessing.',
       offer: (p) => p.wildAttuned > 0,
       apply: (p) => { p.kinship += 1; },
     },

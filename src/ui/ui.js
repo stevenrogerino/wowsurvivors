@@ -367,6 +367,7 @@
       const body = el('div', 'tip-body');
       body.append(...tipHead(bl.name, qualityColour(bl.quality || 'legendary'), 'Blessing', 'Yours for the night'));
       body.append(el('div', 'tip-desc', WS.template(bl.description, bl)));
+      if (bl.detail) body.append(el('div', 'tip-desc', WS.template(bl.detail, bl)));
       scalingSection(body, p, WS.Scaling.BLESSING_STAT[id]);
       return body;
     };
@@ -1369,7 +1370,7 @@
       if (choice.type === 'weapon_rank' || choice.type === 'new_weapon') build = tipWeapon(p, null, choice.id, choice.rank, true);
       else if (choice.type === 'evolve') build = tipWeapon(p, WS.Player.getWeapon(p, choice.id), null, null, true);
       else if (choice.type === 'stat') build = tipPassive(p, choice.id, choice.rank, true);
-      else if (choice.type === 'blessing' && WS.Scaling.BLESSING_STAT[choice.id]) build = tipBlessing(p, choice.id);
+      else if (choice.type === 'blessing' && (WS.Scaling.BLESSING_STAT[choice.id] || WS.Blessings[choice.id].detail)) build = tipBlessing(p, choice.id);
       if (build) tipOn(card, build, { prefer: ['below', 'above', 'right', 'left'], delay: 260 });
     }
     return card;
@@ -3401,7 +3402,7 @@
         const im = icon(bl.art, qualityColour(bl.quality || 'legendary'), 24);
         im.width = im.height = 24;
         item.append(im, el('span', null, bl.name));
-        item.dataset.tip = WS.template(bl.description, bl);
+        item.dataset.tip = WS.template(bl.description, bl) + (bl.detail ? '\n' + WS.template(bl.detail, bl) : '');
         list.append(item);
       }
       right.append(list);

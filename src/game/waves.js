@@ -155,10 +155,8 @@
     if (this.cacheTimer <= 0) {
       const cfg = WS.Config;
       this.cacheTimer = this.cacheEvery = cfg.cacheEvery + WS.random() * cfg.cacheJitter;
-      const a = WS.random() * WS.TAU;
-      WS.Pickup.spawn('cache',
-        WS.clamp(player.x + WS.cos(a) * cfg.cacheDistance, 60, WS.CONST.WORLD_WIDTH - 60),
-        WS.clamp(player.y + WS.sin(a) * cfg.cacheDistance, 60, WS.CONST.WORLD_HEIGHT - 60));
+      // Edennil brings it (src/game/airdrop.js): marked, flown in, dropped.
+      WS.Airdrop.call(player);
     }
 
     /* ---- Beans, the egg merchant ------------------------------------------ */
@@ -279,7 +277,10 @@
     const add = (kind, id, label, left, total, art, tint) => {
       if (left > 0) out.push({ kind, id, label, left, total: WS.max(total, left, 0.001), art, tint });
     };
-    add('cache', 'cache', 'Supply cache', this.cacheTimer, this.cacheEvery, 'cache', [1.0, 0.9, 0.6]);
+    // Edennil: the next call, or - with one under way - the landing.
+    const inbound = WS.Airdrop.nextLanding();
+    if (inbound) add('cache', 'cache', 'Edennil lands', inbound.left, inbound.total, 'cache', [1.0, 0.9, 0.6]);
+    else add('cache', 'cache', 'Edennil', this.cacheTimer, this.cacheEvery, 'cache', [1.0, 0.9, 0.6]);
 
     let beans = null;
     const pool = WS.Pickup.pool;

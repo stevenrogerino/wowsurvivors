@@ -901,6 +901,7 @@
     if (WS.Finale.stage !== 'idle') WS.FinaleArt.drawGround(ctx, time);
 
     this.drawCorpses(ctx);
+    this.drawAirdropGround(ctx, time);
 
     /* ---- gems and pickups ------------------------------------------------ */
     this.drawGems(ctx, time);
@@ -966,6 +967,9 @@
        bolts now pass behind him rather than over him, which is the right way
        round anyway - they come from him. */
     this.drawPlayer(ctx, player, time);
+
+    // Edennil and the crate, in the air over everything on the field.
+    this.drawAirdropSky(ctx, time);
 
     this.drawTexts(ctx);
 
@@ -1479,6 +1483,198 @@
   R.VIVID = [1.0, 0.3, 0.88];
   /** Flashes and strobes, softened when the player has asked for that. */
   R.calm = () => !!WS.Save.settings.reduceFlashes;
+
+  /* ------------------------------------------------ Edennil's drops -- */
+  const DROP_GOLD = [1.0, 0.84, 0.46];
+  const OWL_SHADE = {};
+  /** Edennil's shape in black, for the shadow it throws on the field. */
+  function owlShade(frame, size) {
+    const key = frame + ':' + size;
+    if (OWL_SHADE[key]) return OWL_SHADE[key];
+    const src = WS.Sprites.creature('edennil_w' + frame, [0.5, 0.5, 0.5], size);
+    const c = document.createElement('canvas');
+    c.width = src.width; c.height = src.height;
+    const g = c.getContext('2d');
+    g.drawImage(src, 0, 0);
+    g.globalCompositeOperation = 'source-in';
+    g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height);
+    return (OWL_SHADE[key] = c);
+  }
+  function owlFrame(d) {
+    const n = WS.EdennilArt.frames;
+    return WS.floor(((d.flap % 1) + 1) % 1 * n) % n;
+  }
+
+  /** The canopy: gores of the Watch's cream and ember, cords to the crate.
+   *  `open` 0..1 is how far it has filled; `sway` tilts it. */
+  R.drawChute = function (ctx, x, y, w, open, sway) {
+    const h = w * 0.5 * (0.35 + 0.65 * open), half = w * 0.5 * (0.45 + 0.55 * open);
+    ctx.save();
+    ctx.translate(x, y); ctx.rotate(sway);
+    // cords, to the crate below
+    ctx.strokeStyle = 'rgba(60,44,30,.8)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (const f of [-1, -0.5, 0.5, 1]) { ctx.moveTo(half * f, 0); ctx.lineTo(w * 0.12 * f, w * 0.62); }
+    ctx.stroke();
+    // the canopy: a dome, cut into six gores
+    const gores = 6;
+    for (let i = 0; i < gores; i++) {
+      const a0 = Math.PI + (i / gores) * Math.PI, a1 = Math.PI + ((i + 1) / gores) * Math.PI;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.ellipse(0, 0, half, h, 0, a0, a1);
+      ctx.closePath();
+      ctx.fillStyle = i % 2 ? '#f1e2c0' : '#c8472c';
+      ctx.fill();
+    }
+    // the hem, scalloped where each gore meets the next
+    ctx.fillStyle = 'rgba(40,20,12,.35)';
+    for (let i = 0; i < gores; i++) {
+      const cx = -half + (i + 0.5) * (2 * half / gores);
+      ctx.beginPath(); ctx.ellipse(cx, 0, half / gores, h * 0.1, 0, 0, Math.PI); ctx.fill();
+    }
+    ctx.beginPath(); ctx.ellipse(0, 0, half, h, 0, Math.PI, WS.TAU);
+    ctx.strokeStyle = '#3a2418'; ctx.lineWidth = 1.6; ctx.stroke();
+    // a vent at the crown, and a highlight down the sunward side
+    ctx.fillStyle = 'rgba(255,255,255,.28)';
+    ctx.beginPath(); ctx.ellipse(-half * 0.35, -h * 0.55, half * 0.22, h * 0.3, -0.4, 0, WS.TAU); ctx.fill();
+    ctx.restore();
+  };
+
+  /** A canopy that has come down: cloth lying in folds, stirring. */
+  R.drawSpentChute = function (ctx, x, y, w, t) {
+    ctx.save();
+    ctx.translate(x, y);
+    const lift = WS.sin(t * 1.6) * 0.06;
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.ellipse(-w * 0.1 + i * w * 0.14, -i * w * 0.02, w * (0.34 - i * 0.05), w * (0.12 + lift * (i + 1) * 0.2),
+        0.15 * (i - 1.5), 0, WS.TAU);
+      ctx.fillStyle = i % 2 ? '#e6d4ae' : '#b84028';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(58,36,24,.7)'; ctx.lineWidth = 1; ctx.stroke();
+    }
+    ctx.restore();
+  };
+
+  /** On the ground: the mark, and the shadows of the bird and the crate. */
+  R.drawAirdropGround = function (ctx, time) {
+    const list = WS.Airdrop && WS.Airdrop.list;
+    if (!list || !list.length) return;
+    const cfg = WS.Config, size = cfg.airdropSize;
+    for (const d of list) {
+      if (!d.landed) {
+        const k = WS.clamp(d.t / d.lead, 0, 1);            // 0 marked .. 1 landing
+        const gold = WS.rgb(DROP_GOLD, 1);
+        ctx.save();
+        ctx.translate(d.x, d.y);
+        // A soft pool of light where it will come down.
+        const pool = ctx.createRadialGradient(0, 0, 4, 0, 0, 46);
+        pool.addColorStop(0, `rgba(255,214,120,${(0.10 + 0.14 * k).toFixed(3)})`);
+        pool.addColorStop(1, 'rgba(255,214,120,0)');
+        ctx.fillStyle = pool;
+        ctx.beginPath(); ctx.ellipse(0, 0, 46, 22, 0, 0, WS.TAU); ctx.fill();
+        // The ring, turning, flattened to lie on the ground.
+        ctx.scale(1, 0.5);
+        ctx.setLineDash([8, 7]); ctx.lineDashOffset = -time * 18;
+        ctx.strokeStyle = WS.rgb(DROP_GOLD, 0.75); ctx.lineWidth = 2.4;
+        ctx.beginPath(); ctx.arc(0, 0, 36, 0, WS.TAU); ctx.stroke();
+        ctx.setLineDash([]);
+        // The countdown: fills round as the landing comes.
+        ctx.strokeStyle = gold; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.arc(0, 0, 28, -Math.PI / 2, -Math.PI / 2 + k * WS.TAU); ctx.stroke();
+        // Four chevrons pointing in, closing as it comes.
+        const pull = 44 + 10 * (1 - k) + WS.sin(time * 5) * 2;
+        ctx.fillStyle = gold;
+        for (let q = 0; q < 4; q++) {
+          const a = q * Math.PI / 2 + Math.PI / 4;
+          ctx.save(); ctx.rotate(a); ctx.translate(pull, 0);
+          ctx.beginPath(); ctx.moveTo(-6, 0); ctx.lineTo(4, -7); ctx.lineTo(4, 7); ctx.closePath(); ctx.fill();
+          ctx.restore();
+        }
+        ctx.restore();
+        // The flare: a stake with a burning head, and its smoke going up.
+        ctx.save();
+        ctx.strokeStyle = '#4a3422'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d.x, d.y - 14); ctx.stroke();
+        const fl = 0.8 + 0.2 * WS.sin(time * 23 + d.x);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = `rgba(255,170,80,${(0.85 * fl).toFixed(3)})`;
+        ctx.beginPath(); ctx.arc(d.x, d.y - 16, 3.6 * fl, 0, WS.TAU); ctx.fill();
+        ctx.fillStyle = 'rgba(255,240,200,.9)';
+        ctx.beginPath(); ctx.arc(d.x, d.y - 16, 1.6, 0, WS.TAU); ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+        for (let i = 0; i < 7; i++) {
+          const f = ((time * 0.55 + i / 7 + d.flap * 0.1) % 1);
+          const sx = d.x + WS.sin(f * 5 + i) * 6 * f + f * 10;
+          const sy = d.y - 18 - f * 70;
+          ctx.fillStyle = `rgba(255,${WS.round(196 + 40 * f)},${WS.round(140 + 90 * f)},${(0.34 * (1 - f)).toFixed(3)})`;
+          ctx.beginPath(); ctx.arc(sx, sy, 3 + f * 9, 0, WS.TAU); ctx.fill();
+        }
+        ctx.restore();
+        // The crate's shadow, tightening as it comes down.
+        if (d.released) {
+          const h = WS.Airdrop.crateHeight(d.crateT) / cfg.airdropAltitude;   // 1 high .. 0 down
+          ctx.save();
+          ctx.globalAlpha = 0.22 + 0.3 * (1 - h);
+          ctx.fillStyle = '#000';
+          ctx.beginPath(); ctx.ellipse(d.x, d.y + 4, 14 + 16 * h, (14 + 16 * h) * 0.4, 0, 0, WS.TAU); ctx.fill();
+          ctx.restore();
+        }
+      }
+      // Edennil's shadow, sweeping across the ground under it.
+      const gx = d.x + d.dx * d.s, gy = d.y + d.dy * d.s;
+      const shade = owlShade(owlFrame(d), WS.round(size));
+      ctx.save();
+      ctx.globalAlpha = 0.2;
+      ctx.translate(gx + 24, gy + 10);
+      ctx.rotate(d.heading + Math.PI / 2);
+      ctx.drawImage(shade, -size * 0.45, -size * 0.45, size * 0.9, size * 0.9);
+      ctx.restore();
+    }
+  };
+
+  /** In the air: the crate under its canopy, and Edennil. */
+  R.drawAirdropSky = function (ctx, time) {
+    const list = WS.Airdrop && WS.Airdrop.list;
+    if (!list || !list.length) return;
+    const cfg = WS.Config, size = cfg.airdropSize, alt = cfg.airdropAltitude;
+    for (const d of list) {
+      if (d.released && !d.landed) {
+        const h = WS.Airdrop.crateHeight(d.crateT);
+        const cx = d.x, cy = d.y - h;
+        const sway = WS.sin(time * 2.1 + d.flap) * 0.12 * (h / alt);
+        const cs = 42;
+        // Crate and canopy swing together about the canopy, the way a load
+        // hangs: the crate is the pendulum, so the cords always meet it.
+        ctx.save();
+        ctx.translate(cx, cy - cs * 1.25);
+        if (d.chuted) {
+          const open = WS.clamp((d.crateT - cfg.airdropFreefall) / 0.25, 0, 1);
+          ctx.rotate(sway);
+          this.drawChute(ctx, 0, 0, cs * 1.9, open, 0);
+        }
+        const spr = WS.Sprites.creature('supply_crate', [0.5, 0.5, 0.5], cs);
+        ctx.translate(0, cs * 0.95);
+        ctx.rotate(d.chuted ? 0 : d.crateT * 5);
+        ctx.drawImage(spr, -cs / 2, -cs * 0.5, cs, cs);
+        ctx.restore();
+      }
+      // Edennil: the body along the heading, the head turned to look down.
+      const gx = d.x + d.dx * d.s, gy = d.y + d.dy * d.s;
+      const bx = gx, by = gy - alt + WS.sin(d.flap * WS.TAU) * 3;
+      const body = WS.Sprites.creature('edennil_w' + owlFrame(d), [0.5, 0.5, 0.5], WS.round(size));
+      ctx.save();
+      ctx.translate(bx, by);
+      ctx.rotate(d.heading + Math.PI / 2);
+      ctx.drawImage(body, -size / 2, -size / 2, size, size);
+      ctx.restore();
+      const fs = size * 0.36;
+      const hx = bx + d.dx * size * 0.24, hy = by + d.dy * size * 0.24 - 4;
+      const face = WS.Sprites.creature('edennil_face', [0.5, 0.5, 0.5], WS.round(fs));
+      ctx.drawImage(face, hx - fs / 2, hy - fs * 0.55, fs, fs);
+    }
+  };
 
   R.drawHazards = function (ctx, time) {
     const pool = WS.Hazard.pool;
@@ -2442,14 +2638,12 @@
         ctx.drawImage(spr, -size * 0.68, -size * 0.8, size * 1.36, size * 1.36);
         ctx.restore();
       } else if (p.kind === 'cache') {
-        // A parachute is never quite still - a small, slow sway says the
-        // crate only just landed, rather than having always sat here.
-        const icon = WS.Icons.glyph(p.type.art, p.type.tint, size);
-        ctx.save();
-        ctx.translate(p.x, y - size * 0.06);
-        ctx.rotate(WS.sin(time * 0.8 + p.bob) * 0.05);
-        ctx.drawImage(icon, -size / 2, -size / 2, size, size);
-        ctx.restore();
+        // Edennil's crate where it came down: the canopy lies spent beside
+        // it, still catching a little air, and the crate sits on the mark.
+        const cs = size * 1.45;
+        this.drawSpentChute(ctx, p.x + cs * 0.42, p.y + cs * 0.05, cs * 0.62, time + p.bob);
+        const spr = WS.Sprites.creature('supply_crate', [0.5, 0.5, 0.5], WS.round(cs));
+        ctx.drawImage(spr, p.x - cs / 2, p.y - cs * 0.72, cs, cs);
       } else {
         const icon = WS.Icons.glyph(p.type.art, p.type.tint, size);
         ctx.drawImage(icon, p.x - size / 2, y - size / 2, size, size);
