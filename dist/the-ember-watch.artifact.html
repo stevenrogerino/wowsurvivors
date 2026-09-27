@@ -6751,6 +6751,7 @@ window.WS = window.WS || {};
       description: 'The hunt wakes the beast in you. Every kill feeds the Wild, close kills twice over; fill it and you take the shape your arsenal leans to: a Bear if you fight with steel, an Owlbear if you fight with spells.',
       detail: 'Bear (steel): -{Config.bearMitigation%}% damage taken · +{Config.bearPhysical%}% physical damage · a maul around you every {Config.maulEvery}s · {Config.bearMoveMult~%}% slower\n'
         + 'Owlbear (spells): +{Config.owlMagic%}% spell damage · weapons {Config.owlCooldownMult~%}% faster · a falling star every {Config.owlStarEvery}s\n'
+        + 'Evenly balanced? A coin toss, every time.\n'
         + 'A shape lasts {Config.formDuration}s, then the Wild sleeps {Config.wildLock}s. Your weapons keep firing.',
       apply: (p) => { p.wildAttuned += 1; },
     },
@@ -27432,15 +27433,17 @@ window.WS = window.WS || {};
   };
 
   /** Which shape the arsenal leans to: the levels of every physical weapon
-   *  against the levels of everything else. A tie goes to the owlbear - a
-   *  survivor with no steel in their hands is a caster. */
+   *  against the levels of everything else - 'bear', 'owlbear', or 'either'
+   *  when they are level. A dead heat used to go to the owlbear; it is now a
+   *  coin toss at every shift, so a balanced arsenal never quite knows what
+   *  it is about to become. */
   Primal.lean = function (p) {
     let steel = 0, spell = 0;
     for (const w of p.weapons) {
       const n = w.level + (w.evolved ? 2 : 0);
       if (w.data.school === 'physical') steel += n; else spell += n;
     }
-    return steel > spell ? 'bear' : 'owlbear';
+    return steel > spell ? 'bear' : spell > steel ? 'owlbear' : 'either';
   };
 
   Primal.formDuration = function (p) {
@@ -27463,7 +27466,8 @@ window.WS = window.WS || {};
 
   Primal.shift = function (p) {
     p.wild = 0;
-    p.form = Primal.lean(p);
+    const lean = Primal.lean(p);
+    p.form = lean === 'either' ? (WS.random() < 0.5 ? 'bear' : 'owlbear') : lean;
     p.formTimer = Primal.formDuration(p);
     p.maulTimer = 0.3; p.starTimer = 0.3;
     p.shifts++;
@@ -45725,7 +45729,7 @@ window.WS = window.WS || {};
       want.push({ key: 'wildwait', cls: 'wild waiting', label: 'The wild sleeps',
         pct: 1 - p.wildLock / WS.max(0.001, WS.Primal.wildRecovery(p)) });
     } else if (p.wildAttuned > 0) {
-      const lean = WS.Primal.lean(p) === 'bear' ? 'Bear' : 'Owlbear';
+      const lean = { bear: 'Bear', owlbear: 'Owlbear', either: 'Bear or Owlbear?' }[WS.Primal.lean(p)];
       want.push({ key: 'wild', cls: 'wild', label: 'Wild · ' + lean, pct: p.wild / WS.Primal.wildNeed() });
     }
     /* Stillwater: one pip per step, the next one refilling, and the Poise the

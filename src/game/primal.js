@@ -34,15 +34,17 @@
   };
 
   /** Which shape the arsenal leans to: the levels of every physical weapon
-   *  against the levels of everything else. A tie goes to the owlbear - a
-   *  survivor with no steel in their hands is a caster. */
+   *  against the levels of everything else - 'bear', 'owlbear', or 'either'
+   *  when they are level. A dead heat used to go to the owlbear; it is now a
+   *  coin toss at every shift, so a balanced arsenal never quite knows what
+   *  it is about to become. */
   Primal.lean = function (p) {
     let steel = 0, spell = 0;
     for (const w of p.weapons) {
       const n = w.level + (w.evolved ? 2 : 0);
       if (w.data.school === 'physical') steel += n; else spell += n;
     }
-    return steel > spell ? 'bear' : 'owlbear';
+    return steel > spell ? 'bear' : spell > steel ? 'owlbear' : 'either';
   };
 
   Primal.formDuration = function (p) {
@@ -65,7 +67,8 @@
 
   Primal.shift = function (p) {
     p.wild = 0;
-    p.form = Primal.lean(p);
+    const lean = Primal.lean(p);
+    p.form = lean === 'either' ? (WS.random() < 0.5 ? 'bear' : 'owlbear') : lean;
     p.formTimer = Primal.formDuration(p);
     p.maulTimer = 0.3; p.starTimer = 0.3;
     p.shifts++;

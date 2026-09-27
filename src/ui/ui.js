@@ -906,7 +906,7 @@
       want.push({ key: 'wildwait', cls: 'wild waiting', label: 'The wild sleeps',
         pct: 1 - p.wildLock / WS.max(0.001, WS.Primal.wildRecovery(p)) });
     } else if (p.wildAttuned > 0) {
-      const lean = WS.Primal.lean(p) === 'bear' ? 'Bear' : 'Owlbear';
+      const lean = { bear: 'Bear', owlbear: 'Owlbear', either: 'Bear or Owlbear?' }[WS.Primal.lean(p)];
       want.push({ key: 'wild', cls: 'wild', label: 'Wild · ' + lean, pct: p.wild / WS.Primal.wildNeed() });
     }
     /* Stillwater: one pip per step, the next one refilling, and the Poise the

@@ -120,6 +120,7 @@
       description: 'The hunt wakes the beast in you. Every kill feeds the Wild, close kills twice over; fill it and you take the shape your arsenal leans to: a Bear if you fight with steel, an Owlbear if you fight with spells.',
       detail: 'Bear (steel): -{Config.bearMitigation%}% damage taken · +{Config.bearPhysical%}% physical damage · a maul around you every {Config.maulEvery}s · {Config.bearMoveMult~%}% slower\n'
         + 'Owlbear (spells): +{Config.owlMagic%}% spell damage · weapons {Config.owlCooldownMult~%}% faster · a falling star every {Config.owlStarEvery}s\n'
+        + 'Evenly balanced? A coin toss, every time.\n'
         + 'A shape lasts {Config.formDuration}s, then the Wild sleeps {Config.wildLock}s. Your weapons keep firing.',
       apply: (p) => { p.wildAttuned += 1; },
     },
