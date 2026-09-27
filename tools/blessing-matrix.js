@@ -84,6 +84,9 @@ async function worker(scen, jobs, seeds) {
     WS.Save.db.unlocks.hyper[S.MAP] = true;
     WS.Save.db.hyperArmed = S.HYPER;
     WS.Game.openLevelUp = () => {}; WS.Game.presentLevelUp = () => {};
+    // Candidate numbers, tried without touching the game: CONFIG and CHARS.
+    Object.assign(WS.Config, S.CONFIG || {});
+    for (const [id, o] of Object.entries(S.CHARS || {})) Object.assign(WS.Characters[id], o);
     const off = {};
     for (const k in edgeOff) off[k] = (0, eval)('(' + edgeOff[k] + ')');
     const keepPlaying = () => {
@@ -247,6 +250,10 @@ function report(grid, scenName) {
   if (process.env.LIMIT) scen.LIMIT = +process.env.LIMIT;
   if (process.env.HYPER) scen.HYPER = process.env.HYPER === '1';
   scen.SAME = process.env.SAME === '1';
+  // CONFIG='{"flowRecharge":6}' and CHARS='{"monk":{"perkRecharge":0.9}}'
+  // try candidate numbers as runtime overrides.
+  if (process.env.CONFIG) scen.CONFIG = JSON.parse(process.env.CONFIG);
+  if (process.env.CHARS) scen.CHARS = JSON.parse(process.env.CHARS);
   const N = +(process.env.SEEDS || 6);
   const seeds = Array.from({ length: N }, (_, i) => 5 + i * 23);
 
