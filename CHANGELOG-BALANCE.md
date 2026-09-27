@@ -5,6 +5,32 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
 
 <!-- new entries go directly below -->
 
+## 2026-09-27: Luck and drops halved, bombs on bosses halved, unions keep discoveries
+
+Tester feedback after six maps on Veteran: "I can easily chain bombs + time
+stops together the entire run by grabbing Fortune early." Measured over a
+full night before the change: a luck build finished at x2.05 luck with 74
+sapper charges and 46 hourglasses.
+
+- Every source of luck halved: Fortune 15% -> 7.5% a rank, Gift of the
+  Hourglass 15% -> 7.5%, the shaman's perk 15% -> 7.5%, the Trainer's
+  lesson 5% -> 2.5% a rank.
+- Per-kill drop chances halved except potions: coins 1.0% -> 0.5%, sapper
+  charges 0.18% -> 0.09%, lodestones 0.18% -> 0.09%, hourglasses 0.12% ->
+  0.06%. Supply caches and elite chests are not luck rolls and are
+  unchanged. Coins were about 8% of a night's gold (chests are most of it),
+  so gold income falls about 4%.
+- Sapper charges take 4% of a boss's health, not 8% (`bombBossPct`).
+- Unions keep their discoveries. Forging used to delete both source weapons
+  and every discovery on them, including ones with a third weapon (Storm of
+  Steel took Truestrike with it). A union now stands in for both sources:
+  their discoveries are applied to it, and one found later is found against
+  it. All 19 discoveries a union can inherit were checked against what the
+  union reads; the one that did nothing (Celestial Alignment's extra beam on
+  Firmament) now adds a falling star.
+- Weapon counts on the pause sheet and cards include the extra chain and
+  blade at ranks 4 and 7, which they had been leaving out.
+
 ## 2026-09-26: Meters, rings, finales that hit a moving target, overtime after a finale
 
 Playtest: Axe Gyre "says like no damage", the healing meter "just shows

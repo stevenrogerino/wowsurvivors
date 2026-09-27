@@ -41,7 +41,7 @@
     },
     meta_luck: {
       name: 'Lessons: Fortune', art: 'clover',
-      description: '+{v%}% luck per rank', max: 6, cost: 220, v: 0.05,
+      description: '+{v%}% luck per rank', max: 6, cost: 220, v: 0.025,
       apply: (p, rank, m) => { p.luck += m.v * rank; },
     },
     meta_reroll: {

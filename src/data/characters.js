@@ -67,7 +67,7 @@
       description: 'A far seer who calls the storm down on whole warbands.',
       perk: '+{perkLuck%}% luck and +{perkArea%}% Area.',
       maxHealth: 145, moveSpeed: 215, armor: 1, pickupRadius: 58, healthRegen: 0,
-      perkLuck: 0.15, perkArea: 0.08,
+      perkLuck: 0.075, perkArea: 0.08,
       apply: (p, c) => { p.luck += c.perkLuck; p.areaMultiplier += c.perkArea; },
       unlockHint: 'Reading fortunes in the storm.',
     },

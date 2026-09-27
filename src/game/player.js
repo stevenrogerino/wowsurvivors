@@ -127,6 +127,11 @@
 
   Player.addWeapon = function (p, id) {
     if (p.weaponLevels[id]) return Player.levelWeapon(p, id);
+    /* Six hands and no more, whoever is handing it over. The draft only
+       offers a new weapon when there is room, but the graveblade and the
+       twin glaives put theirs straight into the survivor's hands - picked
+       up with six already, that was seven (a tester's screenshot). */
+    if (p.weapons.length >= WS.MAX_WEAPONS) return null;
     const w = { id, data: WS.Weapons[id], level: 1, cooldown: 0.35, mods: {}, burstShots: 0, burstTimer: 0 };
     p.weapons.push(w);
     p.weaponLevels[id] = 1;

@@ -3008,3 +3008,21 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 }
 .key-bind.listening { border-color: var(--arc); }
 .key-bind.listening kbd { color: var(--arc-hot); }
+
+/* A weapon's numbers on its level-up card: a small ledger at the foot of the
+   card. What a rank changes is lit and reads "was -> now"; the rest sits
+   quiet, so the eye goes to what the choice buys. */
+.card .card-stats {
+  margin-top: auto; padding-top: 8px; border-top: 1px solid var(--rim);
+  display: grid; grid-template-columns: 1fr 1fr; column-gap: 10px; row-gap: 1px;
+  font-family: var(--voice); font-variant-numeric: tabular-nums lining-nums;
+  font-size: 13.5px; line-height: 1.35; text-align: left;
+}
+.card .card-stats .cs-row { display: flex; justify-content: space-between; gap: 6px; color: var(--ink-faint); min-width: 0; }
+.card .card-stats .cs-k { white-space: nowrap; }
+.card .card-stats .cs-v { color: var(--ink-dim); white-space: nowrap; }
+.card .card-stats .cs-row.up { color: var(--ink-dim); }
+.card .card-stats .cs-row.up .cs-v s { color: var(--ink-faint); text-decoration: none; opacity: .75; }
+.card .card-stats .cs-row.up .cs-v i { font-style: normal; color: var(--ink-faint); }
+.card .card-stats .cs-row.up .cs-v b { color: var(--gilt, #f5c56b); font-weight: 700; }
+.card .card-detail + .card-stats { margin-top: 8px; }

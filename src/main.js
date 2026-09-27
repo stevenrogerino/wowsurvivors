@@ -179,6 +179,10 @@
     WS.Input.init();
     WS.Renderer.init(canvas);
     WS.Game.init();
+    /* Anything a save has already earned but was never granted - an
+       achievement added after the fact, like the arena gate - is granted
+       now, quietly: its toast would otherwise surface in the next run. */
+    if (WS.Achievements.check()) WS.Game.toasts.length = 0;
     WS.Game.watchOrientation();
     WS.UI.init(stage, overlay, hud);
     initStick(stage, stick);

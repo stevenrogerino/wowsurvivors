@@ -68,7 +68,7 @@
     },
     luck: {
       name: 'Fortune', art: 'coin', quality: 'uncommon',
-      description: '+{v%}% luck (better and more drops)', max: 4, v: 0.15,
+      description: '+{v%}% luck (better and more drops)', max: 4, v: 0.075,
       detail: 'Better odds of coins, potions, sapper charges, and lodestones, but every rank here '
         + 'is a rank not spent on clear speed, which is what actually keeps a build alive early. '
         + 'A strong late-game luxury, a weak early priority.',

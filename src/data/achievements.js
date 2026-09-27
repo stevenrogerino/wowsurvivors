@@ -183,6 +183,17 @@
       reward: { type: 'gold', amount: 500 },
       test: (db) => db.statistics.totalVictories >= 1,
     },
+    /* The arena's own hint has always said this, and nothing did it: no
+       achievement or code path ever unlocked boss_arena, so it opened only
+       for a save that had everything unlocked for testing. A tester beat all
+       six finales on Veteran and found the gate still shut. */
+    the_eclipse_gate: {
+      name: 'The Eclipse Gate', art: 'sovereign',
+      description: 'Defeat any final boss.',
+      reward: { type: 'map', id: 'boss_arena' },
+      test: (db) => !!(db.statistics.finales
+        && Object.values(db.statistics.finales).some((n) => n > 0)),
+    },
     eclipse_broken: {
       name: 'Eclipse Broken', art: 'sovereign',
       description: 'Defeat Aethelgard in the Eclipse Arena.',
@@ -198,7 +209,7 @@
     'fortune_seeker', 'grave_robber', 'the_light_curdles', 'you_are_prepared',
     'lost_calves', 'the_still_hand',
     'forbidden_knowledge', 'lights_favor', 'walking_armory',
-    'blorp', 'master_craftsman', 'survivor_of_the_long_dark', 'eclipse_broken',
+    'blorp', 'master_craftsman', 'survivor_of_the_long_dark', 'the_eclipse_gate', 'eclipse_broken',
   ];
 
 })(window.WS);

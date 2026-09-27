@@ -666,7 +666,10 @@
 
   Weapon.behaviors.storm = function (player, w) {
     const d = w.data, cfg = WS.Config;
-    const strikes = (d.strikes || 5) + player.projectileBonus + (w.evolved ? cfg.evolveStrikes : 0);
+    // Extra projectiles from a discovery are extra strikes (Firmament keeps
+    // Celestial Alignment's extra moonbeam as one more falling star).
+    const strikes = (d.strikes || 5) + player.projectileBonus + (w.mods.extraProjectiles || 0)
+      + (w.evolved ? cfg.evolveStrikes : 0);
     const radius = areaOf(player, w, d.stormRadius || 230);
     const splash = areaOf(player, w, d.splash || 60);
     const damage = damageOf(player, w);
@@ -945,11 +948,20 @@
     if (behavior === 'nova' || behavior === 'zone') {
       lines.push(['Radius', WS.round(areaOf(player, w, d.radius || 120))]);
     } else if (behavior === 'chain') {
-      lines.push(['Chains', (d.chains || 4) + player.projectileBonus + (w.evolved ? 2 : 0)]);
+      // The counts the weapons fire with, rank thresholds included - these
+      // lines left out the extra chain and blade at ranks 4 and 7, so the
+      // sheet and the level-up card said a rank bought nothing it did.
+      lines.push(['Chains', chainCount(player, w)]);
     } else if (behavior === 'orbit') {
-      lines.push(['Blades', (d.projectiles || 2) + player.projectileBonus + (w.evolved ? WS.Config.evolveOrbitBlades : 0)]);
+      const cfg = WS.Config;
+      let blades = (d.projectiles || 2) + player.projectileBonus + (w.mods.extraProjectiles || 0)
+        + (w.evolved ? cfg.evolveOrbitBlades : 0);
+      if (w.level >= cfg.projRankA) blades++;
+      if (w.level >= cfg.projRankB) blades++;
+      lines.push(['Blades', blades]);
     } else if (behavior === 'storm') {
-      lines.push(['Strikes', (d.strikes || 5) + player.projectileBonus + (w.evolved ? 2 : 0)]);
+      lines.push(['Strikes', (d.strikes || 5) + player.projectileBonus + (w.mods.extraProjectiles || 0)
+        + (w.evolved ? WS.Config.evolveStrikes : 0)]);
     } else if (behavior === 'beam') {
       lines.push(['Width', WS.round(areaOf(player, w, d.beamWidth || 26))]);
     } else if (behavior === 'palm') {
@@ -965,6 +977,36 @@
     }
     if (d.bossDamage && d.bossDamage !== 1) lines.push(['Vs bosses', '×' + d.bossDamage]);
     return lines;
+  };
+
+  /** The numbers a level-up card shows for a weapon at a given rank: the
+   *  pause sheet's lines (Weapon.describe), plus the area it covers and, for
+   *  the things that last, how long. `mods` are the owned weapon's, so a
+   *  discovery that changes a number is in it. */
+  Weapon.stats = function (player, id, level, evolved, mods) {
+    const data = WS.Weapons[id];
+    if (!data) return [];
+    const w = { id, data, level, evolved: !!evolved, mods: mods || {} };
+    const rows = Weapon.describe(player, w);
+    const b = behaviorOf(w);
+    if (!rows.some((r) => r[0] === 'Radius' || r[0] === 'Width' || r[0] === 'Reach')) {
+      rows.push(['Area', WS.round(areaOf(player, w, 1) * 100) + '%']);
+    }
+    if (b === 'zone') rows.push(['Duration', durationOf(player, w, data.duration || 4).toFixed(1) + 's']);
+    if (b === 'orbit') rows.push(['Duration', durationOf(player, w, data.duration || 3.2).toFixed(1) + 's']);
+    return rows;
+  };
+
+  /** What a card changes: every stat at `from` against `to`, marked where it
+   *  moves. A rank-up card used to say "Rank 2 to 3" and nothing about what
+   *  rank 3 buys (a tester's question: damage? area? duration? speed?). */
+  Weapon.statDiff = function (player, id, from, to) {
+    const a = from ? Weapon.stats(player, id, from.level, from.evolved, from.mods) : null;
+    const b = Weapon.stats(player, id, to.level, to.evolved, to.mods);
+    return b.map(([label, v]) => {
+      const was = a && a.find((r) => r[0] === label);
+      return { label, from: was ? String(was[1]) : null, to: String(v), changed: !!was && String(was[1]) !== String(v) };
+    });
   };
 
   WS.Weapon = Weapon;

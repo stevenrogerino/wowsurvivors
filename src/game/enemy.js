@@ -333,6 +333,11 @@
           if (e.telegraph) {
             e.telegraph.live = false;      // aimed; from here it is a fact
             e.telegraph.firing = true;
+            /* Pinned where the charge begins. The renderer drew the lane from
+               wherever the creature was, so once it moved the lane slid along
+               with it - a tester's report: the warning should mark the path,
+               not ride on the thing taking it. */
+            e.telegraph.ox = e.x; e.telegraph.oy = e.y;
             /* Outlive the charge by a beat. Matching the two exactly meant
                the lane expired a tick or two before the boss stopped, so the
                last of the charge happened on unmarked ground. */

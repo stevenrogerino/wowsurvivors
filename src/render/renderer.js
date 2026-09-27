@@ -1537,7 +1537,8 @@
          * warning, it is where the boss is going. */
         const aim = !t.firing;
         const fade = t.firing ? 1 - k : 1;
-        ctx.translate(e.x, e.y);
+        // Firing, it stays where the charge began (Enemy pins ox/oy).
+        ctx.translate(t.firing && t.ox !== undefined ? t.ox : e.x, t.firing && t.oy !== undefined ? t.oy : e.y);
         ctx.rotate(WS.atan2(t.dy, t.dx));
         ctx.fillStyle = `rgba(${dz.deep},${(aim ? 0.07 + 0.16 * k : 0.20 * fade).toFixed(3)})`;
         ctx.fillRect(0, -t.width / 2, t.length, t.width);

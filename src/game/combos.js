@@ -5,12 +5,62 @@
 
   const ComboSystem = {};
 
+  /* A UNION KEEPS ITS DISCOVERIES.
+   *
+   * A discovery is written onto its weapons' mods, and a union deletes its
+   * two source weapons - so every discovery either of them was part of used
+   * to vanish with them, including ones with a third weapon (Storm of Steel
+   * takes Volley, and Truestrike lived on Volley). That made finding a
+   * discovery a waste of a pick for anyone heading for a union.
+   *
+   * Now a union STANDS IN for the two weapons it was forged from. Every
+   * discovery they were part of is applied to the union - its source's half
+   * only; the partner weapon already carries its own half - and one found
+   * later is found against the union as if the source were still there
+   * (forge Stormcall, then take Dawnpulse: Radiant Gyre). Every union was
+   * checked against every discovery it can inherit; each reads what it is
+   * handed (Firmament's strikes now count Celestial Alignment's extra beam). */
+
+  /** The weapon that answers to `id`: the weapon itself, or the union that
+   *  was forged from it. */
+  ComboSystem.find = function (p, id) {
+    const w = WS.Player.getWeapon(p, id);
+    if (w) return w;
+    for (const u of p.weapons) if (u.standsFor && u.standsFor.includes(id)) return u;
+    return null;
+  };
+
+  /** The discoveries a union forged from `from` would carry: names, for the
+   *  card. */
+  ComboSystem.carried = function (p, from) {
+    return WS.ComboOrder.filter((id) => p.combosActive[id]
+      && WS.Combos[id].weapons.some((w) => from.includes(w))).map((id) => WS.Combos[id].name);
+  };
+
+  /** Forging: hand the union every active discovery its sources held. Call
+   *  after the union weapon exists, before or after its sources have gone. */
+  ComboSystem.inherit = function (p, union, from) {
+    union.standsFor = from.slice();
+    const kept = [];
+    for (const id of WS.ComboOrder) {
+      if (!p.combosActive[id]) continue;
+      const c = WS.Combos[id];
+      const [a, b] = c.weapons;
+      if (!from.includes(a) && !from.includes(b)) continue;
+      // The union takes the source's side; a partner that is still in hand
+      // already has its own side, so it gets a blank to write into.
+      c.apply(from.includes(a) ? union : { mods: {} }, from.includes(b) ? union : { mods: {} }, c);
+      kept.push(c.name);
+    }
+    return kept;
+  };
+
   ComboSystem.check = function (p) {
     for (const id of WS.ComboOrder) {
       if (p.combosActive[id]) continue;
       const combo = WS.Combos[id];
-      const w1 = WS.Player.getWeapon(p, combo.weapons[0]);
-      const w2 = WS.Player.getWeapon(p, combo.weapons[1]);
+      const w1 = ComboSystem.find(p, combo.weapons[0]);
+      const w2 = ComboSystem.find(p, combo.weapons[1]);
       if (!w1 || !w2) continue;
 
       p.combosActive[id] = true;

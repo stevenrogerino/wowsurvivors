@@ -1336,7 +1336,27 @@
     if (choice.detail && WS.Save.settings.levelUpTooltips) {
       card.append(el('div', 'card-detail', choice.detail));
     }
-    if (index !== undefined) card.append(el('div', 'card-key', String(index + 1)));
+    /* A weapon's numbers, on the card (Detailed level-up cards). The pause
+       sheet had them and the card - the one place a choice is made - did
+       not. A rank-up shows each stat as it is and as it will be, the ones
+       that move lit, so "what does rank 3 do" is answered on the card:
+       rank buys damage, area, duration, and at ranks 4 and 7 one more. */
+    if (choice.stats && choice.stats.length && WS.Save.settings.levelUpTooltips) {
+      const box = el('div', 'card-stats');
+      for (const s of choice.stats) {
+        const row = el('div', 'cs-row' + (s.changed ? ' up' : ''));
+        const val = el('span', 'cs-v');
+        if (s.changed) val.append(el('s', null, s.from), el('i', null, ' \u2192 '), el('b', null, s.to));
+        else val.textContent = s.to;
+        row.append(el('span', 'cs-k', s.label), val);
+        box.append(row);
+      }
+      card.append(box);
+    }
+    if (index !== undefined) {
+      const key = index < 4 ? WS.Input.keyName(WS.Input.keyFor('pick' + (index + 1))) : '';
+      if (key) card.append(el('div', 'card-key', key));
+    }
     card.addEventListener('click', () => { hideTip(); onPick(choice, card); });
 
     /* The card shows the two reactions that matter most; the tip shows all
@@ -2709,48 +2729,62 @@
       'Full-screen flashes drop to a quarter, and telegraphs that strobe hold steady instead.');
     choose('textScale', 'Text size', 'The interface: menus, cards, tooltips and the ledger.',
       [[1, '100%'], [1.15, '115%'], [1.3, '130%']], () => UI.applyTextScale());
-    const keyRow = el('div', 'setting keys-setting');
-    const kmain = el('div');
-    kmain.append(el('div', 's-name', 'Keys'),
-      el('div', 's-desc', 'Click one, then press the key you want. The arrow keys always move as well, and Esc always pauses.'));
-    const kgrid = el('div', 'key-binds');
-    const ACTIONS = [['up', 'Up'], ['left', 'Left'], ['down', 'Down'], ['right', 'Right'],
-      ['pause', 'Pause'], ['reroll', 'Reroll'], ['banish', 'Banish']];
-    const paintKeys = () => {
-      kgrid.replaceChildren();
-      for (const [act, label] of ACTIONS) {
-        const b = el('button', 'btn small key-bind');
-        b.type = 'button';
-        b.append(el('span', 'kb-label', label), el('kbd', null, WS.Input.keyName(st.keys[act])));
-        b.addEventListener('click', () => {
-          if (UI.capturing) return;
-          UI.capturing = true;
-          b.classList.add('listening');
-          b.lastChild.textContent = 'press a key';
-          const grab = (e) => {
-            e.preventDefault(); e.stopPropagation();
-            window.removeEventListener('keydown', grab, true);
-            UI.capturing = false;
-            if (e.code !== 'Escape' || act === 'pause') st.keys[act] = e.code;
-            WS.Save.save();
-            WS.Input.rebind();
-            WS.Audio.play('ui');
-            paintKeys();
-          };
-          window.addEventListener('keydown', grab, true);
-        });
-        kgrid.append(b);
-      }
-      const reset = el('button', 'btn small', 'Defaults');
-      reset.addEventListener('click', () => {
-        st.keys = Object.assign({}, WS.Config.defaultSettings.keys);
-        WS.Save.save(); WS.Input.rebind(); WS.Audio.play('ui'); paintKeys();
-      });
-      kgrid.append(reset);
-    };
-    paintKeys();
-    keyRow.append(kmain, kgrid);
-    wrap.append(keyRow);
+    /* Two rows of bindings: the ones you play with, and the ones that pick
+       a level-up card. One row of eleven was twice the height of any other
+       setting. */
+    const keyRows = [
+      ['Keys', 'Click one, then press the key you want. The arrow keys always move as well, and Esc always pauses.',
+        [['up', 'Up'], ['left', 'Left'], ['down', 'Down'], ['right', 'Right'],
+          ['pause', 'Pause'], ['reroll', 'Reroll'], ['banish', 'Banish']], true],
+      ['Card keys', 'The keys that pick the first to fourth level-up card.',
+        [['pick1', 'Card 1'], ['pick2', 'Card 2'], ['pick3', 'Card 3'], ['pick4', 'Card 4']], false],
+    ];
+    const painters = [];
+    for (const [name, desc, ACTIONS, withReset] of keyRows) {
+      const keyRow = el('div', 'setting keys-setting');
+      const kmain = el('div');
+      kmain.append(el('div', 's-name', name), el('div', 's-desc', desc));
+      const kgrid = el('div', 'key-binds');
+      const paintKeys = () => {
+        kgrid.replaceChildren();
+        for (const [act, label] of ACTIONS) {
+          const b = el('button', 'btn small key-bind');
+          b.type = 'button';
+          b.append(el('span', 'kb-label', label), el('kbd', null, WS.Input.keyName(WS.Input.keyFor(act))));
+          b.addEventListener('click', () => {
+            if (UI.capturing) return;
+            UI.capturing = true;
+            b.classList.add('listening');
+            b.lastChild.textContent = 'press a key';
+            const grab = (e) => {
+              e.preventDefault(); e.stopPropagation();
+              window.removeEventListener('keydown', grab, true);
+              UI.capturing = false;
+              if (e.code !== 'Escape' || act === 'pause') st.keys[act] = e.code;
+              WS.Save.save();
+              WS.Input.rebind();
+              WS.Audio.play('ui');
+              paintKeys();
+            };
+            window.addEventListener('keydown', grab, true);
+          });
+          kgrid.append(b);
+        }
+        if (withReset) {
+          const reset = el('button', 'btn small', 'Defaults');
+          reset.addEventListener('click', () => {
+            st.keys = Object.assign({}, WS.Config.defaultSettings.keys);
+            WS.Save.save(); WS.Input.rebind(); WS.Audio.play('ui');
+            for (const p of painters) p();
+          });
+          kgrid.append(reset);
+        }
+      };
+      painters.push(paintKeys);
+      paintKeys();
+      keyRow.append(kmain, kgrid);
+      wrap.append(keyRow);
+    }
 
     if (inRun) return wrap;
 
@@ -3272,6 +3306,27 @@
       left.append(row);
     }
 
+    /* The discoveries at work in this run. They were announced once, by a
+       toast in the corner, and then nowhere - a tester found no way to see
+       which were active. Same list as the blessings; a discovery carried into
+       a union says which. Hover for what it does. */
+    const found = WS.ComboOrder.filter((id) => p.combosActive && p.combosActive[id]);
+    if (found.length) {
+      left.append(el('h3', null, 'Discoveries'));
+      const list = el('div', 'sheet-blessings');
+      for (const id of found) {
+        const c = WS.Combos[id];
+        const item = el('div', 'sheet-blessing');
+        const im = icon('book', WS.CONST.COLORS.arcane, 24);
+        im.width = im.height = 24;
+        const host = c.weapons.map((w) => WS.ComboSystem.find(p, w)).find((w) => w && w.standsFor);
+        item.append(im, el('span', null, c.name + (host ? ' \u00b7 in ' + host.data.name : '')));
+        item.dataset.tip = WS.template(c.description, c);
+        list.append(item);
+      }
+      left.append(list);
+    }
+
     /* The passives, with what each is for. The sheet used to list the
        arsenal and nothing else, so the half of a build that decides which
        weapons evolve was invisible on the one screen made for reading it. */
@@ -3351,6 +3406,7 @@
       }
       right.append(list);
     }
+
 
     /* The run's figures sit under the survivor's now, and the third panel is
        the meters' alone - the breakdown of what did the damage and what did
@@ -3881,8 +3937,8 @@
         return;
       }
       if (WS.Game.state === 'levelup' || WS.Game.state === 'blessing') {
-        // 1-3 pick a card; R rerolls; B arms the banish.
-        const idx = { Digit1: 0, Digit2: 1, Digit3: 2 }[e.code];
+        // 1-4 (or whatever they are bound to) pick a card; R rerolls; B banishes.
+        const idx = { pick1: 0, pick2: 1, pick3: 2, pick4: 3 }[act];
         const cards = this.overlay.querySelectorAll('.card');
         if (idx !== undefined && cards[idx]) { cards[idx].click(); return; }
         if (act === 'reroll' && WS.Game.state === 'levelup') WS.Game.rerollLevelUp();

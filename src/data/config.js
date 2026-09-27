@@ -12,12 +12,15 @@
     // XP curve: base + linear*(L-1) + quad*(L-1)^2, plus a steep tail.
     xpBase: 14, xpLinear: 9, xpQuad: 1.35, xpSteepFrom: 40, xpSteepMag: 8,
 
-    // Drop chances, rolled per kill and multiplied by luck.
-    dropChanceGold: 0.010,
+    /* Drop chances, rolled per kill and multiplied by luck. Halved on 27 Sept
+       (potions excepted) with every source of luck: a tester chained sapper
+       charges and hourglasses through a whole run off an early Fortune - a
+       luck build measured 74 charges and 46 hourglasses in one night. */
+    dropChanceGold: 0.005,
     dropChancePotion: 0.0035,
-    dropChanceBomb: 0.0018,
-    dropChanceStone: 0.0018,
-    dropChanceHourglass: 0.0012,
+    dropChanceBomb: 0.0009,
+    dropChanceStone: 0.0009,
+    dropChanceHourglass: 0.0006,
 
     potionHealPct: 0.30,
     hourglassFreeze: 8,
@@ -209,7 +212,7 @@
     goldJackpot: 0.03,
     goldLucky: 0.15,
     goldMultiRoll: 0.8,
-    bombBossPct: 0.08,
+    bombBossPct: 0.04,
     coffinGold: 80,
     gravebladeGold: 120,
     glaiveGold: 120,
@@ -517,7 +520,8 @@
       dangerPalette: 'ember',
       reduceFlashes: false,
       textScale: 1,
-      keys: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', pause: 'Escape', reroll: 'KeyR', banish: 'KeyB' },
+      keys: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', pause: 'Escape', reroll: 'KeyR', banish: 'KeyB',
+        pick1: 'Digit1', pick2: 'Digit2', pick3: 'Digit3', pick4: 'Digit4' },
       sound: true,
       music: true,
       effectsVolume: 0.7,

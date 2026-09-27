@@ -29,12 +29,20 @@
     MAP = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
     for (const dir of ['up', 'down', 'left', 'right']) if (k[dir]) MAP[k[dir]] = dir;
   };
-  /** The action a key is bound to (pause, reroll, banish), or null. */
+  /** The key bound to an action, falling back to the default for a save
+   *  made before that action could be bound. */
+  Input.keyFor = function (act) {
+    const k = (WS.Save && WS.Save.db && WS.Save.settings.keys) || {};
+    return k[act] || WS.Config.defaultSettings.keys[act];
+  };
+  /** The action a key is bound to (pause, reroll, banish, pick1-4), or null.
+   *  The card picks were fixed to 1-3, so a fourth card showed a 4 that did
+   *  nothing, and they could not be moved for a tester on an unusual board. */
   Input.action = function (code) {
-    const k = (WS.Save && WS.Save.db && WS.Save.settings.keys) || WS.Config.defaultSettings.keys;
-    if (code === k.pause || code === 'Escape') return 'pause';
-    if (code === k.reroll) return 'reroll';
-    if (code === k.banish) return 'banish';
+    if (code === Input.keyFor('pause') || code === 'Escape') return 'pause';
+    for (const act of ['reroll', 'banish', 'pick1', 'pick2', 'pick3', 'pick4']) {
+      if (code === Input.keyFor(act)) return act;
+    }
     return null;
   };
   /** A key code as a player would name it. */

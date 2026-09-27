@@ -44,7 +44,7 @@
         { name: '{Config.maxWeapons} weapons, and no more',
           text: 'Take one more and you cannot. Ranking a weapon to {Config.weaponMaxLevel} and learning its paired passive evolves it into something far stronger. The card tells you which passive it wants.' },
         { name: 'Two evolved weapons can become one',
-          text: 'Some pairs merge into a single greater weapon and give you the slot back. The Codex remembers every pairing you find.' },
+          text: 'Some pairs merge into a single greater weapon and give you the slot back. The union keeps every discovery the two were part of, and one you find later still counts. The Codex remembers every pairing you find.' },
         { name: 'Thirty minutes is the win, and then a choice',
           text: 'Bosses arrive on a schedule and the horde never stops thickening. Survive to 30:00 and the win is banked. Then choose. Face whatever has been driving the night: first light clears the field, you get thirty seconds and a third blessing, and the finale begins. Or stay out for Death, who always comes.' },
         { name: 'Gold outlives the run',

@@ -122,7 +122,7 @@ const AIM = 6;            // degrees the locked lane may miss the survivor by
 
       const step = WS.CONST.TICK_RATE;
       const K = WS.Input.keys;
-      let lane = null, start = null, aimedAt = null, laneGaps = 0, ticks = 0;
+      let lane = null, start = null, aimedAt = null, laneGaps = 0, ticks = 0, drift = 0, pin = null;
       let maxOff = 0;
 
       while (ticks++ < 400) {
@@ -145,11 +145,20 @@ const AIM = 6;            // degrees the locked lane may miss the survivor by
           lane = { dx: boss.telegraph.dx, dy: boss.telegraph.dy,
             length: boss.telegraph.length };
           start = { x: boss.x, y: boss.y };
+          const T0 = boss.telegraph;
+          pin = { x: T0.ox !== undefined ? T0.ox : boss.x, y: T0.oy !== undefined ? T0.oy : boss.y };
           aimedAt = { x: p.x, y: p.y };
           K.up = false;
           if (dodge === 'bolt') { K.down = true; }   // straight across the lane
         } else if (lane) {
           if (!boss.telegraph) laneGaps++;           // the promise left the screen
+          else {
+            // Where the renderer draws the lane from: it must not ride along.
+            const T = boss.telegraph;
+            const lx = T.firing && T.ox !== undefined ? T.ox : boss.x;
+            const ly = T.firing && T.oy !== undefined ? T.oy : boss.y;
+            drift = Math.max(drift, Math.hypot(lx - pin.x, ly - pin.y));
+          }
           const ox = boss.x - start.x, oy = boss.y - start.y;
           const off = Math.abs(ox * lane.dy - oy * lane.dx);   // perpendicular
           if (off > maxOff) maxOff = off;
@@ -163,7 +172,7 @@ const AIM = 6;            // degrees the locked lane may miss the survivor by
       // Where the lane pointed, against where the survivor actually was.
       const [tx, ty] = WS.normalize(aimedAt.x - start.x, aimedAt.y - start.y);
       const dot = Math.max(-1, Math.min(1, tx * lane.dx + ty * lane.dy));
-      return { id, dodge, off: +maxOff.toFixed(1), along: +along.toFixed(1),
+      return { id, dodge, off: +maxOff.toFixed(1), along: +along.toFixed(1), drift: +drift.toFixed(1),
         length: lane.length, laneGaps, aimErr: +(Math.acos(dot) * 180 / Math.PI).toFixed(1) };
     };
 
@@ -190,6 +199,10 @@ const AIM = 6;            // degrees the locked lane may miss the survivor by
       fail.push(`${who}: the lane locked ${r.aimErr} degrees off the survivor - it `
         + 'stopped tracking before the boss stopped deciding');
     }
+    if (r.drift > 1) {
+      fail.push(`${who}: the lane moved ${r.drift}px with the charge - it rode along `
+        + 'on the creature instead of staying on the ground it marked');
+    }
     if (r.laneGaps) {
       fail.push(`${who}: the lane vanished for ${r.laneGaps} tick(s) while the charge `
         + 'was still running - the player cannot see the promise being kept');
@@ -209,5 +222,5 @@ const AIM = 6;            // degrees the locked lane may miss the survivor by
     + 'and creatures, each against a '
     + 'survivor who stands and one who bolts; the worst stray from the marked lane is '
     + `${worstOff.off}px (${worstOff.id}), the worst aim at lock is ${worstAim.aimErr} `
-    + `degrees (${worstAim.id}), and every charge covered the ground it drew`);
+    + `degrees (${worstAim.id}), every charge covered the ground it drew, and no lane moved with its charge`);
 })();

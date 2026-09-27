@@ -57,7 +57,8 @@
       if (c.weapons.indexOf(id) < 0) continue;
       const other = c.weapons[0] === id ? c.weapons[1] : c.weapons[0];
       if (p.combosActive[cid]) continue;
-      const held = !!WS.Player.getWeapon(p, other);
+      // A union answers for the weapons it was forged from (ComboSystem.find).
+      const held = !!WS.ComboSystem.find(p, other);
       out.push({ kind: 'discovery', ready: held && kind === 'new_weapon',
         text: held ? 'Discovery: ' + c.name
           : c.name + ' needs ' + (WS.Weapons[other] ? WS.Weapons[other].name : other) });
@@ -136,6 +137,8 @@
           name: d.name, description: WS.template(d.description, d),
           note: `Rank ${w.level} to ${w.level + 1}`,
           rank: w.level + 1, maxRank: WS.WEAPON_MAX_LEVEL,
+          stats: WS.Weapon.statDiff(p, w.id, { level: w.level, evolved: w.evolved, mods: w.mods },
+            { level: w.level + 1, evolved: w.evolved, mods: w.mods }),
           reacts: reactionsFor(p, w.id, 'weapon_rank', w.level + 1),
         });
       } else if (!w.evolved && d.evolvePairing && (p.upgradeLevels[d.evolvePairing] || 0) > 0) {
@@ -145,6 +148,8 @@
           rank: WS.WEAPON_MAX_LEVEL, maxRank: WS.WEAPON_MAX_LEVEL,
           reacts: reactionsFor(p, w.id, 'evolve', WS.WEAPON_MAX_LEVEL),
           note: 'Evolution · ' + d.name + ', transformed',
+          stats: WS.Weapon.statDiff(p, w.id, { level: w.level, evolved: false, mods: w.mods },
+            { level: w.level, evolved: true, mods: w.mods }),
         });
       }
     }
@@ -161,6 +166,9 @@
         candidates.push({
           type: 'union', id: recipe.result, art: d.art, school: d.school, weight: 10,
           unionFrom: recipe.from, name: d.name, description: WS.template(d.description, d),
+          // What it keeps: every discovery the two were part of goes with them.
+          reacts: WS.ComboSystem.carried(p, recipe.from).map((n) => ({ text: 'Keeps ' + n, ready: true })),
+          stats: WS.Weapon.statDiff(p, recipe.result, null, { level: WS.WEAPON_MAX_LEVEL, evolved: false }),
           note: `Union · ${WS.Weapons[a].name} and ${WS.Weapons[b].name}, made one`,
         });
       }
@@ -177,6 +185,7 @@
           rank: 1, maxRank: WS.WEAPON_MAX_LEVEL,
           reacts: reactionsFor(p, id, 'new_weapon', 1),
           note: 'New weapon · pairs with ' + WS.Upgrades[d.evolvePairing].name,
+          stats: WS.Weapon.statDiff(p, id, null, { level: 1, evolved: false }),
         });
       }
     }
@@ -278,7 +287,15 @@
     if (choice.type === 'union') {
       for (const id of choice.unionFrom) WS.Player.removeWeapon(p, id);
       const w = WS.Player.addWeapon(p, choice.id);
-      if (w) { w.level = WS.WEAPON_MAX_LEVEL; p.weaponLevels[choice.id] = WS.WEAPON_MAX_LEVEL; }
+      if (w) {
+        w.level = WS.WEAPON_MAX_LEVEL; p.weaponLevels[choice.id] = WS.WEAPON_MAX_LEVEL;
+        // Every discovery the two were part of goes into the union with them.
+        const kept = WS.ComboSystem.inherit(p, w, choice.unionFrom);
+        if (kept.length) {
+          WS.Game.toast('Carried into ' + choice.name, kept.join(', '), { kind: 'discovery', art: 'book' });
+        }
+        WS.ComboSystem.check(p);
+      }
       p.unionsForged[choice.id] = true;
       WS.Save.stats.unions++;
       WS.Save.db.unions[choice.id] = true;   // for the codex, which wants which

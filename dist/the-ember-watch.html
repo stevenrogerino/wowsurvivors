@@ -3100,6 +3100,24 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .key-bind.listening { border-color: var(--arc); }
 .key-bind.listening kbd { color: var(--arc-hot); }
 
+/* A weapon's numbers on its level-up card: a small ledger at the foot of the
+   card. What a rank changes is lit and reads "was -> now"; the rest sits
+   quiet, so the eye goes to what the choice buys. */
+.card .card-stats {
+  margin-top: auto; padding-top: 8px; border-top: 1px solid var(--rim);
+  display: grid; grid-template-columns: 1fr 1fr; column-gap: 10px; row-gap: 1px;
+  font-family: var(--voice); font-variant-numeric: tabular-nums lining-nums;
+  font-size: 13.5px; line-height: 1.35; text-align: left;
+}
+.card .card-stats .cs-row { display: flex; justify-content: space-between; gap: 6px; color: var(--ink-faint); min-width: 0; }
+.card .card-stats .cs-k { white-space: nowrap; }
+.card .card-stats .cs-v { color: var(--ink-dim); white-space: nowrap; }
+.card .card-stats .cs-row.up { color: var(--ink-dim); }
+.card .card-stats .cs-row.up .cs-v s { color: var(--ink-faint); text-decoration: none; opacity: .75; }
+.card .card-stats .cs-row.up .cs-v i { font-style: normal; color: var(--ink-faint); }
+.card .card-stats .cs-row.up .cs-v b { color: var(--gilt, #f5c56b); font-weight: 700; }
+.card .card-detail + .card-stats { margin-top: 8px; }
+
 </style>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%230b0d12'/><circle cx='50' cy='50' r='30' fill='none' stroke='%23f5c56b' stroke-width='8' stroke-dasharray='120 60'/></svg>">
 </head>
@@ -3569,12 +3587,15 @@ window.WS = window.WS || {};
     // XP curve: base + linear*(L-1) + quad*(L-1)^2, plus a steep tail.
     xpBase: 14, xpLinear: 9, xpQuad: 1.35, xpSteepFrom: 40, xpSteepMag: 8,
 
-    // Drop chances, rolled per kill and multiplied by luck.
-    dropChanceGold: 0.010,
+    /* Drop chances, rolled per kill and multiplied by luck. Halved on 27 Sept
+       (potions excepted) with every source of luck: a tester chained sapper
+       charges and hourglasses through a whole run off an early Fortune - a
+       luck build measured 74 charges and 46 hourglasses in one night. */
+    dropChanceGold: 0.005,
     dropChancePotion: 0.0035,
-    dropChanceBomb: 0.0018,
-    dropChanceStone: 0.0018,
-    dropChanceHourglass: 0.0012,
+    dropChanceBomb: 0.0009,
+    dropChanceStone: 0.0009,
+    dropChanceHourglass: 0.0006,
 
     potionHealPct: 0.30,
     hourglassFreeze: 8,
@@ -3766,7 +3787,7 @@ window.WS = window.WS || {};
     goldJackpot: 0.03,
     goldLucky: 0.15,
     goldMultiRoll: 0.8,
-    bombBossPct: 0.08,
+    bombBossPct: 0.04,
     coffinGold: 80,
     gravebladeGold: 120,
     glaiveGold: 120,
@@ -4074,7 +4095,8 @@ window.WS = window.WS || {};
       dangerPalette: 'ember',
       reduceFlashes: false,
       textScale: 1,
-      keys: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', pause: 'Escape', reroll: 'KeyR', banish: 'KeyB' },
+      keys: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', pause: 'Escape', reroll: 'KeyR', banish: 'KeyB',
+        pick1: 'Digit1', pick2: 'Digit2', pick3: 'Digit3', pick4: 'Digit4' },
       sound: true,
       music: true,
       effectsVolume: 0.7,
@@ -4845,12 +4867,20 @@ window.WS = window.WS || {};
     MAP = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
     for (const dir of ['up', 'down', 'left', 'right']) if (k[dir]) MAP[k[dir]] = dir;
   };
-  /** The action a key is bound to (pause, reroll, banish), or null. */
+  /** The key bound to an action, falling back to the default for a save
+   *  made before that action could be bound. */
+  Input.keyFor = function (act) {
+    const k = (WS.Save && WS.Save.db && WS.Save.settings.keys) || {};
+    return k[act] || WS.Config.defaultSettings.keys[act];
+  };
+  /** The action a key is bound to (pause, reroll, banish, pick1-4), or null.
+   *  The card picks were fixed to 1-3, so a fourth card showed a 4 that did
+   *  nothing, and they could not be moved for a tester on an unusual board. */
   Input.action = function (code) {
-    const k = (WS.Save && WS.Save.db && WS.Save.settings.keys) || WS.Config.defaultSettings.keys;
-    if (code === k.pause || code === 'Escape') return 'pause';
-    if (code === k.reroll) return 'reroll';
-    if (code === k.banish) return 'banish';
+    if (code === Input.keyFor('pause') || code === 'Escape') return 'pause';
+    for (const act of ['reroll', 'banish', 'pick1', 'pick2', 'pick3', 'pick4']) {
+      if (code === Input.keyFor(act)) return act;
+    }
     return null;
   };
   /** A key code as a player would name it. */
@@ -5025,7 +5055,7 @@ window.WS = window.WS || {};
       description: 'A far seer who calls the storm down on whole warbands.',
       perk: '+{perkLuck%}% luck and +{perkArea%}% Area.',
       maxHealth: 145, moveSpeed: 215, armor: 1, pickupRadius: 58, healthRegen: 0,
-      perkLuck: 0.15, perkArea: 0.08,
+      perkLuck: 0.075, perkArea: 0.08,
       apply: (p, c) => { p.luck += c.perkLuck; p.areaMultiplier += c.perkArea; },
       unlockHint: 'Reading fortunes in the storm.',
     },
@@ -6347,7 +6377,7 @@ window.WS = window.WS || {};
     },
     luck: {
       name: 'Fortune', art: 'coin', quality: 'uncommon',
-      description: '+{v%}% luck (better and more drops)', max: 4, v: 0.15,
+      description: '+{v%}% luck (better and more drops)', max: 4, v: 0.075,
       detail: 'Better odds of coins, potions, sapper charges, and lodestones, but every rank here '
         + 'is a rank not spent on clear speed, which is what actually keeps a build alive early. '
         + 'A strong late-game luxury, a weak early priority.',
@@ -6551,7 +6581,7 @@ window.WS = window.WS || {};
     },
     meta_luck: {
       name: 'Lessons: Fortune', art: 'clover',
-      description: '+{v%}% luck per rank', max: 6, cost: 220, v: 0.05,
+      description: '+{v%}% luck per rank', max: 6, cost: 220, v: 0.025,
       apply: (p, rank, m) => { p.luck += m.v * rank; },
     },
     meta_reroll: {
@@ -6623,7 +6653,7 @@ window.WS = window.WS || {};
     fortune: {
       name: 'Gift of the Hourglass', art: 'hourglass', quality: 'rare',
       description: '+{gold%}% gold found and +{luck%}% luck.',
-      gold: 0.20, luck: 0.15,
+      gold: 0.20, luck: 0.075,
       apply: (p, b) => { p.goldMultiplier += b.gold; p.luck += b.luck; },
     },
     wild: {
@@ -7102,6 +7132,17 @@ window.WS = window.WS || {};
       reward: { type: 'gold', amount: 500 },
       test: (db) => db.statistics.totalVictories >= 1,
     },
+    /* The arena's own hint has always said this, and nothing did it: no
+       achievement or code path ever unlocked boss_arena, so it opened only
+       for a save that had everything unlocked for testing. A tester beat all
+       six finales on Veteran and found the gate still shut. */
+    the_eclipse_gate: {
+      name: 'The Eclipse Gate', art: 'sovereign',
+      description: 'Defeat any final boss.',
+      reward: { type: 'map', id: 'boss_arena' },
+      test: (db) => !!(db.statistics.finales
+        && Object.values(db.statistics.finales).some((n) => n > 0)),
+    },
     eclipse_broken: {
       name: 'Eclipse Broken', art: 'sovereign',
       description: 'Defeat Aethelgard in the Eclipse Arena.',
@@ -7117,7 +7158,7 @@ window.WS = window.WS || {};
     'fortune_seeker', 'grave_robber', 'the_light_curdles', 'you_are_prepared',
     'lost_calves', 'the_still_hand',
     'forbidden_knowledge', 'lights_favor', 'walking_armory',
-    'blorp', 'master_craftsman', 'survivor_of_the_long_dark', 'eclipse_broken',
+    'blorp', 'master_craftsman', 'survivor_of_the_long_dark', 'the_eclipse_gate', 'eclipse_broken',
   ];
 
 })(window.WS);
@@ -7169,7 +7210,7 @@ window.WS = window.WS || {};
         { name: '{Config.maxWeapons} weapons, and no more',
           text: 'Take one more and you cannot. Ranking a weapon to {Config.weaponMaxLevel} and learning its paired passive evolves it into something far stronger. The card tells you which passive it wants.' },
         { name: 'Two evolved weapons can become one',
-          text: 'Some pairs merge into a single greater weapon and give you the slot back. The Codex remembers every pairing you find.' },
+          text: 'Some pairs merge into a single greater weapon and give you the slot back. The union keeps every discovery the two were part of, and one you find later still counts. The Codex remembers every pairing you find.' },
         { name: 'Thirty minutes is the win, and then a choice',
           text: 'Bosses arrive on a schedule and the horde never stops thickening. Survive to 30:00 and the win is banked. Then choose. Face whatever has been driving the night: first light clears the field, you get thirty seconds and a third blessing, and the finale begins. Or stay out for Death, who always comes.' },
         { name: 'Gold outlives the run',
@@ -25116,6 +25157,11 @@ window.WS = window.WS || {};
           if (e.telegraph) {
             e.telegraph.live = false;      // aimed; from here it is a fact
             e.telegraph.firing = true;
+            /* Pinned where the charge begins. The renderer drew the lane from
+               wherever the creature was, so once it moved the lane slid along
+               with it - a tester's report: the warning should mark the path,
+               not ride on the thing taking it. */
+            e.telegraph.ox = e.x; e.telegraph.oy = e.y;
             /* Outlive the charge by a beat. Matching the two exactly meant
                the lane expired a tick or two before the boss stopped, so the
                last of the charge happened on unmarked ground. */
@@ -26163,7 +26209,10 @@ window.WS = window.WS || {};
 
   Weapon.behaviors.storm = function (player, w) {
     const d = w.data, cfg = WS.Config;
-    const strikes = (d.strikes || 5) + player.projectileBonus + (w.evolved ? cfg.evolveStrikes : 0);
+    // Extra projectiles from a discovery are extra strikes (Firmament keeps
+    // Celestial Alignment's extra moonbeam as one more falling star).
+    const strikes = (d.strikes || 5) + player.projectileBonus + (w.mods.extraProjectiles || 0)
+      + (w.evolved ? cfg.evolveStrikes : 0);
     const radius = areaOf(player, w, d.stormRadius || 230);
     const splash = areaOf(player, w, d.splash || 60);
     const damage = damageOf(player, w);
@@ -26442,11 +26491,20 @@ window.WS = window.WS || {};
     if (behavior === 'nova' || behavior === 'zone') {
       lines.push(['Radius', WS.round(areaOf(player, w, d.radius || 120))]);
     } else if (behavior === 'chain') {
-      lines.push(['Chains', (d.chains || 4) + player.projectileBonus + (w.evolved ? 2 : 0)]);
+      // The counts the weapons fire with, rank thresholds included - these
+      // lines left out the extra chain and blade at ranks 4 and 7, so the
+      // sheet and the level-up card said a rank bought nothing it did.
+      lines.push(['Chains', chainCount(player, w)]);
     } else if (behavior === 'orbit') {
-      lines.push(['Blades', (d.projectiles || 2) + player.projectileBonus + (w.evolved ? WS.Config.evolveOrbitBlades : 0)]);
+      const cfg = WS.Config;
+      let blades = (d.projectiles || 2) + player.projectileBonus + (w.mods.extraProjectiles || 0)
+        + (w.evolved ? cfg.evolveOrbitBlades : 0);
+      if (w.level >= cfg.projRankA) blades++;
+      if (w.level >= cfg.projRankB) blades++;
+      lines.push(['Blades', blades]);
     } else if (behavior === 'storm') {
-      lines.push(['Strikes', (d.strikes || 5) + player.projectileBonus + (w.evolved ? 2 : 0)]);
+      lines.push(['Strikes', (d.strikes || 5) + player.projectileBonus + (w.mods.extraProjectiles || 0)
+        + (w.evolved ? WS.Config.evolveStrikes : 0)]);
     } else if (behavior === 'beam') {
       lines.push(['Width', WS.round(areaOf(player, w, d.beamWidth || 26))]);
     } else if (behavior === 'palm') {
@@ -26462,6 +26520,36 @@ window.WS = window.WS || {};
     }
     if (d.bossDamage && d.bossDamage !== 1) lines.push(['Vs bosses', '×' + d.bossDamage]);
     return lines;
+  };
+
+  /** The numbers a level-up card shows for a weapon at a given rank: the
+   *  pause sheet's lines (Weapon.describe), plus the area it covers and, for
+   *  the things that last, how long. `mods` are the owned weapon's, so a
+   *  discovery that changes a number is in it. */
+  Weapon.stats = function (player, id, level, evolved, mods) {
+    const data = WS.Weapons[id];
+    if (!data) return [];
+    const w = { id, data, level, evolved: !!evolved, mods: mods || {} };
+    const rows = Weapon.describe(player, w);
+    const b = behaviorOf(w);
+    if (!rows.some((r) => r[0] === 'Radius' || r[0] === 'Width' || r[0] === 'Reach')) {
+      rows.push(['Area', WS.round(areaOf(player, w, 1) * 100) + '%']);
+    }
+    if (b === 'zone') rows.push(['Duration', durationOf(player, w, data.duration || 4).toFixed(1) + 's']);
+    if (b === 'orbit') rows.push(['Duration', durationOf(player, w, data.duration || 3.2).toFixed(1) + 's']);
+    return rows;
+  };
+
+  /** What a card changes: every stat at `from` against `to`, marked where it
+   *  moves. A rank-up card used to say "Rank 2 to 3" and nothing about what
+   *  rank 3 buys (a tester's question: damage? area? duration? speed?). */
+  Weapon.statDiff = function (player, id, from, to) {
+    const a = from ? Weapon.stats(player, id, from.level, from.evolved, from.mods) : null;
+    const b = Weapon.stats(player, id, to.level, to.evolved, to.mods);
+    return b.map(([label, v]) => {
+      const was = a && a.find((r) => r[0] === label);
+      return { label, from: was ? String(was[1]) : null, to: String(v), changed: !!was && String(was[1]) !== String(v) };
+    });
   };
 
   WS.Weapon = Weapon;
@@ -26598,6 +26686,11 @@ window.WS = window.WS || {};
 
   Player.addWeapon = function (p, id) {
     if (p.weaponLevels[id]) return Player.levelWeapon(p, id);
+    /* Six hands and no more, whoever is handing it over. The draft only
+       offers a new weapon when there is room, but the graveblade and the
+       twin glaives put theirs straight into the survivor's hands - picked
+       up with six already, that was seven (a tester's screenshot). */
+    if (p.weapons.length >= WS.MAX_WEAPONS) return null;
     const w = { id, data: WS.Weapons[id], level: 1, cooldown: 0.35, mods: {}, burstShots: 0, burstTimer: 0 };
     p.weapons.push(w);
     p.weaponLevels[id] = 1;
@@ -28050,20 +28143,20 @@ window.WS = window.WS || {};
     } else if (kind === 'graveblade') {
       WS.Save.stats.gravebladesClaimed = (WS.Save.stats.gravebladesClaimed || 0) + 1;
       WS.Save.save();
-      WS.Game.announce('The graveblade answers.', 'Something colder takes the hilt.', 3.5,
-        { kind: 'glory' });
+      const took = WS.Player.addWeapon(p, 'reaving_arc');
+      WS.Game.announce('The graveblade answers.', took ? 'Something colder takes the hilt.'
+        : 'Your hands are full. It waits for whoever comes next.', 3.5, { kind: 'glory' });
       WS.Game.addGold(WS.floor(WS.Config.gravebladeGold * run.goldMult), p.x, p.y);
-      WS.Player.addWeapon(p, 'reaving_arc');
       WS.Achievements.check();
       WS.Audio.play('evolve');
 
     } else if (kind === 'twinglaive') {
       WS.Save.stats.glaivesClaimed = (WS.Save.stats.glaivesClaimed || 0) + 1;
       WS.Save.save();
-      WS.Game.announce('The twin glaives find you.', 'You were never going to refuse.', 3.5,
-        { kind: 'glory' });
+      const took = WS.Player.addWeapon(p, 'verdant_lance');
+      WS.Game.announce('The twin glaives find you.', took ? 'You were never going to refuse.'
+        : 'Your hands are full. They will find someone else.', 3.5, { kind: 'glory' });
       WS.Game.addGold(WS.floor(WS.Config.glaiveGold * run.goldMult), p.x, p.y);
-      WS.Player.addWeapon(p, 'verdant_lance');
       WS.Achievements.check();
       WS.Audio.play('evolve');
 
@@ -28368,12 +28461,62 @@ window.WS = window.WS || {};
 
   const ComboSystem = {};
 
+  /* A UNION KEEPS ITS DISCOVERIES.
+   *
+   * A discovery is written onto its weapons' mods, and a union deletes its
+   * two source weapons - so every discovery either of them was part of used
+   * to vanish with them, including ones with a third weapon (Storm of Steel
+   * takes Volley, and Truestrike lived on Volley). That made finding a
+   * discovery a waste of a pick for anyone heading for a union.
+   *
+   * Now a union STANDS IN for the two weapons it was forged from. Every
+   * discovery they were part of is applied to the union - its source's half
+   * only; the partner weapon already carries its own half - and one found
+   * later is found against the union as if the source were still there
+   * (forge Stormcall, then take Dawnpulse: Radiant Gyre). Every union was
+   * checked against every discovery it can inherit; each reads what it is
+   * handed (Firmament's strikes now count Celestial Alignment's extra beam). */
+
+  /** The weapon that answers to `id`: the weapon itself, or the union that
+   *  was forged from it. */
+  ComboSystem.find = function (p, id) {
+    const w = WS.Player.getWeapon(p, id);
+    if (w) return w;
+    for (const u of p.weapons) if (u.standsFor && u.standsFor.includes(id)) return u;
+    return null;
+  };
+
+  /** The discoveries a union forged from `from` would carry: names, for the
+   *  card. */
+  ComboSystem.carried = function (p, from) {
+    return WS.ComboOrder.filter((id) => p.combosActive[id]
+      && WS.Combos[id].weapons.some((w) => from.includes(w))).map((id) => WS.Combos[id].name);
+  };
+
+  /** Forging: hand the union every active discovery its sources held. Call
+   *  after the union weapon exists, before or after its sources have gone. */
+  ComboSystem.inherit = function (p, union, from) {
+    union.standsFor = from.slice();
+    const kept = [];
+    for (const id of WS.ComboOrder) {
+      if (!p.combosActive[id]) continue;
+      const c = WS.Combos[id];
+      const [a, b] = c.weapons;
+      if (!from.includes(a) && !from.includes(b)) continue;
+      // The union takes the source's side; a partner that is still in hand
+      // already has its own side, so it gets a blank to write into.
+      c.apply(from.includes(a) ? union : { mods: {} }, from.includes(b) ? union : { mods: {} }, c);
+      kept.push(c.name);
+    }
+    return kept;
+  };
+
   ComboSystem.check = function (p) {
     for (const id of WS.ComboOrder) {
       if (p.combosActive[id]) continue;
       const combo = WS.Combos[id];
-      const w1 = WS.Player.getWeapon(p, combo.weapons[0]);
-      const w2 = WS.Player.getWeapon(p, combo.weapons[1]);
+      const w1 = ComboSystem.find(p, combo.weapons[0]);
+      const w2 = ComboSystem.find(p, combo.weapons[1]);
       if (!w1 || !w2) continue;
 
       p.combosActive[id] = true;
@@ -29032,7 +29175,8 @@ window.WS = window.WS || {};
       if (c.weapons.indexOf(id) < 0) continue;
       const other = c.weapons[0] === id ? c.weapons[1] : c.weapons[0];
       if (p.combosActive[cid]) continue;
-      const held = !!WS.Player.getWeapon(p, other);
+      // A union answers for the weapons it was forged from (ComboSystem.find).
+      const held = !!WS.ComboSystem.find(p, other);
       out.push({ kind: 'discovery', ready: held && kind === 'new_weapon',
         text: held ? 'Discovery: ' + c.name
           : c.name + ' needs ' + (WS.Weapons[other] ? WS.Weapons[other].name : other) });
@@ -29111,6 +29255,8 @@ window.WS = window.WS || {};
           name: d.name, description: WS.template(d.description, d),
           note: `Rank ${w.level} to ${w.level + 1}`,
           rank: w.level + 1, maxRank: WS.WEAPON_MAX_LEVEL,
+          stats: WS.Weapon.statDiff(p, w.id, { level: w.level, evolved: w.evolved, mods: w.mods },
+            { level: w.level + 1, evolved: w.evolved, mods: w.mods }),
           reacts: reactionsFor(p, w.id, 'weapon_rank', w.level + 1),
         });
       } else if (!w.evolved && d.evolvePairing && (p.upgradeLevels[d.evolvePairing] || 0) > 0) {
@@ -29120,6 +29266,8 @@ window.WS = window.WS || {};
           rank: WS.WEAPON_MAX_LEVEL, maxRank: WS.WEAPON_MAX_LEVEL,
           reacts: reactionsFor(p, w.id, 'evolve', WS.WEAPON_MAX_LEVEL),
           note: 'Evolution · ' + d.name + ', transformed',
+          stats: WS.Weapon.statDiff(p, w.id, { level: w.level, evolved: false, mods: w.mods },
+            { level: w.level, evolved: true, mods: w.mods }),
         });
       }
     }
@@ -29136,6 +29284,9 @@ window.WS = window.WS || {};
         candidates.push({
           type: 'union', id: recipe.result, art: d.art, school: d.school, weight: 10,
           unionFrom: recipe.from, name: d.name, description: WS.template(d.description, d),
+          // What it keeps: every discovery the two were part of goes with them.
+          reacts: WS.ComboSystem.carried(p, recipe.from).map((n) => ({ text: 'Keeps ' + n, ready: true })),
+          stats: WS.Weapon.statDiff(p, recipe.result, null, { level: WS.WEAPON_MAX_LEVEL, evolved: false }),
           note: `Union · ${WS.Weapons[a].name} and ${WS.Weapons[b].name}, made one`,
         });
       }
@@ -29152,6 +29303,7 @@ window.WS = window.WS || {};
           rank: 1, maxRank: WS.WEAPON_MAX_LEVEL,
           reacts: reactionsFor(p, id, 'new_weapon', 1),
           note: 'New weapon · pairs with ' + WS.Upgrades[d.evolvePairing].name,
+          stats: WS.Weapon.statDiff(p, id, null, { level: 1, evolved: false }),
         });
       }
     }
@@ -29253,7 +29405,15 @@ window.WS = window.WS || {};
     if (choice.type === 'union') {
       for (const id of choice.unionFrom) WS.Player.removeWeapon(p, id);
       const w = WS.Player.addWeapon(p, choice.id);
-      if (w) { w.level = WS.WEAPON_MAX_LEVEL; p.weaponLevels[choice.id] = WS.WEAPON_MAX_LEVEL; }
+      if (w) {
+        w.level = WS.WEAPON_MAX_LEVEL; p.weaponLevels[choice.id] = WS.WEAPON_MAX_LEVEL;
+        // Every discovery the two were part of goes into the union with them.
+        const kept = WS.ComboSystem.inherit(p, w, choice.unionFrom);
+        if (kept.length) {
+          WS.Game.toast('Carried into ' + choice.name, kept.join(', '), { kind: 'discovery', art: 'book' });
+        }
+        WS.ComboSystem.check(p);
+      }
       p.unionsForged[choice.id] = true;
       WS.Save.stats.unions++;
       WS.Save.db.unions[choice.id] = true;   // for the codex, which wants which
@@ -41110,7 +41270,8 @@ window.WS = window.WS || {};
          * warning, it is where the boss is going. */
         const aim = !t.firing;
         const fade = t.firing ? 1 - k : 1;
-        ctx.translate(e.x, e.y);
+        // Firing, it stays where the charge began (Enemy pins ox/oy).
+        ctx.translate(t.firing && t.ox !== undefined ? t.ox : e.x, t.firing && t.oy !== undefined ? t.oy : e.y);
         ctx.rotate(WS.atan2(t.dy, t.dx));
         ctx.fillStyle = `rgba(${dz.deep},${(aim ? 0.07 + 0.16 * k : 0.20 * fade).toFixed(3)})`;
         ctx.fillRect(0, -t.width / 2, t.length, t.width);
@@ -45394,7 +45555,27 @@ window.WS = window.WS || {};
     if (choice.detail && WS.Save.settings.levelUpTooltips) {
       card.append(el('div', 'card-detail', choice.detail));
     }
-    if (index !== undefined) card.append(el('div', 'card-key', String(index + 1)));
+    /* A weapon's numbers, on the card (Detailed level-up cards). The pause
+       sheet had them and the card - the one place a choice is made - did
+       not. A rank-up shows each stat as it is and as it will be, the ones
+       that move lit, so "what does rank 3 do" is answered on the card:
+       rank buys damage, area, duration, and at ranks 4 and 7 one more. */
+    if (choice.stats && choice.stats.length && WS.Save.settings.levelUpTooltips) {
+      const box = el('div', 'card-stats');
+      for (const s of choice.stats) {
+        const row = el('div', 'cs-row' + (s.changed ? ' up' : ''));
+        const val = el('span', 'cs-v');
+        if (s.changed) val.append(el('s', null, s.from), el('i', null, ' \u2192 '), el('b', null, s.to));
+        else val.textContent = s.to;
+        row.append(el('span', 'cs-k', s.label), val);
+        box.append(row);
+      }
+      card.append(box);
+    }
+    if (index !== undefined) {
+      const key = index < 4 ? WS.Input.keyName(WS.Input.keyFor('pick' + (index + 1))) : '';
+      if (key) card.append(el('div', 'card-key', key));
+    }
     card.addEventListener('click', () => { hideTip(); onPick(choice, card); });
 
     /* The card shows the two reactions that matter most; the tip shows all
@@ -46767,48 +46948,62 @@ window.WS = window.WS || {};
       'Full-screen flashes drop to a quarter, and telegraphs that strobe hold steady instead.');
     choose('textScale', 'Text size', 'The interface: menus, cards, tooltips and the ledger.',
       [[1, '100%'], [1.15, '115%'], [1.3, '130%']], () => UI.applyTextScale());
-    const keyRow = el('div', 'setting keys-setting');
-    const kmain = el('div');
-    kmain.append(el('div', 's-name', 'Keys'),
-      el('div', 's-desc', 'Click one, then press the key you want. The arrow keys always move as well, and Esc always pauses.'));
-    const kgrid = el('div', 'key-binds');
-    const ACTIONS = [['up', 'Up'], ['left', 'Left'], ['down', 'Down'], ['right', 'Right'],
-      ['pause', 'Pause'], ['reroll', 'Reroll'], ['banish', 'Banish']];
-    const paintKeys = () => {
-      kgrid.replaceChildren();
-      for (const [act, label] of ACTIONS) {
-        const b = el('button', 'btn small key-bind');
-        b.type = 'button';
-        b.append(el('span', 'kb-label', label), el('kbd', null, WS.Input.keyName(st.keys[act])));
-        b.addEventListener('click', () => {
-          if (UI.capturing) return;
-          UI.capturing = true;
-          b.classList.add('listening');
-          b.lastChild.textContent = 'press a key';
-          const grab = (e) => {
-            e.preventDefault(); e.stopPropagation();
-            window.removeEventListener('keydown', grab, true);
-            UI.capturing = false;
-            if (e.code !== 'Escape' || act === 'pause') st.keys[act] = e.code;
-            WS.Save.save();
-            WS.Input.rebind();
-            WS.Audio.play('ui');
-            paintKeys();
-          };
-          window.addEventListener('keydown', grab, true);
-        });
-        kgrid.append(b);
-      }
-      const reset = el('button', 'btn small', 'Defaults');
-      reset.addEventListener('click', () => {
-        st.keys = Object.assign({}, WS.Config.defaultSettings.keys);
-        WS.Save.save(); WS.Input.rebind(); WS.Audio.play('ui'); paintKeys();
-      });
-      kgrid.append(reset);
-    };
-    paintKeys();
-    keyRow.append(kmain, kgrid);
-    wrap.append(keyRow);
+    /* Two rows of bindings: the ones you play with, and the ones that pick
+       a level-up card. One row of eleven was twice the height of any other
+       setting. */
+    const keyRows = [
+      ['Keys', 'Click one, then press the key you want. The arrow keys always move as well, and Esc always pauses.',
+        [['up', 'Up'], ['left', 'Left'], ['down', 'Down'], ['right', 'Right'],
+          ['pause', 'Pause'], ['reroll', 'Reroll'], ['banish', 'Banish']], true],
+      ['Card keys', 'The keys that pick the first to fourth level-up card.',
+        [['pick1', 'Card 1'], ['pick2', 'Card 2'], ['pick3', 'Card 3'], ['pick4', 'Card 4']], false],
+    ];
+    const painters = [];
+    for (const [name, desc, ACTIONS, withReset] of keyRows) {
+      const keyRow = el('div', 'setting keys-setting');
+      const kmain = el('div');
+      kmain.append(el('div', 's-name', name), el('div', 's-desc', desc));
+      const kgrid = el('div', 'key-binds');
+      const paintKeys = () => {
+        kgrid.replaceChildren();
+        for (const [act, label] of ACTIONS) {
+          const b = el('button', 'btn small key-bind');
+          b.type = 'button';
+          b.append(el('span', 'kb-label', label), el('kbd', null, WS.Input.keyName(WS.Input.keyFor(act))));
+          b.addEventListener('click', () => {
+            if (UI.capturing) return;
+            UI.capturing = true;
+            b.classList.add('listening');
+            b.lastChild.textContent = 'press a key';
+            const grab = (e) => {
+              e.preventDefault(); e.stopPropagation();
+              window.removeEventListener('keydown', grab, true);
+              UI.capturing = false;
+              if (e.code !== 'Escape' || act === 'pause') st.keys[act] = e.code;
+              WS.Save.save();
+              WS.Input.rebind();
+              WS.Audio.play('ui');
+              paintKeys();
+            };
+            window.addEventListener('keydown', grab, true);
+          });
+          kgrid.append(b);
+        }
+        if (withReset) {
+          const reset = el('button', 'btn small', 'Defaults');
+          reset.addEventListener('click', () => {
+            st.keys = Object.assign({}, WS.Config.defaultSettings.keys);
+            WS.Save.save(); WS.Input.rebind(); WS.Audio.play('ui');
+            for (const p of painters) p();
+          });
+          kgrid.append(reset);
+        }
+      };
+      painters.push(paintKeys);
+      paintKeys();
+      keyRow.append(kmain, kgrid);
+      wrap.append(keyRow);
+    }
 
     if (inRun) return wrap;
 
@@ -47330,6 +47525,27 @@ window.WS = window.WS || {};
       left.append(row);
     }
 
+    /* The discoveries at work in this run. They were announced once, by a
+       toast in the corner, and then nowhere - a tester found no way to see
+       which were active. Same list as the blessings; a discovery carried into
+       a union says which. Hover for what it does. */
+    const found = WS.ComboOrder.filter((id) => p.combosActive && p.combosActive[id]);
+    if (found.length) {
+      left.append(el('h3', null, 'Discoveries'));
+      const list = el('div', 'sheet-blessings');
+      for (const id of found) {
+        const c = WS.Combos[id];
+        const item = el('div', 'sheet-blessing');
+        const im = icon('book', WS.CONST.COLORS.arcane, 24);
+        im.width = im.height = 24;
+        const host = c.weapons.map((w) => WS.ComboSystem.find(p, w)).find((w) => w && w.standsFor);
+        item.append(im, el('span', null, c.name + (host ? ' \u00b7 in ' + host.data.name : '')));
+        item.dataset.tip = WS.template(c.description, c);
+        list.append(item);
+      }
+      left.append(list);
+    }
+
     /* The passives, with what each is for. The sheet used to list the
        arsenal and nothing else, so the half of a build that decides which
        weapons evolve was invisible on the one screen made for reading it. */
@@ -47409,6 +47625,7 @@ window.WS = window.WS || {};
       }
       right.append(list);
     }
+
 
     /* The run's figures sit under the survivor's now, and the third panel is
        the meters' alone - the breakdown of what did the damage and what did
@@ -47939,8 +48156,8 @@ window.WS = window.WS || {};
         return;
       }
       if (WS.Game.state === 'levelup' || WS.Game.state === 'blessing') {
-        // 1-3 pick a card; R rerolls; B arms the banish.
-        const idx = { Digit1: 0, Digit2: 1, Digit3: 2 }[e.code];
+        // 1-4 (or whatever they are bound to) pick a card; R rerolls; B banishes.
+        const idx = { pick1: 0, pick2: 1, pick3: 2, pick4: 3 }[act];
         const cards = this.overlay.querySelectorAll('.card');
         if (idx !== undefined && cards[idx]) { cards[idx].click(); return; }
         if (act === 'reroll' && WS.Game.state === 'levelup') WS.Game.rerollLevelUp();
@@ -48137,6 +48354,10 @@ window.WS = window.WS || {};
     WS.Input.init();
     WS.Renderer.init(canvas);
     WS.Game.init();
+    /* Anything a save has already earned but was never granted - an
+       achievement added after the fact, like the arena gate - is granted
+       now, quietly: its toast would otherwise surface in the next run. */
+    if (WS.Achievements.check()) WS.Game.toasts.length = 0;
     WS.Game.watchOrientation();
     WS.UI.init(stage, overlay, hud);
     initStick(stage, stick);

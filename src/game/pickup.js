@@ -201,20 +201,20 @@
     } else if (kind === 'graveblade') {
       WS.Save.stats.gravebladesClaimed = (WS.Save.stats.gravebladesClaimed || 0) + 1;
       WS.Save.save();
-      WS.Game.announce('The graveblade answers.', 'Something colder takes the hilt.', 3.5,
-        { kind: 'glory' });
+      const took = WS.Player.addWeapon(p, 'reaving_arc');
+      WS.Game.announce('The graveblade answers.', took ? 'Something colder takes the hilt.'
+        : 'Your hands are full. It waits for whoever comes next.', 3.5, { kind: 'glory' });
       WS.Game.addGold(WS.floor(WS.Config.gravebladeGold * run.goldMult), p.x, p.y);
-      WS.Player.addWeapon(p, 'reaving_arc');
       WS.Achievements.check();
       WS.Audio.play('evolve');
 
     } else if (kind === 'twinglaive') {
       WS.Save.stats.glaivesClaimed = (WS.Save.stats.glaivesClaimed || 0) + 1;
       WS.Save.save();
-      WS.Game.announce('The twin glaives find you.', 'You were never going to refuse.', 3.5,
-        { kind: 'glory' });
+      const took = WS.Player.addWeapon(p, 'verdant_lance');
+      WS.Game.announce('The twin glaives find you.', took ? 'You were never going to refuse.'
+        : 'Your hands are full. They will find someone else.', 3.5, { kind: 'glory' });
       WS.Game.addGold(WS.floor(WS.Config.glaiveGold * run.goldMult), p.x, p.y);
-      WS.Player.addWeapon(p, 'verdant_lance');
       WS.Achievements.check();
       WS.Audio.play('evolve');
 

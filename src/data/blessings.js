@@ -25,7 +25,7 @@
     fortune: {
       name: 'Gift of the Hourglass', art: 'hourglass', quality: 'rare',
       description: '+{gold%}% gold found and +{luck%}% luck.',
-      gold: 0.20, luck: 0.15,
+      gold: 0.20, luck: 0.075,
       apply: (p, b) => { p.goldMultiplier += b.gold; p.luck += b.luck; },
     },
     wild: {
