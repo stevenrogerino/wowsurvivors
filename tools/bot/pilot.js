@@ -369,7 +369,8 @@ function installPilot(opts) {
       const reach = s.r + pr * 0.5 + 10;
       // The night's marks double where the last one found you: price the
       // blow at what it would really do.
-      const dmg = s.kind === 'omen' ? s.dmg * Math.pow(2, p.omenStack || 0) : s.dmg;
+      const still = (p.omenWalked || 0) < ((WS.Config.omenStill) || 80);
+      const dmg = s.kind === 'omen' && still ? s.dmg * Math.pow(2, p.omenStack || 0) : s.dmg;
       if (s.tele <= O.horizon) {
         const q = at(path, s.tele);
         if (Math.hypot(q[0] - s.x, q[1] - s.y) < reach) c += hitCost(p, dmg);
