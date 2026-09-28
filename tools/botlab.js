@@ -58,6 +58,9 @@ function settings() {
     MIDNIGHT: env('MIDNIGHT', null),
     CONFIG: JSON.parse(env('CONFIG', '{}')),
     CHARS: JSON.parse(env('CHARS', '{}')),
+    WEAPONS: JSON.parse(env('WEAPONS', '{}')),
+    BLESSINGS: JSON.parse(env('BLESSINGS', '{}')),
+    ENEMIES: JSON.parse(env('ENEMIES', '{}')),
   };
 }
 
@@ -77,6 +80,17 @@ function inPage(S, job, sources) {
   WS.Save.db.hyperArmed = S.HYPER;
   Object.assign(WS.Config, S.CONFIG);
   for (const [id, o] of Object.entries(S.CHARS)) Object.assign(WS.Characters[id], o);
+  // Weapon, blessing and creature numbers the same way, for testing a patch
+  // before it is written: WEAPONS='{"dawnpulse":{"healCap":20}}'. A creature
+  // override reaches into its ranged block too ({"ranged":{"cooldown":4}}).
+  for (const [id, o] of Object.entries(S.WEAPONS)) Object.assign(WS.Weapons[id], o);
+  for (const [id, o] of Object.entries(S.BLESSINGS)) Object.assign(WS.Blessings[id], o);
+  for (const [id, o] of Object.entries(S.ENEMIES)) {
+    const t = WS.Enemies[id] || WS.Elites[id] || WS.Bosses[id];
+    for (const [k, v] of Object.entries(o)) {
+      if (v && typeof v === 'object' && t[k] && typeof t[k] === 'object') Object.assign(t[k], v); else t[k] = v;
+    }
+  }
   WS.Save.save = function () {};
   WS.Save.flush = function () {};
 
@@ -224,7 +238,7 @@ function inPage(S, job, sources) {
     if (f < L.lowest) L.lowest = f;
     if (f < 0.25) L.lowTime += STEP;
     while (G.run.time >= nextMark) {
-      curve.push([Math.round(nextMark / 60), Math.round(f * 100), p.level, WS.Enemy.pool.count]);
+      curve.push([Math.round(nextMark / 60), Math.round(f * 100), p.level, WS.Enemy.pool.count, Math.round(G.run.damageDone)]);
       nextMark += 60;
     }
     if (S.MODE === 'window' && G.run.time - t0 >= S.LIMIT) break;
@@ -241,6 +255,11 @@ function inPage(S, job, sources) {
     bySource: Object.fromEntries(Object.entries(L.bySource).sort((a, b) => b[1] - a[1]).slice(0, 6)),
     last: L.last, lowest: Math.round(L.lowest * 100), lowTime: Math.round(L.lowTime),
     potions: L.potions, healed: Math.round(run.healingDone), bombs: L.bombs, freezes: L.freezes,
+    dealt: Math.round(run.damageDone),
+    byWeapon: Object.fromEntries(Object.entries(run.damageByWeapon || {}).map(([k, v]) => [k, Math.round(v)])),
+    healBy: Object.fromEntries(Object.entries(run.healingBySource || {}).map(([k, v]) => [k, Math.round(v)])),
+    overheal: Math.round(Object.values(run.overhealBySource || {}).reduce((a, v) => a + v, 0)),
+    maxHp: Math.round(p.maxHealth), armor: Math.round(p.armor || 0),
     rescueGoals: pilot.rescues || 0,
     weapons: p.weapons.map((w) => w.id + ':' + w.level + (w.evolved ? 'E' : '')),
     blessings: Object.keys(p.blessingsTaken || {}),
