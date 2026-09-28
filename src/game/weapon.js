@@ -12,6 +12,12 @@
   const retry = () => WS.Config.weaponRetry;
 
   /* --------------------------------------------------------- derivation -- */
+  /* An evolution's bonus: the weapon's own when it names one, else the
+     shared one in Config. Evolving is where a late weapon is balanced (it
+     leaves the early night alone), so a weapon may want more pierce, or a
+     splash it never had, where another wants less damage. */
+  function evo(d, key) { return d[key] !== undefined ? d[key] : WS.Config[key]; }
+
   function damageOf(player, w) {
     const cfg = WS.Config, d = w.data;
     const step = d.rankDamageStep || cfg.rankDamageStep;
@@ -146,7 +152,7 @@
     spec.life = d.life || 2.0;
     spec.radius = (d.radius || 8) * (1 + cfg.rankRadiusStep * (w.level - 1))
       * (w.evolved ? cfg.evolveRadiusMult : 1);
-    spec.pierce = (d.pierce || 0) + (w.evolved ? cfg.evolvePierce : 0);
+    spec.pierce = (d.pierce || 0) + (w.evolved ? evo(d, 'evolvePierce') : 0);
     spec.art = d.art;
     spec.colour = schoolColour(w);
     /* Decided HERE, with every other mod, and not inside one behaviour.
@@ -164,7 +170,7 @@
      * acquires one on its first update. */
     spec.homing = !!(d.homing || w.mods.homing);
     spec.homingTarget = null;
-    const splash = d.splash || w.mods.splash;
+    const splash = d.splash || w.mods.splash || (w.evolved ? d.evolveSplash : 0);
     spec.splash = splash ? areaOf(player, w, splash) : null;
     spec.slowFactor = d.slowFactor || w.mods.slowFactor;
     spec.slowDuration = d.slowDuration || w.mods.slowDuration;
@@ -602,7 +608,7 @@
    * projectile and it is counted like one now. */
   function chainCount(player, w) {
     const d = w.data, cfg = WS.Config;
-    let n = (d.chains || 4) + player.projectileBonus + (w.evolved ? cfg.evolveChains : 0);
+    let n = (d.chains || 4) + player.projectileBonus + (w.evolved ? evo(d, 'evolveChains') : 0);
     if (w.level >= (d.projRankA || cfg.projRankA)) n++;
     if (w.level >= (d.projRankB || cfg.projRankB)) n++;
     return n;
@@ -630,6 +636,8 @@
     const rank = w ? w.level : 1;
     const heavy = 1 + 0.085 * (rank - 1) + (w && w.evolved ? 0.5 : 0);
     const visited = new Set();
+    // Each hop is weaker than the last; an evolved weapon may fade slower.
+    const fall = w && w.evolved ? evo(w.data, 'evolveChainFalloff') : WS.Config.chainFalloff;
     let px = x, py = y;
     for (let i = 0; i < chains; i++) {
       const target = WS.Enemy.findNearest(px, py, range, visited);
@@ -638,7 +646,7 @@
       const link = WS.Projectile.spawnBeam(px, py, target.x, target.y, 4 * heavy, colour, 0.16);
       if (link) link.arc = true;
       if (w) mark(WS.Projectile.beams, w);
-      WS.Enemy.hit(target, damage * WS.max(0, 1 - i * WS.Config.chainFalloff), source);
+      WS.Enemy.hit(target, damage * WS.max(0, 1 - i * fall), source);
       WS.FX.flash(target.x, target.y, 22 * heavy, colour, 0.18);
       px = target.x; py = target.y;
       if (target._dead) continue;
@@ -649,7 +657,7 @@
     const d = w.data, cfg = WS.Config;
     let count = (d.projectiles || 2) + player.projectileBonus + (w.mods.extraProjectiles || 0);
     let speed = d.orbitSpeed || 4.2;
-    if (w.evolved) { count += cfg.evolveOrbitBlades; speed *= cfg.evolveOrbitSpeed; }
+    if (w.evolved) { count += evo(d, 'evolveOrbitBlades'); speed *= cfg.evolveOrbitSpeed; }
     if (w.level >= cfg.projRankA) count++;
     if (w.level >= cfg.projRankB) count++;
 
@@ -695,7 +703,7 @@
     // Extra projectiles from a discovery are extra strikes (Firmament keeps
     // Celestial Alignment's extra moonbeam as one more falling star).
     const strikes = (d.strikes || 5) + player.projectileBonus + (w.mods.extraProjectiles || 0)
-      + (w.evolved ? cfg.evolveStrikes : 0);
+      + (w.evolved ? evo(d, 'evolveStrikes') : 0);
     const radius = areaOf(player, w, d.stormRadius || 230);
     const splash = areaOf(player, w, d.splash || 60);
     const damage = damageOf(player, w);
@@ -728,7 +736,7 @@
     if (!target) { w.cooldown = retry(); return false; }
     fillSpec(player, w);
     spec.bounces = (d.bounces || 3) + (w.mods.extraBounces || 0)
-      + player.projectileBonus + (w.evolved ? WS.Config.evolveBounces : 0);
+      + player.projectileBonus + (w.evolved ? evo(d, 'evolveBounces') : 0);
     spec.spinRate = 16;
     const speed = speedOf(player, w);
     const count = 1 + (w.evolved ? 1 : 0);
@@ -810,7 +818,7 @@
     /* One disc per count, ricocheting between bounces+1 targets. */
     bounce: (p, w, crowd, q) => {
       const hits = Math.min((w.data.bounces || 3) + p.projectileBonus
-        + (w.evolved ? WS.Config.evolveBounces : 0) + 1, crowd);
+        + (w.evolved ? evo(w.data, 'evolveBounces') : 0) + 1, crowd);
       const n = 1 + (w.evolved ? 1 : 0);
       return { per: n * hits, why: `${n} disc(s) x ${hits} target(s)` };
     },
@@ -879,7 +887,7 @@
     orbit: (p, w, crowd) => {
       const cfg = WS.Config;
       let blades = (w.data.projectiles || 2) + p.projectileBonus;
-      if (w.evolved) blades += cfg.evolveOrbitBlades;
+      if (w.evolved) blades += evo(w.data, 'evolveOrbitBlades');
       if (w.level >= cfg.projRankA) blades++;
       if (w.level >= cfg.projRankB) blades++;
       const size = areaOf(p, w, w.data.radius || 20);
@@ -936,8 +944,8 @@
     const w = { id, data, level: level || 1, evolved: !!evolved, mods: {} };
     const q = {
       count: countOf(p, w),
-      pierce: (data.pierce || 0) + (w.evolved ? WS.Config.evolvePierce : 0),
-      splash: data.splash ? areaOf(p, w, data.splash) : 0,
+      pierce: (data.pierce || 0) + (w.evolved ? evo(data, 'evolvePierce') : 0),
+      splash: (data.splash || (w.evolved && data.evolveSplash)) ? areaOf(p, w, data.splash || data.evolveSplash) : 0,
     };
     const r = model(p, w, Math.max(1, crowd || 1), q);
     const damage = damageOf(p, w);
@@ -982,13 +990,13 @@
     } else if (behavior === 'orbit') {
       const cfg = WS.Config;
       let blades = (d.projectiles || 2) + player.projectileBonus + (w.mods.extraProjectiles || 0)
-        + (w.evolved ? cfg.evolveOrbitBlades : 0);
+        + (w.evolved ? evo(d, 'evolveOrbitBlades') : 0);
       if (w.level >= cfg.projRankA) blades++;
       if (w.level >= cfg.projRankB) blades++;
       lines.push(['Blades', blades]);
     } else if (behavior === 'storm') {
       lines.push(['Strikes', (d.strikes || 5) + player.projectileBonus + (w.mods.extraProjectiles || 0)
-        + (w.evolved ? WS.Config.evolveStrikes : 0)]);
+        + (w.evolved ? evo(d, 'evolveStrikes') : 0)]);
     } else if (behavior === 'beam') {
       lines.push(['Width', WS.round(areaOf(player, w, d.beamWidth || 26))]);
     } else if (behavior === 'palm') {
@@ -999,7 +1007,7 @@
     } else {
       lines.push(['Projectiles', countOf(player, w)]);
       if ((d.pierce || 0) > 0 || w.evolved) {
-        lines.push(['Pierce', (d.pierce || 0) + (w.evolved ? WS.Config.evolvePierce : 0)]);
+        lines.push(['Pierce', (d.pierce || 0) + (w.evolved ? evo(d, 'evolvePierce') : 0)]);
       }
     }
     if (d.bossDamage && d.bossDamage !== 1) lines.push(['Vs bosses', '×' + d.bossDamage]);

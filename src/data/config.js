@@ -255,6 +255,7 @@
     evolveStrikes: 2,
     evolveBounces: 3,
     chainFalloff: 0.06,
+    evolveChainFalloff: 0.06,   // an evolved chain's own fade (a weapon may carry its own)
     chainFirstReach: 1.6,
     orbitTickPct: 0.65,
     gyrePulseRadius: 130,
@@ -596,12 +597,14 @@
     // Waystones: one every totemEvery seconds, cycling ember / spring / gale,
     // each standing totemLife (one of a kind at a time).
     totemEvery: 3, totemLife: 10, totemRadius: 200,
-    totemSearTick: 0.5, totemSearBase: 10, totemSearPerLevel: 1.2,
+    totemSearTick: 0.5, totemSearBase: 10, totemSearPerLevel: 0.4,
     totemHeal: 0.015, totemHaste: 0.8,
-    // Conviction: holyPerHit for each hit taken, one for every holyHealPer
-    // health healed. holyNeed, and a Hammerfall with an Aegis.
-    holyNeed: 3, holyPerHit: 0.5, holyHealPer: 25, holyLock: 4,
-    hammerRadius: 190, stormBase: 110, stormPerLevel: 11, divineShield: 2.0,
+    // Conviction: holyPerHit for each hit taken, one for every holyHealPct of
+    // max health healed. At holyNeed, Judgement: every creature on the field
+    // struck down and judgementBossPct off a boss, with an Aegis; then
+    // holyLock before it gathers again.
+    holyNeed: 36, holyPerHit: 0.5, holyHealPct: 0.10, holyLock: 20,
+    judgementBossPct: 0.04, divineShield: 2.0,
 
     difficulties: {
       beginner: { label: 'Beginner', scale: 0.75, gold: 0.85, interval: 1.1 },

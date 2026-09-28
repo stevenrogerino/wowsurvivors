@@ -22,7 +22,9 @@
       name: 'Shadowflame', weapons: ['umbral_bolt', 'cinderfall'],
       description: 'Umbral Bolts detonate on impact, scorching everything nearby.',
       hint: 'Shadow and flame were ever entwined.',
-      splash: 55,
+      // Every bolt that passes through something bursts, and an evolved bolt
+      // passes through everything: at 55 the pair did 2.3 times its parts.
+      splash: 20,
       apply: (w1, w2, c) => { w1.mods.splash = c.splash; },
     },
     deadly_brew: {

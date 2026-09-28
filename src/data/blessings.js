@@ -158,9 +158,9 @@
     },
     conviction: {
       name: 'Conviction', art: 'sun', quality: 'legendary',
-      description: 'Blows you take and healing you receive build Conviction. At {Config.holyNeed}, a Hammerfall around you and an Aegis over you.',
-      detail: 'A hit taken: {Config.holyPerHit} Conviction. Every {Config.holyHealPer} health healed: one more\n'
-        + 'Hammerfall: Light crashes down around you. Aegis: untouchable for {Config.divineShield}s\n'
+      description: 'Blows you take and healing you receive build Conviction. At {Config.holyNeed}, Judgement falls on the whole field and an Aegis covers you.',
+      detail: 'A hit taken: {Config.holyPerHit} Conviction. Every {Config.holyHealPct%}% of your health healed: one more\n'
+        + 'Judgement: every creature on the field struck down, and bosses lose {Config.judgementBossPct%}% of their health. Aegis: untouchable for {Config.divineShield}s\n'
         + 'Then {Config.holyLock}s to gather again\n'
         + 'Keegan builds Conviction {Config.callingEdge%}% faster',
       apply: (p) => { p.holyAttuned += 1; },

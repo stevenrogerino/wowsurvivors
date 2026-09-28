@@ -14,7 +14,7 @@
  *     (no meter, no system)
  *   - in real waves each of the eight actually fires - the Flood tide, a
  *     barrier breaking, a Cutthroat, a Quarry taken, a Boil Over, a Reaping,
- *     a waystone, a Hammerfall - and each has its meter on the HUD
+ *     a waystone, a Judgement - and each has its meter on the HUD
  *
  * Set CHROME to point at an existing Chromium binary. */
 'use strict';
@@ -121,6 +121,10 @@ const path = require('path');
         if (w) { w.level = WS.WEAPON_MAX_LEVEL; p.weaponLevels[id] = w.level; w.evolved = true; }
       }
       p.critChance += 0.3;                    // the rogue's needs crits to happen
+      // Judgement is slow to come by design (a long night's blows): the
+      // paladin starts most of the way there, so fifty seconds of play
+      // prove the bar still fills and still fires.
+      if (hero === 'paladin') p.holyPower = WS.Config.holyNeed - 8;
       WS.Game.run.time = 540;
       let hud = false;
       for (let i = 0; i < 60 * 50; i++) {
@@ -152,7 +156,7 @@ const path = require('path');
     process.exitCode = 1;
   } else {
     const f = r.fired;
-    console.log(`ok: all 12 survivors have a signature blessing and every blessing is in the draft; each of the eight callings turns on for anyone who takes it, the owner's edge is exactly ${'a quarter'} and runs nothing until then, and in 50s of waves each fired - ${f.mage} floods, ${f.priest} barriers broken, ${f.rogue} cutthroats, ${f.hunter} quarry taken, ${f.warrior} boil overs, ${f.warlock} reapings, ${f.shaman} waystones, ${f.paladin} hammerfalls - with its meter on the HUD`);
+    console.log(`ok: all 12 survivors have a signature blessing and every blessing is in the draft; each of the eight callings turns on for anyone who takes it, the owner's edge is exactly ${'a quarter'} and runs nothing until then, and in 50s of waves each fired - ${f.mage} floods, ${f.priest} barriers broken, ${f.rogue} cutthroats, ${f.hunter} quarry taken, ${f.warrior} boil overs, ${f.warlock} reapings, ${f.shaman} waystones, ${f.paladin} judgements - with its meter on the HUD`);
   }
   await b.close();
 })();

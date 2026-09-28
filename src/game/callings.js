@@ -91,7 +91,9 @@
     }
     if (p.holyAttuned > 0 && gained > 0 && p.holyLock <= 0) {
       p.holyHeal += gained * (1 + p.holyBonus);
-      const per = C().holyHealPer;
+      // By share of the bar: a flat figure was nothing late in a run, when a
+      // healer is mending hundreds a second.
+      const per = WS.max(1, p.maxHealth * C().holyHealPct);
       while (p.holyHeal >= per) { p.holyHeal -= per; K.addHoly(p, 1); }
     }
   };
@@ -292,18 +294,33 @@
     p.holyPower = WS.min(C().holyNeed, p.holyPower + n);
     if (p.holyPower >= C().holyNeed) divineStorm(p);
   };
+  /* JUDGEMENT. Everything on the field that is not a boss is struck down,
+     as by a sapper's charge; a boss loses a share of its health. Slow to
+     come, and worth the wait.
+
+     It was a Hammerfall: a blast around Keegan every few seconds, charged
+     in three, and it was most of his damage - 60% of a tester's meter, 48%
+     standing still - while its Aegis kept him untouchable near half the
+     time. Now it takes holyNeed (a long night's worth of blows and mending)
+     and then holyLock more before it can gather again. */
   function divineStorm(p) {
     const cfg = C();
     p.holyPower = 0; p.holyHit = 0; p.holyHeal = 0;
     p.holyLock = cfg.holyLock;
-    const r = cfg.hammerRadius * p.areaMultiplier;
-    WS.Enemy.damageArea(p.x, p.y, r, strike(p, cfg.stormBase, cfg.stormPerLevel), null, 40, 'conviction');
+    const enemies = WS.Enemy.pool.active;
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      const e = enemies[i];
+      if (!e || e._dead || e.untargetable) continue;
+      if (e.boss || e.part || e.finale) WS.Enemy.hit(e, e.maxHealth * cfg.judgementBossPct, 'conviction');
+      else WS.Enemy.damage(e, e.health + 1, false, 'conviction');
+    }
     p.divineTimer = cfg.divineShield;
     p.invulnerable = WS.max(p.invulnerable, cfg.divineShield);
     count('storms');
-    WS.FX.flash(p.x, p.y, r, WS.CONST.COLORS.holy, 0.45, 12, 'holy');
+    WS.FX.screen('rgba(255,236,170,.28)', 0.45);
     WS.FX.flash(p.x, p.y, 70, [1, 0.95, 0.75], 0.4);
-    WS.FX.shake(6, 0.3);
+    WS.FX.shake(9, 0.5);
+    WS.FX.punch(0.03, 0.5);
     WS.Audio.play('evolve');
   }
 
@@ -432,8 +449,9 @@
     if (p.holyAttuned > 0) {
       out.push(p.holyLock > 0
         ? { key: 'holywait', cls: 'calling holy waiting', label: p.divineTimer > 0 ? 'Aegis' : 'Gathering', pct: 1 - p.holyLock / cfg.holyLock }
-        : { key: 'holy', cls: 'calling holy', label: 'Conviction', pips: cfg.holyNeed, full: WS.floor(p.holyPower),
-          pct: WS.max(p.holyHit, p.holyHeal / cfg.holyHealPer) });
+        // Too many points for pips: one bar, filling toward the Judgement.
+        : { key: 'holy', cls: 'calling holy', label: 'Conviction ' + WS.floor(p.holyPower) + '/' + cfg.holyNeed,
+          pct: WS.min(1, p.holyPower / cfg.holyNeed) });
     }
     return out;
   };

@@ -180,7 +180,7 @@ const want = env('BUILD', Object.keys(BUILDS).join(',')).split(',');
       rows.push({ name, seed, ...r, errs: errs.length });
       console.log(`${name.padEnd(11)} s${seed}  stood ${String(r.stood).padStart(4)}s/${S.LIMIT}  low ${String(r.low).padStart(3)}%`
         + `  hp ${r.hp} armor ${r.armor}  taken ${r.takenPs}/s  healed ${r.healedPs}/s  dealt ${(r.dealtPs / 1000).toFixed(0)}k/s`
-        + `  reach ${r.reach}px  discoveries ${r.combos}${r.storms ? '  hammerfalls ' + r.storms : ''}  | hurt by ${r.by || 'nothing'} | damage ${r.top}${errs.length ? '  ERR ' + errs[0] : ''}`);
+        + `  reach ${r.reach}px  discoveries ${r.combos}${r.storms ? '  judgements ' + r.storms : ''}  | hurt by ${r.by || 'nothing'} | damage ${r.top}${errs.length ? '  ERR ' + errs[0] : ''}`);
       await page.close();
     }
   }

@@ -7,100 +7,126 @@
  * finales' machines and parts (Enemy.hit). Weapons built for crowds hit one
  * big target softly; these factors were set from what each weapon measurably
  * did to late scheduled bosses at rank 7+, so every weapon lands within a
- * few times of the others single-target. Absent means 1. */
+ * few times of the others single-target. Absent means 1.
+ *
+ * `evolve*` on a weapon replaces the shared evolution bonus in Config
+ * (evolveDamageMult, evolveProjectiles, evolvePierce, evolveChains,
+ * evolveChainFalloff, evolveBounces, evolveStrikes, evolveOrbitBlades,
+ * evolveAreaMult, evolveCooldownMult), and `evolveSplash` gives a splash
+ * the weapon did not have. Late-game damage is balanced HERE, on the
+ * evolution and the unions, so the early night is left as it was: measured
+ * at 20:00 on the hardest night against 320 dummies standing where a real
+ * horde stands, and one drifting boss (tools/slot-test.js), the evolved
+ * weapons ran from 3k to 552k a second on the crowd. They now sit in one
+ * band by role - area near 150k, lines and bounces near 90k, bolts near
+ * 65k and the strongest on a boss - and a union is worth the two evolved
+ * weapons it consumes. */
 'use strict';
 (function (WS) {
 
   WS.Weapons = {
     seeking_motes: {
-      bossDamage: 1.7,
+      bossDamage: 1.6,
       name: 'Seeking Motes', school: 'arcane', behavior: 'aimed', art: 'missile',
       cooldown: 0.934, damage: 5.46, speed: 337, projectiles: 3, pierce: 2, range: 560,
       homing: true, life: 2.2, radius: 6, burst: true,
       description: 'A rapid volley of small seeking motes that curve through the crowd.',
+      evolveDamageMult: 6, evolveProjectiles: 6, evolvePierce: 4, evolveSplash: 11,
       evolveName: 'Mote Cascade', evolvePairing: 'quantity',
       evolveDescription: 'The motes multiply beyond counting.',
     },
     cinderfall: {
+      bossDamage: 1.25,
       name: 'Cinderfall', school: 'fire', behavior: 'aimed', art: 'ember',
       cooldown: 1.758, damage: 30.94, speed: 346, projectiles: 1, pierce: 0, range: 600,
       splash: 70, life: 2.4, radius: 10,
       description: 'A slow, heavy cinder that bursts on impact.',
+      evolveDamageMult: 1,
       evolveName: 'Fallen Star', evolvePairing: 'area',
       evolveDescription: 'The cinder becomes a falling star.',
     },
     rimeshard: {
-      bossDamage: 1.1,
+      bossDamage: 1.5,
       name: 'Rimeshard', school: 'frost', behavior: 'aimed', art: 'shard',
       cooldown: 1.209, damage: 18.2, speed: 364, projectiles: 1, pierce: 2, range: 580,
       slowFactor: 0.55, slowDuration: 2.0, life: 2.2, radius: 9,
       description: 'Bitter cold that slows whatever it strikes.',
+      evolveDamageMult: 2, evolveSplash: 12,
       evolveName: 'Deepwinter', evolvePairing: 'haste',
       evolveDescription: 'Winter itself takes the field.',
     },
     arcweb: {
-      bossDamage: 3.5,
+      bossDamage: 1.25,
       name: 'Arcweb', school: 'nature', behavior: 'chain',
       color: [0.55, 0.80, 1.00], art: 'spark',
       cooldown: 1.649, damage: 27.3, chains: 5, range: 250,
       description: 'Lightning that leaps from foe to foe.',
+      evolveDamageMult: 6, evolveChains: 30, evolveChainFalloff: 0.01, evolveCooldownMult: 0.5,
       evolveName: 'Skybreak', evolvePairing: 'precision',
       evolveDescription: 'The sky answers every call.',
     },
     dawnpulse: {
-      bossDamage: 2.4,
+      bossDamage: 4.5,
       name: 'Dawnpulse', school: 'holy', behavior: 'nova', art: 'ring',
       cooldown: 2.638, damage: 27.3, radius: 150, expandTime: 0.35, knockback: 26,
       description: 'A ring of Light erupts outward from the survivor.',
+      evolveDamageMult: 2.5,
       evolveName: 'Circle of Dawn', evolvePairing: 'vitality',
       evolveDescription: 'Each dawn mends the faithful.',
       // Heals per enemy struck, capped per pulse (Weapon.healOf).
       healPer: 3, evolvedHealPer: 2, healCap: 30, healCapRank: 8, evolvedHealCap: 44,
     },
     verdant_lance: {
-      bossDamage: 2.45,
+      bossDamage: 2.4,
       name: 'Verdant Lance', school: 'nature', behavior: 'beam', art: 'beam',
       cooldown: 1.429, damage: 20.02, range: 620, beamWidth: 26,
       metaWidthMult: 1.8, color: [0.55, 1.00, 0.20],
       description: 'A lance of green fire that burns everything standing in its path.',
+      evolveDamageMult: 6, evolveAreaMult: 3,
       evolveName: 'Verdant Gaze', evolvePairing: 'dodge',
       evolveDescription: 'The gaze widens until the world is a line of green fire.',
     },
     grave_tether: {
+      bossDamage: 1.15,
       name: 'Grave Tether', school: 'shadow', behavior: 'aimed', art: 'coil',
       cooldown: 1.594, damage: 25.48, speed: 382, projectiles: 1, pierce: 2,
       range: 600, life: 2.4, radius: 10, color: [0.55, 0.20, 0.75],
       // Per enemy the coils strike, capped per volley: it used to have no cap.
       healPer: 5, evolvedHealPer: 4, healCap: 20, healCapRank: 6, evolvedHealCap: 18,
       description: 'A coil of dark magic that wounds the living and knits your own flesh back together.',
+      evolveDamageMult: 2.4, evolvePierce: 99,
       evolveName: 'Tether of Anguish', evolvePairing: 'wisdom',
       evolveDescription: 'The tether takes more, and gives more back.',
     },
     blightfield: {
+      bossDamage: 2.9,
       name: 'Blightfield', school: 'shadow', behavior: 'zone', art: 'zone',
       cooldown: 4.286, damage: 11.83, radius: 130, duration: 4.5, tickRate: 0.45,
       color: [0.45, 0.85, 0.35],
       description: 'Corrupts the ground underfoot; anything standing in it rots.',
+      evolveDamageMult: 0.85,
       evolveName: 'Blighted Earth', evolvePairing: 'chilling_presence',
       evolveDescription: 'The blight spreads wider the longer it feeds.',
       // While you stand in it: per enemy it rots, capped per tick.
       healPer: 1, evolvedHealPer: 1, healCap: 4, healCapRank: 1.2, evolvedHealCap: 3.6,
     },
     reaving_arc: {
-      bossDamage: 2.9,
+      bossDamage: 4.3,
       name: 'Reaving Arc', school: 'shadow', behavior: 'nova', art: 'ring',
       cooldown: 2.418, damage: 30.94, radius: 130, expandTime: 0.28, knockback: 20,
       color: [0.85, 0.15, 0.20],
       healPer: 3, evolvedHealPer: 2, healCap: 28, healCapRank: 7, evolvedHealCap: 43,
       description: 'A sweeping graveblade that carves health out of the wound it makes.',
+      evolveDamageMult: 2.3,
       evolveName: 'Rend and Mend', evolvePairing: 'recovery',
       evolveDescription: 'The blade drinks deeper than any wound can hold.',
     },
     hallowed_ring: {
-      bossDamage: 1.7,
+      bossDamage: 3,
       name: 'Hallowed Ring', school: 'holy', behavior: 'zone', art: 'zone',
       cooldown: 3.956, damage: 10.01, radius: 120, duration: 4.0, tickRate: 0.5,
       description: "Hallows the ground beneath the survivor's feet.",
+      evolveDamageMult: 1.1,
       evolveName: 'Hallowed Ground', evolvePairing: 'armor',
       evolveDescription: 'Sacred ground that shelters as it burns.',
       // While you stand in it: per enemy it burns, capped per tick.
@@ -111,19 +137,22 @@
       cooldown: 1.099, damage: 23.66, speed: 364, projectiles: 1, pierce: 2, range: 580,
       life: 2.4, radius: 9,
       description: 'Bolts of shadow that tear straight through ranks.',
+      evolveDamageMult: 2, evolvePierce: 99,
       evolveName: 'Ruin Bolt', evolvePairing: 'might',
       evolveDescription: 'Ruin that nothing can stop.',
     },
     knifestorm: {
-      bossDamage: 2.9,
+      bossDamage: 1.7,
       name: 'Knifestorm', school: 'physical', behavior: 'ring', art: 'dagger',
       cooldown: 1.429, damage: 16.38, speed: 346, projectiles: 6, pierce: 1,
       life: 0.9, radius: 8,
       description: 'A whirling ring of thrown steel.',
+      evolveDamageMult: 5, evolvePierce: 6, evolveProjectiles: 4,
       evolveName: 'Steel Flurry', evolvePairing: 'fleetfoot',
       evolveDescription: 'The steel never stops moving.',
     },
     axe_gyre: {
+      bossDamage: 2.4,
       name: 'Axe Gyre', school: 'physical', behavior: 'orbit', art: 'axe',
       color: [0.85, 0.88, 0.96], evolvedColor: [1.00, 0.55, 0.25],
       /* Three blades and a shorter breath between gyres. Measured in the
@@ -142,33 +171,38 @@
       cooldown: 4.616, damage: 23.66, projectiles: 3, orbitRadius: 85, orbitSpeed: 4.2,
       duration: 3.2, radius: 20,
       description: 'Axes circle the survivor, shredding all who close in.',
+      evolveDamageMult: 0.68, evolveOrbitBlades: 0,
       evolveName: 'Gyrestorm', evolvePairing: 'ferocity',
       evolveDescription: 'Become the storm of blades.',
     },
     volley: {
-      bossDamage: 1.4,
+      bossDamage: 0.9,
       name: 'Volley', school: 'physical', behavior: 'spray', art: 'arrow',
       cooldown: 1.539, damage: 15.47, speed: 419, projectiles: 3, pierce: 2, range: 620,
       spread: 0.16, life: 1.7, radius: 8,
       description: 'A widening spread of hunting arrows.',
+      evolveDamageMult: 4.5, evolvePierce: 30,
       evolveName: 'Arrowfall', evolvePairing: 'velocity',
       evolveDescription: 'The sky darkens with arrows.',
     },
     moonbrand: {
+      bossDamage: 1.2,
       name: 'Moonbrand', school: 'arcane', behavior: 'aimed', art: 'moon',
       cooldown: 1.319, damage: 21.84, speed: 291, projectiles: 1, pierce: 0, range: 560,
       homing: true, life: 2.6, radius: 9,
       description: 'Moonlit flame that tracks its prey.',
+      evolveDamageMult: 1, evolveStrikes: 0,
       evolveName: 'Moonfall', evolvePairing: 'magnet',
       evolveDescription: 'Moons fall wherever enemies gather.',
       evolvedBehavior: 'storm', strikes: 5, stormRadius: 230, splash: 60,
     },
     judgement_disc: {
-      bossDamage: 2.45,
+      bossDamage: 1.6,
       name: 'Judgement Disc', school: 'holy', behavior: 'bounce', art: 'shield',
       cooldown: 2.308, damage: 27.3, speed: 391, projectiles: 1, bounces: 5, range: 600,
       life: 3.0, radius: 11,
       description: 'A hurled shield that ricochets between enemies.',
+      evolveDamageMult: 6, evolveBounces: 30,
       evolveName: 'Reckoning', evolvePairing: 'luck',
       evolveDescription: 'Judgment finds every last one of them.',
     },
@@ -183,38 +217,43 @@
      * and back. Every figure was fitted against the rest of the arsenal in
      * tools/sim.js, alone at rank 1 and rank 8. */
     iron_palms: {
-      bossDamage: 1.15,
+      bossDamage: 1,
       name: 'Iron Palms', school: 'physical', behavior: 'palm', art: 'palm',
       cooldown: 0.95, damage: 15, projectiles: 3, reach: 118, arc: 1.25, knockback: 14,
       waveReach: 2.8, waveDamage: 0.8, waveSpeed: 520,
       color: [0.58, 0.92, 0.76], evolvedColor: [1.0, 0.84, 0.48],
       description: 'A flurry of open-handed strikes at whatever is closest, each one a short cone that hits everything in it. With nothing in reach, a single palm of air is thrown instead.',
+      evolveDamageMult: 1.7,
       evolveName: 'Temple Breaker', evolvePairing: 'dodge',
       evolveDescription: 'Every palm lands like the temple bell.',
     },
     spirit_herd: {
-      bossDamage: 1.8,
+      bossDamage: 3,
       name: 'Spirit Herd', school: 'nature', behavior: 'herd', art: 'herd',
       cooldown: 2.6, damage: 21, speed: 330, projectiles: 2, pierce: 99, range: 620,
       life: 1.8, radius: 16, knock: 22, color: [0.62, 0.92, 0.55],
       description: 'Spirit beasts of the long pasture stampede from behind you toward the nearest foe, trampling everything in the way.',
+      evolveDamageMult: 2,
       evolveName: 'The Great Herd', evolvePairing: 'perennial',
       evolveDescription: 'The herd does not end. It only thins.',
     },
     thornbloom: {
+      bossDamage: 2.7,
       name: 'Thornbloom', school: 'nature', behavior: 'zone', art: 'bloom',
       cooldown: 3.8, damage: 11, radius: 92, duration: 4.0, tickRate: 0.5,
       atTarget: true, slowFactor: 0.55, color: [0.52, 0.86, 0.38],
       description: 'Brambles burst up under the nearest crowd, tearing at everything caught in them and holding it slow.',
+      evolveDamageMult: 1.25,
       evolveName: 'Everbloom', evolvePairing: 'thorns',
       evolveDescription: 'The brambles flower, and the flowers have thorns too.',
     },
     gale_chakram: {
-      bossDamage: 1.4,
+      bossDamage: 1.6,
       name: 'Gale Chakram', school: 'physical', behavior: 'chakram', art: 'chakram',
       cooldown: 1.7, damage: 16, speed: 380, projectiles: 1, range: 330, life: 2.6, radius: 12,
       color: [0.78, 0.92, 1.0],
       description: 'A bladed ring thrown out on the wind. It cuts everything on the way out, turns, and cuts everything on the way back.',
+      evolveDamageMult: 4,
       evolveName: 'Razorgale', evolvePairing: 'serration',
       evolveDescription: 'The ring splits the wind in two and comes back sharper.',
     },
@@ -285,8 +324,9 @@
      * is what actually limits it.
      */
     union_firmament: {
+      bossDamage: 2.4,
       name: 'Firmament', school: 'arcane', behavior: 'storm', isUnion: true, art: 'moon',
-      cooldown: 1.154, damage: 18.2, strikes: 8, stormRadius: 270, splash: 72, radius: 12,
+      cooldown: 1.154, damage: 24.2, strikes: 8, stormRadius: 270, splash: 72, radius: 12,
       description: 'Sun and moon rain from the heavens without end.',
     },
     /* A tester: "every time I used it, it was 50% of my damage". Measured on
@@ -294,51 +334,57 @@
        eats and 59% of a five-weapon build's meter, because homing, piercing,
        splashing bolts reach the crowd first and take every kill. Damage
        25.5 -> 20.4 and splash 82 -> 55 put it at 55% of its pair and 27% of
-       the meter, beside Firmament. */
+       the meter, beside Firmament. Then the weapons were brought into one
+       band on evolution and every union set to what its two evolved parts
+       did (tools/slot-test.js): 20.4 -> 37.9, since Umbral Bolt now pierces
+       everything and the pair it eats is worth far more than it was. */
     union_ruin: {
+      bossDamage: 1.95,
       name: 'Ruin Unbound', school: 'shadow', behavior: 'aimed', isUnion: true, art: 'chaos',
-      cooldown: 0.989, damage: 20.38, speed: 428, projectiles: 2, pierce: 4, range: 620,
+      cooldown: 0.989, damage: 37.9, speed: 428, projectiles: 2, pierce: 4, range: 620,
       splash: 55, homing: true, life: 2.6, radius: 12, color: [0.60, 0.30, 1.00],
       description: 'Ruin that devours everything in its path.',
     },
     union_steel: {
-      bossDamage: 1.6,
+      bossDamage: 2.8,
       name: 'Storm of Steel', school: 'physical', behavior: 'ring', isUnion: true, art: 'dagger',
-      cooldown: 0.934, damage: 16.38, speed: 400, projectiles: 12, pierce: 3, life: 1.1, radius: 9,
+      cooldown: 0.934, damage: 65.5, speed: 400, projectiles: 12, pierce: 12, life: 1.1, radius: 9,
       description: 'An unending cyclone of thrown steel.',
     },
     union_sanctuary: {
-      bossDamage: 3.7,
+      bossDamage: 3.6,
       name: 'Sanctuary', school: 'holy', behavior: 'nova', isUnion: true, art: 'ring',
-      cooldown: 1.978, damage: 23.66, radius: 205, expandTime: 0.4, knockback: 34,
+      cooldown: 1.978, damage: 156, radius: 205, expandTime: 0.4, knockback: 34,
       // Forged from the two holy healers, and it used to heal not at all:
       // taking it threw your healing away. It mends as they did together.
       healPer: 5, healCap: 130,
       description: 'The Light claims this ground as its own, and mends whoever keeps it.',
     },
     union_stormcall: {
+      bossDamage: 2.5,
       name: 'Stormcall', school: 'nature', behavior: 'orbit', isUnion: true, art: 'sword',
-      cooldown: 5.055, damage: 23.66, projectiles: 5, orbitRadius: 95, orbitSpeed: 5.0,
+      cooldown: 5.055, damage: 21.3, projectiles: 5, orbitRadius: 95, orbitSpeed: 5.0,
       duration: 4.0, radius: 22, procChain: 0.35, color: [0.45, 0.85, 1.00],
       description: 'Blessed blade of the Tempest: a cyclone of steel that answers every cut with lightning.',
     },
     union_tempest_kata: {
-      bossDamage: 1.8,
+      bossDamage: 4.8,
       name: 'Tempest Kata', school: 'physical', behavior: 'palm', isUnion: true, art: 'palm',
-      cooldown: 1.0, damage: 9, projectiles: 3, reach: 135, arc: 6.2832, knockback: 10,
+      cooldown: 1.0, damage: 13.2, projectiles: 3, reach: 135, arc: 6.2832, knockback: 10,
       color: [0.78, 0.92, 1.0],
       description: 'Palm and ring become one form: strikes in every direction at once, and the wind they leave behind cuts too.',
     },
     union_wild_hunt: {
-      bossDamage: 1.55,
+      bossDamage: 2.5,
       name: 'The Wild Hunt', school: 'nature', behavior: 'herd', isUnion: true, art: 'herd',
-      cooldown: 1.9, damage: 22, speed: 360, projectiles: 5, pierce: 99, range: 640,
+      cooldown: 1.9, damage: 110, speed: 360, projectiles: 5, pierce: 99, range: 640,
       life: 2.1, radius: 19, knock: 26, endBurst: 76, color: [0.55, 1.0, 0.25],
       description: 'The herd runs in green fire, and every beast that reaches the end of its run goes up in it.',
     },
     union_rotwood: {
+      bossDamage: 3.2,
       name: 'Rotwood', school: 'nature', behavior: 'zone', isUnion: true, art: 'bloom',
-      cooldown: 3.1, damage: 11, radius: 130, duration: 5.0, tickRate: 0.45,
+      cooldown: 3.1, damage: 13.4, radius: 130, duration: 5.0, tickRate: 0.45,
       atTarget: true, slowFactor: 0.45, color: [0.60, 0.80, 0.28],
       description: 'A grove of blighted brambles grows up under the crowd and rots everything it holds.',
     },

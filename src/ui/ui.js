@@ -3658,7 +3658,7 @@
     if (p.rageAttuned > 0) kv('Boil overs', run0.enrages || 0);
     if (p.soulAttuned > 0) kv('Reapings', run0.rends || 0);
     if (p.totemAttuned > 0) kv('Waystones raised', run0.waystones || 0);
-    if (p.holyAttuned > 0) kv('Hammerfalls', run0.storms || 0);
+    if (p.holyAttuned > 0) kv('Judgements', run0.storms || 0);
 
     /* The blessings, one to a line with their marks. They were a single
        key-value row - "Blessings" and then every name joined by commas - and

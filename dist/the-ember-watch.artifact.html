@@ -4141,6 +4141,7 @@ window.WS = window.WS || {};
     evolveStrikes: 2,
     evolveBounces: 3,
     chainFalloff: 0.06,
+    evolveChainFalloff: 0.06,   // an evolved chain's own fade (a weapon may carry its own)
     chainFirstReach: 1.6,
     orbitTickPct: 0.65,
     gyrePulseRadius: 130,
@@ -4482,12 +4483,14 @@ window.WS = window.WS || {};
     // Waystones: one every totemEvery seconds, cycling ember / spring / gale,
     // each standing totemLife (one of a kind at a time).
     totemEvery: 3, totemLife: 10, totemRadius: 200,
-    totemSearTick: 0.5, totemSearBase: 10, totemSearPerLevel: 1.2,
+    totemSearTick: 0.5, totemSearBase: 10, totemSearPerLevel: 0.4,
     totemHeal: 0.015, totemHaste: 0.8,
-    // Conviction: holyPerHit for each hit taken, one for every holyHealPer
-    // health healed. holyNeed, and a Hammerfall with an Aegis.
-    holyNeed: 3, holyPerHit: 0.5, holyHealPer: 25, holyLock: 4,
-    hammerRadius: 190, stormBase: 110, stormPerLevel: 11, divineShield: 2.0,
+    // Conviction: holyPerHit for each hit taken, one for every holyHealPct of
+    // max health healed. At holyNeed, Judgement: every creature on the field
+    // struck down and judgementBossPct off a boss, with an Aegis; then
+    // holyLock before it gathers again.
+    holyNeed: 36, holyPerHit: 0.5, holyHealPct: 0.10, holyLock: 20,
+    judgementBossPct: 0.04, divineShield: 2.0,
 
     difficulties: {
       beginner: { label: 'Beginner', scale: 0.75, gold: 0.85, interval: 1.1 },
@@ -5586,100 +5589,126 @@ window.WS = window.WS || {};
  * finales' machines and parts (Enemy.hit). Weapons built for crowds hit one
  * big target softly; these factors were set from what each weapon measurably
  * did to late scheduled bosses at rank 7+, so every weapon lands within a
- * few times of the others single-target. Absent means 1. */
+ * few times of the others single-target. Absent means 1.
+ *
+ * `evolve*` on a weapon replaces the shared evolution bonus in Config
+ * (evolveDamageMult, evolveProjectiles, evolvePierce, evolveChains,
+ * evolveChainFalloff, evolveBounces, evolveStrikes, evolveOrbitBlades,
+ * evolveAreaMult, evolveCooldownMult), and `evolveSplash` gives a splash
+ * the weapon did not have. Late-game damage is balanced HERE, on the
+ * evolution and the unions, so the early night is left as it was: measured
+ * at 20:00 on the hardest night against 320 dummies standing where a real
+ * horde stands, and one drifting boss (tools/slot-test.js), the evolved
+ * weapons ran from 3k to 552k a second on the crowd. They now sit in one
+ * band by role - area near 150k, lines and bounces near 90k, bolts near
+ * 65k and the strongest on a boss - and a union is worth the two evolved
+ * weapons it consumes. */
 'use strict';
 (function (WS) {
 
   WS.Weapons = {
     seeking_motes: {
-      bossDamage: 1.7,
+      bossDamage: 1.6,
       name: 'Seeking Motes', school: 'arcane', behavior: 'aimed', art: 'missile',
       cooldown: 0.934, damage: 5.46, speed: 337, projectiles: 3, pierce: 2, range: 560,
       homing: true, life: 2.2, radius: 6, burst: true,
       description: 'A rapid volley of small seeking motes that curve through the crowd.',
+      evolveDamageMult: 6, evolveProjectiles: 6, evolvePierce: 4, evolveSplash: 11,
       evolveName: 'Mote Cascade', evolvePairing: 'quantity',
       evolveDescription: 'The motes multiply beyond counting.',
     },
     cinderfall: {
+      bossDamage: 1.25,
       name: 'Cinderfall', school: 'fire', behavior: 'aimed', art: 'ember',
       cooldown: 1.758, damage: 30.94, speed: 346, projectiles: 1, pierce: 0, range: 600,
       splash: 70, life: 2.4, radius: 10,
       description: 'A slow, heavy cinder that bursts on impact.',
+      evolveDamageMult: 1,
       evolveName: 'Fallen Star', evolvePairing: 'area',
       evolveDescription: 'The cinder becomes a falling star.',
     },
     rimeshard: {
-      bossDamage: 1.1,
+      bossDamage: 1.5,
       name: 'Rimeshard', school: 'frost', behavior: 'aimed', art: 'shard',
       cooldown: 1.209, damage: 18.2, speed: 364, projectiles: 1, pierce: 2, range: 580,
       slowFactor: 0.55, slowDuration: 2.0, life: 2.2, radius: 9,
       description: 'Bitter cold that slows whatever it strikes.',
+      evolveDamageMult: 2, evolveSplash: 12,
       evolveName: 'Deepwinter', evolvePairing: 'haste',
       evolveDescription: 'Winter itself takes the field.',
     },
     arcweb: {
-      bossDamage: 3.5,
+      bossDamage: 1.25,
       name: 'Arcweb', school: 'nature', behavior: 'chain',
       color: [0.55, 0.80, 1.00], art: 'spark',
       cooldown: 1.649, damage: 27.3, chains: 5, range: 250,
       description: 'Lightning that leaps from foe to foe.',
+      evolveDamageMult: 6, evolveChains: 30, evolveChainFalloff: 0.01, evolveCooldownMult: 0.5,
       evolveName: 'Skybreak', evolvePairing: 'precision',
       evolveDescription: 'The sky answers every call.',
     },
     dawnpulse: {
-      bossDamage: 2.4,
+      bossDamage: 4.5,
       name: 'Dawnpulse', school: 'holy', behavior: 'nova', art: 'ring',
       cooldown: 2.638, damage: 27.3, radius: 150, expandTime: 0.35, knockback: 26,
       description: 'A ring of Light erupts outward from the survivor.',
+      evolveDamageMult: 2.5,
       evolveName: 'Circle of Dawn', evolvePairing: 'vitality',
       evolveDescription: 'Each dawn mends the faithful.',
       // Heals per enemy struck, capped per pulse (Weapon.healOf).
       healPer: 3, evolvedHealPer: 2, healCap: 30, healCapRank: 8, evolvedHealCap: 44,
     },
     verdant_lance: {
-      bossDamage: 2.45,
+      bossDamage: 2.4,
       name: 'Verdant Lance', school: 'nature', behavior: 'beam', art: 'beam',
       cooldown: 1.429, damage: 20.02, range: 620, beamWidth: 26,
       metaWidthMult: 1.8, color: [0.55, 1.00, 0.20],
       description: 'A lance of green fire that burns everything standing in its path.',
+      evolveDamageMult: 6, evolveAreaMult: 3,
       evolveName: 'Verdant Gaze', evolvePairing: 'dodge',
       evolveDescription: 'The gaze widens until the world is a line of green fire.',
     },
     grave_tether: {
+      bossDamage: 1.15,
       name: 'Grave Tether', school: 'shadow', behavior: 'aimed', art: 'coil',
       cooldown: 1.594, damage: 25.48, speed: 382, projectiles: 1, pierce: 2,
       range: 600, life: 2.4, radius: 10, color: [0.55, 0.20, 0.75],
       // Per enemy the coils strike, capped per volley: it used to have no cap.
       healPer: 5, evolvedHealPer: 4, healCap: 20, healCapRank: 6, evolvedHealCap: 18,
       description: 'A coil of dark magic that wounds the living and knits your own flesh back together.',
+      evolveDamageMult: 2.4, evolvePierce: 99,
       evolveName: 'Tether of Anguish', evolvePairing: 'wisdom',
       evolveDescription: 'The tether takes more, and gives more back.',
     },
     blightfield: {
+      bossDamage: 2.9,
       name: 'Blightfield', school: 'shadow', behavior: 'zone', art: 'zone',
       cooldown: 4.286, damage: 11.83, radius: 130, duration: 4.5, tickRate: 0.45,
       color: [0.45, 0.85, 0.35],
       description: 'Corrupts the ground underfoot; anything standing in it rots.',
+      evolveDamageMult: 0.85,
       evolveName: 'Blighted Earth', evolvePairing: 'chilling_presence',
       evolveDescription: 'The blight spreads wider the longer it feeds.',
       // While you stand in it: per enemy it rots, capped per tick.
       healPer: 1, evolvedHealPer: 1, healCap: 4, healCapRank: 1.2, evolvedHealCap: 3.6,
     },
     reaving_arc: {
-      bossDamage: 2.9,
+      bossDamage: 4.3,
       name: 'Reaving Arc', school: 'shadow', behavior: 'nova', art: 'ring',
       cooldown: 2.418, damage: 30.94, radius: 130, expandTime: 0.28, knockback: 20,
       color: [0.85, 0.15, 0.20],
       healPer: 3, evolvedHealPer: 2, healCap: 28, healCapRank: 7, evolvedHealCap: 43,
       description: 'A sweeping graveblade that carves health out of the wound it makes.',
+      evolveDamageMult: 2.3,
       evolveName: 'Rend and Mend', evolvePairing: 'recovery',
       evolveDescription: 'The blade drinks deeper than any wound can hold.',
     },
     hallowed_ring: {
-      bossDamage: 1.7,
+      bossDamage: 3,
       name: 'Hallowed Ring', school: 'holy', behavior: 'zone', art: 'zone',
       cooldown: 3.956, damage: 10.01, radius: 120, duration: 4.0, tickRate: 0.5,
       description: "Hallows the ground beneath the survivor's feet.",
+      evolveDamageMult: 1.1,
       evolveName: 'Hallowed Ground', evolvePairing: 'armor',
       evolveDescription: 'Sacred ground that shelters as it burns.',
       // While you stand in it: per enemy it burns, capped per tick.
@@ -5690,19 +5719,22 @@ window.WS = window.WS || {};
       cooldown: 1.099, damage: 23.66, speed: 364, projectiles: 1, pierce: 2, range: 580,
       life: 2.4, radius: 9,
       description: 'Bolts of shadow that tear straight through ranks.',
+      evolveDamageMult: 2, evolvePierce: 99,
       evolveName: 'Ruin Bolt', evolvePairing: 'might',
       evolveDescription: 'Ruin that nothing can stop.',
     },
     knifestorm: {
-      bossDamage: 2.9,
+      bossDamage: 1.7,
       name: 'Knifestorm', school: 'physical', behavior: 'ring', art: 'dagger',
       cooldown: 1.429, damage: 16.38, speed: 346, projectiles: 6, pierce: 1,
       life: 0.9, radius: 8,
       description: 'A whirling ring of thrown steel.',
+      evolveDamageMult: 5, evolvePierce: 6, evolveProjectiles: 4,
       evolveName: 'Steel Flurry', evolvePairing: 'fleetfoot',
       evolveDescription: 'The steel never stops moving.',
     },
     axe_gyre: {
+      bossDamage: 2.4,
       name: 'Axe Gyre', school: 'physical', behavior: 'orbit', art: 'axe',
       color: [0.85, 0.88, 0.96], evolvedColor: [1.00, 0.55, 0.25],
       /* Three blades and a shorter breath between gyres. Measured in the
@@ -5721,33 +5753,38 @@ window.WS = window.WS || {};
       cooldown: 4.616, damage: 23.66, projectiles: 3, orbitRadius: 85, orbitSpeed: 4.2,
       duration: 3.2, radius: 20,
       description: 'Axes circle the survivor, shredding all who close in.',
+      evolveDamageMult: 0.68, evolveOrbitBlades: 0,
       evolveName: 'Gyrestorm', evolvePairing: 'ferocity',
       evolveDescription: 'Become the storm of blades.',
     },
     volley: {
-      bossDamage: 1.4,
+      bossDamage: 0.9,
       name: 'Volley', school: 'physical', behavior: 'spray', art: 'arrow',
       cooldown: 1.539, damage: 15.47, speed: 419, projectiles: 3, pierce: 2, range: 620,
       spread: 0.16, life: 1.7, radius: 8,
       description: 'A widening spread of hunting arrows.',
+      evolveDamageMult: 4.5, evolvePierce: 30,
       evolveName: 'Arrowfall', evolvePairing: 'velocity',
       evolveDescription: 'The sky darkens with arrows.',
     },
     moonbrand: {
+      bossDamage: 1.2,
       name: 'Moonbrand', school: 'arcane', behavior: 'aimed', art: 'moon',
       cooldown: 1.319, damage: 21.84, speed: 291, projectiles: 1, pierce: 0, range: 560,
       homing: true, life: 2.6, radius: 9,
       description: 'Moonlit flame that tracks its prey.',
+      evolveDamageMult: 1, evolveStrikes: 0,
       evolveName: 'Moonfall', evolvePairing: 'magnet',
       evolveDescription: 'Moons fall wherever enemies gather.',
       evolvedBehavior: 'storm', strikes: 5, stormRadius: 230, splash: 60,
     },
     judgement_disc: {
-      bossDamage: 2.45,
+      bossDamage: 1.6,
       name: 'Judgement Disc', school: 'holy', behavior: 'bounce', art: 'shield',
       cooldown: 2.308, damage: 27.3, speed: 391, projectiles: 1, bounces: 5, range: 600,
       life: 3.0, radius: 11,
       description: 'A hurled shield that ricochets between enemies.',
+      evolveDamageMult: 6, evolveBounces: 30,
       evolveName: 'Reckoning', evolvePairing: 'luck',
       evolveDescription: 'Judgment finds every last one of them.',
     },
@@ -5762,38 +5799,43 @@ window.WS = window.WS || {};
      * and back. Every figure was fitted against the rest of the arsenal in
      * tools/sim.js, alone at rank 1 and rank 8. */
     iron_palms: {
-      bossDamage: 1.15,
+      bossDamage: 1,
       name: 'Iron Palms', school: 'physical', behavior: 'palm', art: 'palm',
       cooldown: 0.95, damage: 15, projectiles: 3, reach: 118, arc: 1.25, knockback: 14,
       waveReach: 2.8, waveDamage: 0.8, waveSpeed: 520,
       color: [0.58, 0.92, 0.76], evolvedColor: [1.0, 0.84, 0.48],
       description: 'A flurry of open-handed strikes at whatever is closest, each one a short cone that hits everything in it. With nothing in reach, a single palm of air is thrown instead.',
+      evolveDamageMult: 1.7,
       evolveName: 'Temple Breaker', evolvePairing: 'dodge',
       evolveDescription: 'Every palm lands like the temple bell.',
     },
     spirit_herd: {
-      bossDamage: 1.8,
+      bossDamage: 3,
       name: 'Spirit Herd', school: 'nature', behavior: 'herd', art: 'herd',
       cooldown: 2.6, damage: 21, speed: 330, projectiles: 2, pierce: 99, range: 620,
       life: 1.8, radius: 16, knock: 22, color: [0.62, 0.92, 0.55],
       description: 'Spirit beasts of the long pasture stampede from behind you toward the nearest foe, trampling everything in the way.',
+      evolveDamageMult: 2,
       evolveName: 'The Great Herd', evolvePairing: 'perennial',
       evolveDescription: 'The herd does not end. It only thins.',
     },
     thornbloom: {
+      bossDamage: 2.7,
       name: 'Thornbloom', school: 'nature', behavior: 'zone', art: 'bloom',
       cooldown: 3.8, damage: 11, radius: 92, duration: 4.0, tickRate: 0.5,
       atTarget: true, slowFactor: 0.55, color: [0.52, 0.86, 0.38],
       description: 'Brambles burst up under the nearest crowd, tearing at everything caught in them and holding it slow.',
+      evolveDamageMult: 1.25,
       evolveName: 'Everbloom', evolvePairing: 'thorns',
       evolveDescription: 'The brambles flower, and the flowers have thorns too.',
     },
     gale_chakram: {
-      bossDamage: 1.4,
+      bossDamage: 1.6,
       name: 'Gale Chakram', school: 'physical', behavior: 'chakram', art: 'chakram',
       cooldown: 1.7, damage: 16, speed: 380, projectiles: 1, range: 330, life: 2.6, radius: 12,
       color: [0.78, 0.92, 1.0],
       description: 'A bladed ring thrown out on the wind. It cuts everything on the way out, turns, and cuts everything on the way back.',
+      evolveDamageMult: 4,
       evolveName: 'Razorgale', evolvePairing: 'serration',
       evolveDescription: 'The ring splits the wind in two and comes back sharper.',
     },
@@ -5864,8 +5906,9 @@ window.WS = window.WS || {};
      * is what actually limits it.
      */
     union_firmament: {
+      bossDamage: 2.4,
       name: 'Firmament', school: 'arcane', behavior: 'storm', isUnion: true, art: 'moon',
-      cooldown: 1.154, damage: 18.2, strikes: 8, stormRadius: 270, splash: 72, radius: 12,
+      cooldown: 1.154, damage: 24.2, strikes: 8, stormRadius: 270, splash: 72, radius: 12,
       description: 'Sun and moon rain from the heavens without end.',
     },
     /* A tester: "every time I used it, it was 50% of my damage". Measured on
@@ -5873,51 +5916,57 @@ window.WS = window.WS || {};
        eats and 59% of a five-weapon build's meter, because homing, piercing,
        splashing bolts reach the crowd first and take every kill. Damage
        25.5 -> 20.4 and splash 82 -> 55 put it at 55% of its pair and 27% of
-       the meter, beside Firmament. */
+       the meter, beside Firmament. Then the weapons were brought into one
+       band on evolution and every union set to what its two evolved parts
+       did (tools/slot-test.js): 20.4 -> 37.9, since Umbral Bolt now pierces
+       everything and the pair it eats is worth far more than it was. */
     union_ruin: {
+      bossDamage: 1.95,
       name: 'Ruin Unbound', school: 'shadow', behavior: 'aimed', isUnion: true, art: 'chaos',
-      cooldown: 0.989, damage: 20.38, speed: 428, projectiles: 2, pierce: 4, range: 620,
+      cooldown: 0.989, damage: 37.9, speed: 428, projectiles: 2, pierce: 4, range: 620,
       splash: 55, homing: true, life: 2.6, radius: 12, color: [0.60, 0.30, 1.00],
       description: 'Ruin that devours everything in its path.',
     },
     union_steel: {
-      bossDamage: 1.6,
+      bossDamage: 2.8,
       name: 'Storm of Steel', school: 'physical', behavior: 'ring', isUnion: true, art: 'dagger',
-      cooldown: 0.934, damage: 16.38, speed: 400, projectiles: 12, pierce: 3, life: 1.1, radius: 9,
+      cooldown: 0.934, damage: 65.5, speed: 400, projectiles: 12, pierce: 12, life: 1.1, radius: 9,
       description: 'An unending cyclone of thrown steel.',
     },
     union_sanctuary: {
-      bossDamage: 3.7,
+      bossDamage: 3.6,
       name: 'Sanctuary', school: 'holy', behavior: 'nova', isUnion: true, art: 'ring',
-      cooldown: 1.978, damage: 23.66, radius: 205, expandTime: 0.4, knockback: 34,
+      cooldown: 1.978, damage: 156, radius: 205, expandTime: 0.4, knockback: 34,
       // Forged from the two holy healers, and it used to heal not at all:
       // taking it threw your healing away. It mends as they did together.
       healPer: 5, healCap: 130,
       description: 'The Light claims this ground as its own, and mends whoever keeps it.',
     },
     union_stormcall: {
+      bossDamage: 2.5,
       name: 'Stormcall', school: 'nature', behavior: 'orbit', isUnion: true, art: 'sword',
-      cooldown: 5.055, damage: 23.66, projectiles: 5, orbitRadius: 95, orbitSpeed: 5.0,
+      cooldown: 5.055, damage: 21.3, projectiles: 5, orbitRadius: 95, orbitSpeed: 5.0,
       duration: 4.0, radius: 22, procChain: 0.35, color: [0.45, 0.85, 1.00],
       description: 'Blessed blade of the Tempest: a cyclone of steel that answers every cut with lightning.',
     },
     union_tempest_kata: {
-      bossDamage: 1.8,
+      bossDamage: 4.8,
       name: 'Tempest Kata', school: 'physical', behavior: 'palm', isUnion: true, art: 'palm',
-      cooldown: 1.0, damage: 9, projectiles: 3, reach: 135, arc: 6.2832, knockback: 10,
+      cooldown: 1.0, damage: 13.2, projectiles: 3, reach: 135, arc: 6.2832, knockback: 10,
       color: [0.78, 0.92, 1.0],
       description: 'Palm and ring become one form: strikes in every direction at once, and the wind they leave behind cuts too.',
     },
     union_wild_hunt: {
-      bossDamage: 1.55,
+      bossDamage: 2.5,
       name: 'The Wild Hunt', school: 'nature', behavior: 'herd', isUnion: true, art: 'herd',
-      cooldown: 1.9, damage: 22, speed: 360, projectiles: 5, pierce: 99, range: 640,
+      cooldown: 1.9, damage: 110, speed: 360, projectiles: 5, pierce: 99, range: 640,
       life: 2.1, radius: 19, knock: 26, endBurst: 76, color: [0.55, 1.0, 0.25],
       description: 'The herd runs in green fire, and every beast that reaches the end of its run goes up in it.',
     },
     union_rotwood: {
+      bossDamage: 3.2,
       name: 'Rotwood', school: 'nature', behavior: 'zone', isUnion: true, art: 'bloom',
-      cooldown: 3.1, damage: 11, radius: 130, duration: 5.0, tickRate: 0.45,
+      cooldown: 3.1, damage: 13.4, radius: 130, duration: 5.0, tickRate: 0.45,
       atTarget: true, slowFactor: 0.45, color: [0.60, 0.80, 0.28],
       description: 'A grove of blighted brambles grows up under the crowd and rots everything it holds.',
     },
@@ -7230,9 +7279,9 @@ window.WS = window.WS || {};
     },
     conviction: {
       name: 'Conviction', art: 'sun', quality: 'legendary',
-      description: 'Blows you take and healing you receive build Conviction. At {Config.holyNeed}, a Hammerfall around you and an Aegis over you.',
-      detail: 'A hit taken: {Config.holyPerHit} Conviction. Every {Config.holyHealPer} health healed: one more\n'
-        + 'Hammerfall: Light crashes down around you. Aegis: untouchable for {Config.divineShield}s\n'
+      description: 'Blows you take and healing you receive build Conviction. At {Config.holyNeed}, Judgement falls on the whole field and an Aegis covers you.',
+      detail: 'A hit taken: {Config.holyPerHit} Conviction. Every {Config.holyHealPct%}% of your health healed: one more\n'
+        + 'Judgement: every creature on the field struck down, and bosses lose {Config.judgementBossPct%}% of their health. Aegis: untouchable for {Config.divineShield}s\n'
         + 'Then {Config.holyLock}s to gather again\n'
         + 'Keegan builds Conviction {Config.callingEdge%}% faster',
       apply: (p) => { p.holyAttuned += 1; },
@@ -7331,7 +7380,9 @@ window.WS = window.WS || {};
       name: 'Shadowflame', weapons: ['umbral_bolt', 'cinderfall'],
       description: 'Umbral Bolts detonate on impact, scorching everything nearby.',
       hint: 'Shadow and flame were ever entwined.',
-      splash: 55,
+      // Every bolt that passes through something bursts, and an evolved bolt
+      // passes through everything: at 55 the pair did 2.3 times its parts.
+      splash: 20,
       apply: (w1, w2, c) => { w1.mods.splash = c.splash; },
     },
     deadly_brew: {
@@ -26572,6 +26623,12 @@ window.WS = window.WS || {};
   const retry = () => WS.Config.weaponRetry;
 
   /* --------------------------------------------------------- derivation -- */
+  /* An evolution's bonus: the weapon's own when it names one, else the
+     shared one in Config. Evolving is where a late weapon is balanced (it
+     leaves the early night alone), so a weapon may want more pierce, or a
+     splash it never had, where another wants less damage. */
+  function evo(d, key) { return d[key] !== undefined ? d[key] : WS.Config[key]; }
+
   function damageOf(player, w) {
     const cfg = WS.Config, d = w.data;
     const step = d.rankDamageStep || cfg.rankDamageStep;
@@ -26706,7 +26763,7 @@ window.WS = window.WS || {};
     spec.life = d.life || 2.0;
     spec.radius = (d.radius || 8) * (1 + cfg.rankRadiusStep * (w.level - 1))
       * (w.evolved ? cfg.evolveRadiusMult : 1);
-    spec.pierce = (d.pierce || 0) + (w.evolved ? cfg.evolvePierce : 0);
+    spec.pierce = (d.pierce || 0) + (w.evolved ? evo(d, 'evolvePierce') : 0);
     spec.art = d.art;
     spec.colour = schoolColour(w);
     /* Decided HERE, with every other mod, and not inside one behaviour.
@@ -26724,7 +26781,7 @@ window.WS = window.WS || {};
      * acquires one on its first update. */
     spec.homing = !!(d.homing || w.mods.homing);
     spec.homingTarget = null;
-    const splash = d.splash || w.mods.splash;
+    const splash = d.splash || w.mods.splash || (w.evolved ? d.evolveSplash : 0);
     spec.splash = splash ? areaOf(player, w, splash) : null;
     spec.slowFactor = d.slowFactor || w.mods.slowFactor;
     spec.slowDuration = d.slowDuration || w.mods.slowDuration;
@@ -27162,7 +27219,7 @@ window.WS = window.WS || {};
    * projectile and it is counted like one now. */
   function chainCount(player, w) {
     const d = w.data, cfg = WS.Config;
-    let n = (d.chains || 4) + player.projectileBonus + (w.evolved ? cfg.evolveChains : 0);
+    let n = (d.chains || 4) + player.projectileBonus + (w.evolved ? evo(d, 'evolveChains') : 0);
     if (w.level >= (d.projRankA || cfg.projRankA)) n++;
     if (w.level >= (d.projRankB || cfg.projRankB)) n++;
     return n;
@@ -27190,6 +27247,8 @@ window.WS = window.WS || {};
     const rank = w ? w.level : 1;
     const heavy = 1 + 0.085 * (rank - 1) + (w && w.evolved ? 0.5 : 0);
     const visited = new Set();
+    // Each hop is weaker than the last; an evolved weapon may fade slower.
+    const fall = w && w.evolved ? evo(w.data, 'evolveChainFalloff') : WS.Config.chainFalloff;
     let px = x, py = y;
     for (let i = 0; i < chains; i++) {
       const target = WS.Enemy.findNearest(px, py, range, visited);
@@ -27198,7 +27257,7 @@ window.WS = window.WS || {};
       const link = WS.Projectile.spawnBeam(px, py, target.x, target.y, 4 * heavy, colour, 0.16);
       if (link) link.arc = true;
       if (w) mark(WS.Projectile.beams, w);
-      WS.Enemy.hit(target, damage * WS.max(0, 1 - i * WS.Config.chainFalloff), source);
+      WS.Enemy.hit(target, damage * WS.max(0, 1 - i * fall), source);
       WS.FX.flash(target.x, target.y, 22 * heavy, colour, 0.18);
       px = target.x; py = target.y;
       if (target._dead) continue;
@@ -27209,7 +27268,7 @@ window.WS = window.WS || {};
     const d = w.data, cfg = WS.Config;
     let count = (d.projectiles || 2) + player.projectileBonus + (w.mods.extraProjectiles || 0);
     let speed = d.orbitSpeed || 4.2;
-    if (w.evolved) { count += cfg.evolveOrbitBlades; speed *= cfg.evolveOrbitSpeed; }
+    if (w.evolved) { count += evo(d, 'evolveOrbitBlades'); speed *= cfg.evolveOrbitSpeed; }
     if (w.level >= cfg.projRankA) count++;
     if (w.level >= cfg.projRankB) count++;
 
@@ -27255,7 +27314,7 @@ window.WS = window.WS || {};
     // Extra projectiles from a discovery are extra strikes (Firmament keeps
     // Celestial Alignment's extra moonbeam as one more falling star).
     const strikes = (d.strikes || 5) + player.projectileBonus + (w.mods.extraProjectiles || 0)
-      + (w.evolved ? cfg.evolveStrikes : 0);
+      + (w.evolved ? evo(d, 'evolveStrikes') : 0);
     const radius = areaOf(player, w, d.stormRadius || 230);
     const splash = areaOf(player, w, d.splash || 60);
     const damage = damageOf(player, w);
@@ -27288,7 +27347,7 @@ window.WS = window.WS || {};
     if (!target) { w.cooldown = retry(); return false; }
     fillSpec(player, w);
     spec.bounces = (d.bounces || 3) + (w.mods.extraBounces || 0)
-      + player.projectileBonus + (w.evolved ? WS.Config.evolveBounces : 0);
+      + player.projectileBonus + (w.evolved ? evo(d, 'evolveBounces') : 0);
     spec.spinRate = 16;
     const speed = speedOf(player, w);
     const count = 1 + (w.evolved ? 1 : 0);
@@ -27370,7 +27429,7 @@ window.WS = window.WS || {};
     /* One disc per count, ricocheting between bounces+1 targets. */
     bounce: (p, w, crowd, q) => {
       const hits = Math.min((w.data.bounces || 3) + p.projectileBonus
-        + (w.evolved ? WS.Config.evolveBounces : 0) + 1, crowd);
+        + (w.evolved ? evo(w.data, 'evolveBounces') : 0) + 1, crowd);
       const n = 1 + (w.evolved ? 1 : 0);
       return { per: n * hits, why: `${n} disc(s) x ${hits} target(s)` };
     },
@@ -27439,7 +27498,7 @@ window.WS = window.WS || {};
     orbit: (p, w, crowd) => {
       const cfg = WS.Config;
       let blades = (w.data.projectiles || 2) + p.projectileBonus;
-      if (w.evolved) blades += cfg.evolveOrbitBlades;
+      if (w.evolved) blades += evo(w.data, 'evolveOrbitBlades');
       if (w.level >= cfg.projRankA) blades++;
       if (w.level >= cfg.projRankB) blades++;
       const size = areaOf(p, w, w.data.radius || 20);
@@ -27496,8 +27555,8 @@ window.WS = window.WS || {};
     const w = { id, data, level: level || 1, evolved: !!evolved, mods: {} };
     const q = {
       count: countOf(p, w),
-      pierce: (data.pierce || 0) + (w.evolved ? WS.Config.evolvePierce : 0),
-      splash: data.splash ? areaOf(p, w, data.splash) : 0,
+      pierce: (data.pierce || 0) + (w.evolved ? evo(data, 'evolvePierce') : 0),
+      splash: (data.splash || (w.evolved && data.evolveSplash)) ? areaOf(p, w, data.splash || data.evolveSplash) : 0,
     };
     const r = model(p, w, Math.max(1, crowd || 1), q);
     const damage = damageOf(p, w);
@@ -27542,13 +27601,13 @@ window.WS = window.WS || {};
     } else if (behavior === 'orbit') {
       const cfg = WS.Config;
       let blades = (d.projectiles || 2) + player.projectileBonus + (w.mods.extraProjectiles || 0)
-        + (w.evolved ? cfg.evolveOrbitBlades : 0);
+        + (w.evolved ? evo(d, 'evolveOrbitBlades') : 0);
       if (w.level >= cfg.projRankA) blades++;
       if (w.level >= cfg.projRankB) blades++;
       lines.push(['Blades', blades]);
     } else if (behavior === 'storm') {
       lines.push(['Strikes', (d.strikes || 5) + player.projectileBonus + (w.mods.extraProjectiles || 0)
-        + (w.evolved ? WS.Config.evolveStrikes : 0)]);
+        + (w.evolved ? evo(d, 'evolveStrikes') : 0)]);
     } else if (behavior === 'beam') {
       lines.push(['Width', WS.round(areaOf(player, w, d.beamWidth || 26))]);
     } else if (behavior === 'palm') {
@@ -27559,7 +27618,7 @@ window.WS = window.WS || {};
     } else {
       lines.push(['Projectiles', countOf(player, w)]);
       if ((d.pierce || 0) > 0 || w.evolved) {
-        lines.push(['Pierce', (d.pierce || 0) + (w.evolved ? WS.Config.evolvePierce : 0)]);
+        lines.push(['Pierce', (d.pierce || 0) + (w.evolved ? evo(d, 'evolvePierce') : 0)]);
       }
     }
     if (d.bossDamage && d.bossDamage !== 1) lines.push(['Vs bosses', '×' + d.bossDamage]);
@@ -28547,7 +28606,9 @@ window.WS = window.WS || {};
     }
     if (p.holyAttuned > 0 && gained > 0 && p.holyLock <= 0) {
       p.holyHeal += gained * (1 + p.holyBonus);
-      const per = C().holyHealPer;
+      // By share of the bar: a flat figure was nothing late in a run, when a
+      // healer is mending hundreds a second.
+      const per = WS.max(1, p.maxHealth * C().holyHealPct);
       while (p.holyHeal >= per) { p.holyHeal -= per; K.addHoly(p, 1); }
     }
   };
@@ -28748,18 +28809,33 @@ window.WS = window.WS || {};
     p.holyPower = WS.min(C().holyNeed, p.holyPower + n);
     if (p.holyPower >= C().holyNeed) divineStorm(p);
   };
+  /* JUDGEMENT. Everything on the field that is not a boss is struck down,
+     as by a sapper's charge; a boss loses a share of its health. Slow to
+     come, and worth the wait.
+
+     It was a Hammerfall: a blast around Keegan every few seconds, charged
+     in three, and it was most of his damage - 60% of a tester's meter, 48%
+     standing still - while its Aegis kept him untouchable near half the
+     time. Now it takes holyNeed (a long night's worth of blows and mending)
+     and then holyLock more before it can gather again. */
   function divineStorm(p) {
     const cfg = C();
     p.holyPower = 0; p.holyHit = 0; p.holyHeal = 0;
     p.holyLock = cfg.holyLock;
-    const r = cfg.hammerRadius * p.areaMultiplier;
-    WS.Enemy.damageArea(p.x, p.y, r, strike(p, cfg.stormBase, cfg.stormPerLevel), null, 40, 'conviction');
+    const enemies = WS.Enemy.pool.active;
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      const e = enemies[i];
+      if (!e || e._dead || e.untargetable) continue;
+      if (e.boss || e.part || e.finale) WS.Enemy.hit(e, e.maxHealth * cfg.judgementBossPct, 'conviction');
+      else WS.Enemy.damage(e, e.health + 1, false, 'conviction');
+    }
     p.divineTimer = cfg.divineShield;
     p.invulnerable = WS.max(p.invulnerable, cfg.divineShield);
     count('storms');
-    WS.FX.flash(p.x, p.y, r, WS.CONST.COLORS.holy, 0.45, 12, 'holy');
+    WS.FX.screen('rgba(255,236,170,.28)', 0.45);
     WS.FX.flash(p.x, p.y, 70, [1, 0.95, 0.75], 0.4);
-    WS.FX.shake(6, 0.3);
+    WS.FX.shake(9, 0.5);
+    WS.FX.punch(0.03, 0.5);
     WS.Audio.play('evolve');
   }
 
@@ -28888,8 +28964,9 @@ window.WS = window.WS || {};
     if (p.holyAttuned > 0) {
       out.push(p.holyLock > 0
         ? { key: 'holywait', cls: 'calling holy waiting', label: p.divineTimer > 0 ? 'Aegis' : 'Gathering', pct: 1 - p.holyLock / cfg.holyLock }
-        : { key: 'holy', cls: 'calling holy', label: 'Conviction', pips: cfg.holyNeed, full: WS.floor(p.holyPower),
-          pct: WS.max(p.holyHit, p.holyHeal / cfg.holyHealPer) });
+        // Too many points for pips: one bar, filling toward the Judgement.
+        : { key: 'holy', cls: 'calling holy', label: 'Conviction ' + WS.floor(p.holyPower) + '/' + cfg.holyNeed,
+          pct: WS.min(1, p.holyPower / cfg.holyNeed) });
     }
     return out;
   };
@@ -50466,7 +50543,7 @@ window.WS = window.WS || {};
     if (p.rageAttuned > 0) kv('Boil overs', run0.enrages || 0);
     if (p.soulAttuned > 0) kv('Reapings', run0.rends || 0);
     if (p.totemAttuned > 0) kv('Waystones raised', run0.waystones || 0);
-    if (p.holyAttuned > 0) kv('Hammerfalls', run0.storms || 0);
+    if (p.holyAttuned > 0) kv('Judgements', run0.storms || 0);
 
     /* The blessings, one to a line with their marks. They were a single
        key-value row - "Blessings" and then every name joined by commas - and
