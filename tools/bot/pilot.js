@@ -217,6 +217,11 @@ function installPilot(opts) {
     // Low on health, only healing is worth a detour: a chest across the
     // field is not, and neither is a gem in the crowd.
     const desperate = hp < O.lowHp;
+    W.potionNear = false;
+    for (let i = 0; i < WS.Pickup.pool.count; i++) {
+      const q = WS.Pickup.pool.active[i];
+      if (q.kind === 'potion' && Math.hypot(q.x - p.x, q.y - p.y) < 700) { W.potionNear = true; break; }
+    }
     // Experience: the gems, valued by the cluster each sits in - one walk
     // collects everything within reach of the magnet.
     const gems = WS.XP.pool;
@@ -267,7 +272,8 @@ function installPilot(opts) {
         const r = q.V / (1 + d / 250);
         if (r > bestR) { bestR = r; rescue = { x: q.x, y: q.y, reach: pr * 0.9, kind: q.kind, value: q.V, rescue: true }; }
       }
-      if (rescue) { P.rescues = (P.rescues || 0) + 1; return rescue; }
+      // A potion when low beats any rescue: it is the hits already taken.
+      if (rescue && !(desperate && W.potionNear)) { P.rescues = (P.rescues || 0) + 1; return rescue; }
     }
     // Highmoor's standing stones: stand in the ring.
     for (const sh of WS.Moor.shrines || []) {
