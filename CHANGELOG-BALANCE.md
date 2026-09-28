@@ -5,6 +5,40 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
 
 <!-- new entries go directly below -->
 
+## 2026-09-28 (later): Weapons in one band at every rank; discoveries; bursts and homing
+
+Measured with `tools/rank-test.js`: every weapon at rank 1 (1:00), 3 (5:00),
+5 (9:00), 8 (14:00) and evolved (20:00), each with that minute's share of the
+damage passives, against dummies placed where a kiting survivor's crowd was
+measured standing at that minute, a drifting boss, and the real waves (kills,
+and damage that actually came off a creature). Pale Wastes, Professional,
+Hyper.
+
+- Before evolving, area weapons did 2-5x the stage average and chains,
+  bounces and bolts 0.1-0.3x: 33x apart at 5:00, 27x at 14:00. Fitted per
+  role to a band at every stage (area 1.2-2.0x on a crowd and 0.6-1.2x on a
+  boss; lines 0.8-1.4x and 0.75-1.3x; bolts 0.55-1.0x and 1.1-1.8x) with
+  the smallest change, then evolution re-set so 20:00 holds. Now 4-7x apart
+  in the real waves at every stage. Values in `src/data/weapons.js`:
+  area base damage roughly halved with gentler rank growth and bigger
+  evolution multipliers; bolts pierce 2 -> 6; Volley pierce 6, Knifestorm 4,
+  Judgement Disc 12 ricochets, Arcweb 10 hops, Seeking Motes 4 motes and
+  pierce 4; boss factors re-fitted.
+- A bot (`tools/botlab.js`) playing every survivor, four full runs each on
+  the Pale Wastes, Professional, Hyper: 1.5 to 12.8 minutes survived by
+  starting weapon before, 5.0 to 11.4 after; average 7.1 -> 7.5 minutes,
+  level reached 52 -> 63.
+- Bursts (Seeking Motes, Iron Palms' flurry) fit inside the cooldown: the
+  next cast used to restart a burst still firing, so an evolved Motes got
+  x0.95 from Haste and x1.00 from Duplicity. Now x1.51 and x1.40.
+- Velocity scales a seeking bolt's turn rate, so a faster bolt no longer
+  swings wide (Velocity at its cap cut an evolved Motes to x0.60).
+- Discoveries on and off at four stages: Shadowflame burst 20 -> 12 (+79%
+  at 5:00 with Umbral Bolt's new pierce); Verdict +1 -> +3 ricochets and
+  1.10 -> 1.30; Radiant Gyre pulse 0.8 -> 2.0 (`gyrePulseDamage`); Deadly
+  Brew adds 1.15 knife damage; Frostfire, Hailwheel and Razor Wind -> 1.15.
+- Unions re-measured beside the new weapons: 15-30% of a build.
+
 ## 2026-09-28: One damage band for evolved weapons and unions; Conviction's Judgement
 
 A tester's strongest builds stood still from 20:00 and won, and a few

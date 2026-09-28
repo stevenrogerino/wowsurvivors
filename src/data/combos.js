@@ -11,7 +11,7 @@
       name: 'Frostfire Bolt', weapons: ['rimeshard', 'cinderfall'],
       description: 'Cinderfalls chill whatever survives them, and both bolts hit {dmgMult*%}% harder.',
       hint: 'When frost meets flame, something ancient stirs...',
-      dmgMult: 1.10, slowFactor: 0.60, slowDuration: 1.5,
+      dmgMult: 1.15, slowFactor: 0.60, slowDuration: 1.5,
       apply: (w1, w2, c) => {
         w1.mods.damageMult = (w1.mods.damageMult || 1) * c.dmgMult;
         w2.mods.damageMult = (w2.mods.damageMult || 1) * c.dmgMult;
@@ -24,15 +24,20 @@
       hint: 'Shadow and flame were ever entwined.',
       // Every bolt that passes through something bursts, and an evolved bolt
       // passes through everything: at 55 the pair did 2.3 times its parts.
-      splash: 20,
+      // Umbral Bolt now pierces six from rank 1, so at 20 the burst was worth
+      // +79% by 5:00 (tools/rank-test.js); 12 keeps it near +40% early.
+      splash: 12,
       apply: (w1, w2, c) => { w1.mods.splash = c.splash; },
     },
     deadly_brew: {
       name: 'Deadly Brew', weapons: ['knifestorm', 'rimeshard'],
-      description: 'Every thrown knife is coated in a numbing venom that slows its victim.',
+      description: 'Every thrown knife is coated in a numbing venom that slows its victim and bites {dmgMult*%}% deeper.',
       hint: "A rogue with access to the alchemist's icebox is a dangerous thing.",
-      slowFactor: 0.65, slowDuration: 1.2,
-      apply: (w1, w2, c) => { w1.mods.slowFactor = c.slowFactor; w1.mods.slowDuration = c.slowDuration; },
+      slowFactor: 0.65, slowDuration: 1.2, dmgMult: 1.15,
+      apply: (w1, w2, c) => {
+        w1.mods.slowFactor = c.slowFactor; w1.mods.slowDuration = c.slowDuration;
+        w1.mods.damageMult = (w1.mods.damageMult || 1) * c.dmgMult;
+      },
     },
     tempest_pact: {
       name: 'Tempest Pact', weapons: ['axe_gyre', 'arcweb'],
@@ -65,9 +70,9 @@
     },
     verdict: {
       name: 'Verdict', weapons: ['judgement_disc', 'hallowed_ring'],
-      description: 'The shield judges from hallowed ground: +{extraBounces} ricochet and {dmgMult*%}% more damage.',
+      description: 'The shield judges from hallowed ground: +{extraBounces} ricochets and {dmgMult*%}% more damage.',
       hint: 'A shield thrown from sacred ground carries a verdict.',
-      extraBounces: 1, dmgMult: 1.10,
+      extraBounces: 3, dmgMult: 1.30,
       apply: (w1, w2, c) => {
         w1.mods.extraBounces = (w1.mods.extraBounces || 0) + c.extraBounces;
         w1.mods.damageMult = (w1.mods.damageMult || 1) * c.dmgMult;
@@ -133,7 +138,7 @@
       name: 'Hailwheel', weapons: ['gale_chakram', 'rimeshard'],
       description: 'The chakram rimes whatever it cuts, and both hit {dmgMult*%}% harder.',
       hint: 'A spinning edge through a hailstorm comes back cold.',
-      slowFactor: 0.60, slowDuration: 1.2, dmgMult: 1.08,
+      slowFactor: 0.60, slowDuration: 1.2, dmgMult: 1.15,
       apply: (w1, w2, c) => {
         w1.mods.slowFactor = c.slowFactor; w1.mods.slowDuration = c.slowDuration;
         w1.mods.damageMult = (w1.mods.damageMult || 1) * c.dmgMult;
@@ -144,7 +149,7 @@
       name: 'Razor Wind', weapons: ['gale_chakram', 'knifestorm'],
       description: 'One more ring in every throw, cutting {dmgMult*%}% deeper.',
       hint: 'Every blade that flies wants a blade beside it.',
-      extraProjectiles: 1, dmgMult: 1.10,
+      extraProjectiles: 1, dmgMult: 1.15,
       apply: (w1, w2, c) => {
         w1.mods.extraProjectiles = (w1.mods.extraProjectiles || 0) + c.extraProjectiles;
         w1.mods.damageMult = (w1.mods.damageMult || 1) * c.dmgMult;

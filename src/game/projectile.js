@@ -69,6 +69,7 @@
        never start - and the re-acquire below is perfectly capable of finding
        it someone. */
     b.homing = !!(spec.homing || spec.homingTarget);
+    b.turnRate = TURN_RATE * WS.max(1, spec.turnScale || 1);
     // The speed a seeking bolt holds for its whole life. Kept because steering
     // must never be allowed to change it - see the turn in P.update.
     b.speed = WS.sqrt(vx * vx + vy * vy);
@@ -286,7 +287,7 @@
           const cross = cx * ty - cy * tx;
           const dot = WS.clamp(cx * tx + cy * ty, -1, 1);
           const want = WS.atan2(cross, dot);
-          const step = WS.clamp(want, -TURN_RATE * dt, TURN_RATE * dt);
+          const step = WS.clamp(want, -b.turnRate * dt, b.turnRate * dt);
           const cs = WS.cos(step), sn = WS.sin(step);
           b.vx = (cx * cs - cy * sn) * b.speed;
           b.vy = (cx * sn + cy * cs) * b.speed;

@@ -169,6 +169,11 @@
      * a ring, a nova - simply do not have. A bolt with the flag and no mark
      * acquires one on its first update. */
     spec.homing = !!(d.homing || w.mods.homing);
+    // Velocity makes a seeking bolt faster, and it must turn faster with it
+    // or it swings wide past what it seeks (Velocity at its cap took an
+    // evolved Seeking Motes to x0.60). The turning circle stays the one the
+    // weapon was drawn with.
+    spec.turnScale = player.projectileSpeed || 1;
     spec.homingTarget = null;
     const splash = d.splash || w.mods.splash || (w.evolved ? d.evolveSplash : 0);
     spec.splash = splash ? areaOf(player, w, splash) : null;
@@ -270,6 +275,20 @@
   function muzzleX(player, dx) { return player.x + dx * MUZZLE_FWD; }
   function muzzleY(player, dy) { return player.y - MUZZLE_UP + dy * MUZZLE_FWD; }
 
+  /* How far apart a burst's shots leave. A burst trickles out one shot at a
+     time, and the next cast restarts it - so a burst longer than the
+     cooldown never finished. An evolved Seeking Motes had fourteen shots at
+     0.09s apart, 1.26s of burst, on a cooldown of 0.4s: it could never fire
+     more than eleven motes a second, and Haste and Duplicity did nothing
+     for it at all (measured x0.95 and x1.00, tools/rank-test.js). Iron
+     Palms' flurry hit the same wall. The gap now shrinks so the whole burst
+     lands inside four fifths of the cooldown; at the old pace, when that
+     already fits, nothing changes. */
+  function burstGap(player, w, count, base) {
+    if (count <= 1) return base;
+    return WS.min(base, Weapon.cooldown(player, w) * 0.8 / (count - 1));
+  }
+
   Weapon.behaviors.aimed = function (player, w) {
     const d = w.data;
     const target = WS.Enemy.findNearest(player.x, player.y, d.range || 560);
@@ -280,7 +299,8 @@
       // each re-acquiring the nearest enemy (see player.js).
       fireAimedShot(player, w, target);
       w.burstShots = count - 1;
-      w.burstTimer = 0.09;
+      w.burstGap = burstGap(player, w, count, 0.09);
+      w.burstTimer = w.burstGap;
     } else {
       /* Narrow on purpose. Wide enough that you can count them and see the
          weapon got stronger, tight enough that it is still the same weapon
@@ -529,7 +549,8 @@
       return true;
     }
     w.burstShots = countOf(player, w) - 1;
-    w.burstTimer = 0.08;
+    w.burstGap = burstGap(player, w, w.burstShots + 1, 0.08);
+    w.burstTimer = w.burstGap;
     const heal = (w.mods.healBonus || 0) + (w.evolved ? (w.data.evolvedHeal || 0) : 0);
     if (heal > 0) WS.Player.heal(player, heal, w.id);
     return true;

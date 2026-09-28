@@ -350,7 +350,7 @@
       if (w.burstShots > 0) {
         w.burstTimer -= dt;
         if (w.burstTimer <= 0) {
-          w.burstTimer = 0.09;
+          w.burstTimer = w.burstGap || 0.09;
           w.burstShots--;
           WS.Weapon.fireBurstShot(p, w);
         }

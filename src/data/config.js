@@ -259,7 +259,7 @@
     chainFirstReach: 1.6,
     orbitTickPct: 0.65,
     gyrePulseRadius: 130,
-    gyrePulseDamage: 0.8,
+    gyrePulseDamage: 2.0,
     gyrePulseKnock: 20,
     stormAccuracy: 0.85,
     stormJitter: 30,

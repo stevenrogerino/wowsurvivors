@@ -125,7 +125,13 @@ const path = require('path');
       // paladin starts most of the way there, so fifty seconds of play
       // prove the bar still fills and still fires.
       if (hero === 'paladin') p.holyPower = WS.Config.holyNeed - 8;
+      // The same for the Flood: it fills a gem at a time, and a kiting bot
+      // leaves most gems on the floor (16 of 358 kills gathered here), so it
+      // only filled when a lodestone happened to fall. Eight short proves the
+      // gathering still fills it and it still fires.
       WS.Game.run.time = 540;
+      // (after the clock: what the Flood needs grows with the minute)
+      if (hero === 'mage') p.overflowCharge = WS.Calling.overflowNeed() - 8;
       let hud = false;
       for (let i = 0; i < 60 * 50; i++) {
         WS.Game.pendingLevelUps = 0; WS.Game.leveling = false;
