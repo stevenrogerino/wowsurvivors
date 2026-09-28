@@ -75,8 +75,14 @@
 
   /* ------------------------------------------------------ radiant barrier -- */
   K.barrierCap = (p) => p.maxHealth * C().barrierCapPct * (1 + p.barrierBonus);
+  /* The barrier recharges like a shield, not a sponge. Every Dawnpulse at
+     full health is almost all overheal, and all of it went into the barrier,
+     so in a crowd it was topped up faster than blows could take it down and
+     never broke. Now a blow it soaks holds the refill off for barrierDelay,
+     and a break for barrierBrokenDelay: a crowd in contact wears it through,
+     and stepping clear of the press is what lets it build again. */
   K.onHeal = function (p, gained, wasted) {
-    if (p.barrierAttuned > 0) {
+    if (p.barrierAttuned > 0 && !(p.barrierLock > 0)) {
       const add = wasted + gained * C().barrierFromHeal;
       if (add > 0) {
         p.barrier = WS.min(K.barrierCap(p), p.barrier + add);
@@ -112,7 +118,11 @@
       const soak = WS.min(p.barrier, taken);
       p.barrier -= soak;
       taken -= soak;
-      if (p.barrier <= 0.5) { p.barrier = 0; barrierBurst(p); }
+      p.barrierLock = WS.max(p.barrierLock || 0, C().barrierDelay);
+      if (p.barrier <= 0.5) {
+        p.barrier = 0; barrierBurst(p);
+        p.barrierLock = WS.max(p.barrierLock, C().barrierBrokenDelay);
+      }
     }
     return taken;
   };
@@ -305,6 +315,7 @@
     if (p.comboLock > 0) p.comboLock = WS.max(0, p.comboLock - dt);
     if (p.vanishTimer > 0) p.vanishTimer = WS.max(0, p.vanishTimer - dt);
     if (p.holyLock > 0) p.holyLock = WS.max(0, p.holyLock - dt);
+    if (p.barrierLock > 0) p.barrierLock = WS.max(0, p.barrierLock - dt);
     if (p.soulLock > 0) p.soulLock = WS.max(0, p.soulLock - dt);
     if (p.divineTimer > 0) p.divineTimer = WS.max(0, p.divineTimer - dt);
 
@@ -384,7 +395,12 @@
         : { key: 'overflow', cls: 'calling arcane', label: 'Flood', pct: p.overflowCharge / K.overflowNeed() });
     }
     if (p.barrierAttuned > 0) {
-      out.push({ key: 'barrier', cls: 'calling holy', label: 'Barrier ' + WS.round(p.barrier), pct: p.barrier / WS.max(1, K.barrierCap(p)) });
+      // Broken, the meter says so and counts the way back; cracked, it says
+      // the barrier is holding but not refilling.
+      const broken = p.barrier <= 0 && p.barrierLock > 0;
+      out.push({ key: 'barrier', cls: 'calling holy' + (p.barrierLock > 0 ? ' waiting' : ''),
+        label: broken ? 'Barrier broken' : p.barrierLock > 0 ? 'Barrier ' + WS.round(p.barrier) + ' · cracked' : 'Barrier ' + WS.round(p.barrier),
+        pct: broken ? 1 - p.barrierLock / C().barrierBrokenDelay : p.barrier / WS.max(1, K.barrierCap(p)) });
     }
     if (p.comboAttuned > 0) {
       out.push(p.comboLock > 0

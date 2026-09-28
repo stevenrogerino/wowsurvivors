@@ -4442,6 +4442,10 @@ window.WS = window.WS || {};
     // Radiant Barrier: wasted healing, and a share of healing that lands,
     // becomes a barrier up to a share of max health; breaking, it bursts.
     barrierCapPct: 0.30, barrierFromHeal: 0.20,
+    // A barrier that has just soaked a blow cannot refill for barrierDelay
+    // seconds, and one that broke stays down for barrierBrokenDelay: healing
+    // in a crowd refilled it faster than the crowd could wear it through.
+    barrierDelay: 2.0, barrierBrokenDelay: 6.0,
     barrierBurstRadius: 160, barrierBurstBase: 90, barrierBurstPerLevel: 9, barrierBurstMin: 0.25,
     // Opportunist: a crit is a point of Edge (no more than one per comboGate
     // seconds); comboNeed and the toughest enemy within reach takes a
@@ -7174,6 +7178,7 @@ window.WS = window.WS || {};
       description: 'Healing you cannot use is not wasted: it becomes a barrier that takes hits before you do, and bursts as Light when it breaks.',
       detail: 'All overheal and {Config.barrierFromHeal%}% of healing that lands feed the barrier\n'
         + 'Holds up to {Config.barrierCapPct%}% of your max health\n'
+        + 'After it takes a hit it stops refilling for {Config.barrierDelay}s; broken, it stays down for {Config.barrierBrokenDelay}s\n'
         + 'Broken after filling past {Config.barrierBurstMin%}%, it sears everything near you\n'
         + "Chid's barrier holds {Config.callingEdge%}% more",
       apply: (p) => { p.barrierAttuned += 1; },
@@ -27707,7 +27712,7 @@ window.WS = window.WS || {};
       // `*Bonus` / `*Haste` / `*Reach` is the owning survivor's edge, inert
       // until then.
       overflowAttuned: 0, overflowCharge: 0, overflowBonus: 0, surgeTimer: 0,
-      barrierAttuned: 0, barrier: 0, barrierBonus: 0, barrierPeak: 0,
+      barrierAttuned: 0, barrier: 0, barrierBonus: 0, barrierPeak: 0, barrierLock: 0,
       comboAttuned: 0, combo: 0, comboBonus: 0, comboGate: 0, comboLock: 0, vanishTimer: 0,
       markAttuned: 0, markTarget: null, markSpawn: 0, markLife: 0, markTimer: 1.5, markHaste: 0,
       rageAttuned: 0, rage: 0, rageBonus: 0, rageIdle: 0, rageLock: 0, enrageTimer: 0,
@@ -28526,8 +28531,14 @@ window.WS = window.WS || {};
 
   /* ------------------------------------------------------ radiant barrier -- */
   K.barrierCap = (p) => p.maxHealth * C().barrierCapPct * (1 + p.barrierBonus);
+  /* The barrier recharges like a shield, not a sponge. Every Dawnpulse at
+     full health is almost all overheal, and all of it went into the barrier,
+     so in a crowd it was topped up faster than blows could take it down and
+     never broke. Now a blow it soaks holds the refill off for barrierDelay,
+     and a break for barrierBrokenDelay: a crowd in contact wears it through,
+     and stepping clear of the press is what lets it build again. */
   K.onHeal = function (p, gained, wasted) {
-    if (p.barrierAttuned > 0) {
+    if (p.barrierAttuned > 0 && !(p.barrierLock > 0)) {
       const add = wasted + gained * C().barrierFromHeal;
       if (add > 0) {
         p.barrier = WS.min(K.barrierCap(p), p.barrier + add);
@@ -28563,7 +28574,11 @@ window.WS = window.WS || {};
       const soak = WS.min(p.barrier, taken);
       p.barrier -= soak;
       taken -= soak;
-      if (p.barrier <= 0.5) { p.barrier = 0; barrierBurst(p); }
+      p.barrierLock = WS.max(p.barrierLock || 0, C().barrierDelay);
+      if (p.barrier <= 0.5) {
+        p.barrier = 0; barrierBurst(p);
+        p.barrierLock = WS.max(p.barrierLock, C().barrierBrokenDelay);
+      }
     }
     return taken;
   };
@@ -28756,6 +28771,7 @@ window.WS = window.WS || {};
     if (p.comboLock > 0) p.comboLock = WS.max(0, p.comboLock - dt);
     if (p.vanishTimer > 0) p.vanishTimer = WS.max(0, p.vanishTimer - dt);
     if (p.holyLock > 0) p.holyLock = WS.max(0, p.holyLock - dt);
+    if (p.barrierLock > 0) p.barrierLock = WS.max(0, p.barrierLock - dt);
     if (p.soulLock > 0) p.soulLock = WS.max(0, p.soulLock - dt);
     if (p.divineTimer > 0) p.divineTimer = WS.max(0, p.divineTimer - dt);
 
@@ -28835,7 +28851,12 @@ window.WS = window.WS || {};
         : { key: 'overflow', cls: 'calling arcane', label: 'Flood', pct: p.overflowCharge / K.overflowNeed() });
     }
     if (p.barrierAttuned > 0) {
-      out.push({ key: 'barrier', cls: 'calling holy', label: 'Barrier ' + WS.round(p.barrier), pct: p.barrier / WS.max(1, K.barrierCap(p)) });
+      // Broken, the meter says so and counts the way back; cracked, it says
+      // the barrier is holding but not refilling.
+      const broken = p.barrier <= 0 && p.barrierLock > 0;
+      out.push({ key: 'barrier', cls: 'calling holy' + (p.barrierLock > 0 ? ' waiting' : ''),
+        label: broken ? 'Barrier broken' : p.barrierLock > 0 ? 'Barrier ' + WS.round(p.barrier) + ' · cracked' : 'Barrier ' + WS.round(p.barrier),
+        pct: broken ? 1 - p.barrierLock / C().barrierBrokenDelay : p.barrier / WS.max(1, K.barrierCap(p)) });
     }
     if (p.comboAttuned > 0) {
       out.push(p.comboLock > 0

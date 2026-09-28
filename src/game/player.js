@@ -102,7 +102,7 @@
       // `*Bonus` / `*Haste` / `*Reach` is the owning survivor's edge, inert
       // until then.
       overflowAttuned: 0, overflowCharge: 0, overflowBonus: 0, surgeTimer: 0,
-      barrierAttuned: 0, barrier: 0, barrierBonus: 0, barrierPeak: 0,
+      barrierAttuned: 0, barrier: 0, barrierBonus: 0, barrierPeak: 0, barrierLock: 0,
       comboAttuned: 0, combo: 0, comboBonus: 0, comboGate: 0, comboLock: 0, vanishTimer: 0,
       markAttuned: 0, markTarget: null, markSpawn: 0, markLife: 0, markTimer: 1.5, markHaste: 0,
       rageAttuned: 0, rage: 0, rageBonus: 0, rageIdle: 0, rageLock: 0, enrageTimer: 0,

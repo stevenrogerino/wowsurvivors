@@ -103,7 +103,12 @@ function ffmpeg() {
       WS.UI.closeOverlay();
       document.getElementById('hud').classList.add('hidden');
       const p = WS.Game.player;
-      p.maxHealth = 1e7; p.health = 1e7; p.invulnerable = 1e6;
+      /* Unhurt, but NOT invulnerable: an invulnerable survivor is drawn
+         blinking (the hit grace), and every clip filmed that way showed the
+         survivor flickering in place for its whole length. Damage is simply
+         refused instead. */
+      p.maxHealth = 1e7; p.health = 1e7; p.invulnerable = 0;
+      WS.Player.takeDamage = () => false;
       p.weapons.length = 0; p.weaponLevels = {};
       const w = WS.Player.addWeapon(p, id);
       w.level = level; p.weaponLevels[id] = level; w.evolved = evolved;

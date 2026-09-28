@@ -106,6 +106,7 @@
       description: 'Healing you cannot use is not wasted: it becomes a barrier that takes hits before you do, and bursts as Light when it breaks.',
       detail: 'All overheal and {Config.barrierFromHeal%}% of healing that lands feed the barrier\n'
         + 'Holds up to {Config.barrierCapPct%}% of your max health\n'
+        + 'After it takes a hit it stops refilling for {Config.barrierDelay}s; broken, it stays down for {Config.barrierBrokenDelay}s\n'
         + 'Broken after filling past {Config.barrierBurstMin%}%, it sears everything near you\n'
         + "Chid's barrier holds {Config.callingEdge%}% more",
       apply: (p) => { p.barrierAttuned += 1; },
