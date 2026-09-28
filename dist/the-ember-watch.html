@@ -4497,7 +4497,7 @@ window.WS = window.WS || {};
     // Conviction: holyPerHit for each hit taken, one for every holyHealPer
     // health healed. holyNeed, and a Hammerfall with an Aegis.
     holyNeed: 3, holyPerHit: 0.5, holyHealPer: 25, holyLock: 4,
-    stormRadius: 190, stormBase: 110, stormPerLevel: 11, divineShield: 2.0,
+    hammerRadius: 190, stormBase: 110, stormPerLevel: 11, divineShield: 2.0,
 
     difficulties: {
       beginner: { label: 'Beginner', scale: 0.75, gold: 0.85, interval: 1.1 },
@@ -28762,7 +28762,7 @@ window.WS = window.WS || {};
     const cfg = C();
     p.holyPower = 0; p.holyHit = 0; p.holyHeal = 0;
     p.holyLock = cfg.holyLock;
-    const r = cfg.stormRadius * p.areaMultiplier;
+    const r = cfg.hammerRadius * p.areaMultiplier;
     WS.Enemy.damageArea(p.x, p.y, r, strike(p, cfg.stormBase, cfg.stormPerLevel), null, 40, 'conviction');
     p.divineTimer = cfg.divineShield;
     p.invulnerable = WS.max(p.invulnerable, cfg.divineShield);

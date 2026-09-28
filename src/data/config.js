@@ -601,7 +601,7 @@
     // Conviction: holyPerHit for each hit taken, one for every holyHealPer
     // health healed. holyNeed, and a Hammerfall with an Aegis.
     holyNeed: 3, holyPerHit: 0.5, holyHealPer: 25, holyLock: 4,
-    stormRadius: 190, stormBase: 110, stormPerLevel: 11, divineShield: 2.0,
+    hammerRadius: 190, stormBase: 110, stormPerLevel: 11, divineShield: 2.0,
 
     difficulties: {
       beginner: { label: 'Beginner', scale: 0.75, gold: 0.85, interval: 1.1 },

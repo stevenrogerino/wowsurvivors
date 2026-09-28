@@ -296,7 +296,7 @@
     const cfg = C();
     p.holyPower = 0; p.holyHit = 0; p.holyHeal = 0;
     p.holyLock = cfg.holyLock;
-    const r = cfg.stormRadius * p.areaMultiplier;
+    const r = cfg.hammerRadius * p.areaMultiplier;
     WS.Enemy.damageArea(p.x, p.y, r, strike(p, cfg.stormBase, cfg.stormPerLevel), null, 40, 'conviction');
     p.divineTimer = cfg.divineShield;
     p.invulnerable = WS.max(p.invulnerable, cfg.divineShield);
