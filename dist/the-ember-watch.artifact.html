@@ -43085,39 +43085,226 @@ window.WS = window.WS || {};
   };
 
   /** A waystone: a carved post with its kind's crown. */
+  /* THE WAYSTONES. Three standing stones, each one plainly what it does
+     from across the field: the ember stone carries an iron brazier and its
+     fire, the spring stone a basin that spills down its face into a pool,
+     the gale stone a hole the wind has bored through it, with the wind still
+     going round. Each is carved with its own rune, lit in its colour.
+     The stone is painted once per kind into a cache (waystoneArt) and only
+     the fire, the water, the wind and the rune's pulse are drawn live. They
+     used to be a brown plank with two triangles on top, which read as a
+     ladder, not a stone. */
+  const WS_SCALE = 3, WS_W = 44, WS_H = 74, WS_FOOT = 66;   // local units; foot line
+  const waystoneCache = {};
+  function waystoneArt(kind) {
+    if (waystoneCache[kind]) return waystoneCache[kind];
+    const make = (fn) => {
+      const c = document.createElement('canvas');
+      c.width = WS_W * WS_SCALE; c.height = WS_H * WS_SCALE;
+      const g = c.getContext('2d');
+      g.scale(WS_SCALE, WS_SCALE);
+      fn(g);
+      return c;
+    };
+    const col = WS.Calling.TOTEM_COL[kind];
+    const cx = WS_W / 2;
+    const shape = (g) => {
+      g.beginPath();
+      g.moveTo(cx - 12, WS_FOOT); g.lineTo(cx - 9.5, 24); g.lineTo(cx - 6.5, 13);
+      g.lineTo(cx - 1, 9.5); g.lineTo(cx + 5.5, 12); g.lineTo(cx + 9, 23); g.lineTo(cx + 12.5, WS_FOOT);
+      g.closePath();
+    };
+    // The rune for each kind, as a path centred on the stone's face.
+    const rune = (g) => {
+      g.beginPath();
+      if (kind === 'searing') {            // a flame over a hearth line
+        g.moveTo(cx, 30); g.quadraticCurveTo(cx + 5, 37, cx + 1.5, 43); g.quadraticCurveTo(cx + 0.5, 39, cx - 1.5, 38);
+        g.quadraticCurveTo(cx - 4, 41, cx - 2, 44.5); g.quadraticCurveTo(cx - 6, 40, cx, 30);
+        g.moveTo(cx - 5, 48); g.lineTo(cx + 5, 48);
+      } else if (kind === 'healing') {     // a drop over two waves
+        g.moveTo(cx, 29); g.quadraticCurveTo(cx + 5, 36, cx, 39.5); g.quadraticCurveTo(cx - 5, 36, cx, 29);
+        g.moveTo(cx - 6, 44); g.quadraticCurveTo(cx - 3, 42, cx, 44); g.quadraticCurveTo(cx + 3, 46, cx + 6, 44);
+        g.moveTo(cx - 6, 49); g.quadraticCurveTo(cx - 3, 47, cx, 49); g.quadraticCurveTo(cx + 3, 51, cx + 6, 49);
+      } else {                              // a spiral, the wind turning
+        g.moveTo(cx + 0.5, 39);
+        for (let a = 0; a < Math.PI * 3.2; a += 0.25) {
+          const r = 0.6 + a * 1.35;
+          g.lineTo(cx + 0.5 + Math.cos(a) * r, 39 + Math.sin(a) * r * 1.1);
+        }
+      }
+    };
+    const body = make((g) => {
+      // Rubble and moss at the foot, so it stands IN the ground.
+      g.fillStyle = 'rgba(0,0,0,.35)';
+      g.beginPath(); g.ellipse(cx, WS_FOOT + 1, 16, 4.5, 0, 0, WS.TAU); g.fill();
+      // The stone: lit from the left, falling to shade on the right.
+      shape(g);
+      const sg = g.createLinearGradient(cx - 12, 0, cx + 12, 0);
+      sg.addColorStop(0, '#9aa0a4'); sg.addColorStop(0.45, '#6c7277'); sg.addColorStop(1, '#3b3f45');
+      g.fillStyle = sg; g.fill();
+      // Its right face, turned from the light.
+      g.save(); shape(g); g.clip();
+      g.fillStyle = 'rgba(8,10,16,.28)';
+      g.beginPath(); g.moveTo(cx + 1.5, 9); g.lineTo(cx + 3, 24); g.lineTo(cx + 4.5, WS_FOOT); g.lineTo(cx + 16, WS_FOOT); g.lineTo(cx + 16, 9); g.fill();
+      // Weathering: darker toward the ground, pale lichen flecks, cracks.
+      const dg = g.createLinearGradient(0, 30, 0, WS_FOOT);
+      dg.addColorStop(0, 'rgba(0,0,0,0)'); dg.addColorStop(1, 'rgba(10,14,12,.45)');
+      g.fillStyle = dg; g.fillRect(0, 0, WS_W, WS_H);
+      g.fillStyle = 'rgba(190,200,170,.22)';
+      for (const [x, y, r] of [[-6, 20, 1.3], [-3, 55, 1.1], [5, 30, 0.9], [-7, 44, 0.8], [6, 58, 1.2]]) {
+        g.beginPath(); g.arc(cx + x, y, r, 0, WS.TAU); g.fill();
+      }
+      g.strokeStyle = 'rgba(12,14,18,.55)'; g.lineWidth = 0.7;
+      g.beginPath(); g.moveTo(cx - 8, 26); g.lineTo(cx - 5, 31); g.lineTo(cx - 6.5, 35);
+      g.moveTo(cx + 7, 52); g.lineTo(cx + 4.5, 56); g.lineTo(cx + 6, 61); g.stroke();
+      g.restore();
+      // A lit left edge and a dark outline, one line round the whole stone.
+      g.strokeStyle = 'rgba(255,255,255,.22)'; g.lineWidth = 0.9;
+      g.beginPath(); g.moveTo(cx - 11.3, WS_FOOT - 2); g.lineTo(cx - 9, 24); g.lineTo(cx - 6, 13.5); g.stroke();
+      shape(g); g.strokeStyle = 'rgba(6,8,12,.9)'; g.lineWidth = 1.1; g.stroke();
+      // Moss round the foot.
+      g.fillStyle = '#3f5a2f';
+      for (const [x, r] of [[-10, 3.2], [-6, 2.4], [8.5, 2.8], [11, 2]]) {
+        g.beginPath(); g.ellipse(cx + x, WS_FOOT - 0.5, r, r * 0.7, 0, Math.PI, WS.TAU); g.fill();
+      }
+      // The rune, cut into the face.
+      rune(g);
+      g.strokeStyle = 'rgba(10,10,14,.75)'; g.lineWidth = 2.2; g.lineCap = 'round'; g.lineJoin = 'round'; g.stroke();
+      // The crown, by kind.
+      if (kind === 'searing') {
+        // An iron brazier: a bowl on three short legs, riveted.
+        g.fillStyle = '#2a2a2e';
+        g.beginPath(); g.moveTo(cx - 9, 3.5); g.lineTo(cx + 8, 3.5); g.lineTo(cx + 5, 9.5); g.lineTo(cx - 6, 9.5); g.closePath(); g.fill();
+        g.strokeStyle = '#6b6258'; g.lineWidth = 0.8; g.stroke();
+        g.fillStyle = '#8a7a66';
+        for (const x of [-5, -0.5, 4]) { g.beginPath(); g.arc(cx + x, 6.3, 0.7, 0, WS.TAU); g.fill(); }
+        g.fillStyle = '#ff8a3a';
+        g.beginPath(); g.ellipse(cx - 0.5, 3.6, 8, 1.6, 0, 0, WS.TAU); g.fill();
+      } else if (kind === 'healing') {
+        // A basin cut into the crown, brimming.
+        g.fillStyle = '#7b8186';
+        g.beginPath(); g.ellipse(cx - 0.5, 9.5, 8.5, 3.2, 0, 0, WS.TAU); g.fill();
+        g.strokeStyle = 'rgba(6,8,12,.9)'; g.lineWidth = 1; g.stroke();
+        g.fillStyle = WS.rgb(col, 0.95);
+        g.beginPath(); g.ellipse(cx - 0.5, 9.3, 6.5, 2.1, 0, 0, WS.TAU); g.fill();
+        g.fillStyle = 'rgba(255,255,255,.6)';
+        g.beginPath(); g.ellipse(cx - 2.5, 8.8, 2.2, 0.6, 0, 0, WS.TAU); g.fill();
+      } else {
+        // The hole the wind wore through it.
+        g.fillStyle = '#15171c';
+        g.beginPath(); g.ellipse(cx - 0.5, 17, 3.6, 4.4, 0, 0, WS.TAU); g.fill();
+        g.strokeStyle = 'rgba(255,255,255,.28)'; g.lineWidth = 0.8;
+        g.beginPath(); g.ellipse(cx - 0.5, 17, 3.6, 4.4, 0, Math.PI * 0.9, Math.PI * 1.9); g.stroke();
+      }
+    });
+    // The rune again, alone, lit - laid over the carving with 'lighter'.
+    const glow = make((g) => {
+      rune(g);
+      g.lineCap = 'round'; g.lineJoin = 'round';
+      g.strokeStyle = WS.rgb(col, 0.35); g.lineWidth = 4.5; g.stroke();
+      g.strokeStyle = WS.rgb(col, 1); g.lineWidth = 1.5; g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,.8)'; g.lineWidth = 0.6; g.stroke();
+    });
+    return (waystoneCache[kind] = { body, glow });
+  }
+
   R.drawTotem = function (ctx, t, time) {
     const c = WS.Calling.TOTEM_COL[t.kind];
-    const col = WS.hex(c);
-    const rise = WS.min(1, (t.max - t.life) / 0.25);
+    const art = waystoneArt(t.kind);
+    const rise = WS.min(1, (t.max - t.life) / 0.3);
     const fade = WS.min(1, t.life / 0.6);
-    const h = 44 * rise;
+    const ease = 1 - (1 - rise) * (1 - rise);
+    const ox = t.x - WS_W / 2, oy = t.y - WS_FOOT + (1 - ease) * (WS_FOOT - 4);   // top-left of the art
+    const seed = t.x * 0.37;
     ctx.save();
     ctx.globalAlpha = fade;
-    shadow(ctx, t.x, t.y, 10);
-    ctx.fillStyle = '#5a3c24';
-    ctx.fillRect(t.x - 6, t.y - h, 12, h);
-    ctx.fillStyle = '#7a5434';
-    ctx.fillRect(t.x - 6, t.y - h, 4, h);
-    for (let k = 0; k < 3 && rise > 0.6; k++) {
-      const y = t.y - h + 10 + k * 12;
-      ctx.fillStyle = col;
-      ctx.fillRect(t.x - 4, y, 2.5, 2.5); ctx.fillRect(t.x + 1.5, y, 2.5, 2.5);
-      ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(t.x - 6, y + 7, 12, 1.5);
-    }
-    // Wings and a lit crown in the kind's colour.
-    ctx.fillStyle = col;
-    ctx.beginPath();
-    ctx.moveTo(t.x - 6, t.y - h + 4); ctx.lineTo(t.x - 17, t.y - h - 4); ctx.lineTo(t.x - 6, t.y - h + 10);
-    ctx.moveTo(t.x + 6, t.y - h + 4); ctx.lineTo(t.x + 17, t.y - h - 4); ctx.lineTo(t.x + 6, t.y - h + 10);
-    ctx.fill();
+    // It rises out of the ground: nothing below the foot line is drawn.
+    ctx.beginPath(); ctx.rect(t.x - 40, t.y - 120, 80, 120 + 3); ctx.clip();
+
+    // Light on the ground round the foot, in the stone's colour.
     ctx.globalCompositeOperation = 'lighter';
-    const pulse = 9 + 2 * WS.sin(time * 5 + t.x);
-    const g = ctx.createRadialGradient(t.x, t.y - h - 2, 1, t.x, t.y - h - 2, pulse * 1.8);
-    g.addColorStop(0, `rgba(255,255,255,.9)`);
-    g.addColorStop(0.3, WS.rgb(c, 0.8));
-    g.addColorStop(1, WS.rgb(c, 0));
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(t.x, t.y - h - 2, pulse * 1.8, 0, WS.TAU); ctx.fill();
+    const gl = ctx.createRadialGradient(t.x, t.y, 2, t.x, t.y, 30);
+    gl.addColorStop(0, WS.rgb(c, 0.28 * ease)); gl.addColorStop(1, WS.rgb(c, 0));
+    ctx.fillStyle = gl;
+    ctx.beginPath(); ctx.ellipse(t.x, t.y, 30, 11, 0, 0, WS.TAU); ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+
+    ctx.drawImage(art.body, ox, oy, WS_W, WS_H);
+    // The rune breathes.
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = fade * (0.6 + 0.3 * WS.sin(time * 3 + seed)) * ease;
+    ctx.drawImage(art.glow, ox, oy, WS_W, WS_H);
+    ctx.globalAlpha = fade;
+    const cx = t.x - 0.5;
+
+    if (t.kind === 'searing' && rise > 0.8) {
+      // The fire in the brazier: three tongues, flickering out of step.
+      const by = oy + 3.2;
+      const tongue = (dx, h, w, colour) => {
+        ctx.fillStyle = colour;
+        ctx.beginPath();
+        ctx.moveTo(cx + dx - w, by);
+        ctx.quadraticCurveTo(cx + dx - w * 0.9, by - h * 0.55, cx + dx + WS.sin(time * 9 + dx) * 1.2, by - h);
+        ctx.quadraticCurveTo(cx + dx + w * 0.9, by - h * 0.55, cx + dx + w, by);
+        ctx.fill();
+      };
+      const f = (k) => 1 + 0.18 * WS.sin(time * 11 + seed + k * 2.1) + 0.1 * WS.sin(time * 17 + k);
+      tongue(-4.5, 12 * f(0), 3.6, 'rgba(255,100,35,.85)');
+      tongue(4, 11 * f(1), 3.6, 'rgba(255,100,35,.85)');
+      tongue(0, 18 * f(2), 5.5, 'rgba(255,145,45,.92)');
+      tongue(0, 11 * f(3), 3.2, 'rgba(255,225,140,.95)');
+      // Its light on the stone and the air above.
+      ctx.globalCompositeOperation = 'lighter';
+      const fl = ctx.createRadialGradient(cx, by - 5, 1, cx, by - 5, 20);
+      fl.addColorStop(0, WS.rgb(c, 0.45)); fl.addColorStop(1, WS.rgb(c, 0));
+      ctx.fillStyle = fl; ctx.beginPath(); ctx.arc(cx, by - 5, 20, 0, WS.TAU); ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+      // Sparks going up.
+      ctx.fillStyle = 'rgba(255,200,120,.9)';
+      for (let k = 0; k < 4; k++) {
+        const u = ((time * 0.9 + k * 0.27 + seed) % 1 + 1) % 1;
+        ctx.globalAlpha = fade * (1 - u);
+        ctx.fillRect(cx + WS.sin(k * 3.1 + time * 2) * 5, by - 10 - u * 22, 1.3, 1.3);
+      }
+      ctx.globalAlpha = fade;
+    } else if (t.kind === 'healing' && rise > 0.8) {
+      // Water over the lip and down the face, light running with it.
+      const top = oy + 11, foot = t.y - 1;
+      ctx.strokeStyle = WS.rgb(c, 0.55); ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(cx + 5.5, top); ctx.quadraticCurveTo(cx + 7.5, top + 18, cx + 8.5, foot); ctx.stroke();
+      ctx.strokeStyle = 'rgba(235,255,250,.8)'; ctx.lineWidth = 0.9;
+      ctx.setLineDash([2, 7]); ctx.lineDashOffset = -time * 30;
+      ctx.beginPath(); ctx.moveTo(cx + 5.5, top); ctx.quadraticCurveTo(cx + 7.5, top + 18, cx + 8.5, foot); ctx.stroke();
+      ctx.setLineDash([]);
+      // Rings spreading where it meets the ground.
+      for (let k = 0; k < 2; k++) {
+        const u = ((time * 0.8 + k * 0.5 + seed) % 1 + 1) % 1;
+        ctx.strokeStyle = WS.rgb(c, 0.6 * (1 - u)); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.ellipse(cx + 8.5, foot + 1, 3 + u * 11, (3 + u * 11) * 0.35, 0, 0, WS.TAU); ctx.stroke();
+      }
+    } else if (t.kind === 'windfury' && rise > 0.8) {
+      // The wind, going round the stone: two streaks on an orbit that
+      // passes behind it and in front.
+      const oyc = oy + 22;
+      for (let k = 0; k < 2; k++) {
+        const a0 = time * 3.4 + k * Math.PI + seed;
+        ctx.strokeStyle = WS.rgb(c, 0.85); ctx.lineCap = 'round';
+        for (let s = 0; s < 7; s++) {
+          const a = a0 - s * 0.26;
+          const front = WS.sin(a) > 0;
+          ctx.globalAlpha = fade * (1 - s / 7) * (front ? 1 : 0.4);
+          ctx.lineWidth = 2.4 - s * 0.28;
+          ctx.beginPath();
+          ctx.ellipse(cx, oyc + k * 13, 18, 6, -0.15, a - 0.3, a);
+          ctx.stroke();
+        }
+      }
+      ctx.globalAlpha = fade;
+      // And a small gleam through the hole.
+      const hg = ctx.createRadialGradient(cx, oy + 17, 0, cx, oy + 17, 6);
+      hg.addColorStop(0, 'rgba(230,245,255,.8)'); hg.addColorStop(1, WS.rgb(c, 0));
+      ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(cx, oy + 17, 6, 0, WS.TAU); ctx.fill();
+    }
     ctx.restore();
   };
 
