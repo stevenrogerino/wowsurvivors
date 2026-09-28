@@ -105,6 +105,7 @@
     this.arenaBounds = null;
     WS.FX.clear();
     WS.Enemy.clear();
+    if (WS.Renderer.warmFor) WS.Renderer.warmFor(run.map);
     WS.Projectile.clear();
     WS.XP.clear();
     WS.Pickup.clear();

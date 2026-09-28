@@ -12,6 +12,13 @@
  *   HERO=rogue MAP=highmoor DIFF=professional SEED=101 FROM=150 TO=168 \
  *     OUT=/tmp/replay node tools/bot/replay.js
  *
+ * For a clip rather than a diagnosis: OVERLAY=0 draws the game alone,
+ * TOUGH=1 keeps the survivor standing so it reaches the late game, and
+ * VIDEO=reel.mp4 (with FFMPEG) encodes the frames at 1/EVERY a second:
+ *
+ *   OVERLAY=0 EVERY=0.0333 FROM=600 TO=612 VIDEO=/tmp/reel.mp4 FFMPEG=... \
+ *     node tools/bot/replay.js
+ *
  * Set CHROME to point at an existing Chromium binary. */
 'use strict';
 const { chromium } = require('playwright');
@@ -25,7 +32,8 @@ const env = (k, d) => (process.env[k] !== undefined && process.env[k] !== '' ? p
 const S = {
   HERO: env('HERO', 'mage'), MAP: env('MAP', 'thornhollow'), DIFF: env('DIFF', 'veteran'),
   HYPER: env('HYPER', '0') === '1', SEED: +env('SEED', 101), FROM: +env('FROM', 60), TO: +env('TO', 70),
-  EVERY: +env('EVERY', 0.5), BLESS: env('BLESS', 'auto'),
+  EVERY: +env('EVERY', 0.5), BLESS: env('BLESS', 'auto'), OVERLAY: env('OVERLAY', '1') !== '0',
+  TOUGH: env('TOUGH', '0') === '1',
   PILOT_OPTS: JSON.parse(env('PILOT_OPTS', '{}')), DRAFT_OPTS: JSON.parse(env('DRAFT_OPTS', '{}')),
 };
 const OUT = env('OUT', path.join(require('os').tmpdir(), 'replay'));
@@ -61,12 +69,22 @@ const OUT = env('OUT', path.join(require('os').tmpdir(), 'replay'));
         if (G.state !== 'playing') return false;
         window.__P.step(1 / 60);
         G.update(1 / 60);
+        // TOUGH=1: the survivor cannot fall, so a clip can reach the late game.
+        if (S.TOUGH && G.player) G.player.health = G.player.maxHealth;
+      }
+      // A card screen that opened on the last tick is answered now, not
+      // mistaken for the end of the run.
+      for (let i = 0; i < 20 && (G.state === 'blessing' || G.state === 'levelup'); i++) {
+        const p = G.player;
+        if (G.state === 'blessing') G.chooseBlessing(window.__D.pickBlessing(p, G.blessingChoices || []));
+        else { const c = window.__D.pickLevel(p, G.levelChoices || []); if (c) G.chooseLevelUp(c); }
       }
       return G.state === 'playing' || G.state === 'dying';
     };
     /** Draw the frame, then the pilot's mind on top of it. */
     window.__draw = function () {
       WS.Renderer.draw(WS.Game.run.time);
+      if (!S.OVERLAY) return;
       const cv = document.querySelector('canvas');
       const g = cv.getContext('2d');
       const sx = cv.width / WS.CONST.WORLD_WIDTH, sy = cv.height / WS.CONST.WORLD_HEIGHT;
@@ -88,6 +106,7 @@ const OUT = env('OUT', path.join(require('os').tmpdir(), 'replay'));
   }, { S, pilot: installPilot.toString(), drafter: installDrafter.toString() });
 
   let ok = await page.evaluate((t) => window.__advance(t), S.FROM);
+  if (!ok) console.log("stopped before FROM:", await page.evaluate(() => WS.Game.state + " at " + WS.Game.run.time.toFixed(1)));
   const files = [];
   for (let t = S.FROM, n = 0; ok && t <= S.TO + 1e-9; t += S.EVERY, n++) {
     ok = await page.evaluate((t) => window.__advance(t), t);
@@ -99,7 +118,12 @@ const OUT = env('OUT', path.join(require('os').tmpdir(), 'replay'));
   await b.close();
   console.log(`${files.length} frames in ${OUT}`);
   const ff = env('FFMPEG', null);
-  if (ff && files.length) {
+  const video = env('VIDEO', null);
+  if (ff && video && files.length) {
+    execFileSync(ff, ['-y', '-loglevel', 'error', '-framerate', String(Math.round(1 / S.EVERY)),
+      '-i', path.join(OUT, 'f%03d.png'), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', video]);
+    console.log('video: ' + video);
+  } else if (ff && files.length) {
     const cols = Math.min(4, files.length), rows = Math.ceil(files.length / cols);
     execFileSync(ff, ['-y', '-loglevel', 'error', '-i', path.join(OUT, 'f%03d.png'),
       '-vf', `scale=480:-1,tile=${cols}x${rows}`, '-frames:v', '1', path.join(OUT, 'sheet.png')]);

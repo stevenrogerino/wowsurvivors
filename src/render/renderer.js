@@ -863,6 +863,38 @@
   R.draw = function (time) {
     this.lerpIn();
     try { this.drawFrame(time); } finally { this.lerpOut(); }
+    this.warmOne();
+  };
+
+  /* FIRST SIGHT. A creature's sprite is painted the first time one is drawn,
+     and painting one (outline pass, regalia) takes a whole frame's worth of
+     time on a slow core: measured 10-14ms, so the moment a new kind of
+     creature walked on was a dropped frame. The battlefield's whole cast is
+     known when the run starts, so it is queued then (warmFor) and painted
+     one sprite a frame, a few seconds' work spread thin, before any of them
+     has arrived. */
+  R._warm = [];
+  R.warmFor = function (map) {
+    const q = this._warm;
+    q.length = 0;
+    if (!map) return;
+    const ids = new Set();
+    for (const ph of map.phases || []) {
+      for (const r of ph.roster || []) ids.add(r.id);
+      if (ph.elite) ids.add(ph.elite);
+    }
+    for (const ev of map.events || []) if (ev.id) ids.add(ev.id);
+    for (const b of map.bosses || []) if (b.id) ids.add(b.id);
+    for (const id of ids) {
+      const t = (WS.Bosses && WS.Bosses[id]) || (WS.Elites && WS.Elites[id]) || (WS.Enemies && WS.Enemies[id]);
+      if (!t || t.machine || !t.art) continue;
+      const size = t.radius * (WS.Bosses && WS.Bosses[id] ? 3.4 : 3.0) * (t.spriteScale || 1);
+      q.push([t.art, t.tint, size, t.bossKit], [t.art, CHILLED, size, t.bossKit]);
+    }
+  };
+  R.warmOne = function () {
+    const job = this._warm.pop();
+    if (job) WS.Sprites.creature(job[0], job[1], job[2], job[3]);
   };
 
   R.drawFrame = function (time) {

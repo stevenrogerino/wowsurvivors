@@ -58,7 +58,17 @@ function installPilot(opts) {
     bombK: 0.3, freezeK: 0.2, rescueMin: 200,
     bank: 40,           // what walking over a rescue that is worth little costs (0: take them whenever)
     lowHp: 0.5,         // below this share of health, only potions are worth a detour (fitted)
+    /* HUMAN LIMITS (tools/bot fairness audit). Off by default so fitted
+       numbers stay comparable; turn them on to ask how much of a result is
+       reflexes no player has.
+       react: a bolt, a new creature or a fresh telegraph is invisible for
+       this many seconds after it appears (a human's reaction is ~0.2-0.25).
+       misread: a bolt's heading is read this many degrees off, each bolt its
+       own fixed error, and its speed up to the same share off. */
+    react: 0, misread: 0,
   }, opts || {});
+  // Each bolt's misreading, fixed for its life so replans agree.
+  const misreads = new WeakMap();
   const S8 = Math.SQRT1_2;
   // Index 0 is standing still; 1..8 walk round the compass, so +-1 is a 45° turn.
   const DIRS = [[0, 0], [1, 0], [S8, S8], [0, 1], [-S8, S8], [-1, 0], [-S8, -S8], [0, -1], [S8, -S8]];
@@ -114,6 +124,8 @@ function installPilot(opts) {
     const frozen = WS.Enemy.freezeTimer > 0;
     WS.Enemy.grid.query(p.x, p.y, reach, (e) => {
       if (e._dead || e.hidden) return;
+      const now = WS.Game.run ? WS.Game.run.time : 0;
+      if (O.react && now - (e.bornAt || 0) < O.react) return;
       const t = e.template;
       const f = {
         e, x: e.x, y: e.y, r: e.radius, dmg: e.damage,
@@ -126,7 +138,7 @@ function installPilot(opts) {
       if (e.chargeTimer > 0 && e.chargeDir) {
         f.charge = e.chargeTimer; f.cdx = e.chargeDir[0]; f.cdy = e.chargeDir[1];
         f.cv = e.chargeLen / Math.max(0.01, e.chargeDur);
-      } else if (e.windup > 0 && e.telegraph) {
+      } else if (e.windup > 0 && e.telegraph && !(O.react && (e.windupMax || 0) - e.windup < O.react)) {
         f.charge = e.chargeDur; f.cdx = e.telegraph.dx; f.cdy = e.telegraph.dy;
         f.cv = e.chargeLen / Math.max(0.01, e.chargeDur);
         f.lane = { len: e.chargeLen, w: e.telegraph.width, locked: !!e.telegraph.locked };
@@ -138,6 +150,18 @@ function installPilot(opts) {
     for (let i = 0; i < hs.count; i++) {
       const h = hs.active[i];
       if (Math.hypot(h.x - p.x, h.y - p.y) > 700) continue;
+      if (O.react && 5 - h.life < O.react) continue;
+      if (O.misread) {
+        let m = misreads.get(h);
+        if (!m) {
+          m = [(Math.random() * 2 - 1) * O.misread * Math.PI / 180, 1 + (Math.random() * 2 - 1) * O.misread / 100];
+          misreads.set(h, m);
+        }
+        const c = Math.cos(m[0]) * m[1], sn = Math.sin(m[0]) * m[1];
+        bolts.push({ x: h.x, y: h.y, vx: h.vx * c - h.vy * sn, vy: h.vx * sn + h.vy * c,
+          life: h.life, radius: h.radius, damage: h.damage });
+        continue;
+      }
       bolts.push(h);
     }
     const hz = [];
