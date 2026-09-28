@@ -5,6 +5,54 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
 
 <!-- new entries go directly below -->
 
+## 2026-09-28: One damage band for evolved weapons and unions; Conviction's Judgement
+
+A tester's strongest builds stood still from 20:00 and won, and a few
+abilities did most of every build's damage. Measured with
+`tools/slot-test.js`: each ability alone, evolved at rank 8, level 150 with
+every passive capped, 20:00 Pale Wastes Professional Hyper, against 320
+immortal dummies placed where a real horde stands (crowd) and one drifting
+boss dummy (boss). Evolved weapons ran from 3k to 552k a second on the
+crowd and 0.6k to 3.0k on the boss.
+
+- All changes are on evolution (per-weapon `evolve*` overrides, new
+  `evolveSplash` and `evolveChainFalloff`) or on unions, so nothing changes
+  before a weapon evolves. Targets by role: area ~150k crowd / 2k boss;
+  lines, bounces, chains ~90k / 3k; bolts ~65k / 4k. Result: 50k-167k crowd,
+  1.9k-4.1k boss. Every value is in `src/data/weapons.js`.
+- Unions, by share of a build's damage beside four evolved weapons
+  (`tune-unions` SHARE=1, 8 seeds): Firmament 24.2, Ruin Unbound 37.9 (vs
+  bosses x1.95), Storm of Steel 25 (pierce 12), Sanctuary 109, Stormcall 29,
+  Tempest Kata 13.2, The Wild Hunt 46, Rotwood 13.4. All sit at 18-29%;
+  Ruin Unbound 18%, down from 59% before the 09-27 nerf. Its per-bolt
+  damage is higher than before the nerf because the evolved Umbral Bolt it
+  is forged from now pierces everything.
+- Shadowflame splash 55 -> 20 (2.3x its pair -> 1.37x).
+- Waystones: ember sear per level 1.2 -> 0.4 (282k a second alone -> 104k).
+- Conviction: 36 to fill (holyHealPct 10% of max health per point, in place
+  of a flat 25), 20s lock; Judgement strikes down every non-boss on the
+  field and takes 4% off a boss. Was 48% of Keegan's damage standing still;
+  now under 7%.
+- Radiant Barrier stops refilling 2s after it soaks a hit and 6s after it
+  breaks. Highmoor storm strikes back to 88 wide (a duplicate setting had
+  them at 190).
+
+## 2026-09-27: Healing spread across five healers, Ruin Unbound, tanks, blessing outliers
+
+- Healing weapons mend per enemy struck, capped per cast; all heal from
+  rank 1. Evolved at 15:00 (as of 09-28): Grave Tether 170-273/s -> 64,
+  Hallowed Ring 3.4 -> 62, Blightfield 3.9 -> 52, Reaving Arc 6.6 -> 45,
+  Dawnpulse 1.5 -> 43; Sanctuary now heals (51).
+- Ruin Unbound: damage 25.5 -> 20.4, splash 82 -> 55 (59% -> 27% of a
+  five-weapon build's meter).
+- Tanks: `armorConstant` 30 -> 16, Ironhide +2 -> +3 a rank, thorns 40% ->
+  60%, Searing Aura +12% per point of armour.
+- Ruinform x1.85 -> x1.6, rest 5 -> 8s (Ruinseeker 3.5 -> 6.4s); Stillwater
+  recharge 5.5 -> 7s and Eisen's extra step removed; Reaper's Tithe rests
+  5s after a Reaping and heals at most 15% (was 25%); Leech Pact heals at
+  most 1.2% of max health a second; Bloodthirst at most once every 4s.
+- The callings: eight signature blessings for the first eight survivors.
+
 ## 2026-09-27: Luck and drops halved, bombs on bosses halved, unions keep discoveries
 
 Tester feedback after six maps on Veteran: "I can easily chain bombs + time

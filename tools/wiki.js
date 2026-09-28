@@ -543,14 +543,17 @@ ${css}
 </html>
 `;
   fs.writeFileSync(path.join(OUT, 'index.html'), html);
-  /* The patch notes are a hand-written page (tools/patch-notes.html) that
-     borrows the codex's pictures, so it is copied in after they are drawn -
-     and refused if it names one this run did not draw. */
-  const notes = fs.readFileSync(path.join(__dirname, 'patch-notes.html'), 'utf8');
-  const missing = [...new Set(notes.match(/img\/[\w-]+\.(?:webp|png)/g) || [])]
-    .filter((f) => !fs.existsSync(path.join(OUT, f)));
-  if (missing.length) { console.error('patch-notes.html names pictures the codex does not draw:\n  ' + missing.join('\n  ')); process.exit(1); }
-  fs.writeFileSync(path.join(OUT, 'patch-notes.html'), notes);
+  /* The patch notes are hand-written pages (tools/patch-notes*.html: the
+     latest, and each earlier patch under its date) that borrow the codex's
+     pictures, so they are copied in after the pictures are drawn - and
+     refused if one names a picture this run did not draw. */
+  for (const f of fs.readdirSync(__dirname).filter((n) => /^patch-notes(-[\d-]+)?\.html$/.test(n))) {
+    const notes = fs.readFileSync(path.join(__dirname, f), 'utf8');
+    const missing = [...new Set(notes.match(/img\/[\w-]+\.(?:webp|png)/g) || [])]
+      .filter((pic) => !fs.existsSync(path.join(OUT, pic)));
+    if (missing.length) { console.error(f + ' names pictures the codex does not draw:\n  ' + missing.join('\n  ')); process.exit(1); }
+    fs.writeFileSync(path.join(OUT, f), notes);
+  }
   const kb = Math.round(fs.readdirSync(IMG).reduce((s, f) => s + fs.statSync(path.join(IMG, f)).size, 0) / 1024);
   console.log(`wiki: ${D.survivors.length} survivors, ${D.arsenal.length} weapons, ${D.unions.length} unions, `
     + `${D.discoveries.length} discoveries, ${D.regions.reduce((s, r) => s + r.list.length + r.elites.length, 0)} creatures, `
