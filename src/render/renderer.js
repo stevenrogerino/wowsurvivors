@@ -1123,12 +1123,45 @@
     for (let i = 0; i < pool.count; i++) {
       const c = pool.active[i];
       const t = 1 - WS.clamp(c.life / c.maxLife, 0, 1);
-      ctx.save();
-      ctx.globalAlpha = (1 - t) * 0.85;
-      ctx.translate(c.x, c.y + c.size * 0.18 * t);
-      ctx.scale(c.facing > 0 ? -(1 + t * 0.3) : (1 + t * 0.3), 1 - t * 0.55);
       const sprite = WS.Sprites.creature(c.art, c.tint, c.size, c.kit);
-      ctx.drawImage(sprite, -c.size / 2, -c.size * 0.62, c.size, c.size);
+      const flip = c.facing > 0 ? -1 : 1;
+      ctx.save();
+      if (c.style === 'topple') {
+        // Over it goes, pivoting on its feet, away from the blow; gone as it lands.
+        ctx.globalAlpha = 0.9 * (1 - t * t);
+        const foot = c.y + c.size * 0.3;
+        ctx.translate(c.x, foot);
+        ctx.rotate(-flip * (1 - (1 - t) * (1 - t)) * 1.35);
+        ctx.scale(flip, 1);
+        ctx.drawImage(sprite, -c.size / 2, -c.size * 0.92, c.size, c.size);
+      } else if (c.style === 'crumble') {
+        // Straight down into itself, faster than a squash. (No grey filter:
+        // ctx.filter per corpse is too slow for a field of the dead.)
+        ctx.globalAlpha = (1 - t) * 0.85;
+        ctx.translate(c.x, c.y + c.size * 0.3 * t);
+        ctx.scale(flip * (1 + t * 0.15), WS.max(0.05, 1 - t * 0.9));
+        ctx.drawImage(sprite, -c.size / 2, -c.size * 0.62, c.size, c.size);
+      } else if (c.style === 'dissolve') {
+        // Lifts and thins into light.
+        ctx.globalAlpha = (1 - t) * 0.8;
+        ctx.globalCompositeOperation = t > 0.25 ? 'lighter' : 'source-over';
+        ctx.translate(c.x, c.y - c.size * 0.18 * t);
+        const k = 1 - t * 0.45;
+        ctx.scale(flip * k, k * (1 + t * 0.3));
+        ctx.drawImage(sprite, -c.size / 2, -c.size * 0.62, c.size, c.size);
+      } else if (c.style === 'burst') {
+        // A jolt outward, then nothing: it came apart.
+        ctx.globalAlpha = (1 - t) * (1 - t);
+        ctx.translate(c.x, c.y);
+        const k = 1 + t * 0.35;
+        ctx.scale(flip * k, k);
+        ctx.drawImage(sprite, -c.size / 2, -c.size * 0.62, c.size, c.size);
+      } else {
+        ctx.globalAlpha = (1 - t) * 0.85;
+        ctx.translate(c.x, c.y + c.size * 0.18 * t);
+        ctx.scale(flip * (1 + t * 0.3), 1 - t * 0.55);
+        ctx.drawImage(sprite, -c.size / 2, -c.size * 0.62, c.size, c.size);
+      }
       ctx.restore();
       if (c.boss) {
         ctx.save();
@@ -1148,6 +1181,7 @@
    *  array on every frame of every frozen enemy on the field. */
   const CHILLED = [0.55, 0.8, 1.0];
 
+  const RISE = 0.32;
   R.drawEnemy = function (ctx, e, time) {
     const t = e.template;
     if (e.hidden) return;
@@ -1187,6 +1221,19 @@
     ctx.save();
     if (e.fade !== undefined && e.fade < 1) ctx.globalAlpha = e.fade;
     ctx.translate(e.x, e.y + bob);
+    /* A creature that arrives where you can see it - a summon, a split, a
+       swarm closing its ring - rises out of the ground over RISE seconds
+       rather than appearing whole on one frame. From the feet up, so it is
+       standing where it will be. Anything that arrived off-screen has
+       finished rising long before it walks into view. */
+    const born = WS.Game.run ? WS.Game.run.time - (e.bornAt || -9) : 9;
+    if (born < RISE && !e.boss) {
+      const k = WS.clamp(born / RISE, 0, 1);
+      const ease = 1 - (1 - k) * (1 - k);
+      ctx.globalAlpha *= 0.35 + 0.65 * ease;
+      ctx.translate(0, size * 0.3 * (1 - ease));
+      ctx.scale(1, 0.25 + 0.75 * ease);
+    }
     // Bracing for a charge: the body compresses, then springs.
     if (e.windup > 0) {
       const k = 1 - e.windup / (e.windupMax || WS.Config.chargeWindup);

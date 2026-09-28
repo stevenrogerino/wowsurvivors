@@ -189,9 +189,42 @@
     c.kit = enemy.template.bossKit;   // a boss dies in the crown it wore
     c.size = enemy.spriteSize;
     c.facing = enemy.facing;
-    c.life = enemy.boss ? 0.9 : 0.42;
-    c.maxLife = c.life;
     c.boss = enemy.boss;
+    /* EACH KIND DIES LIKE ITSELF. Every creature used to go the same way -
+       squashed into the ground and gone - so a skeleton, a wolf, a wisp and
+       a clockwork thing all died as one shape. Now the family picks: bones
+       crumble to dust, flesh topples over, spirits come apart upward into
+       motes, and machines burst. Bosses keep the long collapse and the ring
+       they already had. The corpse carries the style; the renderer draws it
+       (Renderer.drawCorpses) and this throws what the death leaves behind. */
+    c.style = enemy.boss ? 'squash' : (DEATH_STYLE[enemy.template.family] || 'squash');
+    c.life = enemy.boss ? 0.9 : c.style === 'topple' ? 0.55 : c.style === 'dissolve' ? 0.5 : 0.42;
+    c.maxLife = c.life;
+    const col = WS.hex(enemy.template.tint || [0.8, 0.8, 0.8]);
+    if (c.style === 'crumble') FX.drift(c.x, c.y, 5, '#b9b2a2', -20, 0.6, 2.2);
+    else if (c.style === 'dissolve') FX.drift(c.x, c.y - c.size * 0.2, 7, col, -70, 0.7, 2.4);
+    else if (c.style === 'burst') FX.burst(c.x, c.y - c.size * 0.2, 8, '#ffd27a', 220, 0.35, 2, true);
+    else if (c.style === 'topple') FX.drift(c.x, c.y + c.size * 0.12, 3, '#8a7c66', -8, 0.45, 3);
+  };
+  const DEATH_STYLE = {
+    undead: 'crumble',
+    beast: 'topple', highland: 'topple', mongrel: 'topple', karrash: 'topple', bristlekin: 'topple',
+    kerchief: 'topple', gilkin: 'topple', galewing: 'topple', shrikewing: 'topple',
+    void: 'dissolve', elemental: 'dissolve', lampling: 'dissolve', moonwretch: 'dissolve',
+    mechanical: 'burst',
+  };
+
+  /** Motes that rise (or settle) rather than spray: dust, spirit, ash. */
+  FX.drift = function (x, y, count, colour, rise, life, size) {
+    for (let i = 0; i < count; i++) {
+      const p = FX.particles.acquire();
+      if (!p) return;
+      p.x = x + vis(-12, 12); p.y = y + vis(-8, 6);
+      p.vx = vis(-18, 18); p.vy = rise * vis(0.6, 1.3);
+      p.colour = colour; p.size = size * vis(0.6, 1.1);
+      p.life = life * vis(0.7, 1); p.maxLife = p.life;
+      p.drag = 1.6;
+    }
   };
 
   /** Freezes the simulation for a beat, so a heavy hit lands with weight. */
@@ -234,16 +267,25 @@
   };
 
   /* ----------------------------------------------------------- particles -- */
-  FX.burst = function (x, y, count, colour, speed, life, size) {
+  /* COSMETIC DICE. Sparks that are only there to be looked at must not draw
+     from the run's seeded dice: every draw shifts every number after it, so
+     adding a puff of dust to a level-up changed which way a creature lunged
+     three seconds later (check-behaviour caught exactly that), and a seeded
+     run - a Nightly, a bot's balance measurement - stopped being the same
+     night it was. `cosmetic` sparks roll their own. The older calls keep the
+     seeded dice so every seed already measured still plays out the same. */
+  const vis = (a, b) => a + Math.random() * (b - a);
+  FX.burst = function (x, y, count, colour, speed, life, size, cosmetic) {
+    const rr = cosmetic ? vis : WS.randRange;
     for (let i = 0; i < count; i++) {
       const p = FX.particles.acquire();
       if (!p) return;
-      const a = WS.random() * WS.TAU;
-      const v = speed * WS.randRange(0.35, 1);
+      const a = rr(0, WS.TAU);
+      const v = speed * rr(0.35, 1);
       p.x = x; p.y = y;
       p.vx = WS.cos(a) * v; p.vy = WS.sin(a) * v;
       p.colour = colour; p.size = size || 3;
-      p.life = life * WS.randRange(0.6, 1); p.maxLife = p.life;
+      p.life = life * rr(0.6, 1); p.maxLife = p.life;
       p.drag = 2.6;
     }
   };

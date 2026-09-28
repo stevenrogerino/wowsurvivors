@@ -128,7 +128,7 @@
     chain.lastNote = t;
     WS.Audio.play('gemChain', player.x, String(WS.min(chain.step, 10)));
     chain.step++;
-    WS.FX.burst(player.x, player.y - 8, 2, WS.hex(gem.colour || [0.7, 0.85, 1]), 80, 0.3, 2);
+    WS.FX.burst(player.x, player.y - 8, 2, WS.hex(gem.colour || [0.7, 0.85, 1]), 80, 0.3, 2, true);
   }
 
   XP.update = function (dt) {

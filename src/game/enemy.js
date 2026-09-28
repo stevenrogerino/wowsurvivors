@@ -118,6 +118,7 @@
     e.trailTimer = template.trail ? template.trail.interval : 0;
     e.noSplit = false;
     e.telegraph = null;      // {kind, life, maxLife, ...} drawn by the renderer
+    e.bornAt = WS.Game.run ? WS.Game.run.time : 0;   // for the rise out of the ground
     e.attackTimer = template.interval || 3.6;
     e.rangedTimer = template.ranged ? WS.randRange(0.4, template.ranged.cooldown) : null;
     e.finalBoss = false;

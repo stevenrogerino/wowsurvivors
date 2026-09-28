@@ -356,7 +356,7 @@
       e.y = WS.clamp(e.y + dy / d * k, e.radius, H - e.radius);
     }
     WS.FX.flash(p.x, p.y, R, [1.0, 0.82, 0.42], 0.35);
-    WS.FX.burst(p.x, p.y, 14, '#f5c56b', 260, 0.45, 3);
+    WS.FX.burst(p.x, p.y, 14, '#f5c56b', 260, 0.45, 3, true);
   };
 
   Game.presentLevelUp = function () {
