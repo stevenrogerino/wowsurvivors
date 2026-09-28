@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Patch Notes · The Ember Watch</title>
-<meta name="description" content="The Ember Watch balance patch, 26 to 28 September: every evolved weapon in one damage band, Ruin Unbound nerfed, eight new callings, Conviction reworked, healing and tanks rebalanced.">
+<meta name="description" content="The Ember Watch balance patch: every evolved weapon in one damage band, Ruin Unbound nerfed, eight new callings, Conviction reworked, healing and tanks rebalanced.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,500;0,700;0,800;1,500&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
@@ -220,6 +220,9 @@ footer { border-top: 1px solid var(--rule); padding-top: 18px; display: flex; fl
 .wrow .figs b { color: var(--ink); font-weight: 600; }
 .feature { display: grid; grid-template-columns: 132px 1fr; gap: 22px; align-items: start; }
 .feature img.ic { width: 132px; height: 132px; border-radius: 6px; border: 1px solid rgba(226,72,61,.45); background: #000; }
+.how { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; max-width: 70ch; color: var(--ink-dim); font-size: 14.5px; }
+.how b { color: var(--ink); }
+.how li::marker { color: var(--nerf); font: 700 14px var(--fig); }
 .meter { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
 .meter .bar { grid-template-columns: 150px 1fr 54px; min-height: 24px; }
 .meter .fill.was { background: linear-gradient(90deg, #7a241d, var(--nerf)); }
@@ -265,7 +268,7 @@ footer { border-top: 1px solid var(--rule); padding-top: 18px; display: flex; fl
 <header class="hero">
   <div class="hero-in">
     <div>
-      <div class="patchtag"><span class="eyebrow">The Ember Watch · Balance patch · 26 to 28 September</span></div>
+      <div class="patchtag"><span class="eyebrow">The Ember Watch · Balance patch</span></div>
       <h1>Even <em>ground.</em></h1>
       <p class="lede">A tester's strongest builds could stand still from 20:00 and win, and a handful of abilities did most of every build's damage: <b>Ruin Unbound</b> half the meter, <b>Conviction</b> most of Keegan's, <b>Grave Tether</b> most of everyone's healing. We measured every weapon, union, discovery and calling against the same crowd and the same boss, then brought them into one band.</p>
     </div>
@@ -300,8 +303,13 @@ footer { border-top: 1px solid var(--rule); padding-top: 18px; display: flex; fl
           <div class="bar"><span class="n">Now</span><span class="track"><span class="fill" style="width:18%"></span></span><span class="x">18%</span></div>
         </div>
         <p class="fine">Its share of a build's damage, next to the same four evolved weapons, at 21:00 on the Pale Wastes, Professional, Hyper. Every union now sits between 18% and 29%.</p>
-        <div class="chg"><span>splash <b>82 → 55</b></span><span>share of a build <b>59% → 18%</b></span><span>vs bosses <b>×1 → ×1.95</b></span></div>
-        <p><b>Why its hit reads higher.</b> Its damage per bolt goes 25.5 → 20.4 → 37.9 over this patch. The first cut is the nerf. The later rise is the rest of the arsenal: it is forged from an evolved Umbral Bolt and Cinderfall, and an evolved Umbral Bolt now pierces everything (nearly four times the damage it did). Ruin Unbound is set to what those two did together, and on the meter it went from the biggest share of any union to one of the smallest.</p>
+        <h3 style="font-size:19px">How it was nerfed</h3>
+        <ol class="how">
+          <li><b>A smaller burst.</b> Each bolt's explosion shrank from <span class="fig">82</span> to <span class="fig">55</span> wide, less than half the ground it covered (45%). It catches far fewer creatures with every bolt.</li>
+          <li><b>Less damage over a fight.</b> With the same four weapons beside it, it deals <span class="fig">12.1k</span> a second, down from <span class="fig">17.9k</span>: a third less.</li>
+          <li><b>No longer takes every kill.</b> With a smaller burst it stops reaching the whole crowd first, so its slice of the meter fell from <span class="fig">59%</span> to <span class="fig">18%</span> and your other weapons get the rest.</li>
+        </ol>
+        <p class="fine">Each bolt now shows <span class="fig">37.9</span> damage, up from <span class="fig">25.5</span>, because every evolved weapon was re-scaled in this patch and Ruin Unbound's bolts were raised along with the weapons it is made from. The smaller burst more than cancels that: each bolt hits harder, but it hits far fewer creatures.</p>
       </div>
     </div>
   </div>
@@ -428,45 +436,45 @@ footer { border-top: 1px solid var(--rule); padding-top: 18px; display: flex; fl
   <div class="sec-head">
     <span class="eyebrow">Unions</span>
     <h2>Every union takes a fair share.</h2>
-    <p>Unions were measured the way testers read them: the share of a build's damage each one takes beside four evolved weapons. Storm of Steel, Sanctuary and The Wild Hunt had fallen far behind (forging Storm of Steel made a build weaker); Ruin Unbound had run away. All eight now take between 18% and 29%.</p>
+    <p>Unions were measured the way testers read them: the share of a build's damage each one takes beside four evolved weapons. Storm of Steel, Sanctuary and The Wild Hunt had fallen far behind (forging Storm of Steel made a build weaker); Ruin Unbound had run away with more than half the meter. The stamp follows the damage each union actually deals in a fight. All eight now take between 18% and 29% of a build.</p>
   </div>
   <div class="tbl"><table>
-    <tr><th>Union</th><th></th><th class="n">Damage</th><th class="n">Vs bosses</th><th class="n">Share of a build</th></tr>
+    <tr><th>Union</th><th></th><th class="n">Damage a second</th><th class="n">Share of a build</th><th>Also</th></tr>
     <tr><td><span class="nmc"><img src="img/icon_union_firmament.png" alt=""><span>Firmament<span class="sub">Seeking Motes + Moonbrand</span></span></span></td>
-    <td><span class="stamp buff">Buff</span></td>
-    <td class="n"><span class="was">18.2 →</span> 24.2</td>
-    <td class="n"><span class="was">×1 →</span> ×2.4</td>
-    <td class="n">20%</td></tr><tr><td><span class="nmc"><img src="img/icon_union_ruin.png" alt=""><span>Ruin Unbound<span class="sub">Umbral Bolt + Cinderfall</span></span></span></td>
     <td><span class="stamp nerf">Nerf</span></td>
-    <td class="n"><span class="was">20.38 →</span> 37.9</td>
-    <td class="n"><span class="was">×1 →</span> ×1.95</td>
-    <td class="n">18%</td></tr><tr><td><span class="nmc"><img src="img/icon_union_steel.png" alt=""><span>Storm of Steel<span class="sub">Knifestorm + Volley</span></span></span></td>
+    <td class="n"><span class="was">17k →</span> 12k</td>
+    <td class="n"><span class="was">33% →</span> 20%</td>
+    <td>–</td></tr><tr><td><span class="nmc"><img src="img/icon_union_ruin.png" alt=""><span>Ruin Unbound<span class="sub">Umbral Bolt + Cinderfall</span></span></span></td>
+    <td><span class="stamp nerf">Nerf</span></td>
+    <td class="n"><span class="was">18k →</span> 12k</td>
+    <td class="n"><span class="was">59% →</span> 18%</td>
+    <td>splash 82 → 55</td></tr><tr><td><span class="nmc"><img src="img/icon_union_steel.png" alt=""><span>Storm of Steel<span class="sub">Knifestorm + Volley</span></span></span></td>
     <td><span class="stamp buff">Buff</span></td>
-    <td class="n"><span class="was">16.38 →</span> 25<span class="sub">pierce 3 → 12</span></td>
-    <td class="n"><span class="was">×1.6 →</span> ×5.3</td>
-    <td class="n">29%</td></tr><tr><td><span class="nmc"><img src="img/icon_union_sanctuary.png" alt=""><span>Sanctuary<span class="sub">Dawnpulse + Hallowed Ring</span></span></span></td>
+    <td class="n"><span class="was">3.7k →</span> 21k</td>
+    <td class="n"><span class="was">21% →</span> 29%</td>
+    <td>pierce 3 → 12</td></tr><tr><td><span class="nmc"><img src="img/icon_union_sanctuary.png" alt=""><span>Sanctuary<span class="sub">Dawnpulse + Hallowed Ring</span></span></span></td>
     <td><span class="stamp buff">Buff</span></td>
-    <td class="n"><span class="was">23.66 →</span> 109</td>
-    <td class="n"><span class="was">×3.7 →</span> ×5.3</td>
-    <td class="n">26%</td></tr><tr><td><span class="nmc"><img src="img/icon_union_stormcall.png" alt=""><span>Stormcall<span class="sub">Axe Gyre + Arcweb</span></span></span></td>
+    <td class="n"><span class="was">4.7k →</span> 16k</td>
+    <td class="n"><span class="was">26% →</span> 26%</td>
+    <td>now heals</td></tr><tr><td><span class="nmc"><img src="img/icon_union_stormcall.png" alt=""><span>Stormcall<span class="sub">Axe Gyre + Arcweb</span></span></span></td>
     <td><span class="stamp buff">Buff</span></td>
-    <td class="n"><span class="was">23.66 →</span> 29</td>
-    <td class="n"><span class="was">×1 →</span> ×2.5</td>
-    <td class="n">21%</td></tr><tr><td><span class="nmc"><img src="img/icon_union_tempest_kata.png" alt=""><span>Tempest Kata<span class="sub">Iron Palms + Gale Chakram</span></span></span></td>
+    <td class="n"><span class="was">11k →</span> 13k</td>
+    <td class="n"><span class="was">27% →</span> 21%</td>
+    <td>–</td></tr><tr><td><span class="nmc"><img src="img/icon_union_tempest_kata.png" alt=""><span>Tempest Kata<span class="sub">Iron Palms + Gale Chakram</span></span></span></td>
+    <td><span class="stamp kept">Even</span></td>
+    <td class="n"><span class="was">11k →</span> 11k</td>
+    <td class="n"><span class="was">46% →</span> 18%</td>
+    <td>–</td></tr><tr><td><span class="nmc"><img src="img/icon_union_wild_hunt.png" alt=""><span>The Wild Hunt<span class="sub">Spirit Herd + Verdant Lance</span></span></span></td>
     <td><span class="stamp buff">Buff</span></td>
-    <td class="n"><span class="was">9 →</span> 13.2</td>
-    <td class="n"><span class="was">×1.8 →</span> ×4.8</td>
-    <td class="n">18%</td></tr><tr><td><span class="nmc"><img src="img/icon_union_wild_hunt.png" alt=""><span>The Wild Hunt<span class="sub">Spirit Herd + Verdant Lance</span></span></span></td>
-    <td><span class="stamp buff">Buff</span></td>
-    <td class="n"><span class="was">22 →</span> 46</td>
-    <td class="n"><span class="was">×1.55 →</span> ×4.8</td>
-    <td class="n">26%</td></tr><tr><td><span class="nmc"><img src="img/icon_union_rotwood.png" alt=""><span>Rotwood<span class="sub">Thornbloom + Blightfield</span></span></span></td>
-    <td><span class="stamp buff">Buff</span></td>
-    <td class="n"><span class="was">11 →</span> 13.4</td>
-    <td class="n"><span class="was">×1 →</span> ×3.2</td>
-    <td class="n">18%</td></tr>
+    <td class="n"><span class="was">7.2k →</span> 17k</td>
+    <td class="n"><span class="was">35% →</span> 26%</td>
+    <td>–</td></tr><tr><td><span class="nmc"><img src="img/icon_union_rotwood.png" alt=""><span>Rotwood<span class="sub">Thornbloom + Blightfield</span></span></span></td>
+    <td><span class="stamp nerf">Nerf</span></td>
+    <td class="n"><span class="was">13k →</span> 10k</td>
+    <td class="n"><span class="was">38% →</span> 18%</td>
+    <td>–</td></tr>
   </table></div>
-  <p class="fine">Shares measured at 21:00 on the Pale Wastes, Professional, Hyper, over eight seeds; the same numbers move by up to eight points from one run to the next.</p>
+  <p class="fine">Both figures come from the same fight: the union beside the same four evolved weapons, 21:00 on the Pale Wastes, Professional, Hyper, eight seeds. Damage a second is what it actually took off creatures' health; share of a build is its slice of the meter. Both move by a few points from one run to the next. "Before" is the game as it stood before this patch. Per-hit damage moved too (Firmament 18.2 → 24.2, Ruin Unbound 20.38 → 37.9, Storm of Steel 16.38 → 25, Sanctuary 23.66 → 109, Stormcall 23.66 → 29, Tempest Kata 9 → 13.2, The Wild Hunt 22 → 46, Rotwood 11 → 13.4); a bigger hit is not a bigger union when the weapons around it were re-scaled too.</p>
 </section>
 
 <!-- ============================================================ discoveries -->
