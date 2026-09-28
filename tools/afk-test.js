@@ -166,7 +166,7 @@ const want = env('BUILD', Object.keys(BUILDS).join(',')).split(',');
         const top = Object.entries(by).sort((a, c) => c[1] - a[1]).slice(0, 2)
           .map(([k, v]) => `${k} ${Math.round(100 * v / WS.max(1, Object.values(by).reduce((a, x) => a + x, 0)))}%`);
         const dealt = G.run.damageDone - d0;
-        const byW = Object.entries(G.run.damageByWeapon).sort((a, c) => c[1] - a[1]).slice(0, 3)
+        const byW = Object.entries(G.run.damageByWeapon).sort((a, c) => c[1] - a[1]).slice(0, 5)
           .map(([k, v]) => `${k} ${Math.round(100 * v / WS.max(1, G.run.damageDone))}%`);
         return {
           stood: Math.round(stood), low: Math.round(low * 100), hp: Math.round(p.maxHealth), armor: Math.round(p.armor),
