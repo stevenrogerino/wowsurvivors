@@ -57,6 +57,17 @@
   }
 
   /** A choice's accent: its school palette for weapons, its quality otherwise. */
+  /** How precious a card is, for the glint and the reveal: an evolution or a
+   *  union is the best thing a level can hold, a new weapon is rare, and a
+   *  blessing or passive carries its own quality. */
+  const TIER = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
+  function cardTier(choice) {
+    if (choice.type === 'evolve' || choice.type === 'union') return 'legendary';
+    if (choice.quality) return choice.quality;
+    if (choice.type === 'new_weapon') return 'rare';
+    return 'common';
+  }
+
   function choiceColour(choice) {
     if (choice.school) return WS.CONST.COLORS[choice.school];
     if (choice.quality) return qualityColour(choice.quality);
@@ -1311,6 +1322,15 @@
     const card = el('button', 'card');
     card.type = 'button';
     card.style.setProperty('--q', WS.hex(colour));
+    /* A glint for the good ones: rare and up catch the light once as they
+       land, in the deal's own order (the index staggers it). */
+    const tier = cardTier(choice);
+    card.dataset.tier = tier;
+    if (TIER[tier] >= 2) {
+      const shine = el('span', 'card-shine');
+      card.style.setProperty('--deal', String(index || 0));
+      card.append(shine);
+    }
 
     const inlay = el('div', 'card-inlay');
     for (let i = 0; i < 4; i++) inlay.append(el('i'));
@@ -3319,6 +3339,11 @@
     ui.row.replaceChildren();
     // The build as it stands now - a second level-up in a row has one more rank in it.
     if (ui.tray) { ui.tray.replaceChildren(buildTray(WS.Game.player)); }
+    /* The best card in the hand announces itself as the deal lands: nothing
+       for an ordinary hand, a bright pair for rare, three for epic, a rising
+       run for legendary. */
+    const best = choices.reduce((m, c) => WS.max(m, TIER[cardTier(c)] || 0), 0);
+    if (best >= 2) WS.Audio.play('reveal', null, best >= 4 ? 'legendary' : best >= 3 ? 'epic' : 'rare');
     choices.forEach((c, i) => {
       ui.row.append(cardFor(c, (choice, card) => {
         if (this.banishMode) {
@@ -3800,6 +3825,100 @@
 
   /** The verdict: one panel that states the outcome in the run's own numbers,
    *  before the ledger. */
+  /* THE FIGURES COUNT UP. A number that is simply there is a fact; one that
+     climbs to where it lands is a total, and the run's totals are what this
+     screen is for. Plain counts, grouped thousands and clock times all climb;
+     anything else is left as written. The last frame writes the original
+     text back, so the formatting is exactly what it would have been. */
+  function countUp(node, text, delay) {
+    if (typeof text !== 'string' && typeof text !== 'number') return;
+    const s = String(text);
+    let target = null, fmt = null;
+    if (/^\d{1,3}(,\d{3})*$|^\d+$/.test(s)) {
+      target = +s.replace(/,/g, ''); fmt = (v) => WS.formatNumber(Math.round(v));
+    } else if (/^\d+:\d{2}$/.test(s)) {
+      const [m, sec] = s.split(':').map(Number);
+      target = m * 60 + sec; fmt = (v) => WS.formatTime(Math.round(v));
+    }
+    if (target === null || target <= 0) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const dur = 900;
+    node.textContent = fmt(0);
+    const t0 = performance.now() + delay;
+    const step = (now) => {
+      const k = WS.clamp((now - t0) / dur, 0, 1);
+      if (k >= 1) { node.textContent = s; return; }
+      if (k > 0) node.textContent = fmt(target * (1 - Math.pow(1 - k, 3)));
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  /* THE NIGHT, AS A LINE. What was dealt and what was taken, every fifteen
+     seconds of the run (Game.tick keeps run.timeline), as two small charts
+     stacked on one clock - each on its own scale, because the two are
+     different sizes and one axis would flatten the smaller - with the
+     bosses marked where they fell. It shows the shape the figures cannot:
+     where the build came online, and where the night got in. */
+  function runTimeline(run) {
+    if (!run || !run.timeline || run.timeline.length < 4) return null;
+    // The stretch since the last sample, so the line runs to the end.
+    const tl = run.timeline.slice();
+    if (run.time - tl[tl.length - 1][0] >= 1) {
+      tl.push([run.time, run.damageDone - run._tlDealt, run.damageTaken - run._tlTaken, 0]);
+    }
+    const end = WS.max(run.time, tl[tl.length - 1][0] || 1);
+    const W = 600, H = 40;
+    const wrap = el('div', 'run-timeline');
+    const series = [['Dealt a second', 1, 'dealt'], ['Taken a second', 2, 'taken']];
+    for (const [label, idx, cls] of series) {
+      const vals = tl.map((r, i) => (i === 0 ? 0 : r[idx] / WS.max(1, r[0] - tl[i - 1][0])));
+      const peak = WS.max(1, ...vals);
+      const pts = tl.map((r, i) => [(r[0] / end) * W, H - (vals[i] / peak) * (H - 3)]);
+      const line = pts.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join(' ');
+      const area = line + ` L${pts[pts.length - 1][0].toFixed(1)} ${H} L0 ${H} Z`;
+      const row = el('div', 'tl-row ' + cls);
+      const head = el('div', 'tl-head');
+      head.append(el('span', 'tl-label', label), el('span', 'tl-peak', 'peak ' + WS.formatNumber(Math.round(peak))));
+      const svgNS = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(svgNS, 'svg');
+      svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+      svg.setAttribute('preserveAspectRatio', 'none');
+      svg.classList.add('tl-plot');
+      const a = document.createElementNS(svgNS, 'path'); a.setAttribute('d', area); a.setAttribute('class', 'tl-area');
+      const l = document.createElementNS(svgNS, 'path'); l.setAttribute('d', line); l.setAttribute('class', 'tl-line');
+      l.setAttribute('vector-effect', 'non-scaling-stroke');
+      svg.append(a, l);
+      const plot = el('div', 'tl-plotwrap');
+      plot.append(svg);
+      for (const [t, kind, name] of run.marks || []) {
+        if (kind !== 'boss') continue;
+        const m = el('i', 'tl-mark');
+        m.style.left = (100 * t / end).toFixed(2) + '%';
+        m.dataset.tip = `${name} fell at ${WS.formatTime(t)}`;
+        plot.append(m);
+      }
+      // Every tenth level, a notch on the dealt line: where the build grew.
+      if (cls === 'dealt') {
+        for (let i = 1; i < run.timeline.length; i++) {
+          const lv = run.timeline[i][3], was = run.timeline[i - 1][3];
+          if (Math.floor(lv / 10) <= Math.floor(was / 10)) continue;
+          const n = el('i', 'tl-level');
+          n.style.left = (100 * run.timeline[i][0] / end).toFixed(2) + '%';
+          n.dataset.tip = `Level ${Math.floor(lv / 10) * 10} by ${WS.formatTime(run.timeline[i][0])}`;
+          plot.append(n);
+        }
+      }
+      row.append(head, plot);
+      wrap.append(row);
+    }
+    const axis = el('div', 'tl-axis');
+    axis.append(el('span', null, '0:00'), el('span', null, WS.formatTime(Math.round(end / 2))),
+      el('span', null, WS.formatTime(Math.round(end))));
+    wrap.append(axis);
+    return wrap;
+  }
+
   function verdict(kind, title, line, figures, log) {
     const wrap = el('div', 'verdict ' + kind + (log ? ' has-log' : ''));
     const main = el('div', 'verdict-main');
@@ -3808,12 +3927,19 @@
     head.append(el('div', 'verdict-line', line));
     main.append(head);
     const grid = el('div', 'verdict-figures');
-    for (const [k, v] of figures) {
+    figures.forEach(([k, v], i) => {
       const f = el('div', 'vf');
-      f.append(el('div', 'v', v), el('div', 'label', k));
+      const val = el('div', 'v', v);
+      f.append(val, el('div', 'label', k));
       grid.append(f);
-    }
+      countUp(val, v, 120 + i * 90);
+    });
     main.append(grid);
+    // Under the log when there is one: the log is a few lines and leaves
+    // its column mostly empty, and at 720p every pixel the verdict grows is
+    // taken from the build sheet below it.
+    const tl = runTimeline(WS.Game.run);
+    if (tl) (log || main).append(tl);
     wrap.append(main);
     if (log) wrap.append(log);
     return wrap;

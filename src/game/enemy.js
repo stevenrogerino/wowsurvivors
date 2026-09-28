@@ -683,6 +683,7 @@
 
     if (e.boss) {
       run.bossesSlain++;
+      if (run.marks) run.marks.push([Math.round(run.time), 'boss', e.displayName || t.name]);
       if (e.id === 'aethelgard') {
         this.pool.release(e);
         WS.Arena.onBossDead();

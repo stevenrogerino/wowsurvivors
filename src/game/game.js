@@ -646,6 +646,7 @@
   // Below this share of health the run is in peril (heartbeat, muffled
   // score; the renderer's red rim starts at the same line).
   const PERIL = 0.3;
+  const TIMELINE_STEP = 15;
 
   Game.tick = function (dt) {
     const run = this.run;
@@ -654,6 +655,16 @@
     // this and where the tick leaves it (Renderer.snapshot).
     WS.Renderer.snapshot();
     run.time += dt;
+    /* The run's shape, for the timeline on the results screen: every
+       TIMELINE_STEP seconds, what was dealt and taken since the last, and
+       the level. Bosses falling are marked by Enemy (run.marks). */
+    if (!run.timeline) { run.timeline = []; run.marks = []; run._tlNext = 0; run._tlDealt = 0; run._tlTaken = 0; }
+    if (run.time >= run._tlNext) {
+      run.timeline.push([Math.round(run.time), Math.round(run.damageDone - run._tlDealt),
+        Math.round(run.damageTaken - run._tlTaken), player.level]);
+      run._tlDealt = run.damageDone; run._tlTaken = run.damageTaken;
+      run._tlNext = run.time + TIMELINE_STEP;
+    }
 
     // Rolling ten-second DPS/HPS, sampled four times a second - the HUD reads
     // these directly, so they must be cheap and never allocate per tick.

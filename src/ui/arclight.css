@@ -423,6 +423,31 @@ html, body {
   62%  { opacity: 1; translate: 0 -3px; scale: 1.004; }
   100% { opacity: 1; translate: none; scale: none; }
 }
+/* THE GLINT. A rare-or-better card catches the light once as it lands: a
+   narrow diagonal band crosses it, in the deal's own order. Legendary cards
+   (an evolution, a union) take a wider, warmer band and a second pass. */
+.card .card-shine {
+  position: absolute; inset: 0; overflow: hidden; pointer-events: none; border-radius: inherit;
+}
+.card .card-shine::before {
+  content: ""; position: absolute; top: -20%; bottom: -20%; width: 16%; left: -30%;
+  background: linear-gradient(100deg, transparent 0%,
+    color-mix(in srgb, var(--q, #fff) 35%, rgba(255,255,255,.5)) 50%, transparent 100%);
+  opacity: 0; transform: skewX(-14deg);
+  animation: card-glint .62s var(--ease-out) calc(.34s + var(--deal, 0) * .05s) 1 both;
+  mix-blend-mode: screen;
+}
+.card[data-tier="legendary"] .card-shine::before {
+  width: 22%;
+  animation: card-glint .8s var(--ease-out) calc(.3s + var(--deal, 0) * .05s) 2 both;
+}
+@keyframes card-glint {
+  0%   { left: -30%; opacity: 0; }
+  20%  { opacity: .42; }
+  80%  { opacity: .42; }
+  100% { left: 115%; opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .card .card-shine::before { animation: none; opacity: 0; } }
 /* The quality arc across the shoulders of the card. */
 .card::before {
   content: ""; position: absolute; top: 0; left: 10%; right: 10%; height: 2px;
@@ -1359,6 +1384,30 @@ body.hud-rail #hud-toasts { left: 76px; bottom: 20px; }
 .verdict-line {
   margin-top: 8px; font-size: var(--t-lead); color: var(--ink-dim); max-width: 62ch;
 }
+/* The run's timeline (UI runTimeline): two small charts on one clock. */
+.run-timeline { display: grid; gap: 6px; margin-top: 12px; max-width: 640px; }
+.run-timeline .tl-head { display: flex; justify-content: space-between; align-items: baseline;
+  font-family: var(--ui); font-size: var(--t-micro); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-dim); }
+.run-timeline .tl-peak { font-family: var(--fig); letter-spacing: 0; text-transform: none; color: var(--ink-faint);
+  font-variant-numeric: tabular-nums; }
+.run-timeline .tl-plotwrap { position: relative; height: 34px; margin-top: 2px;
+  border-bottom: 1px solid var(--rim); }
+.run-timeline .tl-plot { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.run-timeline .tl-area { opacity: .22; }
+.run-timeline .tl-line { fill: none; stroke-width: 1.6; }
+.run-timeline .dealt .tl-area { fill: var(--arc); }
+.run-timeline .dealt .tl-line { stroke: var(--arc); }
+.run-timeline .taken .tl-area { fill: var(--blood); }
+.run-timeline .taken .tl-line { stroke: var(--blood); }
+.run-timeline .tl-mark { position: absolute; top: -3px; bottom: 0; width: 2px; margin-left: -1px;
+  background: color-mix(in srgb, var(--umbra) 80%, transparent); cursor: default; }
+.run-timeline .tl-mark::before { content: ""; position: absolute; top: -3px; left: -3px; width: 8px; height: 8px;
+  border-radius: 50%; background: var(--umbra); box-shadow: 0 0 0 2px var(--obsidian); }
+.run-timeline .tl-level { position: absolute; bottom: 0; width: 2px; height: 6px; margin-left: -1px;
+  background: var(--ink-dim); cursor: default; }
+.run-timeline .tl-level::after { content: ""; position: absolute; inset: -6px -5px; }
+.run-timeline .tl-axis { display: flex; justify-content: space-between; font-family: var(--fig);
+  font-size: var(--t-micro); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
 .verdict-figures {
   position: relative; display: flex; flex-wrap: wrap; gap: 10px 34px; margin-top: 20px;
   padding-top: 18px; border-top: 1px solid var(--rim);

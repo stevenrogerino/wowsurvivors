@@ -507,6 +507,31 @@ html, body {
   62%  { opacity: 1; translate: 0 -3px; scale: 1.004; }
   100% { opacity: 1; translate: none; scale: none; }
 }
+/* THE GLINT. A rare-or-better card catches the light once as it lands: a
+   narrow diagonal band crosses it, in the deal's own order. Legendary cards
+   (an evolution, a union) take a wider, warmer band and a second pass. */
+.card .card-shine {
+  position: absolute; inset: 0; overflow: hidden; pointer-events: none; border-radius: inherit;
+}
+.card .card-shine::before {
+  content: ""; position: absolute; top: -20%; bottom: -20%; width: 16%; left: -30%;
+  background: linear-gradient(100deg, transparent 0%,
+    color-mix(in srgb, var(--q, #fff) 35%, rgba(255,255,255,.5)) 50%, transparent 100%);
+  opacity: 0; transform: skewX(-14deg);
+  animation: card-glint .62s var(--ease-out) calc(.34s + var(--deal, 0) * .05s) 1 both;
+  mix-blend-mode: screen;
+}
+.card[data-tier="legendary"] .card-shine::before {
+  width: 22%;
+  animation: card-glint .8s var(--ease-out) calc(.3s + var(--deal, 0) * .05s) 2 both;
+}
+@keyframes card-glint {
+  0%   { left: -30%; opacity: 0; }
+  20%  { opacity: .42; }
+  80%  { opacity: .42; }
+  100% { left: 115%; opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .card .card-shine::before { animation: none; opacity: 0; } }
 /* The quality arc across the shoulders of the card. */
 .card::before {
   content: ""; position: absolute; top: 0; left: 10%; right: 10%; height: 2px;
@@ -1443,6 +1468,30 @@ body.hud-rail #hud-toasts { left: 76px; bottom: 20px; }
 .verdict-line {
   margin-top: 8px; font-size: var(--t-lead); color: var(--ink-dim); max-width: 62ch;
 }
+/* The run's timeline (UI runTimeline): two small charts on one clock. */
+.run-timeline { display: grid; gap: 6px; margin-top: 12px; max-width: 640px; }
+.run-timeline .tl-head { display: flex; justify-content: space-between; align-items: baseline;
+  font-family: var(--ui); font-size: var(--t-micro); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-dim); }
+.run-timeline .tl-peak { font-family: var(--fig); letter-spacing: 0; text-transform: none; color: var(--ink-faint);
+  font-variant-numeric: tabular-nums; }
+.run-timeline .tl-plotwrap { position: relative; height: 34px; margin-top: 2px;
+  border-bottom: 1px solid var(--rim); }
+.run-timeline .tl-plot { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.run-timeline .tl-area { opacity: .22; }
+.run-timeline .tl-line { fill: none; stroke-width: 1.6; }
+.run-timeline .dealt .tl-area { fill: var(--arc); }
+.run-timeline .dealt .tl-line { stroke: var(--arc); }
+.run-timeline .taken .tl-area { fill: var(--blood); }
+.run-timeline .taken .tl-line { stroke: var(--blood); }
+.run-timeline .tl-mark { position: absolute; top: -3px; bottom: 0; width: 2px; margin-left: -1px;
+  background: color-mix(in srgb, var(--umbra) 80%, transparent); cursor: default; }
+.run-timeline .tl-mark::before { content: ""; position: absolute; top: -3px; left: -3px; width: 8px; height: 8px;
+  border-radius: 50%; background: var(--umbra); box-shadow: 0 0 0 2px var(--obsidian); }
+.run-timeline .tl-level { position: absolute; bottom: 0; width: 2px; height: 6px; margin-left: -1px;
+  background: var(--ink-dim); cursor: default; }
+.run-timeline .tl-level::after { content: ""; position: absolute; inset: -6px -5px; }
+.run-timeline .tl-axis { display: flex; justify-content: space-between; font-family: var(--fig);
+  font-size: var(--t-micro); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
 .verdict-figures {
   position: relative; display: flex; flex-wrap: wrap; gap: 10px 34px; margin-top: 20px;
   padding-top: 18px; border-top: 1px solid var(--rim);
@@ -22803,6 +22852,14 @@ window.WS = window.WS || {};
       noise({ freq: 400, to: 120, decay: vary(0.22, 0.25), gain: 0.16, filter: 'lowpass' });
     },
     gem() { tone({ type: 'sine', freq: 1180, to: vary(1560, 0.16), decay: vary(0.09, 0.28), gain: 0.07 }); },
+    /* The reveal: the best card in a fresh hand, heard as it lands. Timed to
+       the deal (the cards touch down about a third of a second in). */
+    reveal() {
+      const v = Audio.variant, d = 0.3;
+      const notes = v === 'legendary' ? [880, 1108, 1319, 1760] : v === 'epic' ? [880, 1108, 1319] : [988, 1319];
+      notes.forEach((f, i) => chime(f, v === 'legendary' ? 0.5 : 0.34, 0.05, d + i * 0.07));
+      if (v === 'legendary') chime(2637, 0.9, 0.03, d + notes.length * 0.07);
+    },
     /* Two low thumps, the second softer: lub, dub. Felt more than heard. */
     heartbeat() {
       if (Audio.ctx && Audio.ctx.currentTime < (Audio._stageUntil || 0)) return;
@@ -26439,6 +26496,7 @@ window.WS = window.WS || {};
 
     if (e.boss) {
       run.bossesSlain++;
+      if (run.marks) run.marks.push([Math.round(run.time), 'boss', e.displayName || t.name]);
       if (e.id === 'aethelgard') {
         this.pool.release(e);
         WS.Arena.onBossDead();
@@ -34458,6 +34516,7 @@ window.WS = window.WS || {};
   // Below this share of health the run is in peril (heartbeat, muffled
   // score; the renderer's red rim starts at the same line).
   const PERIL = 0.3;
+  const TIMELINE_STEP = 15;
 
   Game.tick = function (dt) {
     const run = this.run;
@@ -34466,6 +34525,16 @@ window.WS = window.WS || {};
     // this and where the tick leaves it (Renderer.snapshot).
     WS.Renderer.snapshot();
     run.time += dt;
+    /* The run's shape, for the timeline on the results screen: every
+       TIMELINE_STEP seconds, what was dealt and taken since the last, and
+       the level. Bosses falling are marked by Enemy (run.marks). */
+    if (!run.timeline) { run.timeline = []; run.marks = []; run._tlNext = 0; run._tlDealt = 0; run._tlTaken = 0; }
+    if (run.time >= run._tlNext) {
+      run.timeline.push([Math.round(run.time), Math.round(run.damageDone - run._tlDealt),
+        Math.round(run.damageTaken - run._tlTaken), player.level]);
+      run._tlDealt = run.damageDone; run._tlTaken = run.damageTaken;
+      run._tlNext = run.time + TIMELINE_STEP;
+    }
 
     // Rolling ten-second DPS/HPS, sampled four times a second - the HUD reads
     // these directly, so they must be cheap and never allocate per tick.
@@ -46503,6 +46572,17 @@ window.WS = window.WS || {};
   }
 
   /** A choice's accent: its school palette for weapons, its quality otherwise. */
+  /** How precious a card is, for the glint and the reveal: an evolution or a
+   *  union is the best thing a level can hold, a new weapon is rare, and a
+   *  blessing or passive carries its own quality. */
+  const TIER = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
+  function cardTier(choice) {
+    if (choice.type === 'evolve' || choice.type === 'union') return 'legendary';
+    if (choice.quality) return choice.quality;
+    if (choice.type === 'new_weapon') return 'rare';
+    return 'common';
+  }
+
   function choiceColour(choice) {
     if (choice.school) return WS.CONST.COLORS[choice.school];
     if (choice.quality) return qualityColour(choice.quality);
@@ -47757,6 +47837,15 @@ window.WS = window.WS || {};
     const card = el('button', 'card');
     card.type = 'button';
     card.style.setProperty('--q', WS.hex(colour));
+    /* A glint for the good ones: rare and up catch the light once as they
+       land, in the deal's own order (the index staggers it). */
+    const tier = cardTier(choice);
+    card.dataset.tier = tier;
+    if (TIER[tier] >= 2) {
+      const shine = el('span', 'card-shine');
+      card.style.setProperty('--deal', String(index || 0));
+      card.append(shine);
+    }
 
     const inlay = el('div', 'card-inlay');
     for (let i = 0; i < 4; i++) inlay.append(el('i'));
@@ -49765,6 +49854,11 @@ window.WS = window.WS || {};
     ui.row.replaceChildren();
     // The build as it stands now - a second level-up in a row has one more rank in it.
     if (ui.tray) { ui.tray.replaceChildren(buildTray(WS.Game.player)); }
+    /* The best card in the hand announces itself as the deal lands: nothing
+       for an ordinary hand, a bright pair for rare, three for epic, a rising
+       run for legendary. */
+    const best = choices.reduce((m, c) => WS.max(m, TIER[cardTier(c)] || 0), 0);
+    if (best >= 2) WS.Audio.play('reveal', null, best >= 4 ? 'legendary' : best >= 3 ? 'epic' : 'rare');
     choices.forEach((c, i) => {
       ui.row.append(cardFor(c, (choice, card) => {
         if (this.banishMode) {
@@ -50246,6 +50340,100 @@ window.WS = window.WS || {};
 
   /** The verdict: one panel that states the outcome in the run's own numbers,
    *  before the ledger. */
+  /* THE FIGURES COUNT UP. A number that is simply there is a fact; one that
+     climbs to where it lands is a total, and the run's totals are what this
+     screen is for. Plain counts, grouped thousands and clock times all climb;
+     anything else is left as written. The last frame writes the original
+     text back, so the formatting is exactly what it would have been. */
+  function countUp(node, text, delay) {
+    if (typeof text !== 'string' && typeof text !== 'number') return;
+    const s = String(text);
+    let target = null, fmt = null;
+    if (/^\d{1,3}(,\d{3})*$|^\d+$/.test(s)) {
+      target = +s.replace(/,/g, ''); fmt = (v) => WS.formatNumber(Math.round(v));
+    } else if (/^\d+:\d{2}$/.test(s)) {
+      const [m, sec] = s.split(':').map(Number);
+      target = m * 60 + sec; fmt = (v) => WS.formatTime(Math.round(v));
+    }
+    if (target === null || target <= 0) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const dur = 900;
+    node.textContent = fmt(0);
+    const t0 = performance.now() + delay;
+    const step = (now) => {
+      const k = WS.clamp((now - t0) / dur, 0, 1);
+      if (k >= 1) { node.textContent = s; return; }
+      if (k > 0) node.textContent = fmt(target * (1 - Math.pow(1 - k, 3)));
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  /* THE NIGHT, AS A LINE. What was dealt and what was taken, every fifteen
+     seconds of the run (Game.tick keeps run.timeline), as two small charts
+     stacked on one clock - each on its own scale, because the two are
+     different sizes and one axis would flatten the smaller - with the
+     bosses marked where they fell. It shows the shape the figures cannot:
+     where the build came online, and where the night got in. */
+  function runTimeline(run) {
+    if (!run || !run.timeline || run.timeline.length < 4) return null;
+    // The stretch since the last sample, so the line runs to the end.
+    const tl = run.timeline.slice();
+    if (run.time - tl[tl.length - 1][0] >= 1) {
+      tl.push([run.time, run.damageDone - run._tlDealt, run.damageTaken - run._tlTaken, 0]);
+    }
+    const end = WS.max(run.time, tl[tl.length - 1][0] || 1);
+    const W = 600, H = 40;
+    const wrap = el('div', 'run-timeline');
+    const series = [['Dealt a second', 1, 'dealt'], ['Taken a second', 2, 'taken']];
+    for (const [label, idx, cls] of series) {
+      const vals = tl.map((r, i) => (i === 0 ? 0 : r[idx] / WS.max(1, r[0] - tl[i - 1][0])));
+      const peak = WS.max(1, ...vals);
+      const pts = tl.map((r, i) => [(r[0] / end) * W, H - (vals[i] / peak) * (H - 3)]);
+      const line = pts.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join(' ');
+      const area = line + ` L${pts[pts.length - 1][0].toFixed(1)} ${H} L0 ${H} Z`;
+      const row = el('div', 'tl-row ' + cls);
+      const head = el('div', 'tl-head');
+      head.append(el('span', 'tl-label', label), el('span', 'tl-peak', 'peak ' + WS.formatNumber(Math.round(peak))));
+      const svgNS = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(svgNS, 'svg');
+      svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+      svg.setAttribute('preserveAspectRatio', 'none');
+      svg.classList.add('tl-plot');
+      const a = document.createElementNS(svgNS, 'path'); a.setAttribute('d', area); a.setAttribute('class', 'tl-area');
+      const l = document.createElementNS(svgNS, 'path'); l.setAttribute('d', line); l.setAttribute('class', 'tl-line');
+      l.setAttribute('vector-effect', 'non-scaling-stroke');
+      svg.append(a, l);
+      const plot = el('div', 'tl-plotwrap');
+      plot.append(svg);
+      for (const [t, kind, name] of run.marks || []) {
+        if (kind !== 'boss') continue;
+        const m = el('i', 'tl-mark');
+        m.style.left = (100 * t / end).toFixed(2) + '%';
+        m.dataset.tip = `${name} fell at ${WS.formatTime(t)}`;
+        plot.append(m);
+      }
+      // Every tenth level, a notch on the dealt line: where the build grew.
+      if (cls === 'dealt') {
+        for (let i = 1; i < run.timeline.length; i++) {
+          const lv = run.timeline[i][3], was = run.timeline[i - 1][3];
+          if (Math.floor(lv / 10) <= Math.floor(was / 10)) continue;
+          const n = el('i', 'tl-level');
+          n.style.left = (100 * run.timeline[i][0] / end).toFixed(2) + '%';
+          n.dataset.tip = `Level ${Math.floor(lv / 10) * 10} by ${WS.formatTime(run.timeline[i][0])}`;
+          plot.append(n);
+        }
+      }
+      row.append(head, plot);
+      wrap.append(row);
+    }
+    const axis = el('div', 'tl-axis');
+    axis.append(el('span', null, '0:00'), el('span', null, WS.formatTime(Math.round(end / 2))),
+      el('span', null, WS.formatTime(Math.round(end))));
+    wrap.append(axis);
+    return wrap;
+  }
+
   function verdict(kind, title, line, figures, log) {
     const wrap = el('div', 'verdict ' + kind + (log ? ' has-log' : ''));
     const main = el('div', 'verdict-main');
@@ -50254,12 +50442,19 @@ window.WS = window.WS || {};
     head.append(el('div', 'verdict-line', line));
     main.append(head);
     const grid = el('div', 'verdict-figures');
-    for (const [k, v] of figures) {
+    figures.forEach(([k, v], i) => {
       const f = el('div', 'vf');
-      f.append(el('div', 'v', v), el('div', 'label', k));
+      const val = el('div', 'v', v);
+      f.append(val, el('div', 'label', k));
       grid.append(f);
-    }
+      countUp(val, v, 120 + i * 90);
+    });
     main.append(grid);
+    // Under the log when there is one: the log is a few lines and leaves
+    // its column mostly empty, and at 720p every pixel the verdict grows is
+    // taken from the build sheet below it.
+    const tl = runTimeline(WS.Game.run);
+    if (tl) (log || main).append(tl);
     wrap.append(main);
     if (log) wrap.append(log);
     return wrap;
