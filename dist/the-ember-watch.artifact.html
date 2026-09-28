@@ -42216,6 +42216,8 @@ window.WS = window.WS || {};
     this.drawFlashes(ctx);
     this.drawStrikes(ctx);
     this.drawParticles(ctx);
+    // What can hurt you, stated again over your own light (drawWarnings).
+    this.drawWarnings(ctx, time);
 
     /* The survivor, asserted again over his own light.
      
@@ -43196,6 +43198,90 @@ window.WS = window.WS || {};
       }
       ctx.restore();
     }
+  };
+
+  /* ---------------------------------------------------------- warnings --
+   * WHAT CAN HURT YOU IS NEVER UNDER WHAT YOU CAST. Every warning on the
+   * field - a charge lane, ground about to arm, a storm mark, a shot in
+   * flight - was drawn on the ground or with the bolts, and then the
+   * survivor's own spells went over the top of it: novas, beams, sparks,
+   * all composited 'lighter', which does not cover a warning so much as
+   * bleach it. In the late game, which is exactly when a warning matters
+   * most, the lane the boss was about to run down could be a faint pink
+   * smear under a wall of your own light.
+   *
+   * So each one is stated again here, after every effect: an outline and
+   * nothing else, a dark stroke under a coloured one so it holds against
+   * white as well as black. No fills, so it adds no clutter of its own. It
+   * leans in as the screen fills - on a quiet field the ground layer says
+   * it well enough, and this is only a whisper. */
+  R.drawWarnings = function (ctx, time) {
+    const bolts = WS.Projectile.bolts ? WS.Projectile.bolts.count : 0;
+    const orbs = WS.Projectile.orbits ? WS.Projectile.orbits.count : 0;
+    const busy = WS.clamp((bolts + orbs * 6) / 90, 0, 1);
+    const a = 0.3 + 0.7 * busy;
+    const dz = R.danger();
+    const twice = (w, rgba, draw) => {
+      ctx.lineWidth = w + 2.5; ctx.strokeStyle = `rgba(0,0,0,${(0.55 * a).toFixed(3)})`; draw(); ctx.stroke();
+      ctx.lineWidth = w; ctx.strokeStyle = rgba; draw(); ctx.stroke();
+    };
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    // Charge lanes, aimed or running.
+    for (let i = 0; i < WS.Enemy.pool.count; i++) {
+      const e = WS.Enemy.pool.active[i];
+      const t = e.telegraph;
+      if (!t || t.kind !== 'lane') continue;
+      const k = 1 - WS.clamp(t.life / t.maxLife, 0, 1);
+      const fade = t.firing ? 1 - k : 0.55 + 0.45 * k;
+      ctx.save();
+      ctx.translate(t.firing && t.ox !== undefined ? t.ox : e.x, t.firing && t.oy !== undefined ? t.oy : e.y);
+      ctx.rotate(WS.atan2(t.dy, t.dx));
+      twice(t.locked || t.firing ? 2.5 : 1.6, `rgba(${dz.rim},${(0.9 * a * fade).toFixed(3)})`,
+        () => { ctx.beginPath(); ctx.rect(0, -t.width / 2, t.length, t.width); });
+      ctx.restore();
+    }
+    // Ground: arming, then armed.
+    const hz = WS.Hazard.pool;
+    for (let i = 0; hz && i < hz.count; i++) {
+      const h = hz.active[i];
+      const c = R.vivid() ? R.VIVID : h.tint;
+      const rgb = `${WS.floor(c[0] * 255)},${WS.floor(c[1] * 255)},${WS.floor(c[2] * 255)}`;
+      if (h.fuse > 0) {
+        const k = 1 - h.fuse / (h.maxFuse || 1);
+        ctx.setLineDash([7, 6]); ctx.lineDashOffset = -time * 26;
+        twice(1.6, `rgba(${rgb},${(0.8 * a * (0.5 + 0.5 * k)).toFixed(3)})`,
+          () => { ctx.beginPath(); ctx.arc(h.x, h.y, h.radius * (0.45 + 0.55 * k), 0, WS.TAU); });
+        ctx.setLineDash([]);
+      } else {
+        const fade = WS.clamp(h.life / (h.maxLife || 1), 0, 1);
+        twice(1.8, `rgba(${rgb},${(0.85 * a * fade).toFixed(3)})`,
+          () => { ctx.beginPath(); ctx.arc(h.x, h.y, h.radius, 0, WS.TAU); });
+      }
+    }
+    // Storm marks, with the time left as the share of the ring still drawn.
+    const M = WS.Moor;
+    for (const st of (M && M.strikes) || []) {
+      const left = WS.clamp(st.tele / st.max, 0, 1);
+      twice(2, `rgba(200,220,255,${(0.9 * a).toFixed(3)})`,
+        () => { ctx.beginPath(); ctx.arc(st.x, st.y, st.r, -WS.PI / 2, -WS.PI / 2 + WS.TAU * (1 - left) + 0.01); });
+    }
+    // Shots in flight: the dart's core again, rim and all.
+    const host = WS.Projectile.hostiles;
+    for (let i = 0; host && i < host.count; i++) {
+      const h = host.active[i];
+      const r = h.radius;
+      const ang = (h.vx || h.vy) ? WS.atan2(h.vy, h.vx) : h.spin;
+      ctx.save();
+      ctx.translate(h.x, h.y); ctx.rotate(ang);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = 'rgba(2,4,8,.9)';
+      ctx.beginPath(); ctx.moveTo(r * 1.9, 0); ctx.lineTo(0, -r * 0.8); ctx.lineTo(-r, 0); ctx.lineTo(0, r * 0.8); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = WS.rgb(h.colour, 1);
+      ctx.beginPath(); ctx.moveTo(r * 1.3, 0); ctx.lineTo(0, -r * 0.46); ctx.lineTo(-r * 0.6, 0); ctx.lineTo(0, r * 0.46); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
   };
 
   const ZONE_FILL_CAP = 6;
