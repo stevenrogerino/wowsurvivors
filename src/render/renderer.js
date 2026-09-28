@@ -1035,6 +1035,19 @@
     if (WS.Finale.stage !== 'idle') WS.FinaleArt.drawAir(ctx, time);
 
     /* ---- effects --------------------------------------------------------- */
+    /* THE LIGHT BUDGET. Every flash and spark composites 'lighter', so they
+       add: past a point a full late build is one white sheet, and the
+       survivor, the creatures and the ground under them are all behind it.
+       The systems that shed detail when busy (zones, bolts, orbits) do so one
+       at a time; this is the whole frame's own light, weighed together, and
+       past a threshold it is all turned down the same way - never below
+       LIGHT_FLOOR, so a big build still looks like one. Warnings are drawn
+       after it and are not in it. */
+    {
+      const bl = WS.Projectile.bolts ? WS.Projectile.bolts.count : 0;
+      const load = WS.FX.flashes.count * 2 + WS.FX.particles.count * 0.25 + bl * 0.5;
+      R.lightDim = WS.clamp(1 - WS.max(0, load - LIGHT_EASY) / LIGHT_SPAN, LIGHT_FLOOR, 1);
+    }
     this.drawFlashes(ctx);
     this.drawStrikes(ctx);
     this.drawParticles(ctx);
@@ -3992,8 +4005,11 @@
     ctx.restore();
   };
 
+  const LIGHT_EASY = 60, LIGHT_SPAN = 300, LIGHT_FLOOR = 0.55;
+  R.lightDim = 1;
   R.drawFlashes = function (ctx) {
     const flashes = WS.FX.flashes;
+    const dim = R.lightDim || 1;
     /* A nova fires up to four of these per activation, one with up to sixteen
        spike-rays, and Arcane Overflow calling every weapon at once on every
        gem collected can land several activations a second - so a vacuum
@@ -4027,6 +4043,7 @@
        * blades riding the wave round, over a darkening of the ground that
        * gives the violet something to be bright against. */
       if (f.style && !this.lite && !busy) {
+        ctx.globalAlpha = dim;          // drawNova's gradients multiply by this
         this.drawNova(ctx, f, t, e, r);
         continue;
       }
@@ -4041,7 +4058,7 @@
         ctx.beginPath(); ctx.arc(f.x, f.y, f.radius * 0.7, 0, WS.TAU); ctx.fill();
       }
 
-      ctx.globalAlpha = (1 - t) * (1 - t) * 0.9;
+      ctx.globalAlpha = (1 - t) * (1 - t) * 0.9 * dim;
       ctx.strokeStyle = WS.rgb(f.colour, 1);
       ctx.lineWidth = WS.max(1, f.radius * 0.1 * (1 - e) + 1);
       ctx.beginPath(); ctx.arc(f.x, f.y, r, 0, WS.TAU); ctx.stroke();
@@ -4049,7 +4066,7 @@
       // A white leading edge for the first half, so the moment of contact is
       // the brightest thing in the effect and not the aftermath.
       if (t < 0.5) {
-        ctx.globalAlpha = (1 - t * 2) * 0.7;
+        ctx.globalAlpha = (1 - t * 2) * 0.7 * dim;
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = WS.max(1, f.radius * 0.045 * (1 - e) + 0.6);
         ctx.beginPath(); ctx.arc(f.x, f.y, r, 0, WS.TAU); ctx.stroke();
@@ -4064,7 +4081,7 @@
        * its own and something concrete for rank to add to: more rays past
        * the milestones where other weapons gain a projectile. */
       if (f.spikes > 0 && !this.lite && !busy) {
-        ctx.globalAlpha = (1 - t) * 0.85;
+        ctx.globalAlpha = (1 - t) * 0.85 * dim;
         ctx.strokeStyle = WS.rgb(f.colour, 1);
         ctx.lineWidth = WS.max(1, f.radius * 0.03 * (1 - e) + 0.8);
         ctx.lineCap = 'round';
@@ -4217,7 +4234,7 @@
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < parts.count; i++) {
       const p = parts.active[i];
-      ctx.globalAlpha = WS.clamp(p.life / p.maxLife, 0, 1);
+      ctx.globalAlpha = WS.clamp(p.life / p.maxLife, 0, 1) * (R.lightDim || 1);
       ctx.fillStyle = p.colour;
       ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, WS.TAU); ctx.fill();
     }
