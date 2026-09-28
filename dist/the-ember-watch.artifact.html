@@ -4124,6 +4124,15 @@ window.WS = window.WS || {};
     goldMultiRoll: 0.8,
     bombBossPct: 0.04,
     coffinGold: 80,
+    /* THE RELIQUARY: a boss that falls leaves one (Config.reliquaries), and
+       it holds reliquaryFive-in-a-hundred five gifts, reliquaryThree three,
+       else one - each odds times the survivor's luck. A gift is a step down
+       the road the build is already on (LevelUp.bestow): the evolution
+       that is ready, the passive a finished weapon is waiting on, a rank on
+       the weapon nearest its evolution. */
+    reliquaries: false,
+    reliquaryFive: 0.05,
+    reliquaryThree: 0.25,
     gravebladeGold: 120,
     glaiveGold: 120,
     rangedDamagePct: 0.75,
@@ -4154,6 +4163,22 @@ window.WS = window.WS || {};
     bossTimes: [300, 630, 960, 1320, 1620],
     spawnIntervalMult: 1.0,
     spawnCountMult: 1.0,
+    /* THE TIDE (waves.js Wave.tide): the ambient horde breathes around the
+       bosses. For tideGather seconds before a boss it thickens to tideCrest
+       of its pace; for tideLull seconds after one falls it thins to tideLow
+       and eases back. And once a battlefield's last phase has begun, the pace
+       keeps rising by one tideLateRamp-th a second, so the back half of the
+       night is not a flat walk to dawn. */
+    tides: false,
+    tideGather: 40, tideCrest: 1.5,
+    tideLull: 45, tideLow: 0.35,
+    tideLateRamp: 900,
+    /* And the night deepens at each boss: once a scheduled boss's lull is
+       over, the horde's health steps up by that boss's share here (easing
+       in over tideStepTime), so the stretch a boss's reliquary buys is
+       caught up with before the next. Weighted late, where the build is. */
+    tideSteps: [0.10, 0.15, 0.25, 0.30, 0],
+    tideStepTime: 60,
     deathTime: 1800,
     deathInterval: 60,
 
@@ -5497,7 +5522,7 @@ window.WS = window.WS || {};
       description: 'He healed until the Light curdled, and something colder answered. It has not let go since.',
       perk: 'An old practice, not a birthright: take up Blood Rite and healing curdles '
         + '{perkShare%}% harder for you than it does for anyone else who has taken the same rite.',
-      maxHealth: 155, moveSpeed: 200, armor: 2, pickupRadius: 58, healthRegen: 2.0,
+      maxHealth: 170, moveSpeed: 200, armor: 2, pickupRadius: 58, healthRegen: 2.5,
       perkShare: 0.20,
       signatureBlessing: 'blood_rite',
       /* Curdled Light used to be free at character select - felAttuned's own
@@ -5717,7 +5742,7 @@ window.WS = window.WS || {};
       color: [0.85, 0.15, 0.20],
       healPer: 3, evolvedHealPer: 2, healCap: 28, healCapRank: 7, evolvedHealCap: 43,
       description: 'A sweeping graveblade that carves health out of the wound it makes.',
-      evolveDamageMult: 5.79,
+      evolveDamageMult: 6.37,
       evolveName: 'Rend and Mend', evolvePairing: 'recovery',
       evolveDescription: 'The blade drinks deeper than any wound can hold.',
     },
@@ -5751,7 +5776,7 @@ window.WS = window.WS || {};
       cooldown: 1.429, damage: 18.3, speed: 346, projectiles: 6, pierce: 4,
       life: 0.9, radius: 8,
       description: 'A whirling ring of thrown steel.',
-      evolveDamageMult: 2.39, evolvePierce: 6, evolveProjectiles: 4,
+      evolveDamageMult: 2.63, evolvePierce: 6, evolveProjectiles: 4,
       evolveName: 'Steel Flurry', evolvePairing: 'fleetfoot',
       evolveDescription: 'The steel never stops moving.',
     },
@@ -5865,7 +5890,7 @@ window.WS = window.WS || {};
       cooldown: 1.7, damage: 14.8, speed: 380, projectiles: 1, range: 330, life: 2.6, radius: 12,
       color: [0.78, 0.92, 1.0],
       description: 'A bladed ring thrown out on the wind. It cuts everything on the way out, turns, and cuts everything on the way back.',
-      evolveDamageMult: 4,
+      evolveDamageMult: 3.7,
       evolveName: 'Razorgale', evolvePairing: 'serration',
       evolveDescription: 'The ring splits the wind in two and comes back sharper.',
     },
@@ -6060,10 +6085,10 @@ window.WS = window.WS || {};
 
   // what one more of each stat buys each kind of weapon
   S.BEHAVIOR = {
-    aimed: { count: 'one more bolt', speed: 'faster bolts' },
-    spray: { count: 'one more arrow', speed: 'faster arrows' },
-    ring: { count: 'one more knife', speed: 'faster knives' },
-    bounce: { count: 'one more ricochet', speed: 'faster shield' },
+    aimed: { count: 'one more bolt', speed: 'faster, harder bolts' },
+    spray: { count: 'one more arrow', speed: 'faster, harder arrows' },
+    ring: { count: 'one more knife', speed: 'faster, harder knives' },
+    bounce: { count: 'one more ricochet', speed: 'faster, harder shield' },
     nova: { area: 'bigger burst' },
     zone: { area: 'bigger field', duration: 'lasts longer' },
     orbit: { count: 'one more blade', area: 'wider circle', duration: 'spins longer' },
@@ -6071,8 +6096,8 @@ window.WS = window.WS || {};
     chain: { count: 'one more leap', area: 'longer leaps' },
     beam: { area: 'longer, wider line' },
     palm: { count: 'one more palm per flurry', area: 'longer reach' },
-    herd: { count: 'one more beast', duration: 'longer run', speed: 'faster run', area: 'bigger burst at the end' },
-    chakram: { count: 'one more ring', area: 'longer throw', speed: 'faster ring' },
+    herd: { count: 'one more beast', duration: 'longer run', speed: 'faster, harder run', area: 'bigger burst at the end' },
+    chakram: { count: 'one more ring', area: 'longer throw, wider ring', speed: 'faster, harder ring' },
   };
 
   // the kinds that launch bolts, which can carry a splash (weapon.js fillSpec)
@@ -6925,9 +6950,9 @@ window.WS = window.WS || {};
     },
     velocity: {
       name: 'Velocity', art: 'spear', quality: 'common',
-      description: '+{v%}% Projectile speed', max: 3, v: 0.15,
-      detail: 'Bolts, arrows, knives, shields, rings and beasts travel faster, so they reach foes sooner. No effect on anything that does not travel.',
-      apply: (p, up) => { p.projectileSpeed += up.v; },
+      description: '+{v%}% Projectile speed, and they hit {hit%}% harder', max: 3, v: 0.15, hit: 0.075,
+      detail: 'Bolts, arrows, knives, shields, rings and beasts travel faster, so they reach foes sooner, and strike harder for it. No effect on anything that does not travel.',
+      apply: (p, up) => { p.projectileSpeed += up.v; p.projectileImpact = (p.projectileImpact || 0) + up.hit; },
     },
     dark_bargain: {
       name: 'Dark Bargain', art: 'skull', quality: 'epic',
@@ -7415,14 +7440,18 @@ window.WS = window.WS || {};
     },
     shadowflame: {
       name: 'Shadowflame', weapons: ['umbral_bolt', 'cinderfall'],
-      description: 'Umbral Bolts detonate on impact, scorching everything nearby.',
+      description: 'Umbral Bolts detonate on impact, scorching everything nearby. Once a bolt passes through everything, the flame burns inside it instead: {pierceFlame*%}% harder.',
       hint: 'Shadow and flame were ever entwined.',
       // Every bolt that passes through something bursts, and an evolved bolt
       // passes through everything: at 55 the pair did 2.3 times its parts.
       // Umbral Bolt now pierces six from rank 1, so at 20 the burst was worth
-      // +79% by 5:00 (tools/rank-test.js); 12 keeps it near +40% early.
-      splash: 12,
-      apply: (w1, w2, c) => { w1.mods.splash = c.splash; },
+      // +79% by 5:00 (tools/rank-test.js); 12 kept it near +40% early. Once
+      // the bolt evolves it passes through everything, and a creature the
+      // burst touched is one the bolt then skips, so the burst was worth +2%:
+      // once it passes through everything the flame burns in the bolt
+      // instead (weapon.js fillSpec), pierceFlame times its damage.
+      splash: 12, pierceFlame: 1.35,
+      apply: (w1, w2, c) => { w1.mods.splash = c.splash; w1.mods.pierceFlame = c.pierceFlame; },
     },
     deadly_brew: {
       name: 'Deadly Brew', weapons: ['knifestorm', 'rimeshard'],
@@ -7443,15 +7472,20 @@ window.WS = window.WS || {};
     },
     radiant_gyre: {
       name: 'Radiant Gyre', weapons: ['axe_gyre', 'dawnpulse'],
-      description: 'Every spin of the Axe Gyre begins with a pulse of holy Light.',
+      description: 'Every spin of the Axe Gyre begins with a pulse of holy Light, and the blades bite {dmgMult*%}% harder.',
       hint: 'Steel spun in faith becomes something more.',
-      apply: (w1) => { w1.mods.novaOnCast = true; },
+      // The pulse is worth +20% early and +5% once the gyre evolves.
+      dmgMult: 1.08,
+      apply: (w1, w2, c) => { w1.mods.novaOnCast = true; w1.mods.damageMult = (w1.mods.damageMult || 1) * c.dmgMult; },
     },
     truestrike: {
       name: 'Truestrike', weapons: ['volley', 'seeking_motes'],
-      description: 'Enchanted arrows curve in flight to seek their prey.',
+      description: 'Enchanted arrows curve in flight to seek their prey and strike {dmgMult*%}% harder.',
       hint: 'The finest rangers fletch their arrows with a whisper of magic.',
-      apply: (w1) => { w1.mods.homing = true; },
+      // Homing alone bends a spread onto one target: -1% to -5% on a crowd
+      // until the volley evolved (tools/rank-test.js KIND=pair).
+      dmgMult: 1.10,
+      apply: (w1, w2, c) => { w1.mods.homing = true; w1.mods.damageMult = (w1.mods.damageMult || 1) * c.dmgMult; },
     },
     celestial: {
       name: 'Celestial Alignment', weapons: ['moonbrand', 'dawnpulse'],
@@ -7507,7 +7541,7 @@ window.WS = window.WS || {};
       name: 'Hallowed Hands', weapons: ['iron_palms', 'hallowed_ring'],
       description: 'Every flurry mends you for {healBonus}, and the hallowed ground spreads {areaMult*%}% wider.',
       hint: 'Hands that strike can also bless.',
-      healBonus: 1, areaMult: 1.10,
+      healBonus: 1, areaMult: 1.15,
       apply: (w1, w2, c) => {
         w1.mods.healBonus = (w1.mods.healBonus || 0) + c.healBonus;
         w2.mods.areaMult = (w2.mods.areaMult || 1) * c.areaMult;
@@ -7515,10 +7549,12 @@ window.WS = window.WS || {};
     },
     moonlit_herd: {
       name: 'Moonlit Herd', weapons: ['spirit_herd', 'moonbrand'],
-      description: 'One more beast in the herd, and each ends its run in a burst of moonlight.',
+      description: 'One more beast in the herd, running {dmgMult*%}% harder, and each ends its run in a burst of moonlight.',
       hint: 'Some herds only run under a full moon.',
-      extraProjectiles: 1, endBurst: 60,
+      // The beast and the burst were +22% at 5:00 and +3% to +7% after.
+      extraProjectiles: 1, endBurst: 60, dmgMult: 1.12,
       apply: (w1, w2, c) => {
+        w1.mods.damageMult = (w1.mods.damageMult || 1) * c.dmgMult;
         w1.mods.extraProjectiles = (w1.mods.extraProjectiles || 0) + c.extraProjectiles;
         w1.mods.endBurst = WS.max(w1.mods.endBurst || 0, c.endBurst);
       },
@@ -26610,6 +26646,7 @@ window.WS = window.WS || {};
 
     if (e.boss) {
       run.bossesSlain++;
+      WS.WaveManager.onBossSlain();
       if (run.marks) run.marks.push([Math.round(run.time), 'boss', e.displayName || t.name]);
       if (e.id === 'aethelgard') {
         this.pool.release(e);
@@ -26617,6 +26654,7 @@ window.WS = window.WS || {};
         return;
       }
       if (e.id === 'death_itself') run.deathsSlain++;
+      else if (WS.Config.reliquaries) WS.Pickup.spawn('reliquary', e.x, e.y);
       WS.Save.stats.bosses[e.id] = (WS.Save.stats.bosses[e.id] || 0) + 1;
       const gold = WS.floor((t.gold || 40) * run.goldMult * player.goldMultiplier);
       WS.Game.addGold(gold, e.x, e.y);
@@ -26745,7 +26783,7 @@ window.WS = window.WS || {};
          bonus is exactly the kind of wrong number this exists to prevent. */
       p = Weapon._probe || (Weapon._probe = WS.Player.create('mage'));
       p.damageMultiplier = 1; p.cooldownMultiplier = 1; p.areaMultiplier = 1;
-      p.projectileBonus = 0; p.projectileSpeed = 1; p.metaTimer = 0;
+      p.projectileBonus = 0; p.projectileSpeed = 1; p.projectileImpact = 0; p.metaTimer = 0;
       p.formTimer = 0; p.form = null; p.poise = 0;
     }
     const w = { id, data, level: level || 1, evolved: !!evolved, mods: {} };
@@ -26802,7 +26840,11 @@ window.WS = window.WS || {};
 
   function fillSpec(player, w) {
     const d = w.data, cfg = WS.Config;
-    spec.damage = damageOf(player, w);
+    /* Velocity's second half: a projectile that travels hits harder for it.
+       Speed alone was a dead card - measured to maximum against the same
+       crowd it was worth -12% to +3% to most weapons, because what arrives
+       sooner hits the same things (a seeking bolt or a herd it made worse). */
+    spec.damage = damageOf(player, w) * (1 + (player.projectileImpact || 0));
     spec.life = d.life || 2.0;
     spec.radius = (d.radius || 8) * (1 + cfg.rankRadiusStep * (w.level - 1))
       * (w.evolved ? cfg.evolveRadiusMult : 1);
@@ -26829,7 +26871,16 @@ window.WS = window.WS || {};
     // weapon was drawn with.
     spec.turnScale = player.projectileSpeed || 1;
     spec.homingTarget = null;
-    const splash = d.splash || w.mods.splash || (w.evolved ? d.evolveSplash : 0);
+    let splash = d.splash || w.mods.splash || (w.evolved ? d.evolveSplash : 0);
+    /* A bolt that passes through everything has no use for a burst: every
+       creature the burst touches is one the bolt then skips (the burst
+       shares its ledger, so nothing is struck twice), and a burst deals less
+       than the bolt. Shadowflame on an evolved Umbral Bolt was worth +4%.
+       There the flame goes into the bolt instead (w.mods.pierceFlame). */
+    if (w.mods.pierceFlame && spec.pierce >= 99 && !d.splash) {
+      splash = w.evolved ? d.evolveSplash || 0 : 0;
+      spec.damage *= w.mods.pierceFlame;
+    }
     spec.splash = splash ? areaOf(player, w, splash) : null;
     spec.slowFactor = d.slowFactor || w.mods.slowFactor;
     spec.slowDuration = d.slowDuration || w.mods.slowDuration;
@@ -27183,7 +27234,8 @@ window.WS = window.WS || {};
     if (!target) return false;
     fillSpec(player, w);
     const speed = d.waveSpeed || 520;
-    spec.damage *= d.waveDamage || 0.8;
+    // A palm's wave keeps its own pace, so Velocity does not reach it.
+    spec.damage = damageOf(player, w) * (d.waveDamage || 0.8);
     spec.pierce = 2; spec.healPer = 0; spec.healPool = null;
     spec.radius = 13 * (w.evolved ? 1.3 : 1);
     spec.life = (reach * (d.waveReach || 2.8)) / speed;
@@ -27256,6 +27308,11 @@ window.WS = window.WS || {};
     fillSpec(player, w);
     spec.pierce = 999; spec.homing = false; spec.homingTarget = null;
     spec.boomerang = range;
+    /* Area throws it further - and on its own that made the chakram WORSE
+       (-21% on a crowd at its cap, -30% on a boss): the turn happens past
+       the crowd and the ring spends its extra flight on empty ground. The
+       ring widens with it, so the longer pass cuts a wider lane. */
+    spec.radius *= player.areaMultiplier;
     spec.spinRate = 18;
     const count = countOf(player, w);
     spec.burst = count;
@@ -27517,12 +27574,16 @@ window.WS = window.WS || {};
       return { per: inCircle(r, crowd) * ticks,
         why: `r=${Math.round(r)} x ${ticks} ticks` };
     },
-    /* Hops from target to target, each hop 6% weaker than the last. */
+    /* Hops from target to target, each weaker than the last by the weapon's
+       own falloff - and never below nothing, as chainFrom has it. Summing
+       1 - 0.06i without the floor took an evolved Arcweb, whose chain runs
+       past seventeen hops, to a negative number of targets. */
     chain: (p, w, crowd) => {
       const chains = chainCount(p, w);
+      const fall = w.evolved ? evo(w.data, 'evolveChainFalloff') : WS.Config.chainFalloff;
       let sum = 0;
-      for (let i = 0; i < Math.min(chains, Math.max(1, crowd)); i++) sum += 1 - i * 0.06;
-      return { per: sum, why: `${chains} hops, each 6% weaker` };
+      for (let i = 0; i < Math.min(chains, Math.max(1, crowd)); i++) sum += Math.max(0, 1 - i * fall);
+      return { per: sum, why: `${chains} hops, each ${Math.round(fall * 100)}% weaker` };
     },
     /* Several bolts, each with its own splash. */
     storm: (p, w, crowd) => {
@@ -27613,7 +27674,7 @@ window.WS = window.WS || {};
     if (!p) {
       p = Weapon._probe || (Weapon._probe = WS.Player.create('mage'));
       p.damageMultiplier = 1; p.cooldownMultiplier = 1; p.areaMultiplier = 1;
-      p.projectileBonus = 0; p.projectileSpeed = 1; p.metaTimer = 0;
+      p.projectileBonus = 0; p.projectileSpeed = 1; p.projectileImpact = 0; p.metaTimer = 0;
       p.formTimer = 0; p.form = null; p.poise = 0;
     }
     const w = { id, data, level: level || 1, evolved: !!evolved, mods: {} };
@@ -27623,13 +27684,16 @@ window.WS = window.WS || {};
       splash: (data.splash || (w.evolved && data.evolveSplash)) ? areaOf(p, w, data.splash || data.evolveSplash) : 0,
     };
     const r = model(p, w, Math.max(1, crowd || 1), q);
-    const damage = damageOf(p, w);
+    // What flies carries Velocity's impact (fillSpec); the rest does not.
+    const damage = damageOf(p, w) * (TRAVELS[b] ? 1 + (p.projectileImpact || 0) : 1);
     const cooldown = Weapon.cooldown(p, w);
     // `per` already counts every projectile, so it is not multiplied by count
     // again - the models that use q.count have folded it in themselves.
     return { behavior: b, targets: r.per, why: r.why,
       dps: damage * r.per / cooldown };
   };
+
+  const TRAVELS = { aimed: 1, spray: 1, ring: 1, bounce: 1, chakram: 1, herd: 1 };
 
   /* --------------------------------------------------------------- fire -- */
   Weapon.fire = function (player, w) {
@@ -27653,7 +27717,8 @@ window.WS = window.WS || {};
     const d = w.data;
     const lines = [];
     const behavior = behaviorOf(w);
-    lines.push(['Damage', WS.round(damageOf(player, w))]);
+    const impact = player && TRAVELS[behavior] ? 1 + (player.projectileImpact || 0) : 1;
+    lines.push(['Damage', WS.round(damageOf(player, w) * impact)]);
     lines.push(['Cooldown', Weapon.cooldown(player, w).toFixed(2) + 's']);
     if (behavior === 'nova' || behavior === 'zone') {
       lines.push(['Radius', WS.round(areaOf(player, w, d.radius || 120))]);
@@ -27773,6 +27838,7 @@ window.WS = window.WS || {};
       areaMultiplier: 1,
       projectileBonus: 0,
       projectileSpeed: 1,
+      projectileImpact: 0,
       critChance: WS.Config.baseCritChance,
       critDamage: WS.Config.baseCritDamage,
       luck: 1,
@@ -29657,6 +29723,8 @@ window.WS = window.WS || {};
     coin: { art: 'coin', tint: [1.0, 0.82, 0.20], size: 15 },
     potion: { art: 'potion', tint: [1.0, 0.40, 0.40], size: 17 },
     chest: { art: 'chest', tint: [0.9, 0.70, 0.30], size: 22 },
+    // What a boss leaves behind (Config.reliquaries): gifts, not gold.
+    reliquary: { art: 'chest', tint: [0.72, 0.55, 1.0], size: 34 },
     bomb: { art: 'bomb', tint: [1.0, 0.50, 0.30], size: 19 },
     stone: { art: 'stone', tint: [0.5, 0.90, 1.0], size: 18 },
     cache: { art: 'cache', tint: [1.0, 0.90, 0.60], size: 28 },
@@ -29812,6 +29880,18 @@ window.WS = window.WS || {};
       if (rolls > 1) {
         WS.Game.toast(rolls === 5 ? 'JACKPOT!' : 'Treasure!', `The chest pays out ${rolls}x.`, { kind: 'loot' });
         WS.FX.flash(pickup.x, pickup.y, 90, WS.CONST.COLORS.gold, 0.5);
+      }
+
+    } else if (kind === 'reliquary') {
+      const cfg = WS.Config;
+      const roll = WS.random() / WS.max(0.2, p.luck);
+      const n = roll < cfg.reliquaryFive ? 5 : roll < cfg.reliquaryThree ? 3 : 1;
+      const gifts = WS.LevelUp.bestow(p, n);
+      WS.Audio.play('chest');
+      WS.FX.flash(pickup.x, pickup.y, 110, [0.72, 0.55, 1.0], 0.55);
+      if (gifts.length) {
+        WS.Game.announce(n === 5 ? 'A reliquary, brimming!' : n === 3 ? 'A generous reliquary!' : 'A reliquary',
+          gifts.join(' · '), 3.2, { kind: 'loot' });
       }
 
     } else if (kind === 'bomb') {
@@ -30462,6 +30542,8 @@ window.WS = window.WS || {};
     this.endlessEventTimer = cfg.endlessFirstEvent;
     this.endlessBosses = 0;
     this.deathWarned = false;
+    this.lull = 0;
+    this.deepened = 0;
     this.deathTimer = 0;
     this.cacheTimer = cfg.cacheFirst;
     this.merchantTimer = cfg.eggVendorFirst;
@@ -30501,11 +30583,50 @@ window.WS = window.WS || {};
     const cfg = WS.Config;
     const dial = this.map.difficulty * run.diffScale * hyper;
     const k = WS.min(1, cfg.difficultyRampStart + (1 - cfg.difficultyRampStart) * time / cfg.difficultyRampTime);
-    let s = (1 + time / cfg.enemyScaleTime) * (1 + (dial - 1) * k);
+    let s = (1 + time / cfg.enemyScaleTime) * (1 + (dial - 1) * k) * this.depth(time, run);
     if (run.victorious || run.mode === 'endless') {
       s *= 1 + WS.max(0, time - WS.Config.endlessRampStart) / WS.Config.endlessEnemyRampTime;
     }
     return s;
+  };
+
+  /** How thick the ambient horde runs right now, as a multiple of the
+   *  phase's pace (Config.tides; see config.js THE TIDE). */
+  Wave.tide = function (time, run) {
+    const cfg = WS.Config;
+    if (!cfg.tides || run.victorious || run.mode === 'endless') return 1;
+    let f = 1;
+    const nb = this.map.bosses[this.bossIndex];
+    if (nb && nb.at - time < cfg.tideGather) f = 1 + (cfg.tideCrest - 1) * WS.clamp(1 - (nb.at - time) / cfg.tideGather, 0, 1);
+    if (this.lull > 0) {
+      // Thin at once, then ease back over the second half.
+      const k = WS.clamp((cfg.tideLull - this.lull) / cfg.tideLull, 0, 1);
+      f *= k < 0.5 ? cfg.tideLow : cfg.tideLow + (1 - cfg.tideLow) * (k - 0.5) * 2;
+    }
+    const last = this.map.phases[this.map.phases.length - 1];
+    if (last && time > last.at) f *= 1 + (time - last.at) / cfg.tideLateRamp;
+    return f;
+  };
+
+  /** How much the night has deepened by `time`: the product of each
+   *  scheduled boss's tideSteps share, each easing in once its lull is
+   *  done (Config.tides). */
+  Wave.depth = function (time, run) {
+    const cfg = WS.Config;
+    if (!cfg.tides || !this.map || !cfg.tideSteps) return 1;
+    let d = 1;
+    const bosses = this.map.bosses;
+    for (let i = 0; i < bosses.length && i < cfg.tideSteps.length; i++) {
+      const k = WS.clamp((time - bosses[i].at - cfg.tideLull) / cfg.tideStepTime, 0, 1);
+      if (k <= 0) break;
+      d *= 1 + cfg.tideSteps[i] * k;
+    }
+    return d;
+  };
+
+  /** A boss fell: the horde draws breath (Config.tides). */
+  Wave.onBossSlain = function () {
+    if (WS.Config.tides) this.lull = WS.Config.tideLull;
   };
 
   /** Bosses have large bases already, so their curve is gentler. */
@@ -30558,9 +30679,10 @@ window.WS = window.WS || {};
 
     /* ---- ambient spawns -------------------------------------------------- */
     const curse = player.curse;
+    if (this.lull > 0) this.lull -= dt;
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0 && phase.count > 0) {
-      this.spawnTimer = phase.interval * WS.Config.spawnIntervalMult
+      this.spawnTimer = phase.interval * WS.Config.spawnIntervalMult / this.tide(time, run)
         * run.diffInterval * (run.hyper ? 0.75 : 1) / (1 + WS.Config.curseSpawnRate * curse)
         * WS.Runs.oath('spawn');
       const scale = this.enemyScale(time);
@@ -30583,6 +30705,17 @@ window.WS = window.WS || {};
       WS.Game.announce(ev.text, null, 2.6);
       WS.Audio.play('warn');
       WS.Enemy.spawnCircle(ev.id, ev.count, WS.Config.swarmRing, this.enemyScale(time));
+    }
+
+    /* ---- the night deepens (Config.tides) --------------------------------- */
+    const steps = WS.Config.tides && WS.Config.tideSteps;
+    if (steps && !run.victorious) {
+      const i = this.deepened;
+      const b = map.bosses[i];
+      if (b && i < steps.length && time >= b.at + WS.Config.tideLull) {
+        this.deepened++;
+        if (steps[i] > 0) WS.Game.announce('The night deepens.', null, 2.4);
+      }
     }
 
     /* ---- scheduled bosses ------------------------------------------------ */
@@ -31302,6 +31435,35 @@ window.WS = window.WS || {};
       WS.FX.notice(p.x, p.y, 'BREAKING POINT!', '#ff8a3c');
     }
     WS.Achievements.check();
+  };
+
+  /** THE RELIQUARY'S GIFTS: n free steps down the road the build is already
+   *  on, chosen for the survivor - an evolution that is ready; else the
+   *  passive a finished weapon is waiting on to evolve; else a rank on the
+   *  weapon nearest its evolution; else Might. Returns what was given, as
+   *  short labels. */
+  LevelUp.bestow = function (p, n) {
+    const max = WS.WEAPON_MAX_LEVEL, out = [];
+    const has = (id) => (p.upgradeLevels[id] || 0);
+    const room = (id) => WS.Upgrades[id] && has(id) < WS.Upgrades[id].max;
+    for (let i = 0; i < n; i++) {
+      let choice = null, label = null;
+      const ready = p.weapons.find((w) => !w.evolved && w.level >= max && w.data.evolvePairing && has(w.data.evolvePairing) > 0);
+      if (ready) { choice = { type: 'evolve', id: ready.id }; label = ready.data.evolveName; }
+      if (!choice) {
+        const waits = p.weapons.find((w) => !w.evolved && w.level >= max && w.data.evolvePairing && !has(w.data.evolvePairing) && room(w.data.evolvePairing));
+        if (waits) { choice = { type: 'stat', id: waits.data.evolvePairing }; label = WS.Upgrades[waits.data.evolvePairing].name; }
+      }
+      if (!choice) {
+        const next = p.weapons.filter((w) => w.level < max).sort((a, b) => b.level - a.level)[0];
+        if (next) { choice = { type: 'weapon_rank', id: next.id }; label = next.data.name + ' rank ' + (next.level + 1); }
+      }
+      if (!choice && room('might')) { choice = { type: 'stat', id: 'might' }; label = WS.Upgrades.might.name; }
+      if (!choice) break;
+      this.apply(p, choice);
+      out.push(label);
+    }
+    return out;
   };
 
   /** Removes a boon (and its future offers) from this run's pool. */
@@ -44800,7 +44962,7 @@ window.WS = window.WS || {};
    * drawn as small flat glyphs lying on the grass, which is how scenery is
    * drawn. Measured against the floor beside them, the bomb cleared 274 of
    * colour distance across THIRTY-FOUR PIXELS: a bright speck, not a landmark. */
-  const CALLOUT = { bomb: 1, stone: 1, hourglass: 1, chest: 1, cache: 1 };
+  const CALLOUT = { bomb: 1, stone: 1, hourglass: 1, chest: 1, cache: 1, reliquary: 1 };
 
   /** A watcher, met on the field (src/game/encounters.js): the survivor
    *  themselves, drawn through the hero rig - or, for the fallen hero, the

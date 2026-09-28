@@ -343,6 +343,35 @@
     WS.Achievements.check();
   };
 
+  /** THE RELIQUARY'S GIFTS: n free steps down the road the build is already
+   *  on, chosen for the survivor - an evolution that is ready; else the
+   *  passive a finished weapon is waiting on to evolve; else a rank on the
+   *  weapon nearest its evolution; else Might. Returns what was given, as
+   *  short labels. */
+  LevelUp.bestow = function (p, n) {
+    const max = WS.WEAPON_MAX_LEVEL, out = [];
+    const has = (id) => (p.upgradeLevels[id] || 0);
+    const room = (id) => WS.Upgrades[id] && has(id) < WS.Upgrades[id].max;
+    for (let i = 0; i < n; i++) {
+      let choice = null, label = null;
+      const ready = p.weapons.find((w) => !w.evolved && w.level >= max && w.data.evolvePairing && has(w.data.evolvePairing) > 0);
+      if (ready) { choice = { type: 'evolve', id: ready.id }; label = ready.data.evolveName; }
+      if (!choice) {
+        const waits = p.weapons.find((w) => !w.evolved && w.level >= max && w.data.evolvePairing && !has(w.data.evolvePairing) && room(w.data.evolvePairing));
+        if (waits) { choice = { type: 'stat', id: waits.data.evolvePairing }; label = WS.Upgrades[waits.data.evolvePairing].name; }
+      }
+      if (!choice) {
+        const next = p.weapons.filter((w) => w.level < max).sort((a, b) => b.level - a.level)[0];
+        if (next) { choice = { type: 'weapon_rank', id: next.id }; label = next.data.name + ' rank ' + (next.level + 1); }
+      }
+      if (!choice && room('might')) { choice = { type: 'stat', id: 'might' }; label = WS.Upgrades.might.name; }
+      if (!choice) break;
+      this.apply(p, choice);
+      out.push(label);
+    }
+    return out;
+  };
+
   /** Removes a boon (and its future offers) from this run's pool. */
   LevelUp.banish = function (p, choice) {
     if (choice.type === 'bread' || choice.type === 'blessing'

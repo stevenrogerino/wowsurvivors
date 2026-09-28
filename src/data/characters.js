@@ -96,7 +96,7 @@
       description: 'He healed until the Light curdled, and something colder answered. It has not let go since.',
       perk: 'An old practice, not a birthright: take up Blood Rite and healing curdles '
         + '{perkShare%}% harder for you than it does for anyone else who has taken the same rite.',
-      maxHealth: 155, moveSpeed: 200, armor: 2, pickupRadius: 58, healthRegen: 2.0,
+      maxHealth: 170, moveSpeed: 200, armor: 2, pickupRadius: 58, healthRegen: 2.5,
       perkShare: 0.20,
       signatureBlessing: 'blood_rite',
       /* Curdled Light used to be free at character select - felAttuned's own

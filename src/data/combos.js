@@ -20,14 +20,18 @@
     },
     shadowflame: {
       name: 'Shadowflame', weapons: ['umbral_bolt', 'cinderfall'],
-      description: 'Umbral Bolts detonate on impact, scorching everything nearby.',
+      description: 'Umbral Bolts detonate on impact, scorching everything nearby. Once a bolt passes through everything, the flame burns inside it instead: {pierceFlame*%}% harder.',
       hint: 'Shadow and flame were ever entwined.',
       // Every bolt that passes through something bursts, and an evolved bolt
       // passes through everything: at 55 the pair did 2.3 times its parts.
       // Umbral Bolt now pierces six from rank 1, so at 20 the burst was worth
-      // +79% by 5:00 (tools/rank-test.js); 12 keeps it near +40% early.
-      splash: 12,
-      apply: (w1, w2, c) => { w1.mods.splash = c.splash; },
+      // +79% by 5:00 (tools/rank-test.js); 12 kept it near +40% early. Once
+      // the bolt evolves it passes through everything, and a creature the
+      // burst touched is one the bolt then skips, so the burst was worth +2%:
+      // once it passes through everything the flame burns in the bolt
+      // instead (weapon.js fillSpec), pierceFlame times its damage.
+      splash: 12, pierceFlame: 1.35,
+      apply: (w1, w2, c) => { w1.mods.splash = c.splash; w1.mods.pierceFlame = c.pierceFlame; },
     },
     deadly_brew: {
       name: 'Deadly Brew', weapons: ['knifestorm', 'rimeshard'],
@@ -48,15 +52,20 @@
     },
     radiant_gyre: {
       name: 'Radiant Gyre', weapons: ['axe_gyre', 'dawnpulse'],
-      description: 'Every spin of the Axe Gyre begins with a pulse of holy Light.',
+      description: 'Every spin of the Axe Gyre begins with a pulse of holy Light, and the blades bite {dmgMult*%}% harder.',
       hint: 'Steel spun in faith becomes something more.',
-      apply: (w1) => { w1.mods.novaOnCast = true; },
+      // The pulse is worth +20% early and +5% once the gyre evolves.
+      dmgMult: 1.08,
+      apply: (w1, w2, c) => { w1.mods.novaOnCast = true; w1.mods.damageMult = (w1.mods.damageMult || 1) * c.dmgMult; },
     },
     truestrike: {
       name: 'Truestrike', weapons: ['volley', 'seeking_motes'],
-      description: 'Enchanted arrows curve in flight to seek their prey.',
+      description: 'Enchanted arrows curve in flight to seek their prey and strike {dmgMult*%}% harder.',
       hint: 'The finest rangers fletch their arrows with a whisper of magic.',
-      apply: (w1) => { w1.mods.homing = true; },
+      // Homing alone bends a spread onto one target: -1% to -5% on a crowd
+      // until the volley evolved (tools/rank-test.js KIND=pair).
+      dmgMult: 1.10,
+      apply: (w1, w2, c) => { w1.mods.homing = true; w1.mods.damageMult = (w1.mods.damageMult || 1) * c.dmgMult; },
     },
     celestial: {
       name: 'Celestial Alignment', weapons: ['moonbrand', 'dawnpulse'],
@@ -112,7 +121,7 @@
       name: 'Hallowed Hands', weapons: ['iron_palms', 'hallowed_ring'],
       description: 'Every flurry mends you for {healBonus}, and the hallowed ground spreads {areaMult*%}% wider.',
       hint: 'Hands that strike can also bless.',
-      healBonus: 1, areaMult: 1.10,
+      healBonus: 1, areaMult: 1.15,
       apply: (w1, w2, c) => {
         w1.mods.healBonus = (w1.mods.healBonus || 0) + c.healBonus;
         w2.mods.areaMult = (w2.mods.areaMult || 1) * c.areaMult;
@@ -120,10 +129,12 @@
     },
     moonlit_herd: {
       name: 'Moonlit Herd', weapons: ['spirit_herd', 'moonbrand'],
-      description: 'One more beast in the herd, and each ends its run in a burst of moonlight.',
+      description: 'One more beast in the herd, running {dmgMult*%}% harder, and each ends its run in a burst of moonlight.',
       hint: 'Some herds only run under a full moon.',
-      extraProjectiles: 1, endBurst: 60,
+      // The beast and the burst were +22% at 5:00 and +3% to +7% after.
+      extraProjectiles: 1, endBurst: 60, dmgMult: 1.12,
       apply: (w1, w2, c) => {
+        w1.mods.damageMult = (w1.mods.damageMult || 1) * c.dmgMult;
         w1.mods.extraProjectiles = (w1.mods.extraProjectiles || 0) + c.extraProjectiles;
         w1.mods.endBurst = WS.max(w1.mods.endBurst || 0, c.endBurst);
       },

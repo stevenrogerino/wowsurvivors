@@ -30,6 +30,7 @@ function installDrafter(opts) {
     mode: 'dps',          // 'dps' values cards by what they add; 'simple' by fixed preference
     defence: 0.3,         // how much defence is worth against damage (fitted: 0 and 1 both do worse)
     newBonus: 8,          // what an open slot's future is worth, in dps mode
+    calib: null,          // per-weapon reach corrections (tools/bot/reach-calibration.json)
   }, opts || {});
   const D = window.__draft = { opts: O, picks: [] };
   const OFFENCE = { might: 52, haste: 52, area: 48, quantity: 50, precision: 42, ferocity: 40, velocity: 30 };
@@ -114,7 +115,7 @@ function installDrafter(opts) {
 
   /* ---- dps mode: what each card adds, in the game's own damage model ---- */
   const STATS = ['damageMultiplier', 'cooldownMultiplier', 'areaMultiplier', 'projectileBonus',
-    'projectileSpeed', 'critChance', 'critDamage', 'durationMult'];
+    'projectileSpeed', 'projectileImpact', 'critChance', 'critDamage', 'durationMult'];
   // Only these touch nothing but the stats above, so only these are measured
   // by applying them; everything else is valued by what it is for.
   const MEASURED = { might: 1, haste: 1, precision: 1, ferocity: 1, area: 1, quantity: 1, velocity: 1, perennial: 1 };
@@ -122,7 +123,10 @@ function installDrafter(opts) {
   function crowd() { return Math.max(8, Math.min(40, WS.Enemy.pool.count)); }
   function dpsOf(p, id, level, evolved) {
     const r = WS.Weapon.reach(id, level, evolved, crowd(), p);
-    return r && isFinite(r.dps) ? r.dps : 0;
+    // The reach model's crowd is spread evenly; a real one bunches. Where
+    // tools/bot/calibrate.js has measured the difference, it corrects it.
+    const k = O.calib && O.calib[id] ? (evolved ? O.calib[id].e : O.calib[id].b) : 1;
+    return r && isFinite(r.dps) ? Math.max(0, r.dps) * k : 0;
   }
   function total(p) {
     let t = 0;

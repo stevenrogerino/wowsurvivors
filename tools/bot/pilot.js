@@ -272,6 +272,7 @@ function installPilot(opts) {
       switch (q.kind) {
         case 'potion': v = hp < 0.95 ? 20 + 260 * (1 - hp) * (1 - hp) * 4 : 1; break;
         case 'chest': v = 90; break;
+        case 'reliquary': v = 200; break;   // a boss's gifts: always worth the walk
         case 'cache': v = O.bombK ? 0 : 120; break;
         case 'stone': v = 45; break;       // the lodestone: every gem on the field
         case 'hourglass': v = O.freezeK ? 0 : 40; break;   // priced as rescues

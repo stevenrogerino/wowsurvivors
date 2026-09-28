@@ -40,6 +40,7 @@
       areaMultiplier: 1,
       projectileBonus: 0,
       projectileSpeed: 1,
+      projectileImpact: 0,
       critChance: WS.Config.baseCritChance,
       critDamage: WS.Config.baseCritDamage,
       luck: 1,

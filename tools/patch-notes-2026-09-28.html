@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Patch Notes · The Ember Watch</title>
+<meta name="description" content="The Ember Watch balance patch: every evolved weapon in one damage band, Ruin Unbound nerfed, eight new callings, Conviction reworked, healing and tanks rebalanced.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,500;0,700;0,800;1,500&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root {
+  color-scheme: dark;
+  --void: #06070b;
+  --obsidian: #0b0d12;
+  --panel: #12141b;
+  --panel-2: #181a22;
+  --rule: #262a35;
+  --arc: #f5c56b;
+  --arc-hot: #ffe6ae;
+  --arc-deep: #b98c3c;
+  --buff: #3ddc7a;
+  --nerf: #e2483d;
+  --fix: #59bfff;
+  --new: #b34ff2;
+  --ink: #e9edf6;
+  --ink-dim: #9aa2b5;
+  --ink-faint: #6f7789;
+  --voice: 'Alegreya', Georgia, 'Times New Roman', serif;
+  --ui: 'Archivo', 'Segoe UI', Roboto, system-ui, sans-serif;
+  --fig: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html { background: var(--void); }
+body {
+  background: var(--void);
+  color: var(--ink);
+  font: 400 15px/1.55 var(--ui);
+  margin: 0;
+  padding-inline: 16px;
+  padding-block: 0 64px;
+}
+nav.back { position: sticky; top: 0; z-index: 5; margin-inline: -16px; padding-inline: 16px;
+  background: rgba(6,7,11,.86); backdrop-filter: blur(8px); border-bottom: 1px solid var(--rule); }
+.back-in { max-width: 1080px; margin: 0 auto; min-height: 48px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; padding-block: 8px; }
+nav.back a { text-decoration: none; }
+nav.back .mark { font: 800 13px var(--ui); letter-spacing: .08em; color: var(--arc-hot); white-space: nowrap; }
+nav.back .mark b { color: var(--ink); }
+nav.back .links { display: flex; gap: 6px; }
+nav.back .links a { font: 600 13px var(--ui); color: var(--ink-dim); padding: 6px 10px; border-radius: 6px; }
+nav.back .links a:hover, nav.back .links a:focus-visible { color: var(--ink); background: var(--panel-2); }
+nav.back .links a.go { color: var(--arc-hot); border: 1px solid rgba(245,197,107,.45); }
+a:focus-visible { outline: 2px solid var(--arc); outline-offset: 2px; }
+.wrap { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 56px; }
+img { max-width: 100%; display: block; }
+h1, h2, h3 { font-family: var(--voice); text-wrap: balance; margin: 0; font-weight: 700; }
+p { margin: 0; max-width: 66ch; }
+.fig { font-family: var(--fig); font-variant-numeric: tabular-nums; }
+.eyebrow { font: 600 11px/1 var(--ui); letter-spacing: .24em; text-transform: uppercase; color: var(--arc-deep); }
+
+/* ---- hero ---- */
+.hero {
+  position: relative; overflow: hidden;
+  margin-inline: -16px; padding: 64px 16px 44px;
+  background:
+    radial-gradient(120% 90% at 50% 118%, rgba(245,197,107,.34), rgba(245,197,107,.08) 42%, transparent 64%),
+    linear-gradient(180deg, #05060a 0%, #0b0d14 60%, #1a1410 100%);
+  border-bottom: 1px solid var(--rule);
+}
+.hero-in { position: relative; z-index: 1; max-width: 1080px; margin: 0 auto; display: grid; grid-template-columns: 1.25fr 1fr; gap: 32px; align-items: end; }
+.sun {
+  position: absolute; left: 72%; bottom: -230px; width: 420px; height: 420px; margin-left: -210px; z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff3d0 0%, #ffd98a 30%, rgba(245,197,107,.35) 55%, transparent 70%);
+  animation: rise 2.4s cubic-bezier(.16,1,.3,1) both;
+  pointer-events: none;
+}
+@keyframes rise { from { transform: translateY(120px); opacity: .4; } to { transform: none; opacity: 1; } }
+.hero h1 { font-size: clamp(44px, 7.6vw, 86px); line-height: .95; letter-spacing: -.01em; color: var(--arc-hot); font-weight: 800; }
+.hero h1 em { font-style: italic; font-weight: 500; color: var(--arc); }
+.hero .lede { margin-top: 18px; font-size: 17px; color: var(--ink-dim); }
+.hero .lede b { color: var(--ink); font-weight: 600; }
+.patchtag { display: inline-flex; gap: 10px; align-items: center; margin-bottom: 18px; }
+.patchtag .fig { font-size: 12px; color: var(--ink-dim); border: 1px solid var(--rule); padding: 4px 8px; border-radius: 3px; background: rgba(0,0,0,.35); }
+.hero-art { display: flex; justify-content: flex-end; align-items: end; gap: 0; position: relative; z-index: 1; }
+.hero-art img { width: 50%; border-radius: 6px; border: 1px solid rgba(245,197,107,.25); box-shadow: 0 20px 50px rgba(0,0,0,.6); }
+.hero-art img + img { margin-left: -12%; margin-bottom: -18px; transform: rotate(3deg); }
+.hero-art img:first-child { transform: rotate(-4deg); }
+
+/* ---- headline figures ---- */
+.tally { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+.tally > div { background: var(--obsidian); padding: 18px 18px 16px; display: flex; flex-direction: column; gap: 6px; }
+.tally .from { font: 500 14px var(--fig); color: var(--ink-faint); text-decoration: line-through; text-decoration-color: rgba(226,72,61,.7); }
+.tally .to { font: 600 34px/1 var(--fig); color: var(--arc-hot); }
+.tally .to small { font-size: 15px; color: var(--arc); }
+.tally .what { font-size: 13px; color: var(--ink-dim); line-height: 1.35; }
+
+/* ---- section heads ---- */
+.sec { display: flex; flex-direction: column; gap: 20px; }
+.sec-head { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--rule); padding-top: 20px; }
+.sec-head h2 { font-size: clamp(28px, 4vw, 38px); line-height: 1.05; color: var(--ink); }
+.sec-head p { color: var(--ink-dim); }
+
+/* ---- stamps ---- */
+.stamp { display: inline-block; font: 700 10.5px/1 var(--ui); letter-spacing: .2em; text-transform: uppercase; padding: 5px 7px 4px; border-radius: 2px; border: 1px solid currentColor; }
+.stamp.buff { color: var(--buff); } .stamp.nerf { color: var(--nerf); } .stamp.fix { color: var(--fix); } .stamp.new { color: var(--new); } .stamp.kept { color: var(--arc); }
+
+/* ---- notices ---- */
+.grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.notice {
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  border: 1px solid var(--rule); border-radius: 6px; padding: 18px;
+  display: flex; flex-direction: column; gap: 12px;
+  box-shadow: inset 0 1px 0 rgba(255,244,224,.06), inset 0 -1px 0 rgba(0,0,0,.5);
+}
+.notice h3 { font-size: 21px; line-height: 1.15; }
+.notice p { font-size: 14px; color: var(--ink-dim); }
+.notice p b { color: var(--ink); font-weight: 600; }
+.pair { display: grid; grid-template-columns: 96px 1fr; gap: 14px; align-items: center; }
+.pair img { width: 96px; height: 96px; object-fit: cover; border-radius: 4px; border: 1px solid var(--rule); background: #000; }
+.chg { display: flex; flex-wrap: wrap; gap: 6px 14px; font: 500 13px var(--fig); color: var(--ink-dim); }
+.chg span b { color: var(--ink); font-weight: 600; }
+.chg .up { color: var(--buff); } .chg .down { color: var(--nerf); }
+
+/* ---- sunrise ---- */
+.sunrise { display: grid; grid-template-columns: 1fr 1.25fr; gap: 24px; align-items: center; }
+.chart { background: var(--obsidian); border: 1px solid var(--rule); border-radius: 6px; padding: 14px; }
+.chart svg { width: 100%; height: auto; display: block; }
+.chart text { font-family: var(--fig); font-size: 11px; fill: var(--ink-faint); }
+.chart .lab { fill: var(--ink-dim); font-family: var(--ui); font-size: 12px; }
+
+/* ---- finale gallery ---- */
+.finales { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.fin { position: relative; border-radius: 6px; overflow: hidden; border: 1px solid var(--rule); background: #000; }
+.fin img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; opacity: .92; }
+.fin .cap { position: absolute; inset: auto 0 0 0; padding: 26px 12px 10px; background: linear-gradient(180deg, transparent, rgba(4,5,8,.94) 55%); display: flex; flex-direction: column; gap: 2px; }
+.fin .cap b { font: 700 16px/1.15 var(--voice); color: var(--arc-hot); }
+.fin .cap span { font: 500 12px var(--fig); color: var(--ink-dim); }
+
+/* ---- boss factor bars ---- */
+.bars { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 28px; }
+.bar { display: grid; grid-template-columns: 34px 132px 1fr 46px; gap: 10px; align-items: center; min-height: 36px; }
+.bar img { width: 34px; height: 34px; }
+.bar .n { font-size: 13.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar .track { height: 10px; background: #0a0b10; border-radius: 5px; box-shadow: inset 0 1px 2px rgba(0,0,0,.7); overflow: hidden; }
+.bar .fill { display: block; height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--arc-deep), var(--arc) 70%, var(--arc-hot)); }
+.bar .x { font: 600 13px var(--fig); color: var(--arc); text-align: right; }
+
+/* ---- map survival ---- */
+.maps { display: flex; flex-direction: column; gap: 10px; }
+.maprow { display: grid; grid-template-columns: 110px 1fr 1fr; gap: 12px; align-items: center; font-size: 13.5px; }
+.maprow .m { color: var(--ink); }
+.dual { position: relative; height: 22px; background: #0a0b10; border-radius: 3px; overflow: hidden; }
+.dual i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; }
+.dual .now { background: rgba(226,72,61,.55); }
+.dual .new { background: linear-gradient(90deg, rgba(61,220,122,.55), rgba(61,220,122,.9)); }
+.dual em { position: absolute; right: 8px; top: 3px; font: 600 12px var(--fig); font-style: normal; color: var(--ink); }
+.legend { display: flex; gap: 18px; font-size: 12.5px; color: var(--ink-dim); flex-wrap: wrap; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 6px; }
+
+/* ---- survivors ---- */
+.surv { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.surv .notice img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 4px; }
+.hp { display: flex; flex-direction: column; gap: 6px; }
+.hpbar { height: 12px; background: #0a0b10; border-radius: 2px; position: relative; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,.7); }
+.hpbar i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(180deg, #e8574b, #a52a20); }
+.hpbar b { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, var(--buff) 0 4px, #25a45a 4px 8px); }
+
+/* ---- retry panel mock ---- */
+.retry { display: grid; grid-template-columns: 1.1fr 1fr; gap: 24px; align-items: center; }
+.mock { background: linear-gradient(180deg, #16120f, #0d0c0e); border: 1px solid rgba(226,72,61,.35); border-radius: 6px; padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 24px 60px rgba(0,0,0,.55); }
+.mock .t { font: 700 26px/1.1 var(--voice); color: #f0b3ac; }
+.mock p { font-size: 13.5px; color: var(--ink-dim); }
+.mock .btns { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+.mock .btn { font: 600 13px var(--ui); padding: 9px 16px; border-radius: 3px; border: 1px solid var(--rule); color: var(--ink); background: #1b1d25; }
+.mock .btn.primary { border-color: var(--arc-deep); background: linear-gradient(180deg, #3a2c14, #231a0c); color: var(--arc-hot); }
+
+/* ---- verdict ---- */
+.verdict { display: grid; grid-template-columns: 120px 1fr; gap: 20px; align-items: start; }
+.verdict img { width: 120px; height: 120px; border-radius: 6px; border: 1px solid rgba(179,79,242,.4); background: #000; }
+.dps { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.dps .bar { grid-template-columns: 110px 1fr 54px; min-height: 22px; }
+.dps .fill.ruin { background: linear-gradient(90deg, #6b2a96, var(--new)); }
+
+.fine { font-size: 12.5px; color: var(--ink-faint); max-width: 80ch; }
+footer { border-top: 1px solid var(--rule); padding-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+
+@media (max-width: 860px) {
+  .hero-in, .sunrise, .retry { grid-template-columns: 1fr; }
+  .hero-art { justify-content: center; }
+  .tally { grid-template-columns: repeat(2, 1fr); }
+  .grid3, .surv, .finales { grid-template-columns: repeat(2, 1fr); }
+  .bars, .grid2 { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+  .grid3, .surv, .finales { grid-template-columns: 1fr; }
+  .tally .to { font-size: 28px; }
+  .bar { grid-template-columns: 30px 104px 1fr 42px; }
+  .maprow { grid-template-columns: 1fr; gap: 4px; }
+  .verdict { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { .sun { animation: none; } }
+
+/* ---- this patch ---- */
+.hero .lede { max-width: 60ch; }
+.wlist { display: flex; flex-direction: column; gap: 8px; }
+.wgroup { display: flex; flex-direction: column; gap: 10px; }
+.wgroup h3 { font-size: 20px; color: var(--ink); }
+.wgroup > p { font-size: 14px; color: var(--ink-dim); }
+.wrow { display: grid; grid-template-columns: 44px minmax(150px, 1.1fr) 2.2fr minmax(170px, .9fr); gap: 14px; align-items: center;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 14px; }
+.wrow img { width: 44px; height: 44px; }
+.wrow .nm { display: flex; flex-direction: column; gap: 3px; }
+.wrow .nm b { font: 700 17px/1.1 var(--voice); color: var(--ink); }
+.wrow .nm span { font-size: 12.5px; color: var(--ink-dim); }
+.wrow .chg { font-size: 12.5px; }
+.wrow .figs { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font: 500 12.5px var(--fig); color: var(--ink-dim); justify-items: end; }
+.wrow .figs span:nth-child(odd) { justify-self: start; font-family: var(--ui); color: var(--ink-faint); }
+.wrow .figs b { color: var(--ink); font-weight: 600; }
+.feature { display: grid; grid-template-columns: 132px 1fr; gap: 22px; align-items: start; }
+.feature img.ic { width: 132px; height: 132px; border-radius: 6px; border: 1px solid rgba(226,72,61,.45); background: #000; }
+.how { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; max-width: 70ch; color: var(--ink-dim); font-size: 14.5px; }
+.how b { color: var(--ink); }
+.how li::marker { color: var(--nerf); font: 700 14px var(--fig); }
+.meter { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.meter .bar { grid-template-columns: 150px 1fr 54px; min-height: 24px; }
+.meter .fill.was { background: linear-gradient(90deg, #7a241d, var(--nerf)); }
+.tbl { overflow-x: auto; border: 1px solid var(--rule); border-radius: 6px; background: var(--obsidian); }
+.tbl table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.tbl th, .tbl td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--rule); white-space: nowrap; vertical-align: middle; }
+.tbl tr:last-child td { border-bottom: 0; }
+.tbl th { font: 600 10.5px/1.3 var(--ui); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-dim); background: var(--panel); }
+.tbl td.n, .tbl th.n { text-align: right; font-family: var(--fig); font-variant-numeric: tabular-nums; }
+.tbl td .was { color: var(--ink-faint); }
+.tbl td .nmc { display: flex; align-items: center; gap: 10px; }
+.tbl td .nmc img { width: 30px; height: 30px; }
+.tbl td .sub { display: block; font-size: 12px; color: var(--ink-dim); }
+.callings { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.callings .notice { gap: 8px; padding: 14px; }
+.callings .notice img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; object-position: top; border-radius: 4px; }
+.callings h3 { font-size: 18px; }
+.callings .who { font: 500 12px var(--ui); color: var(--ink-faint); }
+.callings p { font-size: 13.5px; }
+@media (max-width: 860px) {
+  .wrow { grid-template-columns: 40px 1fr; }
+  .wrow .chg, .wrow .figs { grid-column: 1 / -1; }
+  .wrow .figs { justify-items: start; grid-template-columns: auto auto auto auto; }
+  .callings { grid-template-columns: repeat(2, 1fr); }
+  .feature { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+  .callings { grid-template-columns: 1fr; }
+  .wrow .figs { grid-template-columns: auto 1fr; }
+  .meter .bar { grid-template-columns: 110px 1fr 46px; }
+}
+</style>
+
+</head>
+<body>
+<nav class="back"><div class="back-in">
+  <a class="mark" href="index.html"><b>THE EMBER WATCH</b> · Codex</a>
+  <span class="links"><a href="patch-notes-2026-09-25.html">Previous patch</a><a href="index.html">Back to the codex</a><a class="go" href="https://emberwatch.online/">Play</a></span>
+</div></nav>
+
+<div class="wrap">
+
+<header class="hero">
+  <div class="hero-in">
+    <div>
+      <div class="patchtag"><span class="eyebrow">The Ember Watch · Balance patch</span></div>
+      <h1>Even <em>ground.</em></h1>
+      <p class="lede">A tester's strongest builds could stand still from 20:00 and win, and a handful of abilities did most of every build's damage: <b>Ruin Unbound</b> half the meter, <b>Conviction</b> most of Keegan's, <b>Grave Tether</b> most of everyone's healing. We measured every weapon, union, discovery and calling against the same crowd and the same boss, then brought them into one band.</p>
+    </div>
+    <div class="hero-art">
+      <img src="img/surv_ruinseeker.webp" alt="Nerosus, the Ruinseeker">
+      <img src="img/surv_paladin.webp" alt="Professor Keegan, the Paladin">
+    </div>
+  </div>
+</header>
+
+<section class="tally" aria-label="Headline results">
+  <div><span class="from">180×</span><span class="to">4<small>×</small></span><span class="what">gap between the strongest and weakest evolved weapon against a late crowd</span></div>
+  <div><span class="from">33×</span><span class="to">7<small>×</small></span><span class="what">the same gap at 5:00, long before anything evolves</span></div>
+  <div><span class="from">59%</span><span class="to">16<small>%</small></span><span class="what">of a build's damage from Ruin Unbound</span></div>
+  <div><span class="from">48%</span><span class="to">&lt;7<small>%</small></span><span class="what">of Keegan's damage from Conviction</span></div>
+</section>
+
+<!-- ============================================================ ruin -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="eyebrow">Asked again, answered this time</span>
+    <h2>Ruin Unbound: half the meter to a fifth.</h2>
+    <p>Last patch we checked it on a training dummy and left it alone. Testers kept seeing it at half the damage meter, and they were right: its homing, piercing, splashing bolts reach the crowd first and take every kill.</p>
+  </div>
+  <div class="notice">
+    <div class="feature">
+      <img class="ic" src="img/icon_union_ruin.png" alt="Ruin Unbound">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <span class="stamp nerf" style="align-self:flex-start">Nerf</span>
+        <div class="meter">
+          <div class="bar"><span class="n">Before this patch</span><span class="track"><span class="fill was" style="width:59%"></span></span><span class="x">59%</span></div>
+          <div class="bar"><span class="n">Now</span><span class="track"><span class="fill" style="width:16%"></span></span><span class="x">16%</span></div>
+        </div>
+        <p class="fine">Its share of a build's damage, next to the same four evolved weapons, at 21:00 on the Pale Wastes, Professional, Hyper. Every union now sits between 15% and 30%.</p>
+        <h3 style="font-size:19px">How it was nerfed</h3>
+        <ol class="how">
+          <li><b>A smaller burst.</b> Each bolt's explosion shrank from <span class="fig">82</span> to <span class="fig">55</span> wide, less than half the ground it covered (45%). It catches far fewer creatures with every bolt.</li>
+          <li><b>Less damage over a fight.</b> With the same four weapons beside it, it deals <span class="fig">12.0k</span> a second, down from <span class="fig">17.9k</span>: a third less.</li>
+          <li><b>No longer takes every kill.</b> With a smaller burst it stops reaching the whole crowd first, so its slice of the meter fell from <span class="fig">59%</span> to <span class="fig">16%</span> and your other weapons get the rest.</li>
+        </ol>
+        <p class="fine">Each bolt now shows <span class="fig">37.9</span> damage, up from <span class="fig">25.5</span>, because every evolved weapon was re-scaled in this patch and Ruin Unbound's bolts were raised along with the weapons it is made from. The smaller burst more than cancels that: each bolt hits harder, but it hits far fewer creatures.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ weapons -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="eyebrow">Weapons, rank 1 to evolved</span>
+    <h2>Every weapon, one band, all night.</h2>
+    <p>Every weapon was measured at five points of a night (rank 1 at 1:00, rank 3 at 5:00, rank 5 at 9:00, rank 8 at 14:00, evolved at 20:00), with that point's share of passives, against the crowd a kiting survivor really faces then, a boss, and the real waves. Area weapons did two to five times anything else before they evolved; chains, bounces and bolts barely cleared a crowd until they did. Now each stays in its role's band the whole way. "At 5:00" is damage per second that actually lands on creatures in the real waves, at rank 3. "Evolved" is rank 8 and evolved, every passive capped, at 20:00 on the Pale Wastes, Professional, Hyper, against 320 targets standing where a real horde stands and one boss that closes and gets kited off.</p>
+  </div>
+  <div class="wgroup"><h3>Area weapons</h3><p>Built to clear a crowd. Before evolving they did two to five times what anything else did, all night, so their base damage came down and their evolution carries more of their power. Evolved, they still lead against a crowd.</p><div class="wlist">
+    <div class="wrow"><img src="img/icon_thornbloom.png" alt="">
+      <div class="nm"><b>Thornbloom</b><span>evolves into Everbloom <span class="stamp fix">Reshaped</span></span></div>
+      <div class="chg"><span>damage <b>11 → 3.96</b></span><span>each rank adds <b>20% → 17%</b></span><span>evolved damage <b>×1.5 → ×6.32</b></span><span>vs bosses <b>×1 → ×2.95</b></span></div>
+      <div class="figs"><span>at 5:00</span><span>6.4k → <b>3.8k</b></span><span>evolved, crowd</span><span>183k → <b>253k</b></span><span>evolved, boss</span><span>898 → <b>3.6k</b></span></div>
+    </div>
+    <div class="wrow"><img src="img/icon_moonbrand.png" alt="">
+      <div class="nm"><b>Moonbrand</b><span>evolves into Moonfall <span class="stamp nerf">Nerf</span></span></div>
+      <div class="chg"><span>damage <b>21.84 → 16.1</b></span><span>each rank adds <b>20% → 12%</b></span><span>evolved damage <b>×1.5 → ×2.72</b></span><span>extra moons <b>+2 → +0</b></span><span>vs bosses <b>×1 → ×1.33</b></span></div>
+      <div class="figs"><span>at 5:00</span><span>3.7k → <b>3.2k</b></span><span>evolved, crowd</span><span>296k → <b>240k</b></span><span>evolved, boss</span><span>3.0k → <b>3.4k</b></span></div>
+    </div>
+    <div class="wrow"><img src="img/icon_axe_gyre.png" alt="">
+      <div class="nm"><b>Axe Gyre</b><span>evolves into Gyrestorm <span class="stamp nerf">Nerf</span></span></div>
+      <div class="chg"><span>damage <b>23.66 → 10.7</b></span><span>each rank adds <b>20% → 12%</b></span><span>evolved damage <b>×1.5 → ×2.42</b></span><span>extra axes <b>+4 → +0</b></span><span>vs bosses <b>×1 → ×2.31</b></span></div>
+      <div class="figs"><span>at 5:00</span><span>5.0k → <b>2.5k</b></span><span>evolved, crowd</span><span>552k → <b>206k</b></span><span>evolved, boss</span><span>2.8k → <b>2.4k</b></span></div>
+    </div>
+    <div class="wrow"><img src="img/icon_iron_palms.png" alt="">
+      <div class="nm"><b>Iron Palms</b><span>evolves into Temple Breaker <span class="stamp fix">Reshaped</span></span></div>
+      <div class="chg"><span>damage <b>15 → 6.94</b></span><span>each rank adds <b>20% → 18%</b></span><span>evolved damage <b>×1.5 → ×3.27</b></span><span>vs bosses <b>×1.15 → ×1</b></span></div>
+      <div class="figs"><span>at 5:00</span><span>4.6k → <b>3.4k</b></span><span>evolved, crowd</span><span>129k → <b>204k</b></span><span>evolved, boss</span><span>2.3k → <b>3.1k</b></span></div>
+    </div>
+    <div class="wrow"><img src="img/icon_hallowed_ring.png" alt="">
+      <div class="nm"><b>Hallowed Ring</b><span>evolves into Hallowed Ground <span class="stamp nerf">Nerf</span></span></div>
+      <div class="chg"><span>damage <b>10.01 → 4.36</b></span><span>each rank adds <b>20% → 13%</b></span><span>evolved damage <b>×1.5 → ×4.21</b></span><span>vs bosses <b>×1.7 → ×3.78</b></span></div>
+      <div class="figs"><span>at 5:00</span><span>5.5k → <b>4.0k</b></span><span>evolved, crowd</span><span>208k → <b>203k</b></span><span>evolved, boss</span><span>1.6k → <b>3.3k</b></span></div>
+    </div>
+    <div class="wrow"><img src="img/icon_blightfield.png" alt="">
+      <div class="nm"><b>Blightfield</b><span>evolves into Blighted Earth <span class="stamp nerf">Nerf</span></span></div>
+      <div class="chg"><span>damage <b>11.83 → 3.63</b></span><span>each rank adds <b>20% → 12%</b></span><span>evolved damage <b>×1.5 → ×4</b></span><span>vs bosses <b>×1 → ×3.84</b></span></div>
+      <div class="figs"><span>at 5:00</span><span>6.4k → <b>3.2k</b></span><span>evolved, crowd</span><span>290k → <b>182k</b></span><span>evolved, boss</span><span>1.2k → <b>3.0k</b></span></div>
+    </div>
+    <div class="wrow"><img src="img/icon_cinderfall.png" alt="">
+      <div class="nm"><b>Cinderfall</b><span>evolves into Fallen Star <span class="stamp nerf">Nerf</span></span></div>
+      <div class="chg"><span>damage <b>30.94 → 18.9</b></span><span>each rank adds <b>20% → 12%</b></span><span>evolved damage <b>×1.5 → ×1.97</b></span><span>vs bosses <b>×1 → ×1.72</b></span></div>
+      <div class="figs"><span>at 5:00</span><span>4.1k → <b>3.3k</b></span><span>evolved, crowd</span><span>240k → <b>148k</b></span><span>evolved, boss</span><span>2.4k → <b>2.6k</b></span></div>
+    </div>
+  </div></div>
+  <div class="wgroup"><h3>Lines, bounces and chains</h3><p>Most of these could not clear a crowd until they evolved: at 5:00 Arcweb landed next to nothing where Blightfield landed thousands. They now hop, ricochet and pierce further from rank 1.</p><div class="wlist">
+    <div class="wrow"><img src="img/icon_volley.png" alt="">
+      <div class="nm"><b>Volley</b><span>evolves into Arrowfall <span class="stamp buff">Buff</span></span></div>
+      <div class="chg"><span>damage <b>15.47 → 24.2</b></span><span>each rank adds <b>20% → 23%</b></span><span>pierce <b>2 → 6</b></span><span>evolved damage <b>×1.5 → ×3.37</b></span><span>evolved pierce <b>+2 → +30</b></span><span>vs bosses <b>×1.4 → ×0.84</b></span></div>
+      <div class="figs"><span>at 5:00</span><span>301 → <b>924</b></span><span>evolved, crowd</span><span>10k → <b>106k</b></span><span>evolved, boss</span><span>1.6k → <b>3.6k</b></span></div>
+    </div>
+    <div class="wrow"><img src="img/icon_knifestorm.png" alt="">
+      <div class="nm"><b>Knifestorm</b><span>evolves into Steel Flurry <span class="stamp buff">Buff</span></span></div>
+      <div class="chg"><span>damage <b>16.38 → 18.3</b></span><span>each rank adds <b>20% → 35%</b></span><span>pierce <b>1 → 4</b></span><span>evolved damage <b>×1.5 → ×2.39</b></span><span>extra knives on evolving <b>+2 → +4</b></span><span>evolved pierce <b>+2 → +6</b></span><span>vs bosses <b>×2.9 → ×2.04</b></span></div>
+      <div class="figs"><span>at 5:00</span><span>338 → <b>1.3k</b></span><span>evolved, crowd</span><span>12k → <b>100k</b></span><span>evolved, boss</span><span>1.3k → <b>2.7k</b></span></div>
+    </div>
+    <div class="wrow"><img src="img/icon_verdant_lance.png" alt="">
+      <div class="nm"><b>Verdant Lance</b><span>evolves into Verdant Gaze <span class="stamp fix">Reshaped</span></span></div>
+      <div class="chg"><span>damage <b>20.02 → 13</b></span><span>each rank adds <b>20% → 35%</b></span><span>evolved damage <b>×1.5 → ×6.3</b></span><span>evolved width <b>×1.25 → ×3</b></span><span>vs bosses <b>×2.45 → ×2.9</b></span></div>
+      <div class="figs"><span>at 5:00</span><span>3.1k → <b>2.3k</b></span><span>evolved, crowd</span><span>12k → <b>94k</b></span><span>evolved, boss</span><span>700 → <b>3.6k</b></span></div>
+    </div>
+    <div class="wrow"><img src="img/icon_reaving_arc.png" alt="">
+      <div class="nm"><b>Reaving Arc</b><span>evolves into Rend and Mend <span class="stamp fix">Reshaped</span></span></div>
+      <div class="chg"><span>damage <b>30.94 → 10.4</b></span><span>each rank adds <b>20% → 22%</b></span><span>evolved damage <b>×1.5 → ×5.79</b></span><span>vs bosses <b>×2.9 → ×6</b></span></div>
+      <div class="figs"><span>at 5:00</span><span>4.8k → <b>1.8k</b></span><span>evolved, crowd</span><span>64k → <b>88k</b></span><span>evolved, boss</span><span>850 → <b>2.5k</b></span></div>
+    </div>
+    <div class="wrow"><img src="img/icon_arcweb.png" alt="">
+      <div class="nm"><b>Arcweb</b><span>evolves into Skybreak <span class="stamp buff">Buff</span></span></div>
+      <div class="chg"><span>damage <b>27.3 → 69.8</b></span><span>each rank adds <b>20% → 35%</b></span><span>hops <b>5 → 10</b></span><span>evolved damage <b>×1.5 → ×1.61</b></span><span>extra hops <b>+2 → +30</b></span><span>each hop fades <b>6% → 1%</b></span><span>evolved cooldown <b>×0.85 → ×0.5</b></span><span>vs bosses <b>×3.5 → ×0.85</b></span></div>
+      <div class="figs"><span>at 5:00</span><span>236 → <b>1.0k</b></span><span>evolved, crowd</span><span>2.8k → <b>83k</b></span><span>evolved, boss</span><span>1.4k → <b>2.0k</b></span></div>
+    </div>
+    <div class="wrow"><img src="img/icon_gale_chakram.png" alt="">
+      <div class="nm"><b>Gale Chakram</b><span>evolves into Razorgale <span class="stamp buff">Buff</span></span></div>
+      <div class="chg"><span>damage <b>16 → 14.8</b></span><span>each rank adds <b>20% → 19%</b></span><span>evolved damage <b>×1.5 → ×4</b></span><span>vs bosses <b>×1.4 → ×1.67</b></span></div>
+      <div class="figs"><span>at 5:00</span><span>1.3k → <b>1.1k</b></span><span>evolved, crowd</span><span>33k → <b>79k</b></span><span>evolved, boss</span><span>920 → <b>2.9k</b></span></div>
+    </div>
+    <div class="wrow"><img src="img/icon_judgement_disc.png" alt="">
+      <div class="nm"><b>Judgement Disc</b><span>evolves into Reckoning <span class="stamp buff">Buff</span></span></div>
+      <div class="chg"><span>damage <b>27.3 → 53.9</b></span><span>each rank adds <b>20% → 35%</b></span><span>ricochets <b>5 → 12</b></span><span>evolved damage <b>×1.5 → ×1.75</b></span><span>extra ricochets <b>+3 → +30</b></span><span>vs bosses <b>×2.45 → ×1.48</b></span></div>
+      <div class="figs"><span>at 5:00</span><span>224 → <b>1.0k</b></span><span>evolved, crowd</span><span>6.9k → <b>78k</b></span><span>evolved, boss</span><span>1.3k → <b>2.3k</b></span></div>
+    </div>
+    <div class="wrow"><img src="img/icon_dawnpulse.png" alt="">
+      <div class="nm"><b>Dawnpulse</b><span>evolves into Circle of Dawn <span class="stamp fix">Reshaped</span></span></div>
+      <div class="chg"><span>damage <b>27.3 → 10.4</b></span><span>each rank adds <b>20% → 22%</b></span><span>evolved damage <b>×1.5 → ×4.87</b></span><span>vs bosses <b>×2.4 → ×6</b></span></div>
+      <div class="figs"><span>at 5:00</span><span>4.2k → <b>2.3k</b></span><span>evolved, crowd</span><span>55k → <b>72k</b></span><span>evolved, boss</span><span>569 → <b>2.0k</b></span></div>
+    </div>
+    <div class="wrow"><img src="img/icon_spirit_herd.png" alt="">
+      <div class="nm"><b>Spirit Herd</b><span>evolves into The Great Herd <span class="stamp buff">Buff</span></span></div>
+      <div class="chg"><span>damage <b>21 → 18.6</b></span><span>each rank adds <b>20% → 19%</b></span><span>evolved damage <b>×1.5 → ×3.05</b></span><span>vs bosses <b>×1.8 → ×2.91</b></span></div>
+      <div class="figs"><span>at 5:00</span><span>1.6k → <b>1.4k</b></span><span>evolved, crowd</span><span>37k → <b>66k</b></span><span>evolved, boss</span><span>891 → <b>2.6k</b></span></div>
+    </div>
+  </div></div>
+  <div class="wgroup"><h3>Bolts</h3><p>The single-target weapons. They pierce six from rank 1 so a bolt keeps going through the crowd, and they are the best boss damage in the game at every stage.</p><div class="wlist">
+    <div class="wrow"><img src="img/icon_seeking_motes.png" alt="">
+      <div class="nm"><b>Seeking Motes</b><span>evolves into Mote Cascade <span class="stamp buff">Buff</span></span></div>
+      <div class="chg"><span>damage <b>5.46 → 8.39</b></span><span>each rank adds <b>20% → 35%</b></span><span>pierce <b>2 → 4</b></span><span>motes <b>3 → 4</b></span><span>evolved damage <b>×1.5 → ×1.3</b></span><span>extra motes on evolving <b>+2 → +6</b></span><span>evolved pierce <b>+2 → +4</b></span><span>evolved, <b>bursts on impact</b> (11 wide)</span><span>vs bosses <b>×1.7 → ×1.23</b></span></div>
+      <div class="figs"><span>at 5:00</span><span>201 → <b>772</b></span><span>evolved, crowd</span><span>3.1k → <b>156k</b></span><span>evolved, boss</span><span>1.1k → <b>4.4k</b></span></div>
+    </div>
+    <div class="wrow"><img src="img/icon_rimeshard.png" alt="">
+      <div class="nm"><b>Rimeshard</b><span>evolves into Deepwinter <span class="stamp buff">Buff</span></span></div>
+      <div class="chg"><span>damage <b>18.2 → 23.6</b></span><span>each rank adds <b>20% → 21%</b></span><span>pierce <b>2 → 6</b></span><span>evolved damage <b>×1.5 → ×2</b></span><span>evolved, <b>bursts on impact</b> (12 wide)</span><span>vs bosses <b>×1.1 → ×1.4</b></span></div>
+      <div class="figs"><span>at 5:00</span><span>249 → <b>599</b></span><span>evolved, crowd</span><span>13k → <b>105k</b></span><span>evolved, boss</span><span>2.3k → <b>5.2k</b></span></div>
+    </div>
+    <div class="wrow"><img src="img/icon_grave_tether.png" alt="">
+      <div class="nm"><b>Grave Tether</b><span>evolves into Tether of Anguish <span class="stamp buff">Buff</span></span></div>
+      <div class="chg"><span>damage <b>25.48 → 32.4</b></span><span>each rank adds <b>20% → 21%</b></span><span>pierce <b>2 → 6</b></span><span>evolved damage <b>×1.5 → ×2.14</b></span><span>evolved, it <b>pierces everything</b></span><span>vs bosses <b>×1 → ×1.35</b></span></div>
+      <div class="figs"><span>at 5:00</span><span>256 → <b>723</b></span><span>evolved, crowd</span><span>13k → <b>72k</b></span><span>evolved, boss</span><span>2.2k → <b>5.6k</b></span></div>
+    </div>
+    <div class="wrow"><img src="img/icon_umbral_bolt.png" alt="">
+      <div class="nm"><b>Umbral Bolt</b><span>evolves into Ruin Bolt <span class="stamp buff">Buff</span></span></div>
+      <div class="chg"><span>damage <b>23.66 → 24.4</b></span><span>each rank adds <b>20% → 20%</b></span><span>pierce <b>2 → 6</b></span><span>evolved damage <b>×1.5 → ×2</b></span><span>evolved, it <b>pierces everything</b></span><span>vs bosses <b>×1 → ×1.3</b></span></div>
+      <div class="figs"><span>at 5:00</span><span>309 → <b>678</b></span><span>evolved, crowd</span><span>18k → <b>70k</b></span><span>evolved, boss</span><span>2.9k → <b>5.5k</b></span></div>
+    </div>
+  </div></div>
+  <p class="fine">"Each rank adds" is the damage a weapon gains per rank; it was 20% for every weapon. Area weapons now grow more gently and lines and chains faster, so neither runs away mid-night.</p>
+</section>
+
+<!-- ============================================================ survivors -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="eyebrow">What it means for a night</span>
+    <h2>Every survivor gets a fair start.</h2>
+    <p>Which weapon you start with used to decide most of your night. On the hardest setting, a bot playing real runs (drafting its own cards) lasted 12.8 minutes as Abbot Eisen and 1.5 as Milksupply. Now every survivor's night lasts between 5 and 11.4 minutes, and the average is where it was.</p>
+  </div>
+  <div class="tbl"><table>
+    <tr><th>Survivor</th><th>Starts with</th><th class="n">Minutes survived</th><th class="n">Level reached</th></tr>
+    <tr><td><span class="nmc"><img src="img/surv_monk.webp" alt="" style="border-radius:4px;object-fit:cover;object-position:top"><span>Abbot Eisen</span></span></td><td>Iron Palms</td><td class="n"><span class="was">12.8 →</span> 6.5</td><td class="n"><span class="was">79 →</span> 58</td></tr><tr><td><span class="nmc"><img src="img/surv_priest.webp" alt="" style="border-radius:4px;object-fit:cover;object-position:top"><span>Chid</span></span></td><td>Dawnpulse</td><td class="n"><span class="was">12.5 →</span> 7.3</td><td class="n"><span class="was">79 →</span> 63</td></tr><tr><td><span class="nmc"><img src="img/surv_graveblade.webp" alt="" style="border-radius:4px;object-fit:cover;object-position:top"><span>DZ</span></span></td><td>Reaving Arc</td><td class="n"><span class="was">11.3 →</span> 9.1</td><td class="n"><span class="was">67 →</span> 65</td></tr><tr><td><span class="nmc"><img src="img/surv_rogue.webp" alt="" style="border-radius:4px;object-fit:cover;object-position:top"><span>Dr. Rav McBreathless</span></span></td><td>Knifestorm</td><td class="n"><span class="was">8.7 →</span> 5.7</td><td class="n"><span class="was">61 →</span> 57</td></tr><tr><td><span class="nmc"><img src="img/surv_mage.webp" alt="" style="border-radius:4px;object-fit:cover;object-position:top"><span>Baron Zul</span></span></td><td>Seeking Motes</td><td class="n"><span class="was">8.0 →</span> 7.5</td><td class="n"><span class="was">46 →</span> 63</td></tr><tr><td><span class="nmc"><img src="img/surv_shaman.webp" alt="" style="border-radius:4px;object-fit:cover;object-position:top"><span>Vonnra Hydrocheck</span></span></td><td>Arcweb</td><td class="n"><span class="was">7.2 →</span> 6.9</td><td class="n"><span class="was">66 →</span> 65</td></tr><tr><td><span class="nmc"><img src="img/surv_warrior.webp" alt="" style="border-radius:4px;object-fit:cover;object-position:top"><span>AAAAAAAAA</span></span></td><td>Axe Gyre</td><td class="n"><span class="was">7.1 →</span> 7.0</td><td class="n"><span class="was">55 →</span> 60</td></tr><tr><td><span class="nmc"><img src="img/surv_hunter.webp" alt="" style="border-radius:4px;object-fit:cover;object-position:top"><span>Maeca Barefoot</span></span></td><td>Volley</td><td class="n"><span class="was">5.6 →</span> 10.8</td><td class="n"><span class="was">54 →</span> 76</td></tr><tr><td><span class="nmc"><img src="img/surv_paladin.webp" alt="" style="border-radius:4px;object-fit:cover;object-position:top"><span>Professor Keegan</span></span></td><td>Judgement Disc</td><td class="n"><span class="was">4.0 →</span> 11.4</td><td class="n"><span class="was">41 →</span> 78</td></tr><tr><td><span class="nmc"><img src="img/surv_ruinseeker.webp" alt="" style="border-radius:4px;object-fit:cover;object-position:top"><span>Nerosus</span></span></td><td>Verdant Lance</td><td class="n"><span class="was">3.5 →</span> 7.6</td><td class="n"><span class="was">33 →</span> 66</td></tr><tr><td><span class="nmc"><img src="img/surv_warlock.webp" alt="" style="border-radius:4px;object-fit:cover;object-position:top"><span>Nim B'ladin</span></span></td><td>Umbral Bolt</td><td class="n"><span class="was">2.5 →</span> 5.0</td><td class="n"><span class="was">28 →</span> 54</td></tr><tr><td><span class="nmc"><img src="img/surv_druid.webp" alt="" style="border-radius:4px;object-fit:cover;object-position:top"><span>Milksupply</span></span></td><td>Spirit Herd</td><td class="n"><span class="was">1.5 →</span> 5.5</td><td class="n"><span class="was">21 →</span> 56</td></tr>
+  </table></div>
+  <p class="fine">The Pale Wastes, Professional, Hyper: four full runs a survivor, before and after, played by tools/botlab.js. Four runs is a small sample, so read the spread, not any one row.</p>
+</section>
+
+<!-- ============================================================ unions -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="eyebrow">Unions</span>
+    <h2>Every union takes a fair share.</h2>
+    <p>Unions were measured the way testers read them: the share of a build's damage each one takes beside four evolved weapons. Storm of Steel, Sanctuary and The Wild Hunt had fallen far behind (forging Storm of Steel made a build weaker); Ruin Unbound had run away with more than half the meter. The stamp follows the damage each union actually deals in a fight. All eight now take between 15% and 30% of a build.</p>
+  </div>
+  <div class="tbl"><table>
+    <tr><th>Union</th><th></th><th class="n">Damage a second</th><th class="n">Share of a build</th><th>Also</th></tr>
+    <tr><td><span class="nmc"><img src="img/icon_union_firmament.png" alt=""><span>Firmament<span class="sub">Seeking Motes + Moonbrand</span></span></span></td>
+    <td><span class="stamp nerf">Nerf</span></td>
+    <td class="n"><span class="was">17k →</span> 11k</td>
+    <td class="n"><span class="was">33% →</span> 15%</td>
+    <td>–</td></tr><tr><td><span class="nmc"><img src="img/icon_union_ruin.png" alt=""><span>Ruin Unbound<span class="sub">Umbral Bolt + Cinderfall</span></span></span></td>
+    <td><span class="stamp nerf">Nerf</span></td>
+    <td class="n"><span class="was">18k →</span> 12k</td>
+    <td class="n"><span class="was">59% →</span> 16%</td>
+    <td>splash 82 → 55</td></tr><tr><td><span class="nmc"><img src="img/icon_union_steel.png" alt=""><span>Storm of Steel<span class="sub">Knifestorm + Volley</span></span></span></td>
+    <td><span class="stamp buff">Buff</span></td>
+    <td class="n"><span class="was">3.7k →</span> 21k</td>
+    <td class="n"><span class="was">21% →</span> 30%</td>
+    <td>pierce 3 → 12</td></tr><tr><td><span class="nmc"><img src="img/icon_union_sanctuary.png" alt=""><span>Sanctuary<span class="sub">Dawnpulse + Hallowed Ring</span></span></span></td>
+    <td><span class="stamp buff">Buff</span></td>
+    <td class="n"><span class="was">4.7k →</span> 15k</td>
+    <td class="n"><span class="was">26% →</span> 22%</td>
+    <td>now heals</td></tr><tr><td><span class="nmc"><img src="img/icon_union_stormcall.png" alt=""><span>Stormcall<span class="sub">Axe Gyre + Arcweb</span></span></span></td>
+    <td><span class="stamp buff">Buff</span></td>
+    <td class="n"><span class="was">11k →</span> 15k</td>
+    <td class="n"><span class="was">27% →</span> 21%</td>
+    <td>–</td></tr><tr><td><span class="nmc"><img src="img/icon_union_tempest_kata.png" alt=""><span>Tempest Kata<span class="sub">Iron Palms + Gale Chakram</span></span></span></td>
+    <td><span class="stamp kept">Even</span></td>
+    <td class="n"><span class="was">11k →</span> 11k</td>
+    <td class="n"><span class="was">46% →</span> 15%</td>
+    <td>–</td></tr><tr><td><span class="nmc"><img src="img/icon_union_wild_hunt.png" alt=""><span>The Wild Hunt<span class="sub">Spirit Herd + Verdant Lance</span></span></span></td>
+    <td><span class="stamp buff">Buff</span></td>
+    <td class="n"><span class="was">7.2k →</span> 16k</td>
+    <td class="n"><span class="was">35% →</span> 23%</td>
+    <td>–</td></tr><tr><td><span class="nmc"><img src="img/icon_union_rotwood.png" alt=""><span>Rotwood<span class="sub">Thornbloom + Blightfield</span></span></span></td>
+    <td><span class="stamp nerf">Nerf</span></td>
+    <td class="n"><span class="was">13k →</span> 10k</td>
+    <td class="n"><span class="was">38% →</span> 17%</td>
+    <td>–</td></tr>
+  </table></div>
+  <p class="fine">Both figures come from the same fight: the union beside the same four evolved weapons, 21:00 on the Pale Wastes, Professional, Hyper, eight seeds. Damage a second is what it actually took off creatures' health; share of a build is its slice of the meter. Both move by a few points from one run to the next. "Before" is the game as it stood before this patch. Per-hit damage moved too (Firmament 18.2 → 24.2, Ruin Unbound 20.38 → 37.9, Storm of Steel 16.38 → 25, Sanctuary 23.66 → 109, Stormcall 23.66 → 29, Tempest Kata 9 → 13.2, The Wild Hunt 22 → 46, Rotwood 11 → 13.4); a bigger hit is not a bigger union when the weapons around it were re-scaled too.</p>
+</section>
+
+<!-- ============================================================ discoveries -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="eyebrow">Discoveries</span>
+    <h2>Every discovery is worth finding.</h2>
+    <p>Each discovery's two weapons measured together at 5:00, 9:00, 14:00 and 20:00, with the discovery and without it. The damage ones now add between about 10% and 40%; a few that did almost nothing got real teeth.</p>
+  </div>
+  <div class="grid3">
+    <div class="notice"><div class="pair"><img src="img/icon_umbral_bolt.png" alt=""><div><span class="stamp nerf">Nerf</span><h3>Shadowflame</h3></div></div><p>Umbral Bolt and Cinderfall. Every bolt that passes through something bursts, and Umbral Bolt now pierces six from rank 1. The pair did <b>2.3 times</b> what its two weapons do apart late, and would have added 79% at 5:00.</p><div class="chg"><span>burst <b>55 → 12</b></span></div></div>
+    <div class="notice"><div class="pair"><img src="img/icon_judgement_disc.png" alt=""><div><span class="stamp buff">Buff</span><h3>Verdict</h3></div></div><p>Judgement Disc and Hallowed Ring. It added 1% to 7%; now 15% to 21%.</p><div class="chg"><span>ricochets <b>+1 → +3</b></span><span>disc damage <b>+10% → +30%</b></span></div></div>
+    <div class="notice"><div class="pair"><img src="img/icon_axe_gyre.png" alt=""><div><span class="stamp buff">Buff</span><h3>Radiant Gyre</h3></div></div><p>Axe Gyre and Dawnpulse. The pulse that opens each spin hit for less than one axe; it now hits for two and a half times as much.</p><div class="chg"><span>pulse <b>×0.8 → ×2</b> weapon damage</span></div></div>
+    <div class="notice"><div class="pair"><img src="img/icon_knifestorm.png" alt=""><div><span class="stamp buff">Buff</span><h3>Deadly Brew</h3></div></div><p>Knifestorm and Rimeshard. The venom only slowed; it now bites too.</p><div class="chg"><span>knife damage <b>+0% → +15%</b></span></div></div>
+    <div class="notice"><div class="pair"><img src="img/icon_rimeshard.png" alt=""><div><span class="stamp buff">Buff</span><h3>Frostfire, Hailwheel, Razor Wind</h3></div></div><p>Three that sat just under the rest.</p><div class="chg"><span>Frostfire <b>+10% → +15%</b></span><span>Hailwheel <b>+8% → +15%</b></span><span>Razor Wind <b>+10% → +15%</b></span></div></div>
+    <div class="notice"><div class="pair"><img src="img/icon_spirit_herd.png" alt=""><div><span class="stamp fix">Fix</span><h3>Moonlit Herd and Bramble Run</h3></div></div><p>The moonburst and the thicket went off where a beast's run ended, usually on empty ground past the crowd. They now land where the beast last hit something. The Wild Hunt's end-of-run burst too.</p><div class="chg"><span>Moonlit Herd <b>−3% → +58%</b></span><span>Bramble Run <b>−2% → +47%</b></span></div></div>
+    <div class="notice"><span class="stamp fix">Fix</span><h3>Unions keep their discoveries</h3><p>Forging a union used to throw away every discovery its two weapons were part of. A union now keeps them, and can still find new ones. Firmament's strikes count Celestial Alignment's extra beam.</p></div>
+  </div>
+</section>
+
+<!-- ============================================================ callings -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="eyebrow">New: the callings</span>
+    <h2>Eight survivors get a power of their own.</h2>
+    <p>The four newest survivors each carry a whole system of their own. The first eight now do too: a legendary blessing anyone can take, always offered to its owner, who gets one small edge (exactly a quarter on one number).</p>
+  </div>
+  <div class="callings">
+    <div class="notice"><img src="img/surv_mage.webp" alt=""><span class="stamp new">New</span><h3>Spellflood</h3><span class="who">Baron Zul · Mage</span><p>Gems swell the Flood. Full, every weapon fires and cooldowns run at half for 5 seconds.</p></div>
+    <div class="notice"><img src="img/surv_priest.webp" alt=""><span class="stamp new">New</span><h3>Radiant Barrier</h3><span class="who">Chid · Priest</span><p>Overheal becomes a barrier that takes hits first and bursts as Light when it breaks. It stops refilling for <b>2s</b> after a hit and <b>6s</b> after it breaks, so a crowd can wear it down.</p></div>
+    <div class="notice"><img src="img/surv_rogue.webp" alt=""><span class="stamp new">New</span><h3>Opportunist</h3><span class="who">Dr. Rav McBreathless · Rogue</span><p>Crits build Edge. Full, a Cutthroat blow on the toughest thing near you, then you slip from sight.</p></div>
+    <div class="notice"><img src="img/surv_hunter.webp" alt=""><span class="stamp new">New</span><h3>The Quarry</h3><span class="who">Maeca Barefoot · Hunter</span><p>The toughest non-boss in sight takes more from everything. Killing it readies every weapon and mends you.</p></div>
+    <div class="notice"><img src="img/surv_warrior.webp" alt=""><span class="stamp new">New</span><h3>Seething Blood</h3><span class="who">AAAAAAAAA · Warrior</span><p>Blows and close kills heat the blood; heat is armour and damage. Full, you Boil Over.</p></div>
+    <div class="notice"><img src="img/surv_warlock.webp" alt=""><span class="stamp new">New</span><h3>Reaper's Tithe</h3><span class="who">Nim B'ladin · Warlock</span><p>Kills pay the Tithe. Half paid empowers you; paid in full, a Reaping heals per enemy struck, up to <b>15%</b> of your health, then rests <b>5s</b>.</p></div>
+    <div class="notice"><img src="img/surv_shaman.webp" alt=""><span class="stamp new">New</span><h3>Waystones</h3><span class="who">Vonnra Hydrocheck · Shaman</span><p>Ember, spring and gale stones rise where you stand. The ember stone's burn grows <b>0.4</b> a level, not 1.2: on its own it outdid every weapon late (282k a second to a crowd, now 104k).</p></div>
+    <div class="notice"><img src="img/surv_paladin.webp" alt=""><span class="stamp new">New</span><h3>Conviction</h3><span class="who">Professor Keegan · Paladin</span><p>Blows you take and healing you receive build it. At <b>36</b>, <b>Judgement</b>: every creature on the field is struck down and bosses lose 4% of their health, with a 2s Aegis. Then 20s before it gathers again.</p></div>
+  </div>
+  <div class="grid2">
+    <div class="notice"><span class="stamp nerf">Reworked</span><h3>Conviction was a Hammerfall</h3><p>It filled at 3, rested 4 seconds, and dropped a blast around Keegan every few seconds. It was <b>60%</b> of a tester's damage meter and <b>48%</b> of his damage standing still, and its Aegis kept him untouchable nearly half the time. Judgement is rare and total: one or two in ten minutes of standing still, more when you take the fight to them. It is now under 7% of his damage.</p></div>
+    <div class="notice"><span class="stamp fix">Fix</span><h3>The Aegis lasts as long as it shows</h3><p>The hit that filled Conviction raised the gold dome, then its own half-second grace cut the protection short. Blows got through while the dome was still up. Now it holds for the full two seconds.</p></div>
+  </div>
+</section>
+
+<!-- ============================================================ blessings -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="eyebrow">Blessings and signature powers</span>
+    <h2>The outliers come back to the pack.</h2>
+    <p>Every blessing on every survivor, thirty runs each on the same four weapons. Most landed within a few seconds of each other; these did not.</p>
+  </div>
+  <div class="grid3">
+    <div class="notice"><div class="pair"><img src="img/surv_ruinseeker.webp" alt=""><div><span class="stamp nerf">Nerf</span><h3>Ruinous Pact</h3></div></div><p>The strongest signature for anyone. Ruinform hits less hard and rests longer after.</p><div class="chg"><span>Ruinform damage <b>×1.85 → ×1.6</b></span><span>rest <b>5s → 8s</b></span><span>Nerosus's rest <b>3.5s → 6.4s</b></span></div></div>
+    <div class="notice"><div class="pair"><img src="img/surv_monk.webp" alt=""><div><span class="stamp nerf">Nerf</span><h3>Stillwater Step</h3></div></div><p>Two steps every seven seconds. Abbot Eisen's edge is now only the shorter wait; his extra step is gone (it gave him nearly twice anyone else's steps).</p><div class="chg"><span>recharge <b>5.5s → 7s</b></span></div></div>
+    <div class="notice"><span class="stamp nerf">Capped</span><h3>Leech Pact and Bloodthirst</h3><p>Both heal with your damage and kill rate, which never stop growing. Late at night the Pact healed 25 to 32 a second, everything a kiting build takes.</p><div class="chg"><span>Leech Pact <b>at most 1.2% of max health a second</b></span><span>Bloodthirst <b>at most once every 4s</b></span></div></div>
+  </div>
+</section>
+
+<!-- ============================================================ healing & tanks -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="eyebrow">Healing and tanks</span>
+    <h2>Five healers instead of one.</h2>
+    <p>Grave Tether was a must-take on the hard settings and every other healer an afterthought. Every healing weapon now mends per enemy it strikes, capped per cast, rising with rank and evolution, and all of them heal from rank 1.</p>
+  </div>
+  <div class="grid2">
+    <div class="tbl"><table>
+      <tr><th>Evolved, at 15:00</th><th class="n">Healing a second</th></tr>
+      <tr><td><span class="nmc"><img src="img/icon_grave_tether.png" alt="">Grave Tether</span></td><td class="n"><span class="was">170–273 →</span> 64</td></tr>
+      <tr><td><span class="nmc"><img src="img/icon_hallowed_ring.png" alt="">Hallowed Ring <span class="sub">standing in it</span></span></td><td class="n"><span class="was">3.4 →</span> 62</td></tr>
+      <tr><td><span class="nmc"><img src="img/icon_blightfield.png" alt="">Blightfield</span></td><td class="n"><span class="was">3.9 →</span> 52</td></tr>
+      <tr><td><span class="nmc"><img src="img/icon_union_sanctuary.png" alt="">Sanctuary</span></td><td class="n"><span class="was">0 →</span> 51</td></tr>
+      <tr><td><span class="nmc"><img src="img/icon_reaving_arc.png" alt="">Reaving Arc</span></td><td class="n"><span class="was">6.6 →</span> 45</td></tr>
+      <tr><td><span class="nmc"><img src="img/icon_dawnpulse.png" alt="">Dawnpulse</span></td><td class="n"><span class="was">1.5 →</span> 43</td></tr>
+    </table></div>
+    <div class="notice"><span class="stamp buff">Buff</span><h3>Standing and taking it</h3><p>A warrior with every defensive passive stood in the crowd exactly as long as a glass mage: ten seconds. Armour now bites harder, thorns throw back more, and Searing Aura burns hotter the more armour you wear. A full tank with a healer now holds the crowd for the full minute at 5:00 and 15:00 (37s and 19s before).</p><div class="chg"><span>23 armour blocks <b>43% → 59%</b></span><span>Ironhide <b>+2 → +3</b> a rank</span><span>thorns <b>40% → 60%</b></span><span>Searing Aura <b>+12%</b> per point of armour</span></div></div>
+  </div>
+</section>
+
+<!-- ============================================================ luck -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="eyebrow">Luck and drops</span>
+    <h2>Fewer bombs, fewer hourglasses.</h2>
+    <p>"I can easily chain bombs and time stops together the entire run by grabbing Fortune early." A luck build finished a night with 74 sapper charges and 46 hourglasses.</p>
+  </div>
+  <div class="grid3">
+    <div class="notice"><span class="stamp nerf">Nerf</span><h3>Luck halved</h3><div class="chg"><span>Fortune <b>15% → 7.5%</b> a rank</span><span>Gift of the Hourglass <b>15% → 7.5%</b></span><span>Trainer lesson <b>5% → 2.5%</b> a rank</span></div></div>
+    <div class="notice"><span class="stamp nerf">Nerf</span><h3>Drops halved</h3><p>Coins, sapper charges, lodestones and hourglasses from kills drop half as often. Potions, supply caches and elite chests are unchanged.</p></div>
+    <div class="notice"><span class="stamp nerf">Nerf</span><h3>Sapper charges on bosses</h3><div class="chg"><span>boss health taken <b>8% → 4%</b></span></div></div>
+  </div>
+</section>
+
+<!-- ============================================================ fixes -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="eyebrow">Small things</span>
+    <h2>Also in this patch</h2>
+  </div>
+  <div class="grid3">
+    <div class="notice"><span class="stamp fix">Fix</span><h3>Highmoor's storms</h3><p>A setting added for Conviction overwrote Highmoor's own, so every storm strike landed at 190 wide instead of 88, nearly five times the area. Back to 88.</p></div>
+    <div class="notice"><span class="stamp buff">Buff</span><h3>Axe Gyre in a crowded build</h3><p>The meter was right: ranged weapons killed what would have reached the blades. Blades now deal 65% of the weapon's damage per touch, not 50% (Stormcall too).</p></div>
+    <div class="notice"><span class="stamp fix">Fix</span><h3>Haste and Duplicity reach Seeking Motes</h3><p>A volley of motes (and Iron Palms' flurry) leaves one shot at a time, and the next cast used to cut the last one off before it finished. Evolved, more motes or a faster cast added nothing (×0.95 and ×1.00). The shots now fit inside the cooldown: ×1.5 and ×1.4.</p></div>
+    <div class="notice"><span class="stamp fix">Fix</span><h3>Velocity no longer throws seeking bolts wide</h3><p>A faster seeking bolt turned in a wider circle and swung past what it was chasing: Velocity at its cap cut an evolved Seeking Motes to 60%. Seeking bolts now turn faster as they fly faster.</p></div>
+    <div class="notice"><span class="stamp fix">Fix</span><h3>Six weapons means six</h3><p>The Graveblade and twin glaives could hand over a seventh or eighth weapon. The cap now holds everywhere.</p></div>
+    <div class="notice"><span class="stamp fix">Fix</span><h3>Overtime after a finale</h3><p>The horde after a finale no longer counts the finale's length, and Death's first visit comes a full interval after overtime begins.</p></div>
+    <div class="notice"><span class="stamp fix">Fix</span><h3>Charge lanes stay put</h3><p>A charge's warning lane stays where the charge began instead of riding along with the creature.</p></div>
+    <div class="notice"><span class="stamp new">New</span><h3>Readable meters</h3><p>Every weapon keeps a row on the damage meter, named for what did it, and healing from a weapon is credited to that weapon.</p></div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="sec-head">
+    <span class="eyebrow">What to expect</span>
+    <h2>Ordinary builds last longer late.</h2>
+    <p>Raising the weakest weapons did more than trimming the strongest. The average weapon does what it did before, but a plain six-weapon build that used to fall 13 seconds after 20:00 now holds out for about four and a half minutes. The tester's strongest builds still hold out to the end; the damage behind them is just spread across more of their weapons.</p>
+  </div>
+</section>
+
+<footer>
+  <span class="eyebrow">How we tested</span>
+  <p class="fine">Each weapon, union, discovery and calling was measured alone, evolved at rank 8, at 20:00 on the Pale Wastes, Professional, Hyper: against 320 targets placed where a real 20:00 horde was measured standing, against one boss that closes in and gets kited off, and in the real waves. Unions were measured by their share of a build's damage with four other evolved weapons. The tester's builds were run standing still from 20:00. Blessings were measured on every survivor, thirty runs each. The previous patch notes are <a href="patch-notes-2026-09-25.html" style="color:var(--arc)">here</a>.</p>
+</footer>
+
+</div>
+
+</body>
+</html>

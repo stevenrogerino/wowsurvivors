@@ -88,9 +88,9 @@
     },
     velocity: {
       name: 'Velocity', art: 'spear', quality: 'common',
-      description: '+{v%}% Projectile speed', max: 3, v: 0.15,
-      detail: 'Bolts, arrows, knives, shields, rings and beasts travel faster, so they reach foes sooner. No effect on anything that does not travel.',
-      apply: (p, up) => { p.projectileSpeed += up.v; },
+      description: '+{v%}% Projectile speed, and they hit {hit%}% harder', max: 3, v: 0.15, hit: 0.075,
+      detail: 'Bolts, arrows, knives, shields, rings and beasts travel faster, so they reach foes sooner, and strike harder for it. No effect on anything that does not travel.',
+      apply: (p, up) => { p.projectileSpeed += up.v; p.projectileImpact = (p.projectileImpact || 0) + up.hit; },
     },
     dark_bargain: {
       name: 'Dark Bargain', art: 'skull', quality: 'epic',

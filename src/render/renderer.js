@@ -3132,7 +3132,7 @@
    * drawn as small flat glyphs lying on the grass, which is how scenery is
    * drawn. Measured against the floor beside them, the bomb cleared 274 of
    * colour distance across THIRTY-FOUR PIXELS: a bright speck, not a landmark. */
-  const CALLOUT = { bomb: 1, stone: 1, hourglass: 1, chest: 1, cache: 1 };
+  const CALLOUT = { bomb: 1, stone: 1, hourglass: 1, chest: 1, cache: 1, reliquary: 1 };
 
   /** A watcher, met on the field (src/game/encounters.js): the survivor
    *  themselves, drawn through the hero rig - or, for the fallen hero, the

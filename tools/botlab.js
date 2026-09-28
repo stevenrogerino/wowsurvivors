@@ -28,6 +28,7 @@
  *   BLESS=all MIDNIGHT=kings                              the blessing matrix: every blessing, every survivor
  *   MODE=window TIME=1320 LIMIT=90 SAME=1 ...             the fixed-window instrument
  *   OUT=/tmp/x.json ... ; node tools/botlab.js --report /tmp/x.json
+ *   TRACE=10 OUT=/tmp/x.json ...                         a timeline every 10s (health, crowd, kill distance, events)
  *
  * Set CHROME to point at an existing Chromium binary. */
 'use strict';
@@ -61,6 +62,11 @@ function settings() {
     WEAPONS: JSON.parse(env('WEAPONS', '{}')),
     BLESSINGS: JSON.parse(env('BLESSINGS', '{}')),
     ENEMIES: JSON.parse(env('ENEMIES', '{}')),
+    TRACE: +env('TRACE', 0),
+    // The drafter's corrections to the reach model (tools/bot/calibrate.js).
+    // CALIB=0 drafts on the raw model.
+    CALIB: env('CALIB', '1') === '1' && fs.existsSync(path.join(__dirname, 'bot', 'reach-calibration.json'))
+      ? JSON.parse(fs.readFileSync(path.join(__dirname, 'bot', 'reach-calibration.json'), 'utf8')) : null,
   };
 }
 
@@ -170,12 +176,77 @@ function inPage(S, job, sources) {
   }
   window.__led = L;
 
+  /* THE TIMELINE (TRACE=seconds). A night is meant to breathe: stretches at
+     the edge of the seat, then stretches where the build outruns the horde.
+     Each window says which one it was: how much health it cost, how many
+     creatures stood within reach, how far from the survivor things were
+     dying and how long they lived, against how much horde arrived. When the
+     build is ahead, creatures die young and far out, near the ring they came
+     in on; when it is behind, they live long and die close. Level-up picks,
+     blessings and bosses go in as events, so a swing can be read against
+     what caused it. */
+  if (!window.__traced) {
+    window.__traced = true;
+    const now = () => Math.round(WS.Game.run.time * 10) / 10;
+    const sp = WS.Enemy.spawn;
+    WS.Enemy.spawn = function () {
+      const e = sp.apply(this, arguments);
+      const T = window.__tr;
+      if (e && T && !(e.template && (e.template.finale || e.template.part))) {
+        e.__born = WS.Game.run.time;
+        if (e.boss) T.ev.push([now(), 'boss', e.id, e.maxHealth]);
+        else { T.w.spawns++; T.w.spawnHP += e.maxHealth; if (e.elite) T.w.elites++; }
+      }
+      return e;
+    };
+    const kl = WS.Enemy.kill;
+    WS.Enemy.kill = function (e) {
+      const T = window.__tr;
+      if (T && e && e.__born !== undefined) {
+        const pl = WS.Game.player;
+        const life = WS.Game.run.time - e.__born;
+        if (e.boss) T.ev.push([now(), 'slain', e.id, Math.round(life)]);
+        else { T.w.kd.push(Math.hypot(e.x - pl.x, e.y - pl.y)); T.w.life.push(life); }
+      }
+      return kl.apply(this, arguments);
+    };
+    const cl = WS.Game.chooseLevelUp;
+    WS.Game.chooseLevelUp = function (c) {
+      if (window.__tr && c) window.__tr.ev.push([now(), c.type, c.id]);
+      return cl.apply(this, arguments);
+    };
+    // Discoveries land outside a pick (two weapons meeting), so diff them.
+    const cc = WS.ComboSystem.check;
+    WS.ComboSystem.check = function (pl) {
+      const had = Object.assign({}, pl.combosActive);
+      const r = cc.apply(this, arguments);
+      if (window.__tr) for (const id of Object.keys(pl.combosActive)) if (!had[id]) window.__tr.ev.push([now(), 'discovery', id]);
+      return r;
+    };
+    if (WS.LevelUp.bestow) {
+      const bs = WS.LevelUp.bestow;
+      WS.LevelUp.bestow = function (pl, n) {
+        const r = bs.apply(this, arguments);
+        if (window.__tr) window.__tr.ev.push([now(), 'reliquary', n + ':' + r.join('|')]);
+        return r;
+      };
+    }
+    const cb = WS.Game.chooseBlessing;
+    WS.Game.chooseBlessing = function (c) {
+      if (window.__tr && c) window.__tr.ev.push([now(), 'blessing', c.id || c]);
+      return cb.apply(this, arguments);
+    };
+  }
+  const freshWindow = () => ({ spawns: 0, spawnHP: 0, elites: 0, kd: [], life: [], near: 0, screen: 0, samples: 0, hpMin: 1 });
+  const TR = S.TRACE > 0 ? { w: freshWindow(), ev: [], rows: [], sub: 0 } : null;
+  window.__tr = TR;
+
   const [hero, blessing, seed] = job;
   WS.setSeed(seed);
   WS.Game.startRun(S.MAP, hero);
   const G = WS.Game;
   const pilot = S.PILOT === 'kite' ? installKiter() : installPilot(S.PILOT_OPTS);
-  const draft = installDrafter(Object.assign({ blessing: blessing === 'auto' ? null : blessing, midnight: S.MIDNIGHT }, S.DRAFT_OPTS));
+  const draft = installDrafter(Object.assign({ blessing: blessing === 'auto' ? null : blessing, midnight: S.MIDNIGHT, calib: S.CALIB }, S.DRAFT_OPTS));
   WS.Input.poll = function () {};
   let p = G.player;
 
@@ -237,6 +308,37 @@ function inPage(S, job, sources) {
     const f = p.health / Math.max(1, p.maxHealth);
     if (f < L.lowest) L.lowest = f;
     if (f < 0.25) L.lowTime += STEP;
+    if (TR) {
+      TR.w.hpMin = Math.min(TR.w.hpMin, f);
+      TR.sub += STEP;
+      if (TR.sub >= 0.5) {
+        TR.sub = 0;
+        const pool = WS.Enemy.pool;
+        let near = 0, screen = 0;
+        for (let k = 0; k < pool.count; k++) {
+          const e = pool.active[k];
+          const d = Math.hypot(e.x - p.x, e.y - p.y);
+          if (d < 250) near++;
+          if (d < 600) screen++;
+        }
+        TR.w.near += near; TR.w.screen += screen; TR.w.samples++;
+      }
+      if (TR.next === undefined) TR.next = Math.floor(G.run.time / S.TRACE) * S.TRACE + S.TRACE;
+      if (G.run.time >= TR.next) {
+        const w = TR.w, med = (a) => { if (!a.length) return -1; const q = a.slice().sort((x, y) => x - y); return q[q.length >> 1]; };
+        const prev = TR.prev || { lost: 0, healed: 0, dealt: 0, kills: 0 };
+        const cur = { lost: L.lost, healed: G.run.healingDone || 0, dealt: G.run.damageDone || 0, kills: G.run.kills };
+        let boss = 0;
+        for (let k = 0; k < WS.Enemy.pool.count; k++) if (WS.Enemy.pool.active[k].boss) boss++;
+        const mh = Math.max(1, p.maxHealth);
+        TR.rows.push([Math.round(TR.next), Math.round(f * 100), Math.round(w.hpMin * 100),
+          Math.round((cur.lost - prev.lost) / mh * 100), Math.round((cur.healed - prev.healed) / mh * 100),
+          +(w.near / Math.max(1, w.samples)).toFixed(1), +(w.screen / Math.max(1, w.samples)).toFixed(1), WS.Enemy.pool.count,
+          w.spawns, Math.round(w.spawnHP), cur.kills - prev.kills, Math.round(cur.dealt - prev.dealt),
+          Math.round(med(w.kd)), +med(w.life).toFixed(1), p.level, boss, w.elites]);
+        TR.prev = cur; TR.w = freshWindow(); TR.next += S.TRACE;
+      }
+    }
     while (G.run.time >= nextMark) {
       curve.push([Math.round(nextMark / 60), Math.round(f * 100), p.level, WS.Enemy.pool.count, Math.round(G.run.damageDone)]);
       nextMark += 60;
@@ -263,7 +365,8 @@ function inPage(S, job, sources) {
     rescueGoals: pilot.rescues || 0,
     weapons: p.weapons.map((w) => w.id + ':' + w.level + (w.evolved ? 'E' : '')),
     blessings: Object.keys(p.blessingsTaken || {}),
-    curve, pilotMs: Math.round(wall), plans: pilot.stats.plans || 1, bolts: L.bolts,
+    curve, trace: TR ? { cols: 't hp hpMin lost healed near screen alive spawns spawnHP kills dealt killDist life level boss elites'.split(' '), rows: TR.rows, ev: TR.ev } : null,
+    pilotMs: Math.round(wall), plans: pilot.stats.plans || 1, bolts: L.bolts,
   };
 }
 

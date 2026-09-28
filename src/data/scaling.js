@@ -25,10 +25,10 @@
 
   // what one more of each stat buys each kind of weapon
   S.BEHAVIOR = {
-    aimed: { count: 'one more bolt', speed: 'faster bolts' },
-    spray: { count: 'one more arrow', speed: 'faster arrows' },
-    ring: { count: 'one more knife', speed: 'faster knives' },
-    bounce: { count: 'one more ricochet', speed: 'faster shield' },
+    aimed: { count: 'one more bolt', speed: 'faster, harder bolts' },
+    spray: { count: 'one more arrow', speed: 'faster, harder arrows' },
+    ring: { count: 'one more knife', speed: 'faster, harder knives' },
+    bounce: { count: 'one more ricochet', speed: 'faster, harder shield' },
     nova: { area: 'bigger burst' },
     zone: { area: 'bigger field', duration: 'lasts longer' },
     orbit: { count: 'one more blade', area: 'wider circle', duration: 'spins longer' },
@@ -36,8 +36,8 @@
     chain: { count: 'one more leap', area: 'longer leaps' },
     beam: { area: 'longer, wider line' },
     palm: { count: 'one more palm per flurry', area: 'longer reach' },
-    herd: { count: 'one more beast', duration: 'longer run', speed: 'faster run', area: 'bigger burst at the end' },
-    chakram: { count: 'one more ring', area: 'longer throw', speed: 'faster ring' },
+    herd: { count: 'one more beast', duration: 'longer run', speed: 'faster, harder run', area: 'bigger burst at the end' },
+    chakram: { count: 'one more ring', area: 'longer throw, wider ring', speed: 'faster, harder ring' },
   };
 
   // the kinds that launch bolts, which can carry a splash (weapon.js fillSpec)

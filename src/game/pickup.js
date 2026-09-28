@@ -9,6 +9,8 @@
     coin: { art: 'coin', tint: [1.0, 0.82, 0.20], size: 15 },
     potion: { art: 'potion', tint: [1.0, 0.40, 0.40], size: 17 },
     chest: { art: 'chest', tint: [0.9, 0.70, 0.30], size: 22 },
+    // What a boss leaves behind (Config.reliquaries): gifts, not gold.
+    reliquary: { art: 'chest', tint: [0.72, 0.55, 1.0], size: 34 },
     bomb: { art: 'bomb', tint: [1.0, 0.50, 0.30], size: 19 },
     stone: { art: 'stone', tint: [0.5, 0.90, 1.0], size: 18 },
     cache: { art: 'cache', tint: [1.0, 0.90, 0.60], size: 28 },
@@ -164,6 +166,18 @@
       if (rolls > 1) {
         WS.Game.toast(rolls === 5 ? 'JACKPOT!' : 'Treasure!', `The chest pays out ${rolls}x.`, { kind: 'loot' });
         WS.FX.flash(pickup.x, pickup.y, 90, WS.CONST.COLORS.gold, 0.5);
+      }
+
+    } else if (kind === 'reliquary') {
+      const cfg = WS.Config;
+      const roll = WS.random() / WS.max(0.2, p.luck);
+      const n = roll < cfg.reliquaryFive ? 5 : roll < cfg.reliquaryThree ? 3 : 1;
+      const gifts = WS.LevelUp.bestow(p, n);
+      WS.Audio.play('chest');
+      WS.FX.flash(pickup.x, pickup.y, 110, [0.72, 0.55, 1.0], 0.55);
+      if (gifts.length) {
+        WS.Game.announce(n === 5 ? 'A reliquary, brimming!' : n === 3 ? 'A generous reliquary!' : 'A reliquary',
+          gifts.join(' · '), 3.2, { kind: 'loot' });
       }
 
     } else if (kind === 'bomb') {

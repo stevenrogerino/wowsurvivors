@@ -43,6 +43,7 @@
  *   node tools/rank-test.js                       everything
  *   KIND=rank NAMES=arcweb,volley node tools/rank-test.js
  *   KIND=aux STAGES=s5 SHARD=1/3 OUT=/tmp/aux1.json node tools/rank-test.js
+ *   KIND=aux PASSIVES=velocity,area ...           only those passives
  *   WEAPONS='{"arcweb":{"damage":30}}' KIND=rank ... a candidate change
  *
  * Set CHROME to point at an existing Chromium binary. */
@@ -88,7 +89,8 @@ const DMG = ['might', 'haste', 'precision', 'ferocity', 'area', 'quantity', 'vel
     }
   }
   if (S.KIND.includes('aux')) {
-    for (const w of cat.weapons) for (const st of ['s3', 's5']) for (const pas of DMG) for (const at of ['min', 'max']) {
+    const pasList = process.env.PASSIVES ? process.env.PASSIVES.split(',') : DMG;
+    for (const w of cat.weapons) for (const st of ['s3', 's5']) for (const pas of pasList) for (const at of ['min', 'max']) {
       if (want(st) && named(w)) jobs.push({ kind: 'aux', name: w, stage: st, weapons: [w], passive: pas, at });
     }
   }

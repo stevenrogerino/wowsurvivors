@@ -683,6 +683,7 @@
 
     if (e.boss) {
       run.bossesSlain++;
+      WS.WaveManager.onBossSlain();
       if (run.marks) run.marks.push([Math.round(run.time), 'boss', e.displayName || t.name]);
       if (e.id === 'aethelgard') {
         this.pool.release(e);
@@ -690,6 +691,7 @@
         return;
       }
       if (e.id === 'death_itself') run.deathsSlain++;
+      else if (WS.Config.reliquaries) WS.Pickup.spawn('reliquary', e.x, e.y);
       WS.Save.stats.bosses[e.id] = (WS.Save.stats.bosses[e.id] || 0) + 1;
       const gold = WS.floor((t.gold || 40) * run.goldMult * player.goldMultiplier);
       WS.Game.addGold(gold, e.x, e.y);

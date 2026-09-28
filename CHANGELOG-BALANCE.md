@@ -5,6 +5,61 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
 
 <!-- new entries go directly below -->
 
+## 2026-09-28 (evening): The night breathes; passives and discoveries that did nothing
+
+Full nights played by the bot on every battlefield at Professional, every
+survivor, recorded every 10 seconds (`TRACE=10` in `tools/botlab.js`, read by
+`tools/night-curve.js`): health lost, how low it went, creatures within 250px,
+kill distance, level, and every pick, evolution, discovery, boss and
+reliquary as events.
+
+- The night had one wall and no waves. Every battlefield stops raising its
+  spawn rate at about 18:00 and its last swarm comes by 20:00; after that only
+  creature health grows (+57% over the last twelve minutes) while an evolved
+  build multiplies. Across 72 nights on the Dustreach, Mourneholt and the
+  Ochre Plains, 0 of 14 that never evolved a weapon reached dawn, and a build
+  with two evolved weapons often killed everything within a second of it
+  stepping on screen for the rest of the night.
+- The rhythm (`Config.tides`, on): the ambient pace rises to x1.5 over the
+  40s before a scheduled boss (`tideGather`, `tideCrest`), drops to x0.35
+  for 45s after one falls and eases back (`tideLull`, `tideLow`); creature
+  health steps +10/+15/+25/+30% after the first four bosses' lulls, eased
+  over 60s and announced (`tideSteps`, `tideStepTime`); after a map's last
+  phase the pace keeps rising, 1/900 a second (`tideLateRamp`).
+- Reliquaries (`Config.reliquaries`, on): every boss but Death leaves one.
+  1, 3 or 5 gifts (3 at 20%, 5 at 5%, each times luck), each the next step
+  of the build: a ready evolution, the passive a rank-8 weapon waits on, a
+  rank on the weapon nearest evolution, else Might (`LevelUp.bestow`).
+- Dustreach, Professional, 36 nights each way: dawn 27 -> 21, returns to the
+  edge after a stretch ahead 1.4 -> 1.9 a night, intensity dips after every
+  boss and the last five minutes are the hardest of the night instead of the
+  easiest.
+- Velocity also makes projectiles hit 7.5% harder a rank
+  (`projectileImpact`, in `fillSpec`, the reach model and the damage row).
+  At its cap speed alone was worth -12% to +3% to most weapons; now +8% to
+  +53%. Gale Chakram's ring widens with Area (the longer throw alone made it
+  -21% evolved; now +5%).
+- Discoveries, on vs off at 5:00/9:00/14:00/20:00: Shadowflame's burst marks
+  what it touches, so an evolved (pierce-everything) Umbral Bolt skipped them
+  and the discovery was worth +2%; past pierce 99 the flame goes into the
+  bolt instead (`pierceFlame` 1.35, now +15%). Truestrike +10% arrow damage
+  (was -1% to -5% before the volley evolved). Moonlit Herd +12% herd damage
+  (was +3-7% late), Radiant Gyre +8% blade damage (was +5% evolved),
+  Hallowed Hands area 1.10 -> 1.15.
+- Evolved weapons against the real waves (damage landed, `rank-test`
+  KIND=rank) sit within 2x but not in the dummy order: Knifestorm
+  evolveDamageMult 2.39 -> 2.63, Reaving Arc 5.79 -> 6.37, Gale Chakram
+  4 -> 3.7.
+- DZ (Graveblade), 3 of 8 dawns and the shortest nights of anyone: health
+  155 -> 170, regeneration 2 -> 2.5.
+- The bot, not the game: the drafter's try-on of a passive did not restore
+  Velocity's new bonus (fixed); its weapon values come from the reach model,
+  which spreads the horde over the whole field and rated area weapons dozens
+  of times below piercing bolts against what they land, so it now corrects
+  the model from real-wave damage (`tools/bot/calibrate.js`, damped half
+  way); the chain reach model floors each hop at zero as `chainFrom` does
+  (an evolved Arcweb came out negative).
+
 ## 2026-09-28 (later): Weapons in one band at every rank; discoveries; bursts and homing
 
 Measured with `tools/rank-test.js`: every weapon at rank 1 (1:00), 3 (5:00),

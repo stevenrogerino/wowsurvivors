@@ -91,7 +91,7 @@
          bonus is exactly the kind of wrong number this exists to prevent. */
       p = Weapon._probe || (Weapon._probe = WS.Player.create('mage'));
       p.damageMultiplier = 1; p.cooldownMultiplier = 1; p.areaMultiplier = 1;
-      p.projectileBonus = 0; p.projectileSpeed = 1; p.metaTimer = 0;
+      p.projectileBonus = 0; p.projectileSpeed = 1; p.projectileImpact = 0; p.metaTimer = 0;
       p.formTimer = 0; p.form = null; p.poise = 0;
     }
     const w = { id, data, level: level || 1, evolved: !!evolved, mods: {} };
@@ -148,7 +148,11 @@
 
   function fillSpec(player, w) {
     const d = w.data, cfg = WS.Config;
-    spec.damage = damageOf(player, w);
+    /* Velocity's second half: a projectile that travels hits harder for it.
+       Speed alone was a dead card - measured to maximum against the same
+       crowd it was worth -12% to +3% to most weapons, because what arrives
+       sooner hits the same things (a seeking bolt or a herd it made worse). */
+    spec.damage = damageOf(player, w) * (1 + (player.projectileImpact || 0));
     spec.life = d.life || 2.0;
     spec.radius = (d.radius || 8) * (1 + cfg.rankRadiusStep * (w.level - 1))
       * (w.evolved ? cfg.evolveRadiusMult : 1);
@@ -175,7 +179,16 @@
     // weapon was drawn with.
     spec.turnScale = player.projectileSpeed || 1;
     spec.homingTarget = null;
-    const splash = d.splash || w.mods.splash || (w.evolved ? d.evolveSplash : 0);
+    let splash = d.splash || w.mods.splash || (w.evolved ? d.evolveSplash : 0);
+    /* A bolt that passes through everything has no use for a burst: every
+       creature the burst touches is one the bolt then skips (the burst
+       shares its ledger, so nothing is struck twice), and a burst deals less
+       than the bolt. Shadowflame on an evolved Umbral Bolt was worth +4%.
+       There the flame goes into the bolt instead (w.mods.pierceFlame). */
+    if (w.mods.pierceFlame && spec.pierce >= 99 && !d.splash) {
+      splash = w.evolved ? d.evolveSplash || 0 : 0;
+      spec.damage *= w.mods.pierceFlame;
+    }
     spec.splash = splash ? areaOf(player, w, splash) : null;
     spec.slowFactor = d.slowFactor || w.mods.slowFactor;
     spec.slowDuration = d.slowDuration || w.mods.slowDuration;
@@ -529,7 +542,8 @@
     if (!target) return false;
     fillSpec(player, w);
     const speed = d.waveSpeed || 520;
-    spec.damage *= d.waveDamage || 0.8;
+    // A palm's wave keeps its own pace, so Velocity does not reach it.
+    spec.damage = damageOf(player, w) * (d.waveDamage || 0.8);
     spec.pierce = 2; spec.healPer = 0; spec.healPool = null;
     spec.radius = 13 * (w.evolved ? 1.3 : 1);
     spec.life = (reach * (d.waveReach || 2.8)) / speed;
@@ -602,6 +616,11 @@
     fillSpec(player, w);
     spec.pierce = 999; spec.homing = false; spec.homingTarget = null;
     spec.boomerang = range;
+    /* Area throws it further - and on its own that made the chakram WORSE
+       (-21% on a crowd at its cap, -30% on a boss): the turn happens past
+       the crowd and the ring spends its extra flight on empty ground. The
+       ring widens with it, so the longer pass cuts a wider lane. */
+    spec.radius *= player.areaMultiplier;
     spec.spinRate = 18;
     const count = countOf(player, w);
     spec.burst = count;
@@ -863,12 +882,16 @@
       return { per: inCircle(r, crowd) * ticks,
         why: `r=${Math.round(r)} x ${ticks} ticks` };
     },
-    /* Hops from target to target, each hop 6% weaker than the last. */
+    /* Hops from target to target, each weaker than the last by the weapon's
+       own falloff - and never below nothing, as chainFrom has it. Summing
+       1 - 0.06i without the floor took an evolved Arcweb, whose chain runs
+       past seventeen hops, to a negative number of targets. */
     chain: (p, w, crowd) => {
       const chains = chainCount(p, w);
+      const fall = w.evolved ? evo(w.data, 'evolveChainFalloff') : WS.Config.chainFalloff;
       let sum = 0;
-      for (let i = 0; i < Math.min(chains, Math.max(1, crowd)); i++) sum += 1 - i * 0.06;
-      return { per: sum, why: `${chains} hops, each 6% weaker` };
+      for (let i = 0; i < Math.min(chains, Math.max(1, crowd)); i++) sum += Math.max(0, 1 - i * fall);
+      return { per: sum, why: `${chains} hops, each ${Math.round(fall * 100)}% weaker` };
     },
     /* Several bolts, each with its own splash. */
     storm: (p, w, crowd) => {
@@ -959,7 +982,7 @@
     if (!p) {
       p = Weapon._probe || (Weapon._probe = WS.Player.create('mage'));
       p.damageMultiplier = 1; p.cooldownMultiplier = 1; p.areaMultiplier = 1;
-      p.projectileBonus = 0; p.projectileSpeed = 1; p.metaTimer = 0;
+      p.projectileBonus = 0; p.projectileSpeed = 1; p.projectileImpact = 0; p.metaTimer = 0;
       p.formTimer = 0; p.form = null; p.poise = 0;
     }
     const w = { id, data, level: level || 1, evolved: !!evolved, mods: {} };
@@ -969,13 +992,16 @@
       splash: (data.splash || (w.evolved && data.evolveSplash)) ? areaOf(p, w, data.splash || data.evolveSplash) : 0,
     };
     const r = model(p, w, Math.max(1, crowd || 1), q);
-    const damage = damageOf(p, w);
+    // What flies carries Velocity's impact (fillSpec); the rest does not.
+    const damage = damageOf(p, w) * (TRAVELS[b] ? 1 + (p.projectileImpact || 0) : 1);
     const cooldown = Weapon.cooldown(p, w);
     // `per` already counts every projectile, so it is not multiplied by count
     // again - the models that use q.count have folded it in themselves.
     return { behavior: b, targets: r.per, why: r.why,
       dps: damage * r.per / cooldown };
   };
+
+  const TRAVELS = { aimed: 1, spray: 1, ring: 1, bounce: 1, chakram: 1, herd: 1 };
 
   /* --------------------------------------------------------------- fire -- */
   Weapon.fire = function (player, w) {
@@ -999,7 +1025,8 @@
     const d = w.data;
     const lines = [];
     const behavior = behaviorOf(w);
-    lines.push(['Damage', WS.round(damageOf(player, w))]);
+    const impact = player && TRAVELS[behavior] ? 1 + (player.projectileImpact || 0) : 1;
+    lines.push(['Damage', WS.round(damageOf(player, w) * impact)]);
     lines.push(['Cooldown', Weapon.cooldown(player, w).toFixed(2) + 's']);
     if (behavior === 'nova' || behavior === 'zone') {
       lines.push(['Radius', WS.round(areaOf(player, w, d.radius || 120))]);

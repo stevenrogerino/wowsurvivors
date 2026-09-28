@@ -238,6 +238,15 @@
     goldMultiRoll: 0.8,
     bombBossPct: 0.04,
     coffinGold: 80,
+    /* THE RELIQUARY: a boss that falls leaves one (Config.reliquaries), and
+       it holds reliquaryFive-in-a-hundred five gifts, reliquaryThree three,
+       else one - each odds times the survivor's luck. A gift is a step down
+       the road the build is already on (LevelUp.bestow): the evolution
+       that is ready, the passive a finished weapon is waiting on, a rank on
+       the weapon nearest its evolution. */
+    reliquaries: false,
+    reliquaryFive: 0.05,
+    reliquaryThree: 0.25,
     gravebladeGold: 120,
     glaiveGold: 120,
     rangedDamagePct: 0.75,
@@ -268,6 +277,22 @@
     bossTimes: [300, 630, 960, 1320, 1620],
     spawnIntervalMult: 1.0,
     spawnCountMult: 1.0,
+    /* THE TIDE (waves.js Wave.tide): the ambient horde breathes around the
+       bosses. For tideGather seconds before a boss it thickens to tideCrest
+       of its pace; for tideLull seconds after one falls it thins to tideLow
+       and eases back. And once a battlefield's last phase has begun, the pace
+       keeps rising by one tideLateRamp-th a second, so the back half of the
+       night is not a flat walk to dawn. */
+    tides: false,
+    tideGather: 40, tideCrest: 1.5,
+    tideLull: 45, tideLow: 0.35,
+    tideLateRamp: 900,
+    /* And the night deepens at each boss: once a scheduled boss's lull is
+       over, the horde's health steps up by that boss's share here (easing
+       in over tideStepTime), so the stretch a boss's reliquary buys is
+       caught up with before the next. Weighted late, where the build is. */
+    tideSteps: [0.10, 0.15, 0.25, 0.30, 0],
+    tideStepTime: 60,
     deathTime: 1800,
     deathInterval: 60,
 
