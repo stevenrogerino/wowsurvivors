@@ -364,6 +364,7 @@ function inPage(S, job, sources) {
     maxHp: Math.round(p.maxHealth), armor: Math.round(p.armor || 0),
     rescueGoals: pilot.rescues || 0,
     weapons: p.weapons.map((w) => w.id + ':' + w.level + (w.evolved ? 'E' : '')),
+    steps: (WS.WaveManager.stepK || []).map((v) => Math.round(v * 100) / 100),
     blessings: Object.keys(p.blessingsTaken || {}),
     curve, trace: TR ? { cols: 't hp hpMin lost healed near screen alive spawns spawnHP kills dealt killDist life level boss elites'.split(' '), rows: TR.rows, ev: TR.ev } : null,
     pilotMs: Math.round(wall), plans: pilot.stats.plans || 1, bolts: L.bolts,

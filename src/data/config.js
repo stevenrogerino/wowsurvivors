@@ -244,7 +244,7 @@
        the road the build is already on (LevelUp.bestow): the evolution
        that is ready, the passive a finished weapon is waiting on, a rank on
        the weapon nearest its evolution. */
-    reliquaries: false,
+    reliquaries: true,
     reliquaryFive: 0.05,
     reliquaryThree: 0.25,
     gravebladeGold: 120,
@@ -283,7 +283,7 @@
        and eases back. And once a battlefield's last phase has begun, the pace
        keeps rising by one tideLateRamp-th a second, so the back half of the
        night is not a flat walk to dawn. */
-    tides: false,
+    tides: true,
     tideGather: 40, tideCrest: 1.5,
     tideLull: 45, tideLow: 0.35,
     tideLateRamp: 900,
@@ -293,6 +293,16 @@
        caught up with before the next. Weighted late, where the build is. */
     tideSteps: [0.10, 0.15, 0.25, 0.30, 0],
     tideStepTime: 60,
+    /* ...but only as deep as the survivor can take. Each step is scaled, when
+       it comes, by how hard the night has been hitting: damage taken over
+       roughly the last tideStrainTime seconds, as a share of max health a
+       second. At none the step lands in full; at tideStrainFull or more it
+       does not land at all, and the late climb follows the latest step. On
+       the hardest battlefields, where no one gets ahead, the full steps took
+       a strong player's dawns from 6 in 24 to none; they are there to catch
+       a build that has run away with the night, not to finish one that has
+       not. */
+    tideStrainTime: 90, tideStrainFull: 0.006,
     deathTime: 1800,
     deathInterval: 60,
 

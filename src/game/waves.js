@@ -20,6 +20,9 @@
     this.deathWarned = false;
     this.lull = 0;
     this.deepened = 0;
+    this.stepK = [];      // how much of each tideSteps share landed (Wave.depth)
+    this.strain = 0;      // damage taken a second, as a share of max health, smoothed
+    this.lastTaken = 0;
     this.deathTimer = 0;
     this.cacheTimer = cfg.cacheFirst;
     this.merchantTimer = cfg.eggVendorFirst;
@@ -73,14 +76,17 @@
     if (!cfg.tides || run.victorious || run.mode === 'endless') return 1;
     let f = 1;
     const nb = this.map.bosses[this.bossIndex];
-    if (nb && nb.at - time < cfg.tideGather) f = 1 + (cfg.tideCrest - 1) * WS.clamp(1 - (nb.at - time) / cfg.tideGather, 0, 1);
+    if (nb && nb.at >= time && nb.at - time < cfg.tideGather) f = 1 + (cfg.tideCrest - 1) * WS.clamp(1 - (nb.at - time) / cfg.tideGather, 0, 1);
     if (this.lull > 0) {
       // Thin at once, then ease back over the second half.
       const k = WS.clamp((cfg.tideLull - this.lull) / cfg.tideLull, 0, 1);
       f *= k < 0.5 ? cfg.tideLow : cfg.tideLow + (1 - cfg.tideLow) * (k - 0.5) * 2;
     }
     const last = this.map.phases[this.map.phases.length - 1];
-    if (last && time > last.at) f *= 1 + (time - last.at) / cfg.tideLateRamp;
+    if (last && time > last.at) {
+      const k = this.stepK.length ? this.stepK[this.stepK.length - 1] : 1;
+      f *= 1 + (time - last.at) / cfg.tideLateRamp * k;
+    }
     return f;
   };
 
@@ -95,7 +101,7 @@
     for (let i = 0; i < bosses.length && i < cfg.tideSteps.length; i++) {
       const k = WS.clamp((time - bosses[i].at - cfg.tideLull) / cfg.tideStepTime, 0, 1);
       if (k <= 0) break;
-      d *= 1 + cfg.tideSteps[i] * k;
+      d *= 1 + cfg.tideSteps[i] * k * (this.stepK[i] !== undefined ? this.stepK[i] : 0);
     }
     return d;
   };
@@ -156,6 +162,11 @@
     /* ---- ambient spawns -------------------------------------------------- */
     const curse = player.curse;
     if (this.lull > 0) this.lull -= dt;
+    // How hard the night is hitting (Config.tideStrainTime).
+    const taken = run.damageTaken || 0;
+    const rate = dt > 0 ? (taken - this.lastTaken) / dt / WS.max(1, player.maxHealth) : 0;
+    this.lastTaken = taken;
+    this.strain += (rate - this.strain) * WS.min(1, dt / WS.Config.tideStrainTime);
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0 && phase.count > 0) {
       this.spawnTimer = phase.interval * WS.Config.spawnIntervalMult / this.tide(time, run)
@@ -190,7 +201,9 @@
       const b = map.bosses[i];
       if (b && i < steps.length && time >= b.at + WS.Config.tideLull) {
         this.deepened++;
-        if (steps[i] > 0) WS.Game.announce('The night deepens.', null, 2.4);
+        const k = WS.clamp(1 - this.strain / WS.Config.tideStrainFull, 0, 1);
+        this.stepK[i] = k;
+        if (steps[i] > 0 && k > 0.25) WS.Game.announce('The night deepens.', null, 2.4);
       }
     }
 

@@ -25,15 +25,25 @@ reliquary as events.
   for 45s after one falls and eases back (`tideLull`, `tideLow`); creature
   health steps +10/+15/+25/+30% after the first four bosses' lulls, eased
   over 60s and announced (`tideSteps`, `tideStepTime`); after a map's last
-  phase the pace keeps rising, 1/900 a second (`tideLateRamp`).
+  phase the pace keeps rising, 1/900 a second (`tideLateRamp`). Each step
+  lands in proportion to how little the night has been hurting: damage taken
+  a second as a share of max health, smoothed over 90s, at 0 the full step,
+  at 0.006 none (`tideStrainTime`, `tideStrainFull`); the late climb follows
+  the latest step. With full steps for everyone the hardest battlefields at
+  Professional went from 6 dawns in 24 to none (Pale Wastes) and 10 to 2
+  (the Ochre Plains): the steps are for a build that has run away with the
+  night.
 - Reliquaries (`Config.reliquaries`, on): every boss but Death leaves one.
   1, 3 or 5 gifts (3 at 20%, 5 at 5%, each times luck), each the next step
   of the build: a ready evolution, the passive a rank-8 weapon waits on, a
   rank on the weapon nearest evolution, else Might (`LevelUp.bestow`).
-- Dustreach, Professional, 36 nights each way: dawn 27 -> 21, returns to the
-  edge after a stretch ahead 1.4 -> 1.9 a night, intensity dips after every
-  boss and the last five minutes are the hardest of the night instead of the
-  easiest.
+- Every battlefield at Professional, every survivor, two nights each, the
+  same seeds off and on (dawns; returns to the edge after a stretch ahead):
+  Thornhollow 24 -> 23, 1.2 -> 1.6; the Dustreach 18 -> 19, 1.2 -> 2.2;
+  Mourneholt 23 -> 19, 1.9 -> 1.8; the Ochre Plains 10 -> 11, 1.0 -> 1.9;
+  the Pale Wastes 6 -> 7, 0.4 -> 0.8; Highmoor 3 -> 3, 0.3 -> 0.5.
+  Intensity dips after every boss and the night's sharpest peak comes
+  around the last boss instead of in the middle.
 - Velocity also makes projectiles hit 7.5% harder a rank
   (`projectileImpact`, in `fillSpec`, the reach model and the damage row).
   At its cap speed alone was worth -12% to +3% to most weapons; now +8% to
