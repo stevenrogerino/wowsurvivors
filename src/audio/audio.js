@@ -479,14 +479,6 @@
       noise({ freq: 260, to: 70, decay: 0.26, gain: 0.12, filter: 'lowpass', q: 0.8 });
     },
     gem() { tone({ type: 'sine', freq: 1180, to: vary(1560, 0.16), decay: vary(0.09, 0.28), gain: 0.07 }); },
-    /* The reveal: the best card in a fresh hand, heard as it lands. Timed to
-       the deal (the cards touch down about a third of a second in). */
-    reveal() {
-      const v = Audio.variant, d = 0.3;
-      const notes = v === 'legendary' ? [880, 1108, 1319, 1760] : v === 'epic' ? [880, 1108, 1319] : [988, 1319];
-      notes.forEach((f, i) => chime(f, v === 'legendary' ? 0.5 : 0.34, 0.05, d + i * 0.07));
-      if (v === 'legendary') chime(2637, 0.9, 0.03, d + notes.length * 0.07);
-    },
     /* Two low thumps, the second softer: lub, dub. Felt more than heard. */
     heartbeat() {
       if (Audio.ctx && Audio.ctx.currentTime < (Audio._stageUntil || 0)) return;

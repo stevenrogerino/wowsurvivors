@@ -488,6 +488,54 @@ const note = [];
       + `${auto.field.gained}, state ${auto.field.state}, settle ${auto.field.settle})`);
   }
 
+  /* -------------------------------------------------------------- drawer --
+   * Opening the build under the cards must move nothing: not the cards, and
+   * not the tab itself, so a second click in the same place closes it. The
+   * screen is centred on its own height, and a strip that took room in the
+   * layout lifted everything by its height (a tester's video, 1544x832). */
+  for (const [w, h] of [[1544, 832], [1280, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    for (const screen of ['blessing', 'levelup']) {
+      await page.evaluate((screen) => {
+        WS.UI._trayOpen = false;
+        WS.Game.startRun('thornhollow', 'mage');
+        if (screen === 'levelup') {
+          WS.Game.chooseBlessing({ type: 'blessing', id: 'kings' });
+          WS.Game.pendingLevelUps = 1; WS.Game.settle = 0;
+          WS.Game.presentLevelUp ? WS.Game.presentLevelUp() : WS.Game.openLevelUp();
+        }
+      }, screen);
+      // Off the cards, so none of them is lifted by a hover when measured.
+      await page.mouse.move(4, 4);
+      await page.waitForTimeout(700);
+      const boxes = () => page.evaluate(() => {
+        const r = (n) => { const b = n.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.top)]; };
+        const t = document.querySelector('#overlay .bt-toggle');
+        return { cards: [...document.querySelectorAll('#overlay .card')].map(r), toggle: t && r(t),
+          open: !!document.querySelector('#overlay .bt-drawer.open') };
+      });
+      const before = await boxes();
+      if (!before.toggle) { fail.push(`drawer: no build tab on the ${screen} screen at ${w}x${h}`); continue; }
+      const tb = await (await page.$('#overlay .bt-toggle')).boundingBox();
+      const cx = tb.x + tb.width / 2, cy = tb.y + tb.height / 2;
+      await page.mouse.click(cx, cy);
+      await page.waitForTimeout(350);
+      const opened = await boxes();
+      await page.mouse.click(cx, cy);
+      await page.waitForTimeout(350);
+      const closed = await boxes();
+      const moved = JSON.stringify(opened.cards) !== JSON.stringify(before.cards)
+        || JSON.stringify(opened.toggle) !== JSON.stringify(before.toggle);
+      if (!opened.open) fail.push(`drawer: clicking the build tab did not open it (${screen}, ${w}x${h})`);
+      else if (moved) {
+        fail.push(`drawer: opening the build moved the ${screen} screen (${w}x${h}): cards ${JSON.stringify(before.cards)}`
+          + ` -> ${JSON.stringify(opened.cards)}, tab ${before.toggle} -> ${opened.toggle}`);
+      }
+      if (closed.open) fail.push(`drawer: a second click in the same place did not close it (${screen}, ${w}x${h})`);
+    }
+  }
+  note.push('opening and closing the build drawer moves neither the cards nor its own tab');
+
   await b.close();
 
   if (fail.length) {

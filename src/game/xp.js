@@ -4,7 +4,7 @@
 (function (WS) {
 
   const XP = { pool: null, vacuumTimer: 0 };
-  const CHAIN_GAP = 0.7, NOTE_GAP = 0.05;          // see chime() below
+  const CHAIN_GAP = 0.7, NOTE_GAP = 0.07, CHAIN_NOTES = 12;   // see chime() below
   const chain = { step: 0, lastGem: -99, lastNote: -99 };
 
   XP.init = function () {
@@ -113,18 +113,18 @@
    *  Timed, so it does not keep magnetising gems that drop afterwards. */
   XP.vacuumAll = function () { this.vacuumTimer = 1.5; };
 
-  /* THE CHAIN. Gathering used to be silent unless a lodestone was sweeping,
-     and the one loop a survivors game is built on - walk through the drops,
-     feel them come in - had no voice. Now each gem that lands within
-     CHAIN_GAP of the last is the next note up (Audio kit gemChain), paced so
-     a burst reads as a run rather than a chord, with a small spark where it
-     lands. The pacing lives here, on run time, because the audio throttle is
-     per-note and would let a clump through as one chord. */
+  /* THE CHAIN. Walking through gems is silent: a crowded field drops them
+     by the hundred and a note for each was a constant patter under the
+     fight. A lodestone's sweep is the one moment gathering has a voice -
+     every gem on the field coming in at once, heard as a run climbing the
+     scale (Audio kit gemChain), paced so it reads as a run rather than a
+     chord, and capped at CHAIN_NOTES so a full field is one flourish rather
+     than a second and a half of ticking. */
   function chime(player, gem) {
     const t = WS.Game.run.time;
     if (t - chain.lastGem > CHAIN_GAP) chain.step = 0;
     chain.lastGem = t;
-    if (t - chain.lastNote < NOTE_GAP) return;
+    if (chain.step >= CHAIN_NOTES || t - chain.lastNote < NOTE_GAP) return;
     chain.lastNote = t;
     WS.Audio.play('gemChain', player.x, String(WS.min(chain.step, 10)));
     chain.step++;
@@ -152,7 +152,7 @@
       if (distance < player.radius + gem.radius + 5) {
         WS.Game.run.gemsCollected++;
         WS.Save.stats.gemsCollected++;
-        chime(player, gem);
+        if (vacuum) chime(player, gem);
         const value = gem.value;
         this.pool.releaseAt(i);
         WS.Player.gainXP(player, value);

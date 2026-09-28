@@ -57,7 +57,7 @@
   }
 
   /** A choice's accent: its school palette for weapons, its quality otherwise. */
-  /** How precious a card is, for the glint and the reveal: an evolution or a
+  /** How precious a card is, for the glint: an evolution or a
    *  union is the best thing a level can hold, a new weapon is rare, and a
    *  blessing or passive carries its own quality. */
   const TIER = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
@@ -3347,11 +3347,6 @@
     ui.row.replaceChildren();
     // The build as it stands now - a second level-up in a row has one more rank in it.
     if (ui.tray) { ui.tray.replaceChildren(buildTray(WS.Game.player)); }
-    /* The best card in the hand announces itself as the deal lands: nothing
-       for an ordinary hand, a bright pair for rare, three for epic, a rising
-       run for legendary. */
-    const best = choices.reduce((m, c) => WS.max(m, TIER[cardTier(c)] || 0), 0);
-    if (best >= 2) WS.Audio.play('reveal', null, best >= 4 ? 'legendary' : best >= 3 ? 'epic' : 'rare');
     choices.forEach((c, i) => {
       ui.row.append(cardFor(c, (choice, card) => {
         if (this.banishMode) {

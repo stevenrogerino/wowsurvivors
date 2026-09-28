@@ -3316,11 +3316,24 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 
 /* Folded, the build is one tab hanging under the cards: a chevron, a name
    and what you carry. Opened, the strip drops out beneath it - below the
-   cards, so it never sits over one. */
-.bt-drawer { display: flex; flex-direction: column; align-items: center; }
+   cards, so it never sits over one.
+ *
+ * It drops OVER what is below rather than pushing it. The screen is centred
+ * on its own height, so a strip that took room in the layout lifted the
+ * title, the cards and the tab itself by its height: the second click to
+ * close it landed below the tab, and the cards jumped under the pointer. */
+.bt-drawer { position: relative; display: flex; flex-direction: column; align-items: center; }
 .bt-drawer:not(.open) .build-tray { display: none; }
-.bt-drawer.open .build-tray { margin-top: 6px; animation: bt-drop .2s var(--ease) both; }
-@keyframes bt-drop { from { opacity: 0; transform: translateY(-8px); } }
+.overlay-body:has(> .tray-slot) { overflow: visible; }
+.overlay-body:has(> .tray-slot) .scroll-scrim { display: none; }
+.tray-slot { position: relative; z-index: 3; }
+.bt-drawer.open .build-tray {
+  position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+  width: max-content; max-width: 94vw;
+  background: linear-gradient(180deg, #0e1018, #08090e);
+  animation: bt-drop .2s var(--ease) both;
+}
+@keyframes bt-drop { from { opacity: 0; transform: translate(-50%, -8px); } }
 .bt-toggle {
   /* As wide as the middle card and just into the two beside it. */
   display: inline-flex; align-items: center; justify-content: center; gap: 10px;
@@ -3373,23 +3386,11 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 }
 @media (min-width: 721px) and (max-height: 680px) {
   .card.no-foot .card-body { -webkit-line-clamp: 5; }
-  /* No room to push anything down on a short screen: the opened strip drops
-     over the reroll row instead, so the cards above never move. */
-  .overlay-body:has(> .tray-slot) { overflow: visible; }
-  .tray-slot { position: relative; z-index: 3; }
-  .bt-drawer.open .build-tray {
-    position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
-    width: max-content; max-width: 94vw;
-    background: linear-gradient(180deg, #0e1018, #08090e);
-    animation-name: bt-drop-abs;
-  }
-  .overlay-body:has(> .tray-slot) .scroll-scrim { display: none; }
-  /* ...and has to fit under the cards on a 600px window. */
+  /* The opened strip has to fit under the cards on a 600px window. */
   .choice-bar { margin-bottom: 6px; }
   .bt-drawer.open .build-tray { padding: 5px 12px; gap: 6px 16px; }
   .build-tray .bt-slot { width: 34px; height: 34px; }
   .build-tray .bt-slot.small { width: 28px; height: 28px; }
-  @keyframes bt-drop-abs { from { opacity: 0; transform: translate(-50%, -8px); } }
 }
 
 /* =================================================== THE SPELL CLIPS === */
@@ -22863,14 +22864,6 @@ window.WS = window.WS || {};
       noise({ freq: 260, to: 70, decay: 0.26, gain: 0.12, filter: 'lowpass', q: 0.8 });
     },
     gem() { tone({ type: 'sine', freq: 1180, to: vary(1560, 0.16), decay: vary(0.09, 0.28), gain: 0.07 }); },
-    /* The reveal: the best card in a fresh hand, heard as it lands. Timed to
-       the deal (the cards touch down about a third of a second in). */
-    reveal() {
-      const v = Audio.variant, d = 0.3;
-      const notes = v === 'legendary' ? [880, 1108, 1319, 1760] : v === 'epic' ? [880, 1108, 1319] : [988, 1319];
-      notes.forEach((f, i) => chime(f, v === 'legendary' ? 0.5 : 0.34, 0.05, d + i * 0.07));
-      if (v === 'legendary') chime(2637, 0.9, 0.03, d + notes.length * 0.07);
-    },
     /* Two low thumps, the second softer: lub, dub. Felt more than heard. */
     heartbeat() {
       if (Audio.ctx && Audio.ctx.currentTime < (Audio._stageUntil || 0)) return;
@@ -29318,7 +29311,7 @@ window.WS = window.WS || {};
 (function (WS) {
 
   const XP = { pool: null, vacuumTimer: 0 };
-  const CHAIN_GAP = 0.7, NOTE_GAP = 0.05;          // see chime() below
+  const CHAIN_GAP = 0.7, NOTE_GAP = 0.07, CHAIN_NOTES = 12;   // see chime() below
   const chain = { step: 0, lastGem: -99, lastNote: -99 };
 
   XP.init = function () {
@@ -29427,18 +29420,18 @@ window.WS = window.WS || {};
    *  Timed, so it does not keep magnetising gems that drop afterwards. */
   XP.vacuumAll = function () { this.vacuumTimer = 1.5; };
 
-  /* THE CHAIN. Gathering used to be silent unless a lodestone was sweeping,
-     and the one loop a survivors game is built on - walk through the drops,
-     feel them come in - had no voice. Now each gem that lands within
-     CHAIN_GAP of the last is the next note up (Audio kit gemChain), paced so
-     a burst reads as a run rather than a chord, with a small spark where it
-     lands. The pacing lives here, on run time, because the audio throttle is
-     per-note and would let a clump through as one chord. */
+  /* THE CHAIN. Walking through gems is silent: a crowded field drops them
+     by the hundred and a note for each was a constant patter under the
+     fight. A lodestone's sweep is the one moment gathering has a voice -
+     every gem on the field coming in at once, heard as a run climbing the
+     scale (Audio kit gemChain), paced so it reads as a run rather than a
+     chord, and capped at CHAIN_NOTES so a full field is one flourish rather
+     than a second and a half of ticking. */
   function chime(player, gem) {
     const t = WS.Game.run.time;
     if (t - chain.lastGem > CHAIN_GAP) chain.step = 0;
     chain.lastGem = t;
-    if (t - chain.lastNote < NOTE_GAP) return;
+    if (chain.step >= CHAIN_NOTES || t - chain.lastNote < NOTE_GAP) return;
     chain.lastNote = t;
     WS.Audio.play('gemChain', player.x, String(WS.min(chain.step, 10)));
     chain.step++;
@@ -29466,7 +29459,7 @@ window.WS = window.WS || {};
       if (distance < player.radius + gem.radius + 5) {
         WS.Game.run.gemsCollected++;
         WS.Save.stats.gemsCollected++;
-        chime(player, gem);
+        if (vacuum) chime(player, gem);
         const value = gem.value;
         this.pool.releaseAt(i);
         WS.Player.gainXP(player, value);
@@ -46629,7 +46622,7 @@ window.WS = window.WS || {};
   }
 
   /** A choice's accent: its school palette for weapons, its quality otherwise. */
-  /** How precious a card is, for the glint and the reveal: an evolution or a
+  /** How precious a card is, for the glint: an evolution or a
    *  union is the best thing a level can hold, a new weapon is rare, and a
    *  blessing or passive carries its own quality. */
   const TIER = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
@@ -49919,11 +49912,6 @@ window.WS = window.WS || {};
     ui.row.replaceChildren();
     // The build as it stands now - a second level-up in a row has one more rank in it.
     if (ui.tray) { ui.tray.replaceChildren(buildTray(WS.Game.player)); }
-    /* The best card in the hand announces itself as the deal lands: nothing
-       for an ordinary hand, a bright pair for rare, three for epic, a rising
-       run for legendary. */
-    const best = choices.reduce((m, c) => WS.max(m, TIER[cardTier(c)] || 0), 0);
-    if (best >= 2) WS.Audio.play('reveal', null, best >= 4 ? 'legendary' : best >= 3 ? 'epic' : 'rare');
     choices.forEach((c, i) => {
       ui.row.append(cardFor(c, (choice, card) => {
         if (this.banishMode) {

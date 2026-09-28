@@ -3232,11 +3232,24 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 
 /* Folded, the build is one tab hanging under the cards: a chevron, a name
    and what you carry. Opened, the strip drops out beneath it - below the
-   cards, so it never sits over one. */
-.bt-drawer { display: flex; flex-direction: column; align-items: center; }
+   cards, so it never sits over one.
+ *
+ * It drops OVER what is below rather than pushing it. The screen is centred
+ * on its own height, so a strip that took room in the layout lifted the
+ * title, the cards and the tab itself by its height: the second click to
+ * close it landed below the tab, and the cards jumped under the pointer. */
+.bt-drawer { position: relative; display: flex; flex-direction: column; align-items: center; }
 .bt-drawer:not(.open) .build-tray { display: none; }
-.bt-drawer.open .build-tray { margin-top: 6px; animation: bt-drop .2s var(--ease) both; }
-@keyframes bt-drop { from { opacity: 0; transform: translateY(-8px); } }
+.overlay-body:has(> .tray-slot) { overflow: visible; }
+.overlay-body:has(> .tray-slot) .scroll-scrim { display: none; }
+.tray-slot { position: relative; z-index: 3; }
+.bt-drawer.open .build-tray {
+  position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+  width: max-content; max-width: 94vw;
+  background: linear-gradient(180deg, #0e1018, #08090e);
+  animation: bt-drop .2s var(--ease) both;
+}
+@keyframes bt-drop { from { opacity: 0; transform: translate(-50%, -8px); } }
 .bt-toggle {
   /* As wide as the middle card and just into the two beside it. */
   display: inline-flex; align-items: center; justify-content: center; gap: 10px;
@@ -3289,23 +3302,11 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 }
 @media (min-width: 721px) and (max-height: 680px) {
   .card.no-foot .card-body { -webkit-line-clamp: 5; }
-  /* No room to push anything down on a short screen: the opened strip drops
-     over the reroll row instead, so the cards above never move. */
-  .overlay-body:has(> .tray-slot) { overflow: visible; }
-  .tray-slot { position: relative; z-index: 3; }
-  .bt-drawer.open .build-tray {
-    position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
-    width: max-content; max-width: 94vw;
-    background: linear-gradient(180deg, #0e1018, #08090e);
-    animation-name: bt-drop-abs;
-  }
-  .overlay-body:has(> .tray-slot) .scroll-scrim { display: none; }
-  /* ...and has to fit under the cards on a 600px window. */
+  /* The opened strip has to fit under the cards on a 600px window. */
   .choice-bar { margin-bottom: 6px; }
   .bt-drawer.open .build-tray { padding: 5px 12px; gap: 6px 16px; }
   .build-tray .bt-slot { width: 34px; height: 34px; }
   .build-tray .bt-slot.small { width: 28px; height: 28px; }
-  @keyframes bt-drop-abs { from { opacity: 0; transform: translate(-50%, -8px); } }
 }
 
 /* =================================================== THE SPELL CLIPS === */
