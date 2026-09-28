@@ -5919,7 +5919,14 @@ window.WS = window.WS || {};
        the meter, beside Firmament. Then the weapons were brought into one
        band on evolution and every union set to what its two evolved parts
        did (tools/slot-test.js): 20.4 -> 37.9, since Umbral Bolt now pierces
-       everything and the pair it eats is worth far more than it was. */
+       everything and the pair it eats is worth far more than it was. On
+       the meter (tune-unions SHARE=1, 8 seeds) that is 16% of a build: the
+       tester's half is gone. Storm of Steel, The Wild Hunt and Sanctuary,
+       raised to their parts against dummies, took 47%, 33% and 30% in the
+       real horde (fast and close, they reach the crowd first and take the
+       kills), so they were trimmed; with Steel and Stormcall nudged back
+       over check-unions' floor, every union sits at 18-29% of a build
+       (8 seeds, and the same numbers move up to eight points run to run). */
     union_ruin: {
       bossDamage: 1.95,
       name: 'Ruin Unbound', school: 'shadow', behavior: 'aimed', isUnion: true, art: 'chaos',
@@ -5928,15 +5935,15 @@ window.WS = window.WS || {};
       description: 'Ruin that devours everything in its path.',
     },
     union_steel: {
-      bossDamage: 2.8,
+      bossDamage: 5.3,
       name: 'Storm of Steel', school: 'physical', behavior: 'ring', isUnion: true, art: 'dagger',
-      cooldown: 0.934, damage: 65.5, speed: 400, projectiles: 12, pierce: 12, life: 1.1, radius: 9,
+      cooldown: 0.934, damage: 25, speed: 400, projectiles: 12, pierce: 12, life: 1.1, radius: 9,
       description: 'An unending cyclone of thrown steel.',
     },
     union_sanctuary: {
-      bossDamage: 3.6,
+      bossDamage: 5.3,
       name: 'Sanctuary', school: 'holy', behavior: 'nova', isUnion: true, art: 'ring',
-      cooldown: 1.978, damage: 156, radius: 205, expandTime: 0.4, knockback: 34,
+      cooldown: 1.978, damage: 109, radius: 205, expandTime: 0.4, knockback: 34,
       // Forged from the two holy healers, and it used to heal not at all:
       // taking it threw your healing away. It mends as they did together.
       healPer: 5, healCap: 130,
@@ -5945,7 +5952,7 @@ window.WS = window.WS || {};
     union_stormcall: {
       bossDamage: 2.5,
       name: 'Stormcall', school: 'nature', behavior: 'orbit', isUnion: true, art: 'sword',
-      cooldown: 5.055, damage: 21.3, projectiles: 5, orbitRadius: 95, orbitSpeed: 5.0,
+      cooldown: 5.055, damage: 29, projectiles: 5, orbitRadius: 95, orbitSpeed: 5.0,
       duration: 4.0, radius: 22, procChain: 0.35, color: [0.45, 0.85, 1.00],
       description: 'Blessed blade of the Tempest: a cyclone of steel that answers every cut with lightning.',
     },
@@ -5957,9 +5964,9 @@ window.WS = window.WS || {};
       description: 'Palm and ring become one form: strikes in every direction at once, and the wind they leave behind cuts too.',
     },
     union_wild_hunt: {
-      bossDamage: 2.5,
+      bossDamage: 4.8,
       name: 'The Wild Hunt', school: 'nature', behavior: 'herd', isUnion: true, art: 'herd',
-      cooldown: 1.9, damage: 110, speed: 360, projectiles: 5, pierce: 99, range: 640,
+      cooldown: 1.9, damage: 46, speed: 360, projectiles: 5, pierce: 99, range: 640,
       life: 2.1, radius: 19, knock: 26, endBurst: 76, color: [0.55, 1.0, 0.25],
       description: 'The herd runs in green fire, and every beast that reaches the end of its run goes up in it.',
     },
