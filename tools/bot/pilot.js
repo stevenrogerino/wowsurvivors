@@ -367,12 +367,15 @@ function installPilot(opts) {
     // Storm strikes: where we will be when each one lands.
     for (const s of WS.Moor.strikes || []) {
       const reach = s.r + pr * 0.5 + 10;
+      // The night's marks double where the last one found you: price the
+      // blow at what it would really do.
+      const dmg = s.kind === 'omen' ? s.dmg * Math.pow(2, p.omenStack || 0) : s.dmg;
       if (s.tele <= O.horizon) {
         const q = at(path, s.tele);
-        if (Math.hypot(q[0] - s.x, q[1] - s.y) < reach) c += hitCost(p, s.dmg);
+        if (Math.hypot(q[0] - s.x, q[1] - s.y) < reach) c += hitCost(p, dmg);
       } else {
         const q = path[path.length - 1];
-        if (Math.hypot(q[0] - s.x, q[1] - s.y) < reach) c += hitCost(p, s.dmg) * 0.3;
+        if (Math.hypot(q[0] - s.x, q[1] - s.y) < reach) c += hitCost(p, dmg) * 0.3;
       }
     }
     // The finale's marks, sampled along the path.

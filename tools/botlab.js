@@ -255,7 +255,7 @@ function inPage(S, job, sources) {
     bySource: Object.fromEntries(Object.entries(L.bySource).sort((a, b) => b[1] - a[1]).slice(0, 6)),
     last: L.last, lowest: Math.round(L.lowest * 100), lowTime: Math.round(L.lowTime),
     potions: L.potions, healed: Math.round(run.healingDone), bombs: L.bombs, freezes: L.freezes,
-    dealt: Math.round(run.damageDone),
+    dealt: Math.round(run.damageDone), storms: run.storms || 0,
     byWeapon: Object.fromEntries(Object.entries(run.damageByWeapon || {}).map(([k, v]) => [k, Math.round(v)])),
     healBy: Object.fromEntries(Object.entries(run.healingBySource || {}).map(([k, v]) => [k, Math.round(v)])),
     overheal: Math.round(Object.values(run.overhealBySource || {}).reduce((a, v) => a + v, 0)),
