@@ -1,6 +1,6 @@
 {
  "spawned": 282,
- "when": "2026-09-22T07:31:15.376Z",
+ "when": "2026-09-28T04:44:40.493Z",
  "results": [
   {
    "name": "seeking_motes r1",
@@ -12,14 +12,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 73.74033333333298,
-   "kills": 109,
-   "leaked": 173,
-   "taken": 304,
+   "dps": 73.81919999999965,
+   "kills": 105,
+   "leaked": 177,
+   "taken": 270,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "seeking_motes": 5483.204999999971
+    "seeking_motes": 5543.53799999997
    }
   },
   {
@@ -32,14 +32,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 295.6553600000024,
-   "kills": 236,
-   "leaked": 46,
-   "taken": 120,
+   "dps": 293.57328000000246,
+   "kills": 232,
+   "leaked": 50,
+   "taken": 90,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "seeking_motes": 13858.135200000112
+    "seeking_motes": 13679.265600000104
    }
   },
   {
@@ -53,13 +53,13 @@
    ],
    "evolved": false,
    "dps": 0,
-   "kills": 42,
-   "leaked": 240,
-   "taken": 367,
+   "kills": 39,
+   "leaked": 243,
+   "taken": 321,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "cinderfall": 3358.5370000000084
+    "cinderfall": 3406.803400000008
    }
   },
   {
@@ -72,14 +72,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 808.5158293333312,
-   "kills": 190,
-   "leaked": 92,
-   "taken": 292,
+   "dps": 809.1593813333312,
+   "kills": 193,
+   "leaked": 89,
+   "taken": 258,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "cinderfall": 19364.479680000073
+    "cinderfall": 19721.651040000062
    }
   },
   {
@@ -93,13 +93,13 @@
    ],
    "evolved": false,
    "dps": 0,
-   "kills": 40,
-   "leaked": 242,
-   "taken": 340,
+   "kills": 50,
+   "leaked": 232,
+   "taken": 298,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "rimeshard": 2626.2599999999998
+    "rimeshard": 3324.2299999999955
    }
   },
   {
@@ -112,14 +112,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 205.68426666666616,
-   "kills": 191,
-   "leaked": 91,
-   "taken": 235,
+   "dps": 309.78826666666555,
+   "kills": 229,
+   "leaked": 53,
+   "taken": 209,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "rimeshard": 14990.97599999994
+    "rimeshard": 18312.839999999924
    }
   },
   {
@@ -132,14 +132,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 87.83380666666659,
-   "kills": 98,
-   "leaked": 184,
-   "taken": 321,
+   "dps": 101.28057333333331,
+   "kills": 113,
+   "leaked": 169,
+   "taken": 286,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "arcweb": 6311.896500000001
+    "arcweb": 7159.397699999998
    }
   },
   {
@@ -152,14 +152,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 296.09070399999985,
-   "kills": 204,
-   "leaked": 78,
-   "taken": 228,
+   "dps": 317.57398400000005,
+   "kills": 220,
+   "leaked": 62,
+   "taken": 200,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "arcweb": 18616.06655999999
+    "arcweb": 20302.55136000001
    }
   },
   {
@@ -172,14 +172,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 183.36499999999918,
-   "kills": 43,
-   "leaked": 239,
-   "taken": 340,
+   "dps": 181.78766666666584,
+   "kills": 44,
+   "leaked": 238,
+   "taken": 307,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "dawnpulse": 3637.7249999999917
+    "dawnpulse": 3619.9799999999923
    }
   },
   {
@@ -192,14 +192,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 738.191999999997,
-   "kills": 115,
-   "leaked": 167,
-   "taken": 288,
+   "dps": 729.674399999997,
+   "kills": 116,
+   "leaked": 166,
+   "taken": 254,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "dawnpulse": 11882.051999999994
+    "dawnpulse": 11967.227999999992
    }
   },
   {
@@ -212,14 +212,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 348.45922222223135,
-   "kills": 100,
-   "leaked": 182,
-   "taken": 396,
+   "dps": 347.5916888888979,
+   "kills": 101,
+   "leaked": 181,
+   "taken": 349,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "hallowed_ring": 6096.590499999977
+    "hallowed_ring": 6057.551499999974
    }
   },
   {
@@ -232,14 +232,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 1126.7522933333394,
-   "kills": 196,
-   "leaked": 86,
-   "taken": 370,
+   "dps": 1128.140346666673,
+   "kills": 198,
+   "leaked": 84,
+   "taken": 324,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "hallowed_ring": 12539.326800000052
+    "hallowed_ring": 12633.020400000041
    }
   },
   {
@@ -253,13 +253,13 @@
    ],
    "evolved": false,
    "dps": 0,
-   "kills": 75,
-   "leaked": 207,
-   "taken": 353,
+   "kills": 74,
+   "leaked": 208,
+   "taken": 310,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "umbral_bolt": 4813.626999999986
+    "umbral_bolt": 4752.110999999986
    }
   },
   {
@@ -272,14 +272,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 442.9152000000014,
-   "kills": 232,
-   "leaked": 50,
-   "taken": 241,
+   "dps": 443.7354133333347,
+   "kills": 237,
+   "leaked": 45,
+   "taken": 198,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "umbral_bolt": 20927.743200000088
+    "umbral_bolt": 21001.56240000009
    }
   },
   {
@@ -292,14 +292,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 152.84359999999944,
-   "kills": 59,
-   "leaked": 223,
-   "taken": 352,
+   "dps": 133.91559999999953,
+   "kills": 47,
+   "leaked": 235,
+   "taken": 321,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "knifestorm": 4226.85899999999
+    "knifestorm": 4237.50599999999
    }
   },
   {
@@ -312,14 +312,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 475.28208000000035,
-   "kills": 167,
-   "leaked": 115,
-   "taken": 287,
+   "dps": 506.5132799999997,
+   "kills": 166,
+   "leaked": 116,
+   "taken": 243,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "knifestorm": 12214.238400000047
+    "knifestorm": 12163.132800000047
    }
   },
   {
@@ -332,14 +332,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 131.43129999999945,
-   "kills": 26,
-   "leaked": 256,
-   "taken": 399,
+   "dps": 201.259846666666,
+   "kills": 41,
+   "leaked": 241,
+   "taken": 345,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "axe_gyre": 2778.275499999991
+    "axe_gyre": 3968.5509499999825
    }
   },
   {
@@ -352,14 +352,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 694.0266666666515,
-   "kills": 164,
-   "leaked": 118,
-   "taken": 226,
+   "dps": 1064.1447786666527,
+   "kills": 177,
+   "leaked": 105,
+   "taken": 199,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "axe_gyre": 11305.694400000042
+    "axe_gyre": 15114.481200000057
    }
   },
   {
@@ -372,14 +372,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 29.049222222222244,
-   "kills": 75,
-   "leaked": 207,
-   "taken": 329,
+   "dps": 44.020744444444546,
+   "kills": 88,
+   "leaked": 194,
+   "taken": 304,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "volley": 4897.028499999989
+    "volley": 6073.521999999982
    }
   },
   {
@@ -392,14 +392,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 212.37216000000092,
-   "kills": 184,
-   "leaked": 98,
-   "taken": 280,
+   "dps": 245.62234666666797,
+   "kills": 190,
+   "leaked": 92,
+   "taken": 245,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "volley": 13152.594000000074
+    "volley": 16748.44080000011
    }
   },
   {
@@ -412,14 +412,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 51.92581333333333,
-   "kills": 42,
-   "leaked": 240,
-   "taken": 337,
+   "dps": 52.24127999999999,
+   "kills": 41,
+   "leaked": 241,
+   "taken": 295,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "moonbrand": 2600.7071999999985
+    "moonbrand": 2612.0639999999985
    }
   },
   {
@@ -432,14 +432,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 581.6195840000041,
-   "kills": 210,
-   "leaked": 72,
-   "taken": 172,
+   "dps": 582.3767040000041,
+   "kills": 208,
+   "leaked": 74,
+   "taken": 152,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "moonbrand": 17580.3264
+    "moonbrand": 17362.275840000006
    }
   },
   {
@@ -452,14 +452,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 54.023666666666614,
-   "kills": 70,
-   "leaked": 212,
-   "taken": 339,
+   "dps": 102.13233333333302,
+   "kills": 110,
+   "leaked": 172,
+   "taken": 300,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "judgement_disc": 4365.269999999987
+    "judgement_disc": 7470.644999999969
    }
   },
   {
@@ -472,14 +472,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 129.65680000000012,
-   "kills": 112,
-   "leaked": 170,
-   "taken": 300,
+   "dps": 245.11759999999995,
+   "kills": 170,
+   "leaked": 112,
+   "taken": 277,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "judgement_disc": 10859.939999999999
+    "judgement_disc": 17333.315999999963
    }
   },
   {
@@ -492,14 +492,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 218.53953333333277,
-   "kills": 38,
-   "leaked": 244,
-   "taken": 329,
+   "dps": 217.19879999999952,
+   "kills": 39,
+   "leaked": 243,
+   "taken": 290,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "reaving_arc": 3700.4240000000077
+    "reaving_arc": 3660.202000000007
    }
   },
   {
@@ -512,14 +512,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 524.4948800000028,
-   "kills": 98,
-   "leaked": 184,
-   "taken": 310,
+   "dps": 521.2771200000029,
+   "kills": 96,
+   "leaked": 186,
+   "taken": 273,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "reaving_arc": 11632.202400000026
+    "reaving_arc": 11777.001600000029
    }
   },
   {
@@ -532,14 +532,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 161.0720222222216,
-   "kills": 110,
-   "leaked": 172,
-   "taken": 340,
+   "dps": 159.6261333333327,
+   "kills": 113,
+   "leaked": 169,
+   "taken": 297,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "verdant_lance": 7118.110999999973
+    "verdant_lance": 7079.071999999973
    }
   },
   {
@@ -552,14 +552,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 435.15472000000165,
-   "kills": 177,
-   "leaked": 105,
-   "taken": 276,
+   "dps": 430.99056000000166,
+   "kills": 178,
+   "leaked": 104,
+   "taken": 242,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "verdant_lance": 15334.519200000055
+    "verdant_lance": 15459.444000000058
    }
   },
   {
@@ -573,13 +573,13 @@
    ],
    "evolved": false,
    "dps": 0,
-   "kills": 44,
-   "leaked": 238,
-   "taken": 356,
+   "kills": 53,
+   "leaked": 229,
+   "taken": 304,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "grave_tether": 3047.4079999999954
+    "grave_tether": 3693.325999999991
    }
   },
   {
@@ -592,14 +592,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 279.1249066666672,
-   "kills": 171,
-   "leaked": 111,
-   "taken": 251,
+   "dps": 388.6549333333341,
+   "kills": 205,
+   "leaked": 77,
+   "taken": 219,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "grave_tether": 15899.520000000044
+    "grave_tether": 19397.4144
    }
   },
   {
@@ -612,14 +612,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 470.59740000001347,
+   "dps": 469.57213333334664,
    "kills": 55,
    "leaked": 227,
-   "taken": 400,
+   "taken": 358,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "blightfield": 3667.8914999999856
+    "blightfield": 3675.5809999999856
    }
   },
   {
@@ -632,14 +632,174 @@
     ]
    ],
    "evolved": false,
-   "dps": 1544.0515999999748,
+   "dps": 1545.281919999975,
    "kills": 126,
    "leaked": 156,
-   "taken": 361,
+   "taken": 317,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "blightfield": 8323.114799999996
+    "blightfield": 8433.8436
+   }
+  },
+  {
+   "name": "iron_palms r1",
+   "group": "rank",
+   "build": [
+    [
+     "iron_palms",
+     1
+    ]
+   ],
+   "evolved": false,
+   "dps": 134.76666666666668,
+   "kills": 71,
+   "leaked": 211,
+   "taken": 244,
+   "siege": null,
+   "crucible": null,
+   "byWeapon": {
+    "iron_palms": 5483.4
+   }
+  },
+  {
+   "name": "iron_palms r8",
+   "group": "weapon",
+   "build": [
+    [
+     "iron_palms",
+     8
+    ]
+   ],
+   "evolved": false,
+   "dps": 535.0799999999956,
+   "kills": 186,
+   "leaked": 96,
+   "taken": 127,
+   "siege": null,
+   "crucible": null,
+   "byWeapon": {
+    "iron_palms": 15060.239999999914
+   }
+  },
+  {
+   "name": "spirit_herd r1",
+   "group": "rank",
+   "build": [
+    [
+     "spirit_herd",
+     1
+    ]
+   ],
+   "evolved": false,
+   "dps": 140.44333333333384,
+   "kills": 151,
+   "leaked": 131,
+   "taken": 322,
+   "siege": null,
+   "crucible": null,
+   "byWeapon": {
+    "spirit_herd": 9131.850000000011
+   }
+  },
+  {
+   "name": "spirit_herd r8",
+   "group": "weapon",
+   "build": [
+    [
+     "spirit_herd",
+     8
+    ]
+   ],
+   "evolved": false,
+   "dps": 532.1680000000025,
+   "kills": 224,
+   "leaked": 58,
+   "taken": 280,
+   "siege": null,
+   "crucible": null,
+   "byWeapon": {
+    "spirit_herd": 17723.160000000084
+   }
+  },
+  {
+   "name": "thornbloom r1",
+   "group": "rank",
+   "build": [
+    [
+     "thornbloom",
+     1
+    ]
+   ],
+   "evolved": false,
+   "dps": 262.00777777777574,
+   "kills": 111,
+   "leaked": 171,
+   "taken": 337,
+   "siege": null,
+   "crucible": null,
+   "byWeapon": {
+    "thornbloom": 6799.650000000049
+   }
+  },
+  {
+   "name": "thornbloom r8",
+   "group": "weapon",
+   "build": [
+    [
+     "thornbloom",
+     8
+    ]
+   ],
+   "evolved": false,
+   "dps": 1071.927999999994,
+   "kills": 198,
+   "leaked": 84,
+   "taken": 324,
+   "siege": null,
+   "crucible": null,
+   "byWeapon": {
+    "thornbloom": 12303.719999999937
+   }
+  },
+  {
+   "name": "gale_chakram r1",
+   "group": "rank",
+   "build": [
+    [
+     "gale_chakram",
+     1
+    ]
+   ],
+   "evolved": false,
+   "dps": 147.4488888888896,
+   "kills": 52,
+   "leaked": 230,
+   "taken": 322,
+   "siege": null,
+   "crucible": null,
+   "byWeapon": {
+    "gale_chakram": 4274.400000000014
+   }
+  },
+  {
+   "name": "gale_chakram r8",
+   "group": "weapon",
+   "build": [
+    [
+     "gale_chakram",
+     8
+    ]
+   ],
+   "evolved": false,
+   "dps": 713.3013333333226,
+   "kills": 226,
+   "leaked": 56,
+   "taken": 208,
+   "siege": null,
+   "crucible": null,
+   "byWeapon": {
+    "gale_chakram": 15949.440000000015
    }
   },
   {
@@ -652,18 +812,18 @@
     ]
    ],
    "evolved": false,
-   "dps": 2683.359466666659,
-   "kills": 260,
-   "leaked": 22,
-   "taken": 62,
+   "dps": 2689.0378666666584,
+   "kills": 261,
+   "leaked": 21,
+   "taken": 63,
    "siege": {
-    "kills": 1089,
-    "leaked": 232,
-    "taken": 650
+    "kills": 1107,
+    "leaked": 220,
+    "taken": 556
    },
    "crucible": null,
    "byWeapon": {
-    "union_firmament": 20754.55199999991
+    "union_firmament": 20726.15999999991
    }
   },
   {
@@ -676,18 +836,18 @@
     ]
    ],
    "evolved": false,
-   "dps": 4441.619242666594,
+   "dps": 2537.6306453334373,
    "kills": 270,
    "leaked": 12,
-   "taken": 27,
+   "taken": 24,
    "siege": {
-    "kills": 1409,
-    "leaked": 41,
-    "taken": 170
+    "kills": 1353,
+    "leaked": 64,
+    "taken": 317
    },
    "crucible": null,
    "byWeapon": {
-    "union_ruin": 26576.04767999998
+    "union_ruin": 23711.070239999914
    }
   },
   {
@@ -700,18 +860,18 @@
     ]
    ],
    "evolved": false,
-   "dps": 1994.821919999983,
-   "kills": 260,
-   "leaked": 22,
-   "taken": 127,
+   "dps": 2028.324479999982,
+   "kills": 256,
+   "leaked": 26,
+   "taken": 103,
    "siege": {
-    "kills": 936,
+    "kills": 926,
     "leaked": 313,
-    "taken": 880
+    "taken": 737
    },
    "crucible": null,
    "byWeapon": {
-    "union_steel": 18321.35760000007
+    "union_steel": 18193.59360000007
    }
   },
   {
@@ -724,18 +884,18 @@
     ]
    ],
    "evolved": false,
-   "dps": 1178.646559999996,
+   "dps": 1169.6242133333299,
    "kills": 205,
    "leaked": 77,
-   "taken": 212,
+   "taken": 187,
    "siege": {
-    "kills": 655,
+    "kills": 653,
     "leaked": 320,
-    "taken": 897
+    "taken": 822
    },
    "crucible": null,
    "byWeapon": {
-    "union_sanctuary": 18676.257600000044
+    "union_sanctuary": 18417.89040000003
    }
   },
   {
@@ -748,18 +908,90 @@
     ]
    ],
    "evolved": false,
-   "dps": 2573.780227200022,
-   "kills": 203,
-   "leaked": 79,
-   "taken": 38,
+   "dps": 3329.152415680092,
+   "kills": 215,
+   "leaked": 67,
+   "taken": 20,
    "siege": {
-    "kills": 997,
-    "leaked": 316,
-    "taken": 660
+    "kills": 1019,
+    "leaked": 311,
+    "taken": 475
    },
    "crucible": null,
    "byWeapon": {
-    "union_stormcall": 13764.807856800087
+    "union_stormcall": 16265.436947760016
+   }
+  },
+  {
+   "name": "union_tempest_kata r8",
+   "group": "union",
+   "build": [
+    [
+     "union_tempest_kata",
+     8
+    ]
+   ],
+   "evolved": false,
+   "dps": 3070.392000000067,
+   "kills": 218,
+   "leaked": 64,
+   "taken": 68,
+   "siege": {
+    "kills": 740,
+    "leaked": 315,
+    "taken": 765
+   },
+   "crucible": null,
+   "byWeapon": {
+    "union_tempest_kata": 12504.023999999981
+   }
+  },
+  {
+   "name": "union_wild_hunt r8",
+   "group": "union",
+   "build": [
+    [
+     "union_wild_hunt",
+     8
+    ]
+   ],
+   "evolved": false,
+   "dps": 2610.989333333307,
+   "kills": 259,
+   "leaked": 23,
+   "taken": 138,
+   "siege": {
+    "kills": 1356,
+    "leaked": 64,
+    "taken": 786
+   },
+   "crucible": null,
+   "byWeapon": {
+    "union_wild_hunt": 22126.103999999952
+   }
+  },
+  {
+   "name": "union_rotwood r8",
+   "group": "union",
+   "build": [
+    [
+     "union_rotwood",
+     8
+    ]
+   ],
+   "evolved": false,
+   "dps": 2593.829333333533,
+   "kills": 264,
+   "leaked": 18,
+   "taken": 269,
+   "siege": {
+    "kills": 1243,
+    "leaked": 120,
+    "taken": 984
+   },
+   "crucible": null,
+   "byWeapon": {
+    "union_rotwood": 16610.879999999903
    }
   },
   {
@@ -772,14 +1004,14 @@
     ]
    ],
    "evolved": false,
-   "dps": 442.9152000000014,
-   "kills": 232,
-   "leaked": 50,
-   "taken": 241,
+   "dps": 443.7354133333347,
+   "kills": 237,
+   "leaked": 45,
+   "taken": 198,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "umbral_bolt": 20927.743200000088
+    "umbral_bolt": 21001.56240000009
    }
   },
   {
@@ -796,15 +1028,15 @@
     ]
    ],
    "evolved": false,
-   "dps": 740.0217066666602,
-   "kills": 264,
-   "leaked": 18,
-   "taken": 23,
+   "dps": 737.6241599999937,
+   "kills": 268,
+   "leaked": 14,
+   "taken": 20,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "seeking_motes": 9667.476000000062,
-    "umbral_bolt": 9596.495999999992
+    "seeking_motes": 9795.240000000062,
+    "umbral_bolt": 9670.315199999994
    }
   },
   {
@@ -825,16 +1057,16 @@
     ]
    ],
    "evolved": false,
-   "dps": 2047.731989333314,
-   "kills": 268,
-   "leaked": 14,
-   "taken": 26,
+   "dps": 2032.4003093333151,
+   "kills": 266,
+   "leaked": 16,
+   "taken": 31,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "cinderfall": 4073.684159999999,
-    "seeking_motes": 8432.424000000046,
-    "umbral_bolt": 8282.514239999991
+    "cinderfall": 4691.494079999999,
+    "seeking_motes": 8483.529600000047,
+    "umbral_bolt": 7861.74479999999
    }
   },
   {
@@ -859,17 +1091,17 @@
     ]
    ],
    "evolved": false,
-   "dps": 2341.0339679999424,
-   "kills": 272,
-   "leaked": 10,
-   "taken": 15,
+   "dps": 2465.943625599946,
+   "kills": 271,
+   "leaked": 11,
+   "taken": 22,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "cinderfall": 3185.5823999999993,
-    "seeking_motes": 7350.68880000003,
-    "umbral_bolt": 6311.541599999994,
-    "rimeshard": 4216.2119999999995
+    "cinderfall": 3259.9126559999995,
+    "seeking_motes": 7427.347200000031,
+    "umbral_bolt": 6038.410559999995,
+    "rimeshard": 4653.448800000002
    }
   },
   {
@@ -898,18 +1130,18 @@
     ]
    ],
    "evolved": false,
-   "dps": 2652.000818133283,
-   "kills": 271,
-   "leaked": 11,
-   "taken": 0,
+   "dps": 2785.9984394666167,
+   "kills": 274,
+   "leaked": 8,
+   "taken": 13,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "arcweb": 6794.489520000008,
-    "umbral_bolt": 4251.985919999999,
-    "seeking_motes": 5366.088000000001,
-    "rimeshard": 3903.899999999999,
-    "cinderfall": 2888.2613759999995
+    "arcweb": 7960.548960000009,
+    "umbral_bolt": 3786.9249599999994,
+    "seeking_motes": 4531.363199999987,
+    "rimeshard": 3622.819199999999,
+    "cinderfall": 3419.1917759999997
    }
   },
   {
@@ -942,19 +1174,58 @@
     ]
    ],
    "evolved": false,
-   "dps": 3220.9007861332752,
-   "kills": 271,
-   "leaked": 11,
-   "taken": 11,
+   "dps": 3359.2720373332895,
+   "kills": 274,
+   "leaked": 8,
+   "taken": 0,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "arcweb": 5449.560480000004,
-    "umbral_bolt": 4015.764479999998,
-    "seeking_motes": 4497.292799999987,
-    "moonbrand": 2902.7980800000028,
-    "rimeshard": 2654.652000000001,
-    "cinderfall": 3249.2940479999997
+    "arcweb": 7836.19200000001,
+    "umbral_bolt": 3698.3419199999985,
+    "seeking_motes": 3901.0607999999843,
+    "moonbrand": 3005.0092800000034,
+    "rimeshard": 2748.3456000000006,
+    "cinderfall": 2697.126432
+   }
+  },
+  {
+   "name": "all nature",
+   "group": "school",
+   "build": [
+    [
+     "arcweb",
+     8
+    ],
+    [
+     "verdant_lance",
+     8
+    ],
+    [
+     "spirit_herd",
+     8
+    ],
+    [
+     "thornbloom",
+     8
+    ]
+   ],
+   "evolved": false,
+   "dps": 3161.517978666753,
+   "kills": 261,
+   "leaked": 21,
+   "taken": 47,
+   "siege": {
+    "kills": 1276,
+    "leaked": 105,
+    "taken": 715
+   },
+   "crucible": null,
+   "byWeapon": {
+    "arcweb": 12436.547760000001,
+    "thornbloom": 1973.3999999999992,
+    "verdant_lance": 5246.841600000005,
+    "spirit_herd": 2850.1200000000017
    }
   },
   {
@@ -975,20 +1246,20 @@
     ]
    ],
    "evolved": false,
-   "dps": 2040.2491199999724,
-   "kills": 239,
-   "leaked": 43,
-   "taken": 171,
+   "dps": 2176.27834666663,
+   "kills": 249,
+   "leaked": 33,
+   "taken": 149,
    "siege": {
-    "kills": 952,
-    "leaked": 282,
-    "taken": 1037
+    "kills": 974,
+    "leaked": 266,
+    "taken": 911
    },
    "crucible": null,
    "byWeapon": {
-    "judgement_disc": 12695.482800000007,
-    "dawnpulse": 6771.492000000008,
-    "hallowed_ring": 4606.602000000012
+    "judgement_disc": 16771.154400000025,
+    "dawnpulse": 5067.972000000002,
+    "hallowed_ring": 3513.510000000007
    }
   },
   {
@@ -1013,21 +1284,21 @@
     ]
    ],
    "evolved": false,
-   "dps": 2802.1957599999805,
+   "dps": 2910.2746399999787,
    "kills": 268,
    "leaked": 14,
-   "taken": 77,
+   "taken": 61,
    "siege": {
-    "kills": 940,
-    "leaked": 302,
-    "taken": 758
+    "kills": 1006,
+    "leaked": 270,
+    "taken": 655
    },
    "crucible": null,
    "byWeapon": {
-    "grave_tether": 7751.015999999992,
-    "blightfield": 2491.397999999998,
-    "umbral_bolt": 11700.34319999999,
-    "reaving_arc": 2509.852799999999
+    "grave_tether": 7989.508799999989,
+    "blightfield": 2583.6719999999978,
+    "umbral_bolt": 11700.343199999988,
+    "reaving_arc": 2413.3199999999997
    }
   },
   {
@@ -1045,23 +1316,33 @@
     [
      "volley",
      8
+    ],
+    [
+     "iron_palms",
+     8
+    ],
+    [
+     "gale_chakram",
+     8
     ]
    ],
    "evolved": false,
-   "dps": 1383.132053333354,
-   "kills": 252,
-   "leaked": 30,
-   "taken": 54,
+   "dps": 3536.641010933337,
+   "kills": 261,
+   "leaked": 21,
+   "taken": 0,
    "siege": {
-    "kills": 701,
-    "leaked": 316,
-    "taken": 805
+    "kills": 1281,
+    "leaked": 112,
+    "taken": 151
    },
    "crucible": null,
    "byWeapon": {
-    "volley": 8543.152800000034,
-    "knifestorm": 3832.919999999997,
-    "axe_gyre": 5262.457200000015
+    "volley": 8036.355600000028,
+    "iron_palms": 4207.320000000006,
+    "gale_chakram": 4200.7679999999955,
+    "axe_gyre": 2902.9400400000018,
+    "knifestorm": 1507.6152000000006
    }
   },
   {
@@ -1078,15 +1359,15 @@
     ]
    ],
    "evolved": false,
-   "dps": 1125.2393151999865,
-   "kills": 244,
-   "leaked": 38,
-   "taken": 147,
+   "dps": 1231.064501333315,
+   "kills": 251,
+   "leaked": 31,
+   "taken": 149,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "cinderfall": 11287.580304000016,
-    "rimeshard": 12523.71120000004
+    "cinderfall": 10692.938256000012,
+    "rimeshard": 13585.572000000047
    }
   },
   {
@@ -1103,15 +1384,15 @@
     ]
    ],
    "evolved": false,
-   "dps": 1739.3696319999947,
+   "dps": 1736.8080426666604,
    "kills": 254,
    "leaked": 28,
-   "taken": 122,
+   "taken": 107,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "cinderfall": 9267.14880000001,
-    "umbral_bolt": 15797.308800000013
+    "cinderfall": 9218.882400000008,
+    "umbral_bolt": 15745.635360000013
    }
   },
   {
@@ -1128,15 +1409,15 @@
     ]
    ],
    "evolved": false,
-   "dps": 739.075306666663,
-   "kills": 243,
-   "leaked": 39,
-   "taken": 164,
+   "dps": 772.1993066666639,
+   "kills": 246,
+   "leaked": 36,
+   "taken": 151,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "rimeshard": 12293.735999999957,
-    "knifestorm": 6490.411199999991
+    "rimeshard": 13486.199999999952,
+    "knifestorm": 5417.193599999994
    }
   },
   {
@@ -1153,15 +1434,15 @@
     ]
    ],
    "evolved": false,
-   "dps": 1198.444932533341,
-   "kills": 251,
-   "leaked": 31,
-   "taken": 121,
+   "dps": 1704.5865612533512,
+   "kills": 247,
+   "leaked": 35,
+   "taken": 32,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "arcweb": 16727.714639999984,
-    "axe_gyre": 4725.780259200009
+    "arcweb": 17106.74784,
+    "axe_gyre": 5426.0507683199985
    }
   },
   {
@@ -1178,15 +1459,15 @@
     ]
    ],
    "evolved": false,
-   "dps": 1630.9374293333394,
-   "kills": 183,
-   "leaked": 99,
-   "taken": 137,
+   "dps": 2057.8490053333676,
+   "kills": 187,
+   "leaked": 95,
+   "taken": 107,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "axe_gyre": 8863.414560000034,
-    "dawnpulse": 5366.088000000004
+    "axe_gyre": 11986.392600000027,
+    "dawnpulse": 4727.268000000001
    }
   },
   {
@@ -1203,15 +1484,15 @@
     ]
    ],
    "evolved": false,
-   "dps": 645.6656266666604,
+   "dps": 821.790666666658,
    "kills": 261,
    "leaked": 21,
-   "taken": 21,
+   "taken": 19,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "volley": 9001.683600000037,
-    "seeking_motes": 8670.91680000005
+    "volley": 9532.614000000043,
+    "seeking_motes": 8773.128000000052
    }
   },
   {
@@ -1228,15 +1509,15 @@
     ]
    ],
    "evolved": false,
-   "dps": 1525.7103680000046,
+   "dps": 1517.7984640000045,
    "kills": 252,
    "leaked": 30,
-   "taken": 66,
+   "taken": 58,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "moonbrand": 17621.210879999995,
-    "dawnpulse": 4471.74
+    "moonbrand": 17859.703679999995,
+    "dawnpulse": 4343.976
    }
   },
   {
@@ -1253,15 +1534,15 @@
     ]
    ],
    "evolved": false,
-   "dps": 1305.1171466666801,
-   "kills": 222,
-   "leaked": 60,
-   "taken": 298,
+   "dps": 1436.9822133333494,
+   "kills": 239,
+   "leaked": 43,
+   "taken": 240,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "judgement_disc": 12227.014800000006,
-    "hallowed_ring": 7526.719200000028
+    "judgement_disc": 17942.32440000001,
+    "hallowed_ring": 5637.231600000018
    }
   },
   {
@@ -1278,15 +1559,215 @@
     ]
    ],
    "evolved": false,
-   "dps": 1860.4962133333204,
-   "kills": 219,
-   "leaked": 63,
-   "taken": 283,
+   "dps": 1860.4015733333197,
+   "kills": 217,
+   "leaked": 65,
+   "taken": 249,
    "siege": null,
    "crucible": null,
    "byWeapon": {
-    "hallowed_ring": 7542.334800000027,
-    "dawnpulse": 10604.412000000002
+    "hallowed_ring": 7589.181600000028,
+    "dawnpulse": 10774.764
+   }
+  },
+  {
+   "name": "pair: Thunderpalm",
+   "group": "pair",
+   "build": [
+    [
+     "iron_palms",
+     8
+    ],
+    [
+     "arcweb",
+     8
+    ]
+   ],
+   "evolved": false,
+   "dps": 1003.4937120000063,
+   "kills": 258,
+   "leaked": 24,
+   "taken": 13,
+   "siege": null,
+   "crucible": null,
+   "byWeapon": {
+    "arcweb": 14843.62152,
+    "iron_palms": 6681.168000000005
+   }
+  },
+  {
+   "name": "pair: Whirling Discipline",
+   "group": "pair",
+   "build": [
+    [
+     "iron_palms",
+     8
+    ],
+    [
+     "axe_gyre",
+     8
+    ]
+   ],
+   "evolved": false,
+   "dps": 1819.530876799998,
+   "kills": 209,
+   "leaked": 73,
+   "taken": 0,
+   "siege": null,
+   "crucible": null,
+   "byWeapon": {
+    "iron_palms": 9308.52,
+    "axe_gyre": 6360.077723999994
+   }
+  },
+  {
+   "name": "pair: Hallowed Hands",
+   "group": "pair",
+   "build": [
+    [
+     "iron_palms",
+     8
+    ],
+    [
+     "hallowed_ring",
+     8
+    ]
+   ],
+   "evolved": false,
+   "dps": 2416.410186666585,
+   "kills": 242,
+   "leaked": 40,
+   "taken": 100,
+   "siege": null,
+   "crucible": null,
+   "byWeapon": {
+    "iron_palms": 12958.919999999953,
+    "hallowed_ring": 5309.304000000015
+   }
+  },
+  {
+   "name": "pair: Moonlit Herd",
+   "group": "pair",
+   "build": [
+    [
+     "spirit_herd",
+     8
+    ],
+    [
+     "moonbrand",
+     8
+    ]
+   ],
+   "evolved": false,
+   "dps": 1670.9318079999855,
+   "kills": 257,
+   "leaked": 25,
+   "taken": 28,
+   "siege": null,
+   "crucible": null,
+   "byWeapon": {
+    "moonbrand": 13812.140159999983,
+    "spirit_herd": 7633.08000000001
+   }
+  },
+  {
+   "name": "pair: Bramble Run",
+   "group": "pair",
+   "build": [
+    [
+     "spirit_herd",
+     8
+    ],
+    [
+     "thornbloom",
+     8
+    ]
+   ],
+   "evolved": false,
+   "dps": 2403.14533333337,
+   "kills": 260,
+   "leaked": 22,
+   "taken": 241,
+   "siege": null,
+   "crucible": null,
+   "byWeapon": {
+    "spirit_herd": 11875.50000000005,
+    "thornbloom": 6486.479999999988
+   }
+  },
+  {
+   "name": "pair: Hailwheel",
+   "group": "pair",
+   "build": [
+    [
+     "gale_chakram",
+     8
+    ],
+    [
+     "rimeshard",
+     8
+    ]
+   ],
+   "evolved": false,
+   "dps": 1104.315263999995,
+   "kills": 252,
+   "leaked": 30,
+   "taken": 102,
+   "siege": null,
+   "crucible": null,
+   "byWeapon": {
+    "gale_chakram": 8572.262399999985,
+    "rimeshard": 11744.06687999995
+   }
+  },
+  {
+   "name": "pair: Razor Wind",
+   "group": "pair",
+   "build": [
+    [
+     "gale_chakram",
+     8
+    ],
+    [
+     "knifestorm",
+     8
+    ]
+   ],
+   "evolved": false,
+   "dps": 1452.2019199999836,
+   "kills": 251,
+   "leaked": 31,
+   "taken": 96,
+   "siege": null,
+   "crucible": null,
+   "byWeapon": {
+    "knifestorm": 5953.802399999992,
+    "gale_chakram": 12821.952000000036
+   }
+  },
+  {
+   "name": "pair: Rotbloom",
+   "group": "pair",
+   "build": [
+    [
+     "thornbloom",
+     8
+    ],
+    [
+     "blightfield",
+     8
+    ]
+   ],
+   "evolved": false,
+   "dps": 2930.420923733276,
+   "kills": 229,
+   "leaked": 53,
+   "taken": 257,
+   "siege": null,
+   "crucible": null,
+   "byWeapon": {
+    "thornbloom": 10416.806400000056,
+    "blightfield": 5601.4008959999965
    }
   },
   {
@@ -1319,29 +1800,29 @@
     ]
    ],
    "evolved": false,
-   "dps": 3478.139877333312,
-   "kills": 270,
-   "leaked": 12,
-   "taken": 17,
+   "dps": 3778.2811733333438,
+   "kills": 269,
+   "leaked": 13,
+   "taken": 15,
    "siege": {
-    "kills": 1269,
-    "leaked": 112,
-    "taken": 435
+    "kills": 1317,
+    "leaked": 88,
+    "taken": 223
    },
    "crucible": {
-    "kills": 759,
+    "kills": 1705,
     "leaked": 318,
-    "taken": 677,
-    "survived": 50.2,
-    "died": true
+    "taken": 1750,
+    "survived": 120,
+    "died": false
    },
    "byWeapon": {
-    "volley": 7046.894400000021,
-    "seeking_motes": 4872.067199999991,
-    "judgement_disc": 3513.5100000000016,
-    "moonbrand": 2739.2601600000025,
-    "hallowed_ring": 2217.4152000000004,
-    "dawnpulse": 1362.8160000000003
+    "volley": 5816.101200000014,
+    "seeking_motes": 4837.996799999993,
+    "moonbrand": 3379.783680000004,
+    "hallowed_ring": 2061.2591999999995,
+    "judgement_disc": 4872.067199999999,
+    "dawnpulse": 1277.6400000000003
    }
   },
   {
@@ -1374,29 +1855,29 @@
     ]
    ],
    "evolved": false,
-   "dps": 4389.890280533471,
-   "kills": 269,
-   "leaked": 13,
-   "taken": 11,
+   "dps": 4497.99313600014,
+   "kills": 270,
+   "leaked": 12,
+   "taken": 0,
    "siege": {
-    "kills": 1305,
-    "leaked": 103,
-    "taken": 290
+    "kills": 1331,
+    "leaked": 77,
+    "taken": 261
    },
    "crucible": {
-    "kills": 1125,
-    "leaked": 263,
-    "taken": 591,
-    "survived": 51.2,
+    "kills": 2211,
+    "leaked": 316,
+    "taken": 964,
+    "survived": 79.4,
     "died": true
    },
    "byWeapon": {
-    "arcweb": 7944.365520000012,
-    "umbral_bolt": 6341.069279999994,
-    "knifestorm": 843.2423999999999,
-    "rimeshard": 3841.437599999999,
-    "cinderfall": 3451.0475999999994,
-    "blightfield": 1993.1183999999985
+    "arcweb": 8879.59800000001,
+    "umbral_bolt": 6798.748319999993,
+    "rimeshard": 3622.819199999999,
+    "knifestorm": 306.63360000000006,
+    "blightfield": 1716.2963999999988,
+    "cinderfall": 3376.7173439999992
    }
   },
   {
@@ -1429,29 +1910,29 @@
     ]
    ],
    "evolved": false,
-   "dps": 3997.27813333346,
-   "kills": 264,
-   "leaked": 18,
-   "taken": 38,
+   "dps": 4538.372869333572,
+   "kills": 267,
+   "leaked": 15,
+   "taken": 0,
    "siege": {
-    "kills": 1185,
-    "leaked": 172,
-    "taken": 643
+    "kills": 1229,
+    "leaked": 131,
+    "taken": 470
    },
    "crucible": {
-    "kills": 2663,
-    "leaked": 320,
-    "taken": 2119,
+    "kills": 3517,
+    "leaked": 316,
+    "taken": 1754,
     "survived": 120,
     "died": false
    },
    "byWeapon": {
-    "grave_tether": 9102.475199999997,
-    "verdant_lance": 5996.390400000006,
-    "knifestorm": 1814.248800000001,
-    "axe_gyre": 2592.1896000000015,
-    "reaving_arc": 1254.9263999999998,
-    "blightfield": 2030.0279999999982
+    "grave_tether": 9301.219199999998,
+    "verdant_lance": 5715.309600000007,
+    "knifestorm": 1737.5904000000012,
+    "axe_gyre": 4150.484520000006,
+    "reaving_arc": 1158.3936000000003,
+    "blightfield": 1956.2087999999985
    }
   },
   {
@@ -1484,29 +1965,29 @@
     ]
    ],
    "evolved": false,
-   "dps": 3845.6061134399542,
-   "kills": 271,
-   "leaked": 11,
-   "taken": 11,
+   "dps": 4480.707890810663,
+   "kills": 274,
+   "leaked": 8,
+   "taken": 0,
    "siege": {
-    "kills": 1341,
-    "leaked": 82,
-    "taken": 248
+    "kills": 1350,
+    "leaked": 73,
+    "taken": 60
    },
    "crucible": {
-    "kills": 985,
-    "leaked": 302,
-    "taken": 568,
-    "survived": 49.2,
+    "kills": 2091,
+    "leaked": 307,
+    "taken": 677,
+    "survived": 81.2,
     "died": true
    },
    "byWeapon": {
-    "arcweb": 7246.774080000009,
-    "umbral_bolt": 4237.222079999999,
-    "moonbrand": 5240.027520000006,
-    "rimeshard": 3560.3568,
-    "axe_gyre": 1536.5125776000002,
-    "cinderfall": 2049.391344
+    "arcweb": 9900.006480000005,
+    "umbral_bolt": 4687.5192,
+    "moonbrand": 4660.830720000005,
+    "rimeshard": 2592.189600000001,
+    "axe_gyre": 1654.1480155200009,
+    "cinderfall": 2081.247168
    }
   },
   {
@@ -1539,29 +2020,29 @@
     ]
    ],
    "evolved": false,
-   "dps": 4037.3802560000518,
-   "kills": 269,
-   "leaked": 13,
+   "dps": 4071.9617120000553,
+   "kills": 272,
+   "leaked": 10,
    "taken": 0,
    "siege": {
-    "kills": 1355,
-    "leaked": 68,
-    "taken": 214
+    "kills": 1368,
+    "leaked": 64,
+    "taken": 114
    },
    "crucible": {
-    "kills": 853,
-    "leaked": 282,
-    "taken": 584,
-    "survived": 45.6,
+    "kills": 1629,
+    "leaked": 313,
+    "taken": 1108,
+    "survived": 81.8,
     "died": true
    },
    "byWeapon": {
-    "arcweb": 6699.944160000007,
-    "umbral_bolt": 4082.2017599999976,
-    "seeking_motes": 4752.820799999991,
-    "moonbrand": 2671.1193600000024,
-    "cinderfall": 3031.129919999999,
-    "hallowed_ring": 1624.0223999999998
+    "arcweb": 6717.831120000008,
+    "umbral_bolt": 5639.786879999997,
+    "seeking_motes": 3790.3319999999853,
+    "moonbrand": 2344.043520000002,
+    "cinderfall": 2905.6372799999995,
+    "hallowed_ring": 1905.1031999999996
    }
   },
   {
@@ -1594,29 +2075,29 @@
     ]
    ],
    "evolved": false,
-   "dps": 4143.825018666865,
-   "kills": 258,
-   "leaked": 24,
-   "taken": 26,
+   "dps": 4808.169426666982,
+   "kills": 266,
+   "leaked": 16,
+   "taken": 18,
    "siege": {
-    "kills": 1049,
-    "leaked": 260,
-    "taken": 652
+    "kills": 1166,
+    "leaked": 173,
+    "taken": 413
    },
    "crucible": {
-    "kills": 2292,
-    "leaked": 320,
-    "taken": 2140,
+    "kills": 3010,
+    "leaked": 318,
+    "taken": 1609,
     "survived": 120,
     "died": false
    },
    "byWeapon": {
-    "grave_tether": 9499.9632,
-    "blightfield": 2030.0279999999982,
-    "judgement_disc": 5366.088000000003,
-    "axe_gyre": 3307.3840800000057,
-    "reaving_arc": 1447.9919999999997,
-    "dawnpulse": 1959.048
+    "grave_tether": 8824.233599999992,
+    "blightfield": 2030.0279999999984,
+    "judgement_disc": 7921.368000000015,
+    "axe_gyre": 4183.7031600000055,
+    "reaving_arc": 1013.5944000000004,
+    "dawnpulse": 1320.2280000000003
    }
   },
   {
@@ -1649,29 +2130,29 @@
     ]
    ],
    "evolved": false,
-   "dps": 5134.478682667054,
-   "kills": 261,
-   "leaked": 21,
-   "taken": 38,
+   "dps": 5692.510824000468,
+   "kills": 260,
+   "leaked": 22,
+   "taken": 20,
    "siege": {
-    "kills": 1198,
-    "leaked": 147,
-    "taken": 724
+    "kills": 1226,
+    "leaked": 128,
+    "taken": 541
    },
    "crucible": {
-    "kills": 2735,
-    "leaked": 316,
-    "taken": 2288,
+    "kills": 3436,
+    "leaked": 318,
+    "taken": 1629,
     "survived": 120,
     "died": false
    },
    "byWeapon": {
-    "grave_tether": 10970.66880000001,
-    "blightfield": 1993.1183999999982,
-    "axe_gyre": 3916.3924800000077,
-    "reaving_arc": 2075.4552,
-    "hallowed_ring": 2357.955600000001,
-    "dawnpulse": 2299.7519999999995
+    "grave_tether": 11725.896000000013,
+    "blightfield": 1882.3895999999986,
+    "axe_gyre": 4890.522000000003,
+    "reaving_arc": 1544.5248000000001,
+    "hallowed_ring": 2248.6464000000005,
+    "dawnpulse": 1873.8719999999998
    }
   },
   {
@@ -1704,29 +2185,29 @@
     ]
    ],
    "evolved": false,
-   "dps": 3278.2690303999175,
+   "dps": 3563.55310826659,
    "kills": 271,
    "leaked": 11,
-   "taken": 0,
+   "taken": 9,
    "siege": {
-    "kills": 1342,
-    "leaked": 81,
-    "taken": 154
+    "kills": 1347,
+    "leaked": 73,
+    "taken": 109
    },
    "crucible": {
-    "kills": 972,
-    "leaked": 319,
-    "taken": 581,
-    "survived": 52,
+    "kills": 1428,
+    "leaked": 315,
+    "taken": 601,
+    "survived": 65.6,
     "died": true
    },
    "byWeapon": {
-    "volley": 5888.500800000014,
-    "seeking_motes": 4250.282399999985,
-    "umbral_bolt": 3735.2515199999993,
-    "rimeshard": 3466.6631999999995,
-    "cinderfall": 2442.2798399999997,
-    "moonbrand": 2166.877440000001
+    "volley": 5960.900400000014,
+    "seeking_motes": 4829.479199999992,
+    "umbral_bolt": 4111.729439999999,
+    "rimeshard": 3341.7383999999997,
+    "cinderfall": 2314.8565439999998,
+    "moonbrand": 1907.9424000000004
    }
   },
   {
@@ -1759,29 +2240,29 @@
     ]
    ],
    "evolved": true,
-   "dps": 12606.663160000682,
-   "kills": 274,
-   "leaked": 8,
+   "dps": 14042.351960000944,
+   "kills": 273,
+   "leaked": 9,
    "taken": 0,
    "siege": {
-    "kills": 1431,
-    "leaked": 28,
-    "taken": 53
+    "kills": 1424,
+    "leaked": 32,
+    "taken": 35
    },
    "crucible": {
-    "kills": 3598,
-    "leaked": 273,
-    "taken": 1002,
-    "survived": 97.1,
-    "died": true
+    "kills": 5309,
+    "leaked": 281,
+    "taken": 951,
+    "survived": 120,
+    "died": false
    },
    "byWeapon": {
-    "dawnpulse": 3385.7460000000024,
-    "seeking_motes": 4867.808400000004,
-    "volley": 4488.775200000004,
-    "moonbrand": 7103.678399999995,
-    "hallowed_ring": 2740.5377999999987,
-    "judgement_disc": 2881.0782000000004
+    "dawnpulse": 2555.280000000001,
+    "seeking_motes": 3947.907599999994,
+    "volley": 4778.3736000000035,
+    "moonbrand": 5723.827199999999,
+    "judgement_disc": 7940.532599999996,
+    "hallowed_ring": 2670.2675999999983
    }
   },
   {
@@ -1814,29 +2295,29 @@
     ]
    ],
    "evolved": true,
-   "dps": 17538.0393551995,
-   "kills": 278,
-   "leaked": 4,
+   "dps": 17898.712395199393,
+   "kills": 281,
+   "leaked": 1,
    "taken": 0,
    "siege": {
     "kills": 1423,
     "leaked": 27,
-    "taken": 16
+    "taken": 0
    },
    "crucible": {
-    "kills": 3835,
-    "leaked": 196,
-    "taken": 736,
-    "survived": 97.9,
-    "died": true
+    "kills": 5422,
+    "leaked": 232,
+    "taken": 760,
+    "survived": 120,
+    "died": false
    },
    "byWeapon": {
-    "cinderfall": 2835.1683360000015,
-    "rimeshard": 3841.4376000000016,
-    "umbral_bolt": 5071.379039999999,
-    "arcweb": 13287.456000000006,
-    "blightfield": 4263.058799999999,
-    "knifestorm": 1571.4972000000005
+    "cinderfall": 3249.294048000002,
+    "rimeshard": 3747.744000000002,
+    "umbral_bolt": 5171.034959999999,
+    "arcweb": 13117.529880000004,
+    "blightfield": 4235.376599999998,
+    "knifestorm": 1801.4724000000006
    }
   },
   {
@@ -1869,29 +2350,29 @@
     ]
    ],
    "evolved": true,
-   "dps": 16166.830680001543,
+   "dps": 19764.186987999557,
    "kills": 271,
    "leaked": 11,
    "taken": 0,
    "siege": {
-    "kills": 1400,
-    "leaked": 44,
+    "kills": 1405,
+    "leaked": 39,
     "taken": 0
    },
    "crucible": {
-    "kills": 5015,
-    "leaked": 309,
-    "taken": 1369,
+    "kills": 5384,
+    "leaked": 261,
+    "taken": 854,
     "survived": 120,
     "died": false
    },
    "byWeapon": {
-    "verdant_lance": 9275.666399999991,
-    "knifestorm": 1533.1680000000003,
-    "grave_tether": 9241.596000000001,
-    "axe_gyre": 3490.0865999999955,
-    "blightfield": 4401.469799999999,
-    "reaving_arc": 723.9960000000001
+    "verdant_lance": 9041.432399999989,
+    "reaving_arc": 723.9960000000002,
+    "grave_tether": 9897.451200000001,
+    "axe_gyre": 3922.567739999998,
+    "blightfield": 4705.974000000003,
+    "knifestorm": 1188.2052000000003
    }
   },
   {
@@ -1924,29 +2405,29 @@
     ]
    ],
    "evolved": true,
-   "dps": 23992.798626163643,
-   "kills": 274,
-   "leaked": 8,
+   "dps": 28684.506867013733,
+   "kills": 277,
+   "leaked": 5,
    "taken": 0,
    "siege": {
-    "kills": 1405,
-    "leaked": 42,
-    "taken": 0
+    "kills": 1413,
+    "leaked": 37,
+    "taken": 13
    },
    "crucible": {
-    "kills": 3734,
-    "leaked": 261,
-    "taken": 656,
-    "survived": 97.6,
-    "died": true
+    "kills": 5378,
+    "leaked": 262,
+    "taken": 495,
+    "survived": 120,
+    "died": false
    },
    "byWeapon": {
-    "moonbrand": 3577.392000000002,
-    "rimeshard": 2436.033600000001,
-    "umbral_bolt": 7208.444879999998,
-    "cinderfall": 3599.7081120000025,
-    "arcweb": 12336.891840000006,
-    "axe_gyre": 1797.699103200001
+    "moonbrand": 3884.025600000003,
+    "rimeshard": 2108.106000000001,
+    "umbral_bolt": 6654.800879999998,
+    "cinderfall": 3599.708112000002,
+    "arcweb": 13135.416840000005,
+    "axe_gyre": 2186.129771279999
    }
   },
   {
@@ -1979,29 +2460,29 @@
     ]
    ],
    "evolved": true,
-   "dps": 18771.626328000602,
-   "kills": 282,
-   "leaked": 0,
+   "dps": 18808.185760000597,
+   "kills": 281,
+   "leaked": 1,
    "taken": 0,
    "siege": {
-    "kills": 1424,
-    "leaked": 26,
-    "taken": 16
+    "kills": 1433,
+    "leaked": 23,
+    "taken": 0
    },
    "crucible": {
-    "kills": 4013,
-    "leaked": 237,
-    "taken": 728,
-    "survived": 101.3,
-    "died": true
+    "kills": 5429,
+    "leaked": 240,
+    "taken": 480,
+    "survived": 120,
+    "died": false
    },
    "byWeapon": {
-    "moonbrand": 4650.6096000000025,
-    "seeking_motes": 3551.839199999995,
-    "umbral_bolt": 4728.119759999999,
-    "cinderfall": 2606.3855999999996,
-    "arcweb": 11455.320240000003,
-    "hallowed_ring": 2248.6464
+    "moonbrand": 5059.4544000000005,
+    "seeking_motes": 3692.3795999999948,
+    "umbral_bolt": 4285.204559999999,
+    "cinderfall": 2533.986,
+    "arcweb": 10978.760520000003,
+    "hallowed_ring": 2318.9166
    }
   },
   {
@@ -2034,29 +2515,29 @@
     ]
    ],
    "evolved": true,
-   "dps": 16803.417176001614,
+   "dps": 21018.30894799953,
    "kills": 272,
    "leaked": 10,
    "taken": 0,
    "siege": {
-    "kills": 1407,
-    "leaked": 40,
-    "taken": 71
+    "kills": 1406,
+    "leaked": 38,
+    "taken": 35
    },
    "crucible": {
-    "kills": 5084,
-    "leaked": 305,
-    "taken": 1308,
+    "kills": 5030,
+    "leaked": 304,
+    "taken": 591,
     "survived": 120,
     "died": false
    },
    "byWeapon": {
-    "judgement_disc": 10221.119999999995,
-    "axe_gyre": 2998.195199999998,
-    "grave_tether": 10135.944000000001,
-    "reaving_arc": 1013.5944000000002,
-    "dawnpulse": 1405.4040000000005,
-    "blightfield": 4789.020600000002
+    "judgement_disc": 10668.293999999993,
+    "axe_gyre": 4174.475759999998,
+    "grave_tether": 8883.856800000001,
+    "reaving_arc": 868.7952000000002,
+    "dawnpulse": 1724.8140000000008,
+    "blightfield": 4539.880800000001
    }
   },
   {
@@ -2089,29 +2570,29 @@
     ]
    ],
    "evolved": true,
-   "dps": 18800.747056003176,
-   "kills": 274,
-   "leaked": 8,
+   "dps": 22481.642092001173,
+   "kills": 275,
+   "leaked": 7,
    "taken": 0,
    "siege": {
     "kills": 1407,
     "leaked": 40,
-    "taken": 183
+    "taken": 72
    },
    "crucible": {
-    "kills": 5125,
-    "leaked": 315,
-    "taken": 1514,
+    "kills": 5475,
+    "leaked": 200,
+    "taken": 1097,
     "survived": 120,
     "died": false
    },
    "byWeapon": {
-    "grave_tether": 15263.539200000001,
-    "axe_gyre": 4192.7885999999935,
-    "reaving_arc": 1158.3936,
-    "dawnpulse": 2427.5160000000014,
-    "hallowed_ring": 1803.6018000000008,
-    "blightfield": 4595.2452
+    "grave_tether": 14607.684000000001,
+    "axe_gyre": 5002.173539999998,
+    "reaving_arc": 1085.9940000000004,
+    "dawnpulse": 2171.988000000001,
+    "hallowed_ring": 1944.142200000001,
+    "blightfield": 4180.012199999997
    }
   },
   {
@@ -2144,29 +2625,29 @@
     ]
    ],
    "evolved": true,
-   "dps": 18363.375867199982,
+   "dps": 18884.92365759995,
    "kills": 273,
    "leaked": 9,
    "taken": 0,
    "siege": {
-    "kills": 1428,
-    "leaked": 34,
+    "kills": 1414,
+    "leaked": 33,
     "taken": 0
    },
    "crucible": {
-    "kills": 4750,
-    "leaked": 253,
-    "taken": 695,
-    "survived": 111.4,
-    "died": true
+    "kills": 5301,
+    "leaked": 318,
+    "taken": 410,
+    "survived": 120,
+    "died": false
    },
    "byWeapon": {
-    "moonbrand": 7461.417599999994,
-    "seeking_motes": 3986.236799999994,
-    "volley": 4307.776200000004,
-    "umbral_bolt": 4938.504479999999,
-    "cinderfall": 3249.2940480000025,
-    "rimeshard": 3747.744000000002
+    "moonbrand": 7205.889599999995,
+    "seeking_motes": 4075.6715999999938,
+    "volley": 4416.375600000005,
+    "umbral_bolt": 4794.557039999999,
+    "cinderfall": 2914.8078960000016,
+    "rimeshard": 4216.212000000001
    }
   }
  ]
