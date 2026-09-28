@@ -53,7 +53,9 @@ function installPilot(opts) {
     // Rescue pickups, priced in hits: a bomb is worth bombK x the danger of
     // the field it would clear, an hourglass freezeK x the danger it would
     // stop. 0 turns the idea off (they are then ordinary loot).
-    bombK: 1.0, freezeK: 0.7, rescueMin: 400,
+    // Fitted on Pale Waste Professional, 36 runs each: flat values 16.6 min,
+    // raw threat (1.0/0.7) 14-15 min, a third of it 17.1-17.2 min.
+    bombK: 0.3, freezeK: 0.2, rescueMin: 200,
     bank: 40,           // what walking over a rescue that is worth little costs (0: take them whenever)
     lowHp: 0.5,         // below this share of health, only potions are worth a detour (fitted)
   }, opts || {});
