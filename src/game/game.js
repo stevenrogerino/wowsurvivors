@@ -614,6 +614,9 @@
   Game.tick = function (dt) {
     const run = this.run;
     const player = this.player;
+    // Where everything was when this tick began: the renderer draws between
+    // this and where the tick leaves it (Renderer.snapshot).
+    WS.Renderer.snapshot();
     run.time += dt;
 
     // Rolling ten-second DPS/HPS, sampled four times a second - the HUD reads

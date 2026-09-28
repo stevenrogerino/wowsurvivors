@@ -3580,6 +3580,7 @@ window.WS = window.WS || {};
       if (this.active.length >= this.cap) return null;
       const o = this.free.pop() || this.factory();
       o._dead = false;
+      o._ts = -1;           // a new life: nothing to interpolate from (renderer.js)
       this.active.push(o);
       return o;
     }
@@ -34286,6 +34287,9 @@ window.WS = window.WS || {};
   Game.tick = function (dt) {
     const run = this.run;
     const player = this.player;
+    // Where everything was when this tick began: the renderer draws between
+    // this and where the tick leaves it (Renderer.snapshot).
+    WS.Renderer.snapshot();
     run.time += dt;
 
     // Rolling ten-second DPS/HPS, sampled four times a second - the HUD reads
@@ -41967,7 +41971,85 @@ window.WS = window.WS || {};
     ctx.restore();
   }
 
+  /* ------------------------------------------------------ interpolation --
+   * THE FRAME DRAWS BETWEEN TWO TICKS. The simulation steps at a fixed 60 a
+   * second and the screen refreshes at whatever the monitor does - 120, 144,
+   * 165 on most of the machines this ships to. Drawing the last tick as it
+   * stands shows each position for two or three refreshes and then jumps:
+   * motion that is smooth in the numbers judders on the glass. So each tick
+   * begins by noting where every moving thing is, and the frame is drawn
+   * `alpha` of the way from there to where the tick left it, alpha being how
+   * far the clock has run into the next tick. It is one tick behind, which is
+   * what every fixed-step game does; at 60 that is 16ms nobody can feel.
+   *
+   * The positions are swapped in for the draw and put back straight after,
+   * so nothing the renderer calls can see anything but the drawn position,
+   * and nothing outside it ever sees anything but the real one. A thing that
+   * was not there when the tick began (a new spawn, a pool slot on its
+   * second life) or that moved further than anything can walk in a tick (a
+   * teleport, a reset) is drawn where it is. */
+  let TICK = 0;
+  const LISTS = () => [WS.Enemy.pool && WS.Enemy.pool.active, WS.Projectile.bolts && WS.Projectile.bolts.active,
+    WS.Projectile.hostiles && WS.Projectile.hostiles.active, WS.XP.pool && WS.XP.pool.active,
+    WS.Pickup.pool && WS.Pickup.pool.active, WS.Familiar.list];
+  const JUMP = 120;
+  R.snapshot = function () {
+    TICK++;
+    const p = WS.Game.player;
+    if (p) { p._px = p.x; p._py = p.y; p._ts = TICK; }
+    for (const list of LISTS()) {
+      if (!list) continue;
+      for (let i = 0; i < list.length; i++) { const e = list[i]; e._px = e.x; e._py = e.y; e._ts = TICK; }
+    }
+    const orb = WS.Projectile.orbits;
+    if (orb) for (let i = 0; i < orb.active.length; i++) { const o = orb.active[i]; o._pa = o.angle; o._ts = TICK; }
+  };
+  const swapped = [];
+  function lerpIn(e, a) {
+    if (e._ts !== TICK) return;
+    const dx = e.x - e._px, dy = e.y - e._py;
+    if (dx > JUMP || dx < -JUMP || dy > JUMP || dy < -JUMP) return;
+    e._rx = e.x; e._ry = e.y;
+    e.x = e._px + dx * a; e.y = e._py + dy * a;
+    swapped.push(e);
+  }
+  /** Move everything to where it is drawn this frame. */
+  R.lerpIn = function () {
+    const G = WS.Game;
+    if (!G.player || G.state === 'menu') return;
+    // alpha 0 is not "nothing to do": it is "draw where the tick began".
+    const a = WS.clamp(G.accumulator / WS.CONST.TICK_RATE, 0, 1);
+    lerpIn(G.player, a);
+    for (const list of LISTS()) {
+      if (!list) continue;
+      for (let i = 0; i < list.length; i++) lerpIn(list[i], a);
+    }
+    const orb = WS.Projectile.orbits;
+    if (orb) {
+      for (let i = 0; i < orb.active.length; i++) {
+        const o = orb.active[i];
+        if (o._ts !== TICK) continue;
+        o._ra = o.angle; o.angle = o._pa + (o.angle - o._pa) * a;
+        swapped.push(o);
+      }
+    }
+  };
+  /** And back to where they really are. */
+  R.lerpOut = function () {
+    for (let i = 0; i < swapped.length; i++) {
+      const e = swapped[i];
+      if (e._ra !== undefined) { e.angle = e._ra; e._ra = undefined; }
+      else { e.x = e._rx; e.y = e._ry; }
+    }
+    swapped.length = 0;
+  };
+
   R.draw = function (time) {
+    this.lerpIn();
+    try { this.drawFrame(time); } finally { this.lerpOut(); }
+  };
+
+  R.drawFrame = function (time) {
     const ctx = this.ctx;
     const game = WS.Game;
 

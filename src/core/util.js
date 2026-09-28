@@ -157,6 +157,7 @@ window.WS = window.WS || {};
       if (this.active.length >= this.cap) return null;
       const o = this.free.pop() || this.factory();
       o._dead = false;
+      o._ts = -1;           // a new life: nothing to interpolate from (renderer.js)
       this.active.push(o);
       return o;
     }
