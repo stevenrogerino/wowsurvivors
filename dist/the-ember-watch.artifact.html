@@ -42365,9 +42365,19 @@ window.WS = window.WS || {};
     swapped.length = 0;
   };
 
+  /* The dice are the simulation's. A frame drawn - a crackle, a jolt, a
+     flicker - used to take its randomness from the same seeded stream the
+     game plays from, and a machine drawing 144 frames a second spent it
+     faster than one drawing 60, so the same seed played out a different
+     night on each: a Nightly was not the same night for everyone. While a
+     frame is drawn, WS.random (and randRange, randInt, pick and chance,
+     which all go through it) is cosmetic; the stream is untouched. */
+  const cosmetic = () => Math.random();
   R.draw = function (time) {
+    const dice = WS.random;
+    WS.random = cosmetic;
     this.lerpIn();
-    try { this.drawFrame(time); } finally { this.lerpOut(); }
+    try { this.drawFrame(time); } finally { this.lerpOut(); WS.random = dice; }
     this.warmOne();
   };
 
