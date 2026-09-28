@@ -1142,13 +1142,10 @@ html, body {
   color: #f2c9ff; font-weight: 600; margin-bottom: 2px;
   text-shadow: 0 0 18px rgba(179,79,242,.45);
 }
-#hud-boss svg { display: block; width: 100%; height: 30px; overflow: visible; }
-#hud-boss .b-track { fill: none; stroke: rgba(255,255,255,.10); stroke-width: 5; }
-#hud-boss .b-fill {
-  fill: none; stroke: var(--blood); stroke-width: 5; stroke-linecap: round;
-  filter: drop-shadow(0 0 6px rgba(226,72,61,.45));
-  transition: stroke-dashoffset .18s var(--ease);
-}
+/* (The bar was once an SVG arc. Its rules stayed behind after the bar
+   became a painted strip, and one of them - a drop-shadow FILTER on
+   .b-fill - still applied to the strip, so the whole glowing bar was
+   re-rasterized through a filter every frame a boss was alive.) */
 #hud-boss .b-pct {
   font-family: var(--fig); font-size: var(--t-micro); color: var(--ink-dim);
   font-variant-numeric: tabular-nums; margin-top: 1px;
@@ -2441,14 +2438,17 @@ body.hud-rail #hud-passives { gap: 9px; }
   border-image: var(--frame-slot) 24 / 8px / 4px stretch;
   box-shadow: 0 4px 14px rgba(0,0,0,.55);
 }
-#hud-boss .b-fill, #hud-boss .b-drain { position: absolute; left: 0; top: 0; bottom: 0; }
+#hud-boss .b-fill, #hud-boss .b-drain {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 100%;
+  transform-origin: left center; will-change: transform;
+}
 #hud-boss .b-drain { background: rgba(255,214,190,.42); }
 #hud-boss .b-fill {
   background:
     linear-gradient(180deg, rgba(255,210,190,.35), rgba(255,210,190,0) 40%, rgba(0,0,0,.35)),
     linear-gradient(90deg, #6e1210, #b82a24 60%, #e2483d);
   box-shadow: 0 0 10px rgba(226,72,61,.5);
-  transition: width .12s linear;
+  transition: transform .12s linear;
 }
 /* The next phase gate: a seal on the bar that the health cannot pass. */
 #hud-boss .b-gate {

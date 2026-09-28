@@ -870,14 +870,24 @@
         e.bossDrain = WS.max(pct, e.bossDrain - dt * 0.33);
       }
       e.bossDrainTick = now;
-      e.bFill.style.width = (pct * 100).toFixed(2) + '%';
-      e.bDrain.style.width = (e.bossDrain * 100).toFixed(2) + '%';
+      /* Written only when it changes, and as a transform: the bar used to
+         set a width - with a CSS transition on it - every frame a boss was
+         alive, so each frame restarted a transition and re-laid-out and
+         repainted a glowing bar. A scale is the compositor's job. */
+      const fillK = (pct * 1000 | 0) / 1000, drainK = (e.bossDrain * 1000 | 0) / 1000;
+      if (e.bFillK !== fillK) { e.bFillK = fillK; e.bFill.style.transform = `scaleX(${fillK})`; }
+      if (e.bDrainK !== drainK) { e.bDrainK = drainK; e.bDrain.style.transform = `scaleX(${drainK})`; }
       const gate = boss.hpFloor > 0 ? boss.hpFloor / boss.maxHealth : 0;
-      e.bGate.style.left = (gate * 100).toFixed(2) + '%';
-      e.bGate.classList.toggle('shown', gate > 0);
-      e.bossPct.textContent = `${WS.formatNumber(boss.health)} / ${WS.formatNumber(boss.maxHealth)}  ·  ${WS.round(pct * 100)}%`;
-    } else {
+      if (e.bGateK !== gate) {
+        e.bGateK = gate;
+        e.bGate.style.left = (gate * 100).toFixed(2) + '%';
+        e.bGate.classList.toggle('shown', gate > 0);
+      }
+      const pctText = `${WS.formatNumber(boss.health)} / ${WS.formatNumber(boss.maxHealth)}  ·  ${WS.round(pct * 100)}%`;
+      if (e.bossPctText !== pctText) { e.bossPctText = pctText; e.bossPct.textContent = pctText; }
+    } else if (e.bossRef !== null) {
       e.boss.classList.add('hidden');
+      e.bossRef = null;
     }
 
     // Passives change on level-up; refresh the strip when its shape does.

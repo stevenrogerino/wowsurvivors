@@ -1233,13 +1233,10 @@ html, body {
   color: #f2c9ff; font-weight: 600; margin-bottom: 2px;
   text-shadow: 0 0 18px rgba(179,79,242,.45);
 }
-#hud-boss svg { display: block; width: 100%; height: 30px; overflow: visible; }
-#hud-boss .b-track { fill: none; stroke: rgba(255,255,255,.10); stroke-width: 5; }
-#hud-boss .b-fill {
-  fill: none; stroke: var(--blood); stroke-width: 5; stroke-linecap: round;
-  filter: drop-shadow(0 0 6px rgba(226,72,61,.45));
-  transition: stroke-dashoffset .18s var(--ease);
-}
+/* (The bar was once an SVG arc. Its rules stayed behind after the bar
+   became a painted strip, and one of them - a drop-shadow FILTER on
+   .b-fill - still applied to the strip, so the whole glowing bar was
+   re-rasterized through a filter every frame a boss was alive.) */
 #hud-boss .b-pct {
   font-family: var(--fig); font-size: var(--t-micro); color: var(--ink-dim);
   font-variant-numeric: tabular-nums; margin-top: 1px;
@@ -2532,14 +2529,17 @@ body.hud-rail #hud-passives { gap: 9px; }
   border-image: var(--frame-slot) 24 / 8px / 4px stretch;
   box-shadow: 0 4px 14px rgba(0,0,0,.55);
 }
-#hud-boss .b-fill, #hud-boss .b-drain { position: absolute; left: 0; top: 0; bottom: 0; }
+#hud-boss .b-fill, #hud-boss .b-drain {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 100%;
+  transform-origin: left center; will-change: transform;
+}
 #hud-boss .b-drain { background: rgba(255,214,190,.42); }
 #hud-boss .b-fill {
   background:
     linear-gradient(180deg, rgba(255,210,190,.35), rgba(255,210,190,0) 40%, rgba(0,0,0,.35)),
     linear-gradient(90deg, #6e1210, #b82a24 60%, #e2483d);
   box-shadow: 0 0 10px rgba(226,72,61,.5);
-  transition: width .12s linear;
+  transition: transform .12s linear;
 }
 /* The next phase gate: a seal on the bar that the health cannot pass. */
 #hud-boss .b-gate {
@@ -33846,11 +33846,34 @@ window.WS = window.WS || {};
    * the same survivor with the same kit on the same field in the balance
    * lab, plus how the frames were going and any errors the page threw. */
   const frameLog = [];
+  /* The same frames split by whether a boss was alive: a tester reported
+     the game dragging while a boss is up and recovering once it falls, and
+     a report should be able to show that on their own machine. */
+  const bossFrames = [], fieldFrames = [];
   const errors = [];
   Runs.noteFrame = function (ms) {
     frameLog.push(ms);
     if (frameLog.length > 600) frameLog.shift();
+    const split = WS.Enemy && WS.Enemy.leadBoss && WS.Enemy.leadBoss() ? bossFrames : fieldFrames;
+    split.push(ms);
+    if (split.length > 1200) split.shift();
   };
+  const frameStats = (a) => ({ n: a.length, p50: pct(a, 0.5), p90: pct(a, 0.9), p99: pct(a, 0.99) });
+  /** The GPU the browser is drawing with, if it will say: a canvas without
+   *  hardware acceleration is the usual reason one machine drags where
+   *  another does not. */
+  function gpuName() {
+    try {
+      const c = document.createElement('canvas');
+      const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+      if (!gl) return 'no webgl';
+      const ext = gl.getExtension('WEBGL_debug_renderer_info');
+      const name = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+      const lose = gl.getExtension('WEBGL_lose_context');
+      if (lose) lose.loseContext();
+      return String(name);
+    } catch (e) { return 'unknown'; }
+  }
   Runs.noteError = function (msg) {
     errors.push({ at: Date.now(), msg: String(msg).slice(0, 300) });
     if (errors.length > 20) errors.shift();
@@ -33873,7 +33896,9 @@ window.WS = window.WS || {};
       view: [window.innerWidth, window.innerHeight],
       settings: Object.assign({}, WS.Save.settings),
       frames: { n: frameLog.length, p50: pct(frameLog, 0.5), p90: pct(frameLog, 0.9), p99: pct(frameLog, 0.99),
-        worst: frameLog.length ? +WS.max(...frameLog).toFixed(1) : 0 },
+        worst: frameLog.length ? +WS.max(...frameLog).toFixed(1) : 0,
+        withBoss: frameStats(bossFrames), withoutBoss: frameStats(fieldFrames) },
+      gpu: gpuName(),
       resolution: WS.Renderer && WS.Renderer.renderScale !== undefined ? WS.Renderer.renderScale : null,
       faults: WS.faultCount ? WS.faultCount() : 0,
       errors: errors.slice(),
@@ -47653,14 +47678,24 @@ window.WS = window.WS || {};
         e.bossDrain = WS.max(pct, e.bossDrain - dt * 0.33);
       }
       e.bossDrainTick = now;
-      e.bFill.style.width = (pct * 100).toFixed(2) + '%';
-      e.bDrain.style.width = (e.bossDrain * 100).toFixed(2) + '%';
+      /* Written only when it changes, and as a transform: the bar used to
+         set a width - with a CSS transition on it - every frame a boss was
+         alive, so each frame restarted a transition and re-laid-out and
+         repainted a glowing bar. A scale is the compositor's job. */
+      const fillK = (pct * 1000 | 0) / 1000, drainK = (e.bossDrain * 1000 | 0) / 1000;
+      if (e.bFillK !== fillK) { e.bFillK = fillK; e.bFill.style.transform = `scaleX(${fillK})`; }
+      if (e.bDrainK !== drainK) { e.bDrainK = drainK; e.bDrain.style.transform = `scaleX(${drainK})`; }
       const gate = boss.hpFloor > 0 ? boss.hpFloor / boss.maxHealth : 0;
-      e.bGate.style.left = (gate * 100).toFixed(2) + '%';
-      e.bGate.classList.toggle('shown', gate > 0);
-      e.bossPct.textContent = `${WS.formatNumber(boss.health)} / ${WS.formatNumber(boss.maxHealth)}  ·  ${WS.round(pct * 100)}%`;
-    } else {
+      if (e.bGateK !== gate) {
+        e.bGateK = gate;
+        e.bGate.style.left = (gate * 100).toFixed(2) + '%';
+        e.bGate.classList.toggle('shown', gate > 0);
+      }
+      const pctText = `${WS.formatNumber(boss.health)} / ${WS.formatNumber(boss.maxHealth)}  ·  ${WS.round(pct * 100)}%`;
+      if (e.bossPctText !== pctText) { e.bossPctText = pctText; e.bossPct.textContent = pctText; }
+    } else if (e.bossRef !== null) {
       e.boss.classList.add('hidden');
+      e.bossRef = null;
     }
 
     // Passives change on level-up; refresh the strip when its shape does.

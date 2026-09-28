@@ -179,11 +179,34 @@
    * the same survivor with the same kit on the same field in the balance
    * lab, plus how the frames were going and any errors the page threw. */
   const frameLog = [];
+  /* The same frames split by whether a boss was alive: a tester reported
+     the game dragging while a boss is up and recovering once it falls, and
+     a report should be able to show that on their own machine. */
+  const bossFrames = [], fieldFrames = [];
   const errors = [];
   Runs.noteFrame = function (ms) {
     frameLog.push(ms);
     if (frameLog.length > 600) frameLog.shift();
+    const split = WS.Enemy && WS.Enemy.leadBoss && WS.Enemy.leadBoss() ? bossFrames : fieldFrames;
+    split.push(ms);
+    if (split.length > 1200) split.shift();
   };
+  const frameStats = (a) => ({ n: a.length, p50: pct(a, 0.5), p90: pct(a, 0.9), p99: pct(a, 0.99) });
+  /** The GPU the browser is drawing with, if it will say: a canvas without
+   *  hardware acceleration is the usual reason one machine drags where
+   *  another does not. */
+  function gpuName() {
+    try {
+      const c = document.createElement('canvas');
+      const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+      if (!gl) return 'no webgl';
+      const ext = gl.getExtension('WEBGL_debug_renderer_info');
+      const name = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+      const lose = gl.getExtension('WEBGL_lose_context');
+      if (lose) lose.loseContext();
+      return String(name);
+    } catch (e) { return 'unknown'; }
+  }
   Runs.noteError = function (msg) {
     errors.push({ at: Date.now(), msg: String(msg).slice(0, 300) });
     if (errors.length > 20) errors.shift();
@@ -206,7 +229,9 @@
       view: [window.innerWidth, window.innerHeight],
       settings: Object.assign({}, WS.Save.settings),
       frames: { n: frameLog.length, p50: pct(frameLog, 0.5), p90: pct(frameLog, 0.9), p99: pct(frameLog, 0.99),
-        worst: frameLog.length ? +WS.max(...frameLog).toFixed(1) : 0 },
+        worst: frameLog.length ? +WS.max(...frameLog).toFixed(1) : 0,
+        withBoss: frameStats(bossFrames), withoutBoss: frameStats(fieldFrames) },
+      gpu: gpuName(),
       resolution: WS.Renderer && WS.Renderer.renderScale !== undefined ? WS.Renderer.renderScale : null,
       faults: WS.faultCount ? WS.faultCount() : 0,
       errors: errors.slice(),
