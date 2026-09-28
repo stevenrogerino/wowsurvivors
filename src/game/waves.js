@@ -69,11 +69,17 @@
     return s;
   };
 
+  /** Is the night's rhythm playing: on in the build (Config.tides) and not
+   *  switched off in the settings (nightRhythm). */
+  Wave.rhythmOn = function () {
+    return !!WS.Config.tides && WS.Save.settings.nightRhythm !== false;
+  };
+
   /** How thick the ambient horde runs right now, as a multiple of the
    *  phase's pace (Config.tides; see config.js THE TIDE). */
   Wave.tide = function (time, run) {
     const cfg = WS.Config;
-    if (!cfg.tides || run.victorious || run.mode === 'endless') return 1;
+    if (!this.rhythmOn() || run.victorious || run.mode === 'endless') return 1;
     let f = 1;
     const nb = this.map.bosses[this.bossIndex];
     if (nb && nb.at >= time && nb.at - time < cfg.tideGather) f = 1 + (cfg.tideCrest - 1) * WS.clamp(1 - (nb.at - time) / cfg.tideGather, 0, 1);
@@ -95,7 +101,7 @@
    *  done (Config.tides). */
   Wave.depth = function (time, run) {
     const cfg = WS.Config;
-    if (!cfg.tides || !this.map || !cfg.tideSteps) return 1;
+    if (!this.rhythmOn() || !this.map || !cfg.tideSteps) return 1;
     let d = 1;
     const bosses = this.map.bosses;
     for (let i = 0; i < bosses.length && i < cfg.tideSteps.length; i++) {
@@ -108,7 +114,7 @@
 
   /** A boss fell: the horde draws breath (Config.tides). */
   Wave.onBossSlain = function () {
-    if (WS.Config.tides) this.lull = WS.Config.tideLull;
+    if (this.rhythmOn()) this.lull = WS.Config.tideLull;
   };
 
   /** Bosses have large bases already, so their curve is gentler. */
@@ -195,7 +201,7 @@
     }
 
     /* ---- the night deepens (Config.tides) --------------------------------- */
-    const steps = WS.Config.tides && WS.Config.tideSteps;
+    const steps = this.rhythmOn() && WS.Config.tideSteps;
     if (steps && !run.victorious) {
       const i = this.deepened;
       const b = map.bosses[i];
@@ -203,7 +209,14 @@
         this.deepened++;
         const k = WS.clamp(1 - this.strain / WS.Config.tideStrainFull, 0, 1);
         this.stepK[i] = k;
-        if (steps[i] > 0 && k > 0.25) WS.Game.announce('The night deepens.', null, 2.4);
+        /* Say what landed: a step that came in full, one that came in
+           part because the night has been hurting, or none at all. Only
+           for a step that has just come: switching the rhythm on mid-night
+           catches up the ones it missed without a string of banners. */
+        if (steps[i] > 0 && time - (b.at + WS.Config.tideLull) < 5) {
+          WS.Game.announce(k >= 0.75 ? 'The night deepens.' : k >= 0.25 ? 'The night deepens, a little.' : 'The night holds back.',
+            null, 2.4);
+        }
       }
     }
 

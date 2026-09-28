@@ -2808,6 +2808,10 @@
         [[1, 'Version one'], [2, 'Version two']],
         (v) => WS.Cinematic.select(v));
     }
+    toggle('nightRhythm', 'The night\u2019s rhythm',
+      'Creatures gather before each boss and falter after it falls, the night deepens '
+      + 'as far as you can take it, and every boss leaves a reliquary. Off plays the '
+      + 'night without any of it.');
     toggle('victoryCinematic', 'Victory cinematic',
       'Twenty-three seconds at thirty minutes, starring the survivor you ran, '
       + 'before the results. Off puts you straight on the numbers.');

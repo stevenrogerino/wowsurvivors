@@ -29,7 +29,10 @@ reliquary as events.
   lands in proportion to how little the night has been hurting: damage taken
   a second as a share of max health, smoothed over 90s, at 0 the full step,
   at 0.006 none (`tideStrainTime`, `tideStrainFull`); the late climb follows
-  the latest step. With full steps for everyone the hardest battlefields at
+  the latest step. The banner says what landed: deepens (75% of the step
+  or more), deepens a little, or holds back (under 25%). The lull is 22.5s
+  (`tideLull`, was 45). Settings, "The night's rhythm" (`nightRhythm`)
+  switches the rhythm and reliquaries off for a player. With full steps for everyone the hardest battlefields at
   Professional went from 6 dawns in 24 to none (Pale Wastes) and 10 to 2
   (the Ochre Plains): the steps are for a build that has run away with the
   night.

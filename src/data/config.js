@@ -285,7 +285,7 @@
        night is not a flat walk to dawn. */
     tides: true,
     tideGather: 40, tideCrest: 1.5,
-    tideLull: 45, tideLow: 0.35,
+    tideLull: 22.5, tideLow: 0.35,
     tideLateRamp: 900,
     /* And the night deepens at each boss: once a scheduled boss's lull is
        over, the horde's health steps up by that boss's share here (easing
@@ -673,6 +673,10 @@
       autoBreakingPoint: false,
       // Countdown bars for what comes next; shown only once a dawn is won.
       bossTimers: true,
+      /* The night's rhythm around its bosses and the reliquaries they leave
+         (Config.tides, Config.reliquaries). Off plays the night without
+         either, for comparing the two. */
+      nightRhythm: true,
       // Draw at a lower resolution while frames run slow (renderer.js).
       dynamicResolution: true,
       /* Which cut of the prologue plays. Two exist while the author decides
