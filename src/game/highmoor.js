@@ -157,12 +157,16 @@
         if (sh.gone > 1.2) this.shrines.splice(i, 1);
         continue;
       }
-      sh.life -= dt;
+      sh.life = WS.max(0, sh.life - dt);
       const inside = WS.dist2(p.x, p.y, sh.x, sh.y) < sh.r * sh.r;
       if (inside) sh.progress += dt / cfg.shrineCapture;
       else sh.progress = WS.max(0, sh.progress - dt * cfg.shrineDecay / cfg.shrineCapture);
+      // Its time running out does not pull it from under someone charging
+      // it: the stones hold while you stand in them, and sink only once
+      // their time is up and you have stepped out.
+      sh.held = sh.life <= 0 && inside;
       if (sh.progress >= 1) { sh.gone = 0.001; sh.taken = true; grant(p, sh); }
-      else if (sh.life <= 0) sh.gone = 0.001;
+      else if (sh.life <= 0 && !inside) sh.gone = 0.001;
     }
 
     // The boon.
@@ -223,7 +227,14 @@
       out.push({ kind: 'storm', id: 'storm', label: 'Storm', left: m.stormTimer,
         total: WS.max(cfg.stormEvery, m.stormTimer), art: 'bolt', tint: [0.62, 0.78, 1.0] });
     }
-    if (run.map.shrines && m.shrineTimer > 0 && !this.shrines.some((s) => !s.gone)) {
+    const live = this.shrines.find((s) => !s.gone);
+    if (run.map.shrines && live) {
+      // A risen shrine counts down to sinking, as Beans counts down to
+      // packing up - and says so when you are holding it past its time.
+      const b = BOONS[live.kind];
+      out.push({ kind: 'shrine', id: 'shrine', label: live.held ? `${b.name} · held` : `${b.name} sinks`,
+        left: WS.max(0.001, live.life), total: cfg.shrineStay, art: 'rune', tint: b.tint });
+    } else if (run.map.shrines && m.shrineTimer > 0) {
       out.push({ kind: 'shrine', id: 'shrine', label: 'Standing stones', left: m.shrineTimer,
         total: WS.max(cfg.shrineEvery, m.shrineTimer), art: 'rune', tint: [0.78, 0.74, 0.62] });
     }

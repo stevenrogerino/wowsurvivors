@@ -96,6 +96,7 @@
     p.bob = WS.random() * WS.TAU;
     p.life = 0;
     p.snooze = 0;
+    p.say = null;
     return p;
   };
 
@@ -234,6 +235,15 @@
       WS.Player.grantRunEggs(p, affordable);
       WS.Game.toast('Beans', `Bought ${affordable} curious egg${affordable === 1 ? '' : 's'}.`, { kind: 'merchant' });
       WS.Audio.play('chest');
+      /* She says what the eggs just did, over her head, and stays: an egg
+         is too small to notice any other way (a tenth of a percent of
+         damage and one health each), and she has more to sell if you come
+         back with coin before her time is up. */
+      const pct = WS.round(WS.Config.eggRunDamage * affordable * 1000) / 10;
+      const hp = WS.round(WS.Config.eggRunHealth * affordable);
+      const say = 4;
+      pickup.say = { lines: [`${affordable} egg${affordable === 1 ? '' : 's'}, fresh!`, `+${pct}% damage · +${hp} max health`], t: say, max: say };
+      return false;
     }
     return true;
   }
@@ -245,6 +255,7 @@
       const pickup = this.pool.active[i];
       pickup.bob += dt * 3;
       pickup.life += dt;
+      if (pickup.say && (pickup.say.t -= dt) <= 0) pickup.say = null;
       if (pickup.kind === 'merchant' && pickup.life >= WS.Config.eggVendorStay) {
         WS.FX.burst(pickup.x, pickup.y, 14, '#e0a850', 150, 0.6, 3);
         WS.FX.flash(pickup.x, pickup.y, 50, WS.hex(pickup.type.tint), 0.35);

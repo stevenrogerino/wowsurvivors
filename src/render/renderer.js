@@ -2864,6 +2864,25 @@
       ctx.setLineDash([6, 8]);
       ctx.beginPath(); ctx.arc(sh.x, sh.y, sh.r, 0, WS.TAU); ctx.stroke();
       ctx.setLineDash([]);
+      // the time it has left, a thin arc outside the count that empties
+      // as it runs; held past its time (someone charging it), it pulses full
+      if (!sh.gone && !sh.taken) {
+        const stay = WS.Config.shrineStay, left = WS.max(0, sh.life) / stay;
+        ctx.globalAlpha = (sh.held ? 0.55 + 0.35 * WS.sin(time * 6) : left < 0.3 ? 0.75 : 0.45) * fade;
+        ctx.strokeStyle = sh.held ? '#fff2c8' : left < 0.3 ? '#ffb07a' : '#e9e3d0';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(sh.x, sh.y, sh.r + 13, -WS.PI / 2, -WS.PI / 2 + WS.TAU * (sh.held ? 1 : left));
+        ctx.stroke();
+        ctx.globalAlpha = 0.9 * fade;
+        ctx.font = `600 12px ${UI_FONT}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        const lbl = sh.held ? 'held' : WS.formatTime(WS.ceil(WS.max(0, sh.life)));
+        ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.8)';
+        ctx.strokeText(lbl, sh.x, sh.y + sh.r + 18);
+        ctx.fillStyle = sh.held ? '#fff2c8' : left < 0.3 ? '#ffb07a' : '#e9e3d0';
+        ctx.fillText(lbl, sh.x, sh.y + sh.r + 18);
+      }
       // the stones, rising out of the ground
       for (let i = 0; i < 6; i++) {
         const a = sh.seed + (i / 6) * WS.TAU;
@@ -3321,6 +3340,10 @@
         ctx.fillText(label, p.x, p.y + size * 0.84);
         ctx.restore();
 
+        // What she just sold you, said over her head: a speech bubble that
+        // rises in and fades out over its last half second.
+        if (p.say && p.say.t > 0) this.drawSpeech(ctx, p.x, y - size * 0.62, p.say, size);
+
         /* She IS named Beans - so she throws some. Three, thrown one after
          * another from around her paw in a looping arc that empties and
          * restarts, rather than orbiting her forever: a real toss reads as
@@ -3370,6 +3393,37 @@
 
   /** Where Beans' i-th thrown bean is right now, or null between throws.
    *  Shared by the toss and the frog, so the frog can catch what is drawn. */
+  /** A speech bubble over a character: a rounded parchment plate with a
+   *  tail pointing down at them, one or two lines, rising in over its first
+   *  quarter second and fading over its last half. `say` is
+   *  { lines: [...], t, max }. */
+  R.drawSpeech = function (ctx, x, y, say, size) {
+    const age = say.max - say.t;
+    const a = WS.min(1, age / 0.25, say.t / 0.5);
+    if (a <= 0) return;
+    const rise = (1 - WS.min(1, age / 0.25)) * 8;
+    ctx.save();
+    ctx.globalAlpha = a;
+    const fs = WS.max(11, WS.round(size * 0.19));
+    ctx.font = `600 ${fs}px ${UI_FONT}`;
+    const w = WS.max(...say.lines.map((l) => ctx.measureText(l).width)) + 18;
+    const lh = fs + 4, h = say.lines.length * lh + 10;
+    const bx = x - w / 2, by = y - h - 10 - rise;
+    ctx.fillStyle = 'rgba(20,16,12,.88)';
+    ctx.strokeStyle = 'rgba(243,210,150,.85)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(bx, by, w, h, 7); else ctx.rect(bx, by, w, h);
+    ctx.moveTo(x - 6, by + h); ctx.lineTo(x, by + h + 8); ctx.lineTo(x + 6, by + h);
+    ctx.fill(); ctx.stroke();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    say.lines.forEach((l, i) => {
+      ctx.fillStyle = i === 0 ? '#f3e6cf' : '#ffcf7a';
+      ctx.fillText(l, x, by + 6 + i * lh);
+    });
+    ctx.restore();
+  };
+
   R.beanAt = function (p, y, size, time, i) {
     const phase = time * 0.6 + i * 0.333;
     const t = phase % 1;
