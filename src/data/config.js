@@ -70,6 +70,8 @@
     // shoves the rank and file at its centre.
     levelBurstRadius: 200,
     levelBurstPush: 90,
+    // A single blow this share of max health or more ducks the mix (Audio heavyHit).
+    heavyHitShare: 0.12,
     hitInvulnerable: 0.45,
     dodgeInvulnerable: 0.2,
 

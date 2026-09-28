@@ -307,6 +307,8 @@
        last one stuttering. A second warning inside a third of a second tells
        the player nothing the first did not. */
     warn: 0.34,
+    // One heavy blow at a time: a volley landing at once is one moment.
+    heavyHit: 0.5, deny: 0.12,
   };
 
   /* The kits that are the game talking to itself, rather than telling you
@@ -346,7 +348,7 @@
     cast: 0.08, gem: 0.10, coin: 0.06, potion: 0.11, chest: 0.09,
     // interface: barely there, but a click that is bit-identical forty times
     // in a row is the most machine-like sound in the game
-    ui: 0.03, hover: 0.045, select: 0.035, warn: 0.04, page: 0.08,
+    ui: 0.03, hover: 0.045, select: 0.035, warn: 0.04, page: 0.08, deny: 0.04,
   };
 
   /** One draw of a value inside +/- `amt` of itself. Articulation, not pitch:
@@ -468,6 +470,13 @@
     playerHurt() {
       tone({ type: 'sawtooth', freq: 220, to: vary(90, 0.22), decay: vary(0.28, 0.22), gain: 0.22, filter: 'lowpass', cutoff: vary(900, 0.25) });
       noise({ freq: 400, to: 120, decay: vary(0.22, 0.25), gain: 0.16, filter: 'lowpass' });
+    },
+    /* A blow that took a real share of the health: under the hurt, a body
+       thud felt in the chest, and the mix drops out of its way for a moment
+       (DUCK) so the one hit that mattered is not one tick among hundreds. */
+    heavyHit() {
+      tone({ type: 'sine', freq: 78, to: 44, decay: vary(0.34, 0.2), gain: 0.26, attack: 0.004 });
+      noise({ freq: 260, to: 70, decay: 0.26, gain: 0.12, filter: 'lowpass', q: 0.8 });
     },
     gem() { tone({ type: 'sine', freq: 1180, to: vary(1560, 0.16), decay: vary(0.09, 0.28), gain: 0.07 }); },
     /* The reveal: the best card in a fresh hand, heard as it lands. Timed to
@@ -706,6 +715,16 @@
       tone({ type: 'triangle', freq: 300, to: 220, decay: 0.08, gain: 0.055, filter: 'lowpass', cutoff: 1400 });
       noise({ filter: 'bandpass', freq: 1800, q: 1.4, attack: 0.001, decay: 0.03, gain: 0.035 });
     },
+    /* No: the same wood as the knock, struck twice and damped, lower and
+       duller - a latch that will not lift. Played when a click lands on
+       something locked or out of reach, so a dead click still answers. */
+    deny() {
+      for (const d of [0, 0.075]) {
+        tone({ type: 'triangle', freq: 150, to: 118, decay: 0.06, gain: 0.09, delay: d,
+          filter: 'lowpass', cutoff: 520 });
+        noise({ filter: 'bandpass', freq: 900, q: 2.2, attack: 0.001, decay: 0.02, gain: 0.03, delay: d });
+      }
+    },
     page() {
       // A page turned: a swish that rises as the leaf lifts, its rustle, and
       // the small tap of it settling.
@@ -729,6 +748,7 @@
     winter: [0.35, 3.0], shock: [0.6, 0.6],
     boss: [0.28, 1.6], evolve: [0.4, 1.1], level: [0.4, 0.9],
     victory: [0.3, 1.8], death: [0.25, 1.8], explode: [0.55, 0.5], warn: [0.5, 0.7],
+    heavyHit: [0.5, 0.45],
   };
 
   /** How much room each kit is given. The chatter gets a breath of it - a
@@ -738,7 +758,7 @@
     hit: 0.04, crit: 0.08, enemyHit: 0.03, cast: 0.10, gem: 0.06, coin: 0.05,
     playerHurt: 0.10, potion: 0.18, chest: 0.16, explode: 0.22, freeze: 0.3,
     level: 0.34, evolve: 0.42, victory: 0.45, boss: 0.5, death: 0.5, warn: 0.12,
-    ui: 0.05, select: 0.08, page: 0.05,
+    ui: 0.05, select: 0.08, page: 0.05, deny: 0.05, heavyHit: 0.2,
     rumble: 0.3, cannon: 0.35, glass: 0.45, zap: 0.2, shock: 0.35, drill: 0.25, shatter: 0.45, winter: 0.7,
     dash: 0.12, maul: 0.28, star: 0.3, shift: 0.5, palm: 0.08, thunder: 0.6,
   };

@@ -1125,6 +1125,14 @@
     root.addEventListener('pointerout', (e) => {
       if (!e.relatedTarget || !root.contains(e.relatedTarget)) last = null;
     });
+    /* A press on a button that is out of reach (a purchase you cannot
+       afford, a choice not open yet) still answers: no. Locked roster tiles
+       are not this - pressing one reads what the Watch knows of them. */
+    root.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      const target = e.target.closest('button');
+      if (target && target.disabled) WS.Audio.play('deny');
+    });
   };
 
   /* ------------------------------------------------------ menu navigation --

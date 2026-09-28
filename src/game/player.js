@@ -565,6 +565,8 @@
     WS.FX.playerHurt(p.x, p.y, taken);
     WS.FX.shake(5, 0.22);
     WS.Audio.play('playerHurt');
+    // A blow worth a real share of the bar is heard above the fight.
+    if (taken >= p.maxHealth * WS.Config.heavyHitShare) WS.Audio.play('heavyHit');
 
     if (p.health <= 0) {
       if (p.revives > 0) {
