@@ -84,6 +84,8 @@ const OUT = env('OUT', path.join(require('os').tmpdir(), 'replay'));
     /** Draw the frame, then the pilot's mind on top of it. */
     window.__draw = function () {
       WS.Renderer.draw(WS.Game.run.time);
+      // The page's own loop (stopped here) is what keeps the HUD current.
+      if (WS.Game.player) WS.UI.updateHUD();
       if (!S.OVERLAY) return;
       const cv = document.querySelector('canvas');
       const g = cv.getContext('2d');
