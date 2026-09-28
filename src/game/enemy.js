@@ -701,6 +701,8 @@
       WS.Audio.play('explode', e.x);
       WS.FX.shake(9, 0.5);
       WS.FX.stop(0.12);
+      WS.FX.punch(0.045, 0.7);
+      WS.Game.slowmo(0.35);
       WS.FX.flash(e.x, e.y, e.radius * 4, WS.CONST.COLORS.boss, 0.6);
       WS.FX.flash(e.x, e.y, e.radius * 7, '#f5c56b', 0.85);
       WS.FX.burst(e.x, e.y, 26, '#ffe6ae', 260, 0.9, 4);

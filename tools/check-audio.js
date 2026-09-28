@@ -114,6 +114,11 @@ let warnStack = null;
     /* ---- placed: read the two channels apart, off the real output --------- */
     WS.Save.settings.music = false; WS.Audio.applySettings();
     WS.Game.startRun('thornhollow', 'mage');
+    /* Untouchable for the measurements below. The run behind them is live,
+       and a survivor left standing in it drops into peril and brings the
+       heartbeat in - a real sound, with its own check at the end, that has
+       no business in a measurement of how the chatter moves. */
+    WS.Game.player.invulnerable = 1e9;
     await sleep(120);
     const split = ctx.createChannelSplitter(2);
     const AL = ctx.createAnalyser(), AR = ctx.createAnalyser();
@@ -332,6 +337,28 @@ let warnStack = null;
     const late = due.filter((d) => d < -0.02);
     out.stall = { notes: due.length, late: late.length,
       worst: late.length ? +Math.min(...late).toFixed(2) : 0 };
+
+    /* ---- peril: the edge of dying is heard, and lifts when it passes ------ */
+    {
+      WS.Game.startRun('thornhollow', 'mage');
+      WS.Game.chooseBlessing({ type: 'blessing', id: 'kings' });   // the clock starts with the waves
+      WS.UI.closeOverlay(); WS.Game.state = 'playing'; WS.Game.timeScale = 1;
+      const p = WS.Game.player;
+      p.invulnerable = 1e9;
+      WS.Enemy.pool.releaseAll();
+      let beats = 0;
+      const play = WS.Audio.play;
+      WS.Audio.play = function (kit) { if (kit === 'heartbeat') beats++; return play.apply(this, arguments); };
+      const run = (sec) => { for (let i = 0; i < sec * 60; i++) { WS.Game.pendingLevelUps = 0; WS.Game.tick(1 / 60); } };
+      p.health = p.maxHealth; run(3);
+      const safeBeats = beats, safeHz = WS.Audio.perilLP.frequency.value;
+      p.health = p.maxHealth * 0.06; run(3); await sleep(700);
+      const lowBeats = beats - safeBeats, lowHz = WS.Audio.perilLP.frequency.value;
+      p.health = p.maxHealth; run(1); await sleep(900);
+      const backHz = WS.Audio.perilLP.frequency.value;
+      WS.Audio.play = play;
+      out.peril = { safeBeats, lowBeats, safeHz: Math.round(safeHz), lowHz: Math.round(lowHz), backHz: Math.round(backHz) };
+    }
     return out;
   }, [PLACED]);
 
@@ -477,6 +504,18 @@ let warnStack = null;
       + 'level-up makes on its own - most of what the player hears is still the wall');
   }
 
+  /* Peril. At full health: no heartbeat and the score wide open. At a sliver:
+     a heartbeat every second or less, and the score under water. Healed: open
+     again. NEGATIVE TEST: making Audio.setPeril return at once reports "the
+     score does not darken". */
+  if (report.peril) {
+    const r = report.peril;
+    if (r.safeBeats > 0) fail.push(`a survivor at full health hears a heartbeat (${r.safeBeats} beats in 3s)`);
+    if (!(r.lowBeats >= 3)) fail.push(`a survivor at 6% health heard ${r.lowBeats} heartbeats in 3s - peril is silent`);
+    if (!(r.lowHz < 3000)) fail.push(`at 6% health the score does not darken (low-pass at ${r.lowHz}Hz)`);
+    if (!(r.backHz > 12000)) fail.push(`healed back to full, the score stays dark (low-pass at ${r.backHz}Hz)`);
+  }
+
   if (report.warnOne && report.warnMany) {
     const stack = report.warnMany.hi / Math.max(1e-9, report.warnOne.hi);
     if (!(report.warnOne.hi > 0.01)) {
@@ -554,5 +593,6 @@ let warnStack = null;
     + `survivor on an empty field ${D.dying.toFixed(2)}, a fresh boss `
     + `${D.bossFresh.toFixed(2)}, one at 5% ${D.bossNearlyDead.toFixed(2)}) and eases `
     + 'toward it, muting stops the score rather than hiding it, a stopped clock takes no '
-    + 'bookings, a three-second stall costs no notes, and a hidden page goes quiet');
+    + 'bookings, a three-second stall costs no notes, and a hidden page goes quiet'
+    + (report.peril ? `; near death a heartbeat comes in (${report.peril.lowBeats} in 3s) and the score darkens to ${report.peril.lowHz}Hz, opening again to ${report.peril.backHz}Hz when healed` : ''));
 })();

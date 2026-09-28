@@ -82,6 +82,7 @@
 
   /** @param {{nightly?: object}} [opts] the Nightly, from WS.Runs.nightly() */
   Game.startRun = function (mapId, characterId, opts) {
+    WS.Audio.setPeril(0);
     // The menu's fire goes out when the run begins.
     if (WS.Audio.setAmbience) WS.Audio.setAmbience(null);
     this.run = newRun(mapId, characterId);
@@ -335,6 +336,11 @@
      first second after it is not spent inside a crowd that closed in while
      you read. Bosses, elites, anything rooted and the finale's machines stand
      their ground. Numbers in Config: levelBurstRadius, levelBurstPush. */
+  /** A moment of slow motion that eases back on its own (see update). */
+  Game.slowmo = function (scale) {
+    if (this.state === 'playing') this.timeScale = WS.min(this.timeScale, scale);
+  };
+
   Game.levelBurst = function () {
     const p = this.player, cfg = WS.Config;
     const R = cfg.levelBurstRadius, push = cfg.levelBurstPush;
@@ -593,6 +599,7 @@
   };
 
   Game.endRun = function (reason) {
+    WS.Audio.setPeril(0);        // the menu is not under water
     /* Once per RUN, not once per "state is over". The dawn panel and the
        finale's own victory both park the game in 'over' with nothing running
        while they wait for a choice - so a guard on the state turned "Claim
@@ -636,6 +643,10 @@
   };
 
   /* -------------------------------------------------------------- tick --- */
+  // Below this share of health the run is in peril (heartbeat, muffled
+  // score; the renderer's red rim starts at the same line).
+  const PERIL = 0.3;
+
   Game.tick = function (dt) {
     const run = this.run;
     const player = this.player;
@@ -737,6 +748,19 @@
     }
 
     WS.Audio.setIntensity(this.danger());
+    /* The edge of dying, heard: below peril the score darkens toward a
+       muffled low end and a heartbeat comes in, quickening as the bar
+       empties. Both lift the moment a potion does. */
+    const hpNow = player.health / WS.max(1, player.maxHealth);
+    const peril = hpNow < PERIL ? (PERIL - hpNow) / PERIL : 0;
+    WS.Audio.setPeril(peril);
+    if (peril > 0) {
+      this._beat = (this._beat || 0) - dt;
+      if (this._beat <= 0) {
+        this._beat = 1.0 - 0.45 * peril;
+        WS.Audio.play('heartbeat', null, peril > 0.6 ? 'hard' : null);
+      }
+    } else this._beat = 0;
     /* And WHAT it is, not only how bad. Intensity is a dial the score turns
        slowly; a boss is an event, and the layer it brings in has to arrive
        with it rather than ease in behind it. Death gets its own word because

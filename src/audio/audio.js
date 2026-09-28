@@ -120,7 +120,15 @@
     this.sfxRoom = room(this.sfxGain, 0.9);
     this.musicRoom = room(this.musicGain, 0.8);
     this.musicGain.connect(this.duck);
-    this.duck.connect(this.master);
+    /* Peril: the score goes under water as the survivor nears death. A
+       low-pass after the duck, wide open (no effect at all) until
+       setPeril asks for it. */
+    this.perilLP = this.ctx.createBiquadFilter();
+    this.perilLP.type = 'lowpass';
+    this.perilLP.frequency.value = 20000;
+    this.perilLP.Q.value = 0.5;
+    this.duck.connect(this.perilLP);
+    this.perilLP.connect(this.master);
     this.applySettings();
     this.ready = true;
   };
@@ -462,6 +470,13 @@
       noise({ freq: 400, to: 120, decay: vary(0.22, 0.25), gain: 0.16, filter: 'lowpass' });
     },
     gem() { tone({ type: 'sine', freq: 1180, to: vary(1560, 0.16), decay: vary(0.09, 0.28), gain: 0.07 }); },
+    /* Two low thumps, the second softer: lub, dub. Felt more than heard. */
+    heartbeat() {
+      if (Audio.ctx && Audio.ctx.currentTime < (Audio._stageUntil || 0)) return;
+      const g = Audio.variant === 'hard' ? 0.12 : 0.085;   // under the mix: felt, not peaking
+      tone({ type: 'sine', freq: 62, to: 44, decay: 0.16, attack: 0.008, gain: g });
+      tone({ type: 'sine', freq: 58, to: 42, decay: 0.14, attack: 0.008, gain: g * 0.65, delay: 0.21 });
+    },
     /* A run of gems is a run of notes. Each one gathered in quick succession
        is the next step up a major pentatonic - the scale that cannot sound
        wrong in any order - two octaves and then it holds at the top, and a
@@ -811,6 +826,8 @@
         } catch (e) { /* scheduling raced a context change */ }
       };
       dip(this.duck, floor, 1);
+      // The run's pulse holds its breath while a big moment has the stage.
+      this._stageUntil = t + hold;
       /* HARDER than the music, because the music was never the thing drowning
          it. Measured: a level-up over a full wall of hits, kills, casts and
          gems peaked seven per cent BELOW the wall - it was inaudible in the
@@ -832,6 +849,11 @@
        mechanical sound in the game for exactly that reason. */
     const spread = VARY[kit] || 0;
     let dest = this.sfxGain;
+    /* The heartbeat is the run's own pulse, not an event: it sits with the
+       score behind the duck stage, so a level-up or a boss horn pushes it
+       down the same way it pushes the music (check-audio caught it standing
+       level with the level-up it should make room for). */
+    if (kit === 'heartbeat' && this.duck) dest = this.duck;
     if (chatter) {
       waiting[key] = 0;
       /* One voice, carrying what the ones it replaced would have said: louder
@@ -2128,6 +2150,17 @@
    *  Sets a TARGET; the pump eases toward it. Writing straight to intensity
    *  meant the score tracked a crowd count that swings by dozens between
    *  waves, which reads as flutter rather than as tension. */
+  /** 0 = safe, 1 = one hit from death: how far under water the score is. */
+  Audio.setPeril = function (v) {
+    if (!this.perilLP) return;
+    v = WS.clamp(v || 0, 0, 1);
+    if (Math.abs(v - (this._peril || 0)) < 0.02) return;
+    this._peril = v;
+    // 20kHz (open) down to 650Hz at the brink, on a log curve the ear hears as even.
+    const hz = 20000 * Math.pow(650 / 20000, v);
+    try { this.perilLP.frequency.setTargetAtTime(hz, this.ctx.currentTime, 0.12); } catch (e) { /* context racing */ }
+  };
+
   Audio.setIntensity = function (v) {
     if (this._music) this._music.want = WS.clamp(v, 0, 1);
   };

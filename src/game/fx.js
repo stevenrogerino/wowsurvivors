@@ -15,6 +15,7 @@
     bigHit: 0,        // rolling mean hit, the bar a number must clear when busy
     flashScreen: null,
     hitStop: 0,       // seconds of frozen simulation left, for weight
+    punchAmt: 0, punchTime: 0, punchMax: 0,   // the lean-in (FX.punch)
     hurtPulse: 0,     // 0..1, red rim when the survivor is struck
   };
 
@@ -38,6 +39,7 @@
     this.hitStop = 0;
     this.hurtPulse = 0;
     this.shakeMag = 0; this.shakeTime = 0; this.shakeX = 0; this.shakeY = 0;
+    this.punchAmt = 0; this.punchTime = 0; this.punchMax = 0;
     this.flashScreen = null;
   };
 
@@ -272,6 +274,26 @@
     }
   };
 
+  /* --------------------------------------------------------------- punch --
+   * A shake says "something hit"; a punch says "something HAPPENED". The
+   * frame leans in toward the survivor by a few percent and eases back out,
+   * so a boss falling or a bomb going off lands as a moment rather than as
+   * one more flash in a screen full of them. It answers to the same switch
+   * as the shake: a player who asked for a still screen gets one. */
+  FX.punch = function (amount, duration) {
+    if (!WS.Save.settings.screenShake) return;
+    if (amount >= this.punchAmt * (this.punchTime / (this.punchMax || 1))) {
+      this.punchAmt = amount; this.punchTime = duration; this.punchMax = duration;
+    }
+  };
+  /** The zoom to draw at right now: up fast, back out slowly. */
+  FX.punchNow = function () {
+    if (!(this.punchTime > 0)) return 0;
+    const k = 1 - this.punchTime / this.punchMax;       // 0 -> 1 over its life
+    const env = k < 0.18 ? k / 0.18 : 1 - (k - 0.18) / 0.82;
+    return this.punchAmt * env * env * (3 - 2 * env);   // smoothstep either side
+  };
+
   /* --------------------------------------------------------------- shake -- */
   FX.shake = function (magnitude, duration) {
     if (!WS.Save.settings.screenShake) return;
@@ -331,6 +353,7 @@
       i++;
     }
 
+    if (this.punchTime > 0) this.punchTime = WS.max(0, this.punchTime - dt);
     if (this.shakeTime > 0) {
       this.shakeTime -= dt;
       const k = WS.max(0, this.shakeTime / this.shakeMax);

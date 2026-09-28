@@ -22463,7 +22463,15 @@ window.WS = window.WS || {};
     this.sfxRoom = room(this.sfxGain, 0.9);
     this.musicRoom = room(this.musicGain, 0.8);
     this.musicGain.connect(this.duck);
-    this.duck.connect(this.master);
+    /* Peril: the score goes under water as the survivor nears death. A
+       low-pass after the duck, wide open (no effect at all) until
+       setPeril asks for it. */
+    this.perilLP = this.ctx.createBiquadFilter();
+    this.perilLP.type = 'lowpass';
+    this.perilLP.frequency.value = 20000;
+    this.perilLP.Q.value = 0.5;
+    this.duck.connect(this.perilLP);
+    this.perilLP.connect(this.master);
     this.applySettings();
     this.ready = true;
   };
@@ -22805,6 +22813,13 @@ window.WS = window.WS || {};
       noise({ freq: 400, to: 120, decay: vary(0.22, 0.25), gain: 0.16, filter: 'lowpass' });
     },
     gem() { tone({ type: 'sine', freq: 1180, to: vary(1560, 0.16), decay: vary(0.09, 0.28), gain: 0.07 }); },
+    /* Two low thumps, the second softer: lub, dub. Felt more than heard. */
+    heartbeat() {
+      if (Audio.ctx && Audio.ctx.currentTime < (Audio._stageUntil || 0)) return;
+      const g = Audio.variant === 'hard' ? 0.12 : 0.085;   // under the mix: felt, not peaking
+      tone({ type: 'sine', freq: 62, to: 44, decay: 0.16, attack: 0.008, gain: g });
+      tone({ type: 'sine', freq: 58, to: 42, decay: 0.14, attack: 0.008, gain: g * 0.65, delay: 0.21 });
+    },
     /* A run of gems is a run of notes. Each one gathered in quick succession
        is the next step up a major pentatonic - the scale that cannot sound
        wrong in any order - two octaves and then it holds at the top, and a
@@ -23154,6 +23169,8 @@ window.WS = window.WS || {};
         } catch (e) { /* scheduling raced a context change */ }
       };
       dip(this.duck, floor, 1);
+      // The run's pulse holds its breath while a big moment has the stage.
+      this._stageUntil = t + hold;
       /* HARDER than the music, because the music was never the thing drowning
          it. Measured: a level-up over a full wall of hits, kills, casts and
          gems peaked seven per cent BELOW the wall - it was inaudible in the
@@ -23175,6 +23192,11 @@ window.WS = window.WS || {};
        mechanical sound in the game for exactly that reason. */
     const spread = VARY[kit] || 0;
     let dest = this.sfxGain;
+    /* The heartbeat is the run's own pulse, not an event: it sits with the
+       score behind the duck stage, so a level-up or a boss horn pushes it
+       down the same way it pushes the music (check-audio caught it standing
+       level with the level-up it should make room for). */
+    if (kit === 'heartbeat' && this.duck) dest = this.duck;
     if (chatter) {
       waiting[key] = 0;
       /* One voice, carrying what the ones it replaced would have said: louder
@@ -24471,6 +24493,17 @@ window.WS = window.WS || {};
    *  Sets a TARGET; the pump eases toward it. Writing straight to intensity
    *  meant the score tracked a crowd count that swings by dozens between
    *  waves, which reads as flutter rather than as tension. */
+  /** 0 = safe, 1 = one hit from death: how far under water the score is. */
+  Audio.setPeril = function (v) {
+    if (!this.perilLP) return;
+    v = WS.clamp(v || 0, 0, 1);
+    if (Math.abs(v - (this._peril || 0)) < 0.02) return;
+    this._peril = v;
+    // 20kHz (open) down to 650Hz at the brink, on a log curve the ear hears as even.
+    const hz = 20000 * Math.pow(650 / 20000, v);
+    try { this.perilLP.frequency.setTargetAtTime(hz, this.ctx.currentTime, 0.12); } catch (e) { /* context racing */ }
+  };
+
   Audio.setIntensity = function (v) {
     if (this._music) this._music.want = WS.clamp(v, 0, 1);
   };
@@ -24853,6 +24886,7 @@ window.WS = window.WS || {};
     bigHit: 0,        // rolling mean hit, the bar a number must clear when busy
     flashScreen: null,
     hitStop: 0,       // seconds of frozen simulation left, for weight
+    punchAmt: 0, punchTime: 0, punchMax: 0,   // the lean-in (FX.punch)
     hurtPulse: 0,     // 0..1, red rim when the survivor is struck
   };
 
@@ -24876,6 +24910,7 @@ window.WS = window.WS || {};
     this.hitStop = 0;
     this.hurtPulse = 0;
     this.shakeMag = 0; this.shakeTime = 0; this.shakeX = 0; this.shakeY = 0;
+    this.punchAmt = 0; this.punchTime = 0; this.punchMax = 0;
     this.flashScreen = null;
   };
 
@@ -25110,6 +25145,26 @@ window.WS = window.WS || {};
     }
   };
 
+  /* --------------------------------------------------------------- punch --
+   * A shake says "something hit"; a punch says "something HAPPENED". The
+   * frame leans in toward the survivor by a few percent and eases back out,
+   * so a boss falling or a bomb going off lands as a moment rather than as
+   * one more flash in a screen full of them. It answers to the same switch
+   * as the shake: a player who asked for a still screen gets one. */
+  FX.punch = function (amount, duration) {
+    if (!WS.Save.settings.screenShake) return;
+    if (amount >= this.punchAmt * (this.punchTime / (this.punchMax || 1))) {
+      this.punchAmt = amount; this.punchTime = duration; this.punchMax = duration;
+    }
+  };
+  /** The zoom to draw at right now: up fast, back out slowly. */
+  FX.punchNow = function () {
+    if (!(this.punchTime > 0)) return 0;
+    const k = 1 - this.punchTime / this.punchMax;       // 0 -> 1 over its life
+    const env = k < 0.18 ? k / 0.18 : 1 - (k - 0.18) / 0.82;
+    return this.punchAmt * env * env * (3 - 2 * env);   // smoothstep either side
+  };
+
   /* --------------------------------------------------------------- shake -- */
   FX.shake = function (magnitude, duration) {
     if (!WS.Save.settings.screenShake) return;
@@ -25169,6 +25224,7 @@ window.WS = window.WS || {};
       i++;
     }
 
+    if (this.punchTime > 0) this.punchTime = WS.max(0, this.punchTime - dt);
     if (this.shakeTime > 0) {
       this.shakeTime -= dt;
       const k = WS.max(0, this.shakeTime / this.shakeMax);
@@ -26369,6 +26425,8 @@ window.WS = window.WS || {};
       WS.Audio.play('explode', e.x);
       WS.FX.shake(9, 0.5);
       WS.FX.stop(0.12);
+      WS.FX.punch(0.045, 0.7);
+      WS.Game.slowmo(0.35);
       WS.FX.flash(e.x, e.y, e.radius * 4, WS.CONST.COLORS.boss, 0.6);
       WS.FX.flash(e.x, e.y, e.radius * 7, '#f5c56b', 0.85);
       WS.FX.burst(e.x, e.y, 26, '#ffe6ae', 260, 0.9, 4);
@@ -29437,6 +29495,7 @@ window.WS = window.WS || {};
   Pickup.detonate = function (x, y) {
     WS.Audio.play('explode');
     WS.FX.shake(9, 0.5);
+    WS.FX.punch(0.03, 0.5);
     WS.FX.flash(x, y, 520, [1.0, 0.65, 0.25], 0.55);
     WS.FX.screen('rgba(255,180,80,.22)', 0.35);
     const enemies = WS.Enemy.pool.active;
@@ -33802,6 +33861,7 @@ window.WS = window.WS || {};
 
   /** @param {{nightly?: object}} [opts] the Nightly, from WS.Runs.nightly() */
   Game.startRun = function (mapId, characterId, opts) {
+    WS.Audio.setPeril(0);
     // The menu's fire goes out when the run begins.
     if (WS.Audio.setAmbience) WS.Audio.setAmbience(null);
     this.run = newRun(mapId, characterId);
@@ -34055,6 +34115,11 @@ window.WS = window.WS || {};
      first second after it is not spent inside a crowd that closed in while
      you read. Bosses, elites, anything rooted and the finale's machines stand
      their ground. Numbers in Config: levelBurstRadius, levelBurstPush. */
+  /** A moment of slow motion that eases back on its own (see update). */
+  Game.slowmo = function (scale) {
+    if (this.state === 'playing') this.timeScale = WS.min(this.timeScale, scale);
+  };
+
   Game.levelBurst = function () {
     const p = this.player, cfg = WS.Config;
     const R = cfg.levelBurstRadius, push = cfg.levelBurstPush;
@@ -34313,6 +34378,7 @@ window.WS = window.WS || {};
   };
 
   Game.endRun = function (reason) {
+    WS.Audio.setPeril(0);        // the menu is not under water
     /* Once per RUN, not once per "state is over". The dawn panel and the
        finale's own victory both park the game in 'over' with nothing running
        while they wait for a choice - so a guard on the state turned "Claim
@@ -34356,6 +34422,10 @@ window.WS = window.WS || {};
   };
 
   /* -------------------------------------------------------------- tick --- */
+  // Below this share of health the run is in peril (heartbeat, muffled
+  // score; the renderer's red rim starts at the same line).
+  const PERIL = 0.3;
+
   Game.tick = function (dt) {
     const run = this.run;
     const player = this.player;
@@ -34457,6 +34527,19 @@ window.WS = window.WS || {};
     }
 
     WS.Audio.setIntensity(this.danger());
+    /* The edge of dying, heard: below peril the score darkens toward a
+       muffled low end and a heartbeat comes in, quickening as the bar
+       empties. Both lift the moment a potion does. */
+    const hpNow = player.health / WS.max(1, player.maxHealth);
+    const peril = hpNow < PERIL ? (PERIL - hpNow) / PERIL : 0;
+    WS.Audio.setPeril(peril);
+    if (peril > 0) {
+      this._beat = (this._beat || 0) - dt;
+      if (this._beat <= 0) {
+        this._beat = 1.0 - 0.45 * peril;
+        WS.Audio.play('heartbeat', null, peril > 0.6 ? 'hard' : null);
+      }
+    } else this._beat = 0;
     /* And WHAT it is, not only how bad. Intensity is a dial the score turns
        slowly; a boss is an event, and the layer it brings in has to arrive
        with it rather than ease in behind it. Death gets its own word because
@@ -42136,6 +42219,12 @@ window.WS = window.WS || {};
     ctx.translate(this.offsetX + WS.FX.shakeX * this.scale, this.offsetY + WS.FX.shakeY * this.scale);
     ctx.scale(this.scale, this.scale);
     ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
+    // The punch leans the field in toward the survivor (FX.punch).
+    const punch = WS.FX.punchNow ? WS.FX.punchNow() : 0;
+    if (punch > 0 && game.player) {
+      const px = game.player.x, py = game.player.y;
+      ctx.translate(px, py); ctx.scale(1 + punch, 1 + punch); ctx.translate(-px, -py);
+    }
 
     /* The prologue owns the frame while it runs. It rides this loop rather
        than starting its own, so it inherits the fault net in main.js - a throw

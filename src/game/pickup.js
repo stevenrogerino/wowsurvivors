@@ -128,6 +128,7 @@
   Pickup.detonate = function (x, y) {
     WS.Audio.play('explode');
     WS.FX.shake(9, 0.5);
+    WS.FX.punch(0.03, 0.5);
     WS.FX.flash(x, y, 520, [1.0, 0.65, 0.25], 0.55);
     WS.FX.screen('rgba(255,180,80,.22)', 0.35);
     const enemies = WS.Enemy.pool.active;

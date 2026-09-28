@@ -880,6 +880,12 @@
     ctx.translate(this.offsetX + WS.FX.shakeX * this.scale, this.offsetY + WS.FX.shakeY * this.scale);
     ctx.scale(this.scale, this.scale);
     ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
+    // The punch leans the field in toward the survivor (FX.punch).
+    const punch = WS.FX.punchNow ? WS.FX.punchNow() : 0;
+    if (punch > 0 && game.player) {
+      const px = game.player.x, py = game.player.y;
+      ctx.translate(px, py); ctx.scale(1 + punch, 1 + punch); ctx.translate(-px, -py);
+    }
 
     /* The prologue owns the frame while it runs. It rides this loop rather
        than starting its own, so it inherits the fault net in main.js - a throw
