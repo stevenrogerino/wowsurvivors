@@ -322,10 +322,35 @@
     /* Nothing to slow down when a choice is already on screen: this is the
        second of a stacked pair and the world stopped for the first one. */
     if (this.state === 'playing' && this.running && !this.suspended) {
+      this.levelBurst();
       this.settle = SETTLE;
       return;
     }
     this.presentLevelUp();
+  };
+
+  /* THE LEVEL-UP CLEARS A LITTLE ROOM. As the world slows for the cards a
+     gold ring goes out from the survivor and shoves the rank and file back -
+     not hurt, moved - so the choice is made with some air around it and the
+     first second after it is not spent inside a crowd that closed in while
+     you read. Bosses, elites, anything rooted and the finale's machines stand
+     their ground. Numbers in Config: levelBurstRadius, levelBurstPush. */
+  Game.levelBurst = function () {
+    const p = this.player, cfg = WS.Config;
+    const R = cfg.levelBurstRadius, push = cfg.levelBurstPush;
+    if (!p || !(R > 0)) return;
+    const W = WS.CONST.WORLD_WIDTH, H = WS.CONST.WORLD_HEIGHT;
+    for (let i = 0; i < WS.Enemy.pool.count; i++) {
+      const e = WS.Enemy.pool.active[i];
+      if (e.boss || e.elite || e.part || e.finale || e.stationary || e.hidden) continue;
+      const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy) || 1;
+      if (d > R) continue;
+      const k = push * (1 - d / R) + push * 0.25;
+      e.x = WS.clamp(e.x + dx / d * k, e.radius, W - e.radius);
+      e.y = WS.clamp(e.y + dy / d * k, e.radius, H - e.radius);
+    }
+    WS.FX.flash(p.x, p.y, R, [1.0, 0.82, 0.42], 0.35);
+    WS.FX.burst(p.x, p.y, 14, '#f5c56b', 260, 0.45, 3);
   };
 
   Game.presentLevelUp = function () {

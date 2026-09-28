@@ -304,7 +304,7 @@
   /* The kits that are the game talking to itself, rather than telling you
    * something. These go through the chatter bus and get the treatment below;
    * everything else - a level, a boss, being hurt - goes straight through. */
-  const CHATTER = { hit: 1, crit: 1, enemyHit: 1, gem: 1, cast: 1, coin: 1 };
+  const CHATTER = { hit: 1, crit: 1, enemyHit: 1, gem: 1, gemChain: 1, cast: 1, coin: 1 };
 
   /** How far a kit's pitch is allowed to wander, each time it plays.
    *
@@ -431,6 +431,8 @@
   };
 
   /** A struck metal partial set - the basis of every bell and chime below. */
+  const GEM_ROOT = 880;
+  const GEM_SCALE = [1, 9 / 8, 5 / 4, 3 / 2, 5 / 3, 2, 9 / 4, 5 / 2, 3, 10 / 3, 4];
   function chime(freq, decay, gain, delay) {
     tone({ type: 'sine', freq, decay, gain, delay, attack: 0.004 });
     tone({ type: 'sine', freq: freq * 2.76, decay: decay * 0.5, gain: gain * 0.35, delay, attack: 0.003 });
@@ -460,6 +462,16 @@
       noise({ freq: 400, to: 120, decay: vary(0.22, 0.25), gain: 0.16, filter: 'lowpass' });
     },
     gem() { tone({ type: 'sine', freq: 1180, to: vary(1560, 0.16), decay: vary(0.09, 0.28), gain: 0.07 }); },
+    /* A run of gems is a run of notes. Each one gathered in quick succession
+       is the next step up a major pentatonic - the scale that cannot sound
+       wrong in any order - two octaves and then it holds at the top, and a
+       pause starts it again at the bottom. XP.update decides the step and the
+       pace; this only sings it. A field swept by a lodestone becomes a
+       glissando, which is what it is. */
+    gemChain() {
+      const s = WS.clamp(Audio.variant | 0, 0, GEM_SCALE.length - 1);
+      chime(GEM_ROOT * GEM_SCALE[s], 0.14, 0.045, 0);
+    },
     coin() {
       // Two small struck coins, not two square beeps.
       chime(vary(1900, 0.03), 0.16, 0.04, 0);

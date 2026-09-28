@@ -66,6 +66,10 @@
        bloodthirstCooldown seconds. */
     lifestealCapPct: 0.012,
     bloodthirstCooldown: 4,
+    // The level-up ring (Game.levelBurst): how far it reaches and how far it
+    // shoves the rank and file at its centre.
+    levelBurstRadius: 200,
+    levelBurstPush: 90,
     hitInvulnerable: 0.45,
     dodgeInvulnerable: 0.2,
 

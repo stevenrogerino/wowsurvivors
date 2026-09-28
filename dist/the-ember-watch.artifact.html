@@ -3902,6 +3902,10 @@ window.WS = window.WS || {};
        bloodthirstCooldown seconds. */
     lifestealCapPct: 0.012,
     bloodthirstCooldown: 4,
+    // The level-up ring (Game.levelBurst): how far it reaches and how far it
+    // shoves the rank and file at its centre.
+    levelBurstRadius: 200,
+    levelBurstPush: 90,
     hitInvulnerable: 0.45,
     dodgeInvulnerable: 0.2,
 
@@ -22633,7 +22637,7 @@ window.WS = window.WS || {};
   /* The kits that are the game talking to itself, rather than telling you
    * something. These go through the chatter bus and get the treatment below;
    * everything else - a level, a boss, being hurt - goes straight through. */
-  const CHATTER = { hit: 1, crit: 1, enemyHit: 1, gem: 1, cast: 1, coin: 1 };
+  const CHATTER = { hit: 1, crit: 1, enemyHit: 1, gem: 1, gemChain: 1, cast: 1, coin: 1 };
 
   /** How far a kit's pitch is allowed to wander, each time it plays.
    *
@@ -22760,6 +22764,8 @@ window.WS = window.WS || {};
   };
 
   /** A struck metal partial set - the basis of every bell and chime below. */
+  const GEM_ROOT = 880;
+  const GEM_SCALE = [1, 9 / 8, 5 / 4, 3 / 2, 5 / 3, 2, 9 / 4, 5 / 2, 3, 10 / 3, 4];
   function chime(freq, decay, gain, delay) {
     tone({ type: 'sine', freq, decay, gain, delay, attack: 0.004 });
     tone({ type: 'sine', freq: freq * 2.76, decay: decay * 0.5, gain: gain * 0.35, delay, attack: 0.003 });
@@ -22789,6 +22795,16 @@ window.WS = window.WS || {};
       noise({ freq: 400, to: 120, decay: vary(0.22, 0.25), gain: 0.16, filter: 'lowpass' });
     },
     gem() { tone({ type: 'sine', freq: 1180, to: vary(1560, 0.16), decay: vary(0.09, 0.28), gain: 0.07 }); },
+    /* A run of gems is a run of notes. Each one gathered in quick succession
+       is the next step up a major pentatonic - the scale that cannot sound
+       wrong in any order - two octaves and then it holds at the top, and a
+       pause starts it again at the bottom. XP.update decides the step and the
+       pace; this only sings it. A field swept by a lodestone becomes a
+       glissando, which is what it is. */
+    gemChain() {
+      const s = WS.clamp(Audio.variant | 0, 0, GEM_SCALE.length - 1);
+      chime(GEM_ROOT * GEM_SCALE[s], 0.14, 0.045, 0);
+    },
     coin() {
       // Two small struck coins, not two square beeps.
       chime(vary(1900, 0.03), 0.16, 0.04, 0);
@@ -29119,6 +29135,8 @@ window.WS = window.WS || {};
 (function (WS) {
 
   const XP = { pool: null, vacuumTimer: 0 };
+  const CHAIN_GAP = 0.7, NOTE_GAP = 0.05;          // see chime() below
+  const chain = { step: 0, lastGem: -99, lastNote: -99 };
 
   XP.init = function () {
     this.pool = new WS.Pool(() => ({}), null, WS.CONST.MAX_GEMS);
@@ -29127,6 +29145,7 @@ window.WS = window.WS || {};
 
   XP.clear = function () {
     this.vacuumTimer = 0;
+    chain.step = 0; chain.lastGem = -99; chain.lastNote = -99;
     if (this.pool) this.pool.releaseAll();
   };
 
@@ -29225,6 +29244,24 @@ window.WS = window.WS || {};
    *  Timed, so it does not keep magnetising gems that drop afterwards. */
   XP.vacuumAll = function () { this.vacuumTimer = 1.5; };
 
+  /* THE CHAIN. Gathering used to be silent unless a lodestone was sweeping,
+     and the one loop a survivors game is built on - walk through the drops,
+     feel them come in - had no voice. Now each gem that lands within
+     CHAIN_GAP of the last is the next note up (Audio kit gemChain), paced so
+     a burst reads as a run rather than a chord, with a small spark where it
+     lands. The pacing lives here, on run time, because the audio throttle is
+     per-note and would let a clump through as one chord. */
+  function chime(player, gem) {
+    const t = WS.Game.run.time;
+    if (t - chain.lastGem > CHAIN_GAP) chain.step = 0;
+    chain.lastGem = t;
+    if (t - chain.lastNote < NOTE_GAP) return;
+    chain.lastNote = t;
+    WS.Audio.play('gemChain', player.x, String(WS.min(chain.step, 10)));
+    chain.step++;
+    WS.FX.burst(player.x, player.y - 8, 2, WS.hex(gem.colour || [0.7, 0.85, 1]), 80, 0.3, 2);
+  }
+
   XP.update = function (dt) {
     const player = WS.Game.player;
     if (this.vacuumTimer > 0) this.vacuumTimer -= dt;
@@ -29246,7 +29283,7 @@ window.WS = window.WS || {};
       if (distance < player.radius + gem.radius + 5) {
         WS.Game.run.gemsCollected++;
         WS.Save.stats.gemsCollected++;
-        if (vacuum) WS.Audio.play('gem');
+        chime(player, gem);
         const value = gem.value;
         this.pool.releaseAt(i);
         WS.Player.gainXP(player, value);
@@ -33995,10 +34032,35 @@ window.WS = window.WS || {};
     /* Nothing to slow down when a choice is already on screen: this is the
        second of a stacked pair and the world stopped for the first one. */
     if (this.state === 'playing' && this.running && !this.suspended) {
+      this.levelBurst();
       this.settle = SETTLE;
       return;
     }
     this.presentLevelUp();
+  };
+
+  /* THE LEVEL-UP CLEARS A LITTLE ROOM. As the world slows for the cards a
+     gold ring goes out from the survivor and shoves the rank and file back -
+     not hurt, moved - so the choice is made with some air around it and the
+     first second after it is not spent inside a crowd that closed in while
+     you read. Bosses, elites, anything rooted and the finale's machines stand
+     their ground. Numbers in Config: levelBurstRadius, levelBurstPush. */
+  Game.levelBurst = function () {
+    const p = this.player, cfg = WS.Config;
+    const R = cfg.levelBurstRadius, push = cfg.levelBurstPush;
+    if (!p || !(R > 0)) return;
+    const W = WS.CONST.WORLD_WIDTH, H = WS.CONST.WORLD_HEIGHT;
+    for (let i = 0; i < WS.Enemy.pool.count; i++) {
+      const e = WS.Enemy.pool.active[i];
+      if (e.boss || e.elite || e.part || e.finale || e.stationary || e.hidden) continue;
+      const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy) || 1;
+      if (d > R) continue;
+      const k = push * (1 - d / R) + push * 0.25;
+      e.x = WS.clamp(e.x + dx / d * k, e.radius, W - e.radius);
+      e.y = WS.clamp(e.y + dy / d * k, e.radius, H - e.radius);
+    }
+    WS.FX.flash(p.x, p.y, R, [1.0, 0.82, 0.42], 0.35);
+    WS.FX.burst(p.x, p.y, 14, '#f5c56b', 260, 0.45, 3);
   };
 
   Game.presentLevelUp = function () {
