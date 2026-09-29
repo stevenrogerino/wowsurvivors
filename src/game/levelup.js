@@ -198,7 +198,7 @@
       if (rank < up.max && !p.banished[id] && offerable) {
         candidates.push({
           type: 'stat', id, art: up.art, quality: up.quality, weight: 2,
-          name: up.name, description: WS.template(up.description, up),
+          name: up.name, description: WS.upgradeText(up, p),
           detail: WS.template(up.detail, up),
           rank: rank + 1, maxRank: up.max,
           note: `Rank ${rank + 1} of ${up.max}`,

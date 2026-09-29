@@ -203,7 +203,8 @@
       }
       fam.x += tx * speed * dt;
       fam.y += ty * speed * dt;
-      if (tx !== 0) fam.facing = tx < 0 ? -1 : 1;
+      if (tx !== 0 && !(fam.pounce > 0)) fam.facing = tx < 0 ? -1 : 1;
+      fam.moved = speed * dt;
       fam.bob += dt * 3;
       if (fam.pounce > 0) fam.pounce -= dt;
 
@@ -212,7 +213,11 @@
         const reach = t.biteRadius * radiusMult * 0.6 + fam.target.radius;
         if (WS.dist2(fam.x, fam.y, fam.target.x, fam.target.y) <= reach * reach) {
           fam.biteTimer = t.biteCooldown * cdMult;
-          fam.pounce = 0.18;
+          // What the renderer plays: a wolf's pounce, a ghoul's longer rake,
+          // and where it landed.
+          fam.pounce = spec.guard ? 0.32 : 0.18;
+          fam.pounceMax = fam.pounce;
+          fam.hitX = fam.target.x; fam.hitY = fam.target.y;
           const damage = (t.dmgBase + t.dmgPerLevel * player.level)
             * dmgMult
             * player.damageMultiplier
@@ -235,7 +240,8 @@
             const skip = new Map([[q, q.spawnId]]);
             WS.Enemy.damageArea(qx, qy, t.biteRadius * t.mauleRadius * player.areaMultiplier,
               damage * t.maulDmg, skip, null, spec.source);
-            WS.FX.flash(qx, qy, 18 + 6 * mates, spec.tint, 0.25);
+            // (the bite itself is drawn by the renderer; this is the pack's weight)
+            if (mates) WS.FX.flash(qx, qy, 10 + 5 * mates, spec.tint, 0.15);
             // A kill does not stop a wolf: it is on the next one at once.
             if (q._dead) { fam.biteTimer = WS.min(fam.biteTimer, t.killRebite); fam.target = null; }
           } else {
@@ -253,7 +259,7 @@
                 WS.Enemy.applyRot(e, t.ghoulRot, t.ghoulRotTime);
               }
             }
-            WS.FX.flash(fam.x, fam.y, t.biteRadius * radiusMult * 0.8, spec.tint, 0.2);
+            // (the rake's sweep is drawn by the renderer, the width of what it hits)
           }
         }
       }

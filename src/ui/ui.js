@@ -369,7 +369,7 @@
       const body = el('div', 'tip-body');
       const q = up.quality ? up.quality.charAt(0).toUpperCase() + up.quality.slice(1) + ' passive' : 'Passive';
       body.append(...tipHead(up.name, qualityColour(up.quality), `Rank ${rank} of ${up.max}`, q));
-      body.append(el('div', 'tip-desc', WS.template(up.description, up)));
+      body.append(el('div', 'tip-desc', WS.upgradeText(up, p)));
       if (up.detail) body.append(el('div', 'tip-detail', WS.template(up.detail, up)));
       scalingSection(body, p, WS.Scaling.UPGRADE_STAT[id]);
       const evo = [];
@@ -795,7 +795,7 @@
       slot.append(icon(up.art, qualityColour(up.quality), 34), el('div', 'rim'), el('div', 'rank', String(rank)));
       tipOn(slot, tipPassive(p, id), { prefer: ['above', 'left'], focus: false });
       slot.setAttribute('aria-label', `${up.name}, rank ${rank}/${up.max}`
-        + `\n${WS.template(up.description, up)}`);
+        + `\n${WS.upgradeText(up, p)}`);
       wrap.append(slot);
     }
   };
@@ -1380,16 +1380,26 @@
     }
     card.append(plate);
 
+    /* A row that does not fit its half of the ledger is tightened first
+       (the arrow's spaces close up), then set a size smaller, and only then
+       given the whole width. A lone "Duration 4.2s -> 4.4s" across the full
+       card, its figure pushed to the far edge under a two-column ledger,
+       read as a mistake; it is a few pixels over, and those come back. */
     function fitStats(box, card) {
       if (!box.isConnected) return;
       const rows = [...box.children];
-      const wide = () => {
+      const over = () => rows.some((r) => r.scrollWidth > r.clientWidth + 1);
+      for (const r of rows) r.classList.remove('wide');
+      box.classList.remove('tight', 'dense');
+      if (over()) box.classList.add('tight');
+      if (over()) box.classList.add('dense');
+      for (const r of rows) if (r.scrollWidth > r.clientWidth + 1) r.classList.add('wide');
+      const cb = card.getBoundingClientRect(), bb = box.getBoundingClientRect();
+      if (bb.bottom > cb.bottom - 6 && !box.classList.contains('dense')) {
+        box.classList.add('dense');
         for (const r of rows) r.classList.remove('wide');
         for (const r of rows) if (r.scrollWidth > r.clientWidth + 1) r.classList.add('wide');
-      };
-      wide();
-      const cb = card.getBoundingClientRect(), bb = box.getBoundingClientRect();
-      if (bb.bottom > cb.bottom - 6) { box.classList.add('dense'); wide(); }
+      }
     }
 
     /* ONE SKELETON FOR EVERY CARD. Name, note, pips, a three-line
@@ -4278,9 +4288,11 @@
       + `${run.hyper ? ' · Hyper' : ''}${modeTag(run)} · ${WS.Characters[run.characterId].name}`);
     s.inner.classList.add('sheet-wide');
 
+    const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
     const lines = {
-      defeated: `${run.killedBy ? run.killedBy.name : 'The horde'} got through at ${WS.formatTime(run.time)}. `
-        + `${WS.formatNumber(run.kills)} did not.`,
+      defeated: `${run.killedBy ? cap(run.killedBy.name) : 'The horde'} got through at ${WS.formatTime(run.time)}`
+        + (run.killedBy && run.killedBy.hit > 0 ? `, and they hit you for ${WS.formatNumber(run.killedBy.hit)}. ` : '. ')
+        + `${WS.formatNumber(run.kills)} creatures did not make it to dawn.`,
       victory: 'Banked, and Hyper Mode is open on this battlefield.',
       abandoned: 'You walked off the field. The gold is still yours.',
       arena_victory: 'Aethelgard is undone. The eclipse holds nothing now.',

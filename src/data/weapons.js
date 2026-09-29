@@ -365,11 +365,22 @@
        real horde (fast and close, they reach the crowd first and take the
        kills), so they were trimmed; with Steel and Stormcall nudged back
        over check-unions' floor, every union sits at 18-29% of a build
-       (8 seeds, and the same numbers move up to eight points run to run). */
+       (8 seeds, and the same numbers move up to eight points run to run).
+
+       And every one of those fits was made with NO passives, which is where
+       Ruin Unbound hid. Two bolts, each a seeking, piercing, splashing nuke:
+       Duplicity's three ranks took it to five, x1.85 (the median weapon
+       gets x1.28), and Velocity and Expanse stack on top. A tester's build
+       full of all three had it at the top of the meter; measured with every
+       passive at its cap and its discoveries carried (tune-unions SHARE=1
+       PASSIVES=... DISCOVER=1), it took 45% of a build. Three lighter bolts
+       are the same union bare and a third less for each extra one: 37.9 x2
+       -> 24 x3 put it at 34% of a full build (Wild Hunt 34%, Steel 28%) and
+       17% of a bare one (tools/synergy-sweep.js shows every passive's gain). */
     union_ruin: {
       bossDamage: 1.95,
       name: 'Ruin Unbound', school: 'shadow', behavior: 'aimed', isUnion: true, art: 'chaos',
-      cooldown: 0.989, damage: 37.9, speed: 428, projectiles: 2, pierce: 4, range: 620,
+      cooldown: 0.989, damage: 24, speed: 428, projectiles: 3, pierce: 4, range: 620,
       splash: 55, homing: true, life: 2.6, radius: 12, color: [0.60, 0.30, 1.00],
       description: 'Ruin that devours everything in its path.',
     },

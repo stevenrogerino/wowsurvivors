@@ -173,6 +173,8 @@
      * a ring, a nova - simply do not have. A bolt with the flag and no mark
      * acquires one on its first update. */
     spec.homing = !!(d.homing || w.mods.homing);
+    // Homing a discovery GAVE it (Truestrike): see Enemy.hit's boss factor.
+    spec.homed = !d.homing && !!w.mods.homing;
     // Velocity makes a seeking bolt faster, and it must turn faster with it
     // or it swings wide past what it seeks (Velocity at its cap took an
     // evolved Seeking Motes to x0.60). The turning circle stays the one the
@@ -580,7 +582,7 @@
     const target = WS.Enemy.findNearest(player.x, player.y, d.range || 620);
     if (!target) { w.cooldown = retry(); return false; }
     fillSpec(player, w);
-    spec.pierce = 999; spec.homing = false; spec.homingTarget = null;
+    spec.pierce = 999; spec.homing = false; spec.homed = false; spec.homingTarget = null;
     spec.knock = d.knock || 0;
     spec.life = durationOf(player, w, d.life || 1.8) / (1 + WS.Config.rankDurationStep * (w.level - 1));
     const burst = d.endBurst || w.mods.endBurst;
@@ -614,7 +616,7 @@
     const target = WS.Enemy.findNearest(player.x, player.y, range * 1.6);
     if (!target) { w.cooldown = retry(); return false; }
     fillSpec(player, w);
-    spec.pierce = 999; spec.homing = false; spec.homingTarget = null;
+    spec.pierce = 999; spec.homing = false; spec.homed = false; spec.homingTarget = null;
     spec.boomerang = range;
     /* Area throws it further - and on its own that made the chakram WORSE
        (-21% on a crowd at its cap, -30% on a boss): the turn happens past

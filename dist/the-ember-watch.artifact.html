@@ -1630,7 +1630,7 @@ body.hud-rail #hud-toasts { left: 76px; bottom: 20px; }
 .kv span:last-child { font-family: var(--fig); font-variant-numeric: tabular-nums; }
 /* A share bar behind each damage-meter row, so the split reads at a glance. */
 .meter-row {
-  position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto 38px;
+  position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto 42px;
   align-items: center; gap: 8px; height: 26px; margin: 3px 0; padding: 0 8px 0 3px;
   border-radius: 3px; overflow: hidden;
   background: rgba(255, 244, 222, .035);
@@ -1661,8 +1661,9 @@ body.hud-rail #hud-toasts { left: 76px; bottom: 20px; }
   color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .85);
 }
 .meter-row .mr-pct {
-  font-family: var(--voice); font-variant-numeric: lining-nums tabular-nums; font-size: 12.5px; text-align: right;
-  color: rgba(246, 236, 218, .72); text-shadow: 0 1px 2px rgba(0, 0, 0, .85);
+  font-family: var(--voice); font-variant-numeric: lining-nums tabular-nums; font-weight: 700; font-size: 14px;
+  text-align: right; color: color-mix(in srgb, var(--q, var(--arc)) 20%, #fff 80%);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .85), 0 0 8px color-mix(in srgb, var(--q, var(--arc)) 45%, transparent);
 }
 
 /* -- settings ---------------------------------------------------------- */
@@ -3338,6 +3339,8 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .card .card-stats .cs-row { display: flex; justify-content: space-between; gap: 6px; color: var(--ink-faint); min-width: 0; }
 .card .card-stats .cs-row.wide { grid-column: 1 / -1; }
 .card .card-stats.dense { font-size: 12.5px; line-height: 1.22; column-gap: 8px; }
+.card .card-stats.tight .cs-row { gap: 4px; }
+.card .card-stats.tight .cs-v i { word-spacing: -0.2em; }
 .card .card-stats .cs-k { white-space: nowrap; }
 .card .card-stats .cs-v { color: var(--ink-dim); white-space: nowrap; }
 .card .card-stats .cs-row.up { color: var(--ink-dim); }
@@ -4690,6 +4693,47 @@ window.WS = window.WS || {};
     // holyLock before it gathers again.
     holyNeed: 36, holyPerHit: 0.5, holyHealPct: 0.10, holyLock: 20,
     judgementBossPct: 0.04, divineShield: 2.0,
+
+    /* CALLING PASSIVES - one epic passive of five ranks for each calling
+       (upgrades.js), the way Ruin Hunger, Primal Kinship and Serenity deepen
+       theirs. Every figure is per rank. Four of them carry over: without the
+       calling they do a smaller thing of their own, never the calling itself;
+       with it, only the calling's half applies.
+       Undertow (Spellflood): the Flood fills undertowFill faster and the tide
+       runs undertowTide seconds longer. Without it: every undertowGems gems
+       gathered take undertowCut off the slowest weapon's wait. */
+    undertowFill: 0.10, undertowTide: 0.6, undertowGems: 15, undertowCut: 0.20,
+    // Hallowed Mending (Radiant Barrier): the barrier holds hallowedCap more,
+    // and its burst strikes hallowedBurst harder and hallowedReach wider.
+    // Without it: overheal becomes a Ward of up to hallowedWard of max health,
+    // which takes hits like the barrier but never bursts.
+    hallowedCap: 0.10, hallowedBurst: 0.15, hallowedReach: 0.06, hallowedWard: 0.04,
+    // Ruthless (Opportunist): ruthlessEdge more Edge a crit, a Cutthroat
+    // ruthlessBlow harder, ruthlessRegroup seconds less to regroup. Without
+    // it: a crit that leaves an ordinary creature (no elite, no boss) below
+    // ruthlessExecute of its health finishes it.
+    ruthlessEdge: 0.10, ruthlessBlow: 0.15, ruthlessRegroup: 0.3, ruthlessExecute: 0.03,
+    // Stalker's Patience (The Quarry, no carry-over): a Quarry stalkerHaste
+    // sooner, held stalkerLife seconds longer, taking stalkerBonus more.
+    stalkerHaste: 0.06, stalkerLife: 1, stalkerBonus: 0.05,
+    // Slow Burn (Seething Blood): heat builds slowBurnHeat faster and cools
+    // slowBurnCool slower, and Boil Over lasts slowBurnBoil seconds longer.
+    // Without it: every blow taken is a stack of Smoulder, slowBurnStack
+    // damage each, up to slowBurnMax, gone slowBurnTime after the last blow.
+    slowBurnHeat: 0.08, slowBurnCool: 0.10, slowBurnBoil: 0.6,
+    slowBurnStack: 0.006, slowBurnMax: 8, slowBurnTime: 4,
+    // Bountiful Tithe (Reaper's Tithe, no carry-over): it fills bountifulFill
+    // faster, and a Reaping reaches bountifulReach wider and may heal
+    // bountifulHeal more of max health.
+    bountifulFill: 0.08, bountifulReach: 0.08, bountifulHeal: 0.01,
+    // Deep Roots (Waystones, no carry-over): stones stand deepRootsLife
+    // seconds longer and reach deepRootsReach farther; from rank
+    // deepRootsPair two of each kind stand at once.
+    deepRootsLife: 1, deepRootsReach: 0.06, deepRootsPair: 5,
+    // Fervor (Conviction, no carry-over): it builds fervorBuild faster, a
+    // Judgement takes fervorJudge more of a boss, the Aegis lasts fervorAegis
+    // seconds longer.
+    fervorBuild: 0.08, fervorJudge: 0.005, fervorAegis: 0.3,
 
     difficulties: {
       beginner: { label: 'Beginner', scale: 0.75, gold: 0.85, interval: 1.1 },
@@ -6148,11 +6192,22 @@ window.WS = window.WS || {};
        real horde (fast and close, they reach the crowd first and take the
        kills), so they were trimmed; with Steel and Stormcall nudged back
        over check-unions' floor, every union sits at 18-29% of a build
-       (8 seeds, and the same numbers move up to eight points run to run). */
+       (8 seeds, and the same numbers move up to eight points run to run).
+
+       And every one of those fits was made with NO passives, which is where
+       Ruin Unbound hid. Two bolts, each a seeking, piercing, splashing nuke:
+       Duplicity's three ranks took it to five, x1.85 (the median weapon
+       gets x1.28), and Velocity and Expanse stack on top. A tester's build
+       full of all three had it at the top of the meter; measured with every
+       passive at its cap and its discoveries carried (tune-unions SHARE=1
+       PASSIVES=... DISCOVER=1), it took 45% of a build. Three lighter bolts
+       are the same union bare and a third less for each extra one: 37.9 x2
+       -> 24 x3 put it at 34% of a full build (Wild Hunt 34%, Steel 28%) and
+       17% of a bare one (tools/synergy-sweep.js shows every passive's gain). */
     union_ruin: {
       bossDamage: 1.95,
       name: 'Ruin Unbound', school: 'shadow', behavior: 'aimed', isUnion: true, art: 'chaos',
-      cooldown: 0.989, damage: 37.9, speed: 428, projectiles: 2, pierce: 4, range: 620,
+      cooldown: 0.989, damage: 24, speed: 428, projectiles: 3, pierce: 4, range: 620,
       splash: 55, homing: true, life: 2.6, radius: 12, color: [0.60, 0.30, 1.00],
       description: 'Ruin that devours everything in its path.',
     },
@@ -7223,6 +7278,90 @@ window.WS = window.WS || {};
         p.flowSteps += WS.Primal.maxSteps(p) - before;
       },
     },
+    /* ------------------------------------------- the callings' passives ---
+       One for each of the eight callings (callings.js), as Ruin Hunger,
+       Primal Kinship and Serenity are for theirs: offered once you hold the
+       calling. Four also carry over, offered to a build that could use their
+       smaller half without the calling, as Curdled Light is; with the calling
+       only the calling's half applies. Every number is in Config. */
+    undertow: {
+      name: 'Undertow', art: 'arcane', quality: 'epic', max: 5, calling: 'overflowAttuned',
+      description: 'The Flood fills {Config.undertowFill%}% faster and its tide runs {Config.undertowTide}s longer',
+      alone: 'Every {Config.undertowGems} gems you gather cut {Config.undertowCut%}% off your slowest weapon\'s wait',
+      detail: 'For Spellflood, and offered once you take Greed\'s Pull too. Without Spellflood it works on its own: '
+        + 'every {Config.undertowGems} gems cut {Config.undertowCut%}% per rank off the wait of whichever weapon has longest left, '
+        + 'so at full ranks the gems ready it outright. With Spellflood, only the Flood\'s half applies.',
+      offer: (p) => p.undertow > 0 || p.overflowAttuned > 0 || (p.upgradeLevels.magnet || 0) > 0,
+      apply: (p) => { p.undertow += 1; },
+    },
+    hallowed: {
+      name: 'Hallowed Mending', art: 'ankh', quality: 'epic', max: 5, calling: 'barrierAttuned',
+      description: 'Your barrier holds {Config.hallowedCap%}% more, and bursts {Config.hallowedBurst%}% harder and {Config.hallowedReach%}% wider',
+      alone: 'Healing you cannot use becomes a Ward of up to {Config.hallowedWard%}% of your max health',
+      heals: true,
+      detail: 'For Radiant Barrier, and offered once anything heals you: regeneration, lifesteal or a healing weapon. '
+        + 'Without the calling it works on its own: overheal becomes a Ward of up to {Config.hallowedWard%}% of your max health '
+        + 'per rank. It takes hits before your health does and stops refilling while it is being struck, like the barrier, '
+        + 'but it never bursts. With Radiant Barrier, only the barrier\'s half applies.',
+      offer: (p) => p.hallowed > 0 || p.barrierAttuned > 0 || p.healthRegen > 0 || p.lifesteal > 0
+        || p.weapons.some((w) => (WS.Weapons[w.id] || {}).healPer > 0),
+      apply: (p) => { p.hallowed += 1; },
+    },
+    ruthless: {
+      name: 'Ruthless', art: 'mask', quality: 'epic', max: 5, calling: 'comboAttuned',
+      description: '+{Config.ruthlessEdge%}% Edge from a crit, a Cutthroat {Config.ruthlessBlow%}% harder, and {Config.ruthlessRegroup}s less to regroup',
+      alone: 'A crit that leaves an ordinary creature under {Config.ruthlessExecute%}% health finishes it',
+      detail: 'For Opportunist, and offered once you take Precision. Without the calling it works on its own: a critical '
+        + 'strike finishes a creature it leaves below {Config.ruthlessExecute%}% of its health per rank. It never touches '
+        + 'elites, bosses or the finales. With Opportunist, only the Cutthroat\'s half applies.',
+      offer: (p) => p.ruthless > 0 || p.comboAttuned > 0 || (p.upgradeLevels.precision || 0) > 0,
+      apply: (p) => { p.ruthless += 1; },
+    },
+    stalker: {
+      name: 'Stalker\'s Patience', art: 'crosshair', quality: 'epic',
+      description: 'A Quarry {Config.stalkerHaste%}% sooner, held {Config.stalkerLife}s longer, and it takes {Config.stalkerBonus%}% more from everything', max: 5,
+      detail: 'For The Quarry. Every rank finds the next Quarry sooner, keeps it marked longer, and makes the mark bite harder, '
+        + 'bosses included.',
+      offer: (p) => p.markAttuned > 0,
+      apply: (p) => { p.stalker += 1; },
+    },
+    slow_burn: {
+      name: 'Slow Burn', art: 'claw', quality: 'epic', max: 5, calling: 'rageAttuned',
+      description: 'Heat builds {Config.slowBurnHeat%}% faster and cools {Config.slowBurnCool%}% slower, and you Boil Over {Config.slowBurnBoil}s longer',
+      alone: 'Every blow you take Smoulders: +{Config.slowBurnStack%}% damage a stack, up to {Config.slowBurnMax}',
+      detail: 'For Seething Blood, and offered once you take Thorns or Ironhide. Without the calling it works on its own: '
+        + 'every blow that lands is a stack of Smoulder, +{Config.slowBurnStack%}% damage per rank, up to {Config.slowBurnMax} '
+        + 'stacks, all gone {Config.slowBurnTime}s after the last blow. A dodged or blocked blow does not count. '
+        + 'With Seething Blood, only the heat\'s half applies.',
+      offer: (p) => p.slowBurn > 0 || p.rageAttuned > 0 || p.thornsRank > 0 || (p.upgradeLevels.armor || 0) > 0,
+      apply: (p) => { p.slowBurn += 1; },
+    },
+    bountiful: {
+      name: 'Bountiful Tithe', art: 'skull', quality: 'epic',
+      description: 'The Tithe fills {Config.bountifulFill%}% faster; a Reaping reaches {Config.bountifulReach%}% wider '
+        + 'and may heal {Config.bountifulHeal%}% more of your health', max: 5,
+      heals: true,
+      detail: 'For Reaper\'s Tithe. Every rank brings the Reaping sooner, widens it and raises the most it can heal you.',
+      offer: (p) => p.soulAttuned > 0,
+      apply: (p) => { p.bountiful += 1; },
+    },
+    deep_roots: {
+      name: 'Deep Roots', art: 'totem', quality: 'epic',
+      description: 'Waystones stand {Config.deepRootsLife}s longer and reach {Config.deepRootsReach%}% farther; '
+        + 'at rank {Config.deepRootsPair}, two of each kind stand at once', max: 5,
+      detail: 'For Waystones. Two embers burn twice; two springs or two gales still mend or hasten once, '
+        + 'but give you more ground to stand on.',
+      offer: (p) => p.totemAttuned > 0,
+      apply: (p) => { p.deepRoots += 1; },
+    },
+    fervor: {
+      name: 'Fervor', art: 'sun', quality: 'epic',
+      description: 'Conviction builds {Config.fervorBuild%}% faster, Judgement takes {Config.fervorJudge%}% more of a boss, '
+        + 'the Aegis holds {Config.fervorAegis}s longer', max: 5,
+      detail: 'For Conviction. Every rank brings the Judgement sooner, and makes it and the Aegis after it count for more.',
+      offer: (p) => p.holyAttuned > 0,
+      apply: (p) => { p.fervor += 1; },
+    },
     serration: {
       name: 'Serration', art: 'bleed', quality: 'uncommon',
       description: 'Critical strikes open a wound that bleeds {Config.serrationShare%}% of the blow per rank', max: 4,
@@ -7249,6 +7388,15 @@ window.WS = window.WS || {};
     },
   };
 
+  /** What a passive's card says to THIS survivor. A calling's passive that
+   *  also works alone (`alone`) says whichever half they would get: the
+   *  calling's if they hold it, its own if they do not. Without a survivor
+   *  (the wiki, the codex) it is the calling's. */
+  WS.upgradeText = function (up, p) {
+    const own = up.alone && p && !(p[up.calling] > 0);
+    return WS.template(own ? up.alone : up.description, up);
+  };
+
   WS.UpgradeOrder = [
     'might', 'haste', 'fleetfoot', 'magnet', 'vitality', 'armor', 'precision',
     'ferocity', 'area', 'quantity', 'luck', 'wisdom', 'recovery', 'velocity',
@@ -7256,6 +7404,7 @@ window.WS = window.WS || {};
     'thorns', 'searing', 'dodge', 'curdled', 'ruin_hunger',
     'grave_call', 'dread_command', 'primal_kinship', 'serenity',
     'serration', 'perennial',
+    'undertow', 'hallowed', 'ruthless', 'stalker', 'slow_burn', 'bountiful', 'deep_roots', 'fervor',
   ];
 
 })(window.WS);
@@ -19106,7 +19255,349 @@ window.WS = window.WS || {};
   };
 
   /* -------------------------------------------------------------- API ----- */
+  /* ------------------------------------------------------- the summoned --
+   * THE SPIRIT WOLF AND THE GRAVE GHOUL.
+   *
+   * Both were their passive's card glyph, lit and floated about the field:
+   * a flat blue badge that hopped, and a green stick figure. They are a pack
+   * that runs down the big thing and a corpse that stands guard, and now they
+   * are drawn as those - with legs that move.
+   *
+   * Frames are baked like the survivors' stride (Sprites.familiar), from a
+   * phase k in [0,1): the wolf in a gallop, eight frames, and a pounce; the
+   * ghoul in a knuckle-dragging shamble, six, and a rake. Both face left
+   * like the bestiary. */
+
+  /** A leg from the hip, in segments bent by angle (0 is straight down,
+   *  positive swings back - to the right, since everything faces left). */
+  function jointed(x, y, segs) {
+    const pts = [[x, y]];
+    let a = 0;
+    for (const [len, turn] of segs) {
+      a += turn;
+      x += Math.sin(a) * len; y += Math.cos(a) * len;
+      pts.push([x, y]);
+    }
+    return pts;
+  }
+
+  /** The wolf of the pack: a hunting spirit, pale fire with a hot core.
+   *  `pose` is 'run' (k the gallop) or 'pounce' (k how far into the leap). */
+  function spiritWolf(g, s, p, k, pose) {
+    const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+    const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+    const TAU = WS.TAU;
+    const leap = pose === 'pounce';
+    const ph = k * TAU;
+    // The gallop: the body rises as the forelegs reach and drops as they land.
+    const bob = leap ? -6 * Math.sin(k * WS.PI) : -Math.sin(ph * 2) * 1.6;
+    const tilt = leap ? -0.16 + 0.1 * k : Math.sin(ph) * 0.05;
+    const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+    g.save();
+    g.translate(X(52), Y(58 + bob));
+    g.rotate(tilt);
+    g.translate(-X(52), -Y(58));
+
+    // the tail: not a brush but a plume of spirit-fire, licking back
+    const plume = (w, len, a, col) => {
+      const sw = Math.sin(ph + a) * 4;
+      const tip = [80 + len, 40 + sw - len * 0.25];
+      poly(g, P([[75, 44], [80 + len * 0.45, 42 - w + sw * 0.4], tip, [80 + len * 0.55, 46 + w * 0.3 + sw * 0.5], [76, 51]]), col, null);
+    };
+    g.save();
+    plume(6, 17, 0, p.mid);
+    g.globalAlpha = 0.75; plume(4, 14, 0.8, p.hi);
+    g.globalAlpha = 0.9; plume(2, 9, 1.6, '#ffffff');
+    g.restore();
+
+    // legs: far pair first, in the shade of the body
+    const fore = (off) => {
+      const q = ph + off;
+      if (leap) return [[13, 0.9 - k * 0.4 - 1.5], [11, -0.3], [5, -0.4]];
+      const swing = Math.sin(q) * 0.75;                     // forward is negative
+      const lift = Math.max(0, Math.cos(q)) * 0.9;          // knee folds on the way forward
+      return [[12, swing - 0.05], [11, lift], [5, -lift * 0.5 - 0.2]];
+    };
+    const hind = (off) => {
+      const q = ph + off + 2.6;
+      if (leap) return [[13, 1.2 + k * 0.3], [10, 0.2], [7, 0.6]];
+      const swing = Math.sin(q) * 0.65;
+      return [[13, 0.35 + swing], [10, -1.0 - Math.max(0, -Math.cos(q)) * 0.4], [7, 0.75]];
+    };
+    const legW = (a, b) => [a, a * 0.62, b, b * 0.8].map(X);
+    const farFore = jointed(38, 58, fore(0.5)), farHind = jointed(71, 56, hind(0.5));
+    limb(g, P(farHind), legW(11, 4), far);
+    limb(g, P(farFore), legW(9, 3.8), far);
+
+    // the body: a deep chest, a tucked waist, the haunch - and it is light
+    // one mass from the throat to the tail: the neck is not a separate ball
+    const body = mass(g, P([[22, 42], [27, 36.6], [36, 40.6], [46, 41.6], [58, 43], [70, 41.4], [78, 44.4],
+      [82, 51], [80, 58.6], [75.6, 63.6], [68, 63], [61, 60.4], [53, 60], [45, 63.6],
+      [38.4, 66], [31, 61], [26, 52]]), p);
+    g.save();
+    body(); g.clip();
+    // the hot core: spirit shows through from the inside
+    const core = g.createRadialGradient(X(46), Y(52), X(2), X(52), Y(52), X(26));
+    core.addColorStop(0, 'rgba(255,255,255,.75)');
+    core.addColorStop(0.35, WS.rgb(WS.mix(p.tint, [1, 1, 1], 0.6), 0.35));
+    core.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = core; g.fillRect(X(20), Y(30), X(70), X(40));
+    pelt(g, p, X(56), Y(52), X(26), X(11), 0.02, 8, 0.6, 0.35);
+    // the ribs of the spirit: faint bright bands along the flank
+    g.strokeStyle = p.glow; g.globalAlpha = 0.35; g.lineWidth = u * 0.9; g.lineCap = 'round';
+    for (let i = 0; i < 4; i++) {
+      const x = 44 + i * 5;
+      g.beginPath(); g.moveTo(X(x), Y(45)); g.quadraticCurveTo(X(x - 3), Y(53), X(x - 1), Y(60)); g.stroke();
+    }
+    g.restore();
+    // the shoulder sigil: the pack's mark, a bright rune
+    g.save();
+    g.shadowColor = p.glow; g.shadowBlur = X(3);
+    g.strokeStyle = '#ffffff'; g.globalAlpha = 0.85; g.lineWidth = u * 1.1; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(X(44), Y(48)); g.lineTo(X(47), Y(53)); g.lineTo(X(50), Y(48)); g.stroke();
+    g.beginPath(); g.moveTo(X(47), Y(53)); g.lineTo(X(47), Y(57)); g.stroke();
+    g.restore();
+    // the mane: a ruff of flame standing off the shoulders, streaming back
+    for (let i = 0; i < 8; i++) {
+      const t = i / 7, bx = 30 + t * 22, by = 43 - Math.sin(t * WS.PI) * 2;
+      const len = 5 + Math.sin(t * WS.PI) * 4 + Math.sin(ph * 2 + i) * 0.8;
+      poly(g, P([[bx - 1.8, by + 2], [bx + 3 + len * 0.35, by - len], [bx + 2.6, by + 2]]),
+        i % 2 ? p.hi : p.mid, null);
+    }
+    // near legs over the body
+    const nearFore = jointed(40, 57, fore(0)), nearHind = jointed(68, 55, hind(0));
+    limb(g, P(nearHind), legW(13, 4.4), p);
+    limb(g, P(nearFore), legW(10.4, 4.2), p);
+    for (const leg of [nearFore, nearHind]) {
+      const [x, y] = leg[leg.length - 1];
+      shaded(g, X(x - 1), Y(y + 0.6), X(3.6), X(1.8), p);
+      // pale claws
+      for (let i = 0; i < 3; i++) poly(g, P([[x - 2.4 - i * 1.3, y + 0.4], [x - 4.2 - i * 1.3, y + 2.2], [x - 2.8 - i * 1.3, y + 1.8]]), '#ffffff', null);
+    }
+
+    // the head, held forward and low on the neck: this is a hunter
+    const jaw = leap ? 0.45 : 0.08;
+    g.save();
+    g.translate(X(24), Y(39));
+    g.rotate(leap ? -0.12 : 0);
+    g.translate(-X(24), -Y(39));
+    shaded(g, X(24), Y(38), X(9.4), X(7.6), p, 0.12);
+    pelt(g, p, X(24), Y(38), X(9.4), X(7.6), 0.12, 3, 0.5, 0.24);
+    // ears laid back when it runs - it is going somewhere
+    poly(g, P([[23, 32], [31, 23.6], [29, 33]]), p.mid, p.line, u * 0.6);
+    poly(g, P([[27.4, 33], [36, 26], [33, 35]]), p.lo, p.line, u * 0.6);
+    // the muzzle, and the lower jaw open when it lunges
+    poly(g, P([[18, 35], [6, 38.4], [4.4, 41], [7.4, 42.6], [18.6, 42.6]]), p.mid, p.line, u * 0.7);
+    g.save();
+    g.translate(X(18), Y(42.6)); g.rotate(jaw); g.translate(-X(18), -Y(42.6));
+    poly(g, P([[18.6, 42.6], [8.4, 42.8], [9.4, 45.4], [18, 45.8]]), p.lo, p.line, u * 0.6);
+    for (let i = 0; i < 3; i++) poly(g, P([[10 + i * 2.6, 43], [11 + i * 2.6, 41.2], [12 + i * 2.6, 43]]), '#ffffff', null);
+    g.restore();
+    for (let i = 0; i < 3; i++) poly(g, P([[9.6 + i * 2.6, 42.4], [10.6 + i * 2.6, 45], [11.6 + i * 2.6, 42.4]]), '#ffffff', null);
+    g.fillStyle = p.line;
+    g.beginPath(); g.ellipse(X(5.8), Y(39.2), X(1.5), X(1.2), 0, 0, WS.TAU); g.fill();
+    // the eyes: the brightest thing on it, burning white, streaming back
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    const streak = g.createLinearGradient(X(18), 0, X(34), 0);
+    streak.addColorStop(0, 'rgba(255,255,255,.9)');
+    streak.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = streak;
+    g.beginPath(); g.moveTo(X(18), Y(34.4)); g.lineTo(X(34), Y(33)); g.lineTo(X(34), Y(35)); g.lineTo(X(18.6), Y(36.6)); g.closePath(); g.fill();
+    g.restore();
+    eyes(g, X(18.6), Y(35.4), X(0.01), X(1.7), '#ffffff');
+    g.restore();
+    g.restore();
+    // It is a spirit: below the knee it thins into mist.
+    g.save();
+    g.globalCompositeOperation = 'destination-out';
+    const mist = g.createLinearGradient(0, Y(74), 0, Y(94));
+    mist.addColorStop(0, 'rgba(0,0,0,0)');
+    mist.addColorStop(1, 'rgba(0,0,0,.72)');
+    g.fillStyle = mist;
+    g.fillRect(0, Y(74), s, Y(26));
+    g.restore();
+  }
+
+  /** The guard: a grave-ghoul, hunched and long-armed, rot glowing through
+   *  its hide. `pose` is 'walk' (k the shamble) or 'rake' (k the swing). */
+  function graveGhoul(g, s, p, k, pose) {
+    const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+    const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+    const ph = k * WS.TAU;
+    const rake = pose === 'rake';
+    // The hide is a corpse's, grey-green and dead; the tint is the ROT,
+    // which is the only bright thing on it.
+    const rot = p.tint;
+    p = palette([0.50, 0.56, 0.46]);
+    p.tint = rot;
+    const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+    const RAG = '#2f322a', RAG_LO = '#171914';
+    const ROT = '#b8ff5a';
+    // A lurch: the whole body rolls from foot to foot.
+    const sway = rake ? 0 : Math.sin(ph) * 1.4;
+    const dip = rake ? 0 : -Math.abs(Math.sin(ph)) * 1.4;
+    const lean = rake ? -0.12 + 0.2 * k : Math.sin(ph) * 0.04;
+    g.save();
+    g.translate(X(52 + sway), Y(64 + dip)); g.rotate(lean); g.translate(-X(52), -Y(64));
+
+    const clawHand = (x, y, a, pal, len) => {
+      g.lineCap = 'round';
+      for (let i = 0; i < 4; i++) {
+        const b = a + (-0.55 + i * 0.36);
+        const kx = x + Math.cos(b) * 3.4, ky = y + Math.sin(b) * 3.4;
+        const tx = kx + Math.cos(b + 0.8) * len, ty = ky + Math.sin(b + 0.8) * len;
+        g.strokeStyle = pal.line; g.lineWidth = u * 1.7;
+        g.beginPath(); g.moveTo(X(x), Y(y)); g.lineTo(X(kx), Y(ky)); g.lineTo(X(tx), Y(ty)); g.stroke();
+        g.strokeStyle = '#e8e2c8'; g.lineWidth = u * 0.8;
+        g.beginPath(); g.moveTo(X(kx), Y(ky)); g.lineTo(X(tx), Y(ty)); g.stroke();
+      }
+    };
+
+    // far arm: in the walk it swings opposite the near one; in the rake it
+    // is braced on the ground
+    const farSwing = rake ? 0.5 : -Math.sin(ph) * 0.45;
+    const farArm = jointed(58, 44, [[14, -0.2 + farSwing], [15, -0.5], [0.1, 0]]);
+    limb(g, P(farArm.slice(0, 3)), [7, 5, 4].map(X), far);
+    const fh = farArm[2];
+    clawHand(fh[0], fh[1], WS.PI * 0.62, far, 5);
+    // legs: short, bowed, stepping
+    const step = (off) => rake ? [[11, 0.5], [11, -0.8], [4, 1.2]]
+      : [[11, 0.35 + Math.sin(ph + off) * 0.5], [11, -0.8 - Math.max(0, Math.cos(ph + off)) * 0.5], [4, 1.3]];
+    const farLeg = jointed(60, 66, step(WS.PI));
+    limb(g, P(farLeg), [9, 6, 4.2, 3.6].map(X), far);
+    const nearLeg = jointed(52, 67, step(0));
+    limb(g, P(nearLeg), [10, 6.6, 4.6, 4].map(X), p);
+    for (const leg of [farLeg, nearLeg]) {
+      const [x, y] = leg[leg.length - 1];
+      poly(g, P([[x - 5, y - 0.6], [x + 2, y - 1], [x + 2.4, y + 2], [x - 6, y + 2.2]]), p.lo, p.line, u * 0.6);
+    }
+    // the rags round the hips
+    poly(g, P([[46, 60], [66, 58], [68, 68], [62, 72], [59, 66], [55, 73], [50, 67], [45, 70]]), RAG, RAG_LO, u * 0.7);
+
+    // the body: a bent back, the spine standing out, hunched over the belly
+    const body = mass(g, P([[40, 46], [46, 39], [55, 36], [64, 38.6], [69, 45], [68, 55], [63, 61.6], [52, 62.6], [43, 58]]), p);
+    g.save();
+    body(); g.clip();
+    // the rot, glowing through the hide in patches
+    for (const [x, y, r] of [[60, 50, 7], [49, 55, 5], [66, 42, 4]]) {
+      const gl = g.createRadialGradient(X(x), Y(y), 0, X(x), Y(y), X(r));
+      gl.addColorStop(0, WS.rgb(WS.mix(p.tint, [1, 1, 0.6], 0.4), 0.95));
+      gl.addColorStop(0.5, WS.rgb(p.tint, 0.45));
+      gl.addColorStop(1, WS.rgb(p.tint, 0));
+      g.fillStyle = gl; g.beginPath(); g.arc(X(x), Y(y), X(r), 0, WS.TAU); g.fill();
+    }
+    // ribs, through the side where the flesh has gone
+    const hollow = g.createRadialGradient(X(50), Y(50), 1, X(50), Y(50), X(9));
+    hollow.addColorStop(0, 'rgba(10,14,6,.75)'); hollow.addColorStop(1, 'rgba(10,14,6,0)');
+    g.fillStyle = hollow; g.beginPath(); g.arc(X(50), Y(50), X(9), 0, WS.TAU); g.fill();
+    g.lineCap = 'round';
+    for (let i = 0; i < 4; i++) {
+      const y = 44 + i * 3.8;
+      g.strokeStyle = 'rgba(236,230,206,.75)'; g.lineWidth = u * 1.3;
+      g.beginPath(); g.moveTo(X(56), Y(y - 1)); g.quadraticCurveTo(X(48), Y(y), X(44 + i), Y(y + 3)); g.stroke();
+    }
+    g.restore();
+    // the spine: knuckles of bone along the hunched back
+    for (let i = 0; i < 6; i++) {
+      const t = i / 5, bx = 46 + t * 22, by = 38 - Math.sin(t * WS.PI) * 3.4 + t * 2;
+      shaded(g, X(bx), Y(by), X(1.9), X(1.5), STONE, 0);
+    }
+
+    // the head: low and thrust forward, jaw unhinged, eyes burning
+    const hx = rake ? 34 - k * 3 : 35, hy = rake ? 38 + k * 2 : 39 + Math.sin(ph * 2) * 0.6;
+    shaded(g, X(hx), Y(hy), X(9.4), X(8.4), p, -0.2);
+    g.save();
+    g.beginPath(); g.ellipse(X(hx), Y(hy), X(9.4), X(8.4), -0.2, 0, WS.TAU); g.clip();
+    g.fillStyle = 'rgba(10,14,6,.4)';
+    g.beginPath(); g.ellipse(X(hx - 2), Y(hy + 4), X(4), X(3), 0, 0, WS.TAU); g.fill();
+    g.restore();
+    // lank hair
+    g.strokeStyle = 'rgba(28,30,24,.85)'; g.lineWidth = u * 0.8; g.lineCap = 'round';
+    for (let i = 0; i < 6; i++) {
+      g.beginPath(); g.moveTo(X(hx + 2 + i * 1.4), Y(hy - 7 + i * 0.5));
+      g.quadraticCurveTo(X(hx + 8 + i * 1.2), Y(hy), X(hx + 7 + i * 1.6), Y(hy + 8)); g.stroke();
+    }
+    // the jaw, hanging open, a string of rot from it
+    const jo = rake ? 1 + k * 2 : 0.6;
+    poly(g, P([[hx - 9, hy + 3], [hx - 1, hy + 4.4], [hx - 2, hy + 10 + jo], [hx - 8, hy + 9 + jo]]), p.lo, p.line, u * 0.6);
+    g.fillStyle = '#1a2410';
+    g.beginPath(); g.moveTo(X(hx - 8.6), Y(hy + 2.4)); g.lineTo(X(hx - 1.6), Y(hy + 3.6)); g.lineTo(X(hx - 2.6), Y(hy + 7 + jo)); g.lineTo(X(hx - 8), Y(hy + 6.4 + jo)); g.closePath(); g.fill();
+    for (let i = 0; i < 3; i++) { g.fillStyle = '#e6dcc0'; g.fillRect(X(hx - 8 + i * 2), Y(hy + 2.6), X(1), Y(1.6)); }
+    g.save();
+    g.globalAlpha = 0.7; g.strokeStyle = ROT; g.lineWidth = u * 0.7;
+    g.beginPath(); g.moveTo(X(hx - 5), Y(hy + 9 + jo)); g.quadraticCurveTo(X(hx - 5.6), Y(hy + 13), X(hx - 4.6), Y(hy + 16)); g.stroke();
+    g.restore();
+    eyes(g, X(hx - 3.6), Y(hy - 2), X(2.6), X(1.5), ROT);
+
+    // the near arm: the weapon. In the walk it swings; in the rake it goes
+    // from raised behind the head to swept through low in front.
+    let nearArm;
+    if (rake) {
+      const a0 = -2.5 + k * 3.2;                         // shoulder angle, back to front
+      nearArm = jointed(48, 44, [[13, a0], [14, 0.6 - k * 0.3], [0.1, 0]]);
+    } else {
+      nearArm = jointed(48, 45, [[13, -0.25 + Math.sin(ph) * 0.45], [15, -0.55], [0.1, 0]]);
+    }
+    limb(g, P(nearArm.slice(0, 3)), [8.4, 5.6, 4.6].map(X), p);
+    // a rag off the forearm
+    const [ex, ey] = nearArm[1];
+    poly(g, P([[ex - 1, ey], [ex + 4, ey + 1], [ex + 3, ey + 6], [ex + 1, ey + 4], [ex - 1, ey + 6]]), RAG, RAG_LO, u * 0.5);
+    const nh = nearArm[2];
+    const handA = rake ? WS.PI * (1.25 - k * 0.6) : WS.PI * 0.72;
+    // mid-rake, the claws leave their path behind them in rot-light
+    if (rake && k > 0.2 && k < 0.9) {
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      g.lineCap = 'round';
+      for (let i = 0; i < 3; i++) {
+        g.strokeStyle = WS.rgb(WS.mix(rot, [1, 1, 1], 0.3), 0.55 - i * 0.12);
+        g.lineWidth = u * (2.4 - i * 0.5);
+        g.beginPath();
+        g.arc(X(48), Y(44), X(22 + i * 3.2), WS.PI * (1.05 + i * 0.03), WS.PI * (0.55 + k * 0.4), true);
+        g.stroke();
+      }
+      g.restore();
+    }
+    clawHand(nh[0], nh[1], handA, p, 6.4);
+    // the rot on the claws: they glow at the tips
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    const tip = g.createRadialGradient(X(nh[0]), Y(nh[1]), 0, X(nh[0]), Y(nh[1]), X(8));
+    tip.addColorStop(0, WS.rgb(p.tint, 0.55)); tip.addColorStop(1, WS.rgb(p.tint, 0));
+    g.fillStyle = tip; g.beginPath(); g.arc(X(nh[0]), Y(nh[1]), X(8), 0, WS.TAU); g.fill();
+    g.restore();
+    g.restore();
+  }
+
+  const FAMILIAR_ART = { wolf: spiritWolf, ghoul: graveGhoul };
+  const FAMILIAR_FRAMES = { wolf: { run: 8, pounce: 3 }, ghoul: { walk: 6, rake: 4 } };
+
   WS.Sprites = {
+    /** A summon's frame (the spirit wolf, the grave ghoul), baked and cached
+     *  like a stride frame. `pose` is one of FAMILIAR_FRAMES[kind]; `frame`
+     *  counts within it. */
+    familiar(kind, tint, size, pose, frame) {
+      size = WS.round(size);
+      const set = FAMILIAR_FRAMES[kind] || FAMILIAR_FRAMES.wolf;
+      const n = set[pose] || 1;
+      const f = ((frame % n) + n) % n;
+      const key = `f:${kind}:${WS.hex(tint)}:${size}:${pose}:${f}`;
+      let c = cache.get(key);
+      if (c) return c;
+      const res = size * SS;
+      const body = make(res, res);
+      const p = palette(tint);
+      p.tint = tint;
+      (FAMILIAR_ART[kind] || spiritWolf)(body.getContext('2d'), res, p,
+        pose === 'pounce' || pose === 'rake' ? (n > 1 ? f / (n - 1) : 0) : f / n, pose);
+      c = outline(body, res, p);
+      c.displaySize = size;
+      cache.set(key, c);
+      return c;
+    },
+    familiarFrames: FAMILIAR_FRAMES,
+
     /** Cached creature sprite. `size` is the full canvas edge in world units. */
     creature(art, tint, size, kit) {
       size = WS.round(size);
@@ -25996,6 +26487,7 @@ window.WS = window.WS || {};
        never start - and the re-acquire below is perfectly capable of finding
        it someone. */
     b.homing = !!(spec.homing || spec.homingTarget);
+    b.homed = !!spec.homed;
     b.turnRate = TURN_RATE * WS.max(1, spec.turnScale || 1);
     // The speed a seeking bolt holds for its whole life. Kept because steering
     // must never be allowed to change it - see the turn in P.update.
@@ -26108,7 +26600,7 @@ window.WS = window.WS || {};
   /** Splash + slow + lifesteal + on-hit procs shared by every bolt hit. */
   function resolveHit(b, e) {
     const player = WS.Game.player;
-    let dealt = WS.Enemy.hit(e, b.damage, b.source);
+    let dealt = WS.Enemy.hit(e, b.damage, b.source, b.homed);
 
     if (b.splash) {
       WS.Enemy.damageArea(b.x, b.y, b.splash, b.damage * 0.6, b.hitBy, null, b.source);
@@ -26919,7 +27411,7 @@ window.WS = window.WS || {};
 
   /* ------------------------------------------------------ damage intake -- */
   /** Central strike entry: rolls the survivor's crit and prints the number. */
-  Enemy.hit = function (e, amount, source) {
+  Enemy.hit = function (e, amount, source, homed) {
     const player = WS.Game.player;
     /* A weapon built to sweep a crowd still has to finish a boss. Novas,
        fields, chains and the like hit one big target far more softly than
@@ -26938,7 +27430,12 @@ window.WS = window.WS || {};
           const own = WS.Player.getWeapon(player, source);
           if (own && own.evolved) f = w.evolvedBossDamage;
         }
-        if (f) amount *= f;
+        /* The factor makes up for the shots of a spread that fly past one
+           big target. A shot a discovery taught to seek (Truestrike) flies
+           past nothing: carried into Storm of Steel, all fifteen knives
+           converged on a boss at 5.3x each, ten times what the union did
+           to it before (tools/synergy-sweep.js). It keeps no factor above 1. */
+        if (f) amount *= homed ? WS.min(f, 1) : f;
       }
     }
     // The finale's own, under a rising sun (Finale.sunriseMult).
@@ -26949,6 +27446,8 @@ window.WS = window.WS || {};
     if (e.dmgTaken !== 1) amount *= e.dmgTaken;
     // A ghoul's rot (Familiar): everything lands a little harder for a while.
     if (e.rotTimer > 0) amount *= e.rotMult;
+    // Ruthless, taken without Opportunist: a crit finishes an ordinary creature left low.
+    if (crit) amount = WS.Calling.execute(player, e, amount);
     /* Serration: a crit opens a wound that bleeds a share of the blow over
        the next few seconds. A fresh crit reopens it at whichever is worse. */
     if (crit && player.serration > 0 && !e._dead) {
@@ -27329,6 +27828,8 @@ window.WS = window.WS || {};
      * a ring, a nova - simply do not have. A bolt with the flag and no mark
      * acquires one on its first update. */
     spec.homing = !!(d.homing || w.mods.homing);
+    // Homing a discovery GAVE it (Truestrike): see Enemy.hit's boss factor.
+    spec.homed = !d.homing && !!w.mods.homing;
     // Velocity makes a seeking bolt faster, and it must turn faster with it
     // or it swings wide past what it seeks (Velocity at its cap took an
     // evolved Seeking Motes to x0.60). The turning circle stays the one the
@@ -27736,7 +28237,7 @@ window.WS = window.WS || {};
     const target = WS.Enemy.findNearest(player.x, player.y, d.range || 620);
     if (!target) { w.cooldown = retry(); return false; }
     fillSpec(player, w);
-    spec.pierce = 999; spec.homing = false; spec.homingTarget = null;
+    spec.pierce = 999; spec.homing = false; spec.homed = false; spec.homingTarget = null;
     spec.knock = d.knock || 0;
     spec.life = durationOf(player, w, d.life || 1.8) / (1 + WS.Config.rankDurationStep * (w.level - 1));
     const burst = d.endBurst || w.mods.endBurst;
@@ -27770,7 +28271,7 @@ window.WS = window.WS || {};
     const target = WS.Enemy.findNearest(player.x, player.y, range * 1.6);
     if (!target) { w.cooldown = retry(); return false; }
     fillSpec(player, w);
-    spec.pierce = 999; spec.homing = false; spec.homingTarget = null;
+    spec.pierce = 999; spec.homing = false; spec.homed = false; spec.homingTarget = null;
     spec.boomerang = range;
     /* Area throws it further - and on its own that made the chakram WORSE
        (-21% on a crowd at its cap, -30% on a boss): the turn happens past
@@ -28373,6 +28874,10 @@ window.WS = window.WS || {};
       soulAttuned: 0, souls: 0, soulBonus: 0, soulLock: 0,
       totemAttuned: 0, totems: [], totemTimer: 0.5, totemNext: 0, totemReach: 0,
       holyAttuned: 0, holyPower: 0, holyBonus: 0, holyHit: 0, holyHeal: 0, holyLock: 0, divineTimer: 0,
+      // The callings' own passives, by rank (upgrades.js), and what the
+      // carry-overs keep: gems toward the Undertow, the Smoulder's stacks.
+      undertow: 0, undertowGems: 0, hallowed: 0, ruthless: 0, stalker: 0,
+      slowBurn: 0, smoulder: 0, smoulderTimer: 0, bountiful: 0, deepRoots: 0, fervor: 0,
     };
 
     // Trainer lessons first, then the survivor's own perk, so percentages
@@ -28846,7 +29351,8 @@ window.WS = window.WS || {};
         WS.Audio.play('level');
         return true;
       }
-      run.killedBy = { name: srcName || 'the endless horde' };
+      // What landed the last blow, and how hard, for the defeat screen.
+      run.killedBy = { name: srcName || 'the endless horde', hit: WS.round(taken) };
       WS.Game.beginDeath();
     }
     return true;
@@ -29144,6 +29650,13 @@ window.WS = window.WS || {};
  *   CONVICTION (Paladin). Hits taken and healing received build Conviction.
  *     At full, a Hammerfall and an Aegis. Keegan: builds a quarter faster.
  *
+ * Each also has an epic passive of five ranks that deepens it (upgrades.js:
+ * Undertow, Hallowed Mending, Ruthless, Stalker's Patience, Slow Burn,
+ * Bountiful Tithe, Deep Roots, Fervor). Four of them carry over: taken
+ * without the calling they do a smaller thing of their own - readying a
+ * weapon from gems, a Ward from overheal, an execute on a crit, a Smoulder
+ * from blows taken - and with it only the calling's half applies.
+ *
  * The code keeps plain working names for the fields (rage, souls, totems,
  * holy) - what the player reads is in blessings.js and the meters below.
  * Every number is in Config under CALLINGS. */
@@ -29169,12 +29682,14 @@ window.WS = window.WS || {};
 
   /* ----------------------------------------------------------- spellflood -- */
   K.overflowNeed = () => C().overflowNeedBase + C().overflowNeedPerMinute * minutes();
+  K.surgeTime = (p) => C().surgeDuration + C().undertowTide * p.undertow;
   K.onGem = function (p) {
-    if (p.overflowAttuned <= 0 || p.surgeTimer > 0) return;
-    p.overflowCharge += 1 + p.overflowBonus;
+    if (p.overflowAttuned <= 0) { undertow(p); return; }
+    if (p.surgeTimer > 0) return;
+    p.overflowCharge += 1 + p.overflowBonus + C().undertowFill * p.undertow;
     if (p.overflowCharge < K.overflowNeed()) return;
     p.overflowCharge = 0;
-    p.surgeTimer = C().surgeDuration;
+    p.surgeTimer = K.surgeTime(p);
     for (const w of p.weapons) WS.Weapon.fire(p, w);
     count('overflows');
     WS.FX.flash(p.x, p.y, 70, WS.CONST.COLORS.arcane, 0.35);
@@ -29183,8 +29698,25 @@ window.WS = window.WS || {};
     WS.Audio.play('evolve');
   };
 
+  /* Undertow without the Flood: every so many gems take a share off the
+     wait of the weapon that waits longest. "Slowest" is by what is left to
+     wait, so it is always the one the cut helps most. */
+  function undertow(p) {
+    if (p.undertow <= 0) return;
+    p.undertowGems += 1;
+    if (p.undertowGems < C().undertowGems) return;
+    p.undertowGems = 0;
+    let slow = null;
+    for (const w of p.weapons) if (!slow || w.cooldown > slow.cooldown) slow = w;
+    if (slow && slow.cooldown > 0) slow.cooldown *= WS.max(0, 1 - C().undertowCut * p.undertow);
+  }
+
   /* ------------------------------------------------------ radiant barrier -- */
-  K.barrierCap = (p) => p.maxHealth * C().barrierCapPct * (1 + p.barrierBonus);
+  /* Hallowed Mending taken without the calling is a Ward: the same shield,
+     fed only by overheal, far smaller, and it never bursts. */
+  K.barrierCap = (p) => (p.barrierAttuned > 0
+    ? p.maxHealth * C().barrierCapPct * (1 + p.barrierBonus + C().hallowedCap * p.hallowed)
+    : p.maxHealth * C().hallowedWard * p.hallowed);
   /* The barrier recharges like a shield, not a sponge. Every Dawnpulse at
      full health is almost all overheal, and all of it went into the barrier,
      so in a crowd it was topped up faster than blows could take it down and
@@ -29192,15 +29724,15 @@ window.WS = window.WS || {};
      and a break for barrierBrokenDelay: a crowd in contact wears it through,
      and stepping clear of the press is what lets it build again. */
   K.onHeal = function (p, gained, wasted) {
-    if (p.barrierAttuned > 0 && !(p.barrierLock > 0)) {
-      const add = wasted + gained * C().barrierFromHeal;
+    if ((p.barrierAttuned > 0 || p.hallowed > 0) && !(p.barrierLock > 0)) {
+      const add = wasted + (p.barrierAttuned > 0 ? gained * C().barrierFromHeal : 0);
       if (add > 0) {
         p.barrier = WS.min(K.barrierCap(p), p.barrier + add);
         p.barrierPeak = WS.max(p.barrierPeak || 0, p.barrier);
       }
     }
     if (p.holyAttuned > 0 && gained > 0 && p.holyLock <= 0) {
-      p.holyHeal += gained * (1 + p.holyBonus);
+      p.holyHeal += gained * holyRate(p);
       // By share of the bar: a flat figure was nothing late in a run, when a
       // healer is mending hundreds a second.
       const per = WS.max(1, p.maxHealth * C().holyHealPct);
@@ -29214,9 +29746,10 @@ window.WS = window.WS || {};
     const cfg = C();
     const k = WS.min(1, (p.barrierPeak || 0) / WS.max(1, K.barrierCap(p)));
     p.barrierPeak = 0;
-    if (k < cfg.barrierBurstMin) return;
-    const r = cfg.barrierBurstRadius * p.areaMultiplier;
-    WS.Enemy.damageArea(p.x, p.y, r, strike(p, cfg.barrierBurstBase, cfg.barrierBurstPerLevel) * k, null, 24, 'radiant_barrier');
+    if (p.barrierAttuned <= 0 || k < cfg.barrierBurstMin) return;
+    const r = cfg.barrierBurstRadius * p.areaMultiplier * (1 + cfg.hallowedReach * p.hallowed);
+    const hit = strike(p, cfg.barrierBurstBase, cfg.barrierBurstPerLevel) * k * (1 + cfg.hallowedBurst * p.hallowed);
+    WS.Enemy.damageArea(p.x, p.y, r, hit, null, 24, 'radiant_barrier');
     WS.FX.flash(p.x, p.y, r, WS.CONST.COLORS.holy, 0.4, 10, 'holy');
     WS.FX.flash(p.x, p.y, r * 0.5, [1, 0.96, 0.8], 0.25);
     WS.Audio.play('cast', undefined, 'holy');
@@ -29243,13 +29776,13 @@ window.WS = window.WS || {};
   K.onCrit = function (p) {
     if (p.comboAttuned <= 0 || p.comboLock > 0 || p.comboGate > 0) return;
     p.comboGate = C().comboGate;
-    p.combo += 1 + p.comboBonus;
+    p.combo += 1 + p.comboBonus + C().ruthlessEdge * p.ruthless;
     if (p.combo >= C().comboNeed) eviscerate(p);
   };
   function eviscerate(p) {
     const cfg = C();
     p.combo = 0;
-    p.comboLock = cfg.comboLock;
+    p.comboLock = K.comboLock(p);
     // The toughest thing within reach, bosses included: that is the point.
     let best = null, most = -1;
     const r2 = cfg.eviscerateRange * cfg.eviscerateRange;
@@ -29260,7 +29793,8 @@ window.WS = window.WS || {};
       if (e.health > most) { most = e.health; best = e; }
     }
     if (best) {
-      WS.Enemy.hit(best, strike(p, cfg.eviscerateBase, cfg.eviscerateLevel) * p.critDamage, 'opportunist');
+      WS.Enemy.hit(best, strike(p, cfg.eviscerateBase, cfg.eviscerateLevel) * p.critDamage
+        * (1 + cfg.ruthlessBlow * p.ruthless), 'opportunist');
       WS.FX.flash(best.x, best.y, 46, [1.0, 0.92, 0.45], 0.3, 6, 'physical');
       WS.FX.burst(best.x, best.y, 14, '#ffe27a', 220, 0.4, 3);
     }
@@ -29270,11 +29804,22 @@ window.WS = window.WS || {};
     WS.Audio.play('crit', p.x);
   }
 
+  K.comboLock = (p) => WS.max(0.5, C().comboLock - C().ruthlessRegroup * p.ruthless);
+  /** Ruthless without the calling: a crit that leaves an ordinary creature
+   *  below the line finishes it. Returns the blow to land instead. */
+  K.execute = function (p, e, amount) {
+    if (p.ruthless <= 0 || p.comboAttuned > 0) return amount;
+    if (e.boss || e.elite || e.finale || e.finaleTag || e.part) return amount;
+    if (e.health - amount > e.maxHealth * C().ruthlessExecute * p.ruthless) return amount;
+    count('executions');
+    return WS.max(amount, e.health + 1);
+  };
+
   /* ------------------------------------------------------------ the quarry -- */
   K.markMult = function (e) {
     const p = WS.Game.player;
     if (!p || p.markTarget !== e) return 1;
-    return 1 + (e.boss || e.finale ? C().markBossBonus : C().markBonus);
+    return 1 + (e.boss || e.finale ? C().markBossBonus : C().markBonus) + C().stalkerBonus * p.stalker;
   };
   /* The quarry is the toughest thing in sight that a hunt can actually
      bring down: an elite, a heavy - not the boss, whose health would outlast
@@ -29294,29 +29839,38 @@ window.WS = window.WS || {};
     best = best || boss;
     if (!best) return;
     p.markTarget = best; p.markSpawn = best.spawnId;
-    p.markLife = cfg.markLife;
+    p.markLife = K.markLife(p);
     WS.FX.notice(best.x, best.y - best.radius - 10, 'Quarry', '#ffcf6a');
   }
-  function markEvery(p) { return C().markEvery * (1 - p.markHaste); }
+  function markEvery(p) { return C().markEvery * WS.max(0.2, 1 - p.markHaste - C().stalkerHaste * p.stalker); }
+  K.markLife = (p) => C().markLife + C().stalkerLife * p.stalker;
 
   /* -------------------------------------------------------- seething blood -- */
   K.onHurt = function (p, landed) {
     const cfg = C();
     if (p.rageAttuned > 0 && p.enrageTimer <= 0 && p.rageLock <= 0) {
-      p.rage += cfg.ragePerHit * (1 + p.rageBonus);
+      p.rage += cfg.ragePerHit * heatRate(p);
       p.rageIdle = cfg.rageHold;
       if (p.rage >= cfg.rageNeed) enrage(p);
     }
     if (p.holyAttuned > 0 && p.holyLock <= 0) {
-      p.holyHit += cfg.holyPerHit * (1 + p.holyBonus);
+      p.holyHit += cfg.holyPerHit * holyRate(p);
       while (p.holyHit >= 1) { p.holyHit -= 1; K.addHoly(p, 1); }
+    }
+    // Slow Burn without the calling: the blow smoulders.
+    if (p.slowBurn > 0 && p.rageAttuned <= 0) {
+      p.smoulder = WS.min(cfg.slowBurnMax, p.smoulder + 1);
+      p.smoulderTimer = cfg.slowBurnTime;
     }
     void landed;
   };
+  const heatRate = (p) => 1 + p.rageBonus + C().slowBurnHeat * p.slowBurn;
+  const holyRate = (p) => 1 + p.holyBonus + C().fervorBuild * p.fervor;
+  K.enrageTime = (p) => C().enrageTime + C().slowBurnBoil * p.slowBurn;
   function enrage(p) {
     const cfg = C();
     p.rage = 0;
-    p.enrageTimer = cfg.enrageTime;
+    p.enrageTimer = K.enrageTime(p);
     count('enrages');
     WS.FX.flash(p.x, p.y, 120, [1.0, 0.3, 0.2], 0.4, 8, 'physical');
     WS.FX.shake(7, 0.35);
@@ -29342,13 +29896,13 @@ window.WS = window.WS || {};
     if (p.rageAttuned > 0 && p.enrageTimer <= 0 && p.rageLock <= 0) {
       const r = C().rageCloseRange;
       if (WS.dist2(e.x, e.y, p.x, p.y) <= r * r) {
-        p.rage += C().ragePerCloseKill * (1 + p.rageBonus);
+        p.rage += C().ragePerCloseKill * heatRate(p);
         p.rageIdle = WS.max(p.rageIdle, 1);
         if (p.rage >= C().rageNeed) enrage(p);
       }
     }
     if (p.soulAttuned > 0 && p.soulLock <= 0) {
-      p.souls += (e.boss ? C().soulBoss : e.elite ? C().soulElite : 1) * (1 + p.soulBonus);
+      p.souls += (e.boss ? C().soulBoss : e.elite ? C().soulElite : 1) * (1 + p.soulBonus + C().bountifulFill * p.bountiful);
       if (p.souls >= K.soulNeed()) soulRend(p);
     }
     if (p.markTarget === e) {
@@ -29365,9 +29919,10 @@ window.WS = window.WS || {};
     const cfg = C();
     p.souls = 0;
     p.soulLock = cfg.soulLock;
-    const r = cfg.rendRadius * p.areaMultiplier;
+    const r = cfg.rendRadius * p.areaMultiplier * (1 + cfg.bountifulReach * p.bountiful);
     const struck = WS.Enemy.damageArea(p.x, p.y, r, strike(p, cfg.rendBase, cfg.rendPerLevel), null, 18, 'reapers_tithe');
-    WS.Player.heal(p, WS.min(p.maxHealth * cfg.rendHealCap, p.maxHealth * cfg.rendHealPer * struck), 'reapers_tithe');
+    const cap = cfg.rendHealCap + cfg.bountifulHeal * p.bountiful;
+    WS.Player.heal(p, WS.min(p.maxHealth * cap, p.maxHealth * cfg.rendHealPer * struck), 'reapers_tithe');
     count('rends');
     WS.FX.flash(p.x, p.y, r, [0.62, 0.3, 0.9], 0.45, 11, 'shadow');
     WS.FX.flash(p.x, p.y, r * 0.4, [0.85, 0.6, 1.0], 0.3);
@@ -29378,13 +29933,19 @@ window.WS = window.WS || {};
   /* ------------------------------------------------------------ waystones -- */
   const TOTEMS = ['searing', 'healing', 'windfury'];
   const STONE_NAME = { searing: 'ember', healing: 'spring', windfury: 'gale' };
-  K.totemReach = (p) => C().totemRadius * p.areaMultiplier * (1 + p.totemReach);
+  K.totemReach = (p) => C().totemRadius * p.areaMultiplier * (1 + p.totemReach + C().deepRootsReach * p.deepRoots);
+  K.totemLife = (p) => C().totemLife + C().deepRootsLife * p.deepRoots;
   function plant(p) {
     const kind = TOTEMS[p.totemNext % TOTEMS.length];
     p.totemNext++;
-    // One of each at most: a new one of a kind replaces the old.
-    for (let i = p.totems.length - 1; i >= 0; i--) if (p.totems[i].kind === kind) p.totems.splice(i, 1);
-    p.totems.push({ kind, x: p.x, y: p.y + 6, life: C().totemLife, max: C().totemLife, tick: 0 });
+    // One of each at most (two with Deep Roots): a new one replaces the oldest.
+    const keep = p.deepRoots >= C().deepRootsPair ? 2 : 1;
+    let same = 0;
+    for (let i = p.totems.length - 1; i >= 0; i--) {
+      if (p.totems[i].kind === kind && ++same >= keep) p.totems.splice(i, 1);
+    }
+    const life = K.totemLife(p);
+    p.totems.push({ kind, x: p.x, y: p.y + 6, life, max: life, tick: 0 });
     count('waystones');
     WS.FX.flash(p.x, p.y, 40, TOTEM_COL[kind], 0.25, 5, 'nature');
     WS.Audio.play('cast', undefined, 'nature');
@@ -29421,11 +29982,12 @@ window.WS = window.WS || {};
     for (let i = enemies.length - 1; i >= 0; i--) {
       const e = enemies[i];
       if (!e || e._dead || e.untargetable) continue;
-      if (e.boss || e.part || e.finale) WS.Enemy.hit(e, e.maxHealth * cfg.judgementBossPct, 'conviction');
+      if (e.boss || e.part || e.finale) WS.Enemy.hit(e, e.maxHealth * (cfg.judgementBossPct + cfg.fervorJudge * p.fervor), 'conviction');
       else WS.Enemy.damage(e, e.health + 1, false, 'conviction');
     }
-    p.divineTimer = cfg.divineShield;
-    p.invulnerable = WS.max(p.invulnerable, cfg.divineShield);
+    const aegis = cfg.divineShield + cfg.fervorAegis * p.fervor;
+    p.divineTimer = aegis;
+    p.invulnerable = WS.max(p.invulnerable, aegis);
     count('storms');
     WS.FX.screen('rgba(255,236,170,.28)', 0.45);
     WS.FX.flash(p.x, p.y, 70, [1, 0.95, 0.75], 0.4);
@@ -29445,6 +30007,10 @@ window.WS = window.WS || {};
     if (p.barrierLock > 0) p.barrierLock = WS.max(0, p.barrierLock - dt);
     if (p.soulLock > 0) p.soulLock = WS.max(0, p.soulLock - dt);
     if (p.divineTimer > 0) p.divineTimer = WS.max(0, p.divineTimer - dt);
+    if (p.smoulderTimer > 0) {
+      p.smoulderTimer -= dt;
+      if (p.smoulderTimer <= 0) { p.smoulderTimer = 0; p.smoulder = 0; }
+    }
 
     // The mark: keep it while the quarry lives and it has not run out.
     if (p.markAttuned > 0) {
@@ -29470,7 +30036,7 @@ window.WS = window.WS || {};
       } else if (p.rageIdle > 0) {
         p.rageIdle -= dt;
       } else if (p.rage > 0) {
-        p.rage = WS.max(0, p.rage - cfg.rageDecay * dt);
+        p.rage = WS.max(0, p.rage - cfg.rageDecay * WS.max(0.2, 1 - cfg.slowBurnCool * p.slowBurn) * dt);
       }
     }
 
@@ -29503,6 +30069,7 @@ window.WS = window.WS || {};
       if (p.enrageTimer > 0) m *= 1 + C().enrageDamage;
     }
     if (p.soulAttuned > 0 && p.souls >= K.soulNeed() * 0.5) m *= 1 + C().soulEmpower;
+    if (p.smoulder > 0) m *= 1 + C().slowBurnStack * p.slowBurn * p.smoulder;
     return m;
   };
   K.cooldownMult = function (p) {
@@ -29518,33 +30085,40 @@ window.WS = window.WS || {};
     const cfg = C();
     if (p.overflowAttuned > 0) {
       out.push(p.surgeTimer > 0
-        ? { key: 'surge', cls: 'calling arcane', label: 'Flood tide', pct: p.surgeTimer / cfg.surgeDuration }
+        ? { key: 'surge', cls: 'calling arcane', label: 'Flood tide', pct: p.surgeTimer / K.surgeTime(p) }
         : { key: 'overflow', cls: 'calling arcane', label: 'Flood', pct: p.overflowCharge / K.overflowNeed() });
     }
-    if (p.barrierAttuned > 0) {
+    if (p.barrierAttuned > 0 || p.hallowed > 0) {
       // Broken, the meter says so and counts the way back; cracked, it says
-      // the barrier is holding but not refilling.
+      // the barrier is holding but not refilling. Without the calling,
+      // Hallowed Mending's Ward reads the same way under its own name.
       const broken = p.barrier <= 0 && p.barrierLock > 0;
+      const name = p.barrierAttuned > 0 ? 'Barrier' : 'Ward';
       out.push({ key: 'barrier', cls: 'calling holy' + (p.barrierLock > 0 ? ' waiting' : ''),
-        label: broken ? 'Barrier broken' : p.barrierLock > 0 ? 'Barrier ' + WS.round(p.barrier) + ' · cracked' : 'Barrier ' + WS.round(p.barrier),
+        label: broken ? name + ' broken' : p.barrierLock > 0 ? name + ' ' + WS.round(p.barrier) + ' · cracked' : name + ' ' + WS.round(p.barrier),
         pct: broken ? 1 - p.barrierLock / C().barrierBrokenDelay : p.barrier / WS.max(1, K.barrierCap(p)) });
     }
     if (p.comboAttuned > 0) {
       out.push(p.comboLock > 0
-        ? { key: 'combowait', cls: 'calling combo waiting', label: 'Regrouping', pct: 1 - p.comboLock / cfg.comboLock }
+        ? { key: 'combowait', cls: 'calling combo waiting', label: 'Regrouping', pct: 1 - p.comboLock / K.comboLock(p) }
         : { key: 'combo', cls: 'calling combo', label: 'Edge', pips: cfg.comboNeed, full: WS.floor(p.combo), pct: p.combo % 1 });
     }
     if (p.markAttuned > 0) {
       out.push(p.markTarget
-        ? { key: 'marked', cls: 'calling mark', label: 'Quarry', pct: p.markLife / cfg.markLife }
+        ? { key: 'marked', cls: 'calling mark', label: 'Quarry', pct: p.markLife / K.markLife(p) }
         : { key: 'mark', cls: 'calling mark waiting', label: 'Next quarry', pct: 1 - p.markTimer / markEvery(p) });
     }
     if (p.rageAttuned > 0) {
       out.push(p.enrageTimer > 0
-        ? { key: 'enraged', cls: 'calling rage', label: 'Boiling over', pct: p.enrageTimer / cfg.enrageTime }
+        ? { key: 'enraged', cls: 'calling rage', label: 'Boiling over', pct: p.enrageTimer / K.enrageTime(p) }
         : p.rageLock > 0
           ? { key: 'ragewait', cls: 'calling rage waiting', label: 'Spent', pct: 1 - p.rageLock / cfg.rageLock }
           : { key: 'rage', cls: 'calling rage', label: 'Heat', pct: p.rage / cfg.rageNeed });
+    }
+    if (p.slowBurn > 0 && p.rageAttuned <= 0) {
+      out.push({ key: 'smoulder', cls: 'calling rage' + (p.smoulder > 0 ? '' : ' waiting'),
+        label: 'Smoulder +' + WS.round(C().slowBurnStack * p.slowBurn * p.smoulder * 100) + '%',
+        pct: p.smoulder > 0 ? p.smoulderTimer / cfg.slowBurnTime : 0 });
     }
     if (p.soulAttuned > 0) {
       const need = K.soulNeed();
@@ -30775,7 +31349,8 @@ window.WS = window.WS || {};
       }
       fam.x += tx * speed * dt;
       fam.y += ty * speed * dt;
-      if (tx !== 0) fam.facing = tx < 0 ? -1 : 1;
+      if (tx !== 0 && !(fam.pounce > 0)) fam.facing = tx < 0 ? -1 : 1;
+      fam.moved = speed * dt;
       fam.bob += dt * 3;
       if (fam.pounce > 0) fam.pounce -= dt;
 
@@ -30784,7 +31359,11 @@ window.WS = window.WS || {};
         const reach = t.biteRadius * radiusMult * 0.6 + fam.target.radius;
         if (WS.dist2(fam.x, fam.y, fam.target.x, fam.target.y) <= reach * reach) {
           fam.biteTimer = t.biteCooldown * cdMult;
-          fam.pounce = 0.18;
+          // What the renderer plays: a wolf's pounce, a ghoul's longer rake,
+          // and where it landed.
+          fam.pounce = spec.guard ? 0.32 : 0.18;
+          fam.pounceMax = fam.pounce;
+          fam.hitX = fam.target.x; fam.hitY = fam.target.y;
           const damage = (t.dmgBase + t.dmgPerLevel * player.level)
             * dmgMult
             * player.damageMultiplier
@@ -30807,7 +31386,8 @@ window.WS = window.WS || {};
             const skip = new Map([[q, q.spawnId]]);
             WS.Enemy.damageArea(qx, qy, t.biteRadius * t.mauleRadius * player.areaMultiplier,
               damage * t.maulDmg, skip, null, spec.source);
-            WS.FX.flash(qx, qy, 18 + 6 * mates, spec.tint, 0.25);
+            // (the bite itself is drawn by the renderer; this is the pack's weight)
+            if (mates) WS.FX.flash(qx, qy, 10 + 5 * mates, spec.tint, 0.15);
             // A kill does not stop a wolf: it is on the next one at once.
             if (q._dead) { fam.biteTimer = WS.min(fam.biteTimer, t.killRebite); fam.target = null; }
           } else {
@@ -30825,7 +31405,7 @@ window.WS = window.WS || {};
                 WS.Enemy.applyRot(e, t.ghoulRot, t.ghoulRotTime);
               }
             }
-            WS.FX.flash(fam.x, fam.y, t.biteRadius * radiusMult * 0.8, spec.tint, 0.2);
+            // (the rake's sweep is drawn by the renderer, the width of what it hits)
           }
         }
       }
@@ -31979,7 +32559,7 @@ window.WS = window.WS || {};
       if (rank < up.max && !p.banished[id] && offerable) {
         candidates.push({
           type: 'stat', id, art: up.art, quality: up.quality, weight: 2,
-          name: up.name, description: WS.template(up.description, up),
+          name: up.name, description: WS.upgradeText(up, p),
           detail: WS.template(up.detail, up),
           rank: rank + 1, maxRank: up.max,
           note: `Rank ${rank + 1} of ${up.max}`,
@@ -43969,18 +44549,190 @@ window.WS = window.WS || {};
     }
   };
 
+  /* THE SUMMONED, drawn as what they are (sprites.js, Sprites.familiar).
+   *
+   * They were their card glyphs, lit and bobbing. Now a spirit wolf gallops
+   * on baked frames, a ghost of itself streaming behind it and motes of its
+   * light lifting off its back, and a pounce lands as a bright bite on what
+   * it struck; the pack's quarry wears their mark. A ghoul shambles in a pool
+   * of its own rot, drips from the claws, and its rake sweeps a visible arc
+   * the width of what it actually hits. Everything here is what the summon
+   * is doing - nothing is decoration without a cause. */
+  const FAM_TINT = { wolf: [0.70, 0.90, 1.00], ghoul: [0.55, 0.90, 0.40] };
+  /* A frame's silhouette in one colour, cached per frame: laid round the
+     ghoul a few pixels out, it is the rot's light on the edge of the body,
+     and it is what lets a dark corpse be found on dark ground. */
+  const silhouettes = new WeakMap();
+  function silhouette(img, tint) {
+    let c = silhouettes.get(img);
+    if (c) return c;
+    c = document.createElement('canvas');
+    c.width = img.width; c.height = img.height;
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0);
+    g.globalCompositeOperation = 'source-in';
+    g.fillStyle = WS.rgb(tint, 1);
+    g.fillRect(0, 0, c.width, c.height);
+    silhouettes.set(img, c);
+    return c;
+  }
   R.drawFamiliar = function (ctx, fam, time) {
-    const size = 46;
-    const lift = fam.pounce > 0 ? -10 * (fam.pounce / 0.18) : WS.sin(fam.bob * 3) * 2;
-    shadow(ctx, fam.x, fam.y + 12, 15, 0.25);
+    const wolf = fam.kind !== 'ghoul';
+    const tint = FAM_TINT[fam.kind] || fam.spec.tint;
+    const size = wolf ? 56 : 62;
+    const sets = WS.Sprites.familiarFrames[wolf ? 'wolf' : 'ghoul'];
+    const acting = fam.pounce > 0 && fam.pounceMax > 0;
+    const k = acting ? 1 - fam.pounce / fam.pounceMax : 0;
+    // The stride runs on distance covered, so it slows and speeds with them.
+    fam.stride = (fam.stride || 0) + (fam.moved || 0) / (wolf ? 9 : 7);
+    let pose, frame;
+    if (acting) { pose = wolf ? 'pounce' : 'rake'; frame = WS.min(sets[pose] - 1, WS.floor(k * sets[pose])); }
+    else { pose = wolf ? 'run' : 'walk'; frame = WS.floor(fam.stride) % sets[pose]; }
+    const img = WS.Sprites.familiar(wolf ? 'wolf' : 'ghoul', tint, size, pose, frame);
+    const flip = fam.facing > 0;              // drawn facing left
+    const top = -size * (wolf ? 0.64 : 0.7);
+    const lite = this.lite;
+
+    if (wolf) {
+      // The pack's mark on its quarry: one ring for the pack, drawn by the first wolf.
+      const Q = WS.Familiar.quarry;
+      if (Q && !Q._dead && fam === WS.Familiar.list.find((f) => f.kind !== 'ghoul') && WS.Familiar.list.some((f) => f.target === Q)) {
+        const r = Q.radius * 1.5 + 6;
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.translate(Q.x, Q.y + Q.radius * 0.4);
+        ctx.scale(1, 0.5);
+        ctx.rotate(time * 1.4);
+        ctx.strokeStyle = WS.rgb(tint, 0.55 + 0.2 * WS.sin(time * 6));
+        ctx.lineWidth = 2.5;
+        for (let i = 0; i < 3; i++) {
+          ctx.beginPath(); ctx.arc(0, 0, r, i * WS.TAU / 3, i * WS.TAU / 3 + 1.4); ctx.stroke();
+        }
+        ctx.restore();
+      }
+      // The trail: where it was a moment ago, fainter the further back.
+      const tr = fam.trail || (fam.trail = []);
+      if (!tr.length || time - tr[tr.length - 1].t > 0.035) {
+        tr.push({ x: fam.x, y: fam.y, img, flip, t: time });
+        if (tr.length > 5) tr.shift();
+      }
+      if (!lite) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < tr.length - 1; i++) {
+          const q = tr[i];
+          if (WS.dist2(q.x, q.y, fam.x, fam.y) < 16) continue;
+          ctx.globalAlpha = 0.06 + 0.05 * i;
+          ctx.save(); ctx.translate(q.x, q.y); if (q.flip) ctx.scale(-1, 1);
+          ctx.drawImage(q.img, -size / 2, top, size, size);
+          ctx.restore();
+        }
+        ctx.restore();
+      }
+      // Its light on the ground.
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const pool = ctx.createRadialGradient(fam.x, fam.y + 8, 0, fam.x, fam.y + 8, 30);
+      pool.addColorStop(0, WS.rgb(tint, 0.28 + 0.06 * WS.sin(time * 5 + fam.bob)));
+      pool.addColorStop(1, WS.rgb(tint, 0));
+      ctx.fillStyle = pool;
+      ctx.beginPath(); ctx.ellipse(fam.x, fam.y + 8, 30, 13, 0, 0, WS.TAU); ctx.fill();
+      ctx.restore();
+    } else {
+      // The rot it stands in.
+      const pool = ctx.createRadialGradient(fam.x, fam.y + 12, 0, fam.x, fam.y + 12, 28);
+      pool.addColorStop(0, 'rgba(24,40,10,.55)');
+      pool.addColorStop(0.6, WS.rgb(tint, 0.16 + 0.05 * WS.sin(time * 2 + fam.bob)));
+      pool.addColorStop(1, WS.rgb(tint, 0));
+      ctx.fillStyle = pool;
+      ctx.beginPath(); ctx.ellipse(fam.x, fam.y + 12, 28, 11, 0, 0, WS.TAU); ctx.fill();
+    }
+    shadow(ctx, fam.x, fam.y + 12, wolf ? 14 : 16, 0.3);
+
     ctx.save();
-    ctx.globalAlpha = 0.92;
-    ctx.translate(fam.x, fam.y + lift);
-    if (fam.facing < 0) ctx.scale(-1, 1);
-    const icon = WS.Icons.glyph(fam.spec.art, fam.spec.tint, size);
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.drawImage(icon, -size / 2, -size * 0.7, size, size);
+    ctx.translate(fam.x, fam.y);
+    if (flip) ctx.scale(-1, 1);
+    if (!wolf) {
+      const sil = silhouette(img, tint);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.32 + 0.1 * WS.sin(time * 2.5 + fam.bob);
+      for (const [dx, dy] of [[-1.6, 0], [1.6, 0], [0, -1.6], [0, 1.6]]) ctx.drawImage(sil, -size / 2 + dx, top + dy, size, size);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+    }
+    ctx.drawImage(img, -size / 2, top, size, size);
+    if (wolf) {
+      // A spirit gives light: its own shape again, added, soft.
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.22 + 0.08 * WS.sin(time * 7 + fam.bob);
+      ctx.drawImage(img, -size / 2 - 1, top - 1, size + 2, size + 2);
+    }
     ctx.restore();
+
+    if (!lite) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const seed = fam.bob * 3.7;
+      if (wolf) {
+        // Motes of it lifting off its back.
+        for (let i = 0; i < 4; i++) {
+          const t = (time * 0.9 + i / 4 + seed) % 1;
+          const back = (flip ? -1 : 1) * (6 + t * 12);
+          const x = fam.x + back + WS.sin(time * 3 + i * 2) * 3, y = fam.y - 18 - t * 20;
+          ctx.fillStyle = WS.rgb(WS.mix(tint, [1, 1, 1], 0.5), (1 - t) * 0.7);
+          ctx.beginPath(); ctx.arc(x, y, 2.4 * (1 - t) + 0.6, 0, WS.TAU); ctx.fill();
+        }
+      } else {
+        // Rot dripping off the claws.
+        for (let i = 0; i < 2; i++) {
+          const t = (time * 1.3 + i * 0.5 + seed) % 1;
+          const x = fam.x + (flip ? 1 : -1) * (10 + i * 5), y = fam.y + 2 + t * 14;
+          ctx.fillStyle = WS.rgb(tint, (1 - t) * 0.8);
+          ctx.beginPath(); ctx.ellipse(x, y, 1.4, 2.2, 0, 0, WS.TAU); ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+
+    // The blow, where it landed.
+    if (acting) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const fade = 1 - k;
+      if (wolf && fam.hitX !== undefined) {
+        // a bite: two toothed jaws snapping shut on the thing
+        const open = (1 - k) * 7, r = 11;
+        ctx.strokeStyle = WS.rgb(WS.mix(tint, [1, 1, 1], 0.6), 0.9 * fade);
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.lineWidth = 2.4;
+        for (const side of [-1, 1]) {
+          const cy = fam.hitY + side * (open + 2) - side * r;
+          const a0 = side < 0 ? WS.PI * 0.28 : WS.PI * 1.28, a1 = side < 0 ? WS.PI * 0.72 : WS.PI * 1.72;
+          ctx.beginPath(); ctx.arc(fam.hitX, cy, r, a0, a1); ctx.stroke();
+          for (let i = 0; i < 3; i++) {
+            const a = a0 + (a1 - a0) * (0.2 + i * 0.3);
+            const x = fam.hitX + WS.cos(a) * r, y = cy + WS.sin(a) * r;
+            ctx.beginPath(); ctx.moveTo(x - 2, y); ctx.lineTo(x, y - side * 4.5); ctx.lineTo(x + 2, y); ctx.closePath(); ctx.fill();
+          }
+        }
+      } else if (!wolf) {
+        // the rake: three claw lines sweeping across the ground it covers
+        const T = WS.Familiar.tuning, pl = WS.Game.player;
+        const r = T.biteRadius * T.ghoulRadiusMult * (pl ? pl.areaMultiplier : 1);
+        const dir = flip ? 0 : WS.PI;
+        const a0 = dir - 1.1, a1 = dir - 1.1 + 2.2 * WS.min(1, k * 1.4);
+        ctx.lineCap = 'round';
+        for (let i = 0; i < 3; i++) {
+          ctx.strokeStyle = WS.rgb(WS.mix(tint, [1, 1, 0.7], 0.35), (0.7 - i * 0.15) * fade);
+          ctx.lineWidth = 3.2 - i * 0.7;
+          ctx.beginPath();
+          ctx.ellipse(fam.x, fam.y, r * (0.72 + i * 0.12), r * (0.72 + i * 0.12) * 0.62, 0,
+            flip ? a0 : WS.TAU - a1, flip ? a1 : WS.TAU - a0);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
   };
@@ -48839,7 +49591,7 @@ window.WS = window.WS || {};
       const body = el('div', 'tip-body');
       const q = up.quality ? up.quality.charAt(0).toUpperCase() + up.quality.slice(1) + ' passive' : 'Passive';
       body.append(...tipHead(up.name, qualityColour(up.quality), `Rank ${rank} of ${up.max}`, q));
-      body.append(el('div', 'tip-desc', WS.template(up.description, up)));
+      body.append(el('div', 'tip-desc', WS.upgradeText(up, p)));
       if (up.detail) body.append(el('div', 'tip-detail', WS.template(up.detail, up)));
       scalingSection(body, p, WS.Scaling.UPGRADE_STAT[id]);
       const evo = [];
@@ -49265,7 +50017,7 @@ window.WS = window.WS || {};
       slot.append(icon(up.art, qualityColour(up.quality), 34), el('div', 'rim'), el('div', 'rank', String(rank)));
       tipOn(slot, tipPassive(p, id), { prefer: ['above', 'left'], focus: false });
       slot.setAttribute('aria-label', `${up.name}, rank ${rank}/${up.max}`
-        + `\n${WS.template(up.description, up)}`);
+        + `\n${WS.upgradeText(up, p)}`);
       wrap.append(slot);
     }
   };
@@ -49850,16 +50602,26 @@ window.WS = window.WS || {};
     }
     card.append(plate);
 
+    /* A row that does not fit its half of the ledger is tightened first
+       (the arrow's spaces close up), then set a size smaller, and only then
+       given the whole width. A lone "Duration 4.2s -> 4.4s" across the full
+       card, its figure pushed to the far edge under a two-column ledger,
+       read as a mistake; it is a few pixels over, and those come back. */
     function fitStats(box, card) {
       if (!box.isConnected) return;
       const rows = [...box.children];
-      const wide = () => {
+      const over = () => rows.some((r) => r.scrollWidth > r.clientWidth + 1);
+      for (const r of rows) r.classList.remove('wide');
+      box.classList.remove('tight', 'dense');
+      if (over()) box.classList.add('tight');
+      if (over()) box.classList.add('dense');
+      for (const r of rows) if (r.scrollWidth > r.clientWidth + 1) r.classList.add('wide');
+      const cb = card.getBoundingClientRect(), bb = box.getBoundingClientRect();
+      if (bb.bottom > cb.bottom - 6 && !box.classList.contains('dense')) {
+        box.classList.add('dense');
         for (const r of rows) r.classList.remove('wide');
         for (const r of rows) if (r.scrollWidth > r.clientWidth + 1) r.classList.add('wide');
-      };
-      wide();
-      const cb = card.getBoundingClientRect(), bb = box.getBoundingClientRect();
-      if (bb.bottom > cb.bottom - 6) { box.classList.add('dense'); wide(); }
+      }
     }
 
     /* ONE SKELETON FOR EVERY CARD. Name, note, pips, a three-line
@@ -52748,9 +53510,11 @@ window.WS = window.WS || {};
       + `${run.hyper ? ' · Hyper' : ''}${modeTag(run)} · ${WS.Characters[run.characterId].name}`);
     s.inner.classList.add('sheet-wide');
 
+    const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
     const lines = {
-      defeated: `${run.killedBy ? run.killedBy.name : 'The horde'} got through at ${WS.formatTime(run.time)}. `
-        + `${WS.formatNumber(run.kills)} did not.`,
+      defeated: `${run.killedBy ? cap(run.killedBy.name) : 'The horde'} got through at ${WS.formatTime(run.time)}`
+        + (run.killedBy && run.killedBy.hit > 0 ? `, and they hit you for ${WS.formatNumber(run.killedBy.hit)}. ` : '. ')
+        + `${WS.formatNumber(run.kills)} creatures did not make it to dawn.`,
       victory: 'Banked, and Hyper Mode is open on this battlefield.',
       abandoned: 'You walked off the field. The gold is still yours.',
       arena_victory: 'Aethelgard is undone. The eclipse holds nothing now.',

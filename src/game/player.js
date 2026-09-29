@@ -110,6 +110,10 @@
       soulAttuned: 0, souls: 0, soulBonus: 0, soulLock: 0,
       totemAttuned: 0, totems: [], totemTimer: 0.5, totemNext: 0, totemReach: 0,
       holyAttuned: 0, holyPower: 0, holyBonus: 0, holyHit: 0, holyHeal: 0, holyLock: 0, divineTimer: 0,
+      // The callings' own passives, by rank (upgrades.js), and what the
+      // carry-overs keep: gems toward the Undertow, the Smoulder's stacks.
+      undertow: 0, undertowGems: 0, hallowed: 0, ruthless: 0, stalker: 0,
+      slowBurn: 0, smoulder: 0, smoulderTimer: 0, bountiful: 0, deepRoots: 0, fervor: 0,
     };
 
     // Trainer lessons first, then the survivor's own perk, so percentages
@@ -583,7 +587,8 @@
         WS.Audio.play('level');
         return true;
       }
-      run.killedBy = { name: srcName || 'the endless horde' };
+      // What landed the last blow, and how hard, for the defeat screen.
+      run.killedBy = { name: srcName || 'the endless horde', hit: WS.round(taken) };
       WS.Game.beginDeath();
     }
     return true;

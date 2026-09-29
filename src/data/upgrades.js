@@ -194,6 +194,90 @@
         p.flowSteps += WS.Primal.maxSteps(p) - before;
       },
     },
+    /* ------------------------------------------- the callings' passives ---
+       One for each of the eight callings (callings.js), as Ruin Hunger,
+       Primal Kinship and Serenity are for theirs: offered once you hold the
+       calling. Four also carry over, offered to a build that could use their
+       smaller half without the calling, as Curdled Light is; with the calling
+       only the calling's half applies. Every number is in Config. */
+    undertow: {
+      name: 'Undertow', art: 'arcane', quality: 'epic', max: 5, calling: 'overflowAttuned',
+      description: 'The Flood fills {Config.undertowFill%}% faster and its tide runs {Config.undertowTide}s longer',
+      alone: 'Every {Config.undertowGems} gems you gather cut {Config.undertowCut%}% off your slowest weapon\'s wait',
+      detail: 'For Spellflood, and offered once you take Greed\'s Pull too. Without Spellflood it works on its own: '
+        + 'every {Config.undertowGems} gems cut {Config.undertowCut%}% per rank off the wait of whichever weapon has longest left, '
+        + 'so at full ranks the gems ready it outright. With Spellflood, only the Flood\'s half applies.',
+      offer: (p) => p.undertow > 0 || p.overflowAttuned > 0 || (p.upgradeLevels.magnet || 0) > 0,
+      apply: (p) => { p.undertow += 1; },
+    },
+    hallowed: {
+      name: 'Hallowed Mending', art: 'ankh', quality: 'epic', max: 5, calling: 'barrierAttuned',
+      description: 'Your barrier holds {Config.hallowedCap%}% more, and bursts {Config.hallowedBurst%}% harder and {Config.hallowedReach%}% wider',
+      alone: 'Healing you cannot use becomes a Ward of up to {Config.hallowedWard%}% of your max health',
+      heals: true,
+      detail: 'For Radiant Barrier, and offered once anything heals you: regeneration, lifesteal or a healing weapon. '
+        + 'Without the calling it works on its own: overheal becomes a Ward of up to {Config.hallowedWard%}% of your max health '
+        + 'per rank. It takes hits before your health does and stops refilling while it is being struck, like the barrier, '
+        + 'but it never bursts. With Radiant Barrier, only the barrier\'s half applies.',
+      offer: (p) => p.hallowed > 0 || p.barrierAttuned > 0 || p.healthRegen > 0 || p.lifesteal > 0
+        || p.weapons.some((w) => (WS.Weapons[w.id] || {}).healPer > 0),
+      apply: (p) => { p.hallowed += 1; },
+    },
+    ruthless: {
+      name: 'Ruthless', art: 'mask', quality: 'epic', max: 5, calling: 'comboAttuned',
+      description: '+{Config.ruthlessEdge%}% Edge from a crit, a Cutthroat {Config.ruthlessBlow%}% harder, and {Config.ruthlessRegroup}s less to regroup',
+      alone: 'A crit that leaves an ordinary creature under {Config.ruthlessExecute%}% health finishes it',
+      detail: 'For Opportunist, and offered once you take Precision. Without the calling it works on its own: a critical '
+        + 'strike finishes a creature it leaves below {Config.ruthlessExecute%}% of its health per rank. It never touches '
+        + 'elites, bosses or the finales. With Opportunist, only the Cutthroat\'s half applies.',
+      offer: (p) => p.ruthless > 0 || p.comboAttuned > 0 || (p.upgradeLevels.precision || 0) > 0,
+      apply: (p) => { p.ruthless += 1; },
+    },
+    stalker: {
+      name: 'Stalker\'s Patience', art: 'crosshair', quality: 'epic',
+      description: 'A Quarry {Config.stalkerHaste%}% sooner, held {Config.stalkerLife}s longer, and it takes {Config.stalkerBonus%}% more from everything', max: 5,
+      detail: 'For The Quarry. Every rank finds the next Quarry sooner, keeps it marked longer, and makes the mark bite harder, '
+        + 'bosses included.',
+      offer: (p) => p.markAttuned > 0,
+      apply: (p) => { p.stalker += 1; },
+    },
+    slow_burn: {
+      name: 'Slow Burn', art: 'claw', quality: 'epic', max: 5, calling: 'rageAttuned',
+      description: 'Heat builds {Config.slowBurnHeat%}% faster and cools {Config.slowBurnCool%}% slower, and you Boil Over {Config.slowBurnBoil}s longer',
+      alone: 'Every blow you take Smoulders: +{Config.slowBurnStack%}% damage a stack, up to {Config.slowBurnMax}',
+      detail: 'For Seething Blood, and offered once you take Thorns or Ironhide. Without the calling it works on its own: '
+        + 'every blow that lands is a stack of Smoulder, +{Config.slowBurnStack%}% damage per rank, up to {Config.slowBurnMax} '
+        + 'stacks, all gone {Config.slowBurnTime}s after the last blow. A dodged or blocked blow does not count. '
+        + 'With Seething Blood, only the heat\'s half applies.',
+      offer: (p) => p.slowBurn > 0 || p.rageAttuned > 0 || p.thornsRank > 0 || (p.upgradeLevels.armor || 0) > 0,
+      apply: (p) => { p.slowBurn += 1; },
+    },
+    bountiful: {
+      name: 'Bountiful Tithe', art: 'skull', quality: 'epic',
+      description: 'The Tithe fills {Config.bountifulFill%}% faster; a Reaping reaches {Config.bountifulReach%}% wider '
+        + 'and may heal {Config.bountifulHeal%}% more of your health', max: 5,
+      heals: true,
+      detail: 'For Reaper\'s Tithe. Every rank brings the Reaping sooner, widens it and raises the most it can heal you.',
+      offer: (p) => p.soulAttuned > 0,
+      apply: (p) => { p.bountiful += 1; },
+    },
+    deep_roots: {
+      name: 'Deep Roots', art: 'totem', quality: 'epic',
+      description: 'Waystones stand {Config.deepRootsLife}s longer and reach {Config.deepRootsReach%}% farther; '
+        + 'at rank {Config.deepRootsPair}, two of each kind stand at once', max: 5,
+      detail: 'For Waystones. Two embers burn twice; two springs or two gales still mend or hasten once, '
+        + 'but give you more ground to stand on.',
+      offer: (p) => p.totemAttuned > 0,
+      apply: (p) => { p.deepRoots += 1; },
+    },
+    fervor: {
+      name: 'Fervor', art: 'sun', quality: 'epic',
+      description: 'Conviction builds {Config.fervorBuild%}% faster, Judgement takes {Config.fervorJudge%}% more of a boss, '
+        + 'the Aegis holds {Config.fervorAegis}s longer', max: 5,
+      detail: 'For Conviction. Every rank brings the Judgement sooner, and makes it and the Aegis after it count for more.',
+      offer: (p) => p.holyAttuned > 0,
+      apply: (p) => { p.fervor += 1; },
+    },
     serration: {
       name: 'Serration', art: 'bleed', quality: 'uncommon',
       description: 'Critical strikes open a wound that bleeds {Config.serrationShare%}% of the blow per rank', max: 4,
@@ -220,6 +304,15 @@
     },
   };
 
+  /** What a passive's card says to THIS survivor. A calling's passive that
+   *  also works alone (`alone`) says whichever half they would get: the
+   *  calling's if they hold it, its own if they do not. Without a survivor
+   *  (the wiki, the codex) it is the calling's. */
+  WS.upgradeText = function (up, p) {
+    const own = up.alone && p && !(p[up.calling] > 0);
+    return WS.template(own ? up.alone : up.description, up);
+  };
+
   WS.UpgradeOrder = [
     'might', 'haste', 'fleetfoot', 'magnet', 'vitality', 'armor', 'precision',
     'ferocity', 'area', 'quantity', 'luck', 'wisdom', 'recovery', 'velocity',
@@ -227,6 +320,7 @@
     'thorns', 'searing', 'dodge', 'curdled', 'ruin_hunger',
     'grave_call', 'dread_command', 'primal_kinship', 'serenity',
     'serration', 'perennial',
+    'undertow', 'hallowed', 'ruthless', 'stalker', 'slow_burn', 'bountiful', 'deep_roots', 'fervor',
   ];
 
 })(window.WS);

@@ -34,6 +34,13 @@
  *   CONVICTION (Paladin). Hits taken and healing received build Conviction.
  *     At full, a Hammerfall and an Aegis. Keegan: builds a quarter faster.
  *
+ * Each also has an epic passive of five ranks that deepens it (upgrades.js:
+ * Undertow, Hallowed Mending, Ruthless, Stalker's Patience, Slow Burn,
+ * Bountiful Tithe, Deep Roots, Fervor). Four of them carry over: taken
+ * without the calling they do a smaller thing of their own - readying a
+ * weapon from gems, a Ward from overheal, an execute on a crit, a Smoulder
+ * from blows taken - and with it only the calling's half applies.
+ *
  * The code keeps plain working names for the fields (rage, souls, totems,
  * holy) - what the player reads is in blessings.js and the meters below.
  * Every number is in Config under CALLINGS. */
@@ -59,12 +66,14 @@
 
   /* ----------------------------------------------------------- spellflood -- */
   K.overflowNeed = () => C().overflowNeedBase + C().overflowNeedPerMinute * minutes();
+  K.surgeTime = (p) => C().surgeDuration + C().undertowTide * p.undertow;
   K.onGem = function (p) {
-    if (p.overflowAttuned <= 0 || p.surgeTimer > 0) return;
-    p.overflowCharge += 1 + p.overflowBonus;
+    if (p.overflowAttuned <= 0) { undertow(p); return; }
+    if (p.surgeTimer > 0) return;
+    p.overflowCharge += 1 + p.overflowBonus + C().undertowFill * p.undertow;
     if (p.overflowCharge < K.overflowNeed()) return;
     p.overflowCharge = 0;
-    p.surgeTimer = C().surgeDuration;
+    p.surgeTimer = K.surgeTime(p);
     for (const w of p.weapons) WS.Weapon.fire(p, w);
     count('overflows');
     WS.FX.flash(p.x, p.y, 70, WS.CONST.COLORS.arcane, 0.35);
@@ -73,8 +82,25 @@
     WS.Audio.play('evolve');
   };
 
+  /* Undertow without the Flood: every so many gems take a share off the
+     wait of the weapon that waits longest. "Slowest" is by what is left to
+     wait, so it is always the one the cut helps most. */
+  function undertow(p) {
+    if (p.undertow <= 0) return;
+    p.undertowGems += 1;
+    if (p.undertowGems < C().undertowGems) return;
+    p.undertowGems = 0;
+    let slow = null;
+    for (const w of p.weapons) if (!slow || w.cooldown > slow.cooldown) slow = w;
+    if (slow && slow.cooldown > 0) slow.cooldown *= WS.max(0, 1 - C().undertowCut * p.undertow);
+  }
+
   /* ------------------------------------------------------ radiant barrier -- */
-  K.barrierCap = (p) => p.maxHealth * C().barrierCapPct * (1 + p.barrierBonus);
+  /* Hallowed Mending taken without the calling is a Ward: the same shield,
+     fed only by overheal, far smaller, and it never bursts. */
+  K.barrierCap = (p) => (p.barrierAttuned > 0
+    ? p.maxHealth * C().barrierCapPct * (1 + p.barrierBonus + C().hallowedCap * p.hallowed)
+    : p.maxHealth * C().hallowedWard * p.hallowed);
   /* The barrier recharges like a shield, not a sponge. Every Dawnpulse at
      full health is almost all overheal, and all of it went into the barrier,
      so in a crowd it was topped up faster than blows could take it down and
@@ -82,15 +108,15 @@
      and a break for barrierBrokenDelay: a crowd in contact wears it through,
      and stepping clear of the press is what lets it build again. */
   K.onHeal = function (p, gained, wasted) {
-    if (p.barrierAttuned > 0 && !(p.barrierLock > 0)) {
-      const add = wasted + gained * C().barrierFromHeal;
+    if ((p.barrierAttuned > 0 || p.hallowed > 0) && !(p.barrierLock > 0)) {
+      const add = wasted + (p.barrierAttuned > 0 ? gained * C().barrierFromHeal : 0);
       if (add > 0) {
         p.barrier = WS.min(K.barrierCap(p), p.barrier + add);
         p.barrierPeak = WS.max(p.barrierPeak || 0, p.barrier);
       }
     }
     if (p.holyAttuned > 0 && gained > 0 && p.holyLock <= 0) {
-      p.holyHeal += gained * (1 + p.holyBonus);
+      p.holyHeal += gained * holyRate(p);
       // By share of the bar: a flat figure was nothing late in a run, when a
       // healer is mending hundreds a second.
       const per = WS.max(1, p.maxHealth * C().holyHealPct);
@@ -104,9 +130,10 @@
     const cfg = C();
     const k = WS.min(1, (p.barrierPeak || 0) / WS.max(1, K.barrierCap(p)));
     p.barrierPeak = 0;
-    if (k < cfg.barrierBurstMin) return;
-    const r = cfg.barrierBurstRadius * p.areaMultiplier;
-    WS.Enemy.damageArea(p.x, p.y, r, strike(p, cfg.barrierBurstBase, cfg.barrierBurstPerLevel) * k, null, 24, 'radiant_barrier');
+    if (p.barrierAttuned <= 0 || k < cfg.barrierBurstMin) return;
+    const r = cfg.barrierBurstRadius * p.areaMultiplier * (1 + cfg.hallowedReach * p.hallowed);
+    const hit = strike(p, cfg.barrierBurstBase, cfg.barrierBurstPerLevel) * k * (1 + cfg.hallowedBurst * p.hallowed);
+    WS.Enemy.damageArea(p.x, p.y, r, hit, null, 24, 'radiant_barrier');
     WS.FX.flash(p.x, p.y, r, WS.CONST.COLORS.holy, 0.4, 10, 'holy');
     WS.FX.flash(p.x, p.y, r * 0.5, [1, 0.96, 0.8], 0.25);
     WS.Audio.play('cast', undefined, 'holy');
@@ -133,13 +160,13 @@
   K.onCrit = function (p) {
     if (p.comboAttuned <= 0 || p.comboLock > 0 || p.comboGate > 0) return;
     p.comboGate = C().comboGate;
-    p.combo += 1 + p.comboBonus;
+    p.combo += 1 + p.comboBonus + C().ruthlessEdge * p.ruthless;
     if (p.combo >= C().comboNeed) eviscerate(p);
   };
   function eviscerate(p) {
     const cfg = C();
     p.combo = 0;
-    p.comboLock = cfg.comboLock;
+    p.comboLock = K.comboLock(p);
     // The toughest thing within reach, bosses included: that is the point.
     let best = null, most = -1;
     const r2 = cfg.eviscerateRange * cfg.eviscerateRange;
@@ -150,7 +177,8 @@
       if (e.health > most) { most = e.health; best = e; }
     }
     if (best) {
-      WS.Enemy.hit(best, strike(p, cfg.eviscerateBase, cfg.eviscerateLevel) * p.critDamage, 'opportunist');
+      WS.Enemy.hit(best, strike(p, cfg.eviscerateBase, cfg.eviscerateLevel) * p.critDamage
+        * (1 + cfg.ruthlessBlow * p.ruthless), 'opportunist');
       WS.FX.flash(best.x, best.y, 46, [1.0, 0.92, 0.45], 0.3, 6, 'physical');
       WS.FX.burst(best.x, best.y, 14, '#ffe27a', 220, 0.4, 3);
     }
@@ -160,11 +188,22 @@
     WS.Audio.play('crit', p.x);
   }
 
+  K.comboLock = (p) => WS.max(0.5, C().comboLock - C().ruthlessRegroup * p.ruthless);
+  /** Ruthless without the calling: a crit that leaves an ordinary creature
+   *  below the line finishes it. Returns the blow to land instead. */
+  K.execute = function (p, e, amount) {
+    if (p.ruthless <= 0 || p.comboAttuned > 0) return amount;
+    if (e.boss || e.elite || e.finale || e.finaleTag || e.part) return amount;
+    if (e.health - amount > e.maxHealth * C().ruthlessExecute * p.ruthless) return amount;
+    count('executions');
+    return WS.max(amount, e.health + 1);
+  };
+
   /* ------------------------------------------------------------ the quarry -- */
   K.markMult = function (e) {
     const p = WS.Game.player;
     if (!p || p.markTarget !== e) return 1;
-    return 1 + (e.boss || e.finale ? C().markBossBonus : C().markBonus);
+    return 1 + (e.boss || e.finale ? C().markBossBonus : C().markBonus) + C().stalkerBonus * p.stalker;
   };
   /* The quarry is the toughest thing in sight that a hunt can actually
      bring down: an elite, a heavy - not the boss, whose health would outlast
@@ -184,29 +223,38 @@
     best = best || boss;
     if (!best) return;
     p.markTarget = best; p.markSpawn = best.spawnId;
-    p.markLife = cfg.markLife;
+    p.markLife = K.markLife(p);
     WS.FX.notice(best.x, best.y - best.radius - 10, 'Quarry', '#ffcf6a');
   }
-  function markEvery(p) { return C().markEvery * (1 - p.markHaste); }
+  function markEvery(p) { return C().markEvery * WS.max(0.2, 1 - p.markHaste - C().stalkerHaste * p.stalker); }
+  K.markLife = (p) => C().markLife + C().stalkerLife * p.stalker;
 
   /* -------------------------------------------------------- seething blood -- */
   K.onHurt = function (p, landed) {
     const cfg = C();
     if (p.rageAttuned > 0 && p.enrageTimer <= 0 && p.rageLock <= 0) {
-      p.rage += cfg.ragePerHit * (1 + p.rageBonus);
+      p.rage += cfg.ragePerHit * heatRate(p);
       p.rageIdle = cfg.rageHold;
       if (p.rage >= cfg.rageNeed) enrage(p);
     }
     if (p.holyAttuned > 0 && p.holyLock <= 0) {
-      p.holyHit += cfg.holyPerHit * (1 + p.holyBonus);
+      p.holyHit += cfg.holyPerHit * holyRate(p);
       while (p.holyHit >= 1) { p.holyHit -= 1; K.addHoly(p, 1); }
+    }
+    // Slow Burn without the calling: the blow smoulders.
+    if (p.slowBurn > 0 && p.rageAttuned <= 0) {
+      p.smoulder = WS.min(cfg.slowBurnMax, p.smoulder + 1);
+      p.smoulderTimer = cfg.slowBurnTime;
     }
     void landed;
   };
+  const heatRate = (p) => 1 + p.rageBonus + C().slowBurnHeat * p.slowBurn;
+  const holyRate = (p) => 1 + p.holyBonus + C().fervorBuild * p.fervor;
+  K.enrageTime = (p) => C().enrageTime + C().slowBurnBoil * p.slowBurn;
   function enrage(p) {
     const cfg = C();
     p.rage = 0;
-    p.enrageTimer = cfg.enrageTime;
+    p.enrageTimer = K.enrageTime(p);
     count('enrages');
     WS.FX.flash(p.x, p.y, 120, [1.0, 0.3, 0.2], 0.4, 8, 'physical');
     WS.FX.shake(7, 0.35);
@@ -232,13 +280,13 @@
     if (p.rageAttuned > 0 && p.enrageTimer <= 0 && p.rageLock <= 0) {
       const r = C().rageCloseRange;
       if (WS.dist2(e.x, e.y, p.x, p.y) <= r * r) {
-        p.rage += C().ragePerCloseKill * (1 + p.rageBonus);
+        p.rage += C().ragePerCloseKill * heatRate(p);
         p.rageIdle = WS.max(p.rageIdle, 1);
         if (p.rage >= C().rageNeed) enrage(p);
       }
     }
     if (p.soulAttuned > 0 && p.soulLock <= 0) {
-      p.souls += (e.boss ? C().soulBoss : e.elite ? C().soulElite : 1) * (1 + p.soulBonus);
+      p.souls += (e.boss ? C().soulBoss : e.elite ? C().soulElite : 1) * (1 + p.soulBonus + C().bountifulFill * p.bountiful);
       if (p.souls >= K.soulNeed()) soulRend(p);
     }
     if (p.markTarget === e) {
@@ -255,9 +303,10 @@
     const cfg = C();
     p.souls = 0;
     p.soulLock = cfg.soulLock;
-    const r = cfg.rendRadius * p.areaMultiplier;
+    const r = cfg.rendRadius * p.areaMultiplier * (1 + cfg.bountifulReach * p.bountiful);
     const struck = WS.Enemy.damageArea(p.x, p.y, r, strike(p, cfg.rendBase, cfg.rendPerLevel), null, 18, 'reapers_tithe');
-    WS.Player.heal(p, WS.min(p.maxHealth * cfg.rendHealCap, p.maxHealth * cfg.rendHealPer * struck), 'reapers_tithe');
+    const cap = cfg.rendHealCap + cfg.bountifulHeal * p.bountiful;
+    WS.Player.heal(p, WS.min(p.maxHealth * cap, p.maxHealth * cfg.rendHealPer * struck), 'reapers_tithe');
     count('rends');
     WS.FX.flash(p.x, p.y, r, [0.62, 0.3, 0.9], 0.45, 11, 'shadow');
     WS.FX.flash(p.x, p.y, r * 0.4, [0.85, 0.6, 1.0], 0.3);
@@ -268,13 +317,19 @@
   /* ------------------------------------------------------------ waystones -- */
   const TOTEMS = ['searing', 'healing', 'windfury'];
   const STONE_NAME = { searing: 'ember', healing: 'spring', windfury: 'gale' };
-  K.totemReach = (p) => C().totemRadius * p.areaMultiplier * (1 + p.totemReach);
+  K.totemReach = (p) => C().totemRadius * p.areaMultiplier * (1 + p.totemReach + C().deepRootsReach * p.deepRoots);
+  K.totemLife = (p) => C().totemLife + C().deepRootsLife * p.deepRoots;
   function plant(p) {
     const kind = TOTEMS[p.totemNext % TOTEMS.length];
     p.totemNext++;
-    // One of each at most: a new one of a kind replaces the old.
-    for (let i = p.totems.length - 1; i >= 0; i--) if (p.totems[i].kind === kind) p.totems.splice(i, 1);
-    p.totems.push({ kind, x: p.x, y: p.y + 6, life: C().totemLife, max: C().totemLife, tick: 0 });
+    // One of each at most (two with Deep Roots): a new one replaces the oldest.
+    const keep = p.deepRoots >= C().deepRootsPair ? 2 : 1;
+    let same = 0;
+    for (let i = p.totems.length - 1; i >= 0; i--) {
+      if (p.totems[i].kind === kind && ++same >= keep) p.totems.splice(i, 1);
+    }
+    const life = K.totemLife(p);
+    p.totems.push({ kind, x: p.x, y: p.y + 6, life, max: life, tick: 0 });
     count('waystones');
     WS.FX.flash(p.x, p.y, 40, TOTEM_COL[kind], 0.25, 5, 'nature');
     WS.Audio.play('cast', undefined, 'nature');
@@ -311,11 +366,12 @@
     for (let i = enemies.length - 1; i >= 0; i--) {
       const e = enemies[i];
       if (!e || e._dead || e.untargetable) continue;
-      if (e.boss || e.part || e.finale) WS.Enemy.hit(e, e.maxHealth * cfg.judgementBossPct, 'conviction');
+      if (e.boss || e.part || e.finale) WS.Enemy.hit(e, e.maxHealth * (cfg.judgementBossPct + cfg.fervorJudge * p.fervor), 'conviction');
       else WS.Enemy.damage(e, e.health + 1, false, 'conviction');
     }
-    p.divineTimer = cfg.divineShield;
-    p.invulnerable = WS.max(p.invulnerable, cfg.divineShield);
+    const aegis = cfg.divineShield + cfg.fervorAegis * p.fervor;
+    p.divineTimer = aegis;
+    p.invulnerable = WS.max(p.invulnerable, aegis);
     count('storms');
     WS.FX.screen('rgba(255,236,170,.28)', 0.45);
     WS.FX.flash(p.x, p.y, 70, [1, 0.95, 0.75], 0.4);
@@ -335,6 +391,10 @@
     if (p.barrierLock > 0) p.barrierLock = WS.max(0, p.barrierLock - dt);
     if (p.soulLock > 0) p.soulLock = WS.max(0, p.soulLock - dt);
     if (p.divineTimer > 0) p.divineTimer = WS.max(0, p.divineTimer - dt);
+    if (p.smoulderTimer > 0) {
+      p.smoulderTimer -= dt;
+      if (p.smoulderTimer <= 0) { p.smoulderTimer = 0; p.smoulder = 0; }
+    }
 
     // The mark: keep it while the quarry lives and it has not run out.
     if (p.markAttuned > 0) {
@@ -360,7 +420,7 @@
       } else if (p.rageIdle > 0) {
         p.rageIdle -= dt;
       } else if (p.rage > 0) {
-        p.rage = WS.max(0, p.rage - cfg.rageDecay * dt);
+        p.rage = WS.max(0, p.rage - cfg.rageDecay * WS.max(0.2, 1 - cfg.slowBurnCool * p.slowBurn) * dt);
       }
     }
 
@@ -393,6 +453,7 @@
       if (p.enrageTimer > 0) m *= 1 + C().enrageDamage;
     }
     if (p.soulAttuned > 0 && p.souls >= K.soulNeed() * 0.5) m *= 1 + C().soulEmpower;
+    if (p.smoulder > 0) m *= 1 + C().slowBurnStack * p.slowBurn * p.smoulder;
     return m;
   };
   K.cooldownMult = function (p) {
@@ -408,33 +469,40 @@
     const cfg = C();
     if (p.overflowAttuned > 0) {
       out.push(p.surgeTimer > 0
-        ? { key: 'surge', cls: 'calling arcane', label: 'Flood tide', pct: p.surgeTimer / cfg.surgeDuration }
+        ? { key: 'surge', cls: 'calling arcane', label: 'Flood tide', pct: p.surgeTimer / K.surgeTime(p) }
         : { key: 'overflow', cls: 'calling arcane', label: 'Flood', pct: p.overflowCharge / K.overflowNeed() });
     }
-    if (p.barrierAttuned > 0) {
+    if (p.barrierAttuned > 0 || p.hallowed > 0) {
       // Broken, the meter says so and counts the way back; cracked, it says
-      // the barrier is holding but not refilling.
+      // the barrier is holding but not refilling. Without the calling,
+      // Hallowed Mending's Ward reads the same way under its own name.
       const broken = p.barrier <= 0 && p.barrierLock > 0;
+      const name = p.barrierAttuned > 0 ? 'Barrier' : 'Ward';
       out.push({ key: 'barrier', cls: 'calling holy' + (p.barrierLock > 0 ? ' waiting' : ''),
-        label: broken ? 'Barrier broken' : p.barrierLock > 0 ? 'Barrier ' + WS.round(p.barrier) + ' · cracked' : 'Barrier ' + WS.round(p.barrier),
+        label: broken ? name + ' broken' : p.barrierLock > 0 ? name + ' ' + WS.round(p.barrier) + ' · cracked' : name + ' ' + WS.round(p.barrier),
         pct: broken ? 1 - p.barrierLock / C().barrierBrokenDelay : p.barrier / WS.max(1, K.barrierCap(p)) });
     }
     if (p.comboAttuned > 0) {
       out.push(p.comboLock > 0
-        ? { key: 'combowait', cls: 'calling combo waiting', label: 'Regrouping', pct: 1 - p.comboLock / cfg.comboLock }
+        ? { key: 'combowait', cls: 'calling combo waiting', label: 'Regrouping', pct: 1 - p.comboLock / K.comboLock(p) }
         : { key: 'combo', cls: 'calling combo', label: 'Edge', pips: cfg.comboNeed, full: WS.floor(p.combo), pct: p.combo % 1 });
     }
     if (p.markAttuned > 0) {
       out.push(p.markTarget
-        ? { key: 'marked', cls: 'calling mark', label: 'Quarry', pct: p.markLife / cfg.markLife }
+        ? { key: 'marked', cls: 'calling mark', label: 'Quarry', pct: p.markLife / K.markLife(p) }
         : { key: 'mark', cls: 'calling mark waiting', label: 'Next quarry', pct: 1 - p.markTimer / markEvery(p) });
     }
     if (p.rageAttuned > 0) {
       out.push(p.enrageTimer > 0
-        ? { key: 'enraged', cls: 'calling rage', label: 'Boiling over', pct: p.enrageTimer / cfg.enrageTime }
+        ? { key: 'enraged', cls: 'calling rage', label: 'Boiling over', pct: p.enrageTimer / K.enrageTime(p) }
         : p.rageLock > 0
           ? { key: 'ragewait', cls: 'calling rage waiting', label: 'Spent', pct: 1 - p.rageLock / cfg.rageLock }
           : { key: 'rage', cls: 'calling rage', label: 'Heat', pct: p.rage / cfg.rageNeed });
+    }
+    if (p.slowBurn > 0 && p.rageAttuned <= 0) {
+      out.push({ key: 'smoulder', cls: 'calling rage' + (p.smoulder > 0 ? '' : ' waiting'),
+        label: 'Smoulder +' + WS.round(C().slowBurnStack * p.slowBurn * p.smoulder * 100) + '%',
+        pct: p.smoulder > 0 ? p.smoulderTimer / cfg.slowBurnTime : 0 });
     }
     if (p.soulAttuned > 0) {
       const need = K.soulNeed();

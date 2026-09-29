@@ -1424,18 +1424,190 @@
     }
   };
 
+  /* THE SUMMONED, drawn as what they are (sprites.js, Sprites.familiar).
+   *
+   * They were their card glyphs, lit and bobbing. Now a spirit wolf gallops
+   * on baked frames, a ghost of itself streaming behind it and motes of its
+   * light lifting off its back, and a pounce lands as a bright bite on what
+   * it struck; the pack's quarry wears their mark. A ghoul shambles in a pool
+   * of its own rot, drips from the claws, and its rake sweeps a visible arc
+   * the width of what it actually hits. Everything here is what the summon
+   * is doing - nothing is decoration without a cause. */
+  const FAM_TINT = { wolf: [0.70, 0.90, 1.00], ghoul: [0.55, 0.90, 0.40] };
+  /* A frame's silhouette in one colour, cached per frame: laid round the
+     ghoul a few pixels out, it is the rot's light on the edge of the body,
+     and it is what lets a dark corpse be found on dark ground. */
+  const silhouettes = new WeakMap();
+  function silhouette(img, tint) {
+    let c = silhouettes.get(img);
+    if (c) return c;
+    c = document.createElement('canvas');
+    c.width = img.width; c.height = img.height;
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0);
+    g.globalCompositeOperation = 'source-in';
+    g.fillStyle = WS.rgb(tint, 1);
+    g.fillRect(0, 0, c.width, c.height);
+    silhouettes.set(img, c);
+    return c;
+  }
   R.drawFamiliar = function (ctx, fam, time) {
-    const size = 46;
-    const lift = fam.pounce > 0 ? -10 * (fam.pounce / 0.18) : WS.sin(fam.bob * 3) * 2;
-    shadow(ctx, fam.x, fam.y + 12, 15, 0.25);
+    const wolf = fam.kind !== 'ghoul';
+    const tint = FAM_TINT[fam.kind] || fam.spec.tint;
+    const size = wolf ? 56 : 62;
+    const sets = WS.Sprites.familiarFrames[wolf ? 'wolf' : 'ghoul'];
+    const acting = fam.pounce > 0 && fam.pounceMax > 0;
+    const k = acting ? 1 - fam.pounce / fam.pounceMax : 0;
+    // The stride runs on distance covered, so it slows and speeds with them.
+    fam.stride = (fam.stride || 0) + (fam.moved || 0) / (wolf ? 9 : 7);
+    let pose, frame;
+    if (acting) { pose = wolf ? 'pounce' : 'rake'; frame = WS.min(sets[pose] - 1, WS.floor(k * sets[pose])); }
+    else { pose = wolf ? 'run' : 'walk'; frame = WS.floor(fam.stride) % sets[pose]; }
+    const img = WS.Sprites.familiar(wolf ? 'wolf' : 'ghoul', tint, size, pose, frame);
+    const flip = fam.facing > 0;              // drawn facing left
+    const top = -size * (wolf ? 0.64 : 0.7);
+    const lite = this.lite;
+
+    if (wolf) {
+      // The pack's mark on its quarry: one ring for the pack, drawn by the first wolf.
+      const Q = WS.Familiar.quarry;
+      if (Q && !Q._dead && fam === WS.Familiar.list.find((f) => f.kind !== 'ghoul') && WS.Familiar.list.some((f) => f.target === Q)) {
+        const r = Q.radius * 1.5 + 6;
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.translate(Q.x, Q.y + Q.radius * 0.4);
+        ctx.scale(1, 0.5);
+        ctx.rotate(time * 1.4);
+        ctx.strokeStyle = WS.rgb(tint, 0.55 + 0.2 * WS.sin(time * 6));
+        ctx.lineWidth = 2.5;
+        for (let i = 0; i < 3; i++) {
+          ctx.beginPath(); ctx.arc(0, 0, r, i * WS.TAU / 3, i * WS.TAU / 3 + 1.4); ctx.stroke();
+        }
+        ctx.restore();
+      }
+      // The trail: where it was a moment ago, fainter the further back.
+      const tr = fam.trail || (fam.trail = []);
+      if (!tr.length || time - tr[tr.length - 1].t > 0.035) {
+        tr.push({ x: fam.x, y: fam.y, img, flip, t: time });
+        if (tr.length > 5) tr.shift();
+      }
+      if (!lite) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < tr.length - 1; i++) {
+          const q = tr[i];
+          if (WS.dist2(q.x, q.y, fam.x, fam.y) < 16) continue;
+          ctx.globalAlpha = 0.06 + 0.05 * i;
+          ctx.save(); ctx.translate(q.x, q.y); if (q.flip) ctx.scale(-1, 1);
+          ctx.drawImage(q.img, -size / 2, top, size, size);
+          ctx.restore();
+        }
+        ctx.restore();
+      }
+      // Its light on the ground.
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const pool = ctx.createRadialGradient(fam.x, fam.y + 8, 0, fam.x, fam.y + 8, 30);
+      pool.addColorStop(0, WS.rgb(tint, 0.28 + 0.06 * WS.sin(time * 5 + fam.bob)));
+      pool.addColorStop(1, WS.rgb(tint, 0));
+      ctx.fillStyle = pool;
+      ctx.beginPath(); ctx.ellipse(fam.x, fam.y + 8, 30, 13, 0, 0, WS.TAU); ctx.fill();
+      ctx.restore();
+    } else {
+      // The rot it stands in.
+      const pool = ctx.createRadialGradient(fam.x, fam.y + 12, 0, fam.x, fam.y + 12, 28);
+      pool.addColorStop(0, 'rgba(24,40,10,.55)');
+      pool.addColorStop(0.6, WS.rgb(tint, 0.16 + 0.05 * WS.sin(time * 2 + fam.bob)));
+      pool.addColorStop(1, WS.rgb(tint, 0));
+      ctx.fillStyle = pool;
+      ctx.beginPath(); ctx.ellipse(fam.x, fam.y + 12, 28, 11, 0, 0, WS.TAU); ctx.fill();
+    }
+    shadow(ctx, fam.x, fam.y + 12, wolf ? 14 : 16, 0.3);
+
     ctx.save();
-    ctx.globalAlpha = 0.92;
-    ctx.translate(fam.x, fam.y + lift);
-    if (fam.facing < 0) ctx.scale(-1, 1);
-    const icon = WS.Icons.glyph(fam.spec.art, fam.spec.tint, size);
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.drawImage(icon, -size / 2, -size * 0.7, size, size);
+    ctx.translate(fam.x, fam.y);
+    if (flip) ctx.scale(-1, 1);
+    if (!wolf) {
+      const sil = silhouette(img, tint);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.32 + 0.1 * WS.sin(time * 2.5 + fam.bob);
+      for (const [dx, dy] of [[-1.6, 0], [1.6, 0], [0, -1.6], [0, 1.6]]) ctx.drawImage(sil, -size / 2 + dx, top + dy, size, size);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+    }
+    ctx.drawImage(img, -size / 2, top, size, size);
+    if (wolf) {
+      // A spirit gives light: its own shape again, added, soft.
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.22 + 0.08 * WS.sin(time * 7 + fam.bob);
+      ctx.drawImage(img, -size / 2 - 1, top - 1, size + 2, size + 2);
+    }
     ctx.restore();
+
+    if (!lite) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const seed = fam.bob * 3.7;
+      if (wolf) {
+        // Motes of it lifting off its back.
+        for (let i = 0; i < 4; i++) {
+          const t = (time * 0.9 + i / 4 + seed) % 1;
+          const back = (flip ? -1 : 1) * (6 + t * 12);
+          const x = fam.x + back + WS.sin(time * 3 + i * 2) * 3, y = fam.y - 18 - t * 20;
+          ctx.fillStyle = WS.rgb(WS.mix(tint, [1, 1, 1], 0.5), (1 - t) * 0.7);
+          ctx.beginPath(); ctx.arc(x, y, 2.4 * (1 - t) + 0.6, 0, WS.TAU); ctx.fill();
+        }
+      } else {
+        // Rot dripping off the claws.
+        for (let i = 0; i < 2; i++) {
+          const t = (time * 1.3 + i * 0.5 + seed) % 1;
+          const x = fam.x + (flip ? 1 : -1) * (10 + i * 5), y = fam.y + 2 + t * 14;
+          ctx.fillStyle = WS.rgb(tint, (1 - t) * 0.8);
+          ctx.beginPath(); ctx.ellipse(x, y, 1.4, 2.2, 0, 0, WS.TAU); ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+
+    // The blow, where it landed.
+    if (acting) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const fade = 1 - k;
+      if (wolf && fam.hitX !== undefined) {
+        // a bite: two toothed jaws snapping shut on the thing
+        const open = (1 - k) * 7, r = 11;
+        ctx.strokeStyle = WS.rgb(WS.mix(tint, [1, 1, 1], 0.6), 0.9 * fade);
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.lineWidth = 2.4;
+        for (const side of [-1, 1]) {
+          const cy = fam.hitY + side * (open + 2) - side * r;
+          const a0 = side < 0 ? WS.PI * 0.28 : WS.PI * 1.28, a1 = side < 0 ? WS.PI * 0.72 : WS.PI * 1.72;
+          ctx.beginPath(); ctx.arc(fam.hitX, cy, r, a0, a1); ctx.stroke();
+          for (let i = 0; i < 3; i++) {
+            const a = a0 + (a1 - a0) * (0.2 + i * 0.3);
+            const x = fam.hitX + WS.cos(a) * r, y = cy + WS.sin(a) * r;
+            ctx.beginPath(); ctx.moveTo(x - 2, y); ctx.lineTo(x, y - side * 4.5); ctx.lineTo(x + 2, y); ctx.closePath(); ctx.fill();
+          }
+        }
+      } else if (!wolf) {
+        // the rake: three claw lines sweeping across the ground it covers
+        const T = WS.Familiar.tuning, pl = WS.Game.player;
+        const r = T.biteRadius * T.ghoulRadiusMult * (pl ? pl.areaMultiplier : 1);
+        const dir = flip ? 0 : WS.PI;
+        const a0 = dir - 1.1, a1 = dir - 1.1 + 2.2 * WS.min(1, k * 1.4);
+        ctx.lineCap = 'round';
+        for (let i = 0; i < 3; i++) {
+          ctx.strokeStyle = WS.rgb(WS.mix(tint, [1, 1, 0.7], 0.35), (0.7 - i * 0.15) * fade);
+          ctx.lineWidth = 3.2 - i * 0.7;
+          ctx.beginPath();
+          ctx.ellipse(fam.x, fam.y, r * (0.72 + i * 0.12), r * (0.72 + i * 0.12) * 0.62, 0,
+            flip ? a0 : WS.TAU - a1, flip ? a1 : WS.TAU - a0);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
   };

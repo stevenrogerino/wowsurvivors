@@ -32,6 +32,13 @@
  * half the meter every time and the rest "much closer to each other"; this
  * is that sentence as a number.
  *
+ * PASSIVES='quantity:3,area:5' gives every build those passive ranks first. The
+ * fits above were all made with none, and a union that scales far harder
+ * with one of them than its peers do is invisible without it: Ruin Unbound
+ * fires two bolts, so Duplicity's first rank is +50% of it and a twelfth of
+ * Storm of Steel. DISCOVER=1 also hands the union the discoveries its
+ * sources would carry into it (Frostfire, Shadowflame), as a forged one does.
+ *
  * MAP, DIFF and HYPER=0 choose the night (default: Professional, the Pale
  * Wastes, Hyper - the hardest there is).
  *
@@ -56,7 +63,12 @@ const path = require('path');
   const N = +(process.env.SEEDS || 5);
   const MAP = process.env.MAP || 'palewastes', DIFF = process.env.DIFF || 'professional';
   const HYPER = process.env.HYPER !== '0', SHARE = process.env.SHARE === '1';
-  const r = await p.evaluate(({ mults, TIME, N, MAP, DIFF, HYPER, SHARE }) => {
+  const PASSIVES = (process.env.PASSIVES || '').split(',').filter(Boolean).map((x) => x.split(':')).map(([id, n]) => [id, +(n || 1)]);
+  const DISCOVER = process.env.DISCOVER === '1';
+  // WEAPONS='{"union_ruin":{"projectiles":3}}': try a change to any weapon field.
+  const WEAPONS = JSON.parse(process.env.WEAPONS || '{}');
+  const r = await p.evaluate(({ mults, TIME, N, MAP, DIFF, HYPER, SHARE, PASSIVES, DISCOVER, WEAPONS }) => {
+    for (const [id, o] of Object.entries(WEAPONS)) Object.assign(WS.Weapons[id], o);
     WS.Save.unlockAll();
     WS.Save.settings.difficulty = DIFF;
     WS.Save.db.unlocks.hyper[MAP] = true;
@@ -78,7 +90,8 @@ const path = require('path');
     const evolve = (pl, id) => { const w = WS.Player.addWeapon(pl, id);
       w.level = WS.WEAPON_MAX_LEVEL; pl.weaponLevels[id] = w.level; w.evolved = true; };
     const union = (pl, id) => { const w = WS.Player.addWeapon(pl, id);
-      w.level = WS.WEAPON_MAX_LEVEL; pl.weaponLevels[id] = w.level; };
+      w.level = WS.WEAPON_MAX_LEVEL; pl.weaponLevels[id] = w.level;
+      if (DISCOVER) { const rec = WS.Unions.find((u) => u.result === id); WS.ComboSystem.inherit(pl, w, rec.from); } };
 
     /* Real waves ten minutes in. Effective damage only - overkill is clipped,
        because run.damageDone books the whole swing and that flatters anything
@@ -91,6 +104,9 @@ const path = require('path');
       const pl = WS.Game.player;
       pl.weapons.length = 0; pl.weaponLevels = {};
       for (const c of WS.ComboOrder) pl.combosActive[c] = true;
+      for (const [id, n] of PASSIVES) for (let k = 0; k < n; k++) {
+        const up = WS.Upgrades[id]; up.apply(pl, up); pl.upgradeLevels[id] = (pl.upgradeLevels[id] || 0) + 1;
+      }
       build(pl);
       WS.Enemy.pool.releaseAll(); WS.Hazard.pool.releaseAll(); WS.Projectile.bolts.releaseAll();
       WS.Game.run.time = TIME;
@@ -153,9 +169,10 @@ const path = require('path');
         pairField: Math.round(acc.pf/n), unionField: Math.round(acc.uf/n) });
     }
     return out;
-  }, { mults: JSON.parse(process.env.MULTS || '{}'), TIME, N, MAP, DIFF, HYPER, SHARE });
+  }, { mults: JSON.parse(process.env.MULTS || '{}'), TIME, N, MAP, DIFF, HYPER, SHARE, PASSIVES, DISCOVER, WEAPONS });
 
-  console.log('at t=' + TIME + 's over ' + N + ' seeds, ' + MAP + ', ' + DIFF + (HYPER ? ', Hyper' : ''));
+  console.log('at t=' + TIME + 's over ' + N + ' seeds, ' + MAP + ', ' + DIFF + (HYPER ? ', Hyper' : '')
+    + (PASSIVES.length ? ', with ' + PASSIVES.map((x) => x.join(' x')).join(', ') : '') + (DISCOVER ? ', discoveries carried' : ''));
   if (SHARE) {
     console.log('  ' + 'union'.padEnd(15) + 'dmg'.padStart(6) + '   share of build   effective dps');
     r.forEach(x => console.log('  ' + x.name.padEnd(15) + String(x.dmg).padStart(6)

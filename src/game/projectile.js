@@ -69,6 +69,7 @@
        never start - and the re-acquire below is perfectly capable of finding
        it someone. */
     b.homing = !!(spec.homing || spec.homingTarget);
+    b.homed = !!spec.homed;
     b.turnRate = TURN_RATE * WS.max(1, spec.turnScale || 1);
     // The speed a seeking bolt holds for its whole life. Kept because steering
     // must never be allowed to change it - see the turn in P.update.
@@ -181,7 +182,7 @@
   /** Splash + slow + lifesteal + on-hit procs shared by every bolt hit. */
   function resolveHit(b, e) {
     const player = WS.Game.player;
-    let dealt = WS.Enemy.hit(e, b.damage, b.source);
+    let dealt = WS.Enemy.hit(e, b.damage, b.source, b.homed);
 
     if (b.splash) {
       WS.Enemy.damageArea(b.x, b.y, b.splash, b.damage * 0.6, b.hitBy, null, b.source);

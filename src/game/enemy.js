@@ -518,7 +518,7 @@
 
   /* ------------------------------------------------------ damage intake -- */
   /** Central strike entry: rolls the survivor's crit and prints the number. */
-  Enemy.hit = function (e, amount, source) {
+  Enemy.hit = function (e, amount, source, homed) {
     const player = WS.Game.player;
     /* A weapon built to sweep a crowd still has to finish a boss. Novas,
        fields, chains and the like hit one big target far more softly than
@@ -537,7 +537,12 @@
           const own = WS.Player.getWeapon(player, source);
           if (own && own.evolved) f = w.evolvedBossDamage;
         }
-        if (f) amount *= f;
+        /* The factor makes up for the shots of a spread that fly past one
+           big target. A shot a discovery taught to seek (Truestrike) flies
+           past nothing: carried into Storm of Steel, all fifteen knives
+           converged on a boss at 5.3x each, ten times what the union did
+           to it before (tools/synergy-sweep.js). It keeps no factor above 1. */
+        if (f) amount *= homed ? WS.min(f, 1) : f;
       }
     }
     // The finale's own, under a rising sun (Finale.sunriseMult).
@@ -548,6 +553,8 @@
     if (e.dmgTaken !== 1) amount *= e.dmgTaken;
     // A ghoul's rot (Familiar): everything lands a little harder for a while.
     if (e.rotTimer > 0) amount *= e.rotMult;
+    // Ruthless, taken without Opportunist: a crit finishes an ordinary creature left low.
+    if (crit) amount = WS.Calling.execute(player, e, amount);
     /* Serration: a crit opens a wound that bleeds a share of the blow over
        the next few seconds. A fresh crit reopens it at whichever is worse. */
     if (crit && player.serration > 0 && !e._dead) {

@@ -664,6 +664,47 @@
     holyNeed: 36, holyPerHit: 0.5, holyHealPct: 0.10, holyLock: 20,
     judgementBossPct: 0.04, divineShield: 2.0,
 
+    /* CALLING PASSIVES - one epic passive of five ranks for each calling
+       (upgrades.js), the way Ruin Hunger, Primal Kinship and Serenity deepen
+       theirs. Every figure is per rank. Four of them carry over: without the
+       calling they do a smaller thing of their own, never the calling itself;
+       with it, only the calling's half applies.
+       Undertow (Spellflood): the Flood fills undertowFill faster and the tide
+       runs undertowTide seconds longer. Without it: every undertowGems gems
+       gathered take undertowCut off the slowest weapon's wait. */
+    undertowFill: 0.10, undertowTide: 0.6, undertowGems: 15, undertowCut: 0.20,
+    // Hallowed Mending (Radiant Barrier): the barrier holds hallowedCap more,
+    // and its burst strikes hallowedBurst harder and hallowedReach wider.
+    // Without it: overheal becomes a Ward of up to hallowedWard of max health,
+    // which takes hits like the barrier but never bursts.
+    hallowedCap: 0.10, hallowedBurst: 0.15, hallowedReach: 0.06, hallowedWard: 0.04,
+    // Ruthless (Opportunist): ruthlessEdge more Edge a crit, a Cutthroat
+    // ruthlessBlow harder, ruthlessRegroup seconds less to regroup. Without
+    // it: a crit that leaves an ordinary creature (no elite, no boss) below
+    // ruthlessExecute of its health finishes it.
+    ruthlessEdge: 0.10, ruthlessBlow: 0.15, ruthlessRegroup: 0.3, ruthlessExecute: 0.03,
+    // Stalker's Patience (The Quarry, no carry-over): a Quarry stalkerHaste
+    // sooner, held stalkerLife seconds longer, taking stalkerBonus more.
+    stalkerHaste: 0.06, stalkerLife: 1, stalkerBonus: 0.05,
+    // Slow Burn (Seething Blood): heat builds slowBurnHeat faster and cools
+    // slowBurnCool slower, and Boil Over lasts slowBurnBoil seconds longer.
+    // Without it: every blow taken is a stack of Smoulder, slowBurnStack
+    // damage each, up to slowBurnMax, gone slowBurnTime after the last blow.
+    slowBurnHeat: 0.08, slowBurnCool: 0.10, slowBurnBoil: 0.6,
+    slowBurnStack: 0.006, slowBurnMax: 8, slowBurnTime: 4,
+    // Bountiful Tithe (Reaper's Tithe, no carry-over): it fills bountifulFill
+    // faster, and a Reaping reaches bountifulReach wider and may heal
+    // bountifulHeal more of max health.
+    bountifulFill: 0.08, bountifulReach: 0.08, bountifulHeal: 0.01,
+    // Deep Roots (Waystones, no carry-over): stones stand deepRootsLife
+    // seconds longer and reach deepRootsReach farther; from rank
+    // deepRootsPair two of each kind stand at once.
+    deepRootsLife: 1, deepRootsReach: 0.06, deepRootsPair: 5,
+    // Fervor (Conviction, no carry-over): it builds fervorBuild faster, a
+    // Judgement takes fervorJudge more of a boss, the Aegis lasts fervorAegis
+    // seconds longer.
+    fervorBuild: 0.08, fervorJudge: 0.005, fervorAegis: 0.3,
+
     difficulties: {
       beginner: { label: 'Beginner', scale: 0.75, gold: 0.85, interval: 1.1 },
       veteran: { label: 'Veteran', scale: 1.0, gold: 1.0, interval: 1.0 },

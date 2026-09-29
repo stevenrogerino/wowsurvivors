@@ -5263,7 +5263,349 @@
   };
 
   /* -------------------------------------------------------------- API ----- */
+  /* ------------------------------------------------------- the summoned --
+   * THE SPIRIT WOLF AND THE GRAVE GHOUL.
+   *
+   * Both were their passive's card glyph, lit and floated about the field:
+   * a flat blue badge that hopped, and a green stick figure. They are a pack
+   * that runs down the big thing and a corpse that stands guard, and now they
+   * are drawn as those - with legs that move.
+   *
+   * Frames are baked like the survivors' stride (Sprites.familiar), from a
+   * phase k in [0,1): the wolf in a gallop, eight frames, and a pounce; the
+   * ghoul in a knuckle-dragging shamble, six, and a rake. Both face left
+   * like the bestiary. */
+
+  /** A leg from the hip, in segments bent by angle (0 is straight down,
+   *  positive swings back - to the right, since everything faces left). */
+  function jointed(x, y, segs) {
+    const pts = [[x, y]];
+    let a = 0;
+    for (const [len, turn] of segs) {
+      a += turn;
+      x += Math.sin(a) * len; y += Math.cos(a) * len;
+      pts.push([x, y]);
+    }
+    return pts;
+  }
+
+  /** The wolf of the pack: a hunting spirit, pale fire with a hot core.
+   *  `pose` is 'run' (k the gallop) or 'pounce' (k how far into the leap). */
+  function spiritWolf(g, s, p, k, pose) {
+    const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+    const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+    const TAU = WS.TAU;
+    const leap = pose === 'pounce';
+    const ph = k * TAU;
+    // The gallop: the body rises as the forelegs reach and drops as they land.
+    const bob = leap ? -6 * Math.sin(k * WS.PI) : -Math.sin(ph * 2) * 1.6;
+    const tilt = leap ? -0.16 + 0.1 * k : Math.sin(ph) * 0.05;
+    const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+    g.save();
+    g.translate(X(52), Y(58 + bob));
+    g.rotate(tilt);
+    g.translate(-X(52), -Y(58));
+
+    // the tail: not a brush but a plume of spirit-fire, licking back
+    const plume = (w, len, a, col) => {
+      const sw = Math.sin(ph + a) * 4;
+      const tip = [80 + len, 40 + sw - len * 0.25];
+      poly(g, P([[75, 44], [80 + len * 0.45, 42 - w + sw * 0.4], tip, [80 + len * 0.55, 46 + w * 0.3 + sw * 0.5], [76, 51]]), col, null);
+    };
+    g.save();
+    plume(6, 17, 0, p.mid);
+    g.globalAlpha = 0.75; plume(4, 14, 0.8, p.hi);
+    g.globalAlpha = 0.9; plume(2, 9, 1.6, '#ffffff');
+    g.restore();
+
+    // legs: far pair first, in the shade of the body
+    const fore = (off) => {
+      const q = ph + off;
+      if (leap) return [[13, 0.9 - k * 0.4 - 1.5], [11, -0.3], [5, -0.4]];
+      const swing = Math.sin(q) * 0.75;                     // forward is negative
+      const lift = Math.max(0, Math.cos(q)) * 0.9;          // knee folds on the way forward
+      return [[12, swing - 0.05], [11, lift], [5, -lift * 0.5 - 0.2]];
+    };
+    const hind = (off) => {
+      const q = ph + off + 2.6;
+      if (leap) return [[13, 1.2 + k * 0.3], [10, 0.2], [7, 0.6]];
+      const swing = Math.sin(q) * 0.65;
+      return [[13, 0.35 + swing], [10, -1.0 - Math.max(0, -Math.cos(q)) * 0.4], [7, 0.75]];
+    };
+    const legW = (a, b) => [a, a * 0.62, b, b * 0.8].map(X);
+    const farFore = jointed(38, 58, fore(0.5)), farHind = jointed(71, 56, hind(0.5));
+    limb(g, P(farHind), legW(11, 4), far);
+    limb(g, P(farFore), legW(9, 3.8), far);
+
+    // the body: a deep chest, a tucked waist, the haunch - and it is light
+    // one mass from the throat to the tail: the neck is not a separate ball
+    const body = mass(g, P([[22, 42], [27, 36.6], [36, 40.6], [46, 41.6], [58, 43], [70, 41.4], [78, 44.4],
+      [82, 51], [80, 58.6], [75.6, 63.6], [68, 63], [61, 60.4], [53, 60], [45, 63.6],
+      [38.4, 66], [31, 61], [26, 52]]), p);
+    g.save();
+    body(); g.clip();
+    // the hot core: spirit shows through from the inside
+    const core = g.createRadialGradient(X(46), Y(52), X(2), X(52), Y(52), X(26));
+    core.addColorStop(0, 'rgba(255,255,255,.75)');
+    core.addColorStop(0.35, WS.rgb(WS.mix(p.tint, [1, 1, 1], 0.6), 0.35));
+    core.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = core; g.fillRect(X(20), Y(30), X(70), X(40));
+    pelt(g, p, X(56), Y(52), X(26), X(11), 0.02, 8, 0.6, 0.35);
+    // the ribs of the spirit: faint bright bands along the flank
+    g.strokeStyle = p.glow; g.globalAlpha = 0.35; g.lineWidth = u * 0.9; g.lineCap = 'round';
+    for (let i = 0; i < 4; i++) {
+      const x = 44 + i * 5;
+      g.beginPath(); g.moveTo(X(x), Y(45)); g.quadraticCurveTo(X(x - 3), Y(53), X(x - 1), Y(60)); g.stroke();
+    }
+    g.restore();
+    // the shoulder sigil: the pack's mark, a bright rune
+    g.save();
+    g.shadowColor = p.glow; g.shadowBlur = X(3);
+    g.strokeStyle = '#ffffff'; g.globalAlpha = 0.85; g.lineWidth = u * 1.1; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(X(44), Y(48)); g.lineTo(X(47), Y(53)); g.lineTo(X(50), Y(48)); g.stroke();
+    g.beginPath(); g.moveTo(X(47), Y(53)); g.lineTo(X(47), Y(57)); g.stroke();
+    g.restore();
+    // the mane: a ruff of flame standing off the shoulders, streaming back
+    for (let i = 0; i < 8; i++) {
+      const t = i / 7, bx = 30 + t * 22, by = 43 - Math.sin(t * WS.PI) * 2;
+      const len = 5 + Math.sin(t * WS.PI) * 4 + Math.sin(ph * 2 + i) * 0.8;
+      poly(g, P([[bx - 1.8, by + 2], [bx + 3 + len * 0.35, by - len], [bx + 2.6, by + 2]]),
+        i % 2 ? p.hi : p.mid, null);
+    }
+    // near legs over the body
+    const nearFore = jointed(40, 57, fore(0)), nearHind = jointed(68, 55, hind(0));
+    limb(g, P(nearHind), legW(13, 4.4), p);
+    limb(g, P(nearFore), legW(10.4, 4.2), p);
+    for (const leg of [nearFore, nearHind]) {
+      const [x, y] = leg[leg.length - 1];
+      shaded(g, X(x - 1), Y(y + 0.6), X(3.6), X(1.8), p);
+      // pale claws
+      for (let i = 0; i < 3; i++) poly(g, P([[x - 2.4 - i * 1.3, y + 0.4], [x - 4.2 - i * 1.3, y + 2.2], [x - 2.8 - i * 1.3, y + 1.8]]), '#ffffff', null);
+    }
+
+    // the head, held forward and low on the neck: this is a hunter
+    const jaw = leap ? 0.45 : 0.08;
+    g.save();
+    g.translate(X(24), Y(39));
+    g.rotate(leap ? -0.12 : 0);
+    g.translate(-X(24), -Y(39));
+    shaded(g, X(24), Y(38), X(9.4), X(7.6), p, 0.12);
+    pelt(g, p, X(24), Y(38), X(9.4), X(7.6), 0.12, 3, 0.5, 0.24);
+    // ears laid back when it runs - it is going somewhere
+    poly(g, P([[23, 32], [31, 23.6], [29, 33]]), p.mid, p.line, u * 0.6);
+    poly(g, P([[27.4, 33], [36, 26], [33, 35]]), p.lo, p.line, u * 0.6);
+    // the muzzle, and the lower jaw open when it lunges
+    poly(g, P([[18, 35], [6, 38.4], [4.4, 41], [7.4, 42.6], [18.6, 42.6]]), p.mid, p.line, u * 0.7);
+    g.save();
+    g.translate(X(18), Y(42.6)); g.rotate(jaw); g.translate(-X(18), -Y(42.6));
+    poly(g, P([[18.6, 42.6], [8.4, 42.8], [9.4, 45.4], [18, 45.8]]), p.lo, p.line, u * 0.6);
+    for (let i = 0; i < 3; i++) poly(g, P([[10 + i * 2.6, 43], [11 + i * 2.6, 41.2], [12 + i * 2.6, 43]]), '#ffffff', null);
+    g.restore();
+    for (let i = 0; i < 3; i++) poly(g, P([[9.6 + i * 2.6, 42.4], [10.6 + i * 2.6, 45], [11.6 + i * 2.6, 42.4]]), '#ffffff', null);
+    g.fillStyle = p.line;
+    g.beginPath(); g.ellipse(X(5.8), Y(39.2), X(1.5), X(1.2), 0, 0, WS.TAU); g.fill();
+    // the eyes: the brightest thing on it, burning white, streaming back
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    const streak = g.createLinearGradient(X(18), 0, X(34), 0);
+    streak.addColorStop(0, 'rgba(255,255,255,.9)');
+    streak.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = streak;
+    g.beginPath(); g.moveTo(X(18), Y(34.4)); g.lineTo(X(34), Y(33)); g.lineTo(X(34), Y(35)); g.lineTo(X(18.6), Y(36.6)); g.closePath(); g.fill();
+    g.restore();
+    eyes(g, X(18.6), Y(35.4), X(0.01), X(1.7), '#ffffff');
+    g.restore();
+    g.restore();
+    // It is a spirit: below the knee it thins into mist.
+    g.save();
+    g.globalCompositeOperation = 'destination-out';
+    const mist = g.createLinearGradient(0, Y(74), 0, Y(94));
+    mist.addColorStop(0, 'rgba(0,0,0,0)');
+    mist.addColorStop(1, 'rgba(0,0,0,.72)');
+    g.fillStyle = mist;
+    g.fillRect(0, Y(74), s, Y(26));
+    g.restore();
+  }
+
+  /** The guard: a grave-ghoul, hunched and long-armed, rot glowing through
+   *  its hide. `pose` is 'walk' (k the shamble) or 'rake' (k the swing). */
+  function graveGhoul(g, s, p, k, pose) {
+    const u = s / 100, X = (x) => x * u, Y = (y) => y * u;
+    const P = (pts) => pts.map(([x, y]) => [X(x), Y(y)]);
+    const ph = k * WS.TAU;
+    const rake = pose === 'rake';
+    // The hide is a corpse's, grey-green and dead; the tint is the ROT,
+    // which is the only bright thing on it.
+    const rot = p.tint;
+    p = palette([0.50, 0.56, 0.46]);
+    p.tint = rot;
+    const far = { hi: p.mid, mid: p.lo, lo: p.dark, dark: p.dark, line: p.line, glow: p.glow };
+    const RAG = '#2f322a', RAG_LO = '#171914';
+    const ROT = '#b8ff5a';
+    // A lurch: the whole body rolls from foot to foot.
+    const sway = rake ? 0 : Math.sin(ph) * 1.4;
+    const dip = rake ? 0 : -Math.abs(Math.sin(ph)) * 1.4;
+    const lean = rake ? -0.12 + 0.2 * k : Math.sin(ph) * 0.04;
+    g.save();
+    g.translate(X(52 + sway), Y(64 + dip)); g.rotate(lean); g.translate(-X(52), -Y(64));
+
+    const clawHand = (x, y, a, pal, len) => {
+      g.lineCap = 'round';
+      for (let i = 0; i < 4; i++) {
+        const b = a + (-0.55 + i * 0.36);
+        const kx = x + Math.cos(b) * 3.4, ky = y + Math.sin(b) * 3.4;
+        const tx = kx + Math.cos(b + 0.8) * len, ty = ky + Math.sin(b + 0.8) * len;
+        g.strokeStyle = pal.line; g.lineWidth = u * 1.7;
+        g.beginPath(); g.moveTo(X(x), Y(y)); g.lineTo(X(kx), Y(ky)); g.lineTo(X(tx), Y(ty)); g.stroke();
+        g.strokeStyle = '#e8e2c8'; g.lineWidth = u * 0.8;
+        g.beginPath(); g.moveTo(X(kx), Y(ky)); g.lineTo(X(tx), Y(ty)); g.stroke();
+      }
+    };
+
+    // far arm: in the walk it swings opposite the near one; in the rake it
+    // is braced on the ground
+    const farSwing = rake ? 0.5 : -Math.sin(ph) * 0.45;
+    const farArm = jointed(58, 44, [[14, -0.2 + farSwing], [15, -0.5], [0.1, 0]]);
+    limb(g, P(farArm.slice(0, 3)), [7, 5, 4].map(X), far);
+    const fh = farArm[2];
+    clawHand(fh[0], fh[1], WS.PI * 0.62, far, 5);
+    // legs: short, bowed, stepping
+    const step = (off) => rake ? [[11, 0.5], [11, -0.8], [4, 1.2]]
+      : [[11, 0.35 + Math.sin(ph + off) * 0.5], [11, -0.8 - Math.max(0, Math.cos(ph + off)) * 0.5], [4, 1.3]];
+    const farLeg = jointed(60, 66, step(WS.PI));
+    limb(g, P(farLeg), [9, 6, 4.2, 3.6].map(X), far);
+    const nearLeg = jointed(52, 67, step(0));
+    limb(g, P(nearLeg), [10, 6.6, 4.6, 4].map(X), p);
+    for (const leg of [farLeg, nearLeg]) {
+      const [x, y] = leg[leg.length - 1];
+      poly(g, P([[x - 5, y - 0.6], [x + 2, y - 1], [x + 2.4, y + 2], [x - 6, y + 2.2]]), p.lo, p.line, u * 0.6);
+    }
+    // the rags round the hips
+    poly(g, P([[46, 60], [66, 58], [68, 68], [62, 72], [59, 66], [55, 73], [50, 67], [45, 70]]), RAG, RAG_LO, u * 0.7);
+
+    // the body: a bent back, the spine standing out, hunched over the belly
+    const body = mass(g, P([[40, 46], [46, 39], [55, 36], [64, 38.6], [69, 45], [68, 55], [63, 61.6], [52, 62.6], [43, 58]]), p);
+    g.save();
+    body(); g.clip();
+    // the rot, glowing through the hide in patches
+    for (const [x, y, r] of [[60, 50, 7], [49, 55, 5], [66, 42, 4]]) {
+      const gl = g.createRadialGradient(X(x), Y(y), 0, X(x), Y(y), X(r));
+      gl.addColorStop(0, WS.rgb(WS.mix(p.tint, [1, 1, 0.6], 0.4), 0.95));
+      gl.addColorStop(0.5, WS.rgb(p.tint, 0.45));
+      gl.addColorStop(1, WS.rgb(p.tint, 0));
+      g.fillStyle = gl; g.beginPath(); g.arc(X(x), Y(y), X(r), 0, WS.TAU); g.fill();
+    }
+    // ribs, through the side where the flesh has gone
+    const hollow = g.createRadialGradient(X(50), Y(50), 1, X(50), Y(50), X(9));
+    hollow.addColorStop(0, 'rgba(10,14,6,.75)'); hollow.addColorStop(1, 'rgba(10,14,6,0)');
+    g.fillStyle = hollow; g.beginPath(); g.arc(X(50), Y(50), X(9), 0, WS.TAU); g.fill();
+    g.lineCap = 'round';
+    for (let i = 0; i < 4; i++) {
+      const y = 44 + i * 3.8;
+      g.strokeStyle = 'rgba(236,230,206,.75)'; g.lineWidth = u * 1.3;
+      g.beginPath(); g.moveTo(X(56), Y(y - 1)); g.quadraticCurveTo(X(48), Y(y), X(44 + i), Y(y + 3)); g.stroke();
+    }
+    g.restore();
+    // the spine: knuckles of bone along the hunched back
+    for (let i = 0; i < 6; i++) {
+      const t = i / 5, bx = 46 + t * 22, by = 38 - Math.sin(t * WS.PI) * 3.4 + t * 2;
+      shaded(g, X(bx), Y(by), X(1.9), X(1.5), STONE, 0);
+    }
+
+    // the head: low and thrust forward, jaw unhinged, eyes burning
+    const hx = rake ? 34 - k * 3 : 35, hy = rake ? 38 + k * 2 : 39 + Math.sin(ph * 2) * 0.6;
+    shaded(g, X(hx), Y(hy), X(9.4), X(8.4), p, -0.2);
+    g.save();
+    g.beginPath(); g.ellipse(X(hx), Y(hy), X(9.4), X(8.4), -0.2, 0, WS.TAU); g.clip();
+    g.fillStyle = 'rgba(10,14,6,.4)';
+    g.beginPath(); g.ellipse(X(hx - 2), Y(hy + 4), X(4), X(3), 0, 0, WS.TAU); g.fill();
+    g.restore();
+    // lank hair
+    g.strokeStyle = 'rgba(28,30,24,.85)'; g.lineWidth = u * 0.8; g.lineCap = 'round';
+    for (let i = 0; i < 6; i++) {
+      g.beginPath(); g.moveTo(X(hx + 2 + i * 1.4), Y(hy - 7 + i * 0.5));
+      g.quadraticCurveTo(X(hx + 8 + i * 1.2), Y(hy), X(hx + 7 + i * 1.6), Y(hy + 8)); g.stroke();
+    }
+    // the jaw, hanging open, a string of rot from it
+    const jo = rake ? 1 + k * 2 : 0.6;
+    poly(g, P([[hx - 9, hy + 3], [hx - 1, hy + 4.4], [hx - 2, hy + 10 + jo], [hx - 8, hy + 9 + jo]]), p.lo, p.line, u * 0.6);
+    g.fillStyle = '#1a2410';
+    g.beginPath(); g.moveTo(X(hx - 8.6), Y(hy + 2.4)); g.lineTo(X(hx - 1.6), Y(hy + 3.6)); g.lineTo(X(hx - 2.6), Y(hy + 7 + jo)); g.lineTo(X(hx - 8), Y(hy + 6.4 + jo)); g.closePath(); g.fill();
+    for (let i = 0; i < 3; i++) { g.fillStyle = '#e6dcc0'; g.fillRect(X(hx - 8 + i * 2), Y(hy + 2.6), X(1), Y(1.6)); }
+    g.save();
+    g.globalAlpha = 0.7; g.strokeStyle = ROT; g.lineWidth = u * 0.7;
+    g.beginPath(); g.moveTo(X(hx - 5), Y(hy + 9 + jo)); g.quadraticCurveTo(X(hx - 5.6), Y(hy + 13), X(hx - 4.6), Y(hy + 16)); g.stroke();
+    g.restore();
+    eyes(g, X(hx - 3.6), Y(hy - 2), X(2.6), X(1.5), ROT);
+
+    // the near arm: the weapon. In the walk it swings; in the rake it goes
+    // from raised behind the head to swept through low in front.
+    let nearArm;
+    if (rake) {
+      const a0 = -2.5 + k * 3.2;                         // shoulder angle, back to front
+      nearArm = jointed(48, 44, [[13, a0], [14, 0.6 - k * 0.3], [0.1, 0]]);
+    } else {
+      nearArm = jointed(48, 45, [[13, -0.25 + Math.sin(ph) * 0.45], [15, -0.55], [0.1, 0]]);
+    }
+    limb(g, P(nearArm.slice(0, 3)), [8.4, 5.6, 4.6].map(X), p);
+    // a rag off the forearm
+    const [ex, ey] = nearArm[1];
+    poly(g, P([[ex - 1, ey], [ex + 4, ey + 1], [ex + 3, ey + 6], [ex + 1, ey + 4], [ex - 1, ey + 6]]), RAG, RAG_LO, u * 0.5);
+    const nh = nearArm[2];
+    const handA = rake ? WS.PI * (1.25 - k * 0.6) : WS.PI * 0.72;
+    // mid-rake, the claws leave their path behind them in rot-light
+    if (rake && k > 0.2 && k < 0.9) {
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      g.lineCap = 'round';
+      for (let i = 0; i < 3; i++) {
+        g.strokeStyle = WS.rgb(WS.mix(rot, [1, 1, 1], 0.3), 0.55 - i * 0.12);
+        g.lineWidth = u * (2.4 - i * 0.5);
+        g.beginPath();
+        g.arc(X(48), Y(44), X(22 + i * 3.2), WS.PI * (1.05 + i * 0.03), WS.PI * (0.55 + k * 0.4), true);
+        g.stroke();
+      }
+      g.restore();
+    }
+    clawHand(nh[0], nh[1], handA, p, 6.4);
+    // the rot on the claws: they glow at the tips
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    const tip = g.createRadialGradient(X(nh[0]), Y(nh[1]), 0, X(nh[0]), Y(nh[1]), X(8));
+    tip.addColorStop(0, WS.rgb(p.tint, 0.55)); tip.addColorStop(1, WS.rgb(p.tint, 0));
+    g.fillStyle = tip; g.beginPath(); g.arc(X(nh[0]), Y(nh[1]), X(8), 0, WS.TAU); g.fill();
+    g.restore();
+    g.restore();
+  }
+
+  const FAMILIAR_ART = { wolf: spiritWolf, ghoul: graveGhoul };
+  const FAMILIAR_FRAMES = { wolf: { run: 8, pounce: 3 }, ghoul: { walk: 6, rake: 4 } };
+
   WS.Sprites = {
+    /** A summon's frame (the spirit wolf, the grave ghoul), baked and cached
+     *  like a stride frame. `pose` is one of FAMILIAR_FRAMES[kind]; `frame`
+     *  counts within it. */
+    familiar(kind, tint, size, pose, frame) {
+      size = WS.round(size);
+      const set = FAMILIAR_FRAMES[kind] || FAMILIAR_FRAMES.wolf;
+      const n = set[pose] || 1;
+      const f = ((frame % n) + n) % n;
+      const key = `f:${kind}:${WS.hex(tint)}:${size}:${pose}:${f}`;
+      let c = cache.get(key);
+      if (c) return c;
+      const res = size * SS;
+      const body = make(res, res);
+      const p = palette(tint);
+      p.tint = tint;
+      (FAMILIAR_ART[kind] || spiritWolf)(body.getContext('2d'), res, p,
+        pose === 'pounce' || pose === 'rake' ? (n > 1 ? f / (n - 1) : 0) : f / n, pose);
+      c = outline(body, res, p);
+      c.displaySize = size;
+      cache.set(key, c);
+      return c;
+    },
+    familiarFrames: FAMILIAR_FRAMES,
+
     /** Cached creature sprite. `size` is the full canvas edge in world units. */
     creature(art, tint, size, kit) {
       size = WS.round(size);
