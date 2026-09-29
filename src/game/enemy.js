@@ -579,6 +579,9 @@
     if (player && player.felAttuned > 0 && amount > e.health) {
       WS.Player.gainFel(player, amount - WS.max(0, e.health));
     }
+    // Waystones: damage dealt close builds the Ember - not the stones' own,
+    // or an eruption would raise the next stone, and that one the next.
+    if (player && player.totemAttuned > 0 && source !== 'waystones') WS.Calling.onDeal(player, e, WS.min(amount, WS.max(0, e.health)));
     e.health -= amount;
     // A finale boss between lives: the blow lands, the phase ends, nothing
     // past the line is taken.

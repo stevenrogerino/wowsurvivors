@@ -3196,6 +3196,11 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .meter.calling.rage .meter-fill { background: linear-gradient(90deg, #8a1e14, #ff7a5a); }
 .meter.calling.soul .meter-fill { background: linear-gradient(90deg, #4a2270, #c89aff); }
 .meter.calling.totem .meter-fill { background: linear-gradient(90deg, #2a6a8a, #9fe0ff); }
+/* Waystones: one bar per stone, in the stone's own colour; lit while it stands. */
+.meter.calling.totem.searing .meter-fill { background: linear-gradient(90deg, #7a2e10, #ff9a4a); }
+.meter.calling.totem.healing .meter-fill { background: linear-gradient(90deg, #1f6a52, #7ef0c4); }
+.meter.calling.totem.windfury .meter-fill { background: linear-gradient(90deg, #2a5a8a, #a6d8ff); }
+.meter.calling.totem.up { filter: brightness(1.25); }
 .meter.calling.waiting .meter-fill { opacity: .6; filter: saturate(.6); }
 
 /* A trial under way (the Lost Calves, the Still Hand) and a Highmoor shrine's
@@ -4682,11 +4687,26 @@ window.WS = window.WS || {};
     // rest in place; at 0.15 it is +9s there and +4s late.
     soulNeedBase: 50, soulNeedPerMinute: 10, soulBoss: 25, soulElite: 6, soulEmpower: 0.15, soulLock: 5,
     rendRadius: 240, rendBase: 90, rendPerLevel: 9, rendHealPer: 0.015, rendHealCap: 0.15,
-    // Waystones: one every totemEvery seconds, cycling ember / spring / gale,
-    // each standing totemLife (one of a kind at a time).
-    totemEvery: 3, totemLife: 10, totemRadius: 200,
+    /* Waystones: each stone is BUILT by a way of fighting, and rises where
+       you stand when it is full, standing totemLife (one of a kind: a new
+       one replaces the old). They used to rise on a timer, ember, spring,
+       gale, over and over, which asked nothing of anyone.
+         Ember: damage you deal within totemRadius of you. Full after
+           emberSeconds of your own recent damage, if all of it were dealt
+           close; a build that fights at range fills it slowly. It erupts
+           as it rises, then sears everything near it every totemSearTick.
+         Spring: healing you receive, overheal included; full at springNeed
+           of your max health. It rains: a pool every springPoolEvery near
+           you, standing springPoolLife, mending springPoolHeal of max health
+           a second while you stand in one.
+         Gale: ground you cover; full after galeDistance. Near it, weapons
+           fire totemHaste as often. */
+    totemLife: 10, totemRadius: 200,
+    emberSeconds: 5, springNeed: 0.6, galeDistance: 1600,
     totemSearTick: 0.5, totemSearBase: 10, totemSearPerLevel: 0.4,
-    totemHeal: 0.015, totemHaste: 0.8,
+    emberEruptBase: 60, emberEruptPerLevel: 6,
+    springPoolEvery: 1.1, springPoolLife: 3.5, springPoolRadius: 46, springPoolHeal: 0.04,
+    totemHaste: 0.8,
     // Conviction: holyPerHit for each hit taken, one for every holyHealPct of
     // max health healed. At holyNeed, Judgement: every creature on the field
     // struck down and judgementBossPct off a boss, with an Aegis; then
@@ -7225,7 +7245,7 @@ window.WS = window.WS || {};
     /* ------------------------------------------------ tank / defensive --- */
     thorns: {
       name: 'Thorns', art: 'thorn', quality: 'uncommon',
-      description: 'Attackers take damage back, melee and ranged.', max: 5,
+      description: 'Every rank: attackers take {Config.thornsFlat} + {Config.thornsDamagePct%}% of their blow back, melee and ranged', max: 5,
       detail: 'Any enemy that hits you, with a melee swing OR a ranged bolt, takes {Config.thornsFlat} + {Config.thornsDamagePct%}% of that damage back per rank (even if you dodge or block). Ranged bolts reflect to the caster that fired them.',
       apply: (p) => { p.thornsRank += 1; },
     },
@@ -7349,8 +7369,8 @@ window.WS = window.WS || {};
       name: 'Deep Roots', art: 'totem', quality: 'epic',
       description: 'Waystones stand {Config.deepRootsLife}s longer and reach {Config.deepRootsReach%}% farther; '
         + 'at rank {Config.deepRootsPair}, two of each kind stand at once', max: 5,
-      detail: 'For Waystones. Two embers burn twice; two springs or two gales still mend or hasten once, '
-        + 'but give you more ground to stand on.',
+      detail: 'For Waystones. With two of a kind standing, two embers burn twice and two springs rain twice as many pools; '
+        + 'two gales still hasten once, over more ground.',
       offer: (p) => p.totemAttuned > 0,
       apply: (p) => { p.deepRoots += 1; },
     },
@@ -7649,9 +7669,10 @@ window.WS = window.WS || {};
     },
     waystones: {
       name: 'Waystones', art: 'totem', quality: 'legendary',
-      description: 'Every few seconds a waystone rises where you stand: ember, then spring, then gale. Fight beside them.',
-      detail: 'A stone every {Config.totemEvery}s, standing {Config.totemLife}s; one of each kind at a time\n'
-        + 'Ember: burns everything near it. Spring: {Config.totemHeal%}% health a second while you are near. '
+      description: 'Three stones, each built by how you fight: the Ember by damage dealt close, the Spring by healing, the Gale by ground covered. Full, it rises where you stand.',
+      detail: 'Each stands {Config.totemLife}s; a new one of a kind replaces the old\n'
+        + 'Ember: erupts as it rises, then burns everything near it\n'
+        + 'Spring: rains pools near you; standing in one mends {Config.springPoolHeal%}% health a second\n'
         + 'Gale: weapons {Config.totemHaste~%}% faster while you are near\n'
         + "Vonnra's stones reach {Config.callingEdge%}% farther",
       apply: (p) => { p.totemAttuned += 1; },
@@ -27472,6 +27493,9 @@ window.WS = window.WS || {};
     if (player && player.felAttuned > 0 && amount > e.health) {
       WS.Player.gainFel(player, amount - WS.max(0, e.health));
     }
+    // Waystones: damage dealt close builds the Ember - not the stones' own,
+    // or an eruption would raise the next stone, and that one the next.
+    if (player && player.totemAttuned > 0 && source !== 'waystones') WS.Calling.onDeal(player, e, WS.min(amount, WS.max(0, e.health)));
     e.health -= amount;
     // A finale boss between lives: the blow lands, the phase ends, nothing
     // past the line is taken.
@@ -28872,7 +28896,8 @@ window.WS = window.WS || {};
       markAttuned: 0, markTarget: null, markSpawn: 0, markLife: 0, markTimer: 1.5, markHaste: 0,
       rageAttuned: 0, rage: 0, rageBonus: 0, rageIdle: 0, rageLock: 0, enrageTimer: 0,
       soulAttuned: 0, souls: 0, soulBonus: 0, soulLock: 0,
-      totemAttuned: 0, totems: [], totemTimer: 0.5, totemNext: 0, totemReach: 0,
+      totemAttuned: 0, totems: [], totemReach: 0, pools: [],
+      emberFill: 0, springFill: 0, galeFill: 0, dpsEma: 0,
       holyAttuned: 0, holyPower: 0, holyBonus: 0, holyHit: 0, holyHeal: 0, holyLock: 0, divineTimer: 0,
       // The callings' own passives, by rank (upgrades.js), and what the
       // carry-overs keep: gems toward the Undertow, the Smoulder's stacks.
@@ -29644,9 +29669,10 @@ window.WS = window.WS || {};
  *   REAPER'S TITHE (Warlock). Kills pay the Tithe. Over half paid it
  *     empowers you; paid in full, a Reaping tears at everything near and
  *     heals you for what it takes. Nim: fills a quarter faster.
- *   WAYSTONES (Shaman). Every few seconds a stone rises where you stand -
- *     ember, spring, then gale - and fighting beside them pays. Vonnra:
- *     their reach is a quarter farther.
+ *   WAYSTONES (Shaman). Each stone is built by a way of fighting - damage
+ *     dealt close builds the Ember, healing the Spring, ground covered the
+ *     Gale - and rises where you stand when it is full. Fighting beside
+ *     them pays. Vonnra: their reach is a quarter farther.
  *   CONVICTION (Paladin). Hits taken and healing received build Conviction.
  *     At full, a Hammerfall and an Aegis. Keegan: builds a quarter faster.
  *
@@ -29730,6 +29756,11 @@ window.WS = window.WS || {};
         p.barrier = WS.min(K.barrierCap(p), p.barrier + add);
         p.barrierPeak = WS.max(p.barrierPeak || 0, p.barrier);
       }
+    }
+    // The Spring is built by mending, what spills over included.
+    if (p.totemAttuned > 0 && gained + wasted > 0) {
+      p.springFill += (gained + wasted) / WS.max(1, p.maxHealth * C().springNeed);
+      if (p.springFill >= 1) { p.springFill = 0; plant(p, 'healing'); }
     }
     if (p.holyAttuned > 0 && gained > 0 && p.holyLock <= 0) {
       p.holyHeal += gained * holyRate(p);
@@ -29931,13 +29962,10 @@ window.WS = window.WS || {};
   }
 
   /* ------------------------------------------------------------ waystones -- */
-  const TOTEMS = ['searing', 'healing', 'windfury'];
   const STONE_NAME = { searing: 'ember', healing: 'spring', windfury: 'gale' };
   K.totemReach = (p) => C().totemRadius * p.areaMultiplier * (1 + p.totemReach + C().deepRootsReach * p.deepRoots);
   K.totemLife = (p) => C().totemLife + C().deepRootsLife * p.deepRoots;
-  function plant(p) {
-    const kind = TOTEMS[p.totemNext % TOTEMS.length];
-    p.totemNext++;
+  function plant(p, kind) {
     // One of each at most (two with Deep Roots): a new one replaces the oldest.
     const keep = p.deepRoots >= C().deepRootsPair ? 2 : 1;
     let same = 0;
@@ -29945,8 +29973,16 @@ window.WS = window.WS || {};
       if (p.totems[i].kind === kind && ++same >= keep) p.totems.splice(i, 1);
     }
     const life = K.totemLife(p);
-    p.totems.push({ kind, x: p.x, y: p.y + 6, life, max: life, tick: 0 });
+    const t = { kind, x: p.x, y: p.y + 6, life, max: life, tick: 0, rain: 0 };
+    p.totems.push(t);
     count('waystones');
+    // The ember stone comes up out of the ground in a gout of fire.
+    if (kind === 'searing') {
+      const cfg = C();
+      WS.Enemy.damageArea(t.x, t.y, K.totemReach(p), strike(p, cfg.emberEruptBase, cfg.emberEruptPerLevel), null, 22, 'waystones');
+      WS.FX.flash(t.x, t.y, K.totemReach(p), TOTEM_COL.searing, 0.35, 10, 'fire');
+      WS.FX.shake(3, 0.15);
+    }
     WS.FX.flash(p.x, p.y, 40, TOTEM_COL[kind], 0.25, 5, 'nature');
     WS.Audio.play('cast', undefined, 'nature');
   }
@@ -29959,6 +29995,16 @@ window.WS = window.WS || {};
     }
     return null;
   }
+
+  /** Damage dealt close builds the Ember: measured against the survivor's
+   *  own recent damage, so it fills at the same pace at 5:00 and 25:00, and
+   *  only as fast as the fighting is near. */
+  K.onDeal = function (p, e, got) {
+    const r = C().totemRadius * p.areaMultiplier * (1 + p.totemReach);
+    if (WS.dist2(e.x, e.y, p.x, p.y) > r * r) return;
+    p.emberFill += got / WS.max(40, p.dpsEma * C().emberSeconds);
+    if (p.emberFill >= 1) { p.emberFill = 0; plant(p, 'searing'); }
+  };
 
   /* ------------------------------------------------------------ conviction -- */
   K.addHoly = function (p, n) {
@@ -30042,8 +30088,19 @@ window.WS = window.WS || {};
 
     // Totems: plant, and let the ones standing work.
     if (p.totemAttuned > 0) {
-      p.totemTimer -= dt;
-      if (p.totemTimer <= 0) { p.totemTimer = cfg.totemEvery; plant(p); }
+      // Recent damage, for the Ember's pace; ground covered, for the Gale.
+      const run = WS.Game.run;
+      if (run && dt > 0) {
+        const d = WS.max(0, run.damageDone - (p._lastDone === undefined ? run.damageDone : p._lastDone));
+        p._lastDone = run.damageDone;
+        p.dpsEma += (d / dt - p.dpsEma) * WS.min(1, dt / 4);
+      }
+      if (p._lx !== undefined) {
+        const step = WS.min(40, WS.dist(p.x, p.y, p._lx, p._ly));
+        p.galeFill += step / cfg.galeDistance;
+        if (p.galeFill >= 1) { p.galeFill = 0; plant(p, 'windfury'); }
+      }
+      p._lx = p.x; p._ly = p.y;
       const r = K.totemReach(p);
       for (let i = p.totems.length - 1; i >= 0; i--) {
         const t = p.totems[i];
@@ -30057,7 +30114,27 @@ window.WS = window.WS || {};
           }
         }
       }
-      if (nearTotem(p, 'healing')) WS.Player.heal(p, p.maxHealth * cfg.totemHeal * dt, 'waystones');
+      // The Spring rains: pools fall near you, inside its reach.
+      for (const t of p.totems) {
+        if (t.kind !== 'healing') continue;
+        t.rain -= dt;
+        if (t.rain > 0) continue;
+        t.rain = cfg.springPoolEvery;
+        const a = WS.random() * WS.TAU, d = 20 + WS.random() * 50;
+        let x = p.x + WS.cos(a) * d, y = p.y + WS.sin(a) * d;
+        const dx = x - t.x, dy = y - t.y, dd = Math.hypot(dx, dy);
+        if (dd > r * 0.9) { x = t.x + dx / dd * r * 0.9; y = t.y + dy / dd * r * 0.9; }
+        p.pools.push({ x, y, life: cfg.springPoolLife, max: cfg.springPoolLife });
+      }
+      let inPool = false;
+      const pr = cfg.springPoolRadius * p.areaMultiplier;
+      for (let i = p.pools.length - 1; i >= 0; i--) {
+        const q = p.pools[i];
+        q.life -= dt;
+        if (q.life <= 0) { p.pools.splice(i, 1); continue; }
+        if (WS.dist2(q.x, q.y, p.x, p.y) <= pr * pr) inPool = true;
+      }
+      if (inPool) WS.Player.heal(p, p.maxHealth * cfg.springPoolHeal * dt, 'waystones');
     }
   };
 
@@ -30127,8 +30204,13 @@ window.WS = window.WS || {};
         : { key: 'souls', cls: 'calling soul', label: p.souls >= need * 0.5 ? 'Tithe · empowered' : 'Tithe', pct: p.souls / need });
     }
     if (p.totemAttuned > 0) {
-      out.push({ key: 'totem', cls: 'calling totem', label: 'Next stone: ' + STONE_NAME[TOTEMS[p.totemNext % 3]],
-        pct: 1 - p.totemTimer / cfg.totemEvery });
+      // One bar per stone: how near each is to rising, or how long it stands.
+      for (const [kind, fill] of [['searing', p.emberFill], ['healing', p.springFill], ['windfury', p.galeFill]]) {
+        const up = p.totems.find((t) => t.kind === kind);
+        const name = STONE_NAME[kind].charAt(0).toUpperCase() + STONE_NAME[kind].slice(1);
+        out.push({ key: 'totem-' + kind + (up ? '-up' : ''), cls: 'calling totem ' + kind + (up ? ' up' : ''),
+          label: up ? name + ' stone · ' + WS.ceil(up.life) + 's' : name, pct: fill });
+      }
     }
     if (p.holyAttuned > 0) {
       out.push(p.holyLock > 0
@@ -45089,6 +45171,35 @@ window.WS = window.WS || {};
 
   /** Waystone auras on the ground: a ring each, in the kind's colour. */
   R.drawCallingGround = function (ctx, p, time) {
+    /* The Spring's rain: pools of it on the ground, rippling, a bright rim
+       while you stand in one. Drawn before the stones' rings so a pool reads
+       as water on the ground, not another aura. */
+    if (p.pools && p.pools.length) {
+      const pr = WS.Config.springPoolRadius * p.areaMultiplier;
+      const c = WS.Calling.TOTEM_COL.healing;
+      ctx.save();
+      for (const q of p.pools) {
+        const fade = WS.min(1, q.life / 0.5, (q.max - q.life) / 0.25);
+        const inside = WS.dist2(q.x, q.y, p.x, p.y) <= pr * pr;
+        const g = ctx.createRadialGradient(q.x, q.y, 0, q.x, q.y, pr);
+        g.addColorStop(0, WS.rgb(c, 0.28 * fade));
+        g.addColorStop(0.75, WS.rgb(c, 0.16 * fade));
+        g.addColorStop(1, WS.rgb(c, 0));
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.ellipse(q.x, q.y, pr, pr * 0.62, 0, 0, WS.TAU); ctx.fill();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = WS.rgb(WS.mix(c, [1, 1, 1], 0.4), (inside ? 0.8 : 0.4) * fade);
+        ctx.lineWidth = inside ? 2.2 : 1.4;
+        ctx.beginPath(); ctx.ellipse(q.x, q.y, pr, pr * 0.62, 0, 0, WS.TAU); ctx.stroke();
+        // a ripple running out from where the drop fell
+        const k = ((q.max - q.life) * 1.4) % 1;
+        ctx.strokeStyle = WS.rgb(WS.mix(c, [1, 1, 1], 0.6), 0.45 * (1 - k) * fade);
+        ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.ellipse(q.x, q.y, pr * k, pr * k * 0.62, 0, 0, WS.TAU); ctx.stroke();
+        ctx.globalCompositeOperation = 'source-over';
+      }
+      ctx.restore();
+    }
     if (!p.totems || !p.totems.length) return;
     const r = WS.Calling.totemReach(p);
     ctx.save();

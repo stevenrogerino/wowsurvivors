@@ -108,7 +108,8 @@
       markAttuned: 0, markTarget: null, markSpawn: 0, markLife: 0, markTimer: 1.5, markHaste: 0,
       rageAttuned: 0, rage: 0, rageBonus: 0, rageIdle: 0, rageLock: 0, enrageTimer: 0,
       soulAttuned: 0, souls: 0, soulBonus: 0, soulLock: 0,
-      totemAttuned: 0, totems: [], totemTimer: 0.5, totemNext: 0, totemReach: 0,
+      totemAttuned: 0, totems: [], totemReach: 0, pools: [],
+      emberFill: 0, springFill: 0, galeFill: 0, dpsEma: 0,
       holyAttuned: 0, holyPower: 0, holyBonus: 0, holyHit: 0, holyHeal: 0, holyLock: 0, divineTimer: 0,
       // The callings' own passives, by rank (upgrades.js), and what the
       // carry-overs keep: gems toward the Undertow, the Smoulder's stacks.

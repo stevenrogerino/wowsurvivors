@@ -3112,6 +3112,11 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .meter.calling.rage .meter-fill { background: linear-gradient(90deg, #8a1e14, #ff7a5a); }
 .meter.calling.soul .meter-fill { background: linear-gradient(90deg, #4a2270, #c89aff); }
 .meter.calling.totem .meter-fill { background: linear-gradient(90deg, #2a6a8a, #9fe0ff); }
+/* Waystones: one bar per stone, in the stone's own colour; lit while it stands. */
+.meter.calling.totem.searing .meter-fill { background: linear-gradient(90deg, #7a2e10, #ff9a4a); }
+.meter.calling.totem.healing .meter-fill { background: linear-gradient(90deg, #1f6a52, #7ef0c4); }
+.meter.calling.totem.windfury .meter-fill { background: linear-gradient(90deg, #2a5a8a, #a6d8ff); }
+.meter.calling.totem.up { filter: brightness(1.25); }
 .meter.calling.waiting .meter-fill { opacity: .6; filter: saturate(.6); }
 
 /* A trial under way (the Lost Calves, the Still Hand) and a Highmoor shrine's

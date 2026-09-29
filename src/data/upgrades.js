@@ -141,7 +141,7 @@
     /* ------------------------------------------------ tank / defensive --- */
     thorns: {
       name: 'Thorns', art: 'thorn', quality: 'uncommon',
-      description: 'Attackers take damage back, melee and ranged.', max: 5,
+      description: 'Every rank: attackers take {Config.thornsFlat} + {Config.thornsDamagePct%}% of their blow back, melee and ranged', max: 5,
       detail: 'Any enemy that hits you, with a melee swing OR a ranged bolt, takes {Config.thornsFlat} + {Config.thornsDamagePct%}% of that damage back per rank (even if you dodge or block). Ranged bolts reflect to the caster that fired them.',
       apply: (p) => { p.thornsRank += 1; },
     },
@@ -265,8 +265,8 @@
       name: 'Deep Roots', art: 'totem', quality: 'epic',
       description: 'Waystones stand {Config.deepRootsLife}s longer and reach {Config.deepRootsReach%}% farther; '
         + 'at rank {Config.deepRootsPair}, two of each kind stand at once', max: 5,
-      detail: 'For Waystones. Two embers burn twice; two springs or two gales still mend or hasten once, '
-        + 'but give you more ground to stand on.',
+      detail: 'For Waystones. With two of a kind standing, two embers burn twice and two springs rain twice as many pools; '
+        + 'two gales still hasten once, over more ground.',
       offer: (p) => p.totemAttuned > 0,
       apply: (p) => { p.deepRoots += 1; },
     },

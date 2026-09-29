@@ -1861,6 +1861,35 @@
 
   /** Waystone auras on the ground: a ring each, in the kind's colour. */
   R.drawCallingGround = function (ctx, p, time) {
+    /* The Spring's rain: pools of it on the ground, rippling, a bright rim
+       while you stand in one. Drawn before the stones' rings so a pool reads
+       as water on the ground, not another aura. */
+    if (p.pools && p.pools.length) {
+      const pr = WS.Config.springPoolRadius * p.areaMultiplier;
+      const c = WS.Calling.TOTEM_COL.healing;
+      ctx.save();
+      for (const q of p.pools) {
+        const fade = WS.min(1, q.life / 0.5, (q.max - q.life) / 0.25);
+        const inside = WS.dist2(q.x, q.y, p.x, p.y) <= pr * pr;
+        const g = ctx.createRadialGradient(q.x, q.y, 0, q.x, q.y, pr);
+        g.addColorStop(0, WS.rgb(c, 0.28 * fade));
+        g.addColorStop(0.75, WS.rgb(c, 0.16 * fade));
+        g.addColorStop(1, WS.rgb(c, 0));
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.ellipse(q.x, q.y, pr, pr * 0.62, 0, 0, WS.TAU); ctx.fill();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = WS.rgb(WS.mix(c, [1, 1, 1], 0.4), (inside ? 0.8 : 0.4) * fade);
+        ctx.lineWidth = inside ? 2.2 : 1.4;
+        ctx.beginPath(); ctx.ellipse(q.x, q.y, pr, pr * 0.62, 0, 0, WS.TAU); ctx.stroke();
+        // a ripple running out from where the drop fell
+        const k = ((q.max - q.life) * 1.4) % 1;
+        ctx.strokeStyle = WS.rgb(WS.mix(c, [1, 1, 1], 0.6), 0.45 * (1 - k) * fade);
+        ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.ellipse(q.x, q.y, pr * k, pr * k * 0.62, 0, 0, WS.TAU); ctx.stroke();
+        ctx.globalCompositeOperation = 'source-over';
+      }
+      ctx.restore();
+    }
     if (!p.totems || !p.totems.length) return;
     const r = WS.Calling.totemReach(p);
     ctx.save();

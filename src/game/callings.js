@@ -28,9 +28,10 @@
  *   REAPER'S TITHE (Warlock). Kills pay the Tithe. Over half paid it
  *     empowers you; paid in full, a Reaping tears at everything near and
  *     heals you for what it takes. Nim: fills a quarter faster.
- *   WAYSTONES (Shaman). Every few seconds a stone rises where you stand -
- *     ember, spring, then gale - and fighting beside them pays. Vonnra:
- *     their reach is a quarter farther.
+ *   WAYSTONES (Shaman). Each stone is built by a way of fighting - damage
+ *     dealt close builds the Ember, healing the Spring, ground covered the
+ *     Gale - and rises where you stand when it is full. Fighting beside
+ *     them pays. Vonnra: their reach is a quarter farther.
  *   CONVICTION (Paladin). Hits taken and healing received build Conviction.
  *     At full, a Hammerfall and an Aegis. Keegan: builds a quarter faster.
  *
@@ -114,6 +115,11 @@
         p.barrier = WS.min(K.barrierCap(p), p.barrier + add);
         p.barrierPeak = WS.max(p.barrierPeak || 0, p.barrier);
       }
+    }
+    // The Spring is built by mending, what spills over included.
+    if (p.totemAttuned > 0 && gained + wasted > 0) {
+      p.springFill += (gained + wasted) / WS.max(1, p.maxHealth * C().springNeed);
+      if (p.springFill >= 1) { p.springFill = 0; plant(p, 'healing'); }
     }
     if (p.holyAttuned > 0 && gained > 0 && p.holyLock <= 0) {
       p.holyHeal += gained * holyRate(p);
@@ -315,13 +321,10 @@
   }
 
   /* ------------------------------------------------------------ waystones -- */
-  const TOTEMS = ['searing', 'healing', 'windfury'];
   const STONE_NAME = { searing: 'ember', healing: 'spring', windfury: 'gale' };
   K.totemReach = (p) => C().totemRadius * p.areaMultiplier * (1 + p.totemReach + C().deepRootsReach * p.deepRoots);
   K.totemLife = (p) => C().totemLife + C().deepRootsLife * p.deepRoots;
-  function plant(p) {
-    const kind = TOTEMS[p.totemNext % TOTEMS.length];
-    p.totemNext++;
+  function plant(p, kind) {
     // One of each at most (two with Deep Roots): a new one replaces the oldest.
     const keep = p.deepRoots >= C().deepRootsPair ? 2 : 1;
     let same = 0;
@@ -329,8 +332,16 @@
       if (p.totems[i].kind === kind && ++same >= keep) p.totems.splice(i, 1);
     }
     const life = K.totemLife(p);
-    p.totems.push({ kind, x: p.x, y: p.y + 6, life, max: life, tick: 0 });
+    const t = { kind, x: p.x, y: p.y + 6, life, max: life, tick: 0, rain: 0 };
+    p.totems.push(t);
     count('waystones');
+    // The ember stone comes up out of the ground in a gout of fire.
+    if (kind === 'searing') {
+      const cfg = C();
+      WS.Enemy.damageArea(t.x, t.y, K.totemReach(p), strike(p, cfg.emberEruptBase, cfg.emberEruptPerLevel), null, 22, 'waystones');
+      WS.FX.flash(t.x, t.y, K.totemReach(p), TOTEM_COL.searing, 0.35, 10, 'fire');
+      WS.FX.shake(3, 0.15);
+    }
     WS.FX.flash(p.x, p.y, 40, TOTEM_COL[kind], 0.25, 5, 'nature');
     WS.Audio.play('cast', undefined, 'nature');
   }
@@ -343,6 +354,16 @@
     }
     return null;
   }
+
+  /** Damage dealt close builds the Ember: measured against the survivor's
+   *  own recent damage, so it fills at the same pace at 5:00 and 25:00, and
+   *  only as fast as the fighting is near. */
+  K.onDeal = function (p, e, got) {
+    const r = C().totemRadius * p.areaMultiplier * (1 + p.totemReach);
+    if (WS.dist2(e.x, e.y, p.x, p.y) > r * r) return;
+    p.emberFill += got / WS.max(40, p.dpsEma * C().emberSeconds);
+    if (p.emberFill >= 1) { p.emberFill = 0; plant(p, 'searing'); }
+  };
 
   /* ------------------------------------------------------------ conviction -- */
   K.addHoly = function (p, n) {
@@ -426,8 +447,19 @@
 
     // Totems: plant, and let the ones standing work.
     if (p.totemAttuned > 0) {
-      p.totemTimer -= dt;
-      if (p.totemTimer <= 0) { p.totemTimer = cfg.totemEvery; plant(p); }
+      // Recent damage, for the Ember's pace; ground covered, for the Gale.
+      const run = WS.Game.run;
+      if (run && dt > 0) {
+        const d = WS.max(0, run.damageDone - (p._lastDone === undefined ? run.damageDone : p._lastDone));
+        p._lastDone = run.damageDone;
+        p.dpsEma += (d / dt - p.dpsEma) * WS.min(1, dt / 4);
+      }
+      if (p._lx !== undefined) {
+        const step = WS.min(40, WS.dist(p.x, p.y, p._lx, p._ly));
+        p.galeFill += step / cfg.galeDistance;
+        if (p.galeFill >= 1) { p.galeFill = 0; plant(p, 'windfury'); }
+      }
+      p._lx = p.x; p._ly = p.y;
       const r = K.totemReach(p);
       for (let i = p.totems.length - 1; i >= 0; i--) {
         const t = p.totems[i];
@@ -441,7 +473,27 @@
           }
         }
       }
-      if (nearTotem(p, 'healing')) WS.Player.heal(p, p.maxHealth * cfg.totemHeal * dt, 'waystones');
+      // The Spring rains: pools fall near you, inside its reach.
+      for (const t of p.totems) {
+        if (t.kind !== 'healing') continue;
+        t.rain -= dt;
+        if (t.rain > 0) continue;
+        t.rain = cfg.springPoolEvery;
+        const a = WS.random() * WS.TAU, d = 20 + WS.random() * 50;
+        let x = p.x + WS.cos(a) * d, y = p.y + WS.sin(a) * d;
+        const dx = x - t.x, dy = y - t.y, dd = Math.hypot(dx, dy);
+        if (dd > r * 0.9) { x = t.x + dx / dd * r * 0.9; y = t.y + dy / dd * r * 0.9; }
+        p.pools.push({ x, y, life: cfg.springPoolLife, max: cfg.springPoolLife });
+      }
+      let inPool = false;
+      const pr = cfg.springPoolRadius * p.areaMultiplier;
+      for (let i = p.pools.length - 1; i >= 0; i--) {
+        const q = p.pools[i];
+        q.life -= dt;
+        if (q.life <= 0) { p.pools.splice(i, 1); continue; }
+        if (WS.dist2(q.x, q.y, p.x, p.y) <= pr * pr) inPool = true;
+      }
+      if (inPool) WS.Player.heal(p, p.maxHealth * cfg.springPoolHeal * dt, 'waystones');
     }
   };
 
@@ -511,8 +563,13 @@
         : { key: 'souls', cls: 'calling soul', label: p.souls >= need * 0.5 ? 'Tithe · empowered' : 'Tithe', pct: p.souls / need });
     }
     if (p.totemAttuned > 0) {
-      out.push({ key: 'totem', cls: 'calling totem', label: 'Next stone: ' + STONE_NAME[TOTEMS[p.totemNext % 3]],
-        pct: 1 - p.totemTimer / cfg.totemEvery });
+      // One bar per stone: how near each is to rising, or how long it stands.
+      for (const [kind, fill] of [['searing', p.emberFill], ['healing', p.springFill], ['windfury', p.galeFill]]) {
+        const up = p.totems.find((t) => t.kind === kind);
+        const name = STONE_NAME[kind].charAt(0).toUpperCase() + STONE_NAME[kind].slice(1);
+        out.push({ key: 'totem-' + kind + (up ? '-up' : ''), cls: 'calling totem ' + kind + (up ? ' up' : ''),
+          label: up ? name + ' stone · ' + WS.ceil(up.life) + 's' : name, pct: fill });
+      }
     }
     if (p.holyAttuned > 0) {
       out.push(p.holyLock > 0

@@ -149,9 +149,10 @@
     },
     waystones: {
       name: 'Waystones', art: 'totem', quality: 'legendary',
-      description: 'Every few seconds a waystone rises where you stand: ember, then spring, then gale. Fight beside them.',
-      detail: 'A stone every {Config.totemEvery}s, standing {Config.totemLife}s; one of each kind at a time\n'
-        + 'Ember: burns everything near it. Spring: {Config.totemHeal%}% health a second while you are near. '
+      description: 'Three stones, each built by how you fight: the Ember by damage dealt close, the Spring by healing, the Gale by ground covered. Full, it rises where you stand.',
+      detail: 'Each stands {Config.totemLife}s; a new one of a kind replaces the old\n'
+        + 'Ember: erupts as it rises, then burns everything near it\n'
+        + 'Spring: rains pools near you; standing in one mends {Config.springPoolHeal%}% health a second\n'
         + 'Gale: weapons {Config.totemHaste~%}% faster while you are near\n'
         + "Vonnra's stones reach {Config.callingEdge%}% farther",
       apply: (p) => { p.totemAttuned += 1; },

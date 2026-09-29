@@ -652,11 +652,26 @@
     // rest in place; at 0.15 it is +9s there and +4s late.
     soulNeedBase: 50, soulNeedPerMinute: 10, soulBoss: 25, soulElite: 6, soulEmpower: 0.15, soulLock: 5,
     rendRadius: 240, rendBase: 90, rendPerLevel: 9, rendHealPer: 0.015, rendHealCap: 0.15,
-    // Waystones: one every totemEvery seconds, cycling ember / spring / gale,
-    // each standing totemLife (one of a kind at a time).
-    totemEvery: 3, totemLife: 10, totemRadius: 200,
+    /* Waystones: each stone is BUILT by a way of fighting, and rises where
+       you stand when it is full, standing totemLife (one of a kind: a new
+       one replaces the old). They used to rise on a timer, ember, spring,
+       gale, over and over, which asked nothing of anyone.
+         Ember: damage you deal within totemRadius of you. Full after
+           emberSeconds of your own recent damage, if all of it were dealt
+           close; a build that fights at range fills it slowly. It erupts
+           as it rises, then sears everything near it every totemSearTick.
+         Spring: healing you receive, overheal included; full at springNeed
+           of your max health. It rains: a pool every springPoolEvery near
+           you, standing springPoolLife, mending springPoolHeal of max health
+           a second while you stand in one.
+         Gale: ground you cover; full after galeDistance. Near it, weapons
+           fire totemHaste as often. */
+    totemLife: 10, totemRadius: 200,
+    emberSeconds: 5, springNeed: 0.6, galeDistance: 1600,
     totemSearTick: 0.5, totemSearBase: 10, totemSearPerLevel: 0.4,
-    totemHeal: 0.015, totemHaste: 0.8,
+    emberEruptBase: 60, emberEruptPerLevel: 6,
+    springPoolEvery: 1.1, springPoolLife: 3.5, springPoolRadius: 46, springPoolHeal: 0.04,
+    totemHaste: 0.8,
     // Conviction: holyPerHit for each hit taken, one for every holyHealPct of
     // max health healed. At holyNeed, Judgement: every creature on the field
     // struck down and judgementBossPct off a boss, with an Aegis; then
