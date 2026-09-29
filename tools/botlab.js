@@ -201,9 +201,26 @@ function inPage(S, job, sources) {
       }
       return e;
     };
+    /* Which weapon made each kill, and what the kill was worth to the
+       survivor: [kills, within 100px (about to touch you), 100-320px,
+       beyond, casters within their firing reach, elites]. The meter says
+       how much damage a weapon did; this says which threats it removed. */
+    const dm = WS.Enemy.damage;
+    WS.Enemy.damage = function (e, amount, crit, source) {
+      if (e && source) e.__src = source;
+      return dm.apply(this, arguments);
+    };
     const kl = WS.Enemy.kill;
     WS.Enemy.kill = function (e) {
       const T = window.__tr;
+      if (T && e && !e.boss && e.__born !== undefined) {
+        const pl = WS.Game.player, d = Math.hypot(e.x - pl.x, e.y - pl.y);
+        const k = e.__src || 'other', row = T.kills[k] = T.kills[k] || [0, 0, 0, 0, 0, 0];
+        row[0]++; row[d < 100 ? 1 : d < 320 ? 2 : 3]++;
+        const t = e.template || {};
+        if (t.ranged && d <= t.ranged.range * WS.Config.rangedReach) row[4]++;
+        if (e.elite) row[5]++;
+      }
       if (T && e && e.__born !== undefined) {
         const pl = WS.Game.player;
         const life = WS.Game.run.time - e.__born;
@@ -242,7 +259,7 @@ function inPage(S, job, sources) {
   // casters: creatures that stop and shoot, alive and within 320px of you;
   // clife: how long the casters killed this window had lived.
   const freshWindow = () => ({ spawns: 0, spawnHP: 0, elites: 0, kd: [], life: [], clife: [], near: 0, screen: 0, casters: 0, samples: 0, hpMin: 1 });
-  const TR = S.TRACE > 0 ? { w: freshWindow(), ev: [], rows: [], sub: 0 } : null;
+  const TR = S.TRACE > 0 ? { w: freshWindow(), ev: [], rows: [], sub: 0, kills: {} } : null;
   window.__tr = TR;
 
   const [hero, blessing, seed] = job;
@@ -376,7 +393,7 @@ function inPage(S, job, sources) {
     weapons: p.weapons.map((w) => w.id + ':' + w.level + (w.evolved ? 'E' : '')),
     steps: (WS.WaveManager.stepK || []).map((v) => Math.round(v * 100) / 100),
     blessings: Object.keys(p.blessingsTaken || {}),
-    curve, trace: TR ? { cols: 't hp hpMin lost healed near screen alive spawns spawnHP kills dealt killDist life level boss elites casters casterLife'.split(' '), rows: TR.rows, ev: TR.ev } : null,
+    curve, trace: TR ? { cols: 't hp hpMin lost healed near screen alive spawns spawnHP kills dealt killDist life level boss elites casters casterLife'.split(' '), rows: TR.rows, ev: TR.ev, kills: TR.kills } : null,
     pilotMs: Math.round(wall), plans: pilot.stats.plans || 1, bolts: L.bolts,
   };
 }
