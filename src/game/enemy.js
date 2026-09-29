@@ -99,6 +99,8 @@
       * (1 + WS.Config.curseEnemySpeed * (WS.Game.player ? WS.Game.player.curse : 0));
     e.contactCooldown = 0.3;
     e.slowTimer = 0; e.slowFactor = 1;
+    e.rotTimer = 0; e.rotMult = 1;
+    e._packN = 0; e._packAt = -1e9;   // a spirit pack's bites on it (Familiar)
     e.bleedDps = 0; e.bleedTimer = 0; e.bleedTick = 0;
     e.chargeTimer = 0;
     e.flash = 0;
@@ -268,6 +270,7 @@
         e.slowTimer -= dt;
         speed *= e.slowFactor;
       }
+      if (e.rotTimer > 0) e.rotTimer -= dt;
       /* A creature's lunge: the boss charge at rank-and-file size. It only
        * commits from inside its own range and never from on top of you, so it
        * is always a gap you can be pushed out of rather than a hit you were
@@ -543,6 +546,8 @@
     const crit = WS.random() < player.critChance;
     if (crit) { amount *= player.critDamage; WS.Calling.onCrit(player); }
     if (e.dmgTaken !== 1) amount *= e.dmgTaken;
+    // A ghoul's rot (Familiar): everything lands a little harder for a while.
+    if (e.rotTimer > 0) amount *= e.rotMult;
     /* Serration: a crit opens a wound that bleeds a share of the blow over
        the next few seconds. A fresh crit reopens it at whichever is worse. */
     if (crit && player.serration > 0 && !e._dead) {
@@ -624,6 +629,14 @@
         if (!e._dead) i++;
       } else i++;
     }
+  };
+
+  /** Rot: the creature takes `mult` damage from every hit for `duration`.
+   *  A fresh rot refreshes the clock at whichever is worse. */
+  Enemy.applyRot = function (e, mult, duration) {
+    if (!e || e._dead) return;
+    e.rotMult = e.rotTimer > 0 ? WS.max(e.rotMult, mult) : mult;
+    e.rotTimer = WS.max(e.rotTimer, duration);
   };
 
   Enemy.applySlow = function (e, factor, duration) {

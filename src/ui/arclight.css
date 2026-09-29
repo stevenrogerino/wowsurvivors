@@ -497,6 +497,20 @@ html, body {
   border-radius: 2px;
 }
 .card .icon-plate img { width: 66px; height: 66px; display: block; }
+/* Heals you: a small green plus, seated on the plate's bottom-right corner
+   like a wax seal. Drawn, not a glyph from the text face, so it is the same
+   crisp cross at every size. */
+.card .card-heal {
+  position: absolute; right: -9px; bottom: -9px; z-index: 2;
+  width: 22px; height: 22px; border-radius: 50%;
+  font-size: 0; color: transparent;
+  background:
+    linear-gradient(#f2fff0, #f2fff0) center / 11px 3px no-repeat,
+    linear-gradient(#f2fff0, #f2fff0) center / 3px 11px no-repeat,
+    radial-gradient(circle at 35% 30%, #7ff08c, #2f9c45 70%, #1d6a2d);
+  box-shadow: 0 0 0 1.5px rgba(8,14,10,.9), 0 0 10px rgba(110,230,120,.55);
+  pointer-events: auto;
+}
 /* No second frame: the plate carries its own chamfered rim. A pool of the
    quality colour behind it seats the tile instead. */
 .card .icon-plate::before {
@@ -1367,14 +1381,19 @@ body.hud-rail #hud-toasts { left: 76px; bottom: 20px; }
   box-shadow: var(--bevel);
 }
 
-.choice-bar { display: flex; gap: 10px; align-items: center; justify-content: center; position: relative; margin: 0 auto 14px; }
-/* The banish hint is always in the bar at its full width, and only fades. If
-   it appeared on demand it would widen the bar and re-centre the two buttons
-   under the cursor that just clicked one of them. Nothing may move. */
+.choice-bar { display: flex; gap: 10px; align-items: center; justify-content: center; position: relative; margin: 0 auto 30px; }
+/* The banish hint is always there, and only fades. If it appeared on demand
+   it would push the cards down under the cursor that just armed it. Nothing
+   may move - so the bar keeps a row of room under it, and the hint sits in
+   that row, centred under the buttons that armed it and over the cards it
+   is about. (It used to sit at left: 100% of the bar, which is the full
+   width of the screen, so it read from the far right edge.) */
 .choice-hint {
-  /* Beside the buttons, not among them: the buttons stay centred on the cards. */
-  position: absolute; left: 100%; margin-left: 14px; white-space: nowrap;
-  font-size: var(--t-small); color: var(--blood); letter-spacing: .04em;
+  position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  margin-top: 7px; white-space: nowrap;
+  font-family: var(--voice); font-style: italic; font-weight: 600;
+  font-size: 15px; color: #ef6a5c; letter-spacing: .02em;
+  text-shadow: 0 1px 2px rgba(0,0,0,.8);
   opacity: 0; transition: opacity .16s var(--ease); pointer-events: none;
 }
 .choice-hint.on { opacity: .9; }
@@ -1515,12 +1534,41 @@ body.hud-rail #hud-toasts { left: 76px; bottom: 20px; }
 .kv span:first-child { color: var(--ink-dim); }
 .kv span:last-child { font-family: var(--fig); font-variant-numeric: tabular-nums; }
 /* A share bar behind each damage-meter row, so the split reads at a glance. */
-.kv.meter-row { position: relative; padding: 4px 6px; }
-.kv.meter-row::before {
-  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--share, 0%);
-  background: var(--q, var(--arc)); opacity: .12; border-radius: 1px;
+.meter-row {
+  position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto 38px;
+  align-items: center; gap: 8px; height: 26px; margin: 3px 0; padding: 0 8px 0 3px;
+  border-radius: 3px; overflow: hidden;
+  background: rgba(255, 244, 222, .035);
+  box-shadow: inset 0 0 0 1px rgba(255, 244, 222, .05);
 }
-.kv.meter-row span { position: relative; }
+/* The bar: the source's colour, strong at its root and easing off, with a
+   lit top edge like light along a blade. */
+.meter-row::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--share, 0%);
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--q, var(--arc)) 62%, transparent),
+    color-mix(in srgb, var(--q, var(--arc)) 34%, transparent));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--q, var(--arc)) 55%, #fff 45%),
+    inset 0 -1px 0 rgba(0, 0, 0, .35);
+  border-radius: 3px 0 0 3px;
+}
+.meter-row:first-of-type::before { box-shadow: inset 0 1px 0 color-mix(in srgb, var(--q, var(--arc)) 40%, #fff 60%),
+  inset 0 -1px 0 rgba(0, 0, 0, .35), 0 0 14px -4px var(--q, var(--arc)); }
+.meter-row > * { position: relative; }
+.meter-row .mr-mark { width: 20px; height: 20px; }
+.meter-row .mr-mark img { display: block; border-radius: 2px; }
+.meter-row .mr-name {
+  font-family: var(--voice); font-weight: 700; font-size: 14px; color: #f6ecda;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.meter-row .mr-val {
+  font-family: var(--voice); font-variant-numeric: lining-nums tabular-nums; font-weight: 700; font-size: 15px;
+  color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .85);
+}
+.meter-row .mr-pct {
+  font-family: var(--voice); font-variant-numeric: lining-nums tabular-nums; font-size: 12.5px; text-align: right;
+  color: rgba(246, 236, 218, .72); text-shadow: 0 1px 2px rgba(0, 0, 0, .85);
+}
 
 /* -- settings ---------------------------------------------------------- */
 .setting {
@@ -2102,7 +2150,6 @@ input[type=range]::-moz-range-thumb {
   transform: translateY(-3px);
 }
 .kv span:last-child { font-weight: 700; font-size: 15px; color: var(--ink); }
-.kv.meter-row span:first-child::after { border-bottom-color: rgba(245,226,190,.12); }
 
 /* The title's rule becomes a flourish: an ember stone, a spark, and a line
    that thins out the way a pen stroke does. */
@@ -2589,8 +2636,7 @@ body.hud-rail #hud-passives { gap: 9px; }
 /* Passives three across (two on a narrow sheet): a mark, a name, a rank.
    A passive that feeds one of the weapons carried wears a small gilt pip on
    its mark; the tooltip says which. */
-.sheet-passives { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; margin-top: 6px; }
-@media (max-width: 1100px) { .sheet-passives { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.sheet-passives { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 6px 10px; margin-top: 6px; }
 .sheet-passive { display: flex; align-items: center; gap: 7px; padding: 2px 0; min-width: 0; position: relative; }
 .sheet-passive img { flex: none; }
 .sheet-passive > div { min-width: 0; }
@@ -2607,7 +2653,7 @@ body.hud-rail #hud-passives { gap: 9px; }
   font-family: var(--voice); font-weight: 700; font-size: 15px; color: var(--ink); }
 .sheet-blessing img { flex: none; }
 /* Discoveries two across, each its pair's mark and a name over what it joins. */
-.sheet-discoveries { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 14px; margin: 4px 0 2px; }
+.sheet-discoveries { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 7px 14px; margin: 4px 0 2px; }
 .sheet-discovery { display: flex; align-items: center; gap: 9px; min-width: 0; cursor: default; }
 .sheet-discovery img { flex: none; border-radius: 3px; }
 .sheet-discovery .sd-text { min-width: 0; }
@@ -2625,6 +2671,13 @@ body.hud-rail #hud-passives { gap: 9px; }
   font-weight: 400;
 }
 .sheet-blessing.rich .sb-text { min-width: 0; }
+/* At the head of the arsenal: tiles across the panel (three on a wide
+   sheet, two on a narrow one), each a mark, a name and two lines. */
+.sheet-blessings.rich.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; }
+.sheet-blessing.rich.tiles, .tiles > .sheet-blessing.rich { gap: 9px; padding: 7px 8px; }
+.tiles > .sheet-blessing.rich .sb-name { font-size: 14.5px; line-height: 1.15; }
+.tiles > .sheet-blessing.rich .sb-desc { font-size: 12.5px; line-height: 1.3; }
+.tiles > .sheet-blessing.rich .sb-own { display: block; margin: 1px 0 0; font-size: 11px; }
 .sheet-blessing.rich .sb-name { font-family: var(--voice); font-weight: 700; font-size: 16px; color: var(--q, var(--ink)); }
 .sheet-blessing.rich .sb-own {
   margin-left: 8px; font-family: var(--voice); font-style: italic; font-weight: 500; font-size: 12px;
@@ -3345,7 +3398,8 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 @media (min-width: 721px) and (max-height: 680px) {
   .card.no-foot .card-body { -webkit-line-clamp: 5; }
   /* The opened strip has to fit under the cards on a 600px window. */
-  .choice-bar { margin-bottom: 6px; }
+  .choice-bar { margin-bottom: 22px; }
+  .choice-hint { margin-top: 3px; }
   .bt-drawer.open .build-tray { padding: 5px 12px; gap: 6px 16px; }
   .build-tray .bt-slot { width: 34px; height: 34px; }
   .build-tray .bt-slot.small { width: 28px; height: 28px; }

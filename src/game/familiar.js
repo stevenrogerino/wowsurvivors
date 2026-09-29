@@ -1,7 +1,21 @@
-/* Familiars: summons that HUNT. Each picks the nearest enemy, bounds it down,
- * bites, then peels off and retargets. Spirit wolves are fast and light;
- * ghouls are slower to close and slower to swing, but hit far harder with a
- * wider sweep. Granted in-run by Spirit Companion / Grave Call. */
+/* Familiars: summons that HUNT. Granted in-run by Spirit Companion / Grave
+ * Call, and they used to be one creature with different numbers - the same
+ * hunt, the same targets, the same area bite, a ghoul just slower and harder
+ * - so measured side by side (tools/summon-test.js) three of either did the
+ * same thing and ghouls did it slightly better. Now they are two jobs:
+ *
+ *   WOLVES ARE A PACK. They run far and fast, and when there is something
+ *   worth the whole pack - a boss, an elite, something that shoots - they
+ *   all go for it. Each wolf that has had its teeth in the same creature a
+ *   moment ago makes the next bite harder, and a pounce mauls lighter what
+ *   is packed around it. With no such quarry each wolf works the herd on
+ *   its own. They take down the big thing and what you cannot reach.
+ *
+ *   GHOULS ARE THE GRAVE GUARD. They shamble, and they stay close - half
+ *   the wolves' leash - and they go for whatever is nearest YOU, not them.
+ *   Their claws sweep an arc, and what they rake is slowed and left
+ *   rotting: it takes more damage from everything for a few seconds. They
+ *   keep the crowd off you and make your own weapons hit harder. */
 'use strict';
 (function (WS) {
 
@@ -29,20 +43,65 @@
       ghoulSpeedMult: 0.70,
       ghoulRadiusMult: 1.35,
       ghoulCdMult: 1.45,
-      ghoulDmgMult: 2.10,
+      ghoulDmgMult: 1.45,
+      // The pack: one-mouth bites, harder for every packmate on the quarry.
+      wolfDmgMult: 3.0,
+      wolfCdMult: 0.85,
+      packBonus: 0.25,
+      packWindow: 1.2,
+      packMax: 3,
+      killRebite: 0.12,
+      mauleRadius: 1.0,
+      maulDmg: 0.7,
+      // The guard: a short leash, and what it rakes is slowed and rots.
+      ghoulLeashMult: 0.55,
+      ghoulSlow: 0.6,
+      ghoulSlowTime: 1.2,
+      ghoulRot: 1.15,
+      ghoulRotTime: 2.5,
     },
     KINDS: {
-      wolf: { art: 'spiritwolf', tint: [0.60, 0.85, 1.00], source: 'wolves' },
+      wolf: {
+        art: 'spiritwolf', tint: [0.60, 0.85, 1.00], source: 'wolves', pack: true,
+        cdMult: 'wolfCdMult', dmgMult: 'wolfDmgMult',
+      },
       ghoul: {
-        art: 'risen', tint: [0.55, 0.90, 0.40], source: 'ghouls',
+        art: 'risen', tint: [0.55, 0.90, 0.40], source: 'ghouls', guard: true,
         speedMult: 'ghoulSpeedMult', radiusMult: 'ghoulRadiusMult',
-        cdMult: 'ghoulCdMult', dmgMult: 'ghoulDmgMult',
+        cdMult: 'ghoulCdMult', dmgMult: 'ghoulDmgMult', leashMult: 'ghoulLeashMult',
       },
     },
+    /** The pack's shared quarry, re-chosen a few times a second. */
+    quarry: null,
+    quarryTimer: 0,
   };
 
-  Familiar.init = function () { this.list = []; };
-  Familiar.reset = function () { this.list.length = 0; };
+  Familiar.init = function () { this.list = []; this.quarry = null; };
+  Familiar.reset = function () { this.list.length = 0; this.quarry = null; };
+
+  /** The worst thing within `range` of the survivor, as a pack sees it:
+   *  a boss, then an elite, then anything that shoots. Nothing else is worth the
+   *  whole pack's run - measured, three wolves chasing one common creature
+   *  arrived to find one bite had done it, and the pack killed a quarter of
+   *  what it had - so with no quarry each wolf runs down its own. Distance
+   *  breaks ties inside a tier. */
+  function pickQuarry(player, range) {
+    const pool = WS.Enemy.pool;
+    let best = null, bestScore = -Infinity;
+    const r2 = range * range;
+    for (let i = 0; i < pool.count; i++) {
+      const e = pool.active[i];
+      if (e._dead || e.untargetable || e.hidden) continue;
+      const d2 = WS.dist2(player.x, player.y, e.x, e.y);
+      if (d2 > r2) continue;
+      const t = e.template;
+      const tier = e.boss ? 3 : e.elite ? 2 : (t && t.ranged) ? 1 : 0;
+      if (!tier) continue;
+      const score = tier * 1e7 - d2;
+      if (score > bestScore) { bestScore = score; best = e; }
+    }
+    return best;
+  }
 
   Familiar.add = function (kind) {
     if (this.list.length >= this.tuning.max) return;
@@ -65,6 +124,15 @@
   Familiar.update = function (dt) {
     const player = WS.Game.player;
     const t = this.tuning;
+    if (!this.list.length) return;
+    this.quarryTimer -= dt;
+    const q = this.quarry;
+    if (this.quarryTimer <= 0 || !q || q._dead) {
+      this.quarryTimer = 0.3;
+      if (this.list.some((f) => f.spec.pack)) {
+        this.quarry = pickQuarry(player, WS.min(t.huntRange, t.leash * t.huntIn));
+      }
+    }
 
     for (const fam of this.list) {
       const spec = fam.spec;
@@ -72,6 +140,7 @@
       const radiusMult = spec.radiusMult ? t[spec.radiusMult] : 1;
       const cdMult = spec.cdMult ? t[spec.cdMult] : 1;
       const dmgMult = spec.dmgMult ? t[spec.dmgMult] : 1;
+      const leash = t.leash * (spec.leashMult ? t[spec.leashMult] : 1);
 
       /* Leash, with hysteresis: once called off, a summon comes properly home
          before it hunts again.
@@ -89,17 +158,30 @@
          the cycle on its own. Stand still - which is exactly what a timestop
          invites you to do - and nothing breaks it. */
       const homeDist = WS.dist(fam.x, fam.y, player.x, player.y);
-      if (homeDist > t.leash) fam.leashed = true;
-      else if (homeDist < t.leash * t.recall) fam.leashed = false;
+      if (homeDist > leash) fam.leashed = true;
+      else if (homeDist < leash * t.recall) fam.leashed = false;
 
       /* Hunt around the SURVIVOR, not around the summon. Measured from the
          summon, a wolf already out at the leash could commit to a mark another
          huntRange beyond it - a mark it is structurally forbidden to reach.
          Bounded by the leash, everything it can see is something it can get
          to. */
-      const reachable = WS.min(t.huntRange, t.leash * t.huntIn);
+      const reachable = WS.min(t.huntRange, leash * t.huntIn);
       if (fam.leashed) {
         fam.target = null;
+      } else if (spec.pack) {
+        // The pack runs one quarry down together; without one, each wolf
+        // takes whatever is nearest ITSELF, which is how a pack works a herd.
+        const q = this.quarry;
+        if (q && !q._dead && WS.dist(player.x, player.y, q.x, q.y) <= reachable) fam.target = q;
+        else if (!fam.target || fam.target._dead || fam.target === q
+          || WS.dist(player.x, player.y, fam.target.x, fam.target.y) > reachable) {
+          const n = WS.Enemy.findNearest(fam.x, fam.y, reachable);
+          fam.target = n && WS.dist(player.x, player.y, n.x, n.y) <= reachable ? n : null;
+        }
+      } else if (spec.guard) {
+        // The guard always turns to whatever is closest to the survivor.
+        fam.target = WS.Enemy.findNearest(player.x, player.y, reachable);
       } else if (!fam.target || fam.target._dead
         || WS.dist(player.x, player.y, fam.target.x, fam.target.y) > reachable) {
         fam.target = WS.Enemy.findNearest(player.x, player.y, reachable);
@@ -136,9 +218,43 @@
             * player.damageMultiplier
             * (1 + player.summonDamage)
             * WS.CONST.PLAYER_DAMAGE_SCALE;
-          WS.Enemy.damageArea(fam.x, fam.y, t.biteRadius * radiusMult * player.areaMultiplier,
-            damage, null, null, spec.source);
-          WS.FX.flash(fam.x, fam.y, t.biteRadius * radiusMult * 0.8, spec.tint, 0.2);
+          if (spec.pack) {
+            /* One mouth, one creature - harder for each packmate that has
+               had its teeth in the same one inside the window. */
+            const q = fam.target, now = WS.Game.run ? WS.Game.run.time : 0;
+            if (!(q._packAt > now - t.packWindow)) q._packN = 0;
+            const mates = WS.min(t.packMax, q._packN || 0);
+            q._packN = (q._packN || 0) + 1;
+            q._packAt = now;
+            const qx = q.x, qy = q.y;
+            WS.Enemy.hit(q, damage * (1 + t.packBonus * mates), spec.source);
+            /* ...and the pounce mauls what is packed around it, lighter. A
+               bite that could only ever touch one creature measured a tenth
+               of a ghoul's damage in a horde: the wolves spent their time
+               running between single kills. */
+            const skip = new Map([[q, q.spawnId]]);
+            WS.Enemy.damageArea(qx, qy, t.biteRadius * t.mauleRadius * player.areaMultiplier,
+              damage * t.maulDmg, skip, null, spec.source);
+            WS.FX.flash(qx, qy, 18 + 6 * mates, spec.tint, 0.25);
+            // A kill does not stop a wolf: it is on the next one at once.
+            if (q._dead) { fam.biteTimer = WS.min(fam.biteTimer, t.killRebite); fam.target = null; }
+          } else {
+            const r = t.biteRadius * radiusMult * player.areaMultiplier;
+            WS.Enemy.damageArea(fam.x, fam.y, r, damage, null, null, spec.source);
+            if (spec.guard) {
+              // What the claws raked is slowed and left to rot.
+              const pool = WS.Enemy.pool;
+              for (let i = 0; i < pool.count; i++) {
+                const e = pool.active[i];
+                if (e._dead) continue;
+                const reach = r + e.radius;
+                if (WS.dist2(fam.x, fam.y, e.x, e.y) > reach * reach) continue;
+                if (!e.boss) WS.Enemy.applySlow(e, t.ghoulSlow, t.ghoulSlowTime);
+                WS.Enemy.applyRot(e, t.ghoulRot, t.ghoulRotTime);
+              }
+            }
+            WS.FX.flash(fam.x, fam.y, t.biteRadius * radiusMult * 0.8, spec.tint, 0.2);
+          }
         }
       }
     }

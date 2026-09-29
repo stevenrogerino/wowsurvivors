@@ -73,18 +73,27 @@ const note = [];
     WS.Game.openLevelUp();
     for (let i = 0; i < 30; i++) {
       await new Promise((r) => requestAnimationFrame(r));
-      t.push({ s: WS.Game.state, ts: WS.Game.timeScale });
+      t.push({ s: WS.Game.state, ts: WS.Game.timeScale, at: performance.now() });
       if (WS.Game.state === 'levelup' && i > 2) break;
     }
     return t;
   });
   const slowed = settle.filter((f) => f.s === 'playing' && f.ts < 0.95 && f.ts > 0.02);
   const slowest = Math.min(...settle.filter((f) => f.s === 'playing').map((f) => f.ts), 1);
-  if (slowed.length < 3) {
-    fail.push(`settle: the world stops dead in front of a level-up - only ${slowed.length}`
-      + ' frame(s) ran at a reduced speed before the cards arrived');
+  /* In TIME, not frames. The settle is 160ms of real time (game.js SETTLE),
+     so how many frames see it depends on the frame rate: ten at 60Hz, and
+     two on a headless page drawing the night's light in software at 50ms a
+     frame - where a rule wanting three frames failed a settle that was
+     working exactly as built. What has to hold is that the world is seen at
+     more than one speed on the way down, and that the way down takes most
+     of its 160ms rather than one frame. */
+  const opened = settle.find((f) => f.s === 'levelup');
+  const span = slowed.length && opened ? opened.at - slowed[0].at : 0;
+  if (slowed.length < 2 || span < 100) {
+    fail.push(`settle: the world stops dead in front of a level-up - ${slowed.length}`
+      + ` frame(s) over ${span.toFixed(0)}ms ran at a reduced speed before the cards arrived`);
   } else {
-    note.push(`the world takes ${slowed.length} frames to come to a stop before the cards`
+    note.push(`the world takes ${span.toFixed(0)}ms (${slowed.length} frames) to come to a stop before the cards`
       + ` (down to ${(slowest * 100).toFixed(0)}% speed)`);
   }
   if (!settle.some((f) => f.s === 'levelup')) fail.push('settle: the level-up never opened');
@@ -347,10 +356,11 @@ const note = [];
       { type: 'weapon_rank', id: 'cinderfall', art: W.cinderfall.art, name: W.cinderfall.name,
         description: 'x', note: 'Rank 7 > 8', rank: 8, maxRank: 8,
         reacts: WS.LevelUp.reactionsFor(pl, 'cinderfall', 'weapon_rank', 8) },
-      // mid-track: plain
-      { type: 'new_weapon', id: 'knifestorm', art: W.knifestorm.art, name: W.knifestorm.name,
-        description: 'x', note: 'New', rank: 1, maxRank: 8,
-        reacts: WS.LevelUp.reactionsFor(pl, 'knifestorm', 'new_weapon', 1) },
+      // mid-track: plain. (A new weapon shows its note, not ticks - the
+      // ticks are for a card that ranks something up - so this is rank 2.)
+      { type: 'weapon_rank', id: 'knifestorm', art: W.knifestorm.art, name: W.knifestorm.name,
+        description: 'x', note: 'Rank 1 > 2', rank: 2, maxRank: 8,
+        reacts: WS.LevelUp.reactionsFor(pl, 'knifestorm', 'weapon_rank', 2) },
       // completes a discovery with what is already carried: a READY reaction
       { type: 'new_weapon', id: 'rimeshard', art: W.rimeshard.art, name: W.rimeshard.name,
         description: 'x', note: 'New', rank: 1, maxRank: 8,
@@ -368,7 +378,9 @@ const note = [];
       name: (c.querySelector('.card-name') || {}).textContent,
       crowning: c.classList.contains('crowning'),
       pips: c.querySelectorAll('.card-pips i').length,
-      lit: c.querySelectorAll('.card-pips i.on').length,
+      // Held ranks are lit and the rank the card gives is marked as next:
+      // together they are how far the card takes you.
+      lit: c.querySelectorAll('.card-pips i.on, .card-pips i.next').length,
       reacts: c.querySelectorAll('.card-reacts .react').length,
       ready: c.querySelectorAll('.card-reacts .react.ready').length,
     }));
@@ -379,11 +391,11 @@ const note = [];
     const [last, mid, disc] = cards;
     if (!last.crowning) fail.push('a card taking a weapon to its last rank is not crowned');
     if (last.pips !== 8 || last.lit !== 8) {
-      fail.push(`the final-rank card shows ${last.lit}/${last.pips} pips lit, not 8 of 8`);
+      fail.push(`the final-rank card shows ${last.lit}/${last.pips} pips reached, not 8 of 8`);
     }
     if (mid.crowning) fail.push('a mid-track card is crowned, so crowning says nothing');
-    if (mid.pips !== 8 || mid.lit !== 1) {
-      fail.push(`a rank-1 card shows ${mid.lit}/${mid.pips} pips lit, not 1 of 8`);
+    if (mid.pips !== 8 || mid.lit !== 2) {
+      fail.push(`a rank-2 card shows ${mid.lit}/${mid.pips} pips reached, not 2 of 8`);
     }
     if (!disc.reacts) fail.push('a card that completes a discovery lists no reactions');
     if (!disc.ready) {

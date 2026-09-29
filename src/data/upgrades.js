@@ -84,6 +84,7 @@
       name: 'Recovery', art: 'leaf', quality: 'common',
       description: '+{v} health regenerated per second', max: 4, v: 0.5,
       detail: 'Steady healing, always ticking.',
+      heals: true,
       apply: (p, up) => { p.healthRegen += up.v; },
     },
     velocity: {
@@ -118,14 +119,14 @@
     },
     spirit_companion: {
       name: 'Spirit Companion', art: 'spiritwolf', quality: 'rare',
-      description: 'Summon a spirit wolf that hunts the horde.', max: 3,
-      detail: 'Each rank calls another spirit wolf. They chase down the nearest enemies and maul them. Bites deal area damage that scales with your damage and level.',
+      description: 'Summon a spirit wolf. The pack runs down bosses, elites and archers.', max: 3,
+      detail: 'Each rank calls another spirit wolf. Fast, and far-ranging. When a boss, an elite or something that shoots is in reach, the whole pack goes for it, and every wolf already on it makes the next bite {Familiar.tuning.packBonus%}% harder. A pounce mauls what is around the quarry for less. Otherwise each wolf works the herd on its own. Scales with your damage and level.',
       apply: () => { WS.Familiar.add('wolf'); },
     },
     grave_call: {
       name: 'Grave Call', art: 'risen', quality: 'rare',
-      description: 'Raise a ghoul to shamble after the horde.', max: 3,
-      detail: 'Each rank raises another ghoul. Slower than a spirit wolf and slower to swing, but it hits far harder and its claws sweep a wider arc.',
+      description: 'Raise a ghoul to guard you. Its claws slow and rot what they rake.', max: 3,
+      detail: 'Each rank raises another ghoul. Slow, and it stays close, turning on whatever is nearest you. Its claws sweep a wide arc, slow what they hit by {Familiar.tuning.ghoulSlow~%}% and leave it rotting: rotting creatures take {Familiar.tuning.ghoulRot*%}% more damage from everything, yours included, for {Familiar.tuning.ghoulRotTime}s. Scales with your damage and level.',
       apply: () => { WS.Familiar.add('ghoul'); },
     },
     dread_command: {

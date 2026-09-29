@@ -1343,6 +1343,22 @@
       ctx.drawImage(WS.SpellArt.flashOf(sprite, e.flashCrit ? '#ffd45c' : '#ff6b5c'), -size / 2, -size * 0.62, size, size);
     }
     ctx.restore();
+    /* Rotting (a ghoul's rake, Familiar): a few sick-green motes lifting off
+       the body, so the creatures your weapons will hit harder can be seen. */
+    if (e.rotTimer > 0) {
+      const now = WS.Game.run ? WS.Game.run.time : 0;
+      const fade = WS.clamp(e.rotTimer / 0.6, 0, 1);
+      ctx.save();
+      ctx.fillStyle = '#9fe06a';
+      for (let k = 0; k < 3; k++) {
+        const ph = (now * 0.9 + k / 3 + (e.spawnId || 0) * 0.37) % 1;
+        ctx.globalAlpha = 0.55 * fade * Math.sin(ph * Math.PI);
+        const mx = e.x + Math.sin((k * 2.1 + now * 1.7)) * size * 0.28;
+        const my = e.y + bob - size * (0.15 + ph * 0.55);
+        ctx.fillRect(mx - 1.2, my - 1.2, 2.4, 2.4);
+      }
+      ctx.restore();
+    }
 
     /* THE ONES THAT SHOOT.
      *

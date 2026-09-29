@@ -1336,6 +1336,19 @@
   };
 
   /* ------------------------------------------------------------- cards --- */
+  /** Whether a card's weapon, passive or blessing heals the survivor. */
+  function healsYou(choice) {
+    const id = choice.id;
+    if (choice.type === 'stat') return !!(WS.Upgrades[id] && WS.Upgrades[id].heals);
+    if (choice.type === 'blessing') {
+      const b = WS.Blessings[id];
+      return !!(b && (b.heals || b.regen > 0 || b.lifesteal > 0 || b.healing > 0));
+    }
+    const d = WS.Weapons[id];
+    return !!(d && d.healPer > 0);
+  }
+  UI.healsYou = healsYou;
+
   function cardFor(choice, onPick, index) {
     const colour = choiceColour(choice);
     const card = el('button', 'card');
@@ -1357,6 +1370,14 @@
 
     const plate = el('div', 'icon-plate');
     plate.append(icon(choice.art || 'rune', colour, 66));
+    /* A green plus on anything that heals. Players took Grave Tether and
+       Reaving Arc for their damage and never learned that they mend you -
+       the heal was a line in a tooltip, which is to say nowhere. */
+    if (healsYou(choice)) {
+      const plus = el('span', 'card-heal', '+');
+      plus.title = 'Heals you';
+      plate.append(plus);
+    }
     card.append(plate);
 
     function fitStats(box, card) {
@@ -3590,6 +3611,31 @@
     const sheet = el('div', 'sheet');
 
     const left = panel();
+    /* The blessings lead the build. They decide more of a run than any one
+       weapon and they were halfway down the middle panel, under two dozen
+       of the survivor's figures - so they sit at the head of the first panel
+       now, where the eye lands, as tiles across it. */
+    const taken = Object.keys(p.blessingsTaken || {}).filter((id) => WS.Blessings[id]);
+    if (taken.length) {
+      left.append(el('h3', null, 'Blessings'));
+      // Its mark, its name in its quality's colour, what it does in two lines.
+      const list = el('div', 'sheet-blessings rich tiles');
+      const sig = p.character && p.character.signatureBlessing;
+      for (const id of taken) {
+        const bl = WS.Blessings[id];
+        const q = qualityColour(bl.quality || 'legendary');
+        const item = el('div', 'sheet-blessing rich');
+        item.style.setProperty('--q', WS.rgb(q, 1));
+        const text = el('div', 'sb-text');
+        const name = el('div', 'sb-name', bl.name);
+        if (id === sig) name.append(el('span', 'sb-own', 'Your calling'));
+        text.append(name, el('div', 'sb-desc', WS.template(bl.description, bl)));
+        item.append(icon(bl.art, q, 32), text);
+        item.dataset.tip = WS.template(bl.description, bl) + (bl.detail ? '\n' + WS.template(bl.detail, bl) : '');
+        list.append(item);
+      }
+      left.append(list);
+    }
     left.append(el('h3', null, 'Arsenal'));
     for (const w of p.weapons) {
       const row = el('div', 'row');
@@ -3625,7 +3671,7 @@
     const found = WS.ComboOrder.filter((id) => p.combosActive && p.combosActive[id]);
     if (found.length) {
       left.append(el('h3', null, 'Discoveries'));
-      // Two across: each is its pair's mark, its name, and what it joins -
+      // Three across where there is room: its pair's mark, its name, and what it joins -
       // or, once a union has eaten both, the union still carrying it.
       const list = el('div', 'sheet-discoveries');
       for (const id of found) {
@@ -3648,8 +3694,9 @@
        weapons evolve was invisible on the one screen made for reading it. */
     const learned = WS.UpgradeOrder.filter((id) => p.upgradeLevels[id]);
     if (learned.length) {
-      /* Three across, compact: a mark, a name and a rank. What each one
-         feeds is in its tooltip; spelled out under every name it made a
+      /* Four across where the panel has room (three on a narrow window),
+         compact: a mark, a name and a rank. What each one feeds is in its
+         tooltip; spelled out under every name it made a
          dozen passives a column long enough to need its own scroll. */
       left.append(el('h3', null, 'Passives'));
       const grid = el('div', 'sheet-passives');
@@ -3712,33 +3759,6 @@
     if (p.totemAttuned > 0) kv('Waystones raised', run0.waystones || 0);
     if (p.holyAttuned > 0) kv('Judgements', run0.storms || 0);
 
-    /* The blessings, one to a line with their marks. They were a single
-       key-value row - "Blessings" and then every name joined by commas - and
-       three names were wider than the value side, so the list ran back over
-       its own label. */
-    const taken = Object.keys(p.blessingsTaken || {}).filter((id) => WS.Blessings[id]);
-    if (taken.length) {
-      right.append(el('h3', null, 'Blessings'));
-      /* There is room here, so each blessing gets it: its mark at a size
-         that reads, its name in its quality's colour, and what it does in a
-         line or two. The survivor's own calling says so. */
-      const list = el('div', 'sheet-blessings rich');
-      const sig = p.character && p.character.signatureBlessing;
-      for (const id of taken) {
-        const bl = WS.Blessings[id];
-        const q = qualityColour(bl.quality || 'legendary');
-        const item = el('div', 'sheet-blessing rich');
-        item.style.setProperty('--q', WS.rgb(q, 1));
-        const text = el('div', 'sb-text');
-        const name = el('div', 'sb-name', bl.name);
-        if (id === sig) name.append(el('span', 'sb-own', 'Your calling'));
-        text.append(name, el('div', 'sb-desc', WS.template(bl.description, bl)));
-        item.append(icon(bl.art, q, 38), text);
-        item.dataset.tip = WS.template(bl.description, bl) + (bl.detail ? '\n' + WS.template(bl.detail, bl) : '');
-        list.append(item);
-      }
-      right.append(list);
-    }
 
 
     /* The run's figures sit under the survivor's now, and the third panel is
@@ -3779,6 +3799,9 @@
       soulbond: 'Soul lanterns', coolant: 'Burst coolant pipes', stormbond: 'Storm stones',
       holy: 'Holy Light', other: 'Other', untagged: 'Other',
     };
+    // The marks for sources that are not a weapon, passive or blessing.
+    const SOURCE_ART = { wolves: 'spiritwolf', ghouls: 'risen', regen: 'leaf',
+      potion: 'potion', bomb: 'bomb' };
     const sourceName = (key) => {
       const w = WS.Weapons[key];
       if (w) {
@@ -3806,20 +3829,36 @@
         if (shown.length < MAX - 1 || WS.Weapons[e[0]]) shown.push(e); else rest.push(e);
       }
       if (rest.length === 1) shown.push(rest.pop());
-      const row = (label, value, colour, tip) => {
-        const line = el('div', 'kv meter-row');
-        line.style.setProperty('--share', (value / top * 100) + '%');
+      /* A ROW IS A BAR. It was a key and a value with a share drawn behind
+         them at 12% - every source the same dull green, grey names, and the
+         split only readable by squinting at the numbers. Now each row is its
+         source's mark, a name in bright ink, and a bar in that source's own
+         colour with a lit top edge, filled to its share of the leader; the
+         figure is bold and the percentage stands apart from it. */
+      const row = (label, value, colour, tip, art) => {
+        const line = el('div', 'meter-row');
+        line.style.setProperty('--share', WS.max(2, value / top * 100) + '%');
         line.style.setProperty('--q', WS.hex(colour));
-        line.append(el('span', null, label),
-          el('span', null, `${WS.formatNumber(value)}  (${WS.round(value / total * 100)}%)`));
+        const mark = el('span', 'mr-mark');
+        if (art) {
+          const im = icon(art, colour, 20);
+          im.width = im.height = 20;
+          mark.append(im);
+        }
+        line.append(mark, el('span', 'mr-name', label),
+          el('span', 'mr-val', WS.formatNumber(value)),
+          el('span', 'mr-pct', WS.round(value / total * 100) + '%'));
         if (tip) line.dataset.tip = tip;
         meter.append(line);
       };
       for (const [key, value] of shown) {
         const w = WS.Weapons[key];
         const n = hits && hits[key];
+        const src = SOURCE_ART[key] || (WS.Upgrades[key] && WS.Upgrades[key].art)
+          || (WS.Blessings[key] && WS.Blessings[key].art);
         row(sourceName(key), value, w ? (WS.CONST.COLORS[w.school] || WS.CONST.COLORS.arc) : tint,
-          n ? `${WS.formatNumber(n)} hits, ${WS.formatNumber(WS.round(value / n))} each` : null);
+          n ? `${WS.formatNumber(n)} hits, ${WS.formatNumber(WS.round(value / n))} each` : null,
+          w ? w.art : src);
       }
       if (rest.length) {
         row(`${rest.length} more`, rest.reduce((sum, e) => sum + e[1], 0), tint,

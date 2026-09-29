@@ -581,6 +581,20 @@ html, body {
   border-radius: 2px;
 }
 .card .icon-plate img { width: 66px; height: 66px; display: block; }
+/* Heals you: a small green plus, seated on the plate's bottom-right corner
+   like a wax seal. Drawn, not a glyph from the text face, so it is the same
+   crisp cross at every size. */
+.card .card-heal {
+  position: absolute; right: -9px; bottom: -9px; z-index: 2;
+  width: 22px; height: 22px; border-radius: 50%;
+  font-size: 0; color: transparent;
+  background:
+    linear-gradient(#f2fff0, #f2fff0) center / 11px 3px no-repeat,
+    linear-gradient(#f2fff0, #f2fff0) center / 3px 11px no-repeat,
+    radial-gradient(circle at 35% 30%, #7ff08c, #2f9c45 70%, #1d6a2d);
+  box-shadow: 0 0 0 1.5px rgba(8,14,10,.9), 0 0 10px rgba(110,230,120,.55);
+  pointer-events: auto;
+}
 /* No second frame: the plate carries its own chamfered rim. A pool of the
    quality colour behind it seats the tile instead. */
 .card .icon-plate::before {
@@ -1451,14 +1465,19 @@ body.hud-rail #hud-toasts { left: 76px; bottom: 20px; }
   box-shadow: var(--bevel);
 }
 
-.choice-bar { display: flex; gap: 10px; align-items: center; justify-content: center; position: relative; margin: 0 auto 14px; }
-/* The banish hint is always in the bar at its full width, and only fades. If
-   it appeared on demand it would widen the bar and re-centre the two buttons
-   under the cursor that just clicked one of them. Nothing may move. */
+.choice-bar { display: flex; gap: 10px; align-items: center; justify-content: center; position: relative; margin: 0 auto 30px; }
+/* The banish hint is always there, and only fades. If it appeared on demand
+   it would push the cards down under the cursor that just armed it. Nothing
+   may move - so the bar keeps a row of room under it, and the hint sits in
+   that row, centred under the buttons that armed it and over the cards it
+   is about. (It used to sit at left: 100% of the bar, which is the full
+   width of the screen, so it read from the far right edge.) */
 .choice-hint {
-  /* Beside the buttons, not among them: the buttons stay centred on the cards. */
-  position: absolute; left: 100%; margin-left: 14px; white-space: nowrap;
-  font-size: var(--t-small); color: var(--blood); letter-spacing: .04em;
+  position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  margin-top: 7px; white-space: nowrap;
+  font-family: var(--voice); font-style: italic; font-weight: 600;
+  font-size: 15px; color: #ef6a5c; letter-spacing: .02em;
+  text-shadow: 0 1px 2px rgba(0,0,0,.8);
   opacity: 0; transition: opacity .16s var(--ease); pointer-events: none;
 }
 .choice-hint.on { opacity: .9; }
@@ -1599,12 +1618,41 @@ body.hud-rail #hud-toasts { left: 76px; bottom: 20px; }
 .kv span:first-child { color: var(--ink-dim); }
 .kv span:last-child { font-family: var(--fig); font-variant-numeric: tabular-nums; }
 /* A share bar behind each damage-meter row, so the split reads at a glance. */
-.kv.meter-row { position: relative; padding: 4px 6px; }
-.kv.meter-row::before {
-  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--share, 0%);
-  background: var(--q, var(--arc)); opacity: .12; border-radius: 1px;
+.meter-row {
+  position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto 38px;
+  align-items: center; gap: 8px; height: 26px; margin: 3px 0; padding: 0 8px 0 3px;
+  border-radius: 3px; overflow: hidden;
+  background: rgba(255, 244, 222, .035);
+  box-shadow: inset 0 0 0 1px rgba(255, 244, 222, .05);
 }
-.kv.meter-row span { position: relative; }
+/* The bar: the source's colour, strong at its root and easing off, with a
+   lit top edge like light along a blade. */
+.meter-row::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--share, 0%);
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--q, var(--arc)) 62%, transparent),
+    color-mix(in srgb, var(--q, var(--arc)) 34%, transparent));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--q, var(--arc)) 55%, #fff 45%),
+    inset 0 -1px 0 rgba(0, 0, 0, .35);
+  border-radius: 3px 0 0 3px;
+}
+.meter-row:first-of-type::before { box-shadow: inset 0 1px 0 color-mix(in srgb, var(--q, var(--arc)) 40%, #fff 60%),
+  inset 0 -1px 0 rgba(0, 0, 0, .35), 0 0 14px -4px var(--q, var(--arc)); }
+.meter-row > * { position: relative; }
+.meter-row .mr-mark { width: 20px; height: 20px; }
+.meter-row .mr-mark img { display: block; border-radius: 2px; }
+.meter-row .mr-name {
+  font-family: var(--voice); font-weight: 700; font-size: 14px; color: #f6ecda;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.meter-row .mr-val {
+  font-family: var(--voice); font-variant-numeric: lining-nums tabular-nums; font-weight: 700; font-size: 15px;
+  color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .85);
+}
+.meter-row .mr-pct {
+  font-family: var(--voice); font-variant-numeric: lining-nums tabular-nums; font-size: 12.5px; text-align: right;
+  color: rgba(246, 236, 218, .72); text-shadow: 0 1px 2px rgba(0, 0, 0, .85);
+}
 
 /* -- settings ---------------------------------------------------------- */
 .setting {
@@ -2186,7 +2234,6 @@ input[type=range]::-moz-range-thumb {
   transform: translateY(-3px);
 }
 .kv span:last-child { font-weight: 700; font-size: 15px; color: var(--ink); }
-.kv.meter-row span:first-child::after { border-bottom-color: rgba(245,226,190,.12); }
 
 /* The title's rule becomes a flourish: an ember stone, a spark, and a line
    that thins out the way a pen stroke does. */
@@ -2673,8 +2720,7 @@ body.hud-rail #hud-passives { gap: 9px; }
 /* Passives three across (two on a narrow sheet): a mark, a name, a rank.
    A passive that feeds one of the weapons carried wears a small gilt pip on
    its mark; the tooltip says which. */
-.sheet-passives { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; margin-top: 6px; }
-@media (max-width: 1100px) { .sheet-passives { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.sheet-passives { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 6px 10px; margin-top: 6px; }
 .sheet-passive { display: flex; align-items: center; gap: 7px; padding: 2px 0; min-width: 0; position: relative; }
 .sheet-passive img { flex: none; }
 .sheet-passive > div { min-width: 0; }
@@ -2691,7 +2737,7 @@ body.hud-rail #hud-passives { gap: 9px; }
   font-family: var(--voice); font-weight: 700; font-size: 15px; color: var(--ink); }
 .sheet-blessing img { flex: none; }
 /* Discoveries two across, each its pair's mark and a name over what it joins. */
-.sheet-discoveries { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 14px; margin: 4px 0 2px; }
+.sheet-discoveries { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 7px 14px; margin: 4px 0 2px; }
 .sheet-discovery { display: flex; align-items: center; gap: 9px; min-width: 0; cursor: default; }
 .sheet-discovery img { flex: none; border-radius: 3px; }
 .sheet-discovery .sd-text { min-width: 0; }
@@ -2709,6 +2755,13 @@ body.hud-rail #hud-passives { gap: 9px; }
   font-weight: 400;
 }
 .sheet-blessing.rich .sb-text { min-width: 0; }
+/* At the head of the arsenal: tiles across the panel (three on a wide
+   sheet, two on a narrow one), each a mark, a name and two lines. */
+.sheet-blessings.rich.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; }
+.sheet-blessing.rich.tiles, .tiles > .sheet-blessing.rich { gap: 9px; padding: 7px 8px; }
+.tiles > .sheet-blessing.rich .sb-name { font-size: 14.5px; line-height: 1.15; }
+.tiles > .sheet-blessing.rich .sb-desc { font-size: 12.5px; line-height: 1.3; }
+.tiles > .sheet-blessing.rich .sb-own { display: block; margin: 1px 0 0; font-size: 11px; }
 .sheet-blessing.rich .sb-name { font-family: var(--voice); font-weight: 700; font-size: 16px; color: var(--q, var(--ink)); }
 .sheet-blessing.rich .sb-own {
   margin-left: 8px; font-family: var(--voice); font-style: italic; font-weight: 500; font-size: 12px;
@@ -3429,7 +3482,8 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 @media (min-width: 721px) and (max-height: 680px) {
   .card.no-foot .card-body { -webkit-line-clamp: 5; }
   /* The opened strip has to fit under the cards on a 600px window. */
-  .choice-bar { margin-bottom: 6px; }
+  .choice-bar { margin-bottom: 22px; }
+  .choice-hint { margin-top: 3px; }
   .bt-drawer.open .build-tray { padding: 5px 12px; gap: 6px 16px; }
   .build-tray .bt-slot { width: 34px; height: 34px; }
   .build-tray .bt-slot.small { width: 28px; height: 28px; }
@@ -7014,6 +7068,7 @@ window.WS = window.WS || {};
       name: 'Recovery', art: 'leaf', quality: 'common',
       description: '+{v} health regenerated per second', max: 4, v: 0.5,
       detail: 'Steady healing, always ticking.',
+      heals: true,
       apply: (p, up) => { p.healthRegen += up.v; },
     },
     velocity: {
@@ -7048,14 +7103,14 @@ window.WS = window.WS || {};
     },
     spirit_companion: {
       name: 'Spirit Companion', art: 'spiritwolf', quality: 'rare',
-      description: 'Summon a spirit wolf that hunts the horde.', max: 3,
-      detail: 'Each rank calls another spirit wolf. They chase down the nearest enemies and maul them. Bites deal area damage that scales with your damage and level.',
+      description: 'Summon a spirit wolf. The pack runs down bosses, elites and archers.', max: 3,
+      detail: 'Each rank calls another spirit wolf. Fast, and far-ranging. When a boss, an elite or something that shoots is in reach, the whole pack goes for it, and every wolf already on it makes the next bite {Familiar.tuning.packBonus%}% harder. A pounce mauls what is around the quarry for less. Otherwise each wolf works the herd on its own. Scales with your damage and level.',
       apply: () => { WS.Familiar.add('wolf'); },
     },
     grave_call: {
       name: 'Grave Call', art: 'risen', quality: 'rare',
-      description: 'Raise a ghoul to shamble after the horde.', max: 3,
-      detail: 'Each rank raises another ghoul. Slower than a spirit wolf and slower to swing, but it hits far harder and its claws sweep a wider arc.',
+      description: 'Raise a ghoul to guard you. Its claws slow and rot what they rake.', max: 3,
+      detail: 'Each rank raises another ghoul. Slow, and it stays close, turning on whatever is nearest you. Its claws sweep a wide arc, slow what they hit by {Familiar.tuning.ghoulSlow~%}% and leave it rotting: rotting creatures take {Familiar.tuning.ghoulRot*%}% more damage from everything, yours included, for {Familiar.tuning.ghoulRotTime}s. Scales with your damage and level.',
       apply: () => { WS.Familiar.add('ghoul'); },
     },
     dread_command: {
@@ -26400,6 +26455,8 @@ window.WS = window.WS || {};
       * (1 + WS.Config.curseEnemySpeed * (WS.Game.player ? WS.Game.player.curse : 0));
     e.contactCooldown = 0.3;
     e.slowTimer = 0; e.slowFactor = 1;
+    e.rotTimer = 0; e.rotMult = 1;
+    e._packN = 0; e._packAt = -1e9;   // a spirit pack's bites on it (Familiar)
     e.bleedDps = 0; e.bleedTimer = 0; e.bleedTick = 0;
     e.chargeTimer = 0;
     e.flash = 0;
@@ -26569,6 +26626,7 @@ window.WS = window.WS || {};
         e.slowTimer -= dt;
         speed *= e.slowFactor;
       }
+      if (e.rotTimer > 0) e.rotTimer -= dt;
       /* A creature's lunge: the boss charge at rank-and-file size. It only
        * commits from inside its own range and never from on top of you, so it
        * is always a gap you can be pushed out of rather than a hit you were
@@ -26844,6 +26902,8 @@ window.WS = window.WS || {};
     const crit = WS.random() < player.critChance;
     if (crit) { amount *= player.critDamage; WS.Calling.onCrit(player); }
     if (e.dmgTaken !== 1) amount *= e.dmgTaken;
+    // A ghoul's rot (Familiar): everything lands a little harder for a while.
+    if (e.rotTimer > 0) amount *= e.rotMult;
     /* Serration: a crit opens a wound that bleeds a share of the blow over
        the next few seconds. A fresh crit reopens it at whichever is worse. */
     if (crit && player.serration > 0 && !e._dead) {
@@ -26925,6 +26985,14 @@ window.WS = window.WS || {};
         if (!e._dead) i++;
       } else i++;
     }
+  };
+
+  /** Rot: the creature takes `mult` damage from every hit for `duration`.
+   *  A fresh rot refreshes the clock at whichever is worse. */
+  Enemy.applyRot = function (e, mult, duration) {
+    if (!e || e._dead) return;
+    e.rotMult = e.rotTimer > 0 ? WS.max(e.rotMult, mult) : mult;
+    e.rotTimer = WS.max(e.rotTimer, duration);
   };
 
   Enemy.applySlow = function (e, factor, duration) {
@@ -30457,10 +30525,24 @@ window.WS = window.WS || {};
 })(window.WS);
 
 /* ===== src/game/familiar.js ===== */
-/* Familiars: summons that HUNT. Each picks the nearest enemy, bounds it down,
- * bites, then peels off and retargets. Spirit wolves are fast and light;
- * ghouls are slower to close and slower to swing, but hit far harder with a
- * wider sweep. Granted in-run by Spirit Companion / Grave Call. */
+/* Familiars: summons that HUNT. Granted in-run by Spirit Companion / Grave
+ * Call, and they used to be one creature with different numbers - the same
+ * hunt, the same targets, the same area bite, a ghoul just slower and harder
+ * - so measured side by side (tools/summon-test.js) three of either did the
+ * same thing and ghouls did it slightly better. Now they are two jobs:
+ *
+ *   WOLVES ARE A PACK. They run far and fast, and when there is something
+ *   worth the whole pack - a boss, an elite, something that shoots - they
+ *   all go for it. Each wolf that has had its teeth in the same creature a
+ *   moment ago makes the next bite harder, and a pounce mauls lighter what
+ *   is packed around it. With no such quarry each wolf works the herd on
+ *   its own. They take down the big thing and what you cannot reach.
+ *
+ *   GHOULS ARE THE GRAVE GUARD. They shamble, and they stay close - half
+ *   the wolves' leash - and they go for whatever is nearest YOU, not them.
+ *   Their claws sweep an arc, and what they rake is slowed and left
+ *   rotting: it takes more damage from everything for a few seconds. They
+ *   keep the crowd off you and make your own weapons hit harder. */
 'use strict';
 (function (WS) {
 
@@ -30488,20 +30570,65 @@ window.WS = window.WS || {};
       ghoulSpeedMult: 0.70,
       ghoulRadiusMult: 1.35,
       ghoulCdMult: 1.45,
-      ghoulDmgMult: 2.10,
+      ghoulDmgMult: 1.45,
+      // The pack: one-mouth bites, harder for every packmate on the quarry.
+      wolfDmgMult: 3.0,
+      wolfCdMult: 0.85,
+      packBonus: 0.25,
+      packWindow: 1.2,
+      packMax: 3,
+      killRebite: 0.12,
+      mauleRadius: 1.0,
+      maulDmg: 0.7,
+      // The guard: a short leash, and what it rakes is slowed and rots.
+      ghoulLeashMult: 0.55,
+      ghoulSlow: 0.6,
+      ghoulSlowTime: 1.2,
+      ghoulRot: 1.15,
+      ghoulRotTime: 2.5,
     },
     KINDS: {
-      wolf: { art: 'spiritwolf', tint: [0.60, 0.85, 1.00], source: 'wolves' },
+      wolf: {
+        art: 'spiritwolf', tint: [0.60, 0.85, 1.00], source: 'wolves', pack: true,
+        cdMult: 'wolfCdMult', dmgMult: 'wolfDmgMult',
+      },
       ghoul: {
-        art: 'risen', tint: [0.55, 0.90, 0.40], source: 'ghouls',
+        art: 'risen', tint: [0.55, 0.90, 0.40], source: 'ghouls', guard: true,
         speedMult: 'ghoulSpeedMult', radiusMult: 'ghoulRadiusMult',
-        cdMult: 'ghoulCdMult', dmgMult: 'ghoulDmgMult',
+        cdMult: 'ghoulCdMult', dmgMult: 'ghoulDmgMult', leashMult: 'ghoulLeashMult',
       },
     },
+    /** The pack's shared quarry, re-chosen a few times a second. */
+    quarry: null,
+    quarryTimer: 0,
   };
 
-  Familiar.init = function () { this.list = []; };
-  Familiar.reset = function () { this.list.length = 0; };
+  Familiar.init = function () { this.list = []; this.quarry = null; };
+  Familiar.reset = function () { this.list.length = 0; this.quarry = null; };
+
+  /** The worst thing within `range` of the survivor, as a pack sees it:
+   *  a boss, then an elite, then anything that shoots. Nothing else is worth the
+   *  whole pack's run - measured, three wolves chasing one common creature
+   *  arrived to find one bite had done it, and the pack killed a quarter of
+   *  what it had - so with no quarry each wolf runs down its own. Distance
+   *  breaks ties inside a tier. */
+  function pickQuarry(player, range) {
+    const pool = WS.Enemy.pool;
+    let best = null, bestScore = -Infinity;
+    const r2 = range * range;
+    for (let i = 0; i < pool.count; i++) {
+      const e = pool.active[i];
+      if (e._dead || e.untargetable || e.hidden) continue;
+      const d2 = WS.dist2(player.x, player.y, e.x, e.y);
+      if (d2 > r2) continue;
+      const t = e.template;
+      const tier = e.boss ? 3 : e.elite ? 2 : (t && t.ranged) ? 1 : 0;
+      if (!tier) continue;
+      const score = tier * 1e7 - d2;
+      if (score > bestScore) { bestScore = score; best = e; }
+    }
+    return best;
+  }
 
   Familiar.add = function (kind) {
     if (this.list.length >= this.tuning.max) return;
@@ -30524,6 +30651,15 @@ window.WS = window.WS || {};
   Familiar.update = function (dt) {
     const player = WS.Game.player;
     const t = this.tuning;
+    if (!this.list.length) return;
+    this.quarryTimer -= dt;
+    const q = this.quarry;
+    if (this.quarryTimer <= 0 || !q || q._dead) {
+      this.quarryTimer = 0.3;
+      if (this.list.some((f) => f.spec.pack)) {
+        this.quarry = pickQuarry(player, WS.min(t.huntRange, t.leash * t.huntIn));
+      }
+    }
 
     for (const fam of this.list) {
       const spec = fam.spec;
@@ -30531,6 +30667,7 @@ window.WS = window.WS || {};
       const radiusMult = spec.radiusMult ? t[spec.radiusMult] : 1;
       const cdMult = spec.cdMult ? t[spec.cdMult] : 1;
       const dmgMult = spec.dmgMult ? t[spec.dmgMult] : 1;
+      const leash = t.leash * (spec.leashMult ? t[spec.leashMult] : 1);
 
       /* Leash, with hysteresis: once called off, a summon comes properly home
          before it hunts again.
@@ -30548,17 +30685,30 @@ window.WS = window.WS || {};
          the cycle on its own. Stand still - which is exactly what a timestop
          invites you to do - and nothing breaks it. */
       const homeDist = WS.dist(fam.x, fam.y, player.x, player.y);
-      if (homeDist > t.leash) fam.leashed = true;
-      else if (homeDist < t.leash * t.recall) fam.leashed = false;
+      if (homeDist > leash) fam.leashed = true;
+      else if (homeDist < leash * t.recall) fam.leashed = false;
 
       /* Hunt around the SURVIVOR, not around the summon. Measured from the
          summon, a wolf already out at the leash could commit to a mark another
          huntRange beyond it - a mark it is structurally forbidden to reach.
          Bounded by the leash, everything it can see is something it can get
          to. */
-      const reachable = WS.min(t.huntRange, t.leash * t.huntIn);
+      const reachable = WS.min(t.huntRange, leash * t.huntIn);
       if (fam.leashed) {
         fam.target = null;
+      } else if (spec.pack) {
+        // The pack runs one quarry down together; without one, each wolf
+        // takes whatever is nearest ITSELF, which is how a pack works a herd.
+        const q = this.quarry;
+        if (q && !q._dead && WS.dist(player.x, player.y, q.x, q.y) <= reachable) fam.target = q;
+        else if (!fam.target || fam.target._dead || fam.target === q
+          || WS.dist(player.x, player.y, fam.target.x, fam.target.y) > reachable) {
+          const n = WS.Enemy.findNearest(fam.x, fam.y, reachable);
+          fam.target = n && WS.dist(player.x, player.y, n.x, n.y) <= reachable ? n : null;
+        }
+      } else if (spec.guard) {
+        // The guard always turns to whatever is closest to the survivor.
+        fam.target = WS.Enemy.findNearest(player.x, player.y, reachable);
       } else if (!fam.target || fam.target._dead
         || WS.dist(player.x, player.y, fam.target.x, fam.target.y) > reachable) {
         fam.target = WS.Enemy.findNearest(player.x, player.y, reachable);
@@ -30595,9 +30745,43 @@ window.WS = window.WS || {};
             * player.damageMultiplier
             * (1 + player.summonDamage)
             * WS.CONST.PLAYER_DAMAGE_SCALE;
-          WS.Enemy.damageArea(fam.x, fam.y, t.biteRadius * radiusMult * player.areaMultiplier,
-            damage, null, null, spec.source);
-          WS.FX.flash(fam.x, fam.y, t.biteRadius * radiusMult * 0.8, spec.tint, 0.2);
+          if (spec.pack) {
+            /* One mouth, one creature - harder for each packmate that has
+               had its teeth in the same one inside the window. */
+            const q = fam.target, now = WS.Game.run ? WS.Game.run.time : 0;
+            if (!(q._packAt > now - t.packWindow)) q._packN = 0;
+            const mates = WS.min(t.packMax, q._packN || 0);
+            q._packN = (q._packN || 0) + 1;
+            q._packAt = now;
+            const qx = q.x, qy = q.y;
+            WS.Enemy.hit(q, damage * (1 + t.packBonus * mates), spec.source);
+            /* ...and the pounce mauls what is packed around it, lighter. A
+               bite that could only ever touch one creature measured a tenth
+               of a ghoul's damage in a horde: the wolves spent their time
+               running between single kills. */
+            const skip = new Map([[q, q.spawnId]]);
+            WS.Enemy.damageArea(qx, qy, t.biteRadius * t.mauleRadius * player.areaMultiplier,
+              damage * t.maulDmg, skip, null, spec.source);
+            WS.FX.flash(qx, qy, 18 + 6 * mates, spec.tint, 0.25);
+            // A kill does not stop a wolf: it is on the next one at once.
+            if (q._dead) { fam.biteTimer = WS.min(fam.biteTimer, t.killRebite); fam.target = null; }
+          } else {
+            const r = t.biteRadius * radiusMult * player.areaMultiplier;
+            WS.Enemy.damageArea(fam.x, fam.y, r, damage, null, null, spec.source);
+            if (spec.guard) {
+              // What the claws raked is slowed and left to rot.
+              const pool = WS.Enemy.pool;
+              for (let i = 0; i < pool.count; i++) {
+                const e = pool.active[i];
+                if (e._dead) continue;
+                const reach = r + e.radius;
+                if (WS.dist2(fam.x, fam.y, e.x, e.y) > reach * reach) continue;
+                if (!e.boss) WS.Enemy.applySlow(e, t.ghoulSlow, t.ghoulSlowTime);
+                WS.Enemy.applyRot(e, t.ghoulRot, t.ghoulRotTime);
+              }
+            }
+            WS.FX.flash(fam.x, fam.y, t.biteRadius * radiusMult * 0.8, spec.tint, 0.2);
+          }
         }
       }
     }
@@ -43659,6 +43843,22 @@ window.WS = window.WS || {};
       ctx.drawImage(WS.SpellArt.flashOf(sprite, e.flashCrit ? '#ffd45c' : '#ff6b5c'), -size / 2, -size * 0.62, size, size);
     }
     ctx.restore();
+    /* Rotting (a ghoul's rake, Familiar): a few sick-green motes lifting off
+       the body, so the creatures your weapons will hit harder can be seen. */
+    if (e.rotTimer > 0) {
+      const now = WS.Game.run ? WS.Game.run.time : 0;
+      const fade = WS.clamp(e.rotTimer / 0.6, 0, 1);
+      ctx.save();
+      ctx.fillStyle = '#9fe06a';
+      for (let k = 0; k < 3; k++) {
+        const ph = (now * 0.9 + k / 3 + (e.spawnId || 0) * 0.37) % 1;
+        ctx.globalAlpha = 0.55 * fade * Math.sin(ph * Math.PI);
+        const mx = e.x + Math.sin((k * 2.1 + now * 1.7)) * size * 0.28;
+        const my = e.y + bob - size * (0.15 + ph * 0.55);
+        ctx.fillRect(mx - 1.2, my - 1.2, 2.4, 2.4);
+      }
+      ctx.restore();
+    }
 
     /* THE ONES THAT SHOOT.
      *
@@ -49561,6 +49761,19 @@ window.WS = window.WS || {};
   };
 
   /* ------------------------------------------------------------- cards --- */
+  /** Whether a card's weapon, passive or blessing heals the survivor. */
+  function healsYou(choice) {
+    const id = choice.id;
+    if (choice.type === 'stat') return !!(WS.Upgrades[id] && WS.Upgrades[id].heals);
+    if (choice.type === 'blessing') {
+      const b = WS.Blessings[id];
+      return !!(b && (b.heals || b.regen > 0 || b.lifesteal > 0 || b.healing > 0));
+    }
+    const d = WS.Weapons[id];
+    return !!(d && d.healPer > 0);
+  }
+  UI.healsYou = healsYou;
+
   function cardFor(choice, onPick, index) {
     const colour = choiceColour(choice);
     const card = el('button', 'card');
@@ -49582,6 +49795,14 @@ window.WS = window.WS || {};
 
     const plate = el('div', 'icon-plate');
     plate.append(icon(choice.art || 'rune', colour, 66));
+    /* A green plus on anything that heals. Players took Grave Tether and
+       Reaving Arc for their damage and never learned that they mend you -
+       the heal was a line in a tooltip, which is to say nowhere. */
+    if (healsYou(choice)) {
+      const plus = el('span', 'card-heal', '+');
+      plus.title = 'Heals you';
+      plate.append(plus);
+    }
     card.append(plate);
 
     function fitStats(box, card) {
@@ -51815,6 +52036,31 @@ window.WS = window.WS || {};
     const sheet = el('div', 'sheet');
 
     const left = panel();
+    /* The blessings lead the build. They decide more of a run than any one
+       weapon and they were halfway down the middle panel, under two dozen
+       of the survivor's figures - so they sit at the head of the first panel
+       now, where the eye lands, as tiles across it. */
+    const taken = Object.keys(p.blessingsTaken || {}).filter((id) => WS.Blessings[id]);
+    if (taken.length) {
+      left.append(el('h3', null, 'Blessings'));
+      // Its mark, its name in its quality's colour, what it does in two lines.
+      const list = el('div', 'sheet-blessings rich tiles');
+      const sig = p.character && p.character.signatureBlessing;
+      for (const id of taken) {
+        const bl = WS.Blessings[id];
+        const q = qualityColour(bl.quality || 'legendary');
+        const item = el('div', 'sheet-blessing rich');
+        item.style.setProperty('--q', WS.rgb(q, 1));
+        const text = el('div', 'sb-text');
+        const name = el('div', 'sb-name', bl.name);
+        if (id === sig) name.append(el('span', 'sb-own', 'Your calling'));
+        text.append(name, el('div', 'sb-desc', WS.template(bl.description, bl)));
+        item.append(icon(bl.art, q, 32), text);
+        item.dataset.tip = WS.template(bl.description, bl) + (bl.detail ? '\n' + WS.template(bl.detail, bl) : '');
+        list.append(item);
+      }
+      left.append(list);
+    }
     left.append(el('h3', null, 'Arsenal'));
     for (const w of p.weapons) {
       const row = el('div', 'row');
@@ -51850,7 +52096,7 @@ window.WS = window.WS || {};
     const found = WS.ComboOrder.filter((id) => p.combosActive && p.combosActive[id]);
     if (found.length) {
       left.append(el('h3', null, 'Discoveries'));
-      // Two across: each is its pair's mark, its name, and what it joins -
+      // Three across where there is room: its pair's mark, its name, and what it joins -
       // or, once a union has eaten both, the union still carrying it.
       const list = el('div', 'sheet-discoveries');
       for (const id of found) {
@@ -51873,8 +52119,9 @@ window.WS = window.WS || {};
        weapons evolve was invisible on the one screen made for reading it. */
     const learned = WS.UpgradeOrder.filter((id) => p.upgradeLevels[id]);
     if (learned.length) {
-      /* Three across, compact: a mark, a name and a rank. What each one
-         feeds is in its tooltip; spelled out under every name it made a
+      /* Four across where the panel has room (three on a narrow window),
+         compact: a mark, a name and a rank. What each one feeds is in its
+         tooltip; spelled out under every name it made a
          dozen passives a column long enough to need its own scroll. */
       left.append(el('h3', null, 'Passives'));
       const grid = el('div', 'sheet-passives');
@@ -51937,33 +52184,6 @@ window.WS = window.WS || {};
     if (p.totemAttuned > 0) kv('Waystones raised', run0.waystones || 0);
     if (p.holyAttuned > 0) kv('Judgements', run0.storms || 0);
 
-    /* The blessings, one to a line with their marks. They were a single
-       key-value row - "Blessings" and then every name joined by commas - and
-       three names were wider than the value side, so the list ran back over
-       its own label. */
-    const taken = Object.keys(p.blessingsTaken || {}).filter((id) => WS.Blessings[id]);
-    if (taken.length) {
-      right.append(el('h3', null, 'Blessings'));
-      /* There is room here, so each blessing gets it: its mark at a size
-         that reads, its name in its quality's colour, and what it does in a
-         line or two. The survivor's own calling says so. */
-      const list = el('div', 'sheet-blessings rich');
-      const sig = p.character && p.character.signatureBlessing;
-      for (const id of taken) {
-        const bl = WS.Blessings[id];
-        const q = qualityColour(bl.quality || 'legendary');
-        const item = el('div', 'sheet-blessing rich');
-        item.style.setProperty('--q', WS.rgb(q, 1));
-        const text = el('div', 'sb-text');
-        const name = el('div', 'sb-name', bl.name);
-        if (id === sig) name.append(el('span', 'sb-own', 'Your calling'));
-        text.append(name, el('div', 'sb-desc', WS.template(bl.description, bl)));
-        item.append(icon(bl.art, q, 38), text);
-        item.dataset.tip = WS.template(bl.description, bl) + (bl.detail ? '\n' + WS.template(bl.detail, bl) : '');
-        list.append(item);
-      }
-      right.append(list);
-    }
 
 
     /* The run's figures sit under the survivor's now, and the third panel is
@@ -52004,6 +52224,9 @@ window.WS = window.WS || {};
       soulbond: 'Soul lanterns', coolant: 'Burst coolant pipes', stormbond: 'Storm stones',
       holy: 'Holy Light', other: 'Other', untagged: 'Other',
     };
+    // The marks for sources that are not a weapon, passive or blessing.
+    const SOURCE_ART = { wolves: 'spiritwolf', ghouls: 'risen', regen: 'leaf',
+      potion: 'potion', bomb: 'bomb' };
     const sourceName = (key) => {
       const w = WS.Weapons[key];
       if (w) {
@@ -52031,20 +52254,36 @@ window.WS = window.WS || {};
         if (shown.length < MAX - 1 || WS.Weapons[e[0]]) shown.push(e); else rest.push(e);
       }
       if (rest.length === 1) shown.push(rest.pop());
-      const row = (label, value, colour, tip) => {
-        const line = el('div', 'kv meter-row');
-        line.style.setProperty('--share', (value / top * 100) + '%');
+      /* A ROW IS A BAR. It was a key and a value with a share drawn behind
+         them at 12% - every source the same dull green, grey names, and the
+         split only readable by squinting at the numbers. Now each row is its
+         source's mark, a name in bright ink, and a bar in that source's own
+         colour with a lit top edge, filled to its share of the leader; the
+         figure is bold and the percentage stands apart from it. */
+      const row = (label, value, colour, tip, art) => {
+        const line = el('div', 'meter-row');
+        line.style.setProperty('--share', WS.max(2, value / top * 100) + '%');
         line.style.setProperty('--q', WS.hex(colour));
-        line.append(el('span', null, label),
-          el('span', null, `${WS.formatNumber(value)}  (${WS.round(value / total * 100)}%)`));
+        const mark = el('span', 'mr-mark');
+        if (art) {
+          const im = icon(art, colour, 20);
+          im.width = im.height = 20;
+          mark.append(im);
+        }
+        line.append(mark, el('span', 'mr-name', label),
+          el('span', 'mr-val', WS.formatNumber(value)),
+          el('span', 'mr-pct', WS.round(value / total * 100) + '%'));
         if (tip) line.dataset.tip = tip;
         meter.append(line);
       };
       for (const [key, value] of shown) {
         const w = WS.Weapons[key];
         const n = hits && hits[key];
+        const src = SOURCE_ART[key] || (WS.Upgrades[key] && WS.Upgrades[key].art)
+          || (WS.Blessings[key] && WS.Blessings[key].art);
         row(sourceName(key), value, w ? (WS.CONST.COLORS[w.school] || WS.CONST.COLORS.arc) : tint,
-          n ? `${WS.formatNumber(n)} hits, ${WS.formatNumber(WS.round(value / n))} each` : null);
+          n ? `${WS.formatNumber(n)} hits, ${WS.formatNumber(WS.round(value / n))} each` : null,
+          w ? w.art : src);
       }
       if (rest.length) {
         row(`${rest.length} more`, rest.reduce((sum, e) => sum + e[1], 0), tint,
