@@ -105,11 +105,16 @@
   /* The barrier recharges like a shield, not a sponge. Every Dawnpulse at
      full health is almost all overheal, and all of it went into the barrier,
      so in a crowd it was topped up faster than blows could take it down and
-     never broke. Now a blow it soaks holds the refill off for barrierDelay,
-     and a break for barrierBrokenDelay: a crowd in contact wears it through,
-     and stepping clear of the press is what lets it build again. */
+     never broke. A blow it soaks holds the refill off for barrierDelay, so a
+     crowd in contact wears it through. Broken, it RE-FORMS (K.update): over
+     barrierReformTime, which no blow can stop and healing hurries, back to
+     barrierReformPct of its cap - healing alone could not build it back in a
+     crowd, and with light healing it averaged 3% full. */
   K.onHeal = function (p, gained, wasted) {
-    if ((p.barrierAttuned > 0 || p.hallowed > 0) && !(p.barrierLock > 0)) {
+    // Re-forming, a heal hurries it back rather than filling it.
+    if ((p.barrierAttuned > 0 || p.hallowed > 0) && p.reforming) {
+      p.reformK = WS.min(1, (p.reformK || 0) + (gained + wasted) / WS.max(1, p.maxHealth * C().barrierReformHeal));
+    } else if ((p.barrierAttuned > 0 || p.hallowed > 0) && !(p.barrierLock > 0)) {
       const add = wasted + (p.barrierAttuned > 0 ? gained * C().barrierFromHeal : 0);
       if (add > 0) {
         p.barrier = WS.min(K.barrierCap(p), p.barrier + add);
@@ -156,7 +161,8 @@
       p.barrierLock = WS.max(p.barrierLock || 0, C().barrierDelay);
       if (p.barrier <= 0.5) {
         p.barrier = 0; barrierBurst(p);
-        p.barrierLock = WS.max(p.barrierLock, C().barrierBrokenDelay);
+        // Broken: it starts building back at once, and nothing stops it.
+        p.reforming = true; p.reformK = 0; p.barrierLock = 0;
       }
     }
     return taken;
@@ -410,6 +416,20 @@
     if (p.vanishTimer > 0) p.vanishTimer = WS.max(0, p.vanishTimer - dt);
     if (p.holyLock > 0) p.holyLock = WS.max(0, p.holyLock - dt);
     if (p.barrierLock > 0) p.barrierLock = WS.max(0, p.barrierLock - dt);
+    if (p.barrierAttuned > 0 || p.hallowed > 0) {
+      // A barrier that has never formed forms the same way a broken one does.
+      if (p.barrier <= 0 && !p.reforming && p.reformedOnce === undefined) { p.reforming = true; p.reformK = 0; p.reformedOnce = false; }
+      if (p.reforming) {
+        p.reformK = WS.min(1, (p.reformK || 0) + dt / cfg.barrierReformTime);
+        if (p.reformK >= 1) {
+          p.reforming = false; p.reformK = 0; p.reformedOnce = true;
+          p.barrier = WS.max(p.barrier, K.barrierCap(p) * cfg.barrierReformPct);
+          p.barrierPeak = WS.max(p.barrierPeak || 0, p.barrier);
+          WS.FX.flash(p.x, p.y, 46, WS.CONST.COLORS.holy, 0.35);
+          WS.Audio.play('star', p.x);
+        }
+      }
+    }
     if (p.soulLock > 0) p.soulLock = WS.max(0, p.soulLock - dt);
     if (p.divineTimer > 0) p.divineTimer = WS.max(0, p.divineTimer - dt);
     if (p.smoulderTimer > 0) {
@@ -528,11 +548,12 @@
       // Broken, the meter says so and counts the way back; cracked, it says
       // the barrier is holding but not refilling. Without the calling,
       // Hallowed Mending's Ward reads the same way under its own name.
-      const broken = p.barrier <= 0 && p.barrierLock > 0;
       const name = p.barrierAttuned > 0 ? 'Barrier' : 'Ward';
-      out.push({ key: 'barrier', cls: 'calling holy' + (p.barrierLock > 0 ? ' waiting' : ''),
-        label: broken ? name + ' broken' : p.barrierLock > 0 ? name + ' ' + WS.round(p.barrier) + ' · cracked' : name + ' ' + WS.round(p.barrier),
-        pct: broken ? 1 - p.barrierLock / C().barrierBrokenDelay : p.barrier / WS.max(1, K.barrierCap(p)) });
+      out.push(p.reforming
+        ? { key: 'barrier-reform', cls: 'calling holy waiting', label: name + ' re-forming', pct: p.reformK || 0 }
+        : { key: 'barrier', cls: 'calling holy' + (p.barrierLock > 0 ? ' waiting' : ''),
+          label: p.barrierLock > 0 ? name + ' ' + WS.round(p.barrier) + ' · cracked' : name + ' ' + WS.round(p.barrier),
+          pct: p.barrier / WS.max(1, K.barrierCap(p)) });
     }
     if (p.comboAttuned > 0) {
       out.push(p.comboLock > 0

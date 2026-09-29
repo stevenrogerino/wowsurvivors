@@ -110,7 +110,7 @@ const fail = [];
     // Into the finale, stepping in slices so screenshots can be taken.
     await page.evaluate(() => {
       window.__fin = { stages: [], labels: [], taken: 0, purged: 0, blessing: false,
-        fightStart: 0, end: 0 };
+        fightStart: 0, end: 0, units: {}, phaseT: {} };
       const before = WS.Enemy.count();
       WS.Game.faceFinale();
       window.__fin.before = before;
@@ -140,6 +140,10 @@ const fail = [];
           if (lab && f.labels[f.labels.length - 1] !== lab.replace(/\d+/g, '#')) {
             f.labels.push(lab.replace(/\d+/g, '#'));
           }
+          // What each phase is made of: its units' health as they arrive, and
+          // how long the fight spends in it (--phases prints both).
+          if (F.stage === 'fight' && lab) { const k = lab.replace(/\d+/g, '#'); f.phaseT[k] = (f.phaseT[k] || 0) + 1 / 60; }
+          for (const u of F.units || []) if (u && u.template && !u.host && !f.units[u.template.name]) f.units[u.template.name] = WS.round(u.maxHealth);
           if (F.stage === 'outro' && !f.end) f.end = G.run.time;
         }
         return { stage: F.stage, state: G.state, cleared: !!G.run.finaleCleared,
@@ -173,6 +177,10 @@ const fail = [];
     if (r.purged > 0) fail.push(`${map}: ${r.purged} enemies survived first light`);
     const power = await page.evaluate(() => WS.Finale.power || 1);
     if (STRONG > 1) console.log(`  power  : boss health x${power.toFixed(1)} for a ${5 * STRONG}k-DPS build`);
+    if (process.argv.includes('--phases')) {
+      console.log('  units  : ' + Object.entries(r.units).map(([n, h]) => `${n} ${h}`).join(', '));
+      console.log('  phase  : ' + Object.entries(r.phaseT).map(([n, t]) => `${n} ${t.toFixed(0)}s`).join(', '));
+    }
     /* A stronger build is meant to win faster - health grows sub-linearly
        with its damage - so the strong pass asks for a real fight with every
        phase in it, not the same length as the harness build's. */

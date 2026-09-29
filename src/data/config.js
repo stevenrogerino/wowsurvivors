@@ -615,10 +615,18 @@
     // Radiant Barrier: wasted healing, and a share of healing that lands,
     // becomes a barrier up to a share of max health; breaking, it bursts.
     barrierCapPct: 0.30, barrierFromHeal: 0.20,
-    // A barrier that has just soaked a blow cannot refill for barrierDelay
-    // seconds, and one that broke stays down for barrierBrokenDelay: healing
-    // in a crowd refilled it faster than the crowd could wear it through.
-    barrierDelay: 2.0, barrierBrokenDelay: 6.0,
+    // A barrier that has just soaked a blow cannot refill from healing for
+    // barrierDelay seconds: healing in a crowd refilled it faster than the
+    // crowd could wear it through, so it never broke.
+    barrierDelay: 2.0,
+    /* ...and then it RE-FORMS on its own. Healing alone could not build it
+       back in a crowd - every blow it soaked held the refill off again, so
+       with light healing it averaged 3% full and the Ward 1%, a sliver that
+       broke as it formed. Broken (or never yet formed), it now builds back
+       over barrierReformTime - no blow can stop that, and every heal you
+       take hurries it (barrierReformHeal of max health healed is the whole
+       of it) - and comes back at barrierReformPct of its cap. */
+    barrierReformTime: 4, barrierReformPct: 0.5, barrierReformHeal: 0.3,
     barrierBurstRadius: 160, barrierBurstBase: 90, barrierBurstPerLevel: 9, barrierBurstMin: 0.25,
     // Opportunist: a crit is a point of Edge (no more than one per comboGate
     // seconds); comboNeed and the toughest enemy within reach takes a
