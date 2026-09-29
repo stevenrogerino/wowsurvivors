@@ -80,7 +80,8 @@ function report(rows) {
   const size = rows.length ? rows[0].weapons.length : 5;
   const list = Object.entries(by).map(([id, w]) => ({ id, n: w.n, share: w.share / w.n, landed: w.landed / w.n, top: w.top }))
     .sort((a, b) => b.share - a.share);
-  console.log(`\n${rows.length} builds of ${size}; a fair share is ${Math.round(100 / size)}%\n`);
+  const alive = rows.filter((r) => r.alive !== undefined);
+  console.log(`\n${rows.length} builds of ${size}; a fair share is ${Math.round(100 / size)}%` + (alive.length ? `; ${Math.round(alive.reduce((a, r) => a + r.alive, 0) / alive.length)} creatures alive on average` : '') + '\n');
   console.log('weapon            builds   mean share  x fair   landed/s   top of meter');
   for (const w of list) {
     console.log(w.id.padEnd(16), String(w.n).padStart(7), (Math.round(w.share * 1000) / 10 + '%').padStart(12),
@@ -130,6 +131,9 @@ function report(rows) {
     lead: { t: 840, rank: 6, evo: false, frac: 0.7, level: 80, lead: true } };
   S.st = Object.assign({}, STAGES[S.STAGE]);
   if (S.FRAC !== '') S.st.frac = +S.FRAC;
+  // RANK=3: every weapon at this rank instead of the stage's (a weaker build
+  // for the minute, as a real night often has).
+  if (env('RANK', '') !== '') S.st.rank = +env('RANK');
   if (!process.env.TIME) S.TIME = S.st.t;
   const b = await chromium.launch({ executablePath: process.env.CHROME || undefined, args: ['--no-sandbox'] });
   const page0 = await b.newPage();
@@ -237,10 +241,12 @@ function report(rows) {
       };
       for (let i = 0; i < S.WARM * 60; i++) tick();
       const k0 = G.run.kills; counting = true;
-      for (let i = 0; i < S.LIMIT * 60; i++) tick();
+      let alive = 0;
+      for (let i = 0; i < S.LIMIT * 60; i++) { tick(); if (i % 60 === 0) alive += WS.Enemy.pool.count; }
+      alive = Math.round(alive / S.LIMIT);
       counting = false; WS.Enemy.damage = dmg;
       for (const k of Object.keys(landed)) { landed[k] = Math.round(landed[k] / S.LIMIT); raw[k] = Math.round(raw[k] / S.LIMIT); }
-      return { weapons: job.w.map((w) => w.split(':')[0]), passives: job.ps, lead: S.st.lead ? job.w[0] : null, landed, raw, kills: Math.round((G.run.kills - k0) * 60 / S.LIMIT), combos: Object.keys(p.combosActive) };
+      return { weapons: job.w.map((w) => w.split(':')[0]), passives: job.ps, lead: S.st.lead ? job.w[0] : null, landed, raw, kills: Math.round((G.run.kills - k0) * 60 / S.LIMIT), alive, combos: Object.keys(p.combosActive) };
     }, { S, job, pilotSrc });
     r.errs = errs.slice(0, 2);
     if (errs.length) console.error('page error: ' + errs[0]);
