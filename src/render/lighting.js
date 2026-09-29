@@ -234,7 +234,7 @@
 
   /** Lay the night over the lit world. Call with ctx in world space. */
   Lit.apply = function (ctx, R, time) {
-    if (!Lit.enabled || WS.Save.settings.lighting === false) return;
+    if (!Lit.enabled || WS.Save.settings.lighting === false || R.shed >= 3) return;
     const game = WS.Game;
     if (!game.player || (WS.Arena && WS.Arena.active && WS.Arena.darkness > 0)) return;
     canvases();
@@ -293,7 +293,7 @@
   /* What glows, glowing. `src` is the whole canvas; `rect` is where the
      world sits in it, in device pixels. Call with ctx in world space. */
   Lit.bloom = function (ctx, R, src, rect) {
-    if (R.lite || WS.Save.settings.bloom === false || !WS.Game.player) return;
+    if (R.lite || WS.Save.settings.bloom === false || R.shed >= 1 || !WS.Game.player) return;
     bloomCanvases();
     const g1 = b1.getContext('2d');
     g1.globalCompositeOperation = 'copy';

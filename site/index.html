@@ -22976,6 +22976,14 @@ window.WS = window.WS || {};
     ui: 0.03, hover: 0.045, select: 0.035, warn: 0.04, page: 0.08, deny: 0.04,
   };
 
+  /** Kits that come in a little lower each time they repeat inside a few
+   *  seconds (see play): `per` off for each recent one, never below `floor`,
+   *  and the memory of them fades with a time constant of `tau` seconds. At
+   *  one hurt every half second the memory holds at about five, so a
+   *  sustained beating sits at the floor, 3.7dB under the first blow. */
+  const SOFTEN = { playerHurt: { per: 0.09, floor: 0.65, tau: 2.5 } };
+  const softened = Object.create(null);
+
   /** One draw of a value inside +/- `amt` of itself. Articulation, not pitch:
    *  how long an impact rings and how tight its filter is vary from blow to
    *  blow in anything real, and varying them INDEPENDENTLY of the pitch is
@@ -23574,6 +23582,30 @@ window.WS = window.WS || {};
        down the same way it pushes the music (check-audio caught it standing
        level with the level-up it should make room for). */
     if (kit === 'heartbeat' && this.duck) dest = this.duck;
+    /* BEING HIT, AGAIN. A tank build stands in the crowd on purpose and takes
+       a blow every time its grace runs out - two a second, all night - and
+       every one of them was the same full-weight grunt. The first hit in a
+       while is still the whole sound; each one after it inside a few seconds
+       comes in a little lower, down to SOFTEN.floor, and a few seconds of
+       peace gives it all back. A heavy blow is a separate voice (heavyHit)
+       and is never softened: that one is news. */
+    const soft = SOFTEN[kit];
+    this.lastSoften = 1;
+    if (soft) {
+      const r = softened[kit] || { n: 0, t: t };
+      r.n *= Math.exp(-(t - r.t) / soft.tau);
+      r.t = t;
+      const g = WS.max(soft.floor, 1 - soft.per * r.n);
+      r.n += 1;
+      softened[kit] = r;
+      this.lastSoften = g;
+      if (g < 0.999) {
+        const sg = this.ctx.createGain();
+        sg.gain.value = g;
+        sg.connect(dest);
+        dest = sg;
+      }
+    }
     if (chatter) {
       waiting[key] = 0;
       /* One voice, carrying what the ones it replaced would have said: louder
@@ -42400,20 +42432,41 @@ window.WS = window.WS || {};
      rule that only ever reads "slow, so go lower" walks that machine down
      to the floor, slower at every step. So a lower resolution is kept only
      if frames actually got faster at it; if not, the renderer goes back to
-     where it was and stops trying for the rest of the run. */
+     where it was and stops trying for the rest of the run.
+
+     EFFECTS GO BEFORE PIXELS. The night's light (render/lighting.js) and air
+     (render/atmosphere.js) are whole-screen passes, and on a machine that
+     draws the canvas in software they cost a third of a frame between them
+     - measured on Thornhollow's horde with the raster counted fairly, 52ms
+     without them, 63ms with the light, 73ms with the bloom as well. A
+     softer picture is a worse trade than a plainer one, so a slow stretch
+     sheds those first, one rung at a time: the bloom, then the mist, then
+     the light itself (R.shed, 0 to 3). Each rung is a trial like a
+     resolution step, kept only if frames got faster; a rung that bought
+     nothing is put back and the shedding stops, and resolution is tried
+     next. What is shed stays shed until the run ends - putting the bloom
+     back the moment frames recover is how a picture ends up flickering
+     between two looks every few seconds. */
   const RS_MIN = 0.5, RS_SLOW = 24, RS_FAST = 15;
   const RS_TRIAL = 1500, RS_GAIN = 0.9;             // judge after 1.5s; keep only a 10% gain
   const RS_GRACE = 10;                              // seconds into a run before any of it
+  const SHED_MAX = 3;
   R.renderScale = 1;
+  R.shed = 0;
   R.adaptResolution = function (dtMs) {
     if (!(dtMs > 0) || dtMs > 250) return;          // tab switches and stalls say nothing
     if (WS.Save.settings.dynamicResolution === false) {
       // Turned off: back to full resolution at once, not on the next slow frame.
       if (this.renderScale !== 1) { this.renderScale = 1; this.resize(); }
       this._rsTrial = null;
+      this.shed = 0;
       return;
     }
-    if (!WS.Game.running) { this._rsSlow = this._rsFast = 0; this._rsTrial = null; this._rsLocked = false; return; }
+    if (!WS.Game.running) {
+      this._rsSlow = this._rsFast = 0; this._rsTrial = null; this._rsLocked = false;
+      this.shed = 0; this._shedLocked = false;
+      return;
+    }
     // The first seconds of a run are loading and settling, never the heavy
     // part of the night, and are no evidence about the machine.
     if (WS.Game.run && WS.Game.run.time < RS_GRACE) { this._rsSlow = this._rsFast = 0; this._rsAvg = 0; return; }
@@ -42425,15 +42478,25 @@ window.WS = window.WS || {};
       this._rsTrial = null;
       if (this._rsAvg > trial.avg * RS_GAIN) {
         // it did not pay for itself: undo it, and do not try again this run
-        this._rsLocked = true;
-        this.setRenderScale(trial.from);
+        if (trial.shed !== undefined) {
+          this._shedLocked = true;
+          this.shed = trial.shed;
+          this._rsSlow = this._rsFast = 0; this._rsAvg = 0;
+        } else {
+          this._rsLocked = true;
+          this.setRenderScale(trial.from);
+        }
         return;
       }
     }
     if (this._rsAvg > RS_SLOW) { this._rsSlow = (this._rsSlow || 0) + dtMs; this._rsFast = 0; }
     else if (this._rsAvg < RS_FAST) { this._rsFast = (this._rsFast || 0) + dtMs; this._rsSlow = 0; }
     else { this._rsSlow = 0; this._rsFast = 0; }
-    if (this._rsSlow > 1200 && this.renderScale > RS_MIN && !this._rsLocked) {
+    if (this._rsSlow > 1200 && this.shed < SHED_MAX && !this._shedLocked) {
+      this._rsTrial = { shed: this.shed, avg: this._rsAvg, left: RS_TRIAL };
+      this.shed++;
+      this._rsSlow = this._rsFast = 0; this._rsAvg = 0;
+    } else if (this._rsSlow > 1200 && this.renderScale > RS_MIN && !this._rsLocked) {
       this._rsTrial = { from: this.renderScale, avg: this._rsAvg, left: RS_TRIAL };
       this.setRenderScale(WS.max(RS_MIN, this.renderScale * 0.82));
     } else if (this._rsFast > 6000 && this.renderScale < 1) {
@@ -47691,7 +47754,7 @@ window.WS = window.WS || {};
 
   /** Lay the night over the lit world. Call with ctx in world space. */
   Lit.apply = function (ctx, R, time) {
-    if (!Lit.enabled || WS.Save.settings.lighting === false) return;
+    if (!Lit.enabled || WS.Save.settings.lighting === false || R.shed >= 3) return;
     const game = WS.Game;
     if (!game.player || (WS.Arena && WS.Arena.active && WS.Arena.darkness > 0)) return;
     canvases();
@@ -47750,7 +47813,7 @@ window.WS = window.WS || {};
   /* What glows, glowing. `src` is the whole canvas; `rect` is where the
      world sits in it, in device pixels. Call with ctx in world space. */
   Lit.bloom = function (ctx, R, src, rect) {
-    if (R.lite || WS.Save.settings.bloom === false || !WS.Game.player) return;
+    if (R.lite || WS.Save.settings.bloom === false || R.shed >= 1 || !WS.Game.player) return;
     bloomCanvases();
     const g1 = b1.getContext('2d');
     g1.globalCompositeOperation = 'copy';
@@ -47857,7 +47920,7 @@ window.WS = window.WS || {};
   /** Low mist, before the light. ctx in world space. */
   Air.mist = function (ctx, R, time) {
     const a = airOf();
-    if (!a || R.lite || WS.Save.settings.atmosphere === false) return;
+    if (!a || R.lite || R.shed >= 2 || WS.Save.settings.atmosphere === false) return;
     const img = bank(a.mist[0]);
     ctx.save();
     ctx.globalAlpha = a.mist[1] * 3.2;
@@ -51019,8 +51082,8 @@ window.WS = window.WS || {};
       [['strip', 'Along the foot'], ['rail', 'Up the edges']], () => UI.applyHudLayout());
     choose('quality', 'Graphics', 'Balanced drops trails, glows and ground detail, and draws at standard resolution on sharp screens, for frames on a slower machine.',
       [['high', 'High'], ['balanced', 'Balanced']], () => WS.Renderer.applyQuality());
-    toggle('dynamicResolution', 'Dynamic resolution',
-      'When a fight gets heavy, draw the field at a lower resolution to keep it smooth, and sharpen again once it eases.');
+    toggle('dynamicResolution', 'Adaptive quality',
+      'When a fight gets too heavy for your machine, drop the bloom, then the mist, then the night lighting, and only then draw at a lower resolution, keeping each step only if it helps. The effects come back next run.');
     /* Two cuts of the prologue exist while the author decides which one to
        keep, and the only way to decide is to watch them one after the other.
        The button that plays it is in the menu footer, so this sits here and
@@ -52621,7 +52684,12 @@ window.WS = window.WS || {};
       const raw = last ? now - last : 0;
       const dt = last ? WS.min(raw / 1000, 0.25) : 0;
       last = now;
-      WS.Renderer.adaptResolution(raw);
+      /* Not under automation. A harness captures the picture it set up, and
+         a headless page is slow enough that adaptive quality would shed the
+         bloom partway through a capture and keep it shed (measured: check-fx
+         lost an evolution's glow between one shot and the next). The
+         controller itself is exercised directly by tools/check-adapt.js. */
+      if (!navigator.webdriver) WS.Renderer.adaptResolution(raw);
       if (raw && WS.Game.state === 'playing') WS.Runs.noteFrame(raw);
       WS.Game.update(dt);
       WS.Renderer.draw(now / 1000);

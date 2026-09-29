@@ -127,6 +127,7 @@ const BUILD = ['seeking_motes', 'umbral_bolt', 'cinderfall', 'arcweb', 'hallowed
         };
         const undo = [wrap(WS.Enemy, 'update', 'enemy'), wrap(WS.Projectile, 'update', 'proj')];
         const ft = [], st = [], counts = [];
+        const ctx2d = WS.Renderer.canvas.getContext('2d');
         for (let i = 0; i < frames; i++) {
           drive(); steer();
           if (keepFull && i % 30 === 0) topUp(300);
@@ -134,6 +135,15 @@ const BUILD = ['seeking_motes', 'umbral_bolt', 'cinderfall', 'arcweb', 'hallowed
           G.update(1 / 60);
           const t1 = performance.now();
           WS.Renderer.draw(i / 60);
+          /* Rasterize now, inside the timer. The browser records a canvas's
+             draws and paints them later, so a draw that never reads its own
+             pixels is timed at the cost of RECORDING it - and the bloom,
+             which reads the frame back, was timed at the cost of painting
+             everything: 25ms before it and 252ms after, of which 230 was the
+             frame's own paint moved inside the window. Measured fairly both
+             ways it was 63ms against 73. One pixel read settles it for every
+             frame alike. */
+          ctx2d.getImageData(0, 0, 1, 1);
           const t2 = performance.now();
           parts.draw += t2 - t1;
           ft.push(t2 - t0);

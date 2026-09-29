@@ -191,6 +191,14 @@ const MAX_SPEED = 1200;
    * the projectile cap bites, and the same weapon reported 0.17x and 5.08x on
    * two different runs of the same build. */
   const ramp = await page.evaluate(() => {
+    /* A fresh survivor, not the one the run above left behind. That one
+       carries whatever four minutes of level-ups happened to hand it - more
+       area here, more projectiles there - and its build moved these ratios
+       from run to run: evolved Axe Gyre read 1.08 to 1.21x against a bar of
+       1.2 on the same code, and 1.44x on every shot from a clean start. */
+    WS.Game.startRun('thornhollow', 'mage');
+    WS.Game.chooseBlessing({ type: 'blessing', id: 'kings' });
+    WS.Game.state = 'playing';
     const pl = WS.Game.player;
     pl.x = 640; pl.y = 360;
     const cv = document.querySelector('canvas');
@@ -201,6 +209,7 @@ const MAX_SPEED = 1200;
       WS.Renderer.draw(5);
       const before = g.getImageData(0, 0, cv.width, cv.height).data;
       fire();
+      WS.Game.accumulator = 0;
       WS.Renderer.draw(5);
       const after = g.getImageData(0, 0, cv.width, cv.height).data;
       let add = 0;
@@ -218,8 +227,18 @@ const MAX_SPEED = 1200;
        land - so a single unseeded frame decides a rule with a hard threshold,
        and a harness that fails one run in four gets ignored. Same seed before
        every shot, so rank 1 and rank 8 are compared under identical dice. */
+    /* ...and the rest of the dice too. WS.random() was seeded, but a shot is
+       also drawn at the frame-interpolation point the live loop last left in
+       Game.accumulator, and a few sparks draw off Math.random - so rank 8 and
+       its evolution were still compared at different moments of their own
+       flight, and evolved Axe Gyre measured 1.16 to 1.21x against a bar of
+       1.2 on the same code, failing one run in three. Both are pinned. */
+    let mr = 1;
+    Math.random = () => { mr = (mr * 16807) % 2147483647; return (mr - 1) / 2147483646; };
     const shot = (id, level, evolved, partner) => {
       WS.setSeed(0xF1E1D);
+      mr = 1;
+      WS.Game.accumulator = 0;
       pl.weapons.length = 0; pl.weaponLevels = {}; pl.combosActive = {};
       WS.Player.addWeapon(pl, id);
       if (partner) WS.Player.addWeapon(pl, partner);

@@ -304,6 +304,23 @@ let warnStack = null;
     const clump = WS.Audio.lastShape;
     out.density = { single, clump };
 
+    /* ---- being hit over and over: each blow a little quieter --------------
+     * A tank build takes a hit every time its grace runs out. The first blow
+     * in a while is the whole sound; a run of them settles lower; a few quiet
+     * seconds give it back. On the held clock, like the clump above. */
+    {
+      const h0 = ctx.currentTime + 1;
+      let hc = h0;
+      Object.defineProperty(ctx, 'currentTime', { configurable: true, get: () => hc });
+      const steps = [];
+      for (let i = 0; i < 10; i++) { hc = h0 + i * 0.5; WS.Audio.play('playerHurt'); steps.push(WS.Audio.lastSoften); }
+      hc = h0 + 4.5 + 8;
+      WS.Audio.play('playerHurt');
+      const rested = WS.Audio.lastSoften;
+      delete ctx.currentTime;
+      out.soften = { first: steps[0], second: steps[1], tenth: steps[9], rested };
+    }
+
     /* ---- a repeated warning must not stack into a wall -------------------- *
      * `warn` is the sound a charge makes when it commits, and it is the only
      * kit outside the one-shots that also DUCKS - it pulls the whole mix to
@@ -537,6 +554,18 @@ let warnStack = null;
   if (!(owns < 1.7)) {
     fail.push(`in the moment a level-up fires, the mix peaks ${owns.toFixed(2)}x what the `
       + 'level-up makes on its own - most of what the player hears is still the wall');
+  }
+
+  /* A sustained beating settles a little lower and comes back after a rest.
+     NEGATIVE TEST: emptying SOFTEN in audio.js reports "the tenth blow in
+     five seconds is as loud as the first". */
+  if (report.soften) {
+    const f = report.soften;
+    if (!(f.first > 0.99)) fail.push(`the first blow in a while is already softened (${f.first})`);
+    if (!(f.tenth < 0.8)) fail.push(`the tenth blow in five seconds is as loud as the first (${f.tenth})`);
+    if (!(f.tenth >= 0.6)) fail.push(`a run of blows is softened to ${f.tenth} - slightly, not away`);
+    if (!(f.second < f.first && f.second > 0.85)) fail.push(`the second blow drops too far or not at all (${f.second})`);
+    if (!(f.rested > 0.95)) fail.push(`eight quiet seconds after a beating, a blow is still softened (${f.rested})`);
   }
 
   /* Peril. At full health: no heartbeat and the score wide open. At a sliver:

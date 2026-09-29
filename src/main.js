@@ -59,7 +59,12 @@
       const raw = last ? now - last : 0;
       const dt = last ? WS.min(raw / 1000, 0.25) : 0;
       last = now;
-      WS.Renderer.adaptResolution(raw);
+      /* Not under automation. A harness captures the picture it set up, and
+         a headless page is slow enough that adaptive quality would shed the
+         bloom partway through a capture and keep it shed (measured: check-fx
+         lost an evolution's glow between one shot and the next). The
+         controller itself is exercised directly by tools/check-adapt.js. */
+      if (!navigator.webdriver) WS.Renderer.adaptResolution(raw);
       if (raw && WS.Game.state === 'playing') WS.Runs.noteFrame(raw);
       WS.Game.update(dt);
       WS.Renderer.draw(now / 1000);

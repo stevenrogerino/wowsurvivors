@@ -70,7 +70,7 @@
   /** Low mist, before the light. ctx in world space. */
   Air.mist = function (ctx, R, time) {
     const a = airOf();
-    if (!a || R.lite || WS.Save.settings.atmosphere === false) return;
+    if (!a || R.lite || R.shed >= 2 || WS.Save.settings.atmosphere === false) return;
     const img = bank(a.mist[0]);
     ctx.save();
     ctx.globalAlpha = a.mist[1] * 3.2;

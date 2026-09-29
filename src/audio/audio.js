@@ -379,6 +379,14 @@
     ui: 0.03, hover: 0.045, select: 0.035, warn: 0.04, page: 0.08, deny: 0.04,
   };
 
+  /** Kits that come in a little lower each time they repeat inside a few
+   *  seconds (see play): `per` off for each recent one, never below `floor`,
+   *  and the memory of them fades with a time constant of `tau` seconds. At
+   *  one hurt every half second the memory holds at about five, so a
+   *  sustained beating sits at the floor, 3.7dB under the first blow. */
+  const SOFTEN = { playerHurt: { per: 0.09, floor: 0.65, tau: 2.5 } };
+  const softened = Object.create(null);
+
   /** One draw of a value inside +/- `amt` of itself. Articulation, not pitch:
    *  how long an impact rings and how tight its filter is vary from blow to
    *  blow in anything real, and varying them INDEPENDENTLY of the pitch is
@@ -977,6 +985,30 @@
        down the same way it pushes the music (check-audio caught it standing
        level with the level-up it should make room for). */
     if (kit === 'heartbeat' && this.duck) dest = this.duck;
+    /* BEING HIT, AGAIN. A tank build stands in the crowd on purpose and takes
+       a blow every time its grace runs out - two a second, all night - and
+       every one of them was the same full-weight grunt. The first hit in a
+       while is still the whole sound; each one after it inside a few seconds
+       comes in a little lower, down to SOFTEN.floor, and a few seconds of
+       peace gives it all back. A heavy blow is a separate voice (heavyHit)
+       and is never softened: that one is news. */
+    const soft = SOFTEN[kit];
+    this.lastSoften = 1;
+    if (soft) {
+      const r = softened[kit] || { n: 0, t: t };
+      r.n *= Math.exp(-(t - r.t) / soft.tau);
+      r.t = t;
+      const g = WS.max(soft.floor, 1 - soft.per * r.n);
+      r.n += 1;
+      softened[kit] = r;
+      this.lastSoften = g;
+      if (g < 0.999) {
+        const sg = this.ctx.createGain();
+        sg.gain.value = g;
+        sg.connect(dest);
+        dest = sg;
+      }
+    }
     if (chatter) {
       waiting[key] = 0;
       /* One voice, carrying what the ones it replaced would have said: louder

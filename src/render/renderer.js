@@ -106,20 +106,41 @@
      rule that only ever reads "slow, so go lower" walks that machine down
      to the floor, slower at every step. So a lower resolution is kept only
      if frames actually got faster at it; if not, the renderer goes back to
-     where it was and stops trying for the rest of the run. */
+     where it was and stops trying for the rest of the run.
+
+     EFFECTS GO BEFORE PIXELS. The night's light (render/lighting.js) and air
+     (render/atmosphere.js) are whole-screen passes, and on a machine that
+     draws the canvas in software they cost a third of a frame between them
+     - measured on Thornhollow's horde with the raster counted fairly, 52ms
+     without them, 63ms with the light, 73ms with the bloom as well. A
+     softer picture is a worse trade than a plainer one, so a slow stretch
+     sheds those first, one rung at a time: the bloom, then the mist, then
+     the light itself (R.shed, 0 to 3). Each rung is a trial like a
+     resolution step, kept only if frames got faster; a rung that bought
+     nothing is put back and the shedding stops, and resolution is tried
+     next. What is shed stays shed until the run ends - putting the bloom
+     back the moment frames recover is how a picture ends up flickering
+     between two looks every few seconds. */
   const RS_MIN = 0.5, RS_SLOW = 24, RS_FAST = 15;
   const RS_TRIAL = 1500, RS_GAIN = 0.9;             // judge after 1.5s; keep only a 10% gain
   const RS_GRACE = 10;                              // seconds into a run before any of it
+  const SHED_MAX = 3;
   R.renderScale = 1;
+  R.shed = 0;
   R.adaptResolution = function (dtMs) {
     if (!(dtMs > 0) || dtMs > 250) return;          // tab switches and stalls say nothing
     if (WS.Save.settings.dynamicResolution === false) {
       // Turned off: back to full resolution at once, not on the next slow frame.
       if (this.renderScale !== 1) { this.renderScale = 1; this.resize(); }
       this._rsTrial = null;
+      this.shed = 0;
       return;
     }
-    if (!WS.Game.running) { this._rsSlow = this._rsFast = 0; this._rsTrial = null; this._rsLocked = false; return; }
+    if (!WS.Game.running) {
+      this._rsSlow = this._rsFast = 0; this._rsTrial = null; this._rsLocked = false;
+      this.shed = 0; this._shedLocked = false;
+      return;
+    }
     // The first seconds of a run are loading and settling, never the heavy
     // part of the night, and are no evidence about the machine.
     if (WS.Game.run && WS.Game.run.time < RS_GRACE) { this._rsSlow = this._rsFast = 0; this._rsAvg = 0; return; }
@@ -131,15 +152,25 @@
       this._rsTrial = null;
       if (this._rsAvg > trial.avg * RS_GAIN) {
         // it did not pay for itself: undo it, and do not try again this run
-        this._rsLocked = true;
-        this.setRenderScale(trial.from);
+        if (trial.shed !== undefined) {
+          this._shedLocked = true;
+          this.shed = trial.shed;
+          this._rsSlow = this._rsFast = 0; this._rsAvg = 0;
+        } else {
+          this._rsLocked = true;
+          this.setRenderScale(trial.from);
+        }
         return;
       }
     }
     if (this._rsAvg > RS_SLOW) { this._rsSlow = (this._rsSlow || 0) + dtMs; this._rsFast = 0; }
     else if (this._rsAvg < RS_FAST) { this._rsFast = (this._rsFast || 0) + dtMs; this._rsSlow = 0; }
     else { this._rsSlow = 0; this._rsFast = 0; }
-    if (this._rsSlow > 1200 && this.renderScale > RS_MIN && !this._rsLocked) {
+    if (this._rsSlow > 1200 && this.shed < SHED_MAX && !this._shedLocked) {
+      this._rsTrial = { shed: this.shed, avg: this._rsAvg, left: RS_TRIAL };
+      this.shed++;
+      this._rsSlow = this._rsFast = 0; this._rsAvg = 0;
+    } else if (this._rsSlow > 1200 && this.renderScale > RS_MIN && !this._rsLocked) {
       this._rsTrial = { from: this.renderScale, avg: this._rsAvg, left: RS_TRIAL };
       this.setRenderScale(WS.max(RS_MIN, this.renderScale * 0.82));
     } else if (this._rsFast > 6000 && this.renderScale < 1) {
