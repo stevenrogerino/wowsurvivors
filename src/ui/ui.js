@@ -3606,36 +3606,45 @@
   /* `results` is true on the end-of-run panels, where the verdict above the
      sheet already shows time, slain, bosses, damage and gold in large type -
      so the sheet does not spend its height saying them twice. */
+  /* THE BLESSINGS, AS A STRIP. They decide more of a run than any one weapon,
+   * and inside the build sheet they either sat halfway down the middle panel
+   * or took the top of the first one away from the arsenal. They sit outside
+   * the three panels now, where there was nothing: beside the pause tabs, and
+   * in the results banner under the Watch's log. A chip each - the mark, the
+   * name in its quality's colour, a line of what it does (the whole of it on
+   * hover) - and the survivor's own calling says so. `compact` drops the
+   * line, for the banner's narrower column. */
+  function blessingStrip(p, compact) {
+    const taken = p ? Object.keys(p.blessingsTaken || {}).filter((id) => WS.Blessings[id]) : [];
+    if (!taken.length) return null;
+    const strip = el('div', 'bless-strip' + (compact ? ' compact' : ''));
+    const sig = p.character && p.character.signatureBlessing;
+    for (const id of taken) {
+      const bl = WS.Blessings[id];
+      const q = qualityColour(bl.quality || 'legendary');
+      const chip = el('div', 'bless-chip');
+      chip.style.setProperty('--q', WS.rgb(q, 1));
+      const im = icon(bl.art, q, 30);
+      im.width = im.height = 30;
+      const text = el('div', 'bc-text');
+      const name = el('div', 'bc-name', bl.name);
+      text.append(name);
+      if (!compact) text.append(el('div', 'bc-desc', WS.template(bl.description, bl)));
+      chip.append(im, text);
+      chip.dataset.tip = (id === sig ? 'Your calling. ' : '') + WS.template(bl.description, bl)
+        + (bl.detail ? '\n' + WS.template(bl.detail, bl) : '');
+      if (id === sig) chip.classList.add('own');
+      strip.append(chip);
+    }
+    return strip;
+  }
+  UI.blessingStrip = blessingStrip;
+
   function buildSheet(results) {
     const p = WS.Game.player, run = WS.Game.run;
     const sheet = el('div', 'sheet');
 
     const left = panel();
-    /* The blessings lead the build. They decide more of a run than any one
-       weapon and they were halfway down the middle panel, under two dozen
-       of the survivor's figures - so they sit at the head of the first panel
-       now, where the eye lands, as tiles across it. */
-    const taken = Object.keys(p.blessingsTaken || {}).filter((id) => WS.Blessings[id]);
-    if (taken.length) {
-      left.append(el('h3', null, 'Blessings'));
-      // Its mark, its name in its quality's colour, what it does in two lines.
-      const list = el('div', 'sheet-blessings rich tiles');
-      const sig = p.character && p.character.signatureBlessing;
-      for (const id of taken) {
-        const bl = WS.Blessings[id];
-        const q = qualityColour(bl.quality || 'legendary');
-        const item = el('div', 'sheet-blessing rich');
-        item.style.setProperty('--q', WS.rgb(q, 1));
-        const text = el('div', 'sb-text');
-        const name = el('div', 'sb-name', bl.name);
-        if (id === sig) name.append(el('span', 'sb-own', 'Your calling'));
-        text.append(name, el('div', 'sb-desc', WS.template(bl.description, bl)));
-        item.append(icon(bl.art, q, 32), text);
-        item.dataset.tip = WS.template(bl.description, bl) + (bl.detail ? '\n' + WS.template(bl.detail, bl) : '');
-        list.append(item);
-      }
-      left.append(list);
-    }
     left.append(el('h3', null, 'Arsenal'));
     for (const w of p.weapons) {
       const row = el('div', 'row');
@@ -3892,12 +3901,15 @@
      * without ending what you are in. */
     const tabs = el('div', 'tabs');
     const pane = el('div', 'pause-pane');
+    // The blessings ride in the tab row's empty right-hand side (Build only).
+    const strip = blessingStrip(WS.Game.player, false);
     let view = 'build';
     const render = () => {
       for (const b of tabs.children) b.classList.toggle('active', b.dataset.view === view);
       // The sheet fills the space and scrolls inside its panels; the settings
       // list is an ordinary scrolling column.
       s.body.classList.toggle('fitted', view === 'build');
+      if (strip) strip.classList.toggle('hidden', view !== 'build');
       pane.replaceChildren(view === 'build' ? buildSheet()
         : view === 'manual' ? this.paneManual()
           : this.paneSettings(render, true));
@@ -3910,7 +3922,10 @@
       b.addEventListener('click', () => { view = id; WS.Audio.play('page'); render(); });
       tabs.append(b);
     }
-    s.inner.insertBefore(tabs, s.body);
+    const top = el('div', 'pause-top');
+    top.append(tabs);
+    if (strip) top.append(strip);
+    s.inner.insertBefore(top, s.body);
     s.body.append(pane);
     render();
 
@@ -4042,6 +4057,8 @@
     // Under the log when there is one: the log is a few lines and leaves
     // its column mostly empty, and at 720p every pixel the verdict grows is
     // taken from the build sheet below it.
+    const bs = blessingStrip(WS.Game.player, true);
+    if (bs) (log || main).append(bs);
     const tl = runTimeline(WS.Game.run);
     if (tl) (log || main).append(tl);
     wrap.append(main);

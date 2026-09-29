@@ -1465,16 +1465,21 @@ body.hud-rail #hud-toasts { left: 76px; bottom: 20px; }
   box-shadow: var(--bevel);
 }
 
-.choice-bar { display: flex; gap: 10px; align-items: center; justify-content: center; position: relative; margin: 0 auto 30px; }
+.choice-bar {
+  --gap: 14px;
+  display: flex; gap: 10px; align-items: center; justify-content: center; position: relative; margin: 0 auto var(--gap);
+}
 /* The banish hint is always there, and only fades. If it appeared on demand
    it would push the cards down under the cursor that just armed it. Nothing
-   may move - so the bar keeps a row of room under it, and the hint sits in
-   that row, centred under the buttons that armed it and over the cards it
-   is about. (It used to sit at left: 100% of the bar, which is the full
-   width of the screen, so it read from the far right edge.) */
+   may move - and nothing had to: under the bar's own gap the card row keeps
+   15px of headroom for a card's lift and its gem, so there are 29px of clear
+   space between the buttons and the card tops already. The hint is centred
+   in exactly that (it once added 16px of its own and pushed every card down
+   for nothing; before that it sat at left: 100% of a full-width bar, which
+   is the far right edge of the screen). */
 .choice-hint {
   position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
-  margin-top: 7px; white-space: nowrap;
+  line-height: 18px; margin-top: calc((var(--gap) + 15px - 18px) / 2); white-space: nowrap;
   font-family: var(--voice); font-style: italic; font-weight: 600;
   font-size: 15px; color: #ef6a5c; letter-spacing: .02em;
   text-shadow: 0 1px 2px rgba(0,0,0,.8);
@@ -2736,6 +2741,33 @@ body.hud-rail #hud-passives { gap: 9px; }
 .sheet-blessing { display: flex; align-items: center; gap: 9px; cursor: default;
   font-family: var(--voice); font-weight: 700; font-size: 15px; color: var(--ink); }
 .sheet-blessing img { flex: none; }
+/* The blessings strip: beside the pause tabs, and in the results banner. */
+.pause-top { display: flex; align-items: flex-end; gap: 18px; min-width: 0; }
+.pause-top > .tabs { flex: none; }
+.bless-strip { display: flex; gap: 8px; min-width: 0; }
+.pause-top > .bless-strip { flex: 1 1 auto; justify-content: flex-end; margin-bottom: 6px; }
+.bless-strip.hidden { visibility: hidden; }
+.bless-chip {
+  display: flex; align-items: center; gap: 9px; min-width: 0; flex: 0 1 290px;
+  padding: 5px 10px 5px 6px; cursor: default;
+  border: 1px solid rgba(255,240,214,.08); border-left: 2px solid var(--q, var(--arc)); border-radius: 2px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--q, var(--arc)) 12%, rgba(10,11,16,.6)), rgba(10,11,16,.35) 80%);
+}
+.bless-chip img { flex: none; display: block; }
+.bless-chip .bc-text { min-width: 0; }
+.bless-chip .bc-name {
+  font-family: var(--voice); font-weight: 700; font-size: 14.5px; line-height: 1.15; color: var(--q, var(--ink));
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.bless-chip.own .bc-name::after { content: ' · your calling'; font-weight: 500; font-style: italic; font-size: 11.5px; color: var(--ink-dim); }
+.bless-chip .bc-desc {
+  font-family: var(--voice); font-size: 12.5px; line-height: 1.25; color: var(--ink-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* In the banner: a wrapping row of names under the log. */
+.bless-strip.compact { flex-wrap: wrap; margin: 12px 0 2px; }
+.bless-strip.compact .bless-chip { flex: 0 1 auto; padding: 4px 10px 4px 5px; }
+
 /* Discoveries two across, each its pair's mark and a name over what it joins. */
 .sheet-discoveries { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 7px 14px; margin: 4px 0 2px; }
 .sheet-discovery { display: flex; align-items: center; gap: 9px; min-width: 0; cursor: default; }
@@ -3482,8 +3514,7 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 @media (min-width: 721px) and (max-height: 680px) {
   .card.no-foot .card-body { -webkit-line-clamp: 5; }
   /* The opened strip has to fit under the cards on a 600px window. */
-  .choice-bar { margin-bottom: 22px; }
-  .choice-hint { margin-top: 3px; }
+  .choice-bar { --gap: 6px; }
   .bt-drawer.open .build-tray { padding: 5px 12px; gap: 6px 16px; }
   .build-tray .bt-slot { width: 34px; height: 34px; }
   .build-tray .bt-slot.small { width: 28px; height: 28px; }
@@ -52031,36 +52062,45 @@ window.WS = window.WS || {};
   /* `results` is true on the end-of-run panels, where the verdict above the
      sheet already shows time, slain, bosses, damage and gold in large type -
      so the sheet does not spend its height saying them twice. */
+  /* THE BLESSINGS, AS A STRIP. They decide more of a run than any one weapon,
+   * and inside the build sheet they either sat halfway down the middle panel
+   * or took the top of the first one away from the arsenal. They sit outside
+   * the three panels now, where there was nothing: beside the pause tabs, and
+   * in the results banner under the Watch's log. A chip each - the mark, the
+   * name in its quality's colour, a line of what it does (the whole of it on
+   * hover) - and the survivor's own calling says so. `compact` drops the
+   * line, for the banner's narrower column. */
+  function blessingStrip(p, compact) {
+    const taken = p ? Object.keys(p.blessingsTaken || {}).filter((id) => WS.Blessings[id]) : [];
+    if (!taken.length) return null;
+    const strip = el('div', 'bless-strip' + (compact ? ' compact' : ''));
+    const sig = p.character && p.character.signatureBlessing;
+    for (const id of taken) {
+      const bl = WS.Blessings[id];
+      const q = qualityColour(bl.quality || 'legendary');
+      const chip = el('div', 'bless-chip');
+      chip.style.setProperty('--q', WS.rgb(q, 1));
+      const im = icon(bl.art, q, 30);
+      im.width = im.height = 30;
+      const text = el('div', 'bc-text');
+      const name = el('div', 'bc-name', bl.name);
+      text.append(name);
+      if (!compact) text.append(el('div', 'bc-desc', WS.template(bl.description, bl)));
+      chip.append(im, text);
+      chip.dataset.tip = (id === sig ? 'Your calling. ' : '') + WS.template(bl.description, bl)
+        + (bl.detail ? '\n' + WS.template(bl.detail, bl) : '');
+      if (id === sig) chip.classList.add('own');
+      strip.append(chip);
+    }
+    return strip;
+  }
+  UI.blessingStrip = blessingStrip;
+
   function buildSheet(results) {
     const p = WS.Game.player, run = WS.Game.run;
     const sheet = el('div', 'sheet');
 
     const left = panel();
-    /* The blessings lead the build. They decide more of a run than any one
-       weapon and they were halfway down the middle panel, under two dozen
-       of the survivor's figures - so they sit at the head of the first panel
-       now, where the eye lands, as tiles across it. */
-    const taken = Object.keys(p.blessingsTaken || {}).filter((id) => WS.Blessings[id]);
-    if (taken.length) {
-      left.append(el('h3', null, 'Blessings'));
-      // Its mark, its name in its quality's colour, what it does in two lines.
-      const list = el('div', 'sheet-blessings rich tiles');
-      const sig = p.character && p.character.signatureBlessing;
-      for (const id of taken) {
-        const bl = WS.Blessings[id];
-        const q = qualityColour(bl.quality || 'legendary');
-        const item = el('div', 'sheet-blessing rich');
-        item.style.setProperty('--q', WS.rgb(q, 1));
-        const text = el('div', 'sb-text');
-        const name = el('div', 'sb-name', bl.name);
-        if (id === sig) name.append(el('span', 'sb-own', 'Your calling'));
-        text.append(name, el('div', 'sb-desc', WS.template(bl.description, bl)));
-        item.append(icon(bl.art, q, 32), text);
-        item.dataset.tip = WS.template(bl.description, bl) + (bl.detail ? '\n' + WS.template(bl.detail, bl) : '');
-        list.append(item);
-      }
-      left.append(list);
-    }
     left.append(el('h3', null, 'Arsenal'));
     for (const w of p.weapons) {
       const row = el('div', 'row');
@@ -52317,12 +52357,15 @@ window.WS = window.WS || {};
      * without ending what you are in. */
     const tabs = el('div', 'tabs');
     const pane = el('div', 'pause-pane');
+    // The blessings ride in the tab row's empty right-hand side (Build only).
+    const strip = blessingStrip(WS.Game.player, false);
     let view = 'build';
     const render = () => {
       for (const b of tabs.children) b.classList.toggle('active', b.dataset.view === view);
       // The sheet fills the space and scrolls inside its panels; the settings
       // list is an ordinary scrolling column.
       s.body.classList.toggle('fitted', view === 'build');
+      if (strip) strip.classList.toggle('hidden', view !== 'build');
       pane.replaceChildren(view === 'build' ? buildSheet()
         : view === 'manual' ? this.paneManual()
           : this.paneSettings(render, true));
@@ -52335,7 +52378,10 @@ window.WS = window.WS || {};
       b.addEventListener('click', () => { view = id; WS.Audio.play('page'); render(); });
       tabs.append(b);
     }
-    s.inner.insertBefore(tabs, s.body);
+    const top = el('div', 'pause-top');
+    top.append(tabs);
+    if (strip) top.append(strip);
+    s.inner.insertBefore(top, s.body);
     s.body.append(pane);
     render();
 
@@ -52467,6 +52513,8 @@ window.WS = window.WS || {};
     // Under the log when there is one: the log is a few lines and leaves
     // its column mostly empty, and at 720p every pixel the verdict grows is
     // taken from the build sheet below it.
+    const bs = blessingStrip(WS.Game.player, true);
+    if (bs) (log || main).append(bs);
     const tl = runTimeline(WS.Game.run);
     if (tl) (log || main).append(tl);
     wrap.append(main);

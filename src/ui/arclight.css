@@ -1381,16 +1381,21 @@ body.hud-rail #hud-toasts { left: 76px; bottom: 20px; }
   box-shadow: var(--bevel);
 }
 
-.choice-bar { display: flex; gap: 10px; align-items: center; justify-content: center; position: relative; margin: 0 auto 30px; }
+.choice-bar {
+  --gap: 14px;
+  display: flex; gap: 10px; align-items: center; justify-content: center; position: relative; margin: 0 auto var(--gap);
+}
 /* The banish hint is always there, and only fades. If it appeared on demand
    it would push the cards down under the cursor that just armed it. Nothing
-   may move - so the bar keeps a row of room under it, and the hint sits in
-   that row, centred under the buttons that armed it and over the cards it
-   is about. (It used to sit at left: 100% of the bar, which is the full
-   width of the screen, so it read from the far right edge.) */
+   may move - and nothing had to: under the bar's own gap the card row keeps
+   15px of headroom for a card's lift and its gem, so there are 29px of clear
+   space between the buttons and the card tops already. The hint is centred
+   in exactly that (it once added 16px of its own and pushed every card down
+   for nothing; before that it sat at left: 100% of a full-width bar, which
+   is the far right edge of the screen). */
 .choice-hint {
   position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
-  margin-top: 7px; white-space: nowrap;
+  line-height: 18px; margin-top: calc((var(--gap) + 15px - 18px) / 2); white-space: nowrap;
   font-family: var(--voice); font-style: italic; font-weight: 600;
   font-size: 15px; color: #ef6a5c; letter-spacing: .02em;
   text-shadow: 0 1px 2px rgba(0,0,0,.8);
@@ -2652,6 +2657,33 @@ body.hud-rail #hud-passives { gap: 9px; }
 .sheet-blessing { display: flex; align-items: center; gap: 9px; cursor: default;
   font-family: var(--voice); font-weight: 700; font-size: 15px; color: var(--ink); }
 .sheet-blessing img { flex: none; }
+/* The blessings strip: beside the pause tabs, and in the results banner. */
+.pause-top { display: flex; align-items: flex-end; gap: 18px; min-width: 0; }
+.pause-top > .tabs { flex: none; }
+.bless-strip { display: flex; gap: 8px; min-width: 0; }
+.pause-top > .bless-strip { flex: 1 1 auto; justify-content: flex-end; margin-bottom: 6px; }
+.bless-strip.hidden { visibility: hidden; }
+.bless-chip {
+  display: flex; align-items: center; gap: 9px; min-width: 0; flex: 0 1 290px;
+  padding: 5px 10px 5px 6px; cursor: default;
+  border: 1px solid rgba(255,240,214,.08); border-left: 2px solid var(--q, var(--arc)); border-radius: 2px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--q, var(--arc)) 12%, rgba(10,11,16,.6)), rgba(10,11,16,.35) 80%);
+}
+.bless-chip img { flex: none; display: block; }
+.bless-chip .bc-text { min-width: 0; }
+.bless-chip .bc-name {
+  font-family: var(--voice); font-weight: 700; font-size: 14.5px; line-height: 1.15; color: var(--q, var(--ink));
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.bless-chip.own .bc-name::after { content: ' · your calling'; font-weight: 500; font-style: italic; font-size: 11.5px; color: var(--ink-dim); }
+.bless-chip .bc-desc {
+  font-family: var(--voice); font-size: 12.5px; line-height: 1.25; color: var(--ink-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* In the banner: a wrapping row of names under the log. */
+.bless-strip.compact { flex-wrap: wrap; margin: 12px 0 2px; }
+.bless-strip.compact .bless-chip { flex: 0 1 auto; padding: 4px 10px 4px 5px; }
+
 /* Discoveries two across, each its pair's mark and a name over what it joins. */
 .sheet-discoveries { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 7px 14px; margin: 4px 0 2px; }
 .sheet-discovery { display: flex; align-items: center; gap: 9px; min-width: 0; cursor: default; }
@@ -3398,8 +3430,7 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 @media (min-width: 721px) and (max-height: 680px) {
   .card.no-foot .card-body { -webkit-line-clamp: 5; }
   /* The opened strip has to fit under the cards on a 600px window. */
-  .choice-bar { margin-bottom: 22px; }
-  .choice-hint { margin-top: 3px; }
+  .choice-bar { --gap: 6px; }
   .bt-drawer.open .build-tray { padding: 5px 12px; gap: 6px 16px; }
   .build-tray .bt-slot { width: 34px; height: 34px; }
   .build-tray .bt-slot.small { width: 28px; height: 28px; }
