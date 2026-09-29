@@ -4180,15 +4180,30 @@ window.WS = window.WS || {};
     tideSteps: [0.10, 0.15, 0.25, 0.30, 0],
     tideStepTime: 60,
     /* ...but only as deep as the survivor can take. Each step is scaled, when
-       it comes, by how hard the night has been hitting: damage taken over
-       roughly the last tideStrainTime seconds, as a share of max health a
-       second. At none the step lands in full; at tideStrainFull or more it
-       does not land at all, and the late climb follows the latest step. On
+       it comes, by how hard the night has been hitting: health DRAINED over
+       roughly the last tideStrainTime seconds (damage taken less healing
+       received), as a share of max health a second, and how low the bar has
+       been lately. At no drain and a bar above tideLowBar the step lands in
+       full; at tideStrainFull, or a bar tideLowSpan below tideLowBar, it does
+       not land at all, and the late climb follows the latest step.
+
+       Drain, not damage: counting only the blows read a thorns or lifesteal
+       build that stands in the crowd and heals every point back as a
+       survivor in trouble (a warrior healing 98% of what he took got 48% of
+       each step), so the builds made to take hits got the softest nights. On
        the hardest battlefields, where no one gets ahead, the full steps took
        a strong player's dawns from 6 in 24 to none; they are there to catch
        a build that has run away with the night, not to finish one that has
        not. */
-    tideStrainTime: 90, tideStrainFull: 0.006,
+    tideStrainTime: 90, tideStrainFull: 0.003,
+    tideLowBar: 0.7, tideLowSpan: 0.4,
+    /* ...and the night pays for what it took: each reliquary's odds of three
+       and five gifts grow with the share of the last step that landed (x2
+       and x3 at a full step), and every step taken adds depthScore of it to
+       the night's score (Runs.score). Taking the night deep is a wager,
+       not a tax. */
+    reliquaryDeepThree: 1.0, reliquaryDeepFive: 2.0,
+    depthScore: 0.05,
     deathTime: 1800,
     deathInterval: 60,
 
@@ -4559,10 +4574,6 @@ window.WS = window.WS || {};
       autoBreakingPoint: false,
       // Countdown bars for what comes next; shown only once a dawn is won.
       bossTimers: true,
-      /* The night's rhythm around its bosses and the reliquaries they leave
-         (Config.tides, Config.reliquaries). Off plays the night without
-         either, for comparing the two. */
-      nightRhythm: true,
       // Draw at a lower resolution while frames run slow (renderer.js).
       dynamicResolution: true,
       /* Which cut of the prologue plays. Two exist while the author decides
@@ -4736,6 +4747,8 @@ window.WS = window.WS || {};
       deckSetup: false,
       gold: 0,
       hyperArmed: false,
+      // Tides armed for the next night (the rhythm around the bosses; waves.js).
+      tidesArmed: false,
       // Set the first time the manual is closed, so the primer greets a new
       // player once and never interrupts a returning one.
       seenManual: false,
@@ -26668,7 +26681,7 @@ window.WS = window.WS || {};
         return;
       }
       if (e.id === 'death_itself') run.deathsSlain++;
-      else if (WS.Config.reliquaries && WS.Save.settings.nightRhythm !== false) WS.Pickup.spawn('reliquary', e.x, e.y);
+      else if (WS.Config.reliquaries && run.tides) WS.Pickup.spawn('reliquary', e.x, e.y);
       WS.Save.stats.bosses[e.id] = (WS.Save.stats.bosses[e.id] || 0) + 1;
       const gold = WS.floor((t.gold || 40) * run.goldMult * player.goldMultiplier);
       WS.Game.addGold(gold, e.x, e.y);
@@ -29898,8 +29911,11 @@ window.WS = window.WS || {};
 
     } else if (kind === 'reliquary') {
       const cfg = WS.Config;
+      // The deeper the night was let go, the richer what it leaves.
+      const deep = WS.WaveManager.lastDepth();
       const roll = WS.random() / WS.max(0.2, p.luck);
-      const n = roll < cfg.reliquaryFive ? 5 : roll < cfg.reliquaryThree ? 3 : 1;
+      const n = roll < cfg.reliquaryFive * (1 + cfg.reliquaryDeepFive * deep) ? 5
+        : roll < cfg.reliquaryThree * (1 + cfg.reliquaryDeepThree * deep) ? 3 : 1;
       const gifts = WS.LevelUp.bestow(p, n);
       WS.Audio.play('chest');
       WS.FX.flash(pickup.x, pickup.y, 110, [0.72, 0.55, 1.0], 0.55);
@@ -30559,8 +30575,10 @@ window.WS = window.WS || {};
     this.lull = 0;
     this.deepened = 0;
     this.stepK = [];      // how much of each tideSteps share landed (Wave.depth)
-    this.strain = 0;      // damage taken a second, as a share of max health, smoothed
+    this.strain = 0;      // health drained a second (hurt less healed), share of max, smoothed
+    this.low = 1;         // how low the bar has been lately: follows it down at once, up slowly
     this.lastTaken = 0;
+    this.lastHealed = 0;
     this.deathTimer = 0;
     this.cacheTimer = cfg.cacheFirst;
     this.merchantTimer = cfg.eggVendorFirst;
@@ -30607,10 +30625,11 @@ window.WS = window.WS || {};
     return s;
   };
 
-  /** Is the night's rhythm playing: on in the build (Config.tides) and not
-   *  switched off in the settings (nightRhythm). */
+  /** Is the night's rhythm playing: built in (Config.tides) and this night
+   *  a Tides night (run.tides, armed from the menu like Hyper). */
   Wave.rhythmOn = function () {
-    return !!WS.Config.tides && WS.Save.settings.nightRhythm !== false;
+    const run = WS.Game.run;
+    return !!WS.Config.tides && !!(run && run.tides);
   };
 
   /** How thick the ambient horde runs right now, as a multiple of the
@@ -30648,6 +30667,11 @@ window.WS = window.WS || {};
       d *= 1 + cfg.tideSteps[i] * k * (this.stepK[i] !== undefined ? this.stepK[i] : 0);
     }
     return d;
+  };
+
+  /** The share of the latest deepening that landed, 0 before the first. */
+  Wave.lastDepth = function () {
+    return this.stepK && this.stepK.length ? this.stepK[this.stepK.length - 1] : 0;
   };
 
   /** A boss fell: the horde draws breath (Config.tides). */
@@ -30707,10 +30731,14 @@ window.WS = window.WS || {};
     const curse = player.curse;
     if (this.lull > 0) this.lull -= dt;
     // How hard the night is hitting (Config.tideStrainTime).
-    const taken = run.damageTaken || 0;
-    const rate = dt > 0 ? (taken - this.lastTaken) / dt / WS.max(1, player.maxHealth) : 0;
-    this.lastTaken = taken;
-    this.strain += (rate - this.strain) * WS.min(1, dt / WS.Config.tideStrainTime);
+    const taken = run.damageTaken || 0, healed = run.healingDone || 0;
+    const maxHp = WS.max(1, player.maxHealth);
+    const drain = dt > 0 ? ((taken - this.lastTaken) - (healed - this.lastHealed)) / dt / maxHp : 0;
+    this.lastTaken = taken; this.lastHealed = healed;
+    const ease = WS.min(1, dt / WS.Config.tideStrainTime);
+    this.strain += (drain - this.strain) * ease;    // signed: healing pays back the blows
+    const bar = player.health / maxHp;
+    this.low = bar < this.low ? bar : this.low + (bar - this.low) * ease;
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0 && phase.count > 0) {
       this.spawnTimer = phase.interval * WS.Config.spawnIntervalMult / this.tide(time, run)
@@ -30745,8 +30773,12 @@ window.WS = window.WS || {};
       const b = map.bosses[i];
       if (b && i < steps.length && time >= b.at + WS.Config.tideLull) {
         this.deepened++;
-        const k = WS.clamp(1 - this.strain / WS.Config.tideStrainFull, 0, 1);
+        const cfg = WS.Config;
+        const hurt = WS.max(0, this.strain) / cfg.tideStrainFull;
+        const low = WS.clamp((cfg.tideLowBar - this.low) / cfg.tideLowSpan, 0, 1);
+        const k = WS.clamp(1 - WS.max(hurt, low), 0, 1);
         this.stepK[i] = k;
+        if (steps[i] > 0) run.depthTaken = (run.depthTaken || 0) + k;
         /* Say what landed: a step that came in full, one that came in
            part because the night has been hurting, or none at all. Only
            for a step that has just come: switching the rhythm on mid-night
@@ -34056,6 +34088,8 @@ window.WS = window.WS || {};
     if (run.victorious) base += 5000;
     if (run.finaleCleared && !run.finaleRetries) base += 10000;
     if (outcome === 'arena_victory') base += 15000;
+    // Every deepening the night was allowed to take (Config.depthScore).
+    base *= 1 + WS.Config.depthScore * (run.depthTaken || 0);
     return WS.floor(base * Runs.multiplier(run));
   };
 
@@ -34156,7 +34190,7 @@ window.WS = window.WS || {};
     run.score = score;
     const entry = {
       at: Date.now(), map: run.mapId, char: run.characterId, diff: run.difficulty || 'veteran',
-      hyper: !!run.hyper, oaths: (run.oaths || []).slice(), nightly: run.nightly ? run.nightly.day : null,
+      hyper: !!run.hyper, tides: !!run.tides, oaths: (run.oaths || []).slice(), nightly: run.nightly ? run.nightly.day : null,
       outcome, time: WS.floor(run.time), kills: run.kills || 0, bosses: run.bossesSlain || 0,
       level: player ? player.level : 0, finale: !!run.finaleCleared, retried: !!run.finaleRetries,
       top: topWeapon(run), score,
@@ -34371,6 +34405,8 @@ window.WS = window.WS || {};
       finalBossSeen: false,
       secondBlessing: false,
       hyper: !!(WS.Save.db.unlocks.hyper[mapId] && WS.Save.db.hyperArmed),
+      // Tides: the night's rhythm around its bosses, and their reliquaries.
+      tides: !!(WS.Save.db.tidesArmed && !map.arena),
       goldMult: map.goldMult * diff.gold,
       diffScale: diff.scale,
       diffInterval: diff.interval,
@@ -34393,6 +34429,7 @@ window.WS = window.WS || {};
       run.difficulty = 'veteran';
       run.diffScale = v.scale; run.diffInterval = v.interval; run.goldMult = run.map.goldMult * v.gold;
       run.hyper = false;
+      run.tides = false;
       run.nightly = n;
       run.oaths = n.oaths.slice();
       run.draft = { s: n.draft };
@@ -48056,6 +48093,7 @@ window.WS = window.WS || {};
     }
     const modeBits = [];
     if (run.hyper) modeBits.push('Hyper');
+    if (run.tides) modeBits.push('Tides');
     if (run.nightly) modeBits.push('Nightly');
     else if (run.oaths && run.oaths.length) modeBits.push(run.oaths.length === 1 ? '1 Oath' : run.oaths.length + ' Oaths');
     if ((run.victorious || run.mode === 'endless') && !WS.Finale.running()) modeBits.push('Overtime');
@@ -48886,7 +48924,30 @@ window.WS = window.WS || {};
     });
     /* Picking a battlefield does not rebuild the menu - it swaps the cartouche
        in place - so the footer has to be told. */
-    UI.syncModes = setHyperLabel;
+    /* Tides: an addition like Hyper - the night's rhythm around its bosses,
+       the deepening that answers how you are doing, and the reliquaries.
+       Opens with the Oaths, once any battlefield has been held to dawn. */
+    const tides = el('button', 'btn', '');
+    const setTidesLabel = () => {
+      const map = WS.Maps[WS.Game.selection.map];
+      const open = WS.Runs.oathsOpen();
+      if (map && map.arena) {
+        tides.textContent = 'Tides: n/a'; tides.disabled = true;
+        tides.dataset.tip = map.name + ' runs its own fight, so the night has no tides.';
+        return;
+      }
+      tides.disabled = !open;
+      tides.textContent = !open ? 'Tides: hold a night first' : 'Tides: ' + (WS.Save.db.tidesArmed ? 'ON' : 'off');
+      tides.dataset.tip = open
+        ? 'The horde gathers before each boss and falters after it falls. The night deepens after each boss, as far as you can take it, and pays for it: every boss leaves a reliquary of gifts, richer and worth more score the deeper you let the night go.'
+        : 'Hold any battlefield to dawn to open the Tides.';
+    };
+    setTidesLabel();
+    tides.addEventListener('click', () => {
+      WS.Save.db.tidesArmed = !WS.Save.db.tidesArmed;
+      WS.Save.save(); setTidesLabel(); WS.Audio.play('ui');
+    });
+    UI.syncModes = () => { setHyperLabel(); setTidesLabel(); };
 
     /* Oaths: hardships sworn before a night, each worth more score. The
        button says how many are armed and what they multiply the score by. */
@@ -48918,7 +48979,7 @@ window.WS = window.WS || {};
       WS.Prologue.begin(() => UI.openMenu());
     });
 
-    s.foot.append(bank, el('div', 'spacer'), story, help, diff, hyper, oathBtn, begin);
+    s.foot.append(bank, el('div', 'spacer'), story, help, diff, hyper, tides, oathBtn, begin);
     this.show(s.inner);
   };
 
@@ -49774,7 +49835,7 @@ window.WS = window.WS || {};
       const when = `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} ${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
       const diff = WS.Config.difficulties[e.diff] ? WS.Config.difficulties[e.diff].label : e.diff;
       const setting = e.nightly ? 'Nightly'
-        : [diff, e.hyper ? 'Hyper' : '', e.oaths.length ? `${e.oaths.length} Oath${e.oaths.length > 1 ? 's' : ''}` : ''].filter(Boolean).join(' \u00b7 ');
+        : [diff, e.hyper ? 'Hyper' : '', e.tides ? 'Tides' : '', e.oaths.length ? `${e.oaths.length} Oath${e.oaths.length > 1 ? 's' : ''}` : ''].filter(Boolean).join(' \u00b7 ');
       const end = (OUT[e.outcome] || e.outcome) + (e.finale ? (e.retried ? ', finale (retried)' : ', finale') : '');
       const cells = [when, WS.Characters[e.char] ? WS.Characters[e.char].name : e.char,
         WS.Maps[e.map] ? WS.Maps[e.map].name : e.map, setting, WS.formatTime(e.time), end, WS.formatNumber(e.score)];
@@ -50035,10 +50096,6 @@ window.WS = window.WS || {};
         [[1, 'Version one'], [2, 'Version two']],
         (v) => WS.Cinematic.select(v));
     }
-    toggle('nightRhythm', 'The night\u2019s rhythm',
-      'Creatures gather before each boss and falter after it falls, the night deepens '
-      + 'as far as you can take it, and every boss leaves a reliquary. Off plays the '
-      + 'night without any of it.');
     toggle('victoryCinematic', 'Victory cinematic',
       'Twenty-three seconds at thirty minutes, starring the survivor you ran, '
       + 'before the results. Off puts you straight on the numbers.');

@@ -134,6 +134,8 @@
       deckSetup: false,
       gold: 0,
       hyperArmed: false,
+      // Tides armed for the next night (the rhythm around the bosses; waves.js).
+      tidesArmed: false,
       // Set the first time the manual is closed, so the primer greets a new
       // player once and never interrupts a returning one.
       seenManual: false,

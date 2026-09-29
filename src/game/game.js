@@ -73,6 +73,8 @@
       finalBossSeen: false,
       secondBlessing: false,
       hyper: !!(WS.Save.db.unlocks.hyper[mapId] && WS.Save.db.hyperArmed),
+      // Tides: the night's rhythm around its bosses, and their reliquaries.
+      tides: !!(WS.Save.db.tidesArmed && !map.arena),
       goldMult: map.goldMult * diff.gold,
       diffScale: diff.scale,
       diffInterval: diff.interval,
@@ -95,6 +97,7 @@
       run.difficulty = 'veteran';
       run.diffScale = v.scale; run.diffInterval = v.interval; run.goldMult = run.map.goldMult * v.gold;
       run.hyper = false;
+      run.tides = false;
       run.nightly = n;
       run.oaths = n.oaths.slice();
       run.draft = { s: n.draft };

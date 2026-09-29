@@ -49,6 +49,7 @@ function settings() {
     MAP: env('MAP', 'thornhollow'),
     DIFF: env('DIFF', 'veteran'),
     HYPER: env('HYPER', '0') === '1',
+    TIDES: env('TIDES', '0') === '1',
     PILOT: env('PILOT', 'plan'),
     PILOT_OPTS: JSON.parse(env('PILOT_OPTS', '{}')),
     DRAFT_OPTS: JSON.parse(env('DRAFT_OPTS', '{}')),
@@ -84,6 +85,7 @@ function inPage(S, job, sources) {
   WS.Save.settings.victoryCinematic = false;
   WS.Save.db.unlocks.hyper[S.MAP] = true;
   WS.Save.db.hyperArmed = S.HYPER;
+  WS.Save.db.tidesArmed = S.TIDES;
   Object.assign(WS.Config, S.CONFIG);
   for (const [id, o] of Object.entries(S.CHARS)) Object.assign(WS.Characters[id], o);
   // Weapon, blessing and creature numbers the same way, for testing a patch

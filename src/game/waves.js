@@ -21,8 +21,10 @@
     this.lull = 0;
     this.deepened = 0;
     this.stepK = [];      // how much of each tideSteps share landed (Wave.depth)
-    this.strain = 0;      // damage taken a second, as a share of max health, smoothed
+    this.strain = 0;      // health drained a second (hurt less healed), share of max, smoothed
+    this.low = 1;         // how low the bar has been lately: follows it down at once, up slowly
     this.lastTaken = 0;
+    this.lastHealed = 0;
     this.deathTimer = 0;
     this.cacheTimer = cfg.cacheFirst;
     this.merchantTimer = cfg.eggVendorFirst;
@@ -69,10 +71,11 @@
     return s;
   };
 
-  /** Is the night's rhythm playing: on in the build (Config.tides) and not
-   *  switched off in the settings (nightRhythm). */
+  /** Is the night's rhythm playing: built in (Config.tides) and this night
+   *  a Tides night (run.tides, armed from the menu like Hyper). */
   Wave.rhythmOn = function () {
-    return !!WS.Config.tides && WS.Save.settings.nightRhythm !== false;
+    const run = WS.Game.run;
+    return !!WS.Config.tides && !!(run && run.tides);
   };
 
   /** How thick the ambient horde runs right now, as a multiple of the
@@ -110,6 +113,11 @@
       d *= 1 + cfg.tideSteps[i] * k * (this.stepK[i] !== undefined ? this.stepK[i] : 0);
     }
     return d;
+  };
+
+  /** The share of the latest deepening that landed, 0 before the first. */
+  Wave.lastDepth = function () {
+    return this.stepK && this.stepK.length ? this.stepK[this.stepK.length - 1] : 0;
   };
 
   /** A boss fell: the horde draws breath (Config.tides). */
@@ -169,10 +177,14 @@
     const curse = player.curse;
     if (this.lull > 0) this.lull -= dt;
     // How hard the night is hitting (Config.tideStrainTime).
-    const taken = run.damageTaken || 0;
-    const rate = dt > 0 ? (taken - this.lastTaken) / dt / WS.max(1, player.maxHealth) : 0;
-    this.lastTaken = taken;
-    this.strain += (rate - this.strain) * WS.min(1, dt / WS.Config.tideStrainTime);
+    const taken = run.damageTaken || 0, healed = run.healingDone || 0;
+    const maxHp = WS.max(1, player.maxHealth);
+    const drain = dt > 0 ? ((taken - this.lastTaken) - (healed - this.lastHealed)) / dt / maxHp : 0;
+    this.lastTaken = taken; this.lastHealed = healed;
+    const ease = WS.min(1, dt / WS.Config.tideStrainTime);
+    this.strain += (drain - this.strain) * ease;    // signed: healing pays back the blows
+    const bar = player.health / maxHp;
+    this.low = bar < this.low ? bar : this.low + (bar - this.low) * ease;
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0 && phase.count > 0) {
       this.spawnTimer = phase.interval * WS.Config.spawnIntervalMult / this.tide(time, run)
@@ -207,8 +219,12 @@
       const b = map.bosses[i];
       if (b && i < steps.length && time >= b.at + WS.Config.tideLull) {
         this.deepened++;
-        const k = WS.clamp(1 - this.strain / WS.Config.tideStrainFull, 0, 1);
+        const cfg = WS.Config;
+        const hurt = WS.max(0, this.strain) / cfg.tideStrainFull;
+        const low = WS.clamp((cfg.tideLowBar - this.low) / cfg.tideLowSpan, 0, 1);
+        const k = WS.clamp(1 - WS.max(hurt, low), 0, 1);
         this.stepK[i] = k;
+        if (steps[i] > 0) run.depthTaken = (run.depthTaken || 0) + k;
         /* Say what landed: a step that came in full, one that came in
            part because the night has been hurting, or none at all. Only
            for a step that has just come: switching the rhythm on mid-night

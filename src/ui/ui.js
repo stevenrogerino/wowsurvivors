@@ -829,6 +829,7 @@
     }
     const modeBits = [];
     if (run.hyper) modeBits.push('Hyper');
+    if (run.tides) modeBits.push('Tides');
     if (run.nightly) modeBits.push('Nightly');
     else if (run.oaths && run.oaths.length) modeBits.push(run.oaths.length === 1 ? '1 Oath' : run.oaths.length + ' Oaths');
     if ((run.victorious || run.mode === 'endless') && !WS.Finale.running()) modeBits.push('Overtime');
@@ -1659,7 +1660,30 @@
     });
     /* Picking a battlefield does not rebuild the menu - it swaps the cartouche
        in place - so the footer has to be told. */
-    UI.syncModes = setHyperLabel;
+    /* Tides: an addition like Hyper - the night's rhythm around its bosses,
+       the deepening that answers how you are doing, and the reliquaries.
+       Opens with the Oaths, once any battlefield has been held to dawn. */
+    const tides = el('button', 'btn', '');
+    const setTidesLabel = () => {
+      const map = WS.Maps[WS.Game.selection.map];
+      const open = WS.Runs.oathsOpen();
+      if (map && map.arena) {
+        tides.textContent = 'Tides: n/a'; tides.disabled = true;
+        tides.dataset.tip = map.name + ' runs its own fight, so the night has no tides.';
+        return;
+      }
+      tides.disabled = !open;
+      tides.textContent = !open ? 'Tides: hold a night first' : 'Tides: ' + (WS.Save.db.tidesArmed ? 'ON' : 'off');
+      tides.dataset.tip = open
+        ? 'The horde gathers before each boss and falters after it falls. The night deepens after each boss, as far as you can take it, and pays for it: every boss leaves a reliquary of gifts, richer and worth more score the deeper you let the night go.'
+        : 'Hold any battlefield to dawn to open the Tides.';
+    };
+    setTidesLabel();
+    tides.addEventListener('click', () => {
+      WS.Save.db.tidesArmed = !WS.Save.db.tidesArmed;
+      WS.Save.save(); setTidesLabel(); WS.Audio.play('ui');
+    });
+    UI.syncModes = () => { setHyperLabel(); setTidesLabel(); };
 
     /* Oaths: hardships sworn before a night, each worth more score. The
        button says how many are armed and what they multiply the score by. */
@@ -1691,7 +1715,7 @@
       WS.Prologue.begin(() => UI.openMenu());
     });
 
-    s.foot.append(bank, el('div', 'spacer'), story, help, diff, hyper, oathBtn, begin);
+    s.foot.append(bank, el('div', 'spacer'), story, help, diff, hyper, tides, oathBtn, begin);
     this.show(s.inner);
   };
 
@@ -2547,7 +2571,7 @@
       const when = `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} ${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
       const diff = WS.Config.difficulties[e.diff] ? WS.Config.difficulties[e.diff].label : e.diff;
       const setting = e.nightly ? 'Nightly'
-        : [diff, e.hyper ? 'Hyper' : '', e.oaths.length ? `${e.oaths.length} Oath${e.oaths.length > 1 ? 's' : ''}` : ''].filter(Boolean).join(' \u00b7 ');
+        : [diff, e.hyper ? 'Hyper' : '', e.tides ? 'Tides' : '', e.oaths.length ? `${e.oaths.length} Oath${e.oaths.length > 1 ? 's' : ''}` : ''].filter(Boolean).join(' \u00b7 ');
       const end = (OUT[e.outcome] || e.outcome) + (e.finale ? (e.retried ? ', finale (retried)' : ', finale') : '');
       const cells = [when, WS.Characters[e.char] ? WS.Characters[e.char].name : e.char,
         WS.Maps[e.map] ? WS.Maps[e.map].name : e.map, setting, WS.formatTime(e.time), end, WS.formatNumber(e.score)];
@@ -2808,10 +2832,6 @@
         [[1, 'Version one'], [2, 'Version two']],
         (v) => WS.Cinematic.select(v));
     }
-    toggle('nightRhythm', 'The night\u2019s rhythm',
-      'Creatures gather before each boss and falter after it falls, the night deepens '
-      + 'as far as you can take it, and every boss leaves a reliquary. Off plays the '
-      + 'night without any of it.');
     toggle('victoryCinematic', 'Victory cinematic',
       'Twenty-three seconds at thirty minutes, starring the survivor you ran, '
       + 'before the results. Off puts you straight on the numbers.');

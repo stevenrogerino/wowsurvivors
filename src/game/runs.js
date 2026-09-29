@@ -34,6 +34,8 @@
     if (run.victorious) base += 5000;
     if (run.finaleCleared && !run.finaleRetries) base += 10000;
     if (outcome === 'arena_victory') base += 15000;
+    // Every deepening the night was allowed to take (Config.depthScore).
+    base *= 1 + WS.Config.depthScore * (run.depthTaken || 0);
     return WS.floor(base * Runs.multiplier(run));
   };
 
@@ -134,7 +136,7 @@
     run.score = score;
     const entry = {
       at: Date.now(), map: run.mapId, char: run.characterId, diff: run.difficulty || 'veteran',
-      hyper: !!run.hyper, oaths: (run.oaths || []).slice(), nightly: run.nightly ? run.nightly.day : null,
+      hyper: !!run.hyper, tides: !!run.tides, oaths: (run.oaths || []).slice(), nightly: run.nightly ? run.nightly.day : null,
       outcome, time: WS.floor(run.time), kills: run.kills || 0, bosses: run.bossesSlain || 0,
       level: player ? player.level : 0, finale: !!run.finaleCleared, retried: !!run.finaleRetries,
       top: topWeapon(run), score,

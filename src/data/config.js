@@ -294,15 +294,30 @@
     tideSteps: [0.10, 0.15, 0.25, 0.30, 0],
     tideStepTime: 60,
     /* ...but only as deep as the survivor can take. Each step is scaled, when
-       it comes, by how hard the night has been hitting: damage taken over
-       roughly the last tideStrainTime seconds, as a share of max health a
-       second. At none the step lands in full; at tideStrainFull or more it
-       does not land at all, and the late climb follows the latest step. On
+       it comes, by how hard the night has been hitting: health DRAINED over
+       roughly the last tideStrainTime seconds (damage taken less healing
+       received), as a share of max health a second, and how low the bar has
+       been lately. At no drain and a bar above tideLowBar the step lands in
+       full; at tideStrainFull, or a bar tideLowSpan below tideLowBar, it does
+       not land at all, and the late climb follows the latest step.
+
+       Drain, not damage: counting only the blows read a thorns or lifesteal
+       build that stands in the crowd and heals every point back as a
+       survivor in trouble (a warrior healing 98% of what he took got 48% of
+       each step), so the builds made to take hits got the softest nights. On
        the hardest battlefields, where no one gets ahead, the full steps took
        a strong player's dawns from 6 in 24 to none; they are there to catch
        a build that has run away with the night, not to finish one that has
        not. */
-    tideStrainTime: 90, tideStrainFull: 0.006,
+    tideStrainTime: 90, tideStrainFull: 0.003,
+    tideLowBar: 0.7, tideLowSpan: 0.4,
+    /* ...and the night pays for what it took: each reliquary's odds of three
+       and five gifts grow with the share of the last step that landed (x2
+       and x3 at a full step), and every step taken adds depthScore of it to
+       the night's score (Runs.score). Taking the night deep is a wager,
+       not a tax. */
+    reliquaryDeepThree: 1.0, reliquaryDeepFive: 2.0,
+    depthScore: 0.05,
     deathTime: 1800,
     deathInterval: 60,
 
@@ -673,10 +688,6 @@
       autoBreakingPoint: false,
       // Countdown bars for what comes next; shown only once a dawn is won.
       bossTimers: true,
-      /* The night's rhythm around its bosses and the reliquaries they leave
-         (Config.tides, Config.reliquaries). Off plays the night without
-         either, for comparing the two. */
-      nightRhythm: true,
       // Draw at a lower resolution while frames run slow (renderer.js).
       dynamicResolution: true,
       /* Which cut of the prologue plays. Two exist while the author decides

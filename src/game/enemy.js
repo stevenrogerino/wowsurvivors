@@ -691,7 +691,7 @@
         return;
       }
       if (e.id === 'death_itself') run.deathsSlain++;
-      else if (WS.Config.reliquaries && WS.Save.settings.nightRhythm !== false) WS.Pickup.spawn('reliquary', e.x, e.y);
+      else if (WS.Config.reliquaries && run.tides) WS.Pickup.spawn('reliquary', e.x, e.y);
       WS.Save.stats.bosses[e.id] = (WS.Save.stats.bosses[e.id] || 0) + 1;
       const gold = WS.floor((t.gold || 40) * run.goldMult * player.goldMultiplier);
       WS.Game.addGold(gold, e.x, e.y);

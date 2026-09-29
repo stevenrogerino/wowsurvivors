@@ -170,8 +170,11 @@
 
     } else if (kind === 'reliquary') {
       const cfg = WS.Config;
+      // The deeper the night was let go, the richer what it leaves.
+      const deep = WS.WaveManager.lastDepth();
       const roll = WS.random() / WS.max(0.2, p.luck);
-      const n = roll < cfg.reliquaryFive ? 5 : roll < cfg.reliquaryThree ? 3 : 1;
+      const n = roll < cfg.reliquaryFive * (1 + cfg.reliquaryDeepFive * deep) ? 5
+        : roll < cfg.reliquaryThree * (1 + cfg.reliquaryDeepThree * deep) ? 3 : 1;
       const gifts = WS.LevelUp.bestow(p, n);
       WS.Audio.play('chest');
       WS.FX.flash(pickup.x, pickup.y, 110, [0.72, 0.55, 1.0], 0.55);

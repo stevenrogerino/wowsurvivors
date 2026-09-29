@@ -32,7 +32,15 @@ reliquary as events.
   the latest step. The banner says what landed: deepens (75% of the step
   or more), deepens a little, or holds back (under 25%). The lull is 22.5s
   (`tideLull`, was 45). Settings, "The night's rhythm" (`nightRhythm`)
-  switches the rhythm and reliquaries off for a player. With full steps for everyone the hardest battlefields at
+  switches the rhythm and reliquaries off for a player. Strain is health
+  drained, not damage taken: damage less healing received, smoothed over
+  90s, plus how low the bar has been (from tideLowBar 50% down to 20% it
+  holds the step back entirely). Counting blows alone gave a warrior who
+  healed 98% of what he took 48% of each step, so the builds made to take
+  hits got the softest nights. And the deep night pays: after a step, the
+  next reliquary's odds of three and five gifts are x(1 + share) and
+  x(1 + 2 share) (`reliquaryDeepThree`, `reliquaryDeepFive`), and each step's
+  share adds 5% to the score (`depthScore`, `run.depthTaken`). With full steps for everyone the hardest battlefields at
   Professional went from 6 dawns in 24 to none (Pale Wastes) and 10 to 2
   (the Ochre Plains): the steps are for a build that has run away with the
   night.
