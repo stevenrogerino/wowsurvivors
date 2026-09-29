@@ -24,6 +24,11 @@
  *   node tools/meter-test.js --report /tmp/m1.json /tmp/m2.json
  *   WEAPONS='{"arcweb":{"evolveChains":12}}' ...    a candidate change
  *   BAND=0.65,1.35 (default): exits 1 if any weapon's share leaves the band
+ *   ROLES: a weapon that does something besides damage is expected to do
+ *     LESS damage, or it is simply better in every way. Against the mean
+ *     share of the pure-damage weapons, a healer should sit at about 0.8
+ *     (HEALBAND, default 0.72 to 0.90) and a weapon that slows at about
+ *     0.92 (CONTROLBAND, default 0.84 to 1.0); exits 1 outside them.
  *   MOVE=pilot HERO=shaman FIXED=arcweb:3,knifestorm:7 STAGE=s2 BUILDS=6:
  *     one build, moved by the bot's pilot, with a survivor's own kit
  *   STAGE=lead BUILDS=120: the first evolution, one evolved beside four at
@@ -59,6 +64,12 @@ function reportLead(rows) {
   else console.log(`\nok: every evolved weapon within x${lo} to x${hi} of the mean lead`);
   return list;
 }
+
+/* Weapons with a second job. Kept here, not read from the game, because the
+   --report pass runs without it; a weapon that gains a heal or a slow
+   belongs on this list. */
+const HEALERS = ['grave_tether', 'hallowed_ring', 'blightfield', 'dawnpulse', 'reaving_arc'];
+const CONTROL = ['rimeshard', 'thornbloom'];
 
 function report(rows) {
   if (rows.length && rows[0].lead) return reportLead(rows);
@@ -97,6 +108,22 @@ function report(rows) {
     console.log(`\nFAIL: outside x${lo} to x${hi} of fair: ` + out.map((w) => `${w.id} x${(w.share * size).toFixed(2)}`).join(', '));
     process.exitCode = 1;
   } else console.log(`\nok: every weapon within x${lo} to x${hi} of a fair share`);
+  // The roles: what a second job costs in damage.
+  const pure = list.filter((w) => !HEALERS.includes(w.id) && !CONTROL.includes(w.id));
+  if (pure.length && list.length >= 12) {
+    const pm = pure.reduce((a, w) => a + w.share, 0) / pure.length;
+    const bands = [[HEALERS, 'HEALBAND', '0.72,0.90', 'heals'], [CONTROL, 'CONTROLBAND', '0.84,1.0', 'slows']];
+    console.log(`\nroles against the pure-damage mean (${(pm * 100).toFixed(1)}%):`);
+    for (const [ids, env, def, what] of bands) {
+      const [a, z] = (process.env[env] || def).split(',').map(Number);
+      for (const w of list.filter((x) => ids.includes(x.id))) {
+        const r = w.share / pm;
+        const ok = r >= a && r <= z;
+        console.log(`  ${w.id.padEnd(16)} ${what.padEnd(6)} x${r.toFixed(2)}  ${ok ? 'ok' : `OUTSIDE x${a}-x${z}`}`);
+        if (!ok) process.exitCode = 1;
+      }
+    }
+  }
   return list;
 }
 

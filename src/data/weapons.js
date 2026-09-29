@@ -33,6 +33,21 @@
 'use strict';
 (function (WS) {
 
+  /* A SECOND JOB COSTS DAMAGE. A weapon that heals, or slows, and deals as
+   * much as one that only deals damage is simply better in every way - so
+   * the weapons with a second job are held below the pure-damage ones on the
+   * meter (tools/meter-test.js ROLES): healers at about 0.8 of the pure mean,
+   * slows at about 0.92. Fitted in the real waves with every passive at its
+   * cap (120 five-weapon builds), where Grave Tether and Blightfield had
+   * been taking MORE than a fair share while healing best of all:
+   *   Grave Tether 50.77 -> 35.54, Blightfield 1.8 -> 1.26, Hallowed Ring
+   *   2.22 -> 1.954, Dawnpulse 19.1 -> 18.34, Reaving Arc 16.73 -> 18.74
+   *   (it was below even the healers' mark), Thornbloom 2.07 -> 1.697,
+   *   Rimeshard 33.15 -> 29.84. And the pure outliers, while fitting:
+   *   Moonbrand 28.53 -> 24.25 and Skybreak's Arcweb 58.83 -> 51.77 (it
+   *   topped the meter in 12 of 28 builds; now 3), Knifestorm 15.57 ->
+   *   19.46 and Axe Gyre 9.02 -> 10.10, both low. Healers now 0.80-0.81 of
+   *   the pure mean, slows 0.89-0.93, every pure weapon 19.4%-22.8%. */
   WS.Weapons = {
     seeking_motes: {
       damage: 8.84, evolveDamageMult: 0.649, bossDamage: 1.291, evolvedBossDamage: 2.644,
@@ -56,7 +71,7 @@
       evolveDescription: 'The cinder becomes a falling star.',
     },
     rimeshard: {
-      damage: 33.15, evolveDamageMult: 2.141, bossDamage: 1.31, evolvedBossDamage: 1.353,
+      damage: 29.84, evolveDamageMult: 2.141, bossDamage: 1.31, evolvedBossDamage: 1.353,
       name: 'Rimeshard', school: 'frost', behavior: 'aimed', art: 'shard',
       rankDamageStep: 0.1,
       cooldown: 1.209, speed: 364, projectiles: 1, pierce: 6, range: 580,
@@ -67,7 +82,7 @@
       evolveDescription: 'Winter itself takes the field.',
     },
     arcweb: {
-      damage: 58.83, evolveDamageMult: 0.922, bossDamage: 0.864, evolvedBossDamage: 1.52, evolveChains: 14, evolveChainFalloff: 0.03,
+      damage: 51.77, evolveDamageMult: 0.922, bossDamage: 0.864, evolvedBossDamage: 1.52, evolveChains: 14, evolveChainFalloff: 0.03,
       name: 'Arcweb', school: 'nature', behavior: 'chain',
       rankDamageStep: 0.45,
       color: [0.55, 0.80, 1.00], art: 'spark',
@@ -78,7 +93,7 @@
       evolveDescription: 'The sky answers every call.',
     },
     dawnpulse: {
-      damage: 19.1, evolveDamageMult: 4.902, bossDamage: 3.023, evolvedBossDamage: 2.939,
+      damage: 18.34, evolveDamageMult: 4.902, bossDamage: 3.023, evolvedBossDamage: 2.939,
       name: 'Dawnpulse', school: 'holy', behavior: 'nova', art: 'ring',
       rankDamageStep: 0.258,
       cooldown: 2.638, radius: 150, expandTime: 0.35, knockback: 26,
@@ -100,7 +115,7 @@
       evolveDescription: 'The gaze widens until the world is a line of green fire.',
     },
     grave_tether: {
-      damage: 50.77, evolveDamageMult: 2.1, bossDamage: 1.132, evolvedBossDamage: 1.276,
+      damage: 35.54, evolveDamageMult: 2.1, bossDamage: 1.132, evolvedBossDamage: 1.276,
       name: 'Grave Tether', school: 'shadow', behavior: 'aimed', art: 'coil',
       rankDamageStep: 0.1,
       cooldown: 1.594, speed: 382, projectiles: 1, pierce: 6,
@@ -113,7 +128,7 @@
       evolveDescription: 'The tether takes more, and gives more back.',
     },
     blightfield: {
-      damage: 1.8, evolveDamageMult: 6.031, bossDamage: 6.219, evolvedBossDamage: 3.818,
+      damage: 1.26, evolveDamageMult: 6.031, bossDamage: 6.219, evolvedBossDamage: 3.818,
       name: 'Blightfield', school: 'shadow', behavior: 'zone', art: 'zone',
       rankDamageStep: 0.211,
       cooldown: 4.286, radius: 130, duration: 4.5, tickRate: 0.45,
@@ -127,7 +142,7 @@
       healPer: 1.5, evolvedHealPer: 1.5, healCap: 5, healCapRank: 1.67, evolvedHealCap: 15.3,
     },
     reaving_arc: {
-      damage: 16.73, evolveDamageMult: 5.93, bossDamage: 2.504, evolvedBossDamage: 2.452,
+      damage: 18.74, evolveDamageMult: 5.93, bossDamage: 2.504, evolvedBossDamage: 2.452,
       name: 'Reaving Arc', school: 'shadow', behavior: 'nova', art: 'ring',
       rankDamageStep: 0.45,
       cooldown: 2.418, radius: 130, expandTime: 0.28, knockback: 20,
@@ -138,7 +153,7 @@
       evolveDescription: 'The blade drinks deeper than any wound can hold.',
     },
     hallowed_ring: {
-      damage: 2.22, evolveDamageMult: 6.298, bossDamage: 5.989, evolvedBossDamage: 3.719,
+      damage: 1.954, evolveDamageMult: 6.298, bossDamage: 5.989, evolvedBossDamage: 3.719,
       name: 'Hallowed Ring', school: 'holy', behavior: 'zone', art: 'zone',
       rankDamageStep: 0.222,
       cooldown: 3.956, radius: 120, duration: 4.0, tickRate: 0.5,
@@ -162,7 +177,7 @@
       evolveDescription: 'Ruin that nothing can stop.',
     },
     knifestorm: {
-      damage: 15.57, evolveDamageMult: 3.285, bossDamage: 2.787, evolvedBossDamage: 2.315,
+      damage: 19.46, evolveDamageMult: 3.285, bossDamage: 2.787, evolvedBossDamage: 2.315,
       name: 'Knifestorm', school: 'physical', behavior: 'ring', art: 'dagger',
       rankDamageStep: 0.266,
       cooldown: 1.429, speed: 346, projectiles: 6, pierce: 4,
@@ -173,7 +188,7 @@
       evolveDescription: 'The steel never stops moving.',
     },
     axe_gyre: {
-      damage: 9.02, evolveDamageMult: 10.15, bossDamage: 2.895, evolvedBossDamage: 0.707,
+      damage: 10.1, evolveDamageMult: 10.15, bossDamage: 2.895, evolvedBossDamage: 0.707,
       name: 'Axe Gyre', school: 'physical', behavior: 'orbit', art: 'axe',
       rankDamageStep: 0.1,
       color: [0.85, 0.88, 0.96], evolvedColor: [1.00, 0.55, 0.25],
@@ -209,7 +224,7 @@
       evolveDescription: 'The sky darkens with arrows.',
     },
     moonbrand: {
-      damage: 28.53, evolveDamageMult: 1.955, bossDamage: 0.793, evolvedBossDamage: 1.13,
+      damage: 24.25, evolveDamageMult: 1.955, bossDamage: 0.793, evolvedBossDamage: 1.13,
       name: 'Moonbrand', school: 'arcane', behavior: 'aimed', art: 'moon',
       rankDamageStep: 0.1,
       cooldown: 1.319, speed: 291, projectiles: 1, pierce: 0, range: 560,
@@ -263,7 +278,7 @@
       evolveDescription: 'The herd does not end. It only thins.',
     },
     thornbloom: {
-      damage: 2.07, evolveDamageMult: 6.88, bossDamage: 3.383, evolvedBossDamage: 2.734,
+      damage: 1.697, evolveDamageMult: 6.88, bossDamage: 3.383, evolvedBossDamage: 2.734,
       name: 'Thornbloom', school: 'nature', behavior: 'zone', art: 'bloom',
       rankDamageStep: 0.45,
       cooldown: 3.8, radius: 92, duration: 4.0, tickRate: 0.5,
@@ -416,11 +431,18 @@
       healPer: 5, healCap: 146,
       description: 'The Light claims this ground as its own, and mends whoever keeps it.',
     },
+    /* Stormcall ate Skybreak and Gyrestorm and was flat worse than them: in
+       the real waves 61% of their damage and 29% of their kills, and 12% of a
+       fully passived build, last of the unions. Some step down is the price
+       of the slot a union frees; that was too much. Its limit was reach -
+       the blades circle close, where Skybreak's chain had killed far out -
+       and the fix is its own lightning, the half it took from Skybreak:
+       blades 5 -> 7 and the chance a cut calls lightning 0.35 -> 0.5. */
     union_stormcall: {
       bossDamage: 2.5,
       name: 'Stormcall', school: 'nature', behavior: 'orbit', isUnion: true, art: 'sword',
-      cooldown: 5.055, damage: 29, projectiles: 5, orbitRadius: 95, orbitSpeed: 5.0,
-      duration: 4.0, radius: 22, procChain: 0.35, color: [0.45, 0.85, 1.00],
+      cooldown: 5.055, damage: 29, projectiles: 7, orbitRadius: 95, orbitSpeed: 5.0,
+      duration: 4.0, radius: 22, procChain: 0.5, color: [0.45, 0.85, 1.00],
       description: 'Blessed blade of the Tempest: a cyclone of steel that answers every cut with lightning.',
     },
     union_tempest_kata: {
