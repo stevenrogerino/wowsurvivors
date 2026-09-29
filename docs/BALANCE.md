@@ -41,6 +41,31 @@ is better for a player who stands in the crowd. So the fit targets the mean
 over the four conditions and the spread is reported, not hidden. A weapon
 whose spread is wide needs a design change (how it scales), not a number.
 
+## Meter share is not survival (29 September, open)
+
+Fitting every weapon to a fair share of the meter under all four conditions
+(rank 3, rank 5 and evolved; commits a2a0bb3 and 2434092) cost bot dawns at
+Professional: the Dustreach 17-18 -> 12-13 of 24, Mourneholt 22 -> 18,
+repeated over four sets of nights. What we ruled out, each on the same seeds:
+
+- Power: build damage, levels, evolution times, kill rates and boss kill
+  times are unchanged; +10% to every weapon did not bring a dawn back.
+- The drafter's calibration: the old one gives the same result.
+- Casters as the cause: casters in reach, their lifetimes and bolt damage
+  taken do not track the lost dawns, and caster bolts 25% softer did not
+  bring them back.
+
+What does bring them back: Arcweb, Judgement Disc, Seeking Motes and Volley
+at their first-fit numbers (18 and 22 of 24), and then Arcweb takes 46% of
+the meter once evolved. A step floor of 0.20 (so a weak weapon's rank 1 is
+not a trap the drafter keeps taking) recovers part (14 and 20).
+
+So those four weapons keep a survivor alive in a way their meter share does
+not show. Until that is understood, **no fit ships without the full-night
+dawn check** beside the meter gates: `FULL=1 tools/balance-suite.sh`, and
+compare dawns per battlefield against the last shipped numbers on the same
+seeds.
+
 ## Targets
 
 - **Share in company** (`meter-test`, all four conditions): every weapon's
