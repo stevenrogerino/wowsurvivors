@@ -4054,13 +4054,29 @@
       countUp(val, v, 120 + i * 90);
     });
     main.append(grid);
-    // Under the log when there is one: the log is a few lines and leaves
-    // its column mostly empty, and at 720p every pixel the verdict grows is
-    // taken from the build sheet below it.
     const bs = blessingStrip(WS.Game.player, true);
     if (bs) (log || main).append(bs);
+    /* THE GRAPH TAKES THE FIGURES' PLACE, on request. It used to hang under
+       the log, where the blessings now sit, and every pixel the banner grows
+       at 720p is taken from the build sheet under it - so rather than add a
+       row it swaps with the figures, in the same box, and the choice holds
+       from one results screen to the next. */
     const tl = runTimeline(WS.Game.run);
-    if (tl) (log || main).append(tl);
+    if (tl) {
+      const flip = el('button', 'btn small verdict-flip');
+      flip.type = 'button';
+      const show = (graph) => {
+        UI._verdictGraph = graph;
+        grid.classList.toggle('hidden', graph);
+        tl.classList.toggle('hidden', !graph);
+        flip.textContent = graph ? 'Show figures' : 'Show graph';
+      };
+      flip.addEventListener('click', () => { WS.Audio.play('page'); show(!UI._verdictGraph); });
+      tl.classList.add('in-verdict');
+      main.append(tl);
+      head.append(flip);
+      show(!!UI._verdictGraph);
+    }
     wrap.append(main);
     if (log) wrap.append(log);
     return wrap;

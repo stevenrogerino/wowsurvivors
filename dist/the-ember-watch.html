@@ -1526,6 +1526,12 @@ body.hud-rail #hud-toasts { left: 76px; bottom: 20px; }
 .verdict.loss { --verdict-hue: var(--blood); }
 .verdict.neutral { --verdict-hue: var(--ink-dim); }
 .verdict-head { position: relative; }
+/* The figures/graph switch: top right of the verdict's own column. */
+.verdict-head .verdict-flip { position: absolute; top: 4px; right: 0; }
+.verdict-figures.hidden, .run-timeline.hidden { display: none; }
+/* In the figures' place, it keeps their footprint rather than growing. */
+.run-timeline.in-verdict { margin-top: 12px; max-width: none; gap: 3px; }
+.run-timeline.in-verdict .tl-plotwrap { height: 20px; }
 .verdict-title {
   font-size: var(--t-hero); font-weight: 200; letter-spacing: .04em;
   color: var(--verdict-hue, var(--arc)); line-height: 1.1;
@@ -2749,10 +2755,14 @@ body.hud-rail #hud-passives { gap: 9px; }
   font-family: var(--voice); font-weight: 700; font-size: 15px; color: var(--ink); }
 .sheet-blessing img { flex: none; }
 /* The blessings strip: beside the pause tabs, and in the results banner. */
-.pause-top { display: flex; align-items: flex-end; gap: 18px; min-width: 0; }
+/* Lined up with the sheet under it: the body keeps a 6px scrollbar gutter on
+   its right, so the strip stops 6px short too and its last chip ends flush
+   with the right panel; chips are spaced by the panels' own 16px gap; and
+   their bottom edge sits on the tabs' rule. */
+.pause-top { display: flex; align-items: flex-end; gap: 16px; min-width: 0; padding-right: 6px; }
 .pause-top > .tabs { flex: none; }
 .bless-strip { display: flex; gap: 8px; min-width: 0; }
-.pause-top > .bless-strip { flex: 1 1 auto; justify-content: flex-end; margin-bottom: 6px; }
+.pause-top > .bless-strip { flex: 1 1 auto; justify-content: flex-end; gap: 16px; }
 .bless-strip.hidden { visibility: hidden; }
 .bless-chip {
   display: flex; align-items: center; gap: 9px; min-width: 0; flex: 0 1 290px;
@@ -2771,9 +2781,13 @@ body.hud-rail #hud-passives { gap: 9px; }
   font-family: var(--voice); font-size: 12.5px; line-height: 1.25; color: var(--ink-dim);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-/* In the banner: a wrapping row of names under the log. */
-.bless-strip.compact { flex-wrap: wrap; margin: 12px 0 2px; }
-.bless-strip.compact .bless-chip { flex: 0 1 auto; padding: 4px 10px 4px 5px; }
+/* In the banner: one row under the log, the chips sharing its width equally
+   so they line up with each other and with the column's edges; a long name
+   ends in an ellipsis rather than wrapping the banner taller. */
+.bless-strip.compact { flex-wrap: nowrap; margin: 12px 0 2px; }
+.bless-strip.compact .bless-chip { flex: 1 1 0; padding: 4px 8px 4px 5px; gap: 7px; }
+.bless-strip.compact .bless-chip img { width: 26px; height: 26px; }
+.bless-strip.compact .bc-name { font-size: 14px; }
 
 /* Discoveries two across, each its pair's mark and a name over what it joins. */
 .sheet-discoveries { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 7px 14px; margin: 4px 0 2px; }
@@ -52520,13 +52534,29 @@ window.WS = window.WS || {};
       countUp(val, v, 120 + i * 90);
     });
     main.append(grid);
-    // Under the log when there is one: the log is a few lines and leaves
-    // its column mostly empty, and at 720p every pixel the verdict grows is
-    // taken from the build sheet below it.
     const bs = blessingStrip(WS.Game.player, true);
     if (bs) (log || main).append(bs);
+    /* THE GRAPH TAKES THE FIGURES' PLACE, on request. It used to hang under
+       the log, where the blessings now sit, and every pixel the banner grows
+       at 720p is taken from the build sheet under it - so rather than add a
+       row it swaps with the figures, in the same box, and the choice holds
+       from one results screen to the next. */
     const tl = runTimeline(WS.Game.run);
-    if (tl) (log || main).append(tl);
+    if (tl) {
+      const flip = el('button', 'btn small verdict-flip');
+      flip.type = 'button';
+      const show = (graph) => {
+        UI._verdictGraph = graph;
+        grid.classList.toggle('hidden', graph);
+        tl.classList.toggle('hidden', !graph);
+        flip.textContent = graph ? 'Show figures' : 'Show graph';
+      };
+      flip.addEventListener('click', () => { WS.Audio.play('page'); show(!UI._verdictGraph); });
+      tl.classList.add('in-verdict');
+      main.append(tl);
+      head.append(flip);
+      show(!!UI._verdictGraph);
+    }
     wrap.append(main);
     if (log) wrap.append(log);
     return wrap;
