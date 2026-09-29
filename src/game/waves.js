@@ -160,6 +160,8 @@
     if (b) {
       b.stay = stay || WS.Config.eggVendorStay;
       this.beansLast = WS.Game.run.time;
+      WS.Audio.play('beans', b.x);
+      setTimeout(() => WS.Audio.babble('beans', 'Come get some beans!'), 1100);
       WS.Game.toast('Beans sets up shop', '"COME GET SOME BEANS... I MEAN EGGS!" Walk over to spend your coin. She leaves in '
         + WS.formatTime(b.stay) + '.', { kind: 'merchant' });
     }

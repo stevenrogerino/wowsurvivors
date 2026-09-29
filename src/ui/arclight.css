@@ -525,28 +525,46 @@ html, body {
 .card .card-pips i {
   width: min(22px, calc((100% - (var(--n, 8) - 1) * 4px) / var(--n, 8)));
   height: 7px; border-radius: 2px;
-  background: rgba(255,255,255,.10);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+  /* A rank not taken is an empty slot: an outline and nothing in it. */
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.22);
 }
+/* A rank you have: solid. */
 .card .card-pips i.on {
   background: color-mix(in srgb, var(--q, var(--arc)) 78%, #fff 8%);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--q, var(--arc)) 60%, #fff 40%);
 }
-/* The rank this card gives: unlit, then lit, then unlit - "from here to
-   there", on a slow beat so it reads as an invitation, not an alarm. */
-.card .card-pips i.next { animation: pip-next 1.5s var(--ease, ease) infinite; }
+/* The rank this card gives, at rest: filled, but dim - there, not yet yours. */
+.card .card-pips i.next {
+  background: color-mix(in srgb, var(--q, var(--arc)) 32%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--q, var(--arc)) 55%, transparent);
+}
+/* ...and only on the card you are looking at, it lights and dims - "from
+   here to there". A row of three cards all blinking at once is noise; the
+   one under the cursor (or the controller's focus) is the question. */
+.card:hover .card-pips i.next, .card:focus-visible .card-pips i.next,
+body.nav-active .card:focus .card-pips i.next {
+  animation: pip-next 1.5s var(--ease, ease) infinite;
+}
 @keyframes pip-next {
-  0%, 30% { background: rgba(255,255,255,.10); box-shadow: inset 0 0 0 1px rgba(255,255,255,.22); }
+  0%, 30% {
+    background: color-mix(in srgb, var(--q, var(--arc)) 32%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--q, var(--arc)) 55%, transparent);
+  }
   45%, 85% {
     background: color-mix(in srgb, var(--q, var(--arc)) 55%, #fff 45%);
     box-shadow: 0 0 10px 0 var(--q, var(--arc)), inset 0 0 0 1px #fff;
   }
-  100% { background: rgba(255,255,255,.10); box-shadow: inset 0 0 0 1px rgba(255,255,255,.22); }
+  100% {
+    background: color-mix(in srgb, var(--q, var(--arc)) 32%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--q, var(--arc)) 55%, transparent);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .card .card-pips i.next {
+  .card:hover .card-pips i.next, .card:focus-visible .card-pips i.next,
+  body.nav-active .card:focus .card-pips i.next {
     animation: none;
-    background: color-mix(in srgb, var(--q, var(--arc)) 40%, transparent);
+    background: color-mix(in srgb, var(--q, var(--arc)) 55%, #fff 20%);
     box-shadow: 0 0 0 1px var(--q, var(--arc));
   }
 }

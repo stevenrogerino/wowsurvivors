@@ -518,6 +518,7 @@
       const q = pool.active[i];
       if (q.kind !== 'merchant') continue;
       WS.FX.burst(q.x, q.y, 14, '#e0a850', 150, 0.6, 3);
+      WS.Audio.play('beansLeave', q.x);
       pool.releaseAt(i);
       WS.Game.toast('Beans packs up', '"Not my fight! Good luck!"', { kind: 'merchant' });
     }

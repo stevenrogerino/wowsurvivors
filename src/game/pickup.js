@@ -276,6 +276,7 @@
       if (pickup.kind === 'merchant' && pickup.life >= (pickup.stay || WS.Config.eggVendorStay)) {
         WS.FX.burst(pickup.x, pickup.y, 14, '#e0a850', 150, 0.6, 3);
         WS.FX.flash(pickup.x, pickup.y, 50, WS.hex(pickup.type.tint), 0.35);
+        WS.Audio.play('beansLeave', pickup.x);
         WS.Game.toast('Beans packs up', '"Eggs don\'t keep, friend. See you next time."', { kind: 'merchant' });
         this.pool.releaseAt(i);
         continue;

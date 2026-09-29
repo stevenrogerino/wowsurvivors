@@ -553,7 +553,9 @@
     }
     this.damage(e, amount, crit, source);
     WS.FX.damage(e.x, e.y - e.radius * 0.6, amount, crit);
-    WS.Audio.play(crit ? 'crit' : 'hit', e.x);
+    // The blow carries what it was struck with (audio.js STRIKE).
+    const by = source && WS.Weapons[source];
+    WS.Audio.play(crit ? 'crit' : 'hit', e.x, by ? by.school : undefined);
     return amount;
   };
 
@@ -674,7 +676,7 @@
     run.kills++;
     WS.Primal.onKill(player, e);
     WS.Calling.onKill(player, e);
-    WS.Audio.play('enemyHit', e.x);
+    WS.Audio.play(e.elite ? 'eliteKill' : 'enemyHit', e.x);
 
     if (player.bloodthirst && run.kills % player.bloodthirstInterval === 0 && player.bloodthirstTimer <= 0) {
       player.bloodthirstTimer = WS.Config.bloodthirstCooldown;
@@ -713,7 +715,7 @@
          than one, so the payoff keeps arriving for most of a second, and a
          gold banner rather than a caption - killing a boss is the moment the
          run has been building toward and it should read like one. */
-      WS.Audio.play('explode', e.x);
+      WS.Audio.play('bossFell', e.x);
       WS.FX.shake(9, 0.5);
       WS.FX.stop(0.12);
       WS.FX.punch(0.045, 0.7);

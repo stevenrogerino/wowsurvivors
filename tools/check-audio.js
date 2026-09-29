@@ -135,7 +135,12 @@ let warnStack = null;
       await sleep(500);                       // let the previous tail die
       const px = WS.Game.player.x;
       let l = 0, r = 0;
-      for (let i = 0; i < 40; i++) {
+      /* Sixteen hits, not eight. The analysers are read on the wall clock and
+         the audio clock under them moves in 30-70ms jumps, so a read can land
+         on nothing but a hit's room tail, which is centred by design; with
+         eight hits two such reads measured a placed hit at 2.2x one run in
+         six, against 4x on every other. */
+      for (let i = 0; i < 80; i++) {
         if (i % 5 === 0) WS.Audio.play('hit', dx === null ? undefined : px + dx);
         await sleep(11);
         AL.getFloatTimeDomainData(bl); AR.getFloatTimeDomainData(br);
@@ -263,18 +268,39 @@ let warnStack = null;
      * tick sounded exactly like two and the player learned nothing from the
      * difference. They are counted now and the next voice carries them. */
     await sleep(600);
+    /* The pitch each voice is given carries a random wander (VARY), wide
+       enough that one draw for a single hit and one for a clump could land
+       the clump on top - one run in twenty said "a clump is not pitched
+       below a single event" of an engine that pitches it a quarter lower.
+       What is being measured is the shape, not the dice: the draws are held
+       at their middle for these two voices. */
+    const rnd = Math.random;
+    Math.random = () => 0.5;
     // one event on a quiet field
     WS.Audio.play('hit', px2);
     const single = WS.Audio.lastShape;
     // then thirty in a tick, which the throttle will not let through - the
     // next voice out has to carry what they would have said
     await sleep(200);
+    /* Long enough that the WIDENED gap has elapsed (86ms: a clump
+       deliberately spaces itself out, so 55ms was still inside it) and short
+       enough that the backlog has not aged out (three gaps, 135ms).
+       On a clock this check HOLDS. It used to sleep 110ms on the wall clock
+       and read the audio clock after, but headless Chromium's audio clock
+       moves in jumps of 30 to 70ms: measured over twelve tries, it landed
+       at 102 to 221ms and inside the 86-135 window only twice - so the same
+       engine passed and failed on alternate runs, and every "fix" to the
+       timing just moved which runs failed. The throttle reads nothing but
+       ctx.currentTime, so for these two calls the context's clock is
+       whatever the check says it is, and then it is given back. */
+    const t0 = ctx.currentTime + 1;
+    let held = t0;
+    Object.defineProperty(ctx, 'currentTime', { configurable: true, get: () => held });
     for (let i = 0; i < 30; i++) WS.Audio.play('hit', px2);
-    /* Long enough that the WIDENED gap has elapsed - a clump deliberately
-       spaces itself out, so 55ms was still inside it - and short enough that
-       the backlog has not aged out. */
-    await sleep(110);
+    held = t0 + 0.1;
     WS.Audio.play('hit', px2);
+    delete ctx.currentTime;
+    Math.random = rnd;
     const clump = WS.Audio.lastShape;
     out.density = { single, clump };
 
@@ -484,7 +510,14 @@ let warnStack = null;
    * fires peaks 0.163; the level-up alone peaks 0.141. So four fifths of what
    * you hear in that moment is the level-up.
    */
-  const gotOut = report.wallPlusLevel.hi / Math.max(1e-9, report.wallOnly.hi);
+  /* Against the LOUDER of the two, not the wall. Measured against the wall
+     alone this assumed the level-up would always be the quieter of the pair,
+     and once the mix was rebalanced so it was not (the chatter came down, the
+     level-up stands as tall as a full wall: 0.192 against 0.189) it read a
+     perfect duck - wall plus level-up 0.194, all of it the level-up - as the
+     wall refusing to move. An un-ducked wall under a level-up of its own size
+     sums well past either; a ducked one leaves the moment at the level-up. */
+  const gotOut = report.wallPlusLevel.hi / Math.max(1e-9, report.wallOnly.hi, report.levelAlone.hi);
   const owns = report.wallPlusLevel.hi / Math.max(1e-9, report.levelAlone.hi);
   if (!(report.levelAlone.hi > 0.02)) {
     fail.push('a level-up on a silent field barely registers - the comparisons below '
@@ -494,10 +527,12 @@ let warnStack = null;
     fail.push('driving every chatter kit as hard as the game can barely registers - '
       + 'this measurement is not reaching the mix');
   }
-  if (!(gotOut < 0.85)) {
+  if (!(gotOut < 1.15)) {
     fail.push(`a level-up over a full wall of chatter leaves the mix at `
-      + `${(gotOut * 100).toFixed(0)}% of the wall's own peak - the chatter is not `
-      + 'getting out of the way of the thing it is supposed to make room for');
+      + `${(gotOut * 100).toFixed(0)}% of the louder of the two alone - the chatter is not `
+      + 'getting out of the way of the thing it is supposed to make room for'
+      + ` (peaks: wall ${report.wallOnly.hi.toFixed(3)}, wall + level-up ${report.wallPlusLevel.hi.toFixed(3)},`
+      + ` level-up alone ${report.levelAlone.hi.toFixed(3)})`);
   }
   if (!(owns < 1.7)) {
     fail.push(`in the moment a level-up fires, the mix peaks ${owns.toFixed(2)}x what the `
@@ -582,8 +617,8 @@ let warnStack = null;
   }
   console.log(`ok: sound is placed in the field (${p.left}x left, `
     + `${(1 / p.right).toFixed(2)}x right, ${p.centre} centred, ${p.announce} announcing), `
-    + `a wall of chatter gets out of the way of a level-up (down to `
-    + `${(gotOut * 100).toFixed(0)}% of its own peak, and ${(100 / owns).toFixed(0)}% of `
+    + `a wall of chatter gets out of the way of a level-up (the moment at `
+    + `${(gotOut * 100).toFixed(0)}% of the louder alone, and ${(100 / owns).toFixed(0)}% of `
     + `what is left is the level-up itself), ten charge warnings at once come out `
     + `${warnStack === null ? '?' : warnStack.toFixed(1)}x one of them, `
     + `a clump of thirty hits comes out `

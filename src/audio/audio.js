@@ -39,9 +39,12 @@
 
   /** How loud the game's own chatter is allowed to be, against everything
    *  else. One number, in one place, and nothing can exceed it. */
-  const CHATTER_LEVEL = 0.8;
+  const CHATTER_LEVEL = 0.62;
   /** ...and how far under that it goes when something important speaks. */
   const CHATTER_DUCK = 0.45;
+
+  /** What the output stage gives back after the glue (see init). */
+  const MAKEUP = 1.4;
 
   /** Created on the first user gesture - browsers block audio before that. */
   Audio.init = function () {
@@ -52,13 +55,32 @@
 
     // A limiter across everything: a level-eight Storm of Steel can put forty
     // voices in flight, and without this the mix simply clips.
+    /* TWO STAGES, not one. The single compressor that was here sat at
+     * -14dB with a 24dB knee, so it was already leaning on the mix from
+     * about -26: measured off real nights, the game peaked at -12dBFS and
+     * sat near -39 on average - a full-scale output with a quarter of its
+     * range used, which the player makes up by turning the whole machine
+     * up (and then the next thing they open is deafening). Now a gentle
+     * glue stage holds the mix together, a makeup gain gives back what
+     * that took and more, and a fast limiter at the top is the only thing
+     * that stops anything clipping. Same safety, twice the size. */
     this.master = this.ctx.createDynamicsCompressor();
-    this.master.threshold.value = -14;
-    this.master.knee.value = 24;
-    this.master.ratio.value = 8;
-    this.master.attack.value = 0.004;
-    this.master.release.value = 0.18;
-    this.master.connect(this.ctx.destination);
+    this.master.threshold.value = -22;
+    this.master.knee.value = 12;
+    this.master.ratio.value = 2.5;
+    this.master.attack.value = 0.008;
+    this.master.release.value = 0.22;
+    this.makeup = this.ctx.createGain();
+    this.makeup.gain.value = MAKEUP;
+    this.limiter = this.ctx.createDynamicsCompressor();
+    this.limiter.threshold.value = -3;
+    this.limiter.knee.value = 0;
+    this.limiter.ratio.value = 20;
+    this.limiter.attack.value = 0.001;
+    this.limiter.release.value = 0.12;
+    this.master.connect(this.makeup);
+    this.makeup.connect(this.limiter);
+    this.limiter.connect(this.ctx.destination);
 
     this.sfxGain = this.ctx.createGain();
     this.musicGain = this.ctx.createGain();
@@ -141,7 +163,10 @@
     if (!this.ctx) return;
     const s = WS.Save.settings;
     this.sfxGain.gain.value = s.sound ? s.effectsVolume * 0.6 : 0;
-    this.musicGain.gain.value = s.music ? s.musicVolume * 0.35 : 0;
+    /* The score sat 12 to 16dB under the effects in every fight measured
+       (tools/audio-render.js) - under a wall of hits it was not quiet, it
+       was absent. It comes up four, the chatter comes down two. */
+    this.musicGain.gain.value = s.music ? s.musicVolume * 0.55 : 0;
     // A switch that only turns the volume down is not a switch.
     if (!s.sound) this.stopAmbience();
     else if (this.ambienceWanted && !this._amb) this.setAmbience(this.ambienceWanted);
@@ -309,12 +334,15 @@
     warn: 0.34,
     // One heavy blow at a time: a volley landing at once is one moment.
     heavyHit: 0.5, deny: 0.12,
+    // An elite dying in the same instant as another is one moment, not two.
+    eliteKill: 0.12,
   };
 
   /* The kits that are the game talking to itself, rather than telling you
    * something. These go through the chatter bus and get the treatment below;
    * everything else - a level, a boss, being hurt - goes straight through. */
   const CHATTER = { hit: 1, crit: 1, enemyHit: 1, gem: 1, gemChain: 1, cast: 1, coin: 1 };
+  const ONE_THROTTLE = { hit: 1, crit: 1 };
 
   /** How far a kit's pitch is allowed to wander, each time it plays.
    *
@@ -342,7 +370,7 @@
    *  hundred, so they have no repetition problem to solve. */
   const VARY = {
     // noise-led: the number is a cutoff, so this is impact weight, not key
-    hit: 0.15, enemyHit: 0.17, crit: 0.12, explode: 0.22, freeze: 0.14,
+    hit: 0.15, enemyHit: 0.17, crit: 0.12, explode: 0.22, freeze: 0.14, eliteKill: 0.1,
     playerHurt: 0.13,
     // tone-led: kept inside a semitone or so, because these are pitched
     cast: 0.08, gem: 0.10, coin: 0.06, potion: 0.11, chest: 0.09,
@@ -440,6 +468,25 @@
     },
   };
 
+  /* WHAT IT WAS HIT WITH. Every weapon in the game landed with the same
+   * blow: one band of noise, whichever school threw it, so a fire build and
+   * a frost build sounded identical at the moment that matters most - the
+   * contact. The blow is still the blow (it carries the weight), and on top
+   * of it rides a small tell of what landed: fire hisses, frost clinks,
+   * arcane fizzes, the holy ring, wood knocks, shadow thuds and steel
+   * rings off. Quiet, and inside the same chatter voice and throttle - the
+   * hit rate is unchanged, the hits just stop being anonymous. */
+  const none = () => {};
+  const STRIKE = {
+    fire(k) { noise({ filter: 'highpass', freq: vary(3800, 0.2), to: 6000, q: 0.7, attack: 0.004, decay: vary(0.07, 0.3), gain: 0.028 * k }); },
+    frost(k) { tone({ type: 'sine', freq: vary(3150, 0.08), decay: vary(0.05, 0.3), gain: 0.018 * k, attack: 0.001 }); },
+    arcane(k) { tone({ type: 'triangle', freq: vary(1250, 0.1), to: 2100, decay: 0.045, gain: 0.022 * k, attack: 0.002 }); },
+    holy(k) { tone({ type: 'sine', freq: vary(1760, 0.03), decay: vary(0.1, 0.2), gain: 0.014 * k, attack: 0.002 }); },
+    nature(k) { tone({ type: 'triangle', freq: vary(430, 0.1), to: 300, decay: 0.05, gain: 0.04 * k, filter: 'lowpass', cutoff: 1500, attack: 0.001 }); },
+    shadow(k) { tone({ type: 'sine', freq: vary(170, 0.1), to: 85, decay: 0.08, gain: 0.05 * k, attack: 0.002 }); },
+    physical(k) { noise({ filter: 'bandpass', freq: vary(3300, 0.12), q: 5, attack: 0.001, decay: vary(0.035, 0.3), gain: 0.03 * k }); },
+  };
+
   /** A struck metal partial set - the basis of every bell and chime below. */
   const GEM_ROOT = 880;
   const GEM_SCALE = [1, 9 / 8, 5 / 4, 3 / 2, 5 / 3, 2, 9 / 4, 5 / 2, 3, 10 / 3, 4];
@@ -461,10 +508,14 @@
        times. The school is passed as the variant, and each has its own
        small gesture - quiet, because these are chatter and fire constantly. */
     cast() { (CAST[Audio.variant] || CAST.arcane)(); },
-    hit() { noise({ freq: 1500, to: vary(500, 0.25), decay: vary(0.07, 0.30), gain: 0.10, q: vary(0.8, 0.35) }); },
+    hit() {
+      noise({ freq: 1500, to: vary(500, 0.25), decay: vary(0.07, 0.30), gain: 0.10, q: vary(0.8, 0.35) });
+      (STRIKE[Audio.variant] || none)(1);
+    },
     crit() {
       noise({ freq: 2400, to: vary(700, 0.22), decay: vary(0.11, 0.25), gain: 0.16, q: vary(0.9, 0.30) });
       tone({ type: 'square', freq: 880, to: 1600, decay: vary(0.09, 0.20), gain: 0.07 });
+      (STRIKE[Audio.variant] || none)(1.5);
     },
     enemyHit() { noise({ freq: 700, to: vary(220, 0.30), decay: vary(0.10, 0.30), gain: 0.13, filter: 'lowpass', q: vary(0.6, 0.35) }); },
     playerHurt() {
@@ -564,6 +615,53 @@
       tone({ type: 'sine', freq: 58, decay: 2.4, gain: 0.2, attack: 0.004 });
       tone({ type: 'sine', freq: 58 * 2.4, decay: 1.6, gain: 0.07, attack: 0.004 });
       tone({ type: 'sine', freq: 58 * 3.9, decay: 1.1, gain: 0.04, attack: 0.004 });
+    },
+    /* An elite going down was the same small thud as the three hundred
+       creatures around it, which is how the one kill in the wave worth
+       having went by unheard. A crunch, the body hitting the ground, and a
+       low ring after it: a heavier thing ended. */
+    eliteKill() {
+      noise({ filter: 'lowpass', freq: vary(1900, 0.15), to: 180, q: 0.8, attack: 0.002, decay: vary(0.26, 0.2), gain: 0.2 });
+      tone({ type: 'sine', freq: 96, to: 40, decay: 0.34, gain: 0.22, attack: 0.003 });
+      tone({ type: 'triangle', freq: vary(330, 0.04), decay: 0.6, gain: 0.05, attack: 0.004, filter: 'lowpass', cutoff: 1400, delay: 0.03 });
+      tone({ type: 'triangle', freq: vary(495, 0.04), decay: 0.45, gain: 0.03, attack: 0.004, filter: 'lowpass', cutoff: 1800, delay: 0.03 });
+    },
+    /* A BOSS FALLS. It used to go down to the same explosion as a bomb
+       barrel. This is the biggest moment in a stretch of the night and it
+       sounds like one: the ground takes the body, a great bell is struck
+       and left to ring, and over it a chord rises and opens - the sound of
+       the field being yours again. */
+    bossFell() {
+      tone({ type: 'sine', freq: 64, to: 26, decay: 1.5, gain: 0.34, attack: 0.004 });
+      noise({ filter: 'lowpass', freq: 900, to: 50, q: 0.6, attack: 0.004, decay: 1.3, gain: 0.26 });
+      noise({ filter: 'bandpass', freq: 2400, to: 700, q: 0.9, attack: 0.002, decay: 0.3, gain: 0.08 });
+      // The bell: inharmonic partials, the upper ones dying first.
+      for (const [m, d, g] of [[1, 3.2, 0.13], [2.02, 2.4, 0.07], [2.76, 1.9, 0.05], [4.1, 1.3, 0.03], [5.4, 0.9, 0.02]]) {
+        tone({ type: 'sine', freq: 98 * m, decay: d, gain: g, attack: 0.003, delay: 0.05 });
+      }
+      // The chord opening over it: root, fifth, octave, tenth.
+      for (const [f, dl] of [[196, 0.35], [293.66, 0.45], [392, 0.55], [493.88, 0.7]]) {
+        tone({ type: 'sawtooth', freq: f, decay: 2.2, gain: 0.035, attack: 0.5, filter: 'lowpass', cutoff: 1600, delay: dl });
+        tone({ type: 'sine', freq: f * 2, decay: 1.8, gain: 0.02, attack: 0.4, delay: dl + 0.05 });
+      }
+    },
+    /* Beans, arriving: the bell on her cart, rung the way a shop door's is
+       - a quick shake of three - and the wheels coming to a stop. */
+    beans() {
+      const bell = [2093, 2637, 2349, 2794];
+      for (let i = 0; i < 5; i++) chime(vary(bell[i % 4], 0.01), 0.35, 0.05, i * 0.085 + Math.random() * 0.02);
+      for (let i = 0; i < 4; i++) {
+        noise({ filter: 'bandpass', freq: vary(700, 0.2), q: 2.5, attack: 0.002, decay: 0.03, gain: 0.05, delay: 0.5 + i * 0.09 + i * i * 0.02 });
+      }
+      tone({ type: 'triangle', freq: 150, to: 110, decay: 0.12, gain: 0.07, filter: 'lowpass', cutoff: 800, delay: 0.95 });
+    },
+    // ...and packing up: two slow falling rings and the wheels rolling off.
+    beansLeave() {
+      chime(2349, 0.5, 0.04, 0);
+      chime(1760, 0.7, 0.04, 0.22);
+      for (let i = 0; i < 7; i++) {
+        noise({ filter: 'bandpass', freq: vary(620, 0.2), q: 2.5, attack: 0.002, decay: 0.03, gain: 0.05 * (1 - i / 8), delay: 0.45 + i * 0.12 });
+      }
     },
     explode() {
       noise({ freq: 900, to: 60, decay: vary(0.55, 0.22), gain: 0.32, filter: 'lowpass', q: vary(0.5, 0.3) });
@@ -740,7 +838,7 @@
     winter: [0.35, 3.0], shock: [0.6, 0.6],
     boss: [0.28, 1.6], evolve: [0.4, 1.1], level: [0.4, 0.9],
     victory: [0.3, 1.8], death: [0.25, 1.8], explode: [0.55, 0.5], warn: [0.5, 0.7],
-    heavyHit: [0.5, 0.45],
+    heavyHit: [0.5, 0.45], eliteKill: [0.75, 0.35], bossFell: [0.3, 2.2],
   };
 
   /** How much room each kit is given. The chatter gets a breath of it - a
@@ -753,6 +851,7 @@
     ui: 0.05, select: 0.08, page: 0.05, deny: 0.05, heavyHit: 0.2,
     rumble: 0.3, cannon: 0.35, glass: 0.45, zap: 0.2, shock: 0.35, drill: 0.25, shatter: 0.45, winter: 0.7,
     dash: 0.12, maul: 0.28, star: 0.3, shift: 0.5, palm: 0.08, thunder: 0.6,
+    eliteKill: 0.25, bossFell: 0.6, beans: 0.3, beansLeave: 0.3,
   };
 
   /** @param {string} kit  @param {number} [x] world x, to place it in the field.
@@ -768,7 +867,11 @@
     const t = this.ctx.currentTime;
     const chatter = CHATTER[kit];
     const gap = THROTTLE[kit];
-    const key = variant ? kit + ':' + variant : kit;
+    /* A variant keeps its own throttle (a fire cast never swallows a frost
+       one) - except for a blow, whose variant is only what it was struck
+       with. Seven schools each at the hit rate would be seven times the
+       hits; the school colours the voice, it does not buy another. */
+    const key = variant && !ONE_THROTTLE[kit] ? kit + ':' + variant : kit;
     /* LATELY, not ever.
      *
      * The backlog only grows while a kit is being throttled, but it did not
@@ -1060,6 +1163,7 @@
       prog: [0, 3, 1, 0],
       life: { rate: 0.48, voices: ['cricket', 'cricket', 'cricket', 'bird', 'bird', 'frog', 'owl'] },
       drone: { gain: 0.085, oct: 2, cut: 520 },
+      drive: { bass: 'triangle', bassCut: 900, snare: 'clap', hat: 'tick', groove: 0 },
     },
     // The Dustreach: dry, wide, hot. A rattle and a sawing wind.
     plains: {
@@ -1070,6 +1174,7 @@
       prog: [0, 4, 2, 3],
       life: { rate: 0.56, voices: ['hawk', 'hawk', 'hawk', 'crow', 'gust'] },
       drone: { gain: 0.100, oct: 2, cut: 620, wave: 'square' },
+      drive: { bass: 'sawtooth', bassCut: 700, snare: 'stone', hat: 'shake', groove: 1 },
     },
     // Mourneholt: a graveyard. A bell, a long moan, a flattened second.
     cursed: {
@@ -1087,6 +1192,7 @@
          (and it is 27Hz, felt more than heard), and it is what keeps
          Mourneholt from sounding like the menu. */
       drone: { gain: 0.215, oct: 4, cut: 240 },
+      drive: { bass: 'sine', bassCut: 400, snare: 'skin', hat: null, groove: 2 },
     },
     // Ambergrass: it walks. Drums on the off-beat and a field full of insects.
     savannah: {
@@ -1103,6 +1209,7 @@
       /* Warm and an octave up: the Dustreach's square drone sat a semitone
          from this one in the same octave, and the two plains had one floor. */
       drone: { gain: 0.105, oct: 1, cut: 900, wave: 'triangle' },
+      drive: { bass: 'square', bassCut: 600, snare: 'skin', hat: 'shake', groove: 1 },
     },
     /* The Rimewaste: almost nothing, very far apart, very bright.
        Its weather was a HIGHPASS at 5600Hz, the only one in the game, which
@@ -1132,6 +1239,7 @@
       prog: [0, 0, 3, 4],
       life: { rate: 0.60, voices: ['whistle', 'chime', 'chime', 'glint', 'glint', 'creak'] },
       drone: { gain: 0.055, oct: 2, cut: 900, wave: 'triangle' },
+      drive: { bass: 'sine', bassCut: 500, snare: 'clap', hat: 'tick', groove: 2 },
     },
     /* Highmoor: a pipe over a held drone, in the dorian - bright sixth,
        flat seventh - on a skin drum that walks like a march up a hill; the
@@ -1147,6 +1255,7 @@
       prog: [0, 3, 4, 3],
       life: { rate: 0.5, voices: ['gust', 'gust', 'rumble', 'rumble', 'crow', 'bleat', 'hawk'] },
       drone: { gain: 0.085, oct: 0, cut: 1500, wave: 'sawtooth' },
+      drive: { bass: 'sawtooth', bassCut: 800, snare: 'skin', hat: 'shake', groove: 0 },
     },
     /* The Eclipse: wrong. Struck stone on an odd count, an altered scale, and
        a room that RINGS rather than rumbles.
@@ -1183,6 +1292,7 @@
          which is what a grave is; the Eclipse sits an octave above it on odd
          harmonics, which is what a wrong room is. */
       drone: { gain: 0.150, oct: 1, cut: 520, wave: 'square' },
+      drive: { bass: 'square', bassCut: 520, snare: 'stone', hat: 'tick', groove: 1 },
     },
     // Not a place. No rhythm, no weather - just a room with a fire in it.
     menu: {
@@ -1285,6 +1395,16 @@
     },
     stone(bed, t0, v) {
       mNoise(bed, t0, { freq: 940, to: 250, decay: 0.10, gain: 0.060 * v, q: 1.1 });
+    },
+    // The drive layer's own (see DRIVE): a kick, a clap, and nothing clever.
+    kick(bed, t0, v) {
+      mTone(bed, t0, { wave: 'sine', freq: 128, to: 44, slide: 0.09, decay: 0.26, gain: 0.24 * v, attack: 0.003 });
+      mNoise(bed, t0, { freq: 1800, to: 400, decay: 0.012, gain: 0.03 * v, q: 0.9, attack: 0.001 });
+    },
+    clap(bed, t0, v) {
+      for (let i = 0; i < 3; i++) {
+        mNoise(bed, t0 + i * 0.011, { freq: 1500, decay: i === 2 ? 0.13 : 0.012, gain: 0.07 * v, q: 1.4, attack: 0.001, verb: i === 2 ? 0.3 : 0 });
+      }
     },
   };
 
@@ -1524,6 +1644,101 @@
   }
 
   /** What the game asks for. Whether it sounds is the settings' business. */
+  /* AN ECHO ON THE MELODY. The lead was a dry oscillator into a room, and a
+   * room is a wash: it gives a note a tail but no place. A delay timed to
+   * the zone's own step (a dotted half of it) and thrown left then right
+   * gives each note an answer, which is most of what makes a synthesised
+   * line sound produced rather than generated - and it fills the gaps a
+   * phrase leaves with the phrase, not with silence. Darkened in the loop,
+   * so each repeat is further away than the last. */
+  const ECHO_SEND = 0.3, ECHO_FEEDBACK = 0.34, ECHO_TONE = 2600;
+  function makeEcho(ctx, secs, dest) {
+    const inp = ctx.createGain();
+    inp.gain.value = ECHO_SEND;
+    inp.channelCount = 1; inp.channelCountMode = 'explicit';
+    const dl = ctx.createDelay(4), dr = ctx.createDelay(4);
+    dl.delayTime.value = secs; dr.delayTime.value = secs;
+    const tone = ctx.createBiquadFilter();
+    tone.type = 'lowpass'; tone.frequency.value = ECHO_TONE;
+    const fb = ctx.createGain();
+    fb.gain.value = ECHO_FEEDBACK;
+    const merge = ctx.createChannelMerger(2);
+    inp.connect(tone); tone.connect(dl);
+    dl.connect(dr); dl.connect(merge, 0, 0); dr.connect(merge, 0, 1);
+    dr.connect(fb); fb.connect(tone);
+    merge.connect(dest);
+    return inp;
+  }
+
+  /* THE DRIVE. The score was the same at a full field as at an empty one
+   * in everything but a few notes: danger filled the melody's rests and
+   * added a bass slide, and that was all. A night was scored like a walk.
+   *
+   * So above a fifth of the way to full danger (which the night's own
+   * clock reaches at twelve minutes, and a crowded field sooner) a second band comes in
+   * under the zone, and by three fifths it is all there: a kick and a
+   * backbeat on the zone's own drum, hats on the zone's own shaker, and a
+   * bass line walking the chord the zone is on. It lives in the low end,
+   * which is the one part of the mix the effects leave alone (they sit in
+   * the middle), so it is heard without having to be loud. Quiet stretches
+   * are still quiet: it goes as the danger does.
+   *
+   * The grid is sixteen slots to four of the zone's steps. A boss brings
+   * its own kick, so while one is up the drive leaves its out. */
+  const DRIVE_FROM = 0.2, DRIVE_FULL = 0.6;
+  const GROOVES = [
+    // kick, backbeat, bass (1 = root, 2 = octave), per sixteenth
+    { kick: [0, 10], snare: [8], bass: [1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 2, 0] },
+    { kick: [0, 6, 10], snare: [8], bass: [1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 2, 1, 0] },
+    { kick: [0, 11], snare: [8], bass: [1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 2, 0, 0, 0] },
+  ];
+  function driveOf(state) {
+    return WS.clamp((state.intensity - DRIVE_FROM) / (DRIVE_FULL - DRIVE_FROM), 0, 1);
+  }
+  function driveStep(state, t0, s, beat, centre) {
+    const dv = state.score.drive;
+    if (!dv) return;
+    const d = driveOf(state);
+    if (d <= 0.01) return;
+    const gr = GROOVES[dv.groove || 0];
+    const q = beat / 4;
+    const root = semitone(state.score.root / 2, state.score.scale[centre % state.score.scale.length]);
+    for (let k = 0; k < 4; k++) {
+      const slot = (s % 4) * 4 + k, t = t0 + k * q;
+      if (!state.bossGain && gr.kick.indexOf(slot) >= 0) KIT.kick(state.dry, t, d * (slot === 0 ? 1 : 0.8));
+      if (gr.snare.indexOf(slot) >= 0 && KIT[dv.snare]) KIT[dv.snare](state.zone, t, d * 1.5);
+      // Hats: eighths from halfway in, sixteenths near the top.
+      if (dv.hat && KIT[dv.hat] && (k % 2 === 0 || d > 0.85) && d > 0.35) {
+        KIT[dv.hat](state.zone, t, d * (k % 2 === 0 ? 0.55 : 0.32) * vary(1, 0.15));
+      }
+      const b = gr.bass[slot];
+      if (b) {
+        const f = root * b;
+        mTone(state.dry, t, { wave: dv.bass, freq: f, cut: (dv.bassCut || 700) * (0.8 + 0.6 * d),
+          gain: 0.06 * d, attack: 0.006, decay: q * 1.7 });
+        // Body at the note itself: an octave under this is 27Hz on the
+        // lower zones, which no speaker plays and every limiter pays for.
+        mTone(state.dry, t, { wave: 'sine', freq: f, gain: 0.045 * d, attack: 0.006, decay: q * 1.4 });
+      }
+    }
+  }
+
+  /* THE NIGHT, IN THE SCORE. The light now falls from dusk to its deepest
+   * at midnight and warms in the last fifth toward dawn (render/lighting.js
+   * Lit.ambient), and the music did not know what time it was. It follows
+   * the same curve now: the melody and the chords close down toward
+   * midnight and open again, and in the last stretch before dawn a high
+   * bell line comes in over the top - the first light, heard. */
+  function nightOf(state) {
+    const run = WS.Game && WS.Game.run;
+    if (!run || !run.map || run.map.arena || run.map.music !== state.key) return { bright: 1, dawn: 0 };
+    const t = WS.clamp((run.time || 0) / WS.Config.deathTime, 0, 1);
+    const depth = 1 - Math.pow(Math.abs(t - 0.5) * 2, 1.6);
+    let dawn = t > 0.8 ? (t - 0.8) / 0.2 : 0;
+    if (run.finaleCleared) dawn = 1;
+    return { bright: (1 - 0.32 * depth) * (1 + 0.35 * dawn), dawn };
+  }
+
   Audio.playMusic = function (key) {
     if (!this.ctx) return;
     this.wanted = key;
@@ -1596,15 +1811,20 @@
     /* The melody answers itself across the stereo field: each new phrase
        sits a little left or a little right of the last, so a line has
        somewhere to move instead of every note arriving dead centre. */
+    const echo = makeEcho(ctx, score.tempo / 2 * 0.75, zone);
     const leads = [-0.28, 0.28].map((p) => {
       const n = ctx.createStereoPanner ? ctx.createStereoPanner() : ctx.createGain();
       if (n.pan) n.pan.value = p;
       n.connect(zone);
+      n.connect(echo);
       return n;
     });
+    // The drive's low end goes in dry: a kick in a room is a thud in a cave.
+    const dry = ctx.createGain();
+    dry.connect(bed);
 
     const progSet = progsFor(score);
-    const state = { key, score, bed, zone, drone, droneGain, leads, side: 0,
+    const state = { key, score, bed, zone, dry, drone, droneGain, leads, side: 0, night: { bright: 1, dawn: 0 },
       droneFreq: score.root / (dr.oct || 2),
       droneLevel: (dr.gain === undefined ? 0.12 : dr.gain) * DRONE_LEVEL,
       step: 0, phrase: PHRASES[0],
@@ -1677,6 +1897,8 @@
         }
         const ph = state.phrase || PHRASES[0];
         const sc = score.scale;
+        if (s % 4 === 0) state.night = nightOf(state);
+        const bright = state.night.bright;
         if (s % PHRASE_LEN === 0) droneBar(state, t0, beat * PHRASE_LEN);
         const deg = sc[(((s * ph.step + (ph.shift || 0)) % sc.length)
           + sc.length) % sc.length];
@@ -1710,7 +1932,7 @@
           const f = semitone(score.root * 2, deg + oct);
           const lead = state.leads[state.side];
           mTone(lead, t0, { wave: score.wave, freq: f,
-            cut: WS.max(900, f * (score.leadCut || 6)),
+            cut: WS.max(900, f * (score.leadCut || 6)) * bright,
             gain: 0.07 + state.intensity * 0.05, attack: 0.02, decay: beat * 1.6 });
           /* And a breath of the note an octave up, short and quiet - the
              shimmer that makes an oscillator sound played rather than held. */
@@ -1738,7 +1960,7 @@
             /* Two voices a few cents apart, which is what makes a pad a pad:
                a single oscillator per note is an organ with one stop. */
             for (const d of [-7, 7]) {
-              mTone(zone, t0, { wave: score.pad || 'sine', cut: score.padCut,
+              mTone(zone, t0, { wave: score.pad || 'sine', cut: score.padCut * bright,
                 freq: semitone(score.root, iv), detune: d,
                 gain: 0.034, attack: 0.3, decay: beat * 4 });
             }
@@ -1778,6 +2000,20 @@
           }
         }
         /* What lives here, now and then: a cricket, a bird, an owl, the ice. */
+        {
+          const prog = state.prog;
+          const centre = prog[(((s / PHRASE_LEN) | 0) % prog.length + prog.length) % prog.length];
+          driveStep(state, t0, s, beat, centre);
+          /* First light: a bell high over the chord, once in two steps, as
+             sparse at the start of the last stretch as the light is. */
+          const dawn = state.night.dawn;
+          if (dawn > 0 && s % 2 === 0 && WS.random() < 0.25 + 0.5 * dawn) {
+            const iv = chordOn(sc, centre, false)[WS.floor(WS.random() * 3)];
+            const f = semitone(score.root * 4, iv);
+            mTone(zone, t0 + beat * 0.5, { wave: 'sine', freq: f, gain: 0.018 * dawn, attack: 0.004, decay: 1.6, verb: 0.6 });
+            mTone(zone, t0 + beat * 0.5, { wave: 'sine', freq: f * 2.76, gain: 0.005 * dawn, attack: 0.003, decay: 0.6 });
+          }
+        }
         if (score.life && WS.random() < score.life.rate) life(state, t0);
         if (state.bossGain) bossVoices(state, t0, s, beat);
         state.nextTime += beat;
@@ -2264,6 +2500,8 @@
     shrill: { pitch: 360, mouth: 1.4, syl: 0.09, count: [3, 5], wobble: 0.28, gain: 0.36, growl: true, room: 0.25 },
     hollow: { pitch: 100, mouth: 0.88, syl: 0.15, count: [2, 4], wobble: 0.08, gain: 0.51, hollow: 0.009, room: 0.45 },
     celestial: { pitch: 150, mouth: 1.0, syl: 0.2, count: [2, 4], wobble: 0.04, gain: 0.45, choir: true, room: 0.75 },
+    // Beans: a trader's sing-song, bright and quick and very pleased to see you.
+    beans: { pitch: 265, mouth: 1.22, syl: 0.078, count: [4, 7], wobble: 0.26, gain: 0.34, room: 0.14 },
   };
 
   /** The syllables in a line: its vowels in order, one per sound group. */
