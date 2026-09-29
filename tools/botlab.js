@@ -342,7 +342,11 @@ function inPage(S, job, sources) {
       }
     }
     while (G.run.time >= nextMark) {
-      curve.push([Math.round(nextMark / 60), Math.round(f * 100), p.level, WS.Enemy.pool.count, Math.round(G.run.damageDone)]);
+      // [6]: the meter so far and each weapon's rank (E once evolved), to see
+      // when in a night one weapon takes the meter over.
+      curve.push([Math.round(nextMark / 60), Math.round(f * 100), p.level, WS.Enemy.pool.count, Math.round(G.run.damageDone),
+        Object.fromEntries(Object.entries(G.run.damageByWeapon || {}).map(([k, v]) => [k, Math.round(v)])),
+        Object.fromEntries(p.weapons.map((w) => [w.id, w.level + (w.evolved ? 'E' : '')]))]);
       nextMark += 60;
     }
     if (S.MODE === 'window' && G.run.time - t0 >= S.LIMIT) break;

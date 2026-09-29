@@ -19,10 +19,15 @@ shards() { # shards NAME ENV... : run a node tool in 3 shards
 gate "config, originality, checks" bash -c 'node tools/check-config.js | tail -1 && node tools/check-original.js | head -1 && node tools/check-tides.js | tail -1 && node tools/check-combos.js | tail -1 && node tools/check-unions.js | tail -1'
 
 TOOL=tools/meter-test.js
-shards meter-s5 STAGE=s5
-gate "meter share, evolved at 20:00 (every weapon x0.65-x1.35 of fair)" node tools/meter-test.js --report "$OUT"/meter-s5-*.json
-shards meter-s3 STAGE=s3
-gate "meter share, rank 5 at 9:00" node tools/meter-test.js --report "$OUT"/meter-s3-*.json
+# Four ways to play each stage: circling near the crowd or keeping away from
+# it (the bot's pilot), with all nine weapon passives or a random few. The
+# gate is each weapon's mean over the four; the per-condition reports show
+# the spread, which a single number cannot remove (docs/BALANCE.md).
+for st in s5 s3; do
+  for mv in kite pilot; do for ps in all subset; do shards meter-$st-$mv$ps STAGE=$st MOVE=$mv PASSIVES=$ps; done; done
+  for c in kiteall kitesubset pilotall pilotsubset; do echo "-- $st $c"; BAND=0.5,1.8 node tools/meter-test.js --report "$OUT"/meter-$st-$c-*.json | tail -1; done
+  gate "meter share at $st, mean of four ways to play (x0.8-x1.25 of fair)" env BAND=0.8,1.25 node tools/meter-test.js --report "$OUT"/meter-$st-*.json
+done
 
 gate "discoveries on and off (tools/rank-test.js KIND=pair)" bash -c "KIND=pair OUT=$OUT/pair.json node tools/rank-test.js 2>&1 | tail -3"
 gate "unions' share of a build (tools/tune-unions.js SHARE=1)" bash -c "SHARE=1 node tools/tune-unions.js 2>&1 | tail -12"

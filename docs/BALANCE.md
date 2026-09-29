@@ -14,7 +14,7 @@ gate prints `ok` or `FAIL`; the script exits with the number that failed.
 
 | Tool | What it measures | What it cannot see |
 |---|---|---|
-| `tools/meter-test.js` | Each weapon's **share of the meter in company**: 60 seeded random builds of 5, real waves, damage that actually landed. `STAGE=s5` evolved at 20:00, `STAGE=s3` rank 5 at 9:00. **Gate: every weapon x0.65 to x1.35 of a fair share.** | Bosses; one weapon's absolute strength. |
+| `tools/meter-test.js` | Each weapon's **share of the meter in company**: 60 seeded random builds of 5, real waves, damage that actually landed, as a share of what the five weapons did. `STAGE=s1`..`s5` (1:00 rank 1 to 20:00 evolved), `STAGE=lead` (the first evolution: one evolved beside four at rank 6). `MOVE=kite` circles near the crowd, `MOVE=pilot` moves like the bot (keeps its distance); `PASSIVES=all` gives all nine weapon passives, `PASSIVES=subset` a random few. **Gate: every weapon's mean over the four movement x passive conditions within x0.8 to x1.25 of fair, and no single condition past x0.65 to x1.35 without a reason written down.** | Bosses; one weapon's absolute strength. |
 | `tools/rank-test.js` | A weapon **alone** at five stages (1:00 to 20:00): crowd dummies, a drifting boss, and the real waves (`landed`). `KIND=aux` each passive at nothing and at its cap; `KIND=pair` each discovery on and off. | Kill-stealing: alone, a weapon that hits close to the survivor never has its targets taken by one that reaches out. |
 | `tools/tune-unions.js` | Unions, `SHARE=1` as a share of a build beside four evolved weapons. **Gate: 15% to 30%.** | Early game. |
 | `tools/botlab.js` | **Full nights** played by the bot: every survivor, real drafting, real drops. `TRACE=10` records a ten-second timeline; `TIDES=1` plays Tides nights. | Human skill; the drafter's taste (see below). |
@@ -22,10 +22,30 @@ gate prints `ok` or `FAIL`; the script exits with the number that failed.
 | `tools/night-curve.js` | The shape of a night from `TRACE` timelines: intensity, waves, how nights end. | Whether a near miss was exciting. |
 | `tools/slot-test.js` | One ability at 20:00 against a crowd and a boss; the oldest instrument. | Company, and every stage but the last. |
 
+## What the meter test taught us (29 September)
+
+The first fit used one condition: the circling kite, all nine passives. It
+passed, and the bot nights still showed Arcweb at 52%. Two things it could
+not see:
+
+- **Movement.** A survivor who keeps their distance drags the crowd into a
+  trailing clump. Chains and bouncing discs feed on that and the weapons that
+  strike around you starve: the same rank-5 build gave Arcweb 15% under the
+  kite and 24% under the pilot, Rend and Mend x0.74 and x0.39.
+- **Passives.** A weapon that needs crits or Duplicity (Arcweb, Reckoning,
+  Mote Cascade) was fitted as if you always had them; with a random few it
+  fell to x0.6, and the weapons that ignore passives rose to x1.4 to x1.8.
+
+No one number makes a weapon fair under every way of playing: a melee weapon
+is better for a player who stands in the crowd. So the fit targets the mean
+over the four conditions and the spread is reported, not hidden. A weapon
+whose spread is wide needs a design change (how it scales), not a number.
+
 ## Targets
 
-- **Share in company** (`meter-test`): every weapon within x0.65 to x1.35 of
-  fair at rank 5 and evolved. This is what the damage meter shows a player.
+- **Share in company** (`meter-test`, all four conditions): every weapon's
+  mean within x0.8 to x1.25 of fair at rank 5 and evolved. This is what the
+  damage meter shows a player.
 - **Bosses**: a weapon's damage to a boss is set by `bossDamage` (every rank)
   and `evolvedBossDamage` (once evolved) in `src/data/weapons.js`. When a
   crowd number moves, move the boss factor the other way so single-target
@@ -41,8 +61,9 @@ gate prints `ok` or `FAIL`; the script exits with the number that failed.
 
 1. Try it as an override first; every tool takes `WEAPONS='{"id":{...}}'`,
    `COMBOS`, `CONFIG`.
-2. Run the meter test at both stages. If a weapon leaves the band, fix it
-   before anything else; it is what players will see.
+2. Run the meter test at both stages under all four conditions
+   (`MOVE=kite|pilot` x `PASSIVES=all|subset`). If a weapon's mean leaves the
+   band, fix it before anything else; it is what players will see.
 3. Check bosses with `KIND=rank HORDE=0` on the weapons you touched.
 4. Run the full suite before shipping.
 

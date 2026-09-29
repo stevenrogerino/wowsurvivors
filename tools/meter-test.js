@@ -24,6 +24,10 @@
  *   node tools/meter-test.js --report /tmp/m1.json /tmp/m2.json
  *   WEAPONS='{"arcweb":{"evolveChains":12}}' ...    a candidate change
  *   BAND=0.65,1.35 (default): exits 1 if any weapon's share leaves the band
+ *   MOVE=pilot HERO=shaman FIXED=arcweb:3,knifestorm:7 STAGE=s2 BUILDS=6:
+ *     one build, moved by the bot's pilot, with a survivor's own kit
+ *   STAGE=lead BUILDS=120: the first evolution, one evolved beside four at
+ *     rank 6 at 14:00; LEADBAND=0.7,1.4 against the mean lead
  *
  * Set CHROME to point at an existing Chromium binary. */
 'use strict';
@@ -33,10 +37,39 @@ const fs = require('fs');
 
 const env = (k, d) => (process.env[k] !== undefined && process.env[k] !== '' ? process.env[k] : d);
 
-function report(rows) {
+/* The lead report: each weapon's share when it is the one evolved weapon in
+   the build. There is no fixed fair share here (an evolved weapon beside four
+   unevolved ones should lead), so the gate is against the mean of the leads:
+   every weapon within LEADBAND (default 0.7 to 1.4) of it. */
+function reportLead(rows) {
   const by = {};
   for (const r of rows) {
-    const tot = Object.values(r.landed).reduce((a, b) => a + b, 0) || 1;
+    const tot = r.weapons.reduce((a, id) => a + (r.landed[id] || 0), 0) || 1;
+    const w = by[r.lead] = by[r.lead] || { n: 0, share: 0 };
+    w.n++; w.share += (r.landed[r.lead] || 0) / tot;
+  }
+  const list = Object.entries(by).map(([id, w]) => ({ id, n: w.n, share: w.share / w.n })).sort((a, b) => b.share - a.share);
+  const mean = list.reduce((a, w) => a + w.share, 0) / list.length;
+  console.log(`\n${rows.length} builds, one weapon evolved; the mean lead takes ${Math.round(mean * 100)}%\n`);
+  console.log('evolved weapon    builds   its share   x mean');
+  for (const w of list) console.log(w.id.padEnd(16), String(w.n).padStart(7), (Math.round(w.share * 1000) / 10 + '%').padStart(11), ('x' + (w.share / mean).toFixed(2)).padStart(8));
+  const [lo, hi] = (process.env.LEADBAND || '0.7,1.4').split(',').map(Number);
+  const out = list.filter((w) => w.share / mean < lo || w.share / mean > hi);
+  if (out.length) { console.log(`\nFAIL: outside x${lo} to x${hi} of the mean lead: ` + out.map((w) => `${w.id} x${(w.share / mean).toFixed(2)}`).join(', ')); process.exitCode = 1; }
+  else console.log(`\nok: every evolved weapon within x${lo} to x${hi} of the mean lead`);
+  return list;
+}
+
+function report(rows) {
+  if (rows.length && rows[0].lead) return reportLead(rows);
+  /* METRIC=raw reads what the in-game meter showed before it stopped
+     counting overkill: every point dealt, landed or not. */
+  if (process.env.METRIC === 'raw') rows = rows.filter((r) => r.raw).map((r) => Object.assign({}, r, { landed: r.raw }));
+  const by = {};
+  for (const r of rows) {
+    // A share of what the build's weapons did: bombs and a survivor's own
+    // kit take their part of the meter from every weapon alike.
+    const tot = r.weapons.reduce((a, id) => a + (r.landed[id] || 0), 0) || 1;
     for (const id of r.weapons) {
       const w = by[id] = by[id] || { n: 0, share: 0, landed: 0, top: 0 };
       w.n++; w.share += (r.landed[id] || 0) / tot; w.landed += r.landed[id] || 0;
@@ -74,13 +107,29 @@ function report(rows) {
     BUILDS: +env('BUILDS', 60), BUILD: +env('BUILD', 5), SHARD: env('SHARD', '1/1').split('/').map(Number),
     WARM: +env('WARM', 15), LIMIT: +env('LIMIT', 45), TIME: +env('TIME', 1200), MAP: env('MAP', 'palewastes'),
     WEAPONS: JSON.parse(env('WEAPONS', '{}')), COMBOS: JSON.parse(env('COMBOS', '{}')), CONFIG: JSON.parse(env('CONFIG', '{}')),
+    // STAGE=s1: rank 1, nothing else, at 1:00. STAGE=s2: rank 3 at 5:00.
     // STAGE=s3: rank 5, unevolved, half of each passive, level 45, at 9:00.
     // STAGE=s4: rank 8, unevolved, four fifths, level 80, at 14:00.
     STAGE: env('STAGE', 's5'),
+    // MOVE=pilot: the bot's pilot (tools/bot/pilot.js) moves the survivor
+    // instead of the circling kite, as in a real night. HERO: whose kit.
+    MOVE: env('MOVE', 'kite'), HERO: env('HERO', 'mage'),
+    // FIXED='arcweb:3,knifestorm:7,...': every build is this one (E evolves).
+    FIXED: env('FIXED', ''), FRAC: env('FRAC', ''),
+    // PASSIVES=subset: each build draws SUBSET of the nine weapon passives
+    // (by stage 0/2/4/5/6), each at three quarters of its cap (full at s5),
+    // as a player who took some and not others. Default: all nine at FRAC.
+    PASSIVES: env('PASSIVES', 'all'), SUBSET: env('SUBSET', ''),
   };
-  const STAGES = { s3: { t: 540, rank: 5, evo: false, frac: 0.5, level: 45 }, s4: { t: 840, rank: 8, evo: false, frac: 0.8, level: 80 },
-    s5: { t: 1200, rank: 8, evo: true, frac: 1, level: 150 } };
-  S.st = STAGES[S.STAGE];
+  const STAGES = { s1: { t: 60, rank: 1, evo: false, frac: 0, level: 3, sub: 0 }, s2: { t: 300, rank: 3, evo: false, frac: 0.2, level: 20, sub: 2 },
+    s3: { t: 540, rank: 5, evo: false, frac: 0.5, level: 45, sub: 4 }, s4: { t: 840, rank: 8, evo: false, frac: 0.8, level: 80, sub: 5 },
+    s5: { t: 1200, rank: 8, evo: true, frac: 1, level: 150, sub: 6 },
+    // STAGE=lead: the first evolution. One weapon evolved, four at rank 6,
+    // at 14:00: the moment a tester's meter showed Skybreak at 59%. Each
+    // weapon leads BUILDS/20 builds; the gate compares the leads' shares.
+    lead: { t: 840, rank: 6, evo: false, frac: 0.7, level: 80, lead: true } };
+  S.st = Object.assign({}, STAGES[S.STAGE]);
+  if (S.FRAC !== '') S.st.frac = +S.FRAC;
   if (!process.env.TIME) S.TIME = S.st.t;
   const b = await chromium.launch({ executablePath: process.env.CHROME || undefined, args: ['--no-sandbox'] });
   const page0 = await b.newPage();
@@ -94,10 +143,23 @@ function report(rows) {
   const builds = [];
   for (let i = 0; i < S.BUILDS; i++) {
     const bag = pool.slice(), pick = [];
+    if (S.st.lead) pick.push(bag.splice(i % bag.length, 1)[0]);
     while (pick.length < S.BUILD) pick.push(bag.splice(Math.floor(rnd() * bag.length), 1)[0]);
     builds.push(pick);
   }
-  const mine = builds.map((w, i) => ({ i, w })).filter((j) => j.i % S.SHARD[1] === S.SHARD[0] - 1);
+  // Each build's passives, drawn from their own stream so the weapons drawn
+  // above stay the same builds in every mode.
+  const DMG = ['might', 'haste', 'precision', 'ferocity', 'area', 'quantity', 'velocity', 'perennial', 'serration'];
+  let s2 = 777;
+  const rnd2 = () => { s2 = (s2 * 1103515245 + 12345) % 2147483648; return s2 / 2147483648; };
+  const nSub = S.SUBSET !== '' ? +S.SUBSET : (S.st.sub || 0);
+  const passiveSets = builds.map(() => {
+    const bag = DMG.slice(), out = [];
+    for (let k = 0; k < nSub; k++) out.push(bag.splice(Math.floor(rnd2() * bag.length), 1)[0]);
+    return out;
+  });
+  if (S.FIXED) for (let i = 0; i < builds.length; i++) builds[i] = S.FIXED.split(',');
+  const mine = builds.map((w, i) => ({ i, w, ps: S.PASSIVES === 'subset' ? passiveSets[i] : null })).filter((j) => j.i % S.SHARD[1] === S.SHARD[0] - 1);
   const rows = [];
   for (const job of mine) {
     const page = await b.newPage({ viewport: { width: 1280, height: 720 } });
@@ -106,7 +168,8 @@ function report(rows) {
     await page.addInitScript(() => { window.requestAnimationFrame = () => 0; });
     await page.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
     await page.waitForFunction(() => window.WS && WS.Game && WS.Save && WS.Save.db);
-    const r = await page.evaluate(({ S, job }) => {
+    const pilotSrc = require('./bot/pilot.js').installPilot.toString();
+    const r = await page.evaluate(({ S, job, pilotSrc }) => {
       if (WS.Prologue && WS.Prologue.active) WS.Prologue.finish();
       WS.UI.closeOverlay();
       WS.Save.db.seenManual = true; WS.Save.unlockAll();
@@ -118,22 +181,25 @@ function report(rows) {
       WS.setSeed(7000 + job.i);
       const G = WS.Game;
       WS.Player.takeDamage = () => false;
-      G.startRun(S.MAP, 'mage');
+      G.startRun(S.MAP, S.HERO);
       G.chooseBlessing({ type: 'blessing', id: 'kings' });
       const p = G.player;
       G.run.secondBlessing = true;
       G.openLevelUp = () => {}; G.presentLevelUp = () => {};
       G.state = 'playing'; WS.UI.closeOverlay();
       p.weapons.length = 0; p.weaponLevels = {};
-      for (const id of job.w) {
+      for (const spec of job.w) {
+        const [id, rk] = spec.split(':');
         const w = WS.Player.addWeapon(p, id);
         if (!w) continue;
-        w.level = S.st.rank; p.weaponLevels[id] = w.level; w.evolved = S.st.evo;
+        const lead = S.st.lead && spec === job.w[0];
+        w.level = rk ? parseInt(rk) : lead ? 8 : S.st.rank; p.weaponLevels[id] = w.level;
+        w.evolved = rk ? rk.endsWith('E') : lead || S.st.evo;
       }
       WS.ComboSystem.check(p);
-      for (const id of ['might', 'haste', 'precision', 'ferocity', 'area', 'quantity', 'velocity', 'perennial', 'serration']) {
+      for (const id of job.ps || ['might', 'haste', 'precision', 'ferocity', 'area', 'quantity', 'velocity', 'perennial', 'serration']) {
         const up = WS.Upgrades[id];
-        const n = Math.ceil(up.max * S.st.frac);
+        const n = job.ps ? Math.ceil(up.max * (S.st.evo ? 1 : 0.75)) : Math.ceil(up.max * S.st.frac);
         for (let k = 0; k < n; k++) up.apply(p, up);
         p.upgradeLevels[id] = n;
       }
@@ -143,7 +209,9 @@ function report(rows) {
       for (const k of Object.keys(WS.Input.keys)) WS.Input.keys[k] = false;
       G.run.time = Math.max(0, S.TIME - S.WARM);
       p.x = cx; p.y = cy;
+      const pilot = S.MOVE === 'pilot' ? (0, eval)('(' + pilotSrc + ')')({}) : null;
       const kite = () => {
+        if (pilot) { pilot.step(1 / 60); return; }
         const t = G.run.time;
         let tx = cx + Math.cos(t * 0.5) * 240, ty = cy + Math.sin(t * 0.5) * 170;
         const near = WS.Enemy.findNearest(p.x, p.y, 160);
@@ -151,13 +219,14 @@ function report(rows) {
         const k = WS.Input.keys, h = WS.Input.held || {};
         k.left = h.left = tx - p.x < -6; k.right = h.right = tx - p.x > 6; k.up = h.up = ty - p.y < -6; k.down = h.down = ty - p.y > 6;
       };
-      const landed = {};
+      const landed = {}, raw = {};
       let counting = false;
       const dmg = WS.Enemy.damage;
       WS.Enemy.damage = function (e, amount, crit, source) {
         if (counting && e && !e._dead && !(e.invuln > 0)) {
           const k = source || '?';
           landed[k] = (landed[k] || 0) + Math.min(amount, Math.max(0, e.health));
+          raw[k] = (raw[k] || 0) + amount;
         }
         return dmg.apply(this, arguments);
       };
@@ -170,10 +239,11 @@ function report(rows) {
       const k0 = G.run.kills; counting = true;
       for (let i = 0; i < S.LIMIT * 60; i++) tick();
       counting = false; WS.Enemy.damage = dmg;
-      for (const k of Object.keys(landed)) landed[k] = Math.round(landed[k] / S.LIMIT);
-      return { weapons: job.w, landed, kills: Math.round((G.run.kills - k0) * 60 / S.LIMIT), combos: Object.keys(p.combosActive) };
-    }, { S, job });
+      for (const k of Object.keys(landed)) { landed[k] = Math.round(landed[k] / S.LIMIT); raw[k] = Math.round(raw[k] / S.LIMIT); }
+      return { weapons: job.w.map((w) => w.split(':')[0]), passives: job.ps, lead: S.st.lead ? job.w[0] : null, landed, raw, kills: Math.round((G.run.kills - k0) * 60 / S.LIMIT), combos: Object.keys(p.combosActive) };
+    }, { S, job, pilotSrc });
     r.errs = errs.slice(0, 2);
+    if (errs.length) console.error('page error: ' + errs[0]);
     rows.push(r);
     const tot = Object.values(r.landed).reduce((a, v) => a + v, 0) || 1;
     console.error(`build ${String(job.i).padStart(3)}  ` + r.weapons.map((id) => `${id} ${Math.round((r.landed[id] || 0) / tot * 100)}%`).join('  '));
