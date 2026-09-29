@@ -519,17 +519,36 @@ html, body {
  * taking a weapon to its last rank looked exactly like one taking a passive
  * to its second. A filled row reads without being read. */
 .card .card-pips {
-  display: flex; gap: 3px; align-items: center; margin: -2px 0 2px;
+  display: flex; gap: 4px; align-items: center; justify-content: center;
+  height: 16px; margin: 0;
 }
 .card .card-pips i {
-  width: 12px; height: 3px; border-radius: 1px;
-  background: var(--rim-2, rgba(255,255,255,.12));
-  transition: background .18s var(--ease), box-shadow .18s var(--ease);
+  width: min(22px, calc((100% - (var(--n, 8) - 1) * 4px) / var(--n, 8)));
+  height: 7px; border-radius: 2px;
+  background: rgba(255,255,255,.10);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
 }
-.card .card-pips i.on { background: color-mix(in srgb, var(--q, var(--arc)) 72%, #fff 10%); }
-.card .card-pips i.now {
-  box-shadow: 0 0 8px -1px var(--q, var(--arc));
-  background: color-mix(in srgb, var(--q, var(--arc)) 55%, #fff 45%);
+.card .card-pips i.on {
+  background: color-mix(in srgb, var(--q, var(--arc)) 78%, #fff 8%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--q, var(--arc)) 60%, #fff 40%);
+}
+/* The rank this card gives: unlit, then lit, then unlit - "from here to
+   there", on a slow beat so it reads as an invitation, not an alarm. */
+.card .card-pips i.next { animation: pip-next 1.5s var(--ease, ease) infinite; }
+@keyframes pip-next {
+  0%, 30% { background: rgba(255,255,255,.10); box-shadow: inset 0 0 0 1px rgba(255,255,255,.22); }
+  45%, 85% {
+    background: color-mix(in srgb, var(--q, var(--arc)) 55%, #fff 45%);
+    box-shadow: 0 0 10px 0 var(--q, var(--arc)), inset 0 0 0 1px #fff;
+  }
+  100% { background: rgba(255,255,255,.10); box-shadow: inset 0 0 0 1px rgba(255,255,255,.22); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card .card-pips i.next {
+    animation: none;
+    background: color-mix(in srgb, var(--q, var(--arc)) 40%, transparent);
+    box-shadow: 0 0 0 1px var(--q, var(--arc));
+  }
 }
 
 /* ---- what this card will react with ---------------------------------------
@@ -3110,11 +3129,13 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
    quiet, so the eye goes to what the choice buys. */
 .card .card-stats {
   margin-top: auto; padding-top: 8px; border-top: 1px solid var(--rim);
-  display: grid; grid-template-columns: 1fr 1fr; column-gap: 10px; row-gap: 1px;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: row dense;
+  column-gap: 10px; row-gap: 1px;
   font-family: var(--voice); font-variant-numeric: tabular-nums lining-nums;
   font-size: 13.5px; line-height: 1.35; text-align: left;
 }
 .card .card-stats .cs-row { display: flex; justify-content: space-between; gap: 6px; color: var(--ink-faint); min-width: 0; }
+.card .card-stats .cs-row.wide { grid-column: 1 / -1; }
 .card .card-stats .cs-k { white-space: nowrap; }
 .card .card-stats .cs-v { color: var(--ink-dim); white-space: nowrap; }
 .card .card-stats .cs-row.up { color: var(--ink-dim); }
@@ -3140,8 +3161,10 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .card .card-body, .card .card-reacts, .card .card-foot { flex: none; }
 .card .card-name { width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card .card-name.long { font-size: 19px; }
-.card .card-note { width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 1.35em; }
-.card .card-pips.empty { height: 4px; visibility: hidden; }
+.card .card-note { width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; height: 20px; line-height: 20px; }
+/* The note and the ticks share one row of one height: a card shows one or
+   the other, and a row of cards still lines up. */
+.card .card-pips { height: 20px; width: 100%; }
 .card .card-body {
   width: 100%;
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3;

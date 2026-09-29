@@ -1069,6 +1069,12 @@
     this._shadowsDone = false;
     this.drawMark(ctx, player, time);
 
+    /* ---- light ----------------------------------------------------------- */
+    /* The night over everything that stands in it, and every light on the
+       field against it (WS.Lighting). What is drawn from here on glows. */
+    if (WS.Atmosphere) WS.Atmosphere.mist(ctx, this, time);
+    if (WS.Lighting) WS.Lighting.apply(ctx, this, time);
+
     /* ---- air: bolts, orbits, beams -------------------------------------- */
     this.drawOrbits(ctx, player);
     this.drawBolts(ctx);
@@ -1093,6 +1099,8 @@
     this.drawFlashes(ctx);
     this.drawStrikes(ctx);
     this.drawParticles(ctx);
+    // What the air carries: fireflies, dust, snow, wisps, drizzle.
+    if (WS.Atmosphere) WS.Atmosphere.motes(ctx, this, time);
     // What can hurt you, stated again over your own light (drawWarnings).
     this.drawWarnings(ctx, time);
 
@@ -1115,6 +1123,13 @@
 
     // Edennil and the crate, in the air over everything on the field.
     this.drawAirdropSky(ctx, time);
+
+    // What glows, glowing: taken from the finished field, before the numbers.
+    if (WS.Lighting) {
+      const d = this.dpr, s = this.scale;
+      WS.Lighting.bloom(ctx, this, this.canvas, [(this.offsetX + WS.FX.shakeX * s) * d,
+        (this.offsetY + WS.FX.shakeY * s) * d, W * s * d, H * s * d]);
+    }
 
     this.drawTexts(ctx);
 
@@ -2396,7 +2411,7 @@
   };
 
   const ZONE_FILL_CAP = 6;
-  const ZONE_DETAIL_CAP = 2;
+  const ZONE_DETAIL_CAP = 4;
 
   /* The baked parts of a field (see drawZones). Painted at ZONE_ART pixels
      across the field's own radius, which is plenty: every one of them is a
@@ -2452,7 +2467,11 @@
     const m = ctx.getTransform();
     const k = WASH_SCALE;
     const bw = Math.ceil(cv.width * k), bh = Math.ceil(cv.height * k);
-    const scorch = !this.lite && !busy;
+    /* The scorch is one quarter-resolution pass for every field at once, so
+       it costs the same with one field or twenty: it does not drop when the
+       field is busy (it used to, and a busy build's fields lost their
+       ground along with their detail). */
+    const scorch = !this.lite;
     const light = washBuf('light', bw, bh), lg = light.ctx;
     lg.setTransform(1, 0, 0, 1, 0, 0); lg.clearRect(0, 0, bw, bh);
     lg.setTransform(m.a * k, m.b * k, m.c * k, m.d * k, m.e * k, m.f * k);
@@ -2595,13 +2614,25 @@
        grounds - while each one costs dozens of strokes at full size. The
        older fields keep their wash and their rim, which is what says where
        each still reaches. */
-    let detailAt = -Infinity;
-    if (zones.count > ZONE_DETAIL_CAP) {
-      const lives = this._zoneLives || (this._zoneLives = []);
-      lives.length = 0;
-      for (let i = 0; i < zones.count; i++) lives.push(zones.active[i].life);
-      lives.sort((a, b) => b - a);
-      detailAt = lives[ZONE_DETAIL_CAP - 1];
+    /* WHICH FIELDS KEEP THEIR ART. It used to be all of them or, past four
+       fields on the ground, none: a build with Blighted Earth, Hallowed
+       Ground and a third field kept five or six down at once and every one
+       of them went to a plain ring - the moment a build came together was the
+       moment its ground stopped looking like anything. What smears is the
+       SAME field stacked on itself, so the art now goes to the newest field
+       of each weapon, up to ZONE_DETAIL_CAP of them; the older copies under
+       them keep their wash, rim and damage. */
+    const detailed = this._zoneDetail || (this._zoneDetail = new Set());
+    detailed.clear();
+    {
+      const newest = this._zoneNewest || (this._zoneNewest = new Map());
+      newest.clear();
+      for (let i = 0; i < zones.count; i++) {
+        const z = zones.active[i], n = newest.get(z.source);
+        if (!n || z.life > n.life) newest.set(z.source, z);
+      }
+      const pick = [...newest.values()].sort((a, b) => b.life - a.life);
+      for (let i = 0; i < pick.length && i < ZONE_DETAIL_CAP; i++) detailed.add(pick[i]);
     }
     ctx.save();
     for (let i = 0; i < zones.count; i++) {
@@ -2660,7 +2691,7 @@
        *
        * Anything else keeps the graduations. Past `busy` all of it drops,
        * as it always did. */
-      if (!this.lite && !busy && z.life >= detailAt) {
+      if (!this.lite && detailed.has(z)) {
         if (z._src !== z.source) {
           const wd = WS.Weapons[z.source];
           z._style = wd ? (wd.data || wd).school : null;

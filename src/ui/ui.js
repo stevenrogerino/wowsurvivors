@@ -1370,7 +1370,13 @@
     const name = el('div', 'card-name', choice.name);
     if ((choice.name || '').length > 17) name.classList.add('long');
     card.append(name);
-    card.append(el('div', 'card-note', choice.note || '\u00a0'));
+    /* ONE ROW UNDER THE NAME: a card that ranks something up shows the
+       ticks, and every other card (a new weapon, an evolution, a union, a
+       blessing) its note. "Rank 6 to 7" above a row of ticks said the same
+       thing twice, and the line it took was the one the stats below were
+       running out of. */
+    const ranking = (choice.type === 'weapon_rank' || choice.type === 'stat') && choice.maxRank > 1;
+    if (!ranking) card.append(el('div', 'card-note', choice.note || '\u00a0'));
 
     /* THE RANK, AS A ROW OF PIPS.
      *
@@ -1380,16 +1386,21 @@
      * along this thing is without being read, and gives the card something to
      * escalate: past two thirds the card takes a gilt edge, and the one that
      * finishes a track takes the full treatment. */
-    if (!(choice.maxRank > 1)) card.append(el('div', 'card-pips empty'));
-    if (choice.maxRank > 1) {
+    /* The ranks you have are lit; the one this card gives you flickers
+       between unlit and lit, which is the choice in one glance: from here
+       to there. Fleetfoot at nothing shows its first tick coming on. */
+    if (ranking) {
       const pips = el('div', 'card-pips');
       const at = choice.rank || 1;
+      pips.style.setProperty('--n', choice.maxRank);
       for (let i = 1; i <= choice.maxRank; i++) {
-        const pip = el('i', i <= at ? 'on' : null);
-        if (i === at) pip.classList.add('now');
-        pips.append(pip);
+        pips.append(el('i', i < at ? 'on' : i === at ? 'next' : null));
       }
+      pips.title = `Rank ${at - 1} → ${at} of ${choice.maxRank}`;
       card.append(pips);
+    }
+    if (choice.maxRank > 1) {
+      const at = choice.rank || 1;
       const k = at / choice.maxRank;
       if (k >= 1) card.classList.add('crowning');
       else if (k >= 0.66) card.classList.add('rising');
@@ -1426,6 +1437,11 @@
       const box = el('div', 'card-stats');
       for (const s of choice.stats) {
         const row = el('div', 'cs-row' + (s.changed ? ' up' : ''));
+        /* Half a card is about seventeen characters of this face. A row that
+           will not fit in half ("Vs bosses x1.34 -> x1.43") takes the whole
+           width instead of running into its neighbour. */
+        const len = String(s.label).length + (s.changed ? String(s.from).length + String(s.to).length + 3 : String(s.to).length);
+        if (len > 17) row.classList.add('wide');
         const val = el('span', 'cs-v');
         if (s.changed) val.append(el('s', null, s.from), el('i', null, ' \u2192 '), el('b', null, s.to));
         else val.textContent = s.to;
