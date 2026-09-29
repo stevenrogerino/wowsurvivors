@@ -81,6 +81,8 @@ function report(rows) {
   const list = Object.entries(by).map(([id, w]) => ({ id, n: w.n, share: w.share / w.n, landed: w.landed / w.n, top: w.top }))
     .sort((a, b) => b.share - a.share);
   const alive = rows.filter((r) => r.alive !== undefined);
+  const hurtRows = rows.filter((r) => r.hurt !== undefined);
+  if (hurtRows.length) console.log(`damage that would have hit the survivor: ${Math.round(hurtRows.reduce((a, r) => a + r.hurt, 0) / hurtRows.length)} a minute (median ${hurtRows.map((r) => r.hurt).sort((a, b) => a - b)[hurtRows.length >> 1]})`);
   console.log(`\n${rows.length} builds of ${size}; a fair share is ${Math.round(100 / size)}%` + (alive.length ? `; ${Math.round(alive.reduce((a, r) => a + r.alive, 0) / alive.length)} creatures alive on average` : '') + '\n');
   console.log('weapon            builds   mean share  x fair   landed/s   top of meter');
   for (const w of list) {
@@ -184,7 +186,11 @@ function report(rows) {
       for (const [id, o] of Object.entries(S.COMBOS)) Object.assign(WS.Combos[id], o);
       WS.setSeed(7000 + job.i);
       const G = WS.Game;
-      WS.Player.takeDamage = () => false;
+      // The survivor takes no damage, but what would have hit is counted:
+      // how well a build keeps the night off you.
+      let hurt = 0, hurting = false;
+      const hurtBy = {};
+      WS.Player.takeDamage = (pl, amount, name) => { if (hurting && amount > 0) { hurt += amount; hurtBy[name || '?'] = (hurtBy[name || '?'] || 0) + amount; } return false; };
       G.startRun(S.MAP, S.HERO);
       G.chooseBlessing({ type: 'blessing', id: 'kings' });
       const p = G.player;
@@ -240,13 +246,13 @@ function report(rows) {
         p.health = p.maxHealth; kite(); G.update(1 / 60);
       };
       for (let i = 0; i < S.WARM * 60; i++) tick();
-      const k0 = G.run.kills; counting = true;
+      const k0 = G.run.kills; counting = true; hurting = true;
       let alive = 0;
       for (let i = 0; i < S.LIMIT * 60; i++) { tick(); if (i % 60 === 0) alive += WS.Enemy.pool.count; }
       alive = Math.round(alive / S.LIMIT);
       counting = false; WS.Enemy.damage = dmg;
       for (const k of Object.keys(landed)) { landed[k] = Math.round(landed[k] / S.LIMIT); raw[k] = Math.round(raw[k] / S.LIMIT); }
-      return { weapons: job.w.map((w) => w.split(':')[0]), passives: job.ps, lead: S.st.lead ? job.w[0] : null, landed, raw, kills: Math.round((G.run.kills - k0) * 60 / S.LIMIT), alive, combos: Object.keys(p.combosActive) };
+      return { weapons: job.w.map((w) => w.split(':')[0]), passives: job.ps, lead: S.st.lead ? job.w[0] : null, landed, raw, kills: Math.round((G.run.kills - k0) * 60 / S.LIMIT), alive, hurt: Math.round(hurt * 60 / S.LIMIT), hurtBy, combos: Object.keys(p.combosActive) };
     }, { S, job, pilotSrc });
     r.errs = errs.slice(0, 2);
     if (errs.length) console.error('page error: ' + errs[0]);
