@@ -5968,8 +5968,10 @@ window.WS = window.WS || {};
       description: 'Corrupts the ground underfoot; anything standing in it rots.',
       evolveName: 'Blighted Earth', evolvePairing: 'chilling_presence',
       evolveDescription: 'The blight spreads wider the longer it feeds.',
-      // While you stand in it: per enemy it rots, capped per tick.
-      healPer: 1, evolvedHealPer: 1, healCap: 4, healCapRank: 1.2, evolvedHealCap: 3.6,
+      // While you stand in it: per enemy it rots, capped per tick. Refitted
+      // when overlapping ground stopped paying out once per layer
+      // (projectile.js): the old figures had the overlap priced in.
+      healPer: 1.5, evolvedHealPer: 1.5, healCap: 5, healCapRank: 1.67, evolvedHealCap: 15.3,
     },
     reaving_arc: {
       damage: 16.73, evolveDamageMult: 5.93, bossDamage: 2.504, evolvedBossDamage: 2.452,
@@ -5990,8 +5992,10 @@ window.WS = window.WS || {};
       description: "Hallows the ground beneath the survivor's feet.",
       evolveName: 'Hallowed Ground', evolvePairing: 'armor',
       evolveDescription: 'Sacred ground that shelters as it burns.',
-      // While you stand in it: per enemy it burns, capped per tick.
-      healPer: 2, evolvedHealPer: 1, healCap: 6, healCapRank: 2, evolvedHealCap: 3,
+      // While you stand in it: per enemy it burns, capped per tick. Refitted
+      // when overlapping ground stopped paying out once per layer
+      // (projectile.js): the old figures had the overlap priced in.
+      healPer: 3, evolvedHealPer: 2, healCap: 8, healCapRank: 3, evolvedHealCap: 14,
     },
     umbral_bolt: {
       damage: 30.51, evolveDamageMult: 2.057, bossDamage: 1.337, evolvedBossDamage: 1.427,
@@ -26852,10 +26856,23 @@ window.WS = window.WS || {};
         }
         // Ground that heals mends whoever stands in it, per enemy it burns
         // this tick, up to its cap.
+        /* ONCE, however many layers of it you stand on. Every zone healed
+           on its own tick, so zones that overlapped - which is what Haste
+           and above all Perennial make of them - each paid out in full:
+           with every passive, Hallowed Ground healed 153 a second where
+           Grave Tether, which Perennial does nothing for, healed 96
+           (tools/heal-sim.js STACK=...). Now, inside one tick's window, a
+           second zone of the same weapon only tops up to its own amount if
+           it would give more; it never adds. */
         const h = z.heal;
         if (h && (h.per > 0 || h.flat > 0) && WS.dist2(z.x, z.y, player.x, player.y) < z.radius * z.radius) {
           const amount = WS.min(h.cap, h.per * struck) + h.flat;
-          if (amount > 0) WS.Player.heal(player, amount, z.source || 'holy');
+          const key = z.source || 'holy', now = WS.Game.run ? WS.Game.run.time : 0;
+          const last = (player._groundHeal || (player._groundHeal = {}))[key];
+          let give = amount;
+          if (last && now - last.t < z.tickRate * 0.999) { give = WS.max(0, amount - last.amt); last.amt = WS.max(last.amt, amount); }
+          else player._groundHeal[key] = { t: now, amt: amount };
+          if (give > 0) WS.Player.heal(player, give, key);
         }
       }
       i++;
@@ -29236,9 +29253,20 @@ window.WS = window.WS || {};
   Player.heal = function (p, amount, source) {
     // No early-out at full health: overheal is a resource Curdled Light eats,
     // so the heal still has to be measured.
-    const scaled = WS.floor(amount * p.healingMult * (source === 'potion' ? WS.Runs.oath('potion') : 1));
+    /* The fraction is CARRIED, per source, to the next heal. Health is whole
+       numbers and this used to floor every heal - so anything that mends a
+       little every frame (Boil Over's 3% a second, the Spring's pools: a
+       fifth of a point a frame) floored to nothing, every frame, and had
+       never healed at all. Whole heals are unchanged. */
+    const exact = amount * p.healingMult * (source === 'potion' ? WS.Runs.oath('potion') : 1);
+    if (!(exact > 0)) return 0;
+    const carry = p.healCarry || (p.healCarry = {});
+    const key = source || 'other';
+    const total = (carry[key] || 0) + exact;
+    const scaled = WS.floor(total);
+    carry[key] = total - scaled;
     if (scaled <= 0) return 0;
-    return Player.applyHeal(p, scaled, source || 'other');
+    return Player.applyHeal(p, scaled, key);
   };
 
   Player.lifesteal = function (p, amount) {

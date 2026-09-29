@@ -121,8 +121,10 @@
       description: 'Corrupts the ground underfoot; anything standing in it rots.',
       evolveName: 'Blighted Earth', evolvePairing: 'chilling_presence',
       evolveDescription: 'The blight spreads wider the longer it feeds.',
-      // While you stand in it: per enemy it rots, capped per tick.
-      healPer: 1, evolvedHealPer: 1, healCap: 4, healCapRank: 1.2, evolvedHealCap: 3.6,
+      // While you stand in it: per enemy it rots, capped per tick. Refitted
+      // when overlapping ground stopped paying out once per layer
+      // (projectile.js): the old figures had the overlap priced in.
+      healPer: 1.5, evolvedHealPer: 1.5, healCap: 5, healCapRank: 1.67, evolvedHealCap: 15.3,
     },
     reaving_arc: {
       damage: 16.73, evolveDamageMult: 5.93, bossDamage: 2.504, evolvedBossDamage: 2.452,
@@ -143,8 +145,10 @@
       description: "Hallows the ground beneath the survivor's feet.",
       evolveName: 'Hallowed Ground', evolvePairing: 'armor',
       evolveDescription: 'Sacred ground that shelters as it burns.',
-      // While you stand in it: per enemy it burns, capped per tick.
-      healPer: 2, evolvedHealPer: 1, healCap: 6, healCapRank: 2, evolvedHealCap: 3,
+      // While you stand in it: per enemy it burns, capped per tick. Refitted
+      // when overlapping ground stopped paying out once per layer
+      // (projectile.js): the old figures had the overlap priced in.
+      healPer: 3, evolvedHealPer: 2, healCap: 8, healCapRank: 3, evolvedHealCap: 14,
     },
     umbral_bolt: {
       damage: 30.51, evolveDamageMult: 2.057, bossDamage: 1.337, evolvedBossDamage: 1.427,

@@ -435,9 +435,20 @@
   Player.heal = function (p, amount, source) {
     // No early-out at full health: overheal is a resource Curdled Light eats,
     // so the heal still has to be measured.
-    const scaled = WS.floor(amount * p.healingMult * (source === 'potion' ? WS.Runs.oath('potion') : 1));
+    /* The fraction is CARRIED, per source, to the next heal. Health is whole
+       numbers and this used to floor every heal - so anything that mends a
+       little every frame (Boil Over's 3% a second, the Spring's pools: a
+       fifth of a point a frame) floored to nothing, every frame, and had
+       never healed at all. Whole heals are unchanged. */
+    const exact = amount * p.healingMult * (source === 'potion' ? WS.Runs.oath('potion') : 1);
+    if (!(exact > 0)) return 0;
+    const carry = p.healCarry || (p.healCarry = {});
+    const key = source || 'other';
+    const total = (carry[key] || 0) + exact;
+    const scaled = WS.floor(total);
+    carry[key] = total - scaled;
     if (scaled <= 0) return 0;
-    return Player.applyHeal(p, scaled, source || 'other');
+    return Player.applyHeal(p, scaled, key);
   };
 
   Player.lifesteal = function (p, amount) {

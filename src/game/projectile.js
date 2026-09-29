@@ -400,10 +400,23 @@
         }
         // Ground that heals mends whoever stands in it, per enemy it burns
         // this tick, up to its cap.
+        /* ONCE, however many layers of it you stand on. Every zone healed
+           on its own tick, so zones that overlapped - which is what Haste
+           and above all Perennial make of them - each paid out in full:
+           with every passive, Hallowed Ground healed 153 a second where
+           Grave Tether, which Perennial does nothing for, healed 96
+           (tools/heal-sim.js STACK=...). Now, inside one tick's window, a
+           second zone of the same weapon only tops up to its own amount if
+           it would give more; it never adds. */
         const h = z.heal;
         if (h && (h.per > 0 || h.flat > 0) && WS.dist2(z.x, z.y, player.x, player.y) < z.radius * z.radius) {
           const amount = WS.min(h.cap, h.per * struck) + h.flat;
-          if (amount > 0) WS.Player.heal(player, amount, z.source || 'holy');
+          const key = z.source || 'holy', now = WS.Game.run ? WS.Game.run.time : 0;
+          const last = (player._groundHeal || (player._groundHeal = {}))[key];
+          let give = amount;
+          if (last && now - last.t < z.tickRate * 0.999) { give = WS.max(0, amount - last.amt); last.amt = WS.max(last.amt, amount); }
+          else player._groundHeal[key] = { t: now, amt: amount };
+          if (give > 0) WS.Player.heal(player, give, key);
         }
       }
       i++;

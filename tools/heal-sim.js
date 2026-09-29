@@ -18,6 +18,13 @@
  *   node tools/heal-sim.js
  *   TIME=1260 SEEDS=5 node tools/heal-sim.js
  *
+ * STACK='haste:5,perennial:5' stacks those passives instead of Duplicity and
+ * Expanse: a zone that heals per tick heals once per zone, so what makes
+ * zones overlap - Haste (more often) and Perennial (longer) - multiplies it,
+ * and the default stack never looked. DISCOVER=1 also hands each healer the
+ * discoveries it can be part of (its own half), as a found one does.
+ * ONLY=hallowed_ring,grave_tether measures just those.
+ *
  * For scale, a survivor's health is 110-160 at the start and the potion is
  * a quarter of it. Set CHROME to point at an existing Chromium binary. */
 'use strict';
@@ -37,10 +44,12 @@ const path = require('path');
   const N = +(process.env.SEEDS || 3);
   const MAP = process.env.MAP || 'palewastes', DIFF = process.env.DIFF || 'professional';
   const HYPER = process.env.HYPER !== '0';
-  const rows = await page.evaluate(({ TIME, N, MAP, DIFF, HYPER }) => {
+  const STACK = (process.env.STACK || 'quantity:3,area:5').split(',').filter(Boolean).map((x) => x.split(':')).map(([id, n]) => [id, +(n || 1)]);
+  const DISCOVER = process.env.DISCOVER === '1', ONLY = process.env.ONLY || '';
+  const rows = await page.evaluate(({ TIME, N, MAP, DIFF, HYPER, STACK, DISCOVER, ONLY }) => {
     const HEALERS = Object.keys(WS.Weapons).filter((id) => {
       const d = WS.Weapons[id];
-      return (d.healPer || 0) > 0;
+      return (d.healPer || 0) > 0 && (!ONLY || ONLY.split(',').includes(id));
     });
     const SUPPORT = ['arcweb', 'knifestorm', 'volley'];
     WS.Save.unlockAll();
@@ -68,9 +77,16 @@ const path = require('path');
       pl.weapons.length = 0; pl.weaponLevels = {};
       for (const s of SUPPORT) give(pl, s, WS.WEAPON_MAX_LEVEL, true);
       give(pl, id, level, evolved);
+      if (DISCOVER) {
+        const w = WS.Player.getWeapon(pl, id);
+        for (const cid of WS.ComboOrder) {
+          const c = WS.Combos[cid];
+          if (!Array.isArray(c.weapons) || !c.weapons.includes(id)) continue;
+          c.apply(c.weapons[0] === id ? w : { mods: {} }, c.weapons[1] === id ? w : { mods: {} }, c);
+        }
+      }
       if (stacked) {
-        for (let i = 0; i < 3; i++) WS.LevelUp.apply(pl, { type: 'stat', id: 'quantity' });
-        for (let i = 0; i < 5; i++) WS.LevelUp.apply(pl, { type: 'stat', id: 'area' });
+        for (const [sid, n] of STACK) for (let i = 0; i < n; i++) WS.LevelUp.apply(pl, { type: 'stat', id: sid });
       }
       WS.Enemy.pool.releaseAll(); WS.Hazard.pool.releaseAll(); WS.Projectile.bolts.releaseAll();
       WS.Game.run.time = TIME;
@@ -107,9 +123,10 @@ const path = require('path');
         stacked: avg((s) => live(id, WS.WEAPON_MAX_LEVEL, true, true, s)) });
     }
     return out;
-  }, { TIME, N, MAP, DIFF, HYPER });
+  }, { TIME, N, MAP, DIFF, HYPER, STACK, DISCOVER, ONLY });
 
-  console.log(`healing per second at t=${TIME}s, ${MAP}, ${DIFF}${HYPER ? ', Hyper' : ''}, ${N} seeds`);
+  console.log(`healing per second at t=${TIME}s, ${MAP}, ${DIFF}${HYPER ? ', Hyper' : ''}, ${N} seeds; stacked = `
+    + STACK.map((x) => x.join(' x')).join(', ') + (DISCOVER ? '; discoveries carried' : ''));
   console.log('  ' + 'weapon'.padEnd(18) + 'rank'.padEnd(16) + 'bare'.padStart(8) + 'stacked'.padStart(10));
   for (const r of rows) {
     console.log('  ' + r.name.padEnd(18) + r.rank.padEnd(16) + r.bare.toFixed(1).padStart(8) + r.stacked.toFixed(1).padStart(10));
