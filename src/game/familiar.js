@@ -23,7 +23,9 @@
  *   nothing for ghoulRestless seconds, while there is a crowd further out,
  *   runs to the thickest of it and bursts there - rot over a wide circle,
  *   ghoulBurstMult rakes' worth - and rises again at your side ghoulRespawn
- *   seconds later. A guard that is working never does it. */
+ *   seconds later. A guard that is working never does it. They go ONE AT A
+ *   TIME: when one breaks loose the others start their wait again, so three
+ *   restless ghouls go out ghoulRestless apart, not in one volley. */
 'use strict';
 (function (WS) {
 
@@ -218,12 +220,18 @@
 
       if (spec.guard) {
         fam.idle += dt;
-        if (!fam.charge && fam.idle >= t.ghoulRestless) {
+        // One at a time: none breaks loose while another is running out.
+        const running = this.list.some((f) => f !== fam && f.charge);
+        if (!fam.charge && !running && fam.idle >= t.ghoulRestless) {
           const r = t.ghoulBurstRadius * player.areaMultiplier;
           const c = thickest(player, t.huntRange * t.ghoulBurstReach, r * 0.8);
           // Only out past the leash: something inside it is the guard's job.
-          if (c && WS.dist(player.x, player.y, c.x, c.y) > leash * t.huntIn) { fam.charge = c; fam.chargeTime = 0; }
-          else fam.idle = t.ghoulRestless * 0.75;
+          if (c && WS.dist(player.x, player.y, c.x, c.y) > leash * t.huntIn) {
+            fam.charge = c; fam.chargeTime = 0;
+            // ...and the rest start their wait again, so they go in turn,
+            // each ghoulRestless after the last, not all in one burst.
+            for (const f of this.list) if (f !== fam && f.spec.guard) f.idle = 0;
+          } else fam.idle = t.ghoulRestless * 0.75;
         }
         if (fam.charge) {
           let c = fam.charge;
