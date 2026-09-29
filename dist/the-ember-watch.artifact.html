@@ -6237,13 +6237,26 @@ window.WS = window.WS || {};
       cooldown: 0.934, damage: 25, speed: 400, projectiles: 12, pierce: 12, life: 1.1, radius: 9,
       description: 'An unending cyclone of thrown steel.',
     },
+    /* With every passive at its cap, Sanctuary took 56% of a build's damage
+       in the real horde (tune-unions SHARE=1 PASSIVES=... DISCOVER=1): a
+       nova as wide as the ground the horde stands on, at Expanse's cap, kills
+       whatever arrives before anything else can. Not raw power - on dummies
+       it sat below the union median and weak on bosses - but reach. Radius
+       alone moved it little (205 -> 170: 56% -> 46%, the denser field
+       answering back); how often it goes off is what limits a nova that
+       kills what it touches. Cooldown 1.978 -> 3.0 and radius 205 -> 185:
+       36% of a full build (Ruin Unbound 35%, Wild Hunt 35%), 17% bare.
+       The boss factor is raised by the cast rate lost (5.3 -> 8.0: 3095 ->
+       2951 a second on the boss dummy). In a 21:00 field the heal is held by
+       its cap per cast, not by what it strikes, and slower casts find more
+       gathered: cap 130 -> 146 keeps the ~7 a second it mended before. */
     union_sanctuary: {
-      bossDamage: 5.3,
+      bossDamage: 8.0,
       name: 'Sanctuary', school: 'holy', behavior: 'nova', isUnion: true, art: 'ring',
-      cooldown: 1.978, damage: 109, radius: 205, expandTime: 0.4, knockback: 34,
+      cooldown: 3.0, damage: 109, radius: 185, expandTime: 0.4, knockback: 34,
       // Forged from the two holy healers, and it used to heal not at all:
       // taking it threw your healing away. It mends as they did together.
-      healPer: 5, healCap: 130,
+      healPer: 5, healCap: 146,
       description: 'The Light claims this ground as its own, and mends whoever keeps it.',
     },
     union_stormcall: {

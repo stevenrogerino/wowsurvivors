@@ -22,6 +22,15 @@
  * never saturate the way the real horde does (a horde test reads the
  * strongest things alike, once they kill everything that arrives).
  *
+ * READ A CROWD FLAG AGAINST THE REAL HORDE BEFORE ACTING ON IT. Dummies
+ * that never die stand in fixed rings, and that flatters some shapes and
+ * starves others: an orbit that grows into the thick ring (Axe Gyre, x4.95
+ * from Expanse here) and chains that never get to jump on past a kill
+ * (Arcweb, Judgement Disc, 0.15x the median) all read as outliers, and in
+ * tools/meter-test.js - every passive at its cap, in the real waves - all
+ * three sit between 18% and 23% of a five-weapon build. A boss flag, and a
+ * gain from one passive far past its peers', are the sweep's real finds.
+ *
  * Reported per item: damage per second in each condition, and each
  * passive's gain as a multiple. Then the OUTLIERS: an item whose gain from
  * one passive is far past what that passive gives the median item, and an
