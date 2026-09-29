@@ -18,7 +18,8 @@ gate prints `ok` or `FAIL`; the script exits with the number that failed.
 | `tools/rank-test.js` | A weapon **alone** at five stages (1:00 to 20:00): crowd dummies, a drifting boss, and the real waves (`landed`). `KIND=aux` each passive at nothing and at its cap; `KIND=pair` each discovery on and off. | Kill-stealing: alone, a weapon that hits close to the survivor never has its targets taken by one that reaches out. |
 | `tools/tune-unions.js` | Unions, `SHARE=1` as a share of a build beside four evolved weapons. **Gate: 15% to 30%.** | Early game. |
 | `tools/botlab.js` | **Full nights** played by the bot: every survivor, real drafting, real drops. `TRACE=10` records a ten-second timeline; `TIDES=1` plays Tides nights. | Human skill; the drafter's taste (see below). |
-| `tools/bot-share.js` | The meter across full bot nights. **Gate: no evolved weapon's median share over 35%.** | Anything before 15:00. |
+| `tools/bot-share.js` | The meter across full bot nights; names any evolved weapon whose median share passes 35% for the swap test. | Why: a lone evolved weapon leads whichever it is. |
+| `tools/swap-test.js` | Real bot builds where a weapon is evolved, replayed with it and with five other evolved weapons in its place. **Gate: it leads its own builds within x0.8 to x1.25 of what the others would.** | Builds the bot never makes. |
 | `tools/night-curve.js` | The shape of a night from `TRACE` timelines: intensity, waves, how nights end. | Whether a near miss was exciting. |
 | `tools/slot-test.js` | One ability at 20:00 against a crowd and a boss; the oldest instrument. | Company, and every stage but the last. |
 
@@ -41,30 +42,26 @@ is better for a player who stands in the crowd. So the fit targets the mean
 over the four conditions and the spread is reported, not hidden. A weapon
 whose spread is wide needs a design change (how it scales), not a number.
 
-## Meter share is not survival (29 September, open)
+## Two false alarms, and how they were caught (29 September)
 
-Fitting every weapon to a fair share of the meter under all four conditions
-(rank 3, rank 5 and evolved; commits a2a0bb3 and 2434092) cost bot dawns at
-Professional: the Dustreach 17-18 -> 12-13 of 24, Mourneholt 22 -> 18,
-repeated over four sets of nights. What we ruled out, each on the same seeds:
+**"The fairer fit costs dawns."** On 24 nights a battlefield (two seeds) the
+Dustreach went 18 -> 12. On 60 distinct nights (five seeds) it was 43 -> 39,
+and paired by seed 11 nights reached dawn only with the old numbers and 7
+only with the new: within chance. Two seeds were unlucky. Bot nights are
+deterministic, so re-running the same seeds is not a second sample; use
+`SEEDS=5` or more, and compare paired by seed.
 
-- Power: build damage, levels, evolution times, kill rates and boss kill
-  times are unchanged; +10% to every weapon did not bring a dawn back.
-- The drafter's calibration: the old one gives the same result.
-- Casters as the cause: casters in reach, their lifetimes and bolt damage
-  taken do not track the lost dawns, and caster bolts 25% softer did not
-  bring them back.
+**"Skybreak takes half the meter in real nights."** Its median share once
+evolved stayed near 50% through every fit, while every lab test called it
+fair. The lab was right: in the same real builds (tools/swap-test.js),
+Skybreak led at 48% and every other evolved weapon swapped into its place
+led at 57% to 69%. A lone evolved weapon beside five low-rank ones takes the
+meter, whichever it is. tools/bot-share.js now names such weapons for the
+swap test instead of failing them.
 
-What does bring them back: Arcweb, Judgement Disc, Seeking Motes and Volley
-at their first-fit numbers (18 and 22 of 24), and then Arcweb takes 46% of
-the meter once evolved. A step floor of 0.20 (so a weak weapon's rank 1 is
-not a trap the drafter keeps taking) recovers part (14 and 20).
-
-So those four weapons keep a survivor alive in a way their meter share does
-not show. Until that is understood, **no fit ships without the full-night
-dawn check** beside the meter gates: `FULL=1 tools/balance-suite.sh`, and
-compare dawns per battlefield against the last shipped numbers on the same
-seeds.
+Both were settled by the controlled test, not the aggregate. When an
+aggregate over bot nights says a weapon is strong, replay the builds with
+the weapon swapped before touching a number.
 
 ## Targets
 
@@ -90,7 +87,8 @@ seeds.
    (`MOVE=kite|pilot` x `PASSIVES=all|subset`). If a weapon's mean leaves the
    band, fix it before anything else; it is what players will see.
 3. Check bosses with `KIND=rank HORDE=0` on the weapons you touched.
-4. Run the full suite before shipping.
+4. Run the full suite before shipping (`FULL=1`, five seeds a battlefield),
+   and compare dawns paired by seed with the last shipped numbers.
 
 ## The bot's drafter
 

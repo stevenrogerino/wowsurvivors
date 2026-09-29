@@ -5,6 +5,65 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
 
 <!-- new entries go directly below -->
 
+## 2026-09-29 (later): The meter fit, done over four ways to play and three ranks
+
+Supersedes the weapon numbers in the entry below. The first fit measured one
+condition (a circling kite, all nine weapon passives, rank 5 and evolved);
+bot nights still showed Arcweb leading, which led to three more findings:
+
+- Movement: a survivor who keeps their distance (the bot's pilot) drags the
+  crowd into a trailing clump; chains and discs feed on it. Same build:
+  Arcweb 15% under the kite, 24% under the pilot.
+- Passives: weapons that lean on crits or Duplicity fall with only a few
+  passives (x0.6); weapons that ignore them rise (x1.4 to x1.8).
+- Ranks: real nights keep most weapons at low ranks. At rank 3 Arcweb took
+  about twice a fair share under the pilot; the step a rank ranged 0.12 to
+  0.35 and only damage was being fitted.
+
+The fit now targets each weapon's mean over kite/pilot x all/subset
+passives (tools/meter-test.js MOVE, PASSIVES) at rank 3 (s2), rank 5 (s3)
+and evolved (s5), fitting `damage` and `rankDamageStep` together (a step
+moves half way a round, bounded 0.10 to 0.45) and then `evolveDamageMult`.
+Each weapon's share of a five-weapon build, before -> after: evolved
+10%-56% -> 18%-22%, rank 5 10%-26% -> 18%-21%, rank 3 11%-30% -> 16%-26%
+(Verdant Lance's rank 3 is held up by the step bound). Evolved (rank 8)
+damage was held through the rank-curve step; `bossDamage` and
+`evolvedBossDamage` hold boss damage at rank 5 and evolved (spot checks
+within 3%; Skybreak and Gale Chakram measured and set by hand).
+
+| weapon | damage | step | per rank | evolved mult | boss |
+|---|---|---|---|---|---|
+| verdant_lance | 32.23 -> 22.44 | 0.35 -> 0.45 | rank 1 32.2 -> 22.4, rank 3 54.8 -> 42.6, rank 5 77.4 -> 62.8, rank 8 111.2 -> 93.1 | evolve x4.883 -> x5.83 | boss x1.169 -> x1.439 |
+| arcweb | 79.8 -> 58.83 | 0.35 -> 0.45 | rank 1 79.8 -> 58.8, rank 3 135.7 -> 111.8, rank 5 191.5 -> 164.7, rank 8 275.3 -> 244.2 | evolve x0.818 -> x0.922 | boss x0.743 -> x0.864 |
+| judgement_disc | 41.54 -> 31.36 | 0.35 -> 0.45 | rank 1 41.5 -> 31.4, rank 3 70.6 -> 59.6, rank 5 99.7 -> 87.8, rank 8 143.3 -> 130.1 | evolve x0.529 -> x0.583 | boss x1.92 -> x2.18 |
+| thornbloom | 3.79 -> 2.07 | 0.17 -> 0.45 | rank 1 3.8 -> 2.1, rank 3 5.1 -> 3.9, rank 5 6.4 -> 5.8, rank 8 8.3 -> 8.6 | evolve x7.131 -> x6.88 | boss x3.084 -> x3.383 |
+| blightfield | 2.36 -> 1.8 | 0.12 -> 0.211 | rank 1 2.4 -> 1.8, rank 3 2.9 -> 2.6, rank 5 3.5 -> 3.3, rank 8 4.3 -> 4.5 | evolve x6.189 -> x6.031 | boss x5.907 -> x6.219 |
+| hallowed_ring | 2.93 -> 2.22 | 0.13 -> 0.222 | rank 1 2.9 -> 2.2, rank 3 3.7 -> 3.2, rank 5 4.5 -> 4.2, rank 8 5.6 -> 5.7 | evolve x6.369 -> x6.298 | boss x5.626 -> x5.989 |
+| reaving_arc | 24.64 -> 16.73 | 0.22 -> 0.45 | rank 1 24.6 -> 16.7, rank 3 35.5 -> 31.8, rank 5 46.3 -> 46.8, rank 8 62.6 -> 69.4 | evolve x6.579 -> x5.93 | boss x2.532 -> x2.504 |
+| spirit_herd | 11.54 -> 9.23 | 0.19 -> 0.28 | rank 1 11.5 -> 9.2, rank 3 15.9 -> 14.4, rank 5 20.3 -> 19.6, rank 8 26.9 -> 27.3 | evolve x5.01 -> x4.933 | boss x4.689 -> x4.869 |
+| dawnpulse | 20.55 -> 19.1 | 0.22 -> 0.258 | rank 1 20.6 -> 19.1, rank 3 29.6 -> 29.0, rank 5 38.6 -> 38.8, rank 8 52.2 -> 53.6 | evolve x5.032 -> x4.902 | boss x3.036 -> x3.023 |
+| volley | 19.54 -> 19 | 0.23 -> 0.238 | rank 1 19.5 -> 19.0, rank 3 28.5 -> 28.0, rank 5 37.5 -> 37.1, rank 8 51.0 -> 50.7 | evolve x2.015 -> x2.029 | boss x1.04 -> x1.052 |
+| seeking_motes | 7.94 -> 8.84 | 0.35 -> 0.293 | rank 1 7.9 -> 8.8, rank 3 13.5 -> 14.0, rank 5 19.1 -> 19.2, rank 8 27.4 -> 27.0 | evolve x0.639 -> x0.649 | boss x1.3 -> x1.291 |
+| iron_palms | 6.77 -> 7.49 | 0.18 -> 0.152 | rank 1 6.8 -> 7.5, rank 3 9.2 -> 9.8, rank 5 11.6 -> 12.0, rank 8 15.3 -> 15.5 | evolve x4.864 -> x4.813 | boss x1.025 -> x0.991 |
+| knifestorm | 12.95 -> 15.57 | 0.35 -> 0.266 | rank 1 12.9 -> 15.6, rank 3 22.0 -> 23.9, rank 5 31.1 -> 32.1, rank 8 44.7 -> 44.6 | evolve x3.276 -> x3.285 | boss x2.882 -> x2.787 |
+| rimeshard | 23.61 -> 33.15 | 0.21 -> 0.1 | rank 1 23.6 -> 33.1, rank 3 33.5 -> 39.8, rank 5 43.4 -> 46.4, rank 8 58.3 -> 56.3 | evolve x2.069 -> x2.141 | boss x1.399 -> x1.31 |
+| umbral_bolt | 21.43 -> 30.51 | 0.2 -> 0.1 | rank 1 21.4 -> 30.5, rank 3 30.0 -> 36.6, rank 5 38.6 -> 42.7, rank 8 51.4 -> 51.9 | evolve x2.074 -> x2.057 | boss x1.48 -> x1.337 |
+| moonbrand | 23.3 -> 28.53 | 0.12 -> 0.1 | rank 1 23.3 -> 28.5, rank 3 28.9 -> 34.2, rank 5 34.5 -> 39.9, rank 8 42.9 -> 48.5 | evolve x2.212 -> x1.955 | boss x0.919 -> x0.793 |
+| cinderfall | 24.67 -> 29.61 | 0.12 -> 0.1 | rank 1 24.7 -> 29.6, rank 3 30.6 -> 35.5, rank 5 36.5 -> 41.5, rank 8 45.4 -> 50.3 | evolve x1.501 -> x1.354 | boss x1.318 -> x1.161 |
+| axe_gyre | 7.26 -> 9.02 | 0.12 -> 0.1 | rank 1 7.3 -> 9.0, rank 3 9.0 -> 10.8, rank 5 10.7 -> 12.6, rank 8 13.4 -> 15.3 | evolve x11.65 -> x10.15 | boss x3.402 -> x2.895 |
+| gale_chakram | 9.07 -> 12.68 | 0.19 -> 0.1 | rank 1 9.1 -> 12.7, rank 3 12.5 -> 15.2, rank 5 16.0 -> 17.8, rank 8 21.1 -> 21.6 | evolve x3.759 -> x3.684 | boss x2.724 -> x2.449 |
+| grave_tether | 33.52 -> 50.77 | 0.21 -> 0.1 | rank 1 33.5 -> 50.8, rank 3 47.6 -> 60.9, rank 5 61.7 -> 71.1, rank 8 82.8 -> 86.3 | evolve x2.189 -> x2.1 | boss x1.305 -> x1.132 |
+
+Two alarms on the way, both false, both settled by a controlled test:
+- Dawns: 24 nights a battlefield said the Dustreach fell 18 -> 12. Sixty
+  distinct nights said 43 -> 39, paired by seed 11 vs 7: within chance.
+- Skybreak at ~50% of the meter in real nights once evolved: in the same
+  builds (tools/swap-test.js) it led at 48% and every other evolved weapon
+  swapped in led at 57%-69%. A lone evolved weapon takes the meter.
+  tools/bot-share.js now names such weapons for the swap test.
+
+Drafter recalibrated to the new curves (tools/bot/reach-calibration.json).
+
 ## 2026-09-29: Every weapon's share of the meter; Tides as a mode; the Nightly draw
 
 - The meter audit. A tester's evolved Arcweb (Skybreak) did 59% of a night's

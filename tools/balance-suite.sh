@@ -34,9 +34,14 @@ gate "unions' share of a build (tools/tune-unions.js SHARE=1)" bash -c "SHARE=1 
 
 if [ "${FULL:-0}" = "1" ]; then
   for m in thornhollow dustreach mourneholt palewastes; do
-    TRACE=10 MAP=$m DIFF=professional SEEDS=2 OUT="$OUT/night-$m.json" node tools/botlab.js > "$OUT/night-$m.log" 2>&1
+    TRACE=10 MAP=$m DIFF=professional SEEDS=${SEEDS:-5} OUT="$OUT/night-$m.json" node tools/botlab.js > "$OUT/night-$m.log" 2>&1
   done
-  gate "no evolved weapon over 35% of the meter in full nights" node tools/bot-share.js "$OUT"/night-*.json
+  node tools/bot-share.js "$OUT"/night-*.json | tee "$OUT/bot-share.txt"
+  # Every weapon the meter flags: does it lead its own builds more than
+  # another evolved weapon would in the same build?
+  for w in $(grep '^SWAP ' "$OUT/bot-share.txt" | cut -d' ' -f2-); do
+    gate "$w in its own builds, against five others swapped in (x0.8-x1.25)" env WEAPON=$w node tools/swap-test.js "$OUT"/night-*.json
+  done
   gate "the shape of the nights" node tools/night-curve.js "$OUT"/night-*.json
 fi
 

@@ -6,7 +6,8 @@
  *
  *   node tools/bot-share.js a.json b.json ...
  *   MIN=900 (default): only nights that reached 15:00
- *   CAP=0.35 (default): exits 1 if any evolved weapon's median share is over it */
+ *   CAP=0.35 (default): names any evolved weapon whose median share is over
+ *   it, for tools/swap-test.js to judge */
 'use strict';
 const fs = require('fs');
 const MIN = +(process.env.MIN || 900), CAP = +(process.env.CAP || 0.35);
@@ -36,5 +37,12 @@ for (const [k, s] of rows) {
     (s.evo.length ? pc(q(s.evo, 0.5)) + ` (${s.evo.length})` : '-').padStart(16));
 }
 const over = rows.filter(([, s]) => s.evo.length >= 5 && q(s.evo, 0.5) > CAP);
-if (over.length) { console.log(`\nFAIL: median share once evolved over ${pc(CAP)}: ` + over.map(([k, s]) => `${k} ${pc(q(s.evo, 0.5))}`).join(', ')); process.exitCode = 1; }
-else console.log(`\nok: no evolved weapon's median share over ${pc(CAP)}`);
+/* Not a gate: whatever evolves first beside low-rank weapons leads the
+   meter, whichever weapon it is, so a high median here says "look", not
+   "too strong". tools/swap-test.js answers it: the same builds, the weapon
+   swapped for others. */
+if (over.length) {
+  console.log(`\nlook: median share once evolved over ${pc(CAP)}: ` + over.map(([k, s]) => `${k} ${pc(q(s.evo, 0.5))}`).join(', '));
+  console.log('check each with tools/swap-test.js (WEAPON=id) before calling it strong');
+  console.log('SWAP ' + over.map(([k]) => k).join(' '));
+} else console.log(`\nok: no evolved weapon's median share over ${pc(CAP)}`);
