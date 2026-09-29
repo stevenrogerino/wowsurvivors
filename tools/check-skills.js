@@ -99,6 +99,12 @@ const report = [];
 
   const out = await page.evaluate(async ([RANKS, AT, EDGE]) => {
     WS.Save.db.seenManual = true; WS.Save.unlockAll();
+    /* This measures each weapon's own drawing. The night's light, its bloom
+       and the air (WS.Lighting, WS.Atmosphere) lay soft glow around every
+       bright thing on the field, which is what they are for - and which
+       counts here as lit pixels with no edge, burying the drawing being
+       measured. So they are off for this check. */
+    WS.Save.settings.lighting = false; WS.Save.settings.bloom = false; WS.Save.settings.atmosphere = false;
     const cvs = document.getElementById('game-canvas');
     const res = {};
 

@@ -490,9 +490,12 @@
     WS.FX.flash(p.x, p.y, 120, WS.CONST.COLORS.heal, 0.6);
     WS.XP.vacuumAll();
     const a = WS.random() * WS.TAU;
-    if (WS.Pickup.spawn('merchant',
+    const beans = WS.Pickup.spawn('merchant',
       WS.clamp(p.x + WS.cos(a) * 220, 100, W() - 100),
-      WS.clamp(p.y + WS.sin(a) * 160, 100, H() - 100))) {
+      WS.clamp(p.y + WS.sin(a) * 160, 100, H() - 100));
+    if (beans) {
+      // She is here for the breather and gone before the fight (arrive).
+      beans.stay = F.timer;
       WS.Game.toast('Beans sets up shop', '"Big fight? Eggs help. Probably."', { kind: 'merchant' });
     }
     WS.Game.offerBlessing('third');
@@ -508,6 +511,16 @@
   function arrive() {
     const def = F.def;
     F.stage = 'fight';
+    /* Beans packs up when the fight begins. She stayed her full ninety
+       seconds, which left her standing through the first minute of it. */
+    const pool = WS.Pickup.pool;
+    for (let i = pool.count - 1; i >= 0; i--) {
+      const q = pool.active[i];
+      if (q.kind !== 'merchant') continue;
+      WS.FX.burst(q.x, q.y, 14, '#e0a850', 150, 0.6, 3);
+      pool.releaseAt(i);
+      WS.Game.toast('Beans packs up', '"Not my fight! Good luck!"', { kind: 'merchant' });
+    }
     F.cine(4.2);
     F.s = { tm: {}, said: {} };
     F.script.start(F);

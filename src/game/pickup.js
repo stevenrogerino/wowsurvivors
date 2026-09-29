@@ -273,7 +273,7 @@
       pickup.bob += dt * 3;
       pickup.life += dt;
       if (pickup.say && (pickup.say.t -= dt) <= 0) pickup.say = null;
-      if (pickup.kind === 'merchant' && pickup.life >= WS.Config.eggVendorStay) {
+      if (pickup.kind === 'merchant' && pickup.life >= (pickup.stay || WS.Config.eggVendorStay)) {
         WS.FX.burst(pickup.x, pickup.y, 14, '#e0a850', 150, 0.6, 3);
         WS.FX.flash(pickup.x, pickup.y, 50, WS.hex(pickup.type.tint), 0.35);
         WS.Game.toast('Beans packs up', '"Eggs don\'t keep, friend. See you next time."', { kind: 'merchant' });

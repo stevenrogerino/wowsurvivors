@@ -603,17 +603,36 @@ html, body {
  * taking a weapon to its last rank looked exactly like one taking a passive
  * to its second. A filled row reads without being read. */
 .card .card-pips {
-  display: flex; gap: 3px; align-items: center; margin: -2px 0 2px;
+  display: flex; gap: 4px; align-items: center; justify-content: center;
+  height: 16px; margin: 0;
 }
 .card .card-pips i {
-  width: 12px; height: 3px; border-radius: 1px;
-  background: var(--rim-2, rgba(255,255,255,.12));
-  transition: background .18s var(--ease), box-shadow .18s var(--ease);
+  width: min(22px, calc((100% - (var(--n, 8) - 1) * 4px) / var(--n, 8)));
+  height: 7px; border-radius: 2px;
+  background: rgba(255,255,255,.10);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
 }
-.card .card-pips i.on { background: color-mix(in srgb, var(--q, var(--arc)) 72%, #fff 10%); }
-.card .card-pips i.now {
-  box-shadow: 0 0 8px -1px var(--q, var(--arc));
-  background: color-mix(in srgb, var(--q, var(--arc)) 55%, #fff 45%);
+.card .card-pips i.on {
+  background: color-mix(in srgb, var(--q, var(--arc)) 78%, #fff 8%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--q, var(--arc)) 60%, #fff 40%);
+}
+/* The rank this card gives: unlit, then lit, then unlit - "from here to
+   there", on a slow beat so it reads as an invitation, not an alarm. */
+.card .card-pips i.next { animation: pip-next 1.5s var(--ease, ease) infinite; }
+@keyframes pip-next {
+  0%, 30% { background: rgba(255,255,255,.10); box-shadow: inset 0 0 0 1px rgba(255,255,255,.22); }
+  45%, 85% {
+    background: color-mix(in srgb, var(--q, var(--arc)) 55%, #fff 45%);
+    box-shadow: 0 0 10px 0 var(--q, var(--arc)), inset 0 0 0 1px #fff;
+  }
+  100% { background: rgba(255,255,255,.10); box-shadow: inset 0 0 0 1px rgba(255,255,255,.22); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card .card-pips i.next {
+    animation: none;
+    background: color-mix(in srgb, var(--q, var(--arc)) 40%, transparent);
+    box-shadow: 0 0 0 1px var(--q, var(--arc));
+  }
 }
 
 /* ---- what this card will react with ---------------------------------------
@@ -3194,11 +3213,14 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
    quiet, so the eye goes to what the choice buys. */
 .card .card-stats {
   margin-top: auto; padding-top: 8px; border-top: 1px solid var(--rim);
-  display: grid; grid-template-columns: 1fr 1fr; column-gap: 10px; row-gap: 1px;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: row dense;
+  column-gap: 10px; row-gap: 1px;
   font-family: var(--voice); font-variant-numeric: tabular-nums lining-nums;
   font-size: 13.5px; line-height: 1.35; text-align: left;
 }
 .card .card-stats .cs-row { display: flex; justify-content: space-between; gap: 6px; color: var(--ink-faint); min-width: 0; }
+.card .card-stats .cs-row.wide { grid-column: 1 / -1; }
+.card .card-stats.dense { font-size: 12.5px; line-height: 1.22; column-gap: 8px; }
 .card .card-stats .cs-k { white-space: nowrap; }
 .card .card-stats .cs-v { color: var(--ink-dim); white-space: nowrap; }
 .card .card-stats .cs-row.up { color: var(--ink-dim); }
@@ -3224,8 +3246,10 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .card .card-body, .card .card-reacts, .card .card-foot { flex: none; }
 .card .card-name { width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card .card-name.long { font-size: 19px; }
-.card .card-note { width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 1.35em; }
-.card .card-pips.empty { height: 4px; visibility: hidden; }
+.card .card-note { width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; height: 20px; line-height: 20px; }
+/* The note and the ticks share one row of one height: a card shows one or
+   the other, and a row of cards still lines up. */
+.card .card-pips { height: 20px; width: 100%; }
 .card .card-body {
   width: 100%;
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3;
@@ -4461,6 +4485,14 @@ window.WS = window.WS || {};
        walked into her, which made her a bank: park her, farm, and spend at
        the best moment. She is a visit, not a vault. */
     eggVendorStay: 90,
+    /* When she comes (WaveManager.beansFollows): this long after a scheduled
+       boss falls, if she was last here at least eggVendorGap ago and the
+       finale is at least eggVendorFinaleGap away; the breather has its own
+       visit, for as long as the breather lasts. eggVendorInterval is her
+       clock after dawn. */
+    eggVendorDelay: 4,
+    eggVendorGap: 300,
+    eggVendorFinaleGap: 240,
     eggRunDamage: 0.001,
     eggRunHealth: 1,
 
@@ -30017,7 +30049,7 @@ window.WS = window.WS || {};
       pickup.bob += dt * 3;
       pickup.life += dt;
       if (pickup.say && (pickup.say.t -= dt) <= 0) pickup.say = null;
-      if (pickup.kind === 'merchant' && pickup.life >= WS.Config.eggVendorStay) {
+      if (pickup.kind === 'merchant' && pickup.life >= (pickup.stay || WS.Config.eggVendorStay)) {
         WS.FX.burst(pickup.x, pickup.y, 14, '#e0a850', 150, 0.6, 3);
         WS.FX.flash(pickup.x, pickup.y, 50, WS.hex(pickup.type.tint), 0.35);
         WS.Game.toast('Beans packs up', '"Eggs don\'t keep, friend. See you next time."', { kind: 'merchant' });
@@ -30584,7 +30616,9 @@ window.WS = window.WS || {};
     this.lastHealed = 0;
     this.deathTimer = 0;
     this.cacheTimer = cfg.cacheFirst;
-    this.merchantTimer = cfg.eggVendorFirst;
+    this.merchantTimer = cfg.eggVendorFirst;   // after dawn only (Wave.beans)
+    this.beansDue = null;        // when she arrives after the boss that just fell
+    this.beansLast = -Infinity;  // when she last came
     // What each timer was last set to, so a countdown bar knows its length.
     this.cacheEvery = cfg.cacheFirst;
     this.merchantEvery = cfg.eggVendorFirst;
@@ -30680,6 +30714,45 @@ window.WS = window.WS || {};
   /** A boss fell: the horde draws breath (Config.tides). */
   Wave.onBossSlain = function () {
     if (this.rhythmOn()) this.lull = WS.Config.tideLull;
+    const run = WS.Game.run;
+    if (run && this.beansFollows(run.time)) this.beansDue = run.time + WS.Config.eggVendorDelay;
+  };
+
+  /* BEANS FOLLOWS THE BOSSES. She used to come on a clock of her own - 2:30
+     and then every seven minutes - which put her at 30:30 on a night whose
+     finale starts at 30:00, took your coin at 23:30 or 28:00 and then came
+     back broke-handed at the breather. Now she sets up just after a boss
+     falls, when its gold is on the ground, unless she was here less than
+     eggVendorGap ago or the finale is less than eggVendorFinaleGap away (the
+     breather visit covers that). After dawn, with no bosses scheduled, she
+     keeps the old clock. */
+  Wave.beansFollows = function (t) {
+    const cfg = WS.Config, run = WS.Game.run;
+    if (run && (run.victorious || run.mode === 'endless')) return false;
+    return t - this.beansLast >= cfg.eggVendorGap && cfg.deathTime - t >= cfg.eggVendorFinaleGap;
+  };
+  /** The scheduled boss she will follow next, or null (then: the breather). */
+  Wave.beansNext = function (t) {
+    const bosses = this.map ? this.map.bosses : [];
+    for (let i = this.bossIndex; i < bosses.length; i++) {
+      const at = bosses[i].at;
+      if (at >= this.beansLast + WS.Config.eggVendorGap && WS.Config.deathTime - at >= WS.Config.eggVendorFinaleGap) return bosses[i];
+    }
+    return null;
+  };
+  Wave.beansArrive = function (player, stay) {
+    const a = WS.random() * WS.TAU;
+    const far = WS.Config.eggVendorDistance;
+    const b = WS.Pickup.spawn('merchant',
+      WS.clamp(player.x + WS.cos(a) * far, 80, WS.CONST.WORLD_WIDTH - 80),
+      WS.clamp(player.y + WS.sin(a) * far, 80, WS.CONST.WORLD_HEIGHT - 80));
+    if (b) {
+      b.stay = stay || WS.Config.eggVendorStay;
+      this.beansLast = WS.Game.run.time;
+      WS.Game.toast('Beans sets up shop', '"COME GET SOME BEANS... I MEAN EGGS!" Walk over to spend your coin. She leaves in '
+        + WS.formatTime(b.stay) + '.', { kind: 'merchant' });
+    }
+    return b;
   };
 
   /** Bosses have large bases already, so their curve is gentler. */
@@ -30812,16 +30885,16 @@ window.WS = window.WS || {};
     }
 
     /* ---- Beans, the egg merchant ------------------------------------------ */
-    this.merchantTimer -= dt;
-    if (this.merchantTimer <= 0) {
-      this.merchantTimer = this.merchantEvery = WS.Config.eggVendorInterval;
-      const a = WS.random() * WS.TAU;
-      const far = WS.Config.eggVendorDistance;
-      if (WS.Pickup.spawn('merchant',
-        WS.clamp(player.x + WS.cos(a) * far, 80, WS.CONST.WORLD_WIDTH - 80),
-        WS.clamp(player.y + WS.sin(a) * far, 80, WS.CONST.WORLD_HEIGHT - 80))) {
-        WS.Game.toast('Beans sets up shop', '"COME GET SOME BEANS... I MEAN EGGS!" Walk over to spend your coin. She leaves in '
-          + WS.formatTime(WS.Config.eggVendorStay) + '.', { kind: 'merchant' });
+    if (this.beansDue !== null && run.time >= this.beansDue) {
+      this.beansDue = null;
+      this.beansArrive(player);
+    }
+    // After dawn there are no scheduled bosses to follow: her old clock.
+    if (run.victorious || run.mode === 'endless') {
+      this.merchantTimer -= dt;
+      if (this.merchantTimer <= 0) {
+        this.merchantTimer = this.merchantEvery = WS.Config.eggVendorInterval;
+        this.beansArrive(player);
       }
     }
 
@@ -30940,9 +31013,26 @@ window.WS = window.WS || {};
       const q = pool.active[i];
       if (q && q.kind === 'merchant') { beans = q; break; }
     }
-    const stay = WS.Config.eggVendorStay;
-    if (beans) add('beans', 'beans', 'Beans packs up', stay - beans.life, stay, 'egg', [0.9, 0.52, 0.22]);
-    else add('beans', 'beans', 'Beans', this.merchantTimer, this.merchantEvery, 'egg', [0.9, 0.52, 0.22]);
+    const BEAN = [0.9, 0.52, 0.22];
+    if (beans) {
+      const stay = beans.stay || WS.Config.eggVendorStay;
+      add('beans', 'beans', 'Beans packs up', stay - beans.life, stay, 'egg', BEAN);
+    } else if (this.beansDue !== null) {
+      add('beans', 'beans', 'Beans is coming', this.beansDue - t, WS.Config.eggVendorDelay, 'egg', BEAN);
+    } else if (run.victorious || run.mode === 'endless') {
+      add('beans', 'beans', 'Beans', this.merchantTimer, this.merchantEvery, 'egg', BEAN);
+    } else {
+      // She follows a boss: count to it, and say which.
+      const nb2 = this.beansNext(t);
+      if (nb2) {
+        const tpl2 = WS.Bosses[nb2.id];
+        add('beans', 'beans', 'Beans · after ' + (met(nb2.id) && tpl2 ? tpl2.name : 'the boss'), nb2.at - t,
+          WS.max(1, nb2.at - WS.max(0, this.beansLast)), 'egg', BEAN);
+      } else if (WS.Finale && WS.Finale.available(run)) {
+        const at = WS.Config.deathTime;
+        add('beans', 'beans', 'Beans · at the breather', at - t, WS.max(1, at - WS.max(0, this.beansLast)), 'egg', BEAN);
+      }
+    }
 
     const nb = map.bosses[this.bossIndex];
     if (nb) {
@@ -32367,9 +32457,12 @@ window.WS = window.WS || {};
     WS.FX.flash(p.x, p.y, 120, WS.CONST.COLORS.heal, 0.6);
     WS.XP.vacuumAll();
     const a = WS.random() * WS.TAU;
-    if (WS.Pickup.spawn('merchant',
+    const beans = WS.Pickup.spawn('merchant',
       WS.clamp(p.x + WS.cos(a) * 220, 100, W() - 100),
-      WS.clamp(p.y + WS.sin(a) * 160, 100, H() - 100))) {
+      WS.clamp(p.y + WS.sin(a) * 160, 100, H() - 100));
+    if (beans) {
+      // She is here for the breather and gone before the fight (arrive).
+      beans.stay = F.timer;
       WS.Game.toast('Beans sets up shop', '"Big fight? Eggs help. Probably."', { kind: 'merchant' });
     }
     WS.Game.offerBlessing('third');
@@ -32385,6 +32478,16 @@ window.WS = window.WS || {};
   function arrive() {
     const def = F.def;
     F.stage = 'fight';
+    /* Beans packs up when the fight begins. She stayed her full ninety
+       seconds, which left her standing through the first minute of it. */
+    const pool = WS.Pickup.pool;
+    for (let i = pool.count - 1; i >= 0; i--) {
+      const q = pool.active[i];
+      if (q.kind !== 'merchant') continue;
+      WS.FX.burst(q.x, q.y, 14, '#e0a850', 150, 0.6, 3);
+      pool.releaseAt(i);
+      WS.Game.toast('Beans packs up', '"Not my fight! Good luck!"', { kind: 'merchant' });
+    }
     F.cine(4.2);
     F.s = { tm: {}, said: {} };
     F.script.start(F);
@@ -42988,6 +43091,12 @@ window.WS = window.WS || {};
     this._shadowsDone = false;
     this.drawMark(ctx, player, time);
 
+    /* ---- light ----------------------------------------------------------- */
+    /* The night over everything that stands in it, and every light on the
+       field against it (WS.Lighting). What is drawn from here on glows. */
+    if (WS.Atmosphere) WS.Atmosphere.mist(ctx, this, time);
+    if (WS.Lighting) WS.Lighting.apply(ctx, this, time);
+
     /* ---- air: bolts, orbits, beams -------------------------------------- */
     this.drawOrbits(ctx, player);
     this.drawBolts(ctx);
@@ -43012,6 +43121,8 @@ window.WS = window.WS || {};
     this.drawFlashes(ctx);
     this.drawStrikes(ctx);
     this.drawParticles(ctx);
+    // What the air carries: fireflies, dust, snow, wisps, drizzle.
+    if (WS.Atmosphere) WS.Atmosphere.motes(ctx, this, time);
     // What can hurt you, stated again over your own light (drawWarnings).
     this.drawWarnings(ctx, time);
 
@@ -43034,6 +43145,13 @@ window.WS = window.WS || {};
 
     // Edennil and the crate, in the air over everything on the field.
     this.drawAirdropSky(ctx, time);
+
+    // What glows, glowing: taken from the finished field, before the numbers.
+    if (WS.Lighting) {
+      const d = this.dpr, s = this.scale;
+      WS.Lighting.bloom(ctx, this, this.canvas, [(this.offsetX + WS.FX.shakeX * s) * d,
+        (this.offsetY + WS.FX.shakeY * s) * d, W * s * d, H * s * d]);
+    }
 
     this.drawTexts(ctx);
 
@@ -44315,7 +44433,7 @@ window.WS = window.WS || {};
   };
 
   const ZONE_FILL_CAP = 6;
-  const ZONE_DETAIL_CAP = 2;
+  const ZONE_DETAIL_CAP = 4;
 
   /* The baked parts of a field (see drawZones). Painted at ZONE_ART pixels
      across the field's own radius, which is plenty: every one of them is a
@@ -44371,7 +44489,11 @@ window.WS = window.WS || {};
     const m = ctx.getTransform();
     const k = WASH_SCALE;
     const bw = Math.ceil(cv.width * k), bh = Math.ceil(cv.height * k);
-    const scorch = !this.lite && !busy;
+    /* The scorch is one quarter-resolution pass for every field at once, so
+       it costs the same with one field or twenty: it does not drop when the
+       field is busy (it used to, and a busy build's fields lost their
+       ground along with their detail). */
+    const scorch = !this.lite;
     const light = washBuf('light', bw, bh), lg = light.ctx;
     lg.setTransform(1, 0, 0, 1, 0, 0); lg.clearRect(0, 0, bw, bh);
     lg.setTransform(m.a * k, m.b * k, m.c * k, m.d * k, m.e * k, m.f * k);
@@ -44514,13 +44636,25 @@ window.WS = window.WS || {};
        grounds - while each one costs dozens of strokes at full size. The
        older fields keep their wash and their rim, which is what says where
        each still reaches. */
-    let detailAt = -Infinity;
-    if (zones.count > ZONE_DETAIL_CAP) {
-      const lives = this._zoneLives || (this._zoneLives = []);
-      lives.length = 0;
-      for (let i = 0; i < zones.count; i++) lives.push(zones.active[i].life);
-      lives.sort((a, b) => b - a);
-      detailAt = lives[ZONE_DETAIL_CAP - 1];
+    /* WHICH FIELDS KEEP THEIR ART. It used to be all of them or, past four
+       fields on the ground, none: a build with Blighted Earth, Hallowed
+       Ground and a third field kept five or six down at once and every one
+       of them went to a plain ring - the moment a build came together was the
+       moment its ground stopped looking like anything. What smears is the
+       SAME field stacked on itself, so the art now goes to the newest field
+       of each weapon, up to ZONE_DETAIL_CAP of them; the older copies under
+       them keep their wash, rim and damage. */
+    const detailed = this._zoneDetail || (this._zoneDetail = new Set());
+    detailed.clear();
+    {
+      const newest = this._zoneNewest || (this._zoneNewest = new Map());
+      newest.clear();
+      for (let i = 0; i < zones.count; i++) {
+        const z = zones.active[i], n = newest.get(z.source);
+        if (!n || z.life > n.life) newest.set(z.source, z);
+      }
+      const pick = [...newest.values()].sort((a, b) => b.life - a.life);
+      for (let i = 0; i < pick.length && i < ZONE_DETAIL_CAP; i++) detailed.add(pick[i]);
     }
     ctx.save();
     for (let i = 0; i < zones.count; i++) {
@@ -44579,7 +44713,7 @@ window.WS = window.WS || {};
        *
        * Anything else keeps the graduations. Past `busy` all of it drops,
        * as it always did. */
-      if (!this.lite && !busy && z.life >= detailAt) {
+      if (!this.lite && detailed.has(z)) {
         if (z._src !== z.source) {
           const wd = WS.Weapons[z.source];
           z._style = wd ? (wd.data || wd).school : null;
@@ -47048,6 +47182,496 @@ window.WS = window.WS || {};
 
 })(window.WS);
 
+/* ===== src/render/lighting.js ===== */
+/* LIGHT. The night had no light in it.
+ *
+ * Every battlefield was lit the same from edge to edge: a bolt of frostfire
+ * crossing the field left the ground under it exactly as it was, the survivor
+ * stood in no more light than a creature at the far edge, and midnight looked
+ * like dusk. The art was all there; the air between it was not.
+ *
+ * So the lit world (ground, props, ground effects, creatures) is laid under a
+ * light map before anything that glows is drawn on it:
+ *
+ *   ambient   the night itself: a tint per battlefield, deepest at midnight
+ *             and warming toward dawn, multiplied over the field.
+ *   lights    every source adds to it: the survivor's own glow, each bolt,
+ *             blade, beam and flash in its colour, fields and hazards,
+ *             telegraphed danger, loot, and anything on the map that glows.
+ *   spill     the same lights added once more, faintly, in colour - which is
+ *             what makes a blue bolt turn the ground blue as it passes.
+ *
+ * Both maps are a quarter of the world's size and drawn with cached sprites,
+ * so a full late-game frame costs a few hundred small drawImage calls on a
+ * 320x180 canvas and two full-size composites. Spells, particles and numbers
+ * are drawn after it and are not darkened: they are the light.
+ *
+ * Bloom comes last (R.bloom below the light code): a small copy of the finished
+ * field, multiplied by itself until only what was bright is left, softened
+ * by scaling and added back. It is taken from the frame, so it needs nothing
+ * from the systems that drew it.
+ *
+ * Readability is the rule, not an afterthought: the night never takes the
+ * field below AMB_FLOOR, telegraphed danger is a light of its own, and the
+ * warnings that restate danger are drawn after all of this. */
+'use strict';
+(function (WS) {
+  const W = WS.CONST.WORLD_WIDTH, H = WS.CONST.WORLD_HEIGHT;
+  const S = 0.25;                         // light map scale
+  const LW = Math.round(W * S), LH = Math.round(H * S);
+
+  const Lit = WS.Lighting = { enabled: true };
+
+  /* The night's colour, per battlefield: what the moon makes of it. Tints,
+     not colours - multiplied over art that is already coloured. */
+  const TINT = {
+    thornhollow: [0.80, 0.92, 1.00],
+    dustreach: [0.96, 0.86, 1.00],
+    mourneholt: [0.80, 0.82, 1.00],
+    ochre: [1.00, 0.88, 0.80],
+    palewastes: [0.84, 0.94, 1.00],
+    highmoor: [0.82, 0.88, 1.00],
+    boss_arena: [0.86, 0.80, 1.00],
+  };
+  const DAWN = [1.00, 0.86, 0.72];
+  // Brightness at dusk, at midnight, and the least it is ever allowed to be.
+  const AMB_DUSK = 0.94, AMB_MIDNIGHT = 0.70, AMB_FLOOR = 0.66;
+  const NIGHT = 1800;                     // the night runs to dawn at 30:00
+
+  /* Things on the field that give off light of their own, by prop kind:
+     [colour, radius as a share of the prop's size, strength]. */
+  const GLOWS = {
+    crystal: [[0.55, 0.85, 1.0], 1.3, 0.45],
+    ice: [[0.6, 0.85, 1.0], 0.9, 0.22],
+    mushroom: [[0.55, 1.0, 0.75], 1.1, 0.35],
+    standing: [[0.6, 0.75, 1.0], 0.9, 0.18],
+    grave: [[0.6, 0.7, 1.0], 0.6, 0.10],
+    spire: [[0.6, 0.85, 1.0], 0.8, 0.2],
+  };
+
+  let map = null, mg = null, spill = null, sg = null;
+  function canvases() {
+    if (map) return;
+    map = document.createElement('canvas'); map.width = LW; map.height = LH;
+    mg = map.getContext('2d');
+    spill = document.createElement('canvas'); spill.width = LW; spill.height = LH;
+    sg = spill.getContext('2d');
+  }
+
+  /* One soft disc per colour, white at the centre in that colour and gone at
+     the edge, cached by colour quantised to sixteen steps a channel - there
+     are only so many colours of spell. The falloff is squared, which is how
+     light fades and why a disc of it does not look like a disc. */
+  const SPR = 64;
+  const sprites = new Map();
+  function sprite(c) {
+    const r = (c[0] * 15 + 0.5) | 0, g = (c[1] * 15 + 0.5) | 0, b = (c[2] * 15 + 0.5) | 0;
+    const k = (r << 8) | (g << 4) | b;
+    let s = sprites.get(k);
+    if (s) return s;
+    s = document.createElement('canvas'); s.width = s.height = SPR;
+    const x = s.getContext('2d');
+    const img = x.createImageData(SPR, SPR);
+    const cr = r * 17, cg = g * 17, cb = b * 17;
+    for (let py = 0; py < SPR; py++) {
+      for (let px = 0; px < SPR; px++) {
+        const dx = (px + 0.5) / SPR * 2 - 1, dy = (py + 0.5) / SPR * 2 - 1;
+        const d = Math.min(1, Math.sqrt(dx * dx + dy * dy));
+        const f = (1 - d) * (1 - d);
+        const i = (py * SPR + px) * 4;
+        img.data[i] = cr; img.data[i + 1] = cg; img.data[i + 2] = cb;
+        img.data[i + 3] = Math.round(f * 255);
+      }
+    }
+    x.putImageData(img, 0, 0);
+    sprites.set(k, s);
+    return s;
+  }
+
+  /* A light: position and radius in world units, strength 0..1. */
+  let budget = 0;
+  function add(x, y, r, c, a) {
+    if (a <= 0.01 || r < 2 || budget-- <= 0) return;
+    if (x + r < 0 || y + r < 0 || x - r > W || y - r > H) return;
+    const s = sprite(c);
+    const px = (x - r) * S, py = (y - r) * S, d = 2 * r * S;
+    sg.globalAlpha = a > 1 ? 1 : a;
+    sg.drawImage(s, px, py, d, d);
+  }
+
+  /** The night's ambient light now: [r, g, b], 0..1. */
+  Lit.ambient = function (run) {
+    const t = run ? WS.clamp((run.time || 0) / NIGHT, 0, 1) : 0.5;
+    const mapId = run && run.mapId;
+    const tint = TINT[mapId] || TINT.thornhollow;
+    // Deepest at midnight, easing out both ways; the last fifth warms.
+    const depth = 1 - Math.pow(Math.abs(t - 0.5) * 2, 1.6);
+    let k = AMB_DUSK + (AMB_MIDNIGHT - AMB_DUSK) * depth;
+    let c = tint;
+    if (t > 0.8) c = WS.mix(tint, DAWN, (t - 0.8) / 0.2 * 0.55);
+    if (run && run.finaleCleared) { c = DAWN; k = 1; }
+    k = Math.max(AMB_FLOOR, k);
+    return [WS.clamp(c[0] * k, 0, 1), WS.clamp(c[1] * k, 0, 1), WS.clamp(c[2] * k, 0, 1)];
+  };
+
+  const WARM = [1.0, 0.80, 0.55], DANGER = [1.0, 0.25, 0.18], GOLD = [1.0, 0.82, 0.4];
+
+  /** Gather every light on the field into the spill map. */
+  function gather(R, player, time) {
+    sg.globalCompositeOperation = 'source-over';
+    sg.globalAlpha = 1;
+    sg.clearRect(0, 0, LW, LH);
+    sg.globalCompositeOperation = 'lighter';
+    budget = R.lite ? 160 : 420;
+
+    // Anything on the map that glows of itself.
+    for (const p of R.props) {
+      const gl = GLOWS[p.kind];
+      if (gl) add(p.x, p.y, p.size * gl[1], gl[0], gl[2] * (p.alpha === undefined ? 1 : p.alpha));
+    }
+
+    const P = WS.Projectile;
+    // Bolts: small, many. A crowded frame lights every other one.
+    const bolts = P.bolts;
+    const step = bolts.count > 160 ? 2 : 1;
+    for (let i = 0; i < bolts.count; i += step) {
+      const b = bolts.active[i];
+      if (!b.colour) continue;
+      add(b.x, b.y, 34 + b.radius * 5, b.colour, 0.30 * step);
+    }
+    // Orbiting blades, where each one is.
+    for (let i = 0; i < P.orbits.count; i++) {
+      const o = P.orbits.active[i];
+      if (!o.colour || !player) continue;
+      const n = Math.min(o.count || 1, 8);
+      for (let k = 0; k < n; k++) {
+        const a = (o.angle || 0) + k * WS.TAU / (o.count || 1);
+        add(player.x + Math.cos(a) * o.radius, player.y + Math.sin(a) * o.radius, 60 + (o.size || 8) * 2, o.colour, 0.28);
+      }
+    }
+    // Beams: a light every so often along their length.
+    for (let i = 0; i < P.beams.count; i++) {
+      const b = P.beams.active[i];
+      if (!b.colour) continue;
+      const fade = WS.clamp(b.life / (b.maxLife || 1), 0, 1);
+      const len = Math.hypot(b.x2 - b.x1, b.y2 - b.y1);
+      const n = Math.min(8, 1 + (len / 90) | 0);
+      for (let k = 0; k <= n; k++) {
+        const t = k / n;
+        add(b.x1 + (b.x2 - b.x1) * t, b.y1 + (b.y2 - b.y1) * t, 70 + (b.width || 6) * 3, b.colour, 0.34 * fade);
+      }
+    }
+    // Lingering fields and their colour on the ground.
+    for (let i = 0; i < P.zones.count; i++) {
+      const z = P.zones.active[i];
+      if (!z.colour) continue;
+      add(z.x, z.y, z.radius * 1.35, z.colour, 0.22);
+    }
+    // Impacts: a flash lights what it hits, and is gone as fast.
+    const FX = WS.FX;
+    for (let i = 0; i < FX.flashes.count; i++) {
+      const f = FX.flashes.active[i];
+      if (!f.colour) continue;
+      const k = WS.clamp(f.life / (f.maxLife || 1), 0, 1);
+      add(f.x, f.y, Math.max(50, f.radius * 1.8), f.colour, 0.55 * k);
+    }
+    if (FX.strikes) {
+      for (let i = 0; i < FX.strikes.count; i++) {
+        const s = FX.strikes.active[i];
+        if (!s.colour) continue;
+        const k = WS.clamp(s.life / (s.maxLife || 1), 0, 1);
+        add(s.x + Math.cos(s.aim || 0) * (s.reach || 0) * 0.5, s.y + Math.sin(s.aim || 0) * (s.reach || 0) * 0.5,
+          (s.reach || 60) * 1.1, s.colour, 0.4 * k);
+      }
+    }
+    // Hazards on the ground: what the creatures leave that can hurt you.
+    const hz = WS.Hazard && WS.Hazard.pool;
+    if (hz) {
+      for (let i = 0; i < hz.count; i++) {
+        const h = hz.active[i];
+        add(h.x, h.y, (h.radius || 60) * 1.3, h.tint || DANGER, 0.18);
+      }
+    }
+    // Loot glints.
+    const pk = WS.Pickup && WS.Pickup.pool;
+    if (pk) for (let i = 0; i < pk.count; i++) add(pk.active[i].x, pk.active[i].y, 46, GOLD, 0.3);
+    const pool = WS.Enemy.pool;
+    let warn = 12;                        // telegraph lights, at most
+    for (let i = 0; i < pool.count; i++) {
+      const e = pool.active[i];
+      /* Telegraphed danger is a light of its own, so the night never hides
+         it: a charge lights its lane, anything else the ground around it. */
+      const t = e.telegraph;
+      if (!t || warn <= 0) continue;
+      const k = t.maxLife ? 1 - WS.clamp(t.life / t.maxLife, 0, 1) : 1;
+      if (t.kind === 'lane' && t.length) {
+        warn -= 2;
+        const a = Math.atan2(t.dy || 0, t.dx || 1);
+        const ox = t.firing && t.ox !== undefined ? t.ox : e.x, oy = t.firing && t.oy !== undefined ? t.oy : e.y;
+        add(ox + Math.cos(a) * t.length * 0.35, oy + Math.sin(a) * t.length * 0.35, (t.width || 60) * 1.6, DANGER, 0.12 + 0.12 * k);
+        add(ox + Math.cos(a) * t.length * 0.8, oy + Math.sin(a) * t.length * 0.8, (t.width || 60) * 1.6, DANGER, 0.12 + 0.12 * k);
+      } else {
+        warn--;
+        add(e.x, e.y, (t.radius || e.radius * 3 || 80) * 1.2, DANGER, 0.1 + 0.15 * k);
+      }
+    }
+  }
+
+  /** Lay the night over the lit world. Call with ctx in world space. */
+  Lit.apply = function (ctx, R, time) {
+    if (!Lit.enabled || WS.Save.settings.lighting === false) return;
+    const game = WS.Game;
+    if (!game.player || (WS.Arena && WS.Arena.active && WS.Arena.darkness > 0)) return;
+    canvases();
+    const amb = Lit.ambient(game.run);
+    Lit.last = amb;
+    gather(R, game.player, time);
+
+    // The light map: ambient, plus every light on top of it.
+    mg.globalCompositeOperation = 'source-over';
+    mg.globalAlpha = 1;
+    mg.fillStyle = WS.hex(amb);
+    mg.fillRect(0, 0, LW, LH);
+    mg.globalCompositeOperation = 'lighter';
+    mg.drawImage(spill, 0, 0);
+    /* The survivor carries the watch fire with them: a wide warm pool and a
+       brighter heart, breathing very slightly so it reads as flame. It lights
+       what stands near them; it does not colour it (so it is not in the
+       spill), because a creature in the survivor's light is still the colour
+       it is. */
+    {
+      const p = game.player;
+      const f = 1 + 0.03 * Math.sin(time * 7.3) + 0.02 * Math.sin(time * 13.1);
+      const s1 = sprite(WARM);
+      mg.globalAlpha = 0.5;
+      let r = 330 * f;
+      mg.drawImage(s1, (p.x - r) * S, (p.y - r) * S, 2 * r * S, 2 * r * S);
+      mg.globalAlpha = 0.4;
+      r = 150 * f;
+      mg.drawImage(s1, (p.x - r) * S, (p.y - r) * S, 2 * r * S, 2 * r * S);
+      mg.globalAlpha = 1;
+    }
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.drawImage(map, 0, 0, W, H);
+    // The spill: light in its own colour on what it falls on.
+    if (!R.lite) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.13 * (R.lightDim || 1);
+      ctx.drawImage(spill, 0, 0, W, H);
+    }
+    ctx.restore();
+  };
+
+  /* ---- bloom ------------------------------------------------------------ */
+  let b1 = null, b2 = null, b3 = null;
+  function bloomCanvases() {
+    if (b1) return;
+    const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+    b1 = mk(Math.round(W / 4), Math.round(H / 4));
+    b2 = mk(Math.round(W / 8), Math.round(H / 8));
+    b3 = mk(Math.round(W / 16), Math.round(H / 16));
+  }
+
+  /* What glows, glowing. `src` is the whole canvas; `rect` is where the
+     world sits in it, in device pixels. Call with ctx in world space. */
+  Lit.bloom = function (ctx, R, src, rect) {
+    if (R.lite || WS.Save.settings.bloom === false || !WS.Game.player) return;
+    bloomCanvases();
+    const g1 = b1.getContext('2d');
+    g1.globalCompositeOperation = 'copy';
+    g1.globalAlpha = 1;
+    g1.imageSmoothingEnabled = true;
+    g1.drawImage(src, rect[0], rect[1], rect[2], rect[3], 0, 0, b1.width, b1.height);
+    // Keep only the near-white: x^16. A lit creature at 0.85 keeps 0.07; a
+    // spell core at 0.98 keeps 0.72; the ground keeps nothing. (At x^8 a
+    // crowd of creatures flashing as they were hit glowed as one mass.)
+    g1.globalCompositeOperation = 'multiply';
+    g1.drawImage(b1, 0, 0);
+    g1.drawImage(b1, 0, 0);
+    g1.drawImage(b1, 0, 0);
+    g1.drawImage(b1, 0, 0);
+    // Soften by scaling down twice and back up.
+    const g2 = b2.getContext('2d'), g3 = b3.getContext('2d');
+    g2.globalCompositeOperation = 'copy'; g2.imageSmoothingEnabled = true;
+    g2.drawImage(b1, 0, 0, b2.width, b2.height);
+    g3.globalCompositeOperation = 'copy'; g3.imageSmoothingEnabled = true;
+    g3.drawImage(b2, 0, 0, b3.width, b3.height);
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.globalCompositeOperation = 'lighter';
+    // A busy frame is already light enough (R.lightDim, the light budget).
+    const dim = R.lightDim || 1;
+    ctx.globalAlpha = 0.24 * dim * dim;
+    ctx.drawImage(b2, 0, 0, W, H);
+    ctx.globalAlpha = 0.36 * dim * dim;
+    ctx.drawImage(b3, 0, 0, W, H);
+    ctx.restore();
+  };
+})(window.WS);
+
+/* ===== src/render/atmosphere.js ===== */
+/* THE AIR. Between the ground and the light there was nothing: no mist lying
+ * in the low places, nothing drifting through a lantern's glow, no weather.
+ * Each battlefield now has air of its own.
+ *
+ *   mist     a few broad banks of low fog, drifting, drawn over the field
+ *            BEFORE the light (WS.Lighting) - so the night takes them away
+ *            where it is dark and they show where light falls on them, which
+ *            is what fog does and why it reads as depth.
+ *   motes    what the air carries on this battlefield: fireflies in the
+ *            forest, dust off the plains, snow on the Wastes, wisps over the
+ *            graves, drizzle on the moor. Drawn after the light: fireflies
+ *            and wisps glow, and a snowflake is the colour of snow.
+ *
+ * Neither keeps any state. Every mote's place is a function of its index and
+ * the clock (wrapped to the field), so there is nothing to spawn, pool or
+ * reset, and a paused frame is the same frame. Balanced quality keeps the
+ * motes at half and draws no mist. */
+'use strict';
+(function (WS) {
+  const W = WS.CONST.WORLD_WIDTH, H = WS.CONST.WORLD_HEIGHT;
+  const Air = WS.Atmosphere = {};
+
+  /* Per battlefield. mist: [colour, strength]; motes: what they are, how
+     many, their colour, and how they move. */
+  const AIR = {
+    thornhollow: { mist: [[0.55, 0.75, 0.62], 0.10], motes: { kind: 'firefly', n: 46, c: [0.85, 1.0, 0.45] } },
+    dustreach: { mist: [[0.85, 0.70, 0.55], 0.08], motes: { kind: 'dust', n: 70, c: [1.0, 0.86, 0.62] } },
+    mourneholt: { mist: [[0.55, 0.62, 0.85], 0.14], motes: { kind: 'wisp', n: 26, c: [0.62, 0.78, 1.0] } },
+    ochre: { mist: [[0.9, 0.68, 0.48], 0.07], motes: { kind: 'dust', n: 80, c: [1.0, 0.78, 0.5] } },
+    palewastes: { mist: [[0.75, 0.85, 1.0], 0.12], motes: { kind: 'snow', n: 110, c: [0.92, 0.96, 1.0] } },
+    highmoor: { mist: [[0.62, 0.70, 0.82], 0.13], motes: { kind: 'rain', n: 90, c: [0.72, 0.82, 1.0] } },
+  };
+
+  // A hash to a 0..1 value: the same index is always the same mote.
+  function h(i, k) {
+    let x = (i * 374761393 + k * 668265263) | 0;
+    x = (x ^ (x >>> 13)) * 1274126177 | 0;
+    return ((x ^ (x >>> 16)) >>> 0) / 4294967296;
+  }
+  const wrap = (v, m) => ((v % m) + m) % m;
+
+  /* A bank of fog: a soft irregular cloud, painted once per colour. */
+  const banks = new Map();
+  function bank(c) {
+    const k = WS.hex(c);
+    let cv = banks.get(k);
+    if (cv) return cv;
+    cv = document.createElement('canvas');
+    cv.width = 512; cv.height = 256;
+    const g = cv.getContext('2d');
+    const rgb = `${(c[0] * 255) | 0},${(c[1] * 255) | 0},${(c[2] * 255) | 0}`;
+    for (let i = 0; i < 26; i++) {
+      const x = 80 + h(i, 1) * 352, y = 70 + h(i, 2) * 116, r = 40 + h(i, 3) * 70;
+      const grd = g.createRadialGradient(x, y, 0, x, y, r);
+      grd.addColorStop(0, `rgba(${rgb},0.16)`);
+      grd.addColorStop(1, `rgba(${rgb},0)`);
+      g.fillStyle = grd;
+      g.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    banks.set(k, cv);
+    return cv;
+  }
+
+  function airOf() {
+    const run = WS.Game.run;
+    if (!run || !WS.Game.player || (WS.Arena && WS.Arena.active)) return null;
+    return AIR[run.mapId] || null;
+  }
+
+  /** Low mist, before the light. ctx in world space. */
+  Air.mist = function (ctx, R, time) {
+    const a = airOf();
+    if (!a || R.lite || WS.Save.settings.atmosphere === false) return;
+    const img = bank(a.mist[0]);
+    ctx.save();
+    ctx.globalAlpha = a.mist[1] * 3.2;
+    ctx.globalCompositeOperation = 'screen';
+    // Five banks crossing the field at different heights and speeds.
+    for (let i = 0; i < 5; i++) {
+      const w = 700 + h(i, 5) * 500, hh = w * 0.42;
+      const sp = 6 + h(i, 6) * 10;
+      const x = wrap(h(i, 7) * (W + w) + time * sp, W + w) - w;
+      const y = h(i, 8) * (H - hh * 0.4) - hh * 0.3 + Math.sin(time * 0.05 + i) * 20;
+      ctx.drawImage(img, x, y, w, hh);
+    }
+    ctx.restore();
+  };
+
+  /** What the air carries, after the light. ctx in world space. */
+  Air.motes = function (ctx, R, time) {
+    const a = airOf();
+    if (!a || WS.Save.settings.atmosphere === false) return;
+    const m = a.motes;
+    const n = R.lite ? m.n >> 1 : m.n;
+    const col = WS.hex(m.c);
+    ctx.save();
+    ctx.fillStyle = col;
+    ctx.strokeStyle = col;
+    if (m.kind === 'firefly' || m.kind === 'wisp') ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < n; i++) {
+      const r0 = h(i, 11), r1 = h(i, 12), r2 = h(i, 13), r3 = h(i, 14);
+      let x, y, alpha, size;
+      if (m.kind === 'firefly') {
+        // Wander on slow loops; blink on their own clocks.
+        x = r0 * W + Math.sin(time * (0.2 + r2 * 0.3) + r3 * 9) * 60;
+        y = r1 * H + Math.cos(time * (0.17 + r3 * 0.3) + r2 * 7) * 45;
+        const blink = Math.sin(time * (1.2 + r2 * 1.6) + r3 * 20);
+        alpha = blink > 0.2 ? (blink - 0.2) / 0.8 : 0;
+        /* Specks, not orbs: anything round and green on this field is a
+           pickup, so a firefly stays a point of light with a faint halo. */
+        size = 0.9 + r2 * 0.7;
+        if (alpha > 0.02) {
+          ctx.globalAlpha = alpha * 0.16;
+          ctx.beginPath(); ctx.arc(x, y, size * 3, 0, WS.TAU); ctx.fill();
+          ctx.globalAlpha = alpha * 0.9;
+          ctx.fillRect(x - size / 2, y - size / 2, size, size);
+        }
+      } else if (m.kind === 'wisp') {
+        // Drift up out of the ground and fade.
+        const life = 9 + r2 * 6;
+        const t = wrap(time + r3 * life, life) / life;
+        x = r0 * W + Math.sin(time * 0.6 + r1 * 8) * 18;
+        y = r1 * H - t * 90;
+        alpha = Math.sin(t * Math.PI) * 0.6;
+        // A spark with a thin trail, never a disc: round and pale is a pickup.
+        size = 1 + r2 * 0.8;
+        ctx.globalAlpha = alpha * 0.35;
+        ctx.fillRect(x - size * 0.3, y, size * 0.6, 7 + r2 * 6);
+        ctx.globalAlpha = alpha * 0.15;
+        ctx.beginPath(); ctx.arc(x, y, size * 2.6, 0, WS.TAU); ctx.fill();
+        ctx.globalAlpha = alpha;
+        ctx.fillRect(x - size / 2, y - size / 2, size, size);
+      } else if (m.kind === 'dust') {
+        x = wrap(r0 * W + time * (14 + r2 * 22), W);
+        y = wrap(r1 * H + Math.sin(time * 0.4 + r3 * 9) * 14 + time * (2 + r3 * 4), H);
+        alpha = 0.18 + r3 * 0.3;
+        size = 0.8 + r2 * 1.4;
+        ctx.globalAlpha = alpha;
+        ctx.fillRect(x, y, size, size);
+      } else if (m.kind === 'snow') {
+        x = wrap(r0 * W + Math.sin(time * (0.5 + r2) + r3 * 9) * 22 + time * 8, W);
+        y = wrap(r1 * H + time * (18 + r2 * 26), H);
+        alpha = 0.35 + r3 * 0.45;
+        size = 1 + r2 * 1.8;
+        ctx.globalAlpha = alpha;
+        ctx.beginPath(); ctx.arc(x, y, size, 0, WS.TAU); ctx.fill();
+      } else if (m.kind === 'rain') {
+        const vx = 90, vy = 520 + r2 * 160;
+        x = wrap(r0 * W + time * vx, W);
+        y = wrap(r1 * H + time * vy, H);
+        ctx.globalAlpha = 0.14 + r3 * 0.16;
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - vx * 0.03, y - vy * 0.03); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  };
+})(window.WS);
+
 /* ===== src/ui/frames.js ===== */
 /* Frames drawn by hand.
  *
@@ -48635,6 +49259,18 @@ window.WS = window.WS || {};
     plate.append(icon(choice.art || 'rune', colour, 66));
     card.append(plate);
 
+    function fitStats(box, card) {
+      if (!box.isConnected) return;
+      const rows = [...box.children];
+      const wide = () => {
+        for (const r of rows) r.classList.remove('wide');
+        for (const r of rows) if (r.scrollWidth > r.clientWidth + 1) r.classList.add('wide');
+      };
+      wide();
+      const cb = card.getBoundingClientRect(), bb = box.getBoundingClientRect();
+      if (bb.bottom > cb.bottom - 6) { box.classList.add('dense'); wide(); }
+    }
+
     /* ONE SKELETON FOR EVERY CARD. Name, note, pips, a three-line
        description, two lines of reactions, and a footer of fixed height -
        every card has every block, empty or not, so in a row of three the
@@ -48646,7 +49282,13 @@ window.WS = window.WS || {};
     const name = el('div', 'card-name', choice.name);
     if ((choice.name || '').length > 17) name.classList.add('long');
     card.append(name);
-    card.append(el('div', 'card-note', choice.note || '\u00a0'));
+    /* ONE ROW UNDER THE NAME: a card that ranks something up shows the
+       ticks, and every other card (a new weapon, an evolution, a union, a
+       blessing) its note. "Rank 6 to 7" above a row of ticks said the same
+       thing twice, and the line it took was the one the stats below were
+       running out of. */
+    const ranking = (choice.type === 'weapon_rank' || choice.type === 'stat') && choice.maxRank > 1;
+    if (!ranking) card.append(el('div', 'card-note', choice.note || '\u00a0'));
 
     /* THE RANK, AS A ROW OF PIPS.
      *
@@ -48656,16 +49298,21 @@ window.WS = window.WS || {};
      * along this thing is without being read, and gives the card something to
      * escalate: past two thirds the card takes a gilt edge, and the one that
      * finishes a track takes the full treatment. */
-    if (!(choice.maxRank > 1)) card.append(el('div', 'card-pips empty'));
-    if (choice.maxRank > 1) {
+    /* The ranks you have are lit; the one this card gives you flickers
+       between unlit and lit, which is the choice in one glance: from here
+       to there. Fleetfoot at nothing shows its first tick coming on. */
+    if (ranking) {
       const pips = el('div', 'card-pips');
       const at = choice.rank || 1;
+      pips.style.setProperty('--n', choice.maxRank);
       for (let i = 1; i <= choice.maxRank; i++) {
-        const pip = el('i', i <= at ? 'on' : null);
-        if (i === at) pip.classList.add('now');
-        pips.append(pip);
+        pips.append(el('i', i < at ? 'on' : i === at ? 'next' : null));
       }
+      pips.title = `Rank ${at - 1} → ${at} of ${choice.maxRank}`;
       card.append(pips);
+    }
+    if (choice.maxRank > 1) {
+      const at = choice.rank || 1;
       const k = at / choice.maxRank;
       if (k >= 1) card.classList.add('crowning');
       else if (k >= 0.66) card.classList.add('rising');
@@ -48709,6 +49356,11 @@ window.WS = window.WS || {};
         box.append(row);
       }
       foot.append(box);
+      /* Once it is laid out: a row that does not fit in half the card
+         ("Vs bosses x1.34 -> x1.43") takes the whole width instead of running
+         into its neighbour, and if that leaves more rows than the card has
+         room for, the numbers set a size smaller. Measured, not guessed. */
+      requestAnimationFrame(() => fitStats(box, card));
     }
     // Nothing for the footer (a blessing): the description has its room.
     if (!foot.childElementCount) card.classList.add('no-foot');

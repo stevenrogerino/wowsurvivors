@@ -575,6 +575,14 @@
        walked into her, which made her a bank: park her, farm, and spend at
        the best moment. She is a visit, not a vault. */
     eggVendorStay: 90,
+    /* When she comes (WaveManager.beansFollows): this long after a scheduled
+       boss falls, if she was last here at least eggVendorGap ago and the
+       finale is at least eggVendorFinaleGap away; the breather has its own
+       visit, for as long as the breather lasts. eggVendorInterval is her
+       clock after dawn. */
+    eggVendorDelay: 4,
+    eggVendorGap: 300,
+    eggVendorFinaleGap: 240,
     eggRunDamage: 0.001,
     eggRunHealth: 1,
 

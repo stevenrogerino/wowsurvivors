@@ -1359,6 +1359,18 @@
     plate.append(icon(choice.art || 'rune', colour, 66));
     card.append(plate);
 
+    function fitStats(box, card) {
+      if (!box.isConnected) return;
+      const rows = [...box.children];
+      const wide = () => {
+        for (const r of rows) r.classList.remove('wide');
+        for (const r of rows) if (r.scrollWidth > r.clientWidth + 1) r.classList.add('wide');
+      };
+      wide();
+      const cb = card.getBoundingClientRect(), bb = box.getBoundingClientRect();
+      if (bb.bottom > cb.bottom - 6) { box.classList.add('dense'); wide(); }
+    }
+
     /* ONE SKELETON FOR EVERY CARD. Name, note, pips, a three-line
        description, two lines of reactions, and a footer of fixed height -
        every card has every block, empty or not, so in a row of three the
@@ -1437,11 +1449,6 @@
       const box = el('div', 'card-stats');
       for (const s of choice.stats) {
         const row = el('div', 'cs-row' + (s.changed ? ' up' : ''));
-        /* Half a card is about seventeen characters of this face. A row that
-           will not fit in half ("Vs bosses x1.34 -> x1.43") takes the whole
-           width instead of running into its neighbour. */
-        const len = String(s.label).length + (s.changed ? String(s.from).length + String(s.to).length + 3 : String(s.to).length);
-        if (len > 17) row.classList.add('wide');
         const val = el('span', 'cs-v');
         if (s.changed) val.append(el('s', null, s.from), el('i', null, ' \u2192 '), el('b', null, s.to));
         else val.textContent = s.to;
@@ -1449,6 +1456,11 @@
         box.append(row);
       }
       foot.append(box);
+      /* Once it is laid out: a row that does not fit in half the card
+         ("Vs bosses x1.34 -> x1.43") takes the whole width instead of running
+         into its neighbour, and if that leaves more rows than the card has
+         room for, the numbers set a size smaller. Measured, not guessed. */
+      requestAnimationFrame(() => fitStats(box, card));
     }
     // Nothing for the footer (a blessing): the description has its room.
     if (!foot.childElementCount) card.classList.add('no-foot');

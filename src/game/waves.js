@@ -27,7 +27,9 @@
     this.lastHealed = 0;
     this.deathTimer = 0;
     this.cacheTimer = cfg.cacheFirst;
-    this.merchantTimer = cfg.eggVendorFirst;
+    this.merchantTimer = cfg.eggVendorFirst;   // after dawn only (Wave.beans)
+    this.beansDue = null;        // when she arrives after the boss that just fell
+    this.beansLast = -Infinity;  // when she last came
     // What each timer was last set to, so a countdown bar knows its length.
     this.cacheEvery = cfg.cacheFirst;
     this.merchantEvery = cfg.eggVendorFirst;
@@ -123,6 +125,45 @@
   /** A boss fell: the horde draws breath (Config.tides). */
   Wave.onBossSlain = function () {
     if (this.rhythmOn()) this.lull = WS.Config.tideLull;
+    const run = WS.Game.run;
+    if (run && this.beansFollows(run.time)) this.beansDue = run.time + WS.Config.eggVendorDelay;
+  };
+
+  /* BEANS FOLLOWS THE BOSSES. She used to come on a clock of her own - 2:30
+     and then every seven minutes - which put her at 30:30 on a night whose
+     finale starts at 30:00, took your coin at 23:30 or 28:00 and then came
+     back broke-handed at the breather. Now she sets up just after a boss
+     falls, when its gold is on the ground, unless she was here less than
+     eggVendorGap ago or the finale is less than eggVendorFinaleGap away (the
+     breather visit covers that). After dawn, with no bosses scheduled, she
+     keeps the old clock. */
+  Wave.beansFollows = function (t) {
+    const cfg = WS.Config, run = WS.Game.run;
+    if (run && (run.victorious || run.mode === 'endless')) return false;
+    return t - this.beansLast >= cfg.eggVendorGap && cfg.deathTime - t >= cfg.eggVendorFinaleGap;
+  };
+  /** The scheduled boss she will follow next, or null (then: the breather). */
+  Wave.beansNext = function (t) {
+    const bosses = this.map ? this.map.bosses : [];
+    for (let i = this.bossIndex; i < bosses.length; i++) {
+      const at = bosses[i].at;
+      if (at >= this.beansLast + WS.Config.eggVendorGap && WS.Config.deathTime - at >= WS.Config.eggVendorFinaleGap) return bosses[i];
+    }
+    return null;
+  };
+  Wave.beansArrive = function (player, stay) {
+    const a = WS.random() * WS.TAU;
+    const far = WS.Config.eggVendorDistance;
+    const b = WS.Pickup.spawn('merchant',
+      WS.clamp(player.x + WS.cos(a) * far, 80, WS.CONST.WORLD_WIDTH - 80),
+      WS.clamp(player.y + WS.sin(a) * far, 80, WS.CONST.WORLD_HEIGHT - 80));
+    if (b) {
+      b.stay = stay || WS.Config.eggVendorStay;
+      this.beansLast = WS.Game.run.time;
+      WS.Game.toast('Beans sets up shop', '"COME GET SOME BEANS... I MEAN EGGS!" Walk over to spend your coin. She leaves in '
+        + WS.formatTime(b.stay) + '.', { kind: 'merchant' });
+    }
+    return b;
   };
 
   /** Bosses have large bases already, so their curve is gentler. */
@@ -255,16 +296,16 @@
     }
 
     /* ---- Beans, the egg merchant ------------------------------------------ */
-    this.merchantTimer -= dt;
-    if (this.merchantTimer <= 0) {
-      this.merchantTimer = this.merchantEvery = WS.Config.eggVendorInterval;
-      const a = WS.random() * WS.TAU;
-      const far = WS.Config.eggVendorDistance;
-      if (WS.Pickup.spawn('merchant',
-        WS.clamp(player.x + WS.cos(a) * far, 80, WS.CONST.WORLD_WIDTH - 80),
-        WS.clamp(player.y + WS.sin(a) * far, 80, WS.CONST.WORLD_HEIGHT - 80))) {
-        WS.Game.toast('Beans sets up shop', '"COME GET SOME BEANS... I MEAN EGGS!" Walk over to spend your coin. She leaves in '
-          + WS.formatTime(WS.Config.eggVendorStay) + '.', { kind: 'merchant' });
+    if (this.beansDue !== null && run.time >= this.beansDue) {
+      this.beansDue = null;
+      this.beansArrive(player);
+    }
+    // After dawn there are no scheduled bosses to follow: her old clock.
+    if (run.victorious || run.mode === 'endless') {
+      this.merchantTimer -= dt;
+      if (this.merchantTimer <= 0) {
+        this.merchantTimer = this.merchantEvery = WS.Config.eggVendorInterval;
+        this.beansArrive(player);
       }
     }
 
@@ -383,9 +424,26 @@
       const q = pool.active[i];
       if (q && q.kind === 'merchant') { beans = q; break; }
     }
-    const stay = WS.Config.eggVendorStay;
-    if (beans) add('beans', 'beans', 'Beans packs up', stay - beans.life, stay, 'egg', [0.9, 0.52, 0.22]);
-    else add('beans', 'beans', 'Beans', this.merchantTimer, this.merchantEvery, 'egg', [0.9, 0.52, 0.22]);
+    const BEAN = [0.9, 0.52, 0.22];
+    if (beans) {
+      const stay = beans.stay || WS.Config.eggVendorStay;
+      add('beans', 'beans', 'Beans packs up', stay - beans.life, stay, 'egg', BEAN);
+    } else if (this.beansDue !== null) {
+      add('beans', 'beans', 'Beans is coming', this.beansDue - t, WS.Config.eggVendorDelay, 'egg', BEAN);
+    } else if (run.victorious || run.mode === 'endless') {
+      add('beans', 'beans', 'Beans', this.merchantTimer, this.merchantEvery, 'egg', BEAN);
+    } else {
+      // She follows a boss: count to it, and say which.
+      const nb2 = this.beansNext(t);
+      if (nb2) {
+        const tpl2 = WS.Bosses[nb2.id];
+        add('beans', 'beans', 'Beans · after ' + (met(nb2.id) && tpl2 ? tpl2.name : 'the boss'), nb2.at - t,
+          WS.max(1, nb2.at - WS.max(0, this.beansLast)), 'egg', BEAN);
+      } else if (WS.Finale && WS.Finale.available(run)) {
+        const at = WS.Config.deathTime;
+        add('beans', 'beans', 'Beans · at the breather', at - t, WS.max(1, at - WS.max(0, this.beansLast)), 'egg', BEAN);
+      }
+    }
 
     const nb = map.bosses[this.bossIndex];
     if (nb) {
