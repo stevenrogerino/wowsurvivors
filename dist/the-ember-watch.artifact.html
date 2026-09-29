@@ -8691,7 +8691,11 @@ window.WS = window.WS || {};
     },
     admiral_ashore: {
       name: 'The Masked Admiral, Ashore', family: 'kerchief', art: 'admiral',
-      tint: [0.92, 0.22, 0.28], health: 230000, speed: 0, damage: 42, xp: 700, radius: 34,
+      // The duel is the payoff after the ship goes down, and it was the softer
+      // half: 230k beside the Galleon's 240k, one small target every weapon
+      // reaches, so it fell in about a minute. Doubled, the climax is the
+      // heavier half, as it should be.
+      tint: [0.92, 0.22, 0.28], health: 460000, speed: 0, damage: 42, xp: 700, radius: 34,
       gold: 300, interval: 99, finale: true, stationary: true, school: 'physical',
       yell: 'Fine. I will do it myself.',
     },
