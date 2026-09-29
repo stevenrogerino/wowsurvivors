@@ -7210,7 +7210,7 @@ window.WS = window.WS || {};
     grave_call: {
       name: 'Grave Call', art: 'risen', quality: 'rare',
       description: 'Raise a ghoul to guard you. Its claws slow and rot what they rake.', max: 3,
-      detail: 'Each rank raises another ghoul. Slow, and it stays close, turning on whatever is nearest you. Its claws sweep a wide arc, slow what they hit by {Familiar.tuning.ghoulSlow~%}% and leave it rotting: rotting creatures take {Familiar.tuning.ghoulRot*%}% more damage from everything, yours included, for {Familiar.tuning.ghoulRotTime}s. Scales with your damage and level.',
+      detail: 'Each rank raises another ghoul. Slow, and it stays close, turning on whatever is nearest you. Its claws sweep a wide arc, slow what they hit by {Familiar.tuning.ghoulSlow~%}% and leave it rotting: rotting creatures take {Familiar.tuning.ghoulRot*%}% more damage from everything, yours included, for {Familiar.tuning.ghoulRotTime}s. A ghoul with nothing near you to rake for {Familiar.tuning.ghoulRestless}s breaks loose: it runs to the thickest of the crowd and bursts there, rotting everything around it for {Familiar.tuning.ghoulBurstMult}x a rake, and rises again at your side {Familiar.tuning.ghoulRespawn}s later. Scales with your damage and level.',
       apply: () => { WS.Familiar.add('ghoul'); },
     },
     dread_command: {
@@ -31161,7 +31161,15 @@ window.WS = window.WS || {};
  *   the wolves' leash - and they go for whatever is nearest YOU, not them.
  *   Their claws sweep an arc, and what they rake is slowed and left
  *   rotting: it takes more damage from everything for a few seconds. They
- *   keep the crowd off you and make your own weapons hit harder. */
+ *   keep the crowd off you and make your own weapons hit harder.
+ *
+ *   AND A GHOUL WITH NOTHING TO GUARD AGAINST BREAKS LOOSE. A strong build
+ *   kills everything before it comes within the guard's short leash, and a
+ *   tester saw theirs never touch anything. So a ghoul that has raked
+ *   nothing for ghoulRestless seconds, while there is a crowd further out,
+ *   runs to the thickest of it and bursts there - rot over a wide circle,
+ *   ghoulBurstMult rakes' worth - and rises again at your side ghoulRespawn
+ *   seconds later. A guard that is working never does it. */
 'use strict';
 (function (WS) {
 
@@ -31205,6 +31213,14 @@ window.WS = window.WS || {};
       ghoulSlowTime: 1.2,
       ghoulRot: 1.15,
       ghoulRotTime: 2.5,
+      // The breakout: idle this long, reach this far (x huntRange), run this
+      // much faster, burst this wide for this many rakes, rise this long after.
+      ghoulRestless: 4,
+      ghoulBurstReach: 1.5,
+      ghoulChargeMult: 2.2,
+      ghoulBurstRadius: 130,
+      ghoulBurstMult: 6,
+      ghoulRespawn: 6,
     },
     KINDS: {
       wolf: {
@@ -31249,6 +31265,50 @@ window.WS = window.WS || {};
     return best;
   }
 
+  /** Where a breaking-out ghoul goes: of the creatures within `range` of the
+   *  survivor, the one with the most others inside a burst of it. Sampled,
+   *  so a full field costs a few hundred distance checks, not a hundred
+   *  thousand. */
+  function thickest(player, range, burst) {
+    const pool = WS.Enemy.pool, r2 = range * range, b2 = burst * burst;
+    const n = pool.count, step = WS.max(1, WS.floor(n / 24));
+    let best = null, most = -1;
+    for (let i = 0; i < n; i += step) {
+      const e = pool.active[i];
+      if (e._dead || e.untargetable || e.hidden) continue;
+      if (WS.dist2(player.x, player.y, e.x, e.y) > r2) continue;
+      let c = 0;
+      for (let j = 0; j < n; j += 2) {
+        const o = pool.active[j];
+        if (!o._dead && WS.dist2(o.x, o.y, e.x, e.y) <= b2) c++;
+      }
+      if (c > most) { most = c; best = e; }
+    }
+    return best;
+  }
+
+  /** The burst: rot over a wide circle, and the ghoul goes down. */
+  function burst(fam, player, t, damage) {
+    const r = t.ghoulBurstRadius * player.areaMultiplier;
+    WS.Enemy.damageArea(fam.x, fam.y, r, damage * t.ghoulBurstMult, null, 20, fam.spec.source);
+    const pool = WS.Enemy.pool;
+    for (let i = 0; i < pool.count; i++) {
+      const e = pool.active[i];
+      if (e._dead) continue;
+      if (WS.dist2(fam.x, fam.y, e.x, e.y) <= (r + e.radius) * (r + e.radius)) WS.Enemy.applyRot(e, t.ghoulRot, t.ghoulRotTime * 1.6);
+    }
+    WS.FX.flash(fam.x, fam.y, r, fam.spec.tint, 0.5, 12, 'shadow');
+    WS.FX.flash(fam.x, fam.y, r * 0.45, [0.85, 1, 0.6], 0.35);
+    WS.FX.burst(fam.x, fam.y, 26, '#b8ff5a', 260, 0.7, 3);
+    WS.FX.shake(4, 0.2);
+    WS.Audio.play('cast', fam.x, 'shadow');
+    fam.burstAt = { x: fam.x, y: fam.y, r, t: 0.5 };
+    fam.charge = null; fam.chargeTime = 0; fam.idle = 0;
+    fam.down = t.ghoulRespawn;
+    const run = WS.Game.run;
+    if (run) run.ghoulBursts = (run.ghoulBursts || 0) + 1;
+  }
+
   Familiar.add = function (kind) {
     if (this.list.length >= this.tuning.max) return;
     const player = WS.Game.player;
@@ -31263,6 +31323,7 @@ window.WS = window.WS || {};
       leashed: false,
       bob: WS.random() * WS.TAU,
       facing: 1,
+      idle: 0, charge: null, chargeTime: 0, down: 0,
     });
     WS.FX.flash(player.x, player.y, 60, spec.tint, 0.4);
   };
@@ -31287,6 +31348,47 @@ window.WS = window.WS || {};
       const cdMult = spec.cdMult ? t[spec.cdMult] : 1;
       const dmgMult = spec.dmgMult ? t[spec.dmgMult] : 1;
       const leash = t.leash * (spec.leashMult ? t[spec.leashMult] : 1);
+      if (fam.burstAt && (fam.burstAt.t -= dt) <= 0) fam.burstAt = null;
+
+      // Gone to rot after a burst: it rises again at the survivor's side.
+      if (fam.down > 0) {
+        fam.down -= dt;
+        fam.x = player.x + WS.cos(fam.bob) * 34; fam.y = player.y + 10 + WS.sin(fam.bob) * 14;
+        if (fam.down <= 0) {
+          fam.down = 0; fam.rise = 0.5;
+          WS.FX.flash(fam.x, fam.y, 44, spec.tint, 0.4);
+        }
+        continue;
+      }
+      if (fam.rise > 0) fam.rise -= dt;
+
+      if (spec.guard) {
+        fam.idle += dt;
+        if (!fam.charge && fam.idle >= t.ghoulRestless) {
+          const r = t.ghoulBurstRadius * player.areaMultiplier;
+          const c = thickest(player, t.huntRange * t.ghoulBurstReach, r * 0.8);
+          // Only out past the leash: something inside it is the guard's job.
+          if (c && WS.dist(player.x, player.y, c.x, c.y) > leash * t.huntIn) { fam.charge = c; fam.chargeTime = 0; }
+          else fam.idle = t.ghoulRestless * 0.75;
+        }
+        if (fam.charge) {
+          let c = fam.charge;
+          if (c._dead) c = fam.charge = WS.Enemy.findNearest(fam.x, fam.y, 260);
+          fam.chargeTime += dt;
+          const damage = (t.dmgBase + t.dmgPerLevel * player.level) * dmgMult * player.damageMultiplier
+            * (1 + player.summonDamage) * WS.CONST.PLAYER_DAMAGE_SCALE;
+          if (!c || fam.chargeTime > 3.5 || WS.dist(fam.x, fam.y, c.x, c.y) <= c.radius + 16) {
+            burst(fam, player, t, damage);
+            continue;
+          }
+          const [cx, cy] = WS.normalize(c.x - fam.x, c.y - fam.y);
+          const sp = t.dashSpeed * speedMult * t.ghoulChargeMult;
+          fam.x += cx * sp * dt; fam.y += cy * sp * dt;
+          fam.facing = cx < 0 ? -1 : 1;
+          fam.moved = sp * dt; fam.bob += dt * 3;
+          continue;
+        }
+      }
 
       /* Leash, with hysteresis: once called off, a summon comes properly home
          before it hunts again.
@@ -31362,6 +31464,7 @@ window.WS = window.WS || {};
           // What the renderer plays: a wolf's pounce, a ghoul's longer rake,
           // and where it landed.
           fam.pounce = spec.guard ? 0.32 : 0.18;
+          fam.idle = 0;
           fam.pounceMax = fam.pounce;
           fam.hitX = fam.target.x; fam.hitY = fam.target.y;
           const damage = (t.dmgBase + t.dmgPerLevel * player.level)
@@ -44579,6 +44682,32 @@ window.WS = window.WS || {};
   R.drawFamiliar = function (ctx, fam, time) {
     const wolf = fam.kind !== 'ghoul';
     const tint = FAM_TINT[fam.kind] || fam.spec.tint;
+    // A ghoul's burst: rot thrown over the ground it reached.
+    if (fam.burstAt) {
+      const b = fam.burstAt, k = 1 - b.t / 0.5;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = WS.rgb(WS.mix(tint, [1, 1, 0.7], 0.3), 0.8 * (1 - k));
+      ctx.lineWidth = 4 * (1 - k) + 1;
+      ctx.beginPath(); ctx.ellipse(b.x, b.y, b.r * (0.5 + k * 0.5), b.r * (0.5 + k * 0.5) * 0.62, 0, 0, WS.TAU); ctx.stroke();
+      const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+      g.addColorStop(0, WS.rgb(tint, 0.35 * (1 - k)));
+      g.addColorStop(1, WS.rgb(tint, 0));
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.ellipse(b.x, b.y, b.r, b.r * 0.62, 0, 0, WS.TAU); ctx.fill();
+      ctx.restore();
+    }
+    // Gone to rot: a small ring at the survivor's side counts it back.
+    if (fam.down > 0) {
+      const T = WS.Familiar.tuning, k = 1 - fam.down / T.ghoulRespawn;
+      ctx.save();
+      ctx.strokeStyle = WS.rgb(tint, 0.25); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(fam.x, fam.y + 8, 10, 5, 0, 0, WS.TAU); ctx.stroke();
+      ctx.strokeStyle = WS.rgb(tint, 0.7);
+      ctx.beginPath(); ctx.ellipse(fam.x, fam.y + 8, 10, 5, 0, -WS.PI / 2, -WS.PI / 2 + WS.TAU * k); ctx.stroke();
+      ctx.restore();
+      return;
+    }
     const size = wolf ? 56 : 62;
     const sets = WS.Sprites.familiarFrames[wolf ? 'wolf' : 'ghoul'];
     const acting = fam.pounce > 0 && fam.pounceMax > 0;
@@ -44652,10 +44781,19 @@ window.WS = window.WS || {};
     ctx.save();
     ctx.translate(fam.x, fam.y);
     if (flip) ctx.scale(-1, 1);
+    // Rising: it claws up out of the ground, the ground hiding its legs.
+    const rising = !wolf && fam.rise > 0;
+    if (rising) {
+      const k = 1 - fam.rise / 0.5;
+      // the ground line is a little below its feet; nothing below it shows
+      ctx.beginPath(); ctx.rect(-size, top - size, size * 2, 14 - (top - size)); ctx.clip();
+      ctx.translate(0, (1 - k) * size * 0.55);
+    }
     if (!wolf) {
       const sil = silhouette(img, tint);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.32 + 0.1 * WS.sin(time * 2.5 + fam.bob);
+      // Charging, the rot in it burns: it is about to go.
+      ctx.globalAlpha = fam.charge ? 0.7 + 0.25 * WS.sin(time * 18) : 0.32 + 0.1 * WS.sin(time * 2.5 + fam.bob);
       for (const [dx, dy] of [[-1.6, 0], [1.6, 0], [0, -1.6], [0, 1.6]]) ctx.drawImage(sil, -size / 2 + dx, top + dy, size, size);
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;

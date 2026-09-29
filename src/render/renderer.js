@@ -1454,6 +1454,32 @@
   R.drawFamiliar = function (ctx, fam, time) {
     const wolf = fam.kind !== 'ghoul';
     const tint = FAM_TINT[fam.kind] || fam.spec.tint;
+    // A ghoul's burst: rot thrown over the ground it reached.
+    if (fam.burstAt) {
+      const b = fam.burstAt, k = 1 - b.t / 0.5;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = WS.rgb(WS.mix(tint, [1, 1, 0.7], 0.3), 0.8 * (1 - k));
+      ctx.lineWidth = 4 * (1 - k) + 1;
+      ctx.beginPath(); ctx.ellipse(b.x, b.y, b.r * (0.5 + k * 0.5), b.r * (0.5 + k * 0.5) * 0.62, 0, 0, WS.TAU); ctx.stroke();
+      const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+      g.addColorStop(0, WS.rgb(tint, 0.35 * (1 - k)));
+      g.addColorStop(1, WS.rgb(tint, 0));
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.ellipse(b.x, b.y, b.r, b.r * 0.62, 0, 0, WS.TAU); ctx.fill();
+      ctx.restore();
+    }
+    // Gone to rot: a small ring at the survivor's side counts it back.
+    if (fam.down > 0) {
+      const T = WS.Familiar.tuning, k = 1 - fam.down / T.ghoulRespawn;
+      ctx.save();
+      ctx.strokeStyle = WS.rgb(tint, 0.25); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(fam.x, fam.y + 8, 10, 5, 0, 0, WS.TAU); ctx.stroke();
+      ctx.strokeStyle = WS.rgb(tint, 0.7);
+      ctx.beginPath(); ctx.ellipse(fam.x, fam.y + 8, 10, 5, 0, -WS.PI / 2, -WS.PI / 2 + WS.TAU * k); ctx.stroke();
+      ctx.restore();
+      return;
+    }
     const size = wolf ? 56 : 62;
     const sets = WS.Sprites.familiarFrames[wolf ? 'wolf' : 'ghoul'];
     const acting = fam.pounce > 0 && fam.pounceMax > 0;
@@ -1527,10 +1553,19 @@
     ctx.save();
     ctx.translate(fam.x, fam.y);
     if (flip) ctx.scale(-1, 1);
+    // Rising: it claws up out of the ground, the ground hiding its legs.
+    const rising = !wolf && fam.rise > 0;
+    if (rising) {
+      const k = 1 - fam.rise / 0.5;
+      // the ground line is a little below its feet; nothing below it shows
+      ctx.beginPath(); ctx.rect(-size, top - size, size * 2, 14 - (top - size)); ctx.clip();
+      ctx.translate(0, (1 - k) * size * 0.55);
+    }
     if (!wolf) {
       const sil = silhouette(img, tint);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.32 + 0.1 * WS.sin(time * 2.5 + fam.bob);
+      // Charging, the rot in it burns: it is about to go.
+      ctx.globalAlpha = fam.charge ? 0.7 + 0.25 * WS.sin(time * 18) : 0.32 + 0.1 * WS.sin(time * 2.5 + fam.bob);
       for (const [dx, dy] of [[-1.6, 0], [1.6, 0], [0, -1.6], [0, 1.6]]) ctx.drawImage(sil, -size / 2 + dx, top + dy, size, size);
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;

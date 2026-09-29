@@ -126,7 +126,7 @@
     grave_call: {
       name: 'Grave Call', art: 'risen', quality: 'rare',
       description: 'Raise a ghoul to guard you. Its claws slow and rot what they rake.', max: 3,
-      detail: 'Each rank raises another ghoul. Slow, and it stays close, turning on whatever is nearest you. Its claws sweep a wide arc, slow what they hit by {Familiar.tuning.ghoulSlow~%}% and leave it rotting: rotting creatures take {Familiar.tuning.ghoulRot*%}% more damage from everything, yours included, for {Familiar.tuning.ghoulRotTime}s. Scales with your damage and level.',
+      detail: 'Each rank raises another ghoul. Slow, and it stays close, turning on whatever is nearest you. Its claws sweep a wide arc, slow what they hit by {Familiar.tuning.ghoulSlow~%}% and leave it rotting: rotting creatures take {Familiar.tuning.ghoulRot*%}% more damage from everything, yours included, for {Familiar.tuning.ghoulRotTime}s. A ghoul with nothing near you to rake for {Familiar.tuning.ghoulRestless}s breaks loose: it runs to the thickest of the crowd and bursts there, rotting everything around it for {Familiar.tuning.ghoulBurstMult}x a rake, and rises again at your side {Familiar.tuning.ghoulRespawn}s later. Scales with your damage and level.',
       apply: () => { WS.Familiar.add('ghoul'); },
     },
     dread_command: {
