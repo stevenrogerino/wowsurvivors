@@ -5,6 +5,70 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
 
 <!-- new entries go directly below -->
 
+## 2026-09-29: Every weapon's share of the meter; Tides as a mode; the Nightly draw
+
+- The meter audit. A tester's evolved Arcweb (Skybreak) did 59% of a night's
+  damage. Across 475 bot nights the median share once evolved was Skybreak
+  61%, Reckoning 41%, Mote Cascade 35%, Arrowfall 30%, and every weapon that
+  strikes around the survivor 2% to 8%. Every earlier instrument measured a
+  weapon alone, where reach does not matter; in a build, whatever reaches
+  out first kills the crowd before the close weapons see it.
+- New gate, `tools/meter-test.js`: 60 seeded random builds of 5, real waves
+  on the Pale Wastes at Professional, landed damage by source; every weapon
+  must sit within x0.65 to x1.35 of a fair share (20%). Before: evolved
+  (`STAGE=s5`) Skybreak x3.10, Reckoning x2.30, Mote Cascade x1.67, down to
+  Rend and Mend x0.30; rank 5 (`STAGE=s3`) Verdant Lance x0.34 up to Axe Gyre
+  x1.23. After: evolved x0.71 to x1.14, rank 5 x0.68 to x1.01.
+- Fitted with a damped multiplicative fit (share toward fair, normalised to
+  the geometric mean): `evolveDamageMult` on the evolved stage (three
+  rounds), `damage` on rank 5 (two rounds). Skybreak's chain is cut
+  structurally, `evolveChains` 30 -> 14 and `evolveChainFalloff` 0.01 -> 0.03,
+  so one cast no longer clears the screen whatever its damage.
+- Bosses held in place: `bossDamage` is divided by each weapon's rank-5
+  change, and the new `evolvedBossDamage` (used by `Enemy.hit` when the
+  survivor's own weapon is evolved; shown as "Vs bosses" on the card) holds
+  evolved damage to a boss where the boss fit put it. Spot checks with
+  `KIND=rank HORDE=0`: Arcweb, Judgement Disc and Axe Gyre within 8%.
+
+  | Weapon | damage | evolveDamageMult | bossDamage | evolvedBossDamage |
+  |---|---|---|---|---|
+  | arcweb | 69.8 -> 97.05 | 1.61 -> 0.589 | 0.85 -> 0.611 | 1.671 |
+  | verdant_lance | 13 -> 27.73 | 6.3 -> 4.757 | 2.9 -> 1.359 | 1.801 |
+  | hallowed_ring | 4.36 -> 3.53 | 4.21 -> 5.888 | 3.78 -> 4.665 | 3.336 |
+  | reaving_arc | 10.4 -> 16.14 | 6.37 -> 10.453 | 6 -> 3.866 | 2.356 |
+  | gale_chakram | 14.8 -> 10.75 | 3.7 -> 3.5 | 1.67 -> 2.299 | 2.43 |
+  | judgement_disc | 53.9 -> 58.09 | 1.75 -> 0.463 | 1.48 -> 1.373 | 5.19 |
+  | dawnpulse | 10.4 -> 17.36 | 4.87 -> 6.398 | 6 -> 3.594 | 2.736 |
+  | iron_palms | 6.94 -> 5.42 | 3.27 -> 5.726 | 1 -> 1.28 | 0.731 |
+  | spirit_herd | 18.6 -> 13.41 | 3.05 -> 4.845 | 2.91 -> 4.037 | 2.542 |
+  | blightfield | 3.63 -> 2.87 | 4 -> 4.908 | 3.84 -> 4.855 | 3.957 |
+  | rimeshard | 23.6 -> 24.14 | 2 -> 2.001 | | |
+  | knifestorm | 18.3 -> 14.17 | 2.63 -> 3.935 | | |
+  | volley | 24.2 -> 21.77 | 3.37 -> 2.109 | | |
+  | cinderfall | 18.9 -> 18.66 | 1.97 -> 1.951 | | |
+  | grave_tether | 32.4 -> 34.86 | 2.14 -> 1.973 | | |
+  | seeking_motes | 8.39 -> 9.28 | 1.3 -> 0.547 | | 2.643 |
+  | axe_gyre | 10.7 -> 6.52 | 2.42 -> 9.391 | 2.31 -> 3.79 | 0.977 |
+  | moonbrand | 16.1 -> 15.23 | 2.72 -> 2.495 | | |
+  | umbral_bolt | 24.4 -> 22.27 | 2 -> 2.135 | | |
+  | thornbloom | 3.96 -> 4.14 | 6.32 -> 6.511 | | |
+
+- The procedure is written down in `docs/BALANCE.md`, and
+  `tools/balance-suite.sh` runs every gate (checks, meter s5 and s3,
+  discoveries, unions; with `FULL=1` bot nights, `tools/bot-share.js` with
+  its 35% cap on any evolved median, and the night curve).
+- Tides is a mode, armed per account beside Hyper (`Save.db.tidesArmed`,
+  `run.tides`), open once any night has been held to dawn; the Nightly and
+  the arena play without it. The Settings switch (`nightRhythm`) is gone.
+  Reliquaries drop only in Tides nights. Results and history mark a Tides
+  night.
+- The Nightly drew from an FNV-1a hash of the date with no finalizer, and
+  neighbouring dates drew alike (Abbot Eisen on 5 of the 7 days to 29
+  September, 7 of 30).
+  The hash now ends with the MurmurHash3 fmix32 finalizer; over a year every
+  survivor comes up 21 to 39 times (about 30 expected), every battlefield 54
+  to 70.
+
 ## 2026-09-28 (evening): The night breathes; passives and discoveries that did nothing
 
 Full nights played by the bot on every battlefield at Professional, every

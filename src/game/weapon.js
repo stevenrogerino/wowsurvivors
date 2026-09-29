@@ -1058,7 +1058,8 @@
         lines.push(['Pierce', (d.pierce || 0) + (w.evolved ? evo(d, 'evolvePierce') : 0)]);
       }
     }
-    if (d.bossDamage && d.bossDamage !== 1) lines.push(['Vs bosses', '×' + d.bossDamage]);
+    const vsBoss = w.evolved && d.evolvedBossDamage ? d.evolvedBossDamage : d.bossDamage;
+    if (vsBoss && vsBoss !== 1) lines.push(['Vs bosses', '×' + WS.round(vsBoss * 100) / 100]);
     return lines;
   };
 

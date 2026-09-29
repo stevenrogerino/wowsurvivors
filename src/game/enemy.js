@@ -524,7 +524,18 @@
        bosses, elites and the finales' machines and their parts. */
     if (e.boss || e.elite || e.finaleTag) {
       const w = source && WS.Weapons[source];
-      if (w && w.bossDamage) amount *= w.bossDamage;
+      if (w) {
+        /* Evolved, a weapon has its own factor (evolvedBossDamage): the
+           meter fit (tools/meter-test.js) moved evolved damage for crowds,
+           and this puts what an evolved weapon does to a boss back where
+           the boss fit had it. */
+        let f = w.bossDamage;
+        if (w.evolvedBossDamage) {
+          const own = WS.Player.getWeapon(player, source);
+          if (own && own.evolved) f = w.evolvedBossDamage;
+        }
+        if (f) amount *= f;
+      }
     }
     // The finale's own, under a rising sun (Finale.sunriseMult).
     if (e.finaleTag) amount *= WS.Finale.sunriseMult();

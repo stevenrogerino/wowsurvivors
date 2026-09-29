@@ -95,10 +95,19 @@
     return t.toISOString().slice(0, 10);
   };
 
+  /* FNV-1a, then MurmurHash3's finaliser. FNV alone gave neighbouring days
+     neighbouring seeds - each exactly one FNV prime apart, since the keys
+     differ only in their last characters - and the draw's first picks came
+     out of them correlated: over sixty days one survivor turned up nine
+     times and two others once. The finaliser spreads every input bit over
+     the whole word. */
   function hash(str) {
     let h = 2166136261 >>> 0;
     for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
-    return h || 1;
+    h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b) >>> 0;
+    h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35) >>> 0;
+    h ^= h >>> 16;
+    return (h >>> 0) || 1;
   }
 
   Runs.nightly = function (key) {

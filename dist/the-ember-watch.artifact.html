@@ -5669,146 +5669,141 @@ window.WS = window.WS || {};
 
   WS.Weapons = {
     seeking_motes: {
-      bossDamage: 1.23,
+      damage: 9.28, evolveDamageMult: 0.547, bossDamage: 1.112, evolvedBossDamage: 2.643,
       name: 'Seeking Motes', school: 'arcane', behavior: 'aimed', art: 'missile',
       rankDamageStep: 0.35,
-      cooldown: 0.934, damage: 8.39, speed: 337, projectiles: 4, pierce: 4, range: 560,
+      cooldown: 0.934, speed: 337, projectiles: 4, pierce: 4, range: 560,
       homing: true, life: 2.2, radius: 6, burst: true,
       description: 'A rapid volley of small seeking motes that curve through the crowd.',
-      evolveDamageMult: 1.3, evolveProjectiles: 6, evolvePierce: 4, evolveSplash: 11,
+      evolveProjectiles: 6, evolvePierce: 4, evolveSplash: 11,
       evolveName: 'Mote Cascade', evolvePairing: 'quantity',
       evolveDescription: 'The motes multiply beyond counting.',
     },
     cinderfall: {
-      bossDamage: 1.72,
+      damage: 18.66, evolveDamageMult: 1.951, bossDamage: 1.742, evolvedBossDamage: 1.759,
       name: 'Cinderfall', school: 'fire', behavior: 'aimed', art: 'ember',
       rankDamageStep: 0.12,
-      cooldown: 1.758, damage: 18.9, speed: 346, projectiles: 1, pierce: 0, range: 600,
+      cooldown: 1.758, speed: 346, projectiles: 1, pierce: 0, range: 600,
       splash: 70, life: 2.4, radius: 10,
       description: 'A slow, heavy cinder that bursts on impact.',
-      evolveDamageMult: 1.97,
       evolveName: 'Fallen Star', evolvePairing: 'area',
       evolveDescription: 'The cinder becomes a falling star.',
     },
     rimeshard: {
-      bossDamage: 1.4,
+      damage: 24.14, evolveDamageMult: 2.001, bossDamage: 1.369, evolvedBossDamage: 1.369,
       name: 'Rimeshard', school: 'frost', behavior: 'aimed', art: 'shard',
       rankDamageStep: 0.21,
-      cooldown: 1.209, damage: 23.6, speed: 364, projectiles: 1, pierce: 6, range: 580,
+      cooldown: 1.209, speed: 364, projectiles: 1, pierce: 6, range: 580,
       slowFactor: 0.55, slowDuration: 2.0, life: 2.2, radius: 9,
       description: 'Bitter cold that slows whatever it strikes.',
-      evolveDamageMult: 2, evolveSplash: 12,
+      evolveSplash: 12,
       evolveName: 'Deepwinter', evolvePairing: 'haste',
       evolveDescription: 'Winter itself takes the field.',
     },
     arcweb: {
-      bossDamage: 0.85,
+      damage: 97.05, evolveDamageMult: 0.589, bossDamage: 0.611, evolvedBossDamage: 1.671, evolveChains: 14, evolveChainFalloff: 0.03,
       name: 'Arcweb', school: 'nature', behavior: 'chain',
       rankDamageStep: 0.35,
       color: [0.55, 0.80, 1.00], art: 'spark',
-      cooldown: 1.649, damage: 69.8, chains: 10, range: 250,
+      cooldown: 1.649, chains: 10, range: 250,
       description: 'Lightning that leaps from foe to foe.',
-      evolveDamageMult: 1.61, evolveChains: 30, evolveChainFalloff: 0.01, evolveCooldownMult: 0.5,
+      evolveCooldownMult: 0.5,
       evolveName: 'Skybreak', evolvePairing: 'precision',
       evolveDescription: 'The sky answers every call.',
     },
     dawnpulse: {
-      bossDamage: 6,
+      damage: 17.36, evolveDamageMult: 6.398, bossDamage: 3.594, evolvedBossDamage: 2.736,
       name: 'Dawnpulse', school: 'holy', behavior: 'nova', art: 'ring',
       rankDamageStep: 0.22,
-      cooldown: 2.638, damage: 10.4, radius: 150, expandTime: 0.35, knockback: 26,
+      cooldown: 2.638, radius: 150, expandTime: 0.35, knockback: 26,
       description: 'A ring of Light erupts outward from the survivor.',
-      evolveDamageMult: 4.87,
       evolveName: 'Circle of Dawn', evolvePairing: 'vitality',
       evolveDescription: 'Each dawn mends the faithful.',
       // Heals per enemy struck, capped per pulse (Weapon.healOf).
       healPer: 3, evolvedHealPer: 2, healCap: 30, healCapRank: 8, evolvedHealCap: 44,
     },
     verdant_lance: {
-      bossDamage: 2.9,
+      damage: 27.73, evolveDamageMult: 4.757, bossDamage: 1.359, evolvedBossDamage: 1.801,
       name: 'Verdant Lance', school: 'nature', behavior: 'beam', art: 'beam',
       rankDamageStep: 0.35,
-      cooldown: 1.429, damage: 13, range: 620, beamWidth: 26,
+      cooldown: 1.429, range: 620, beamWidth: 26,
       metaWidthMult: 1.8, color: [0.55, 1.00, 0.20],
       description: 'A lance of green fire that burns everything standing in its path.',
-      evolveDamageMult: 6.3, evolveAreaMult: 3,
+      evolveAreaMult: 3,
       evolveName: 'Verdant Gaze', evolvePairing: 'dodge',
       evolveDescription: 'The gaze widens until the world is a line of green fire.',
     },
     grave_tether: {
-      bossDamage: 1.35,
+      damage: 34.86, evolveDamageMult: 1.973, bossDamage: 1.255, evolvedBossDamage: 1.361,
       name: 'Grave Tether', school: 'shadow', behavior: 'aimed', art: 'coil',
       rankDamageStep: 0.21,
-      cooldown: 1.594, damage: 32.4, speed: 382, projectiles: 1, pierce: 6,
+      cooldown: 1.594, speed: 382, projectiles: 1, pierce: 6,
       range: 600, life: 2.4, radius: 10, color: [0.55, 0.20, 0.75],
       // Per enemy the coils strike, capped per volley: it used to have no cap.
       healPer: 5, evolvedHealPer: 4, healCap: 20, healCapRank: 6, evolvedHealCap: 18,
       description: 'A coil of dark magic that wounds the living and knits your own flesh back together.',
-      evolveDamageMult: 2.14, evolvePierce: 99,
+      evolvePierce: 99,
       evolveName: 'Tether of Anguish', evolvePairing: 'wisdom',
       evolveDescription: 'The tether takes more, and gives more back.',
     },
     blightfield: {
-      bossDamage: 3.84,
+      damage: 2.87, evolveDamageMult: 4.908, bossDamage: 4.855, evolvedBossDamage: 3.957,
       name: 'Blightfield', school: 'shadow', behavior: 'zone', art: 'zone',
       rankDamageStep: 0.12,
-      cooldown: 4.286, damage: 3.63, radius: 130, duration: 4.5, tickRate: 0.45,
+      cooldown: 4.286, radius: 130, duration: 4.5, tickRate: 0.45,
       color: [0.45, 0.85, 0.35],
       description: 'Corrupts the ground underfoot; anything standing in it rots.',
-      evolveDamageMult: 4,
       evolveName: 'Blighted Earth', evolvePairing: 'chilling_presence',
       evolveDescription: 'The blight spreads wider the longer it feeds.',
       // While you stand in it: per enemy it rots, capped per tick.
       healPer: 1, evolvedHealPer: 1, healCap: 4, healCapRank: 1.2, evolvedHealCap: 3.6,
     },
     reaving_arc: {
-      bossDamage: 6,
+      damage: 16.14, evolveDamageMult: 10.453, bossDamage: 3.866, evolvedBossDamage: 2.356,
       name: 'Reaving Arc', school: 'shadow', behavior: 'nova', art: 'ring',
       rankDamageStep: 0.22,
-      cooldown: 2.418, damage: 10.4, radius: 130, expandTime: 0.28, knockback: 20,
+      cooldown: 2.418, radius: 130, expandTime: 0.28, knockback: 20,
       color: [0.85, 0.15, 0.20],
       healPer: 3, evolvedHealPer: 2, healCap: 28, healCapRank: 7, evolvedHealCap: 43,
       description: 'A sweeping graveblade that carves health out of the wound it makes.',
-      evolveDamageMult: 6.37,
       evolveName: 'Rend and Mend', evolvePairing: 'recovery',
       evolveDescription: 'The blade drinks deeper than any wound can hold.',
     },
     hallowed_ring: {
-      bossDamage: 3.78,
+      damage: 3.53, evolveDamageMult: 5.888, bossDamage: 4.665, evolvedBossDamage: 3.336,
       name: 'Hallowed Ring', school: 'holy', behavior: 'zone', art: 'zone',
       rankDamageStep: 0.13,
-      cooldown: 3.956, damage: 4.36, radius: 120, duration: 4.0, tickRate: 0.5,
+      cooldown: 3.956, radius: 120, duration: 4.0, tickRate: 0.5,
       description: "Hallows the ground beneath the survivor's feet.",
-      evolveDamageMult: 4.21,
       evolveName: 'Hallowed Ground', evolvePairing: 'armor',
       evolveDescription: 'Sacred ground that shelters as it burns.',
       // While you stand in it: per enemy it burns, capped per tick.
       healPer: 2, evolvedHealPer: 1, healCap: 6, healCapRank: 2, evolvedHealCap: 3,
     },
     umbral_bolt: {
-      bossDamage: 1.3,
+      damage: 22.27, evolveDamageMult: 2.135, bossDamage: 1.424, evolvedBossDamage: 1.334,
       name: 'Umbral Bolt', school: 'shadow', behavior: 'aimed', art: 'bolt',
       rankDamageStep: 0.2,
-      cooldown: 1.099, damage: 24.4, speed: 364, projectiles: 1, pierce: 6, range: 580,
+      cooldown: 1.099, speed: 364, projectiles: 1, pierce: 6, range: 580,
       life: 2.4, radius: 9,
       description: 'Bolts of shadow that tear straight through ranks.',
-      evolveDamageMult: 2, evolvePierce: 99,
+      evolvePierce: 99,
       evolveName: 'Ruin Bolt', evolvePairing: 'might',
       evolveDescription: 'Ruin that nothing can stop.',
     },
     knifestorm: {
-      bossDamage: 2.04,
+      damage: 14.17, evolveDamageMult: 3.935, bossDamage: 2.634, evolvedBossDamage: 1.761,
       name: 'Knifestorm', school: 'physical', behavior: 'ring', art: 'dagger',
       rankDamageStep: 0.35,
-      cooldown: 1.429, damage: 18.3, speed: 346, projectiles: 6, pierce: 4,
+      cooldown: 1.429, speed: 346, projectiles: 6, pierce: 4,
       life: 0.9, radius: 8,
       description: 'A whirling ring of thrown steel.',
-      evolveDamageMult: 2.63, evolvePierce: 6, evolveProjectiles: 4,
+      evolvePierce: 6, evolveProjectiles: 4,
       evolveName: 'Steel Flurry', evolvePairing: 'fleetfoot',
       evolveDescription: 'The steel never stops moving.',
     },
     axe_gyre: {
-      bossDamage: 2.31,
+      damage: 6.52, evolveDamageMult: 9.391, bossDamage: 3.79, evolvedBossDamage: 0.977,
       name: 'Axe Gyre', school: 'physical', behavior: 'orbit', art: 'axe',
       rankDamageStep: 0.12,
       color: [0.85, 0.88, 0.96], evolvedColor: [1.00, 0.55, 0.25],
@@ -5825,44 +5820,44 @@ window.WS = window.WS || {};
          keeps things off you, rather than the worst weapon on the list. The
          cooldown stays above the duration on purpose: at 3.4 it measured 174
          but never stops turning, and the weapon loses its rhythm. */
-      cooldown: 4.616, damage: 10.7, projectiles: 3, orbitRadius: 85, orbitSpeed: 4.2,
+      cooldown: 4.616, projectiles: 3, orbitRadius: 85, orbitSpeed: 4.2,
       duration: 3.2, radius: 20,
       description: 'Axes circle the survivor, shredding all who close in.',
-      evolveDamageMult: 2.42, evolveOrbitBlades: 0,
+      evolveOrbitBlades: 0,
       evolveName: 'Gyrestorm', evolvePairing: 'ferocity',
       evolveDescription: 'Become the storm of blades.',
     },
     volley: {
-      bossDamage: 0.84,
+      damage: 21.77, evolveDamageMult: 2.109, bossDamage: 0.934, evolvedBossDamage: 1.492,
       name: 'Volley', school: 'physical', behavior: 'spray', art: 'arrow',
       rankDamageStep: 0.23,
-      cooldown: 1.539, damage: 24.2, speed: 419, projectiles: 3, pierce: 6, range: 620,
+      cooldown: 1.539, speed: 419, projectiles: 3, pierce: 6, range: 620,
       spread: 0.16, life: 1.7, radius: 8,
       description: 'A widening spread of hunting arrows.',
-      evolveDamageMult: 3.37, evolvePierce: 30,
+      evolvePierce: 30,
       evolveName: 'Arrowfall', evolvePairing: 'velocity',
       evolveDescription: 'The sky darkens with arrows.',
     },
     moonbrand: {
-      bossDamage: 1.33,
+      damage: 15.23, evolveDamageMult: 2.495, bossDamage: 1.406, evolvedBossDamage: 1.533,
       name: 'Moonbrand', school: 'arcane', behavior: 'aimed', art: 'moon',
       rankDamageStep: 0.12,
-      cooldown: 1.319, damage: 16.1, speed: 291, projectiles: 1, pierce: 0, range: 560,
+      cooldown: 1.319, speed: 291, projectiles: 1, pierce: 0, range: 560,
       homing: true, life: 2.6, radius: 9,
       description: 'Moonlit flame that tracks its prey.',
-      evolveDamageMult: 2.72, evolveStrikes: 0,
+      evolveStrikes: 0,
       evolveName: 'Moonfall', evolvePairing: 'magnet',
       evolveDescription: 'Moons fall wherever enemies gather.',
       evolvedBehavior: 'storm', strikes: 5, stormRadius: 230, splash: 60,
     },
     judgement_disc: {
-      bossDamage: 1.48,
+      damage: 58.09, evolveDamageMult: 0.463, bossDamage: 1.373, evolvedBossDamage: 5.19,
       name: 'Judgement Disc', school: 'holy', behavior: 'bounce', art: 'shield',
       rankDamageStep: 0.35,
-      cooldown: 2.308, damage: 53.9, speed: 391, projectiles: 1, bounces: 12, range: 600,
+      cooldown: 2.308, speed: 391, projectiles: 1, bounces: 12, range: 600,
       life: 3.0, radius: 11,
       description: 'A hurled shield that ricochets between enemies.',
-      evolveDamageMult: 1.75, evolveBounces: 30,
+      evolveBounces: 30,
       evolveName: 'Reckoning', evolvePairing: 'luck',
       evolveDescription: 'Judgment finds every last one of them.',
     },
@@ -5877,47 +5872,43 @@ window.WS = window.WS || {};
      * and back. Every figure was fitted against the rest of the arsenal in
      * tools/sim.js, alone at rank 1 and rank 8. */
     iron_palms: {
-      bossDamage: 1,
+      damage: 5.42, evolveDamageMult: 5.726, bossDamage: 1.28, evolvedBossDamage: 0.731,
       name: 'Iron Palms', school: 'physical', behavior: 'palm', art: 'palm',
       rankDamageStep: 0.18,
-      cooldown: 0.95, damage: 6.94, projectiles: 3, reach: 118, arc: 1.25, knockback: 14,
+      cooldown: 0.95, projectiles: 3, reach: 118, arc: 1.25, knockback: 14,
       waveReach: 2.8, waveDamage: 0.8, waveSpeed: 520,
       color: [0.58, 0.92, 0.76], evolvedColor: [1.0, 0.84, 0.48],
       description: 'A flurry of open-handed strikes at whatever is closest, each one a short cone that hits everything in it. With nothing in reach, a single palm of air is thrown instead.',
-      evolveDamageMult: 3.27,
       evolveName: 'Temple Breaker', evolvePairing: 'dodge',
       evolveDescription: 'Every palm lands like the temple bell.',
     },
     spirit_herd: {
-      bossDamage: 2.91,
+      damage: 13.41, evolveDamageMult: 4.845, bossDamage: 4.037, evolvedBossDamage: 2.542,
       name: 'Spirit Herd', school: 'nature', behavior: 'herd', art: 'herd',
       rankDamageStep: 0.19,
-      cooldown: 2.6, damage: 18.6, speed: 330, projectiles: 2, pierce: 99, range: 620,
+      cooldown: 2.6, speed: 330, projectiles: 2, pierce: 99, range: 620,
       life: 1.8, radius: 16, knock: 22, color: [0.62, 0.92, 0.55],
       description: 'Spirit beasts of the long pasture stampede from behind you toward the nearest foe, trampling everything in the way.',
-      evolveDamageMult: 3.05,
       evolveName: 'The Great Herd', evolvePairing: 'perennial',
       evolveDescription: 'The herd does not end. It only thins.',
     },
     thornbloom: {
-      bossDamage: 2.95,
+      damage: 4.14, evolveDamageMult: 6.511, bossDamage: 2.82, evolvedBossDamage: 2.738,
       name: 'Thornbloom', school: 'nature', behavior: 'zone', art: 'bloom',
       rankDamageStep: 0.17,
-      cooldown: 3.8, damage: 3.96, radius: 92, duration: 4.0, tickRate: 0.5,
+      cooldown: 3.8, radius: 92, duration: 4.0, tickRate: 0.5,
       atTarget: true, slowFactor: 0.55, color: [0.52, 0.86, 0.38],
       description: 'Brambles burst up under the nearest crowd, tearing at everything caught in them and holding it slow.',
-      evolveDamageMult: 6.32,
       evolveName: 'Everbloom', evolvePairing: 'thorns',
       evolveDescription: 'The brambles flower, and the flowers have thorns too.',
     },
     gale_chakram: {
-      bossDamage: 1.67,
+      damage: 10.75, evolveDamageMult: 3.5, bossDamage: 2.299, evolvedBossDamage: 2.43,
       name: 'Gale Chakram', school: 'physical', behavior: 'chakram', art: 'chakram',
       rankDamageStep: 0.19,
-      cooldown: 1.7, damage: 14.8, speed: 380, projectiles: 1, range: 330, life: 2.6, radius: 12,
+      cooldown: 1.7, speed: 380, projectiles: 1, range: 330, life: 2.6, radius: 12,
       color: [0.78, 0.92, 1.0],
       description: 'A bladed ring thrown out on the wind. It cuts everything on the way out, turns, and cuts everything on the way back.',
-      evolveDamageMult: 3.7,
       evolveName: 'Razorgale', evolvePairing: 'serration',
       evolveDescription: 'The ring splits the wind in two and comes back sharper.',
     },
@@ -26514,7 +26505,18 @@ window.WS = window.WS || {};
        bosses, elites and the finales' machines and their parts. */
     if (e.boss || e.elite || e.finaleTag) {
       const w = source && WS.Weapons[source];
-      if (w && w.bossDamage) amount *= w.bossDamage;
+      if (w) {
+        /* Evolved, a weapon has its own factor (evolvedBossDamage): the
+           meter fit (tools/meter-test.js) moved evolved damage for crowds,
+           and this puts what an evolved weapon does to a boss back where
+           the boss fit had it. */
+        let f = w.bossDamage;
+        if (w.evolvedBossDamage) {
+          const own = WS.Player.getWeapon(player, source);
+          if (own && own.evolved) f = w.evolvedBossDamage;
+        }
+        if (f) amount *= f;
+      }
     }
     // The finale's own, under a rising sun (Finale.sunriseMult).
     if (e.finaleTag) amount *= WS.Finale.sunriseMult();
@@ -27777,7 +27779,8 @@ window.WS = window.WS || {};
         lines.push(['Pierce', (d.pierce || 0) + (w.evolved ? evo(d, 'evolvePierce') : 0)]);
       }
     }
-    if (d.bossDamage && d.bossDamage !== 1) lines.push(['Vs bosses', '×' + d.bossDamage]);
+    const vsBoss = w.evolved && d.evolvedBossDamage ? d.evolvedBossDamage : d.bossDamage;
+    if (vsBoss && vsBoss !== 1) lines.push(['Vs bosses', '×' + WS.round(vsBoss * 100) / 100]);
     return lines;
   };
 
@@ -34149,10 +34152,19 @@ window.WS = window.WS || {};
     return t.toISOString().slice(0, 10);
   };
 
+  /* FNV-1a, then MurmurHash3's finaliser. FNV alone gave neighbouring days
+     neighbouring seeds - each exactly one FNV prime apart, since the keys
+     differ only in their last characters - and the draw's first picks came
+     out of them correlated: over sixty days one survivor turned up nine
+     times and two others once. The finaliser spreads every input bit over
+     the whole word. */
   function hash(str) {
     let h = 2166136261 >>> 0;
     for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
-    return h || 1;
+    h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b) >>> 0;
+    h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35) >>> 0;
+    h ^= h >>> 16;
+    return (h >>> 0) || 1;
   }
 
   Runs.nightly = function (key) {

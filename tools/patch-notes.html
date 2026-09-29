@@ -233,6 +233,7 @@ footer { border-top: 1px solid var(--rule); padding-top: 18px; display: flex; fl
 .tbl th { font: 600 10.5px/1.3 var(--ui); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-dim); background: var(--panel); }
 .tbl td.n, .tbl th.n { text-align: right; font-family: var(--fig); font-variant-numeric: tabular-nums; }
 .tbl td .was { color: var(--ink-faint); }
+.tbl td b.up { color: var(--buff); } .tbl td b.down { color: var(--nerf); }
 .tbl td .nmc { display: flex; align-items: center; gap: 10px; }
 .tbl td .nmc img { width: 30px; height: 30px; }
 .tbl td .sub { display: block; font-size: 12px; color: var(--ink-dim); }
@@ -272,7 +273,7 @@ footer { border-top: 1px solid var(--rule); padding-top: 18px; display: flex; fl
     <div>
       <div class="patchtag"><span class="eyebrow">The Ember Watch · Balance patch</span></div>
       <h1>The night <em>breathes.</em></h1>
-      <p class="lede">We played several hundred whole nights on every battlefield and recorded every ten seconds of them. The night had one wall, at your first evolution, and then either a long easy walk to dawn or a death. Now each boss is a beat: the horde gathers before it, falters after it falls, then comes back deeper. And every boss leaves a <b>reliquary</b>.</p>
+      <p class="lede">We played several hundred whole nights on every battlefield and recorded every ten seconds of them, and counted every point of damage each weapon landed beside four others. Two things came out. The night had one wall, at your first evolution, and then either a long easy walk to dawn or a death: arm the new <b>Tides</b> mode and each boss becomes a beat, with a <b>reliquary</b> where it falls. And a few weapons were quietly taking the whole meter: <b>every weapon now does its share</b>.</p>
     </div>
     <div class="hero-art">
       <img src="img/boss_redcowl.webp" alt="A boss of the night">
@@ -282,18 +283,18 @@ footer { border-top: 1px solid var(--rule); padding-top: 18px; display: flex; fl
 </header>
 
 <section class="tally" aria-label="Headline results">
-  <div><span class="from">1.0</span><span class="to">1.5</span><span class="what">times a night the horde catches back up after a stretch where you were ahead, across all six battlefields</span></div>
-  <div><span class="from">0</span><span class="to">5</span><span class="what">reliquaries a night, each a step down the road your build is on</span></div>
+  <div><span class="from">62%</span><span class="to">18<small>%</small></span><span class="what">of the damage meter taken by Skybreak in a build of five evolved weapons</span></div>
+  <div><span class="from">6%</span><span class="to">14<small>%</small></span><span class="what">the smallest share any evolved weapon takes (fair is 20%)</span></div>
+  <div><span class="from">1.0</span><span class="to">1.5</span><span class="what">times a night the horde catches back up after a stretch where you were ahead, with Tides armed</span></div>
   <div><span class="from">−12%</span><span class="to">+8<small>%</small></span><span class="what">Velocity's worst case at its cap: it now makes everything that flies hit harder</span></div>
-  <div><span class="from">+2%</span><span class="to">15<small>%</small></span><span class="what">Shadowflame once Umbral Bolt evolves</span></div>
 </section>
 
 <!-- ============================================================ rhythm -->
 <section class="sec">
   <div class="sec-head">
-    <span class="eyebrow">New: the rhythm of the night</span>
+    <span class="eyebrow">New mode: Tides</span>
     <h2>Every boss is a beat.</h2>
-    <p>Every battlefield stopped raising its pace at about 18:00, and its last swarm came by 20:00. After that only creature health grew, while an evolved build multiplied, so a lucky night was safe from minute eleven and an unlucky one had no second chance. Now the horde moves with the bosses.</p>
+    <p>Every battlefield stopped raising its pace at about 18:00, and its last swarm came by 20:00. After that only creature health grew, while an evolved build multiplied, so a lucky night was safe from minute eleven and an unlucky one had no second chance. Arm <b>Tides</b> on the button beside Hyper, before you begin, and the horde moves with the bosses. It opens once you have held any night to dawn, and leaves the ordinary night exactly as it was. The Nightly and the Eclipse Arena play without it.</p>
   </div>
   <div class="grid2">
     <div class="notice"><span class="stamp new">New</span><h3>The horde gathers</h3><p>In the forty seconds before a boss arrives, creatures come faster and faster, up to one and a half times the pace.</p></div>
@@ -308,9 +309,9 @@ footer { border-top: 1px solid var(--rule); padding-top: 18px; display: flex; fl
 <!-- ============================================================ reliquary -->
 <section class="sec">
   <div class="sec-head">
-    <span class="eyebrow">New: reliquaries</span>
+    <span class="eyebrow">Tides: reliquaries</span>
     <h2>Bosses pay out in power, not only gold.</h2>
-    <p>Across the nights we played, not one survivor who failed to evolve a weapon saw dawn, and most of them fell between ten and fifteen minutes. A boss used to leave gold and a handful of gems. Now it also leaves a violet reliquary where it fell.</p>
+    <p>Across the nights we played, not one survivor who failed to evolve a weapon saw dawn, and most of them fell between ten and fifteen minutes. A boss used to leave gold and a handful of gems. With Tides armed, it also leaves a violet reliquary where it fell.</p>
   </div>
   <div class="notice">
     <div class="feature">
@@ -362,15 +363,44 @@ footer { border-top: 1px solid var(--rule); padding-top: 18px; display: flex; fl
 <!-- ============================================================ weapons -->
 <section class="sec">
   <div class="sec-head">
-    <span class="eyebrow">Evolved weapons, on the real horde</span>
-    <h2>Measured on the waves, not only the dummies.</h2>
-    <p>The last patch brought every evolved weapon into one band against rows of training dummies that never die. Against the real waves of the minute, counting only damage that lands, they sit within about twice each other, but the order changed. Three move.</p>
+    <span class="eyebrow">Every weapon, on the damage meter</span>
+    <h2>Twenty weapons, twenty fair shares.</h2>
+    <p>A tester's Skybreak did 59% of a night's damage. Every test we had measured a weapon alone, and alone every weapon sat in one band. In a build it is different: whatever reaches out first (chains, bouncing discs, seeking bolts) kills the crowd before it arrives, and the weapons that strike close to you starve. Across 475 whole nights, evolved Skybreak took a median 61% of the meter and every weapon that strikes around you took 2% to 8%.</p>
+    <p>So we measured it the way the meter sees it: sixty random builds of five, on the real horde, counting only damage that lands. Then we set every weapon's damage so that it takes a fair share of whatever build it is in, once at rank 5 and once evolved. <b>Damage to bosses is where it was</b>: bosses have their own numbers, rank and evolved, and those were held in place.</p>
   </div>
   <div class="grid3">
-    <div class="notice"><div class="pair"><img src="img/icon_knifestorm.png" alt=""><div><span class="stamp buff">Buff</span><h3>Knifestorm, evolved</h3></div></div><p>Near the top on dummies, last on the waves.</p><div class="chg"><span>evolved damage <b>×2.39 → ×2.63</b></span></div></div>
-    <div class="notice"><div class="pair"><img src="img/icon_reaving_arc.png" alt=""><div><span class="stamp buff">Buff</span><h3>Reaving Arc, evolved</h3></div></div><p>Second from the bottom on the waves.</p><div class="chg"><span>evolved damage <b>×5.79 → ×6.37</b></span></div></div>
-    <div class="notice"><div class="pair"><img src="img/icon_gale_chakram.png" alt=""><div><span class="stamp nerf">Nerf</span><h3>Gale Chakram, evolved</h3></div></div><p>Top on the waves.</p><div class="chg"><span>evolved damage <b>×4 → ×3.7</b></span></div></div>
+    <div class="notice"><div class="pair"><img src="img/icon_arcweb.png" alt=""><div><span class="stamp nerf">Nerf</span><h3>Skybreak</h3></div></div><p>Thirty jumps with almost no falloff meant one cast cleared the screen. It now jumps fourteen times and loses more with each, and the first bolt hits harder. Arcweb before it evolves is stronger.</p><div class="chg"><span>jumps <b>30 → 14</b></span><span>falloff a jump <b>1% → 3%</b></span><span>share <b>62% → 18%</b></span></div></div>
+    <div class="notice"><div class="pair"><img src="img/icon_judgement_disc.png" alt=""><div><span class="stamp nerf">Nerf</span><h3>Reckoning</h3></div></div><p>Discs that bounce through a crowd reach everything first. Its evolved damage comes down; its damage to bosses stays.</p><div class="chg"><span>share <b>46% → 23%</b></span><span>vs bosses <b>unchanged</b></span></div></div>
+    <div class="notice"><div class="pair"><img src="img/icon_reaving_arc.png" alt=""><div><span class="stamp buff">Buff</span><h3>Rend and Mend, Circle of Dawn, Gyrestorm</h3></div></div><p>The weapons that strike around you were last on every meter. Each now hits much harder in company, and no harder on a boss.</p><div class="chg"><span>Rend and Mend <b>6% → 15%</b></span><span>Circle of Dawn <b>7% → 15%</b></span><span>Gyrestorm <b>8% → 14%</b></span></div></div>
   </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Weapon</th><th class="n">Evolved, at 20:00</th><th class="n">Rank 5, at 9:00</th></tr></thead>
+      <tbody>
+        <tr><td><span class="nmc"><img src="img/icon_arcweb.png" alt=""><span>Skybreak<span class="sub">Arcweb</span></span></span></td><td class="n"><span class="was">62%</span> → <b class="down">18%</b></td><td class="n"><span class="was">11%</span> → <b class="up">14%</b></td></tr>
+        <tr><td><span class="nmc"><img src="img/icon_judgement_disc.png" alt=""><span>Reckoning<span class="sub">Judgement Disc</span></span></span></td><td class="n"><span class="was">46%</span> → <b class="down">23%</b></td><td class="n"><span class="was">15%</span> → <b class="">16%</b></td></tr>
+        <tr><td><span class="nmc"><img src="img/icon_seeking_motes.png" alt=""><span>Mote Cascade<span class="sub">Seeking Motes</span></span></span></td><td class="n"><span class="was">33%</span> → <b class="down">20%</b></td><td class="n"><span class="was">14%</span> → <b class="up">17%</b></td></tr>
+        <tr><td><span class="nmc"><img src="img/icon_volley.png" alt=""><span>Arrowfall<span class="sub">Volley</span></span></span></td><td class="n"><span class="was">24%</span> → <b class="down">20%</b></td><td class="n"><span class="was">17%</span> → <b class="">16%</b></td></tr>
+        <tr><td><span class="nmc"><img src="img/icon_gale_chakram.png" alt=""><span>Razorgale<span class="sub">Gale Chakram</span></span></span></td><td class="n"><span class="was">21%</span> → <b class="down">19%</b></td><td class="n"><span class="was">23%</span> → <b class="down">18%</b></td></tr>
+        <tr><td><span class="nmc"><img src="img/icon_moonbrand.png" alt=""><span>Moonfall<span class="sub">Moonbrand</span></span></span></td><td class="n"><span class="was">18%</span> → <b class="">18%</b></td><td class="n"><span class="was">17%</span> → <b class="">18%</b></td></tr>
+        <tr><td><span class="nmc"><img src="img/icon_blightfield.png" alt=""><span>Blighted Earth<span class="sub">Blightfield</span></span></span></td><td class="n"><span class="was">17%</span> → <b class="">18%</b></td><td class="n"><span class="was">20%</span> → <b class="">20%</b></td></tr>
+        <tr><td><span class="nmc"><img src="img/icon_cinderfall.png" alt=""><span>Fallen Star<span class="sub">Cinderfall</span></span></span></td><td class="n"><span class="was">16%</span> → <b class="">17%</b></td><td class="n"><span class="was">15%</span> → <b class="up">18%</b></td></tr>
+        <tr><td><span class="nmc"><img src="img/icon_umbral_bolt.png" alt=""><span>Ruin Bolt<span class="sub">Umbral Bolt</span></span></span></td><td class="n"><span class="was">16%</span> → <b class="up">19%</b></td><td class="n"><span class="was">17%</span> → <b class="">17%</b></td></tr>
+        <tr><td><span class="nmc"><img src="img/icon_rimeshard.png" alt=""><span>Deepwinter<span class="sub">Rimeshard</span></span></span></td><td class="n"><span class="was">15%</span> → <b class="up">18%</b></td><td class="n"><span class="was">15%</span> → <b class="">16%</b></td></tr>
+        <tr><td><span class="nmc"><img src="img/icon_grave_tether.png" alt=""><span>Tether of Anguish<span class="sub">Grave Tether</span></span></span></td><td class="n"><span class="was">15%</span> → <b class="up">18%</b></td><td class="n"><span class="was">15%</span> → <b class="up">17%</b></td></tr>
+        <tr><td><span class="nmc"><img src="img/icon_knifestorm.png" alt=""><span>Steel Flurry<span class="sub">Knifestorm</span></span></span></td><td class="n"><span class="was">14%</span> → <b class="up">17%</b></td><td class="n"><span class="was">22%</span> → <b class="down">20%</b></td></tr>
+        <tr><td><span class="nmc"><img src="img/icon_hallowed_ring.png" alt=""><span>Hallowed Ground<span class="sub">Hallowed Ring</span></span></span></td><td class="n"><span class="was">13%</span> → <b class="up">18%</b></td><td class="n"><span class="was">18%</span> → <b class="up">20%</b></td></tr>
+        <tr><td><span class="nmc"><img src="img/icon_spirit_herd.png" alt=""><span>The Great Herd<span class="sub">Spirit Herd</span></span></span></td><td class="n"><span class="was">13%</span> → <b class="up">19%</b></td><td class="n"><span class="was">22%</span> → <b class="down">19%</b></td></tr>
+        <tr><td><span class="nmc"><img src="img/icon_thornbloom.png" alt=""><span>Everbloom<span class="sub">Thornbloom</span></span></span></td><td class="n"><span class="was">13%</span> → <b class="up">18%</b></td><td class="n"><span class="was">13%</span> → <b class="up">17%</b></td></tr>
+        <tr><td><span class="nmc"><img src="img/icon_verdant_lance.png" alt=""><span>Verdant Gaze<span class="sub">Verdant Lance</span></span></span></td><td class="n"><span class="was">10%</span> → <b class="up">17%</b></td><td class="n"><span class="was">7%</span> → <b class="up">14%</b></td></tr>
+        <tr><td><span class="nmc"><img src="img/icon_iron_palms.png" alt=""><span>Temple Breaker<span class="sub">Iron Palms</span></span></span></td><td class="n"><span class="was">10%</span> → <b class="up">18%</b></td><td class="n"><span class="was">21%</span> → <b class="down">18%</b></td></tr>
+        <tr><td><span class="nmc"><img src="img/icon_axe_gyre.png" alt=""><span>Gyrestorm<span class="sub">Axe Gyre</span></span></span></td><td class="n"><span class="was">8%</span> → <b class="up">14%</b></td><td class="n"><span class="was">25%</span> → <b class="down">19%</b></td></tr>
+        <tr><td><span class="nmc"><img src="img/icon_dawnpulse.png" alt=""><span>Circle of Dawn<span class="sub">Dawnpulse</span></span></span></td><td class="n"><span class="was">7%</span> → <b class="up">15%</b></td><td class="n"><span class="was">10%</span> → <b class="up">15%</b></td></tr>
+        <tr><td><span class="nmc"><img src="img/icon_reaving_arc.png" alt=""><span>Rend and Mend<span class="sub">Reaving Arc</span></span></span></td><td class="n"><span class="was">6%</span> → <b class="up">15%</b></td><td class="n"><span class="was">11%</span> → <b class="up">16%</b></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="fine">Mean share of the damage meter in sixty random builds of five weapons, every damage passive at its stage, on the Pale Wastes at Professional. A fair share is 20%. Every weapon now sits between 14% and 23%.</p>
 </section>
 
 <!-- ============================================================ survivors -->
@@ -391,14 +421,14 @@ footer { border-top: 1px solid var(--rule); padding-top: 18px; display: flex; fl
   <div class="grid3">
     <div class="notice"><span class="stamp fix">Fix</span><h3>Standing stones wait for you</h3><p>On Highmoor, a shrine no longer sinks while you are inside charging it. It goes once you step out after its time is up. Its ring now shows the time it has left, the way Beans does.</p></div>
     <div class="notice"><span class="stamp new">New</span><h3>Beans says what you bought</h3><p>Buying eggs puts a word over her head: how many, and the damage and health they gave.</p></div>
-    <div class="notice"><span class="stamp new">New</span><h3>A switch for the rhythm</h3><p>Settings, The night's rhythm: off plays the night without the gathering, the lull, the deepening or reliquaries, to compare the two.</p></div>
+    <div class="notice"><span class="stamp fix">Fix</span><h3>The Nightly is random again</h3><p>The Nightly drew its survivor, battlefield and oath from the date, and dates next to each other drew almost the same thing, so Abbot Eisen came up night after night. The draw is now well mixed: over a year every survivor comes up about as often as any other. Today's Nightly changes.</p></div>
     <div class="notice"><span class="stamp fix">Fix</span><h3>What Velocity shows</h3><p>The damage on your weapon cards and the pause sheet now includes Velocity's harder hits.</p></div>
   </div>
 </section>
 
 <footer>
   <span class="eyebrow">How we tested</span>
-  <p class="fine">Every weapon at 1:00, 5:00, 9:00, 14:00 and 20:00 with a stage's worth of passives; every weapon with each damage passive at nothing and at its cap; every discovery on and off at each stage; and every weapon against the real waves at 9:00 and 20:00. Then full nights played by the bot on every battlefield at Professional, every survivor, the same seeds with the new rhythm off and on, recorded every ten seconds: how much health went, how low it got, and how many creatures stood within reach. The previous patch notes are <a href="patch-notes-2026-09-28.html" style="color:var(--arc)">here</a>.</p>
+  <p class="fine">Every weapon at 1:00, 5:00, 9:00, 14:00 and 20:00 with a stage's worth of passives; every weapon with each damage passive at nothing and at its cap; every discovery on and off at each stage; every weapon against the real waves at 9:00 and 20:00; and sixty random builds of five at 9:00 and 20:00, for each weapon's share of the meter. Then full nights played by the bot on every battlefield at Professional, every survivor, the same seeds with Tides off and on, recorded every ten seconds: how much health went, how low it got, and how many creatures stood within reach. The previous patch notes are <a href="patch-notes-2026-09-28.html" style="color:var(--arc)">here</a>.</p>
 </footer>
 
 </div>
