@@ -208,7 +208,7 @@ function inPage(S, job, sources) {
         const pl = WS.Game.player;
         const life = WS.Game.run.time - e.__born;
         if (e.boss) T.ev.push([now(), 'slain', e.id, Math.round(life)]);
-        else { T.w.kd.push(Math.hypot(e.x - pl.x, e.y - pl.y)); T.w.life.push(life); }
+        else { T.w.kd.push(Math.hypot(e.x - pl.x, e.y - pl.y)); T.w.life.push(life); if (e.rangedTimer !== null && e.rangedTimer !== undefined) T.w.clife.push(life); }
       }
       return kl.apply(this, arguments);
     };
@@ -239,7 +239,9 @@ function inPage(S, job, sources) {
       return cb.apply(this, arguments);
     };
   }
-  const freshWindow = () => ({ spawns: 0, spawnHP: 0, elites: 0, kd: [], life: [], near: 0, screen: 0, samples: 0, hpMin: 1 });
+  // casters: creatures that stop and shoot, alive and within 320px of you;
+  // clife: how long the casters killed this window had lived.
+  const freshWindow = () => ({ spawns: 0, spawnHP: 0, elites: 0, kd: [], life: [], clife: [], near: 0, screen: 0, casters: 0, samples: 0, hpMin: 1 });
   const TR = S.TRACE > 0 ? { w: freshWindow(), ev: [], rows: [], sub: 0 } : null;
   window.__tr = TR;
 
@@ -316,14 +318,15 @@ function inPage(S, job, sources) {
       if (TR.sub >= 0.5) {
         TR.sub = 0;
         const pool = WS.Enemy.pool;
-        let near = 0, screen = 0;
+        let near = 0, screen = 0, casters = 0;
         for (let k = 0; k < pool.count; k++) {
           const e = pool.active[k];
           const d = Math.hypot(e.x - p.x, e.y - p.y);
           if (d < 250) near++;
           if (d < 600) screen++;
+          if (d < 320 && e.rangedTimer !== null && e.rangedTimer !== undefined) casters++;
         }
-        TR.w.near += near; TR.w.screen += screen; TR.w.samples++;
+        TR.w.near += near; TR.w.screen += screen; TR.w.casters += casters; TR.w.samples++;
       }
       if (TR.next === undefined) TR.next = Math.floor(G.run.time / S.TRACE) * S.TRACE + S.TRACE;
       if (G.run.time >= TR.next) {
@@ -337,7 +340,8 @@ function inPage(S, job, sources) {
           Math.round((cur.lost - prev.lost) / mh * 100), Math.round((cur.healed - prev.healed) / mh * 100),
           +(w.near / Math.max(1, w.samples)).toFixed(1), +(w.screen / Math.max(1, w.samples)).toFixed(1), WS.Enemy.pool.count,
           w.spawns, Math.round(w.spawnHP), cur.kills - prev.kills, Math.round(cur.dealt - prev.dealt),
-          Math.round(med(w.kd)), +med(w.life).toFixed(1), p.level, boss, w.elites]);
+          Math.round(med(w.kd)), +med(w.life).toFixed(1), p.level, boss, w.elites,
+          +(w.casters / Math.max(1, w.samples)).toFixed(2), +med(w.clife).toFixed(1)]);
         TR.prev = cur; TR.w = freshWindow(); TR.next += S.TRACE;
       }
     }
@@ -372,7 +376,7 @@ function inPage(S, job, sources) {
     weapons: p.weapons.map((w) => w.id + ':' + w.level + (w.evolved ? 'E' : '')),
     steps: (WS.WaveManager.stepK || []).map((v) => Math.round(v * 100) / 100),
     blessings: Object.keys(p.blessingsTaken || {}),
-    curve, trace: TR ? { cols: 't hp hpMin lost healed near screen alive spawns spawnHP kills dealt killDist life level boss elites'.split(' '), rows: TR.rows, ev: TR.ev } : null,
+    curve, trace: TR ? { cols: 't hp hpMin lost healed near screen alive spawns spawnHP kills dealt killDist life level boss elites casters casterLife'.split(' '), rows: TR.rows, ev: TR.ev } : null,
     pilotMs: Math.round(wall), plans: pilot.stats.plans || 1, bolts: L.bolts,
   };
 }
