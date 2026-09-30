@@ -113,7 +113,7 @@ def run(args, log):
     out_dir = Path(args.out) / name
     (out_dir / 'inputs').mkdir(parents=True, exist_ok=True)
     log.open(out_dir / 'make3d.log')
-    total = 6
+    total = 7
     multiview = any([args.left, args.back, args.right])
     model_name = args.model
     if multiview and model_name == 'hunyuan':
@@ -164,6 +164,18 @@ def run(args, log):
     else:
         turn = int(args.turn)
         log(f'  turn {turn} degrees (from --turn)')
+    photo_texels = 0
+    log.step(6, total, 'Painting your picture(s) onto the model for full detail')
+    if not textured:
+        log('  skipped (no texture to paint onto)')
+    elif args.no_photo:
+        log('  skipped (--no-photo)')
+    else:
+        import project
+        t_proj = time.time()
+        photo_texels = project.project(mesh, images, turn, log=log)
+        log(f'  {photo_texels:,} texels from your picture(s) ({time.time() - t_proj:.0f}s)' if photo_texels else '  nothing painted; the AI texture is kept')
+
     raw = out_dir / f'{name}_raw.glb'
     mesh.export(raw)
     provenance = {
@@ -172,13 +184,13 @@ def run(args, log):
             'modelRepo': getattr(backend, 'repo', ''),
             'license': backend.license,
             'inputs': {v: Path(p).name for v, p in (('front', args.image), ('left', args.left), ('back', args.back), ('right', args.right)) if p},
-            'quality': args.quality, 'seed': args.seed, 'faces': args.faces, 'textured': textured, 'turn': turn,
+            'quality': args.quality, 'seed': args.seed, 'faces': args.faces, 'textured': textured, 'photoTexels': photo_texels, 'turn': turn,
             'created': datetime.datetime.now().isoformat(timespec='seconds'),
         }
     }
     set_glb_extras(raw, provenance)
 
-    log.step(6, total, 'Game-ready: size, ground, facing' + (', skeleton and animations' if args.rig == 'humanoid' else ''))
+    log.step(7, total, 'Game-ready: size, ground, facing' + (', skeleton and animations' if args.rig == 'humanoid' else ''))
     node = find_node()
     if not node:
         raise SystemExit('Node.js not found; run setup.bat again (it installs a private copy).')
@@ -275,6 +287,7 @@ def main(argv=None):
     ap.add_argument('--quality', default='standard', choices=list(QUALITY), help='draft is fastest, high is most detailed')
     ap.add_argument('--faces', type=int, default=40000, help='triangle limit (default 40000)')
     ap.add_argument('--no-texture', action='store_true', help='shape only, no painted texture (faster)')
+    ap.add_argument('--no-photo', action='store_true', help="keep the AI's texture as painted; don't lay your picture(s) over it")
     ap.add_argument('--rig', default='humanoid', choices=['humanoid', 'none'], help="skeleton type; 'none' for props")
     ap.add_argument('--height', type=float, help='height in metres (default 1.8 for characters, unchanged for props)')
     ap.add_argument('--turn', default='auto', choices=['auto', '0', '90', '180', '270'], help='degrees to face it forward (default: detect)')

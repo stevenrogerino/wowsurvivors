@@ -100,9 +100,19 @@ class FakeAI:
         self.calls.append(('cleanup', max_faces))
         return mesh
 
+    paint = False
+
     def texture(self, mesh, images):
         self.calls.append('texture')
-        raise backends.TextureUnavailable('kernel not built (test)')
+        if not self.paint:
+            raise backends.TextureUnavailable('kernel not built (test)')
+        # Like the AI painter: a UV atlas and a flat, featureless texture.
+        import xatlas
+        vmap, idx, uvs = xatlas.parametrize(mesh.vertices, mesh.faces)
+        m = trimesh.Trimesh(mesh.vertices[vmap], idx, process=False)
+        m.visual = trimesh.visual.TextureVisuals(uv=uvs, material=trimesh.visual.material.PBRMaterial(
+            baseColorTexture=Image.new('RGB', (1024, 1024), (128, 128, 128))))
+        return m
 
 
 def read_glb_json(path):
@@ -160,6 +170,30 @@ def main():
         rc = make3d.main([str(pic), '--back', str(pic), '--out', str(tmp / 'out'), '--name', 'mv', '--turn', '0'])
         expect(('model', 'hunyuan-mv') in fake.calls, 'front + back uses Hunyuan3D-2mv')
         expect(any(c[0] == 'shape' and c[1] == ['back', 'front'] for c in fake.calls if isinstance(c, tuple)), 'both views reach the model')
+
+        print('textured model gets the picture painted on, all the way to the game file:')
+        fake.calls.clear()
+        fake.paint = True
+        make3d.backends.create = lambda name, log=print, low_vram=False: fake
+        rc = make3d.main([str(pic), '--out', str(tmp / 'out'), '--name', 'painted'])
+        meta = json.loads((tmp / 'out' / 'painted' / 'painted.json').read_text())['make3d']
+        expect(rc == 0 and meta['textured'] and meta['photoTexels'] > 100000, f"picture painted onto {meta.get('photoTexels', 0):,} texels")
+        final = tmp / 'out' / 'painted' / 'painted.glb'
+        b = final.read_bytes()
+        j = read_glb_json(final)
+        bv = j['bufferViews'][j['images'][0]['bufferView']]
+        start = 28 + struct.unpack_from('<I', b, 12)[0]
+        import io
+        img = Image.open(io.BytesIO(b[start + bv.get('byteOffset', 0): start + bv.get('byteOffset', 0) + bv['byteLength']]))
+        expect(img.size[0] >= 4096, f'final model carries the enlarged texture ({img.size[0]}px)')
+        a = np.asarray(img.convert('RGB'), dtype=np.float32)
+        painted = (np.abs(a - 128).max(axis=-1) > 12).mean()
+        expect(painted > 0.02, f'{painted:.1%} of the texture now carries the picture, not flat grey')
+        expect(len(j.get('skins', [])) == 1, 'and it is still rigged')
+        rc = make3d.main([str(pic), '--out', str(tmp / 'out'), '--name', 'nophoto', '--no-photo'])
+        meta = json.loads((tmp / 'out' / 'nophoto' / 'nophoto.json').read_text())['make3d']
+        expect(rc == 0 and meta['photoTexels'] == 0, '--no-photo keeps the AI texture')
+        fake.paint = False
 
         print('provenance helper keeps the file valid:')
         g = tmp / 'p.glb'

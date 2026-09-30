@@ -88,6 +88,7 @@ The picture matters more than any setting.
 | `--rig humanoid\|none` | Add a skeleton for characters; use `none` for props |
 | `--height 1.8` | Size in metres |
 | `--no-texture` | Shape only, faster |
+| `--no-photo` | Keep the AI's painted texture as it is, without laying your picture over it |
 | `--turn 180` | Turn it by hand if it faces the wrong way (normally detected) |
 | `--seed 7` | Try a different seed if you don't like a result; the same seed always gives the same model |
 | `--model hunyuan-mini` | A faster, lighter model (download it first: `setup.bat -Models hunyuan-mini`) |
@@ -117,12 +118,21 @@ next, uses the MIT licence, which has no such limits.
 3. **Clean-up:** removes stray floating bits and cuts the triangle count to
    `--faces`.
 4. **Texture:** Hunyuan3D-Paint paints it to match your picture.
-5. **Facing:** compares the model from four sides with your picture to work
+5. **Your picture, painted on:** the AI painter works from a few
+   low-resolution views, so on a full body the face comes out soft. Wherever
+   the model faces the camera, make3d copies your picture's own pixels onto it
+   and fades back to the AI's paint as the surface turns away. The texture is
+   enlarged to 4096 × 4096 to hold the detail. Back, left and right pictures
+   are used the same way. See `project.py`.
+6. **Facing:** compares the model from four sides with your picture to work
    out which way is forward. It uses the outline, then the colours, then the
    feet. See `orient.py`.
-6. **Game-ready:** scales it to size, stands it on the ground facing +Z, fits
+7. **Game-ready:** scales it to size, stands it on the ground facing +Z, fits
    a skeleton with standard bone names, weights it and adds animations. This
    step runs `tools/modelgen/rig-cli.js`, the same code as the Rigger page.
 
 `python tools/make3d/test_make3d.py` runs the whole pipeline with a stand-in
 for the AI, so it works on any computer, with no GPU needed.
+`python tools/make3d/test_project.py` checks the picture painting. It blurs a
+detailed model's texture, then requires projection from a sharp picture to
+bring the front back.
