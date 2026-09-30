@@ -1,0 +1,27 @@
+# make3d's Python libraries. PyTorch is installed first, separately, from the
+# CUDA 12.8 index (setup.ps1), because RTX 50-series cards need CUDA 12.8+.
+# Upper bounds keep us on versions that match the pinned Hunyuan3D-2 commit
+# (October 2025); raise them deliberately, not by accident.
+diffusers>=0.32,<0.36
+transformers>=4.48,<4.57
+accelerate>=1.2,<1.11
+huggingface_hub>=0.27,<1.0
+safetensors
+einops
+omegaconf
+pyyaml
+tqdm
+numpy>=1.26,<2.3
+opencv-python>=4.9,<4.13
+pillow
+trimesh>=4.4,<4.9
+pymeshlab>=2023.12.post2,<2025.8
+pygltflib
+xatlas
+rembg>=2.0.57,<2.0.68
+onnxruntime>=1.17,<1.24
+# Build tools for the texture kernel (compiled against the installed torch).
+setuptools
+wheel
+ninja
+pybind11<3.1

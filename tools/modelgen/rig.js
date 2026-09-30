@@ -719,11 +719,12 @@
 
   /* ---------------------------------------------------------------- glTF out */
 
+  // With skel and skin null, writes the (readied) model with no skeleton.
   function exportRigged(model, skel, skin, opts) {
     opts = opts || {};
-    const clips = opts.clips || Object.keys(CLIPS);
+    const clips = skel ? opts.clips || Object.keys(CLIPS) : [];
     const src = model.doc.json;
-    const B = skel.bones;
+    const B = skel ? skel.bones : [];
     const chunks = [];
     let binLen = 0;
     const bufferViews = [], accessors = [];
@@ -765,8 +766,10 @@
         }
         attributes[key] = accessor(data, n, 34962, extra);
       }
-      attributes.JOINTS_0 = accessor(skin[pi].joints, 4, 34962);
-      attributes.WEIGHTS_0 = accessor(skin[pi].weights, 4, 34962);
+      if (skin) {
+        attributes.JOINTS_0 = accessor(skin[pi].joints, 4, 34962);
+        attributes.WEIGHTS_0 = accessor(skin[pi].weights, 4, 34962);
+      }
       const idx = pr.count > 65535 ? pr.idx : Uint16Array.from(pr.idx);
       const p = { attributes, indices: accessor(idx, 1, 34963), mode: 4 };
       if (pr.material !== undefined) p.material = pr.material;
@@ -774,19 +777,22 @@
     });
 
     // Nodes: 0 is the mesh, then one per bone in skeleton order.
-    const nodes = [{ name: model.name, mesh: 0, skin: 0 }];
+    const nodes = [skel ? { name: model.name, mesh: 0, skin: 0 } : { name: model.name, mesh: 0 }];
     for (const b of B) nodes.push({ name: b.name, translation: sub(b.pos, b.parent >= 0 ? B[b.parent].pos : [0, 0, 0]) });
     B.forEach((b, i) => {
       const kids = B.map((c, j) => (c.parent === i ? j + 1 : -1)).filter((j) => j > 0);
       if (kids.length) nodes[i + 1].children = kids;
     });
-    const ibm = new Float32Array(16 * B.length);
-    B.forEach((b, i) => ibm.set(compose(scl(b.pos, -1)), i * 16));
     const rootBone = B.findIndex((b) => b.parent < 0) + 1;
-    const skins = [{ name: 'Armature', joints: B.map((_, i) => i + 1), skeleton: rootBone, inverseBindMatrices: accessor(ibm, 16) }];
+    let skins;
+    if (skel) {
+      const ibm = new Float32Array(16 * B.length);
+      B.forEach((b, i) => ibm.set(compose(scl(b.pos, -1)), i * 16));
+      skins = [{ name: 'Armature', joints: B.map((_, i) => i + 1), skeleton: rootBone, inverseBindMatrices: accessor(ibm, 16) }];
+    }
 
     // Animations: sampled at 30 fps, linear.
-    const ctx = clipContext(skel);
+    const ctx = skel ? clipContext(skel) : null;
     const animations = [];
     for (const name of clips) {
       const clip = CLIPS[name];
@@ -817,15 +823,15 @@
     const json = {
       asset: { version: '2.0', generator: 'ModelRig (ModelGen tools)' },
       scene: 0,
-      scenes: [{ name: model.name, nodes: [0, rootBone] }],
+      scenes: [{ name: model.name, nodes: skel ? [0, rootBone] : [0] }],
       nodes,
       meshes: [{ name: model.name, primitives }],
-      skins,
-      animations,
       buffers: [{ byteLength: 0 }],
       bufferViews,
       accessors,
     };
+    if (skins) json.skins = skins;
+    if (animations.length) json.animations = animations;
     for (const key of ['materials', 'textures', 'samplers']) if (src[key]) json[key] = JSON.parse(JSON.stringify(src[key]));
     if (images.length) json.images = images;
     const used = (src.extensionsUsed || []).filter((e) => !UNSUPPORTED.includes(e));
@@ -833,9 +839,9 @@
     const req = (src.extensionsRequired || []).filter((e) => used.includes(e));
     if (req.length) json.extensionsRequired = req;
     // Keep provenance (which tool or AI model made the mesh) and add ours.
-    json.extras = Object.assign({}, src.extras || {}, (src.asset && src.asset.extras) || {}, {
-      rig: { skeleton: skel.type, bones: B.length, sourceGenerator: (src.asset && src.asset.generator) || 'unknown' },
-    });
+    json.extras = Object.assign({}, src.extras || {}, (src.asset && src.asset.extras) || {},
+      skel ? { rig: { skeleton: skel.type, bones: B.length, sourceGenerator: (src.asset && src.asset.generator) || 'unknown' } } : {});
+    if (!Object.keys(json.extras).length) delete json.extras;
 
     const bin = new Uint8Array(Math.ceil(binLen / 4) * 4);
     let o = 0;

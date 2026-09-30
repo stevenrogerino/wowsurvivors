@@ -23,6 +23,7 @@ you can regenerate the asset whenever you need it.
 | `mushroom` | Toadstool or a small group, with spotted caps |
 | `house` | Cottage with a stone footing, timber frame, gabled roof, door, windows and chimney |
 | `fence` | Modular fence section that tiles along X |
+| `figure` | Humanoid mannequin in an A-pose: a stand-in character and a test for rigging |
 
 ## Browse: the viewer
 
@@ -91,6 +92,39 @@ MG.register('lamppost', 'Iron lamppost with a glowing head.', (r, detail) => {
 `r` is the seeded random source, with `r()`, `r.range(a, b)`, `r.int(a, b)`,
 `r.pick(list)` and `r.chance(p)`. Take every random choice from `r` so the
 model stays reproducible.
+
+## Rigging: the Rigger
+
+`rigger.html` adds a skeleton to a model so it can be animated. It works on a
+ModelGen figure, a model from `tools/make3d`, or any other `.glb`, and keeps
+the model's textures.
+
+1. Open `tools/modelgen/rigger.html` and load a `.glb`, either by dropping it
+   on the page or with **Open .glb**.
+2. **Prepare:** if the **Front** view doesn't show the face, turn the model.
+   Then set its height in metres.
+3. **Skeleton:** the skeleton is fitted automatically. Drag any dot in the
+   Front or Side view to move that joint. Shift-drag moves the joint together
+   with everything below it.
+4. **Weights:** click **Compute weights**. To check them, tick the heat-map
+   option and click a joint, or play the **Flex** animation.
+5. **Export:** click **Download rigged .glb**.
+
+Bones use Mixamo names (Hips, Spine, LeftArm and so on), so Unity Humanoid,
+Unreal's IK Retargeter and Godot's bone map recognise them, and each engine's
+own animation libraries can be retargeted onto the model. The file includes
+Idle, Walk, Wave, Flex and TPose clips.
+
+From the command line:
+
+```
+node tools/modelgen/rig-cli.js knight.glb --height 1.8          # -> knight_rigged.glb
+node tools/modelgen/rig-cli.js crate.glb --no-rig --height 0.9  # size and ground only
+```
+
+The model should stand upright in an A- or T-pose. Skin weights come from
+distances measured through the inside of the body, which keeps the legs from
+pulling on each other and the arms from pulling on the chest.
 
 ## Checking it
 

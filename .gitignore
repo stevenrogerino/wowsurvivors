@@ -10,3 +10,7 @@ steam/build/
 
 # ModelGen CLI default output
 /models/
+
+# make3d results (next to make3d.bat)
+/tools/make3d/output/
+__pycache__/
