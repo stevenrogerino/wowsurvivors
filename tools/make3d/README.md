@@ -118,15 +118,15 @@ next, uses the MIT licence, which has no such limits.
 3. **Clean-up:** removes stray floating bits and cuts the triangle count to
    `--faces`.
 4. **Texture:** Hunyuan3D-Paint paints it to match your picture.
-5. **Your picture, painted on:** the AI painter works from a few
+5. **Facing:** compares the model from four sides with your picture to work
+   out which way is forward. It uses the outline, then the colours, then the
+   feet. See `orient.py`.
+6. **Your picture, painted on:** the AI painter works from a few
    low-resolution views, so on a full body the face comes out soft. Wherever
    the model faces the camera, make3d copies your picture's own pixels onto it
    and fades back to the AI's paint as the surface turns away. The texture is
    enlarged to 4096 × 4096 to hold the detail. Back, left and right pictures
    are used the same way. See `project.py`.
-6. **Facing:** compares the model from four sides with your picture to work
-   out which way is forward. It uses the outline, then the colours, then the
-   feet. See `orient.py`.
 7. **Game-ready:** scales it to size, stands it on the ground facing +Z, fits
    a skeleton with standard bone names, weights it and adds animations. This
    step runs `tools/modelgen/rig-cli.js`, the same code as the Rigger page.
