@@ -554,6 +554,11 @@ ${css}
     if (missing.length) { console.error(f + ' names pictures the codex does not draw:\n  ' + missing.join('\n  ')); process.exit(1); }
     fs.writeFileSync(path.join(OUT, f), notes);
   }
+  // The latest notes also play clips and sounds captured from the game
+  // (tools/patch-notes-page/media), served beside them as notes/.
+  const NOTES = path.join(OUT, 'notes');
+  fs.rmSync(NOTES, { recursive: true, force: true });
+  fs.cpSync(path.join(__dirname, 'patch-notes-page', 'media'), NOTES, { recursive: true });
   const kb = Math.round(fs.readdirSync(IMG).reduce((s, f) => s + fs.statSync(path.join(IMG, f)).size, 0) / 1024);
   console.log(`wiki: ${D.survivors.length} survivors, ${D.arsenal.length} weapons, ${D.unions.length} unions, `
     + `${D.discoveries.length} discoveries, ${D.regions.reduce((s, r) => s + r.list.length + r.elites.length, 0)} creatures, `

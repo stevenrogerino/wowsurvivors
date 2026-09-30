@@ -8,6 +8,8 @@ site/
   wiki/
     index.html     <- the companion codex/wiki
     patch-notes.html <- the latest patch notes (tools/patch-notes.html, copied in by tools/wiki.js)
+    patch-notes-<date>.html <- earlier patches, kept
+    notes/          <- the latest notes' clips, sprites and sounds (tools/patch-notes-page/media)
     img/            <- its pictures, drawn by the game's own painters
 ```
 
@@ -44,3 +46,15 @@ node tools/wiki.js
 That loads the game headless, reads every table it ships, runs the text
 through the game's own templates so the numbers are the live ones, redraws
 every picture with the game's own painters, and rewrites `site/wiki/`.
+
+The latest patch notes are an illustrated page built from
+`tools/patch-notes-page/` (the page, every change as data, and the clips and
+sounds captured from the game). After editing it, rebuild it before the wiki:
+
+```
+node tools/patch-notes-page/build.js
+node tools/wiki.js
+```
+
+`node tools/patch-notes-page/build.js --inline the-night-breathes.html`
+writes the same page as one self-contained file, for sharing on its own.
