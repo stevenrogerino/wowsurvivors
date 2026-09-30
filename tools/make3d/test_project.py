@@ -113,6 +113,22 @@ def main():
     expect(abs(b1 - b0) < 0.01, f'back untouched: error {b0:.3f} -> {b1:.3f}')
     expect(ai.visual.material.baseColorTexture.size[0] >= 4096, 'texture enlarged for the detail')
 
+    print('head proportions a little off (as the AI gets them) - the head is lined up on its own:')
+    vtx = np.asarray(mesh.vertices)
+    top, hgt = vtx[:, 1].max(), vtx[:, 1].max() - vtx[:, 1].min()
+    in_head = vtx[:, 1] > top - 0.13 * hgt
+    centre = vtx[in_head].mean(axis=0)
+    off = vtx.copy()
+    off[in_head] = (vtx[in_head] - centre) * 1.06 + centre + [0, 0.015, 0]
+    errs = {}
+    for use_head in (False, True):
+        m2 = _with_uv(trimesh.Trimesh(off, mesh.faces, process=False), uvs, blurred)
+        project.project(m2, {'front': photo}, 0, log=(lambda s: print(s)) if use_head else (lambda s: None), head=use_head)
+        o2 = np.asarray(m2.visual.material.baseColorTexture.convert('RGB'), dtype=np.float32)[::k, ::k] / 255
+        face = front & (P[:, 1] > top - 0.13 * hgt)
+        errs[use_head] = np.abs(o2[ty[face], tx[face]] - true[ty[face], tx[face]]).mean()
+    expect(errs[True] < errs[False] * 0.75, f'face error {errs[False]:.3f} with the body fit alone -> {errs[True]:.3f} with the head lined up')
+
     print('a picture that does not match the model is refused:')
     wrong = Image.new('RGBA', photo.size)
     wrong.paste(Image.new('RGBA', (photo.size[0] // 3, photo.size[1] // 3), (255, 0, 0, 255)), (0, 0))

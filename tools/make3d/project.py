@@ -135,7 +135,64 @@ def _align(u, v, faces, mask, log):
     return make(*best), best_score
 
 
-def project(mesh, views, turn, log=print, max_texture=4096, min_match=0.75):
+def _refine_head(u, v, faces, mask, fit, log, band=0.15):
+    """Lines the head up again on its own, on top of the whole-body fit.
+
+    The AI never gets proportions exactly right, and an error too small to
+    matter across the body is a lot on a face: eyes land on cheeks and the
+    face looks doubled. So the head's own outline (top `band` of the height)
+    gets a second, finer search, and the correction fades out down the neck.
+    """
+    H, W = mask.shape
+    top, h_model = v.max(), v.max() - v.min()
+    cut = top - band * h_model
+    head_faces = faces[(v[faces] > cut).all(axis=1)]
+    if len(head_faces) < 20:
+        return fit
+    su, sv = fit(u, v)
+    sel = v > cut
+    cx, cy = (su[sel].min() + su[sel].max()) / 2, (sv[sel].min() + sv[sel].max()) / 2
+    y0 = int(max(0, sv[sel].min() - 0.05 * (sv[sel].max() - sv[sel].min())))
+    y1 = int(min(H, sv[sel].max()))
+    if y1 - y0 < 16:
+        return fit
+    q = max(1, (y1 - y0) // 200)
+    band_mask = mask[y0:y1:q, ::q]
+    head_px = sv[sel].max() - sv[sel].min()
+
+    def moved(k, dx, dy):
+        return lambda uu, vv: tuple(np.asarray(t) for t in (
+            (fit(uu, vv)[0] - cx) * k + cx + dx, (fit(uu, vv)[1] - cy) * k + cy + dy))
+
+    def score(f):
+        g = lambda uu, vv: ((f(uu, vv)[0]) / q, (f(uu, vv)[1] - y0) / q)
+        sil = _silhouette(u, v, head_faces, band_mask.shape[0], band_mask.shape[1], g)
+        return (sil & band_mask).sum() / max((sil | band_mask).sum(), 1)
+
+    base = score(fit)
+    best, best_score = (1.0, 0.0, 0.0), base
+    for k in np.linspace(0.9, 1.1, 7):
+        for dx in np.linspace(-0.08, 0.08, 7) * head_px:
+            for dy in np.linspace(-0.08, 0.08, 7) * head_px:
+                sc = score(moved(k, dx, dy))
+                if sc > best_score:
+                    best, best_score = (k, dx, dy), sc
+    if best_score < base + 0.01:
+        log(f'    head already lines up ({base:.2f})')
+        return fit
+    log(f'    head lined up on its own: {base:.2f} -> {best_score:.2f} (size x{best[0]:.2f}, shift {best[1]:.0f},{best[2]:.0f} px)')
+    head = moved(*best)
+    fade = 0.04 * h_model
+
+    def blended(uu, vv):
+        a = np.clip((np.asarray(vv) - (cut - fade)) / fade, 0, 1)
+        gu, gv = fit(uu, vv)
+        hu, hv = head(uu, vv)
+        return gu * (1 - a) + hu * a, gv * (1 - a) + hv * a
+    return blended
+
+
+def project(mesh, views, turn, log=print, max_texture=4096, min_match=0.75, head=True):
     """Paints `views` ({'front': RGBA image, ...}) onto a textured trimesh, in place.
 
     `turn` is the rotation (degrees about +Y) that makes the model face +Z.
@@ -181,6 +238,8 @@ def project(mesh, views, turn, log=print, max_texture=4096, min_match=0.75):
         if score < min_match:
             log(f'    the model does not line up with this picture well enough ({score:.2f}); skipped')
             continue
+        if head:
+            fit = _refine_head(u, v, faces, mask, fit, log)
         zbuf = _raster_depth(u, v, d, faces, H, W, fit)
         pix = 1.0 / (H / (v.max() - v.min()))          # one picture pixel, in model units
         inside = _erode(mask, max(2, H // 300))          # stay clear of the background at the outline
