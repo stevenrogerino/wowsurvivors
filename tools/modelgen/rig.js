@@ -708,7 +708,7 @@
 
     // 4. Weights: 1/d^power, strongest four, normalised.
     const big = B.length > 255;
-    return model.prims.map((pr) => {
+    const raw = model.prims.map((pr) => {
       const P = pr.attrs.POSITION.data, n = P.length / 3;
       const joints = big ? new Uint16Array(n * 4) : new Uint8Array(n * 4);
       const weights = new Float32Array(n * 4);
@@ -753,6 +753,100 @@
           weights[v * 4 + k] /= s || 1;
           if (!weights[v * 4 + k]) joints[v * 4 + k] = 0; // Unused slots point at bone 0, per glTF.
         }
+      }
+      return { joints, weights };
+    });
+    return opts.smooth === 0 ? raw : smoothWeights(model, raw, B.length, opts.smooth);
+  }
+
+  // Blends each vertex's weights with its neighbours' over a few centimetres.
+  // Where one part meets another - an arm pressed to the side, a hand on a
+  // hip - weights change abruptly from one vertex to the next, and moving the
+  // limb rips the skin into strips. Smoothed, the skin between them stretches
+  // instead. Vertices are welded by position first, so UV seams and flat
+  // shading (split vertices) don't stop the blending.
+  function smoothWeights(model, skin, nBones, amount) {
+    const key = new Map(), weld = [];
+    let count = 0;
+    const q = (x) => Math.round(x * 1e4);
+    model.prims.forEach((pr) => {
+      const P = pr.attrs.POSITION.data, ids = new Int32Array(P.length / 3);
+      for (let v = 0; v < ids.length; v++) {
+        const k = q(P[v * 3]) + ',' + q(P[v * 3 + 1]) + ',' + q(P[v * 3 + 2]);
+        let id = key.get(k);
+        if (id === undefined) { id = count++; key.set(k, id); }
+        ids[v] = id;
+      }
+      weld.push(ids);
+    });
+    // Neighbour lists (edges of every triangle) and the typical edge length.
+    const nbr = Array.from({ length: count }, () => new Map()); // neighbour -> edge length
+    const edges = [];
+    model.prims.forEach((pr, pi) => {
+      const I = pr.idx, ids = weld[pi], P = pr.attrs.POSITION.data;
+      for (let t = 0; t < I.length; t += 3) for (const [a, b] of [[I[t], I[t + 1]], [I[t + 1], I[t + 2]], [I[t + 2], I[t]]]) {
+        const ia = ids[a], ib = ids[b];
+        if (ia === ib) continue;
+        const l = Math.hypot(P[a * 3] - P[b * 3], P[a * 3 + 1] - P[b * 3 + 1], P[a * 3 + 2] - P[b * 3 + 2]);
+        nbr[ia].set(ib, l); nbr[ib].set(ia, l);
+        if (edges.length < 20000) edges.push(l);
+      }
+    });
+    edges.sort((x, y) => x - y);
+    const edge = edges.length ? edges[edges.length >> 1] : 0.01;
+    const { min, max } = model.bounds;
+    const height = max[1] - min[1] || 1;
+    // Each pass spreads about one edge length; blend over ~3% of the height
+    // (5 cm on a person): enough to stop tearing, not enough to blur joints.
+    const spread = (amount == null ? 1 : amount) * 0.03 * height;
+    const passes = Math.max(1, Math.min(40, Math.round((spread / edge) ** 2)));
+    // Dense weights per welded vertex (averaging split copies).
+    let W = new Float32Array(count * nBones);
+    const seen = new Uint16Array(count);
+    skin.forEach((sk, pi) => {
+      const ids = weld[pi];
+      for (let v = 0; v < ids.length; v++) {
+        seen[ids[v]]++;
+        for (let k = 0; k < 4; k++) W[ids[v] * nBones + sk.joints[v * 4 + k]] += sk.weights[v * 4 + k];
+      }
+    });
+    for (let id = 0; id < count; id++) if (seen[id] > 1) for (let b = 0; b < nBones; b++) W[id * nBones + b] /= seen[id];
+    // Near neighbours count fully, far ones hardly at all: on a coarse mesh a
+    // vertex 20 cm away is not "next to" this one, whatever the triangles say.
+    const lists = nbr.map((m) => Int32Array.from(m.keys()));
+    const pull = nbr.map((m) => Float32Array.from(m.values(), (l) => Math.exp(-4 * (l / spread) ** 2)));
+    let next = new Float32Array(W.length);
+    for (let pass = 0; pass < passes; pass++) {
+      for (let id = 0; id < count; id++) {
+        const L = lists[id], K = pull[id], o = id * nBones;
+        let ksum = 0;
+        for (let j = 0; j < L.length; j++) ksum += K[j];
+        for (let b = 0; b < nBones; b++) {
+          let sum = W[o + b];
+          for (let j = 0; j < L.length; j++) sum += K[j] * W[L[j] * nBones + b];
+          next[o + b] = sum / (1 + ksum);
+        }
+      }
+      [W, next] = [next, W];
+    }
+    // Back to the four strongest per vertex, normalised, crumbs dropped.
+    return skin.map((sk, pi) => {
+      const ids = weld[pi], n = ids.length;
+      const joints = new sk.joints.constructor(n * 4), weights = new Float32Array(n * 4);
+      const top = [];
+      for (let v = 0; v < n; v++) {
+        const o = ids[v] * nBones;
+        top.length = 0;
+        for (let b = 0; b < nBones; b++) if (W[o + b] > 0) top.push([b, W[o + b]]);
+        top.sort((x, y) => y[1] - x[1]);
+        let s = 0;
+        for (let k = 0; k < 4 && k < top.length; k++) if (top[k][1] >= 0.01) s += top[k][1];
+        for (let k = 0; k < 4; k++) {
+          const ok = k < top.length && top[k][1] >= 0.01 && s > 0;
+          joints[v * 4 + k] = ok ? top[k][0] : 0;
+          weights[v * 4 + k] = ok ? top[k][1] / s : 0;
+        }
+        if (!(s > 0)) { joints[v * 4] = sk.joints[v * 4]; weights[v * 4] = 1; }
       }
       return { joints, weights };
     });

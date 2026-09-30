@@ -169,6 +169,16 @@ for (const seed of [1, 2, 3]) {
   if (back.triangles !== model.triangles) fail(`${tag}: export lost triangles`);
   const json = JSON.parse(new TextDecoder().decode(glb.subarray(20, 20 + new DataView(glb.buffer).getUint32(12, true))));
   if (json.skins[0].joints.length !== B.length || json.animations.length !== Object.keys(Rig.CLIPS).length) fail(`${tag}: skin or clips missing`);
+  // No tearing: in the biggest poses, no edge of the mesh stretches past 3.5x.
+  for (const [clip, at] of [['Wave', 0.5], ['TPose', 0], ['Walk', 0.3]]) {
+    const Q = pose(clip, at), I = model.prims[0].idx;
+    let torn = 0;
+    for (let f = 0; f < I.length; f += 3) for (const [a, b] of [[I[f], I[f + 1]], [I[f + 1], I[f + 2]], [I[f + 2], I[f]]]) {
+      const r = Math.hypot(P[a * 3] - P[b * 3], P[a * 3 + 1] - P[b * 3 + 1], P[a * 3 + 2] - P[b * 3 + 2]);
+      if (r > 1e-5 && Math.hypot(Q[a * 3] - Q[b * 3], Q[a * 3 + 1] - Q[b * 3 + 1], Q[a * 3 + 2] - Q[b * 3 + 2]) / r > 3.5) torn++;
+    }
+    if (torn) fail(`${tag}: ${clip} stretches ${torn} edges past 3.5x (tearing)`);
+  }
 }
 
 // Arms hanging close to the body - the usual pose in photos - with hips wide
@@ -228,7 +238,9 @@ for (const [drop, widen] of [[75, 1], [82, 1], [82, 1.35], [75, 1.6]]) {
     const t = Math.max(0, Math.min(1, (ab[0] * ap[0] + ab[1] * ap[1] + ab[2] * ap[2]) / (ab[0] ** 2 + ab[1] ** 2 + ab[2] ** 2)));
     return Math.hypot(ap[0] - ab[0] * t, ap[1] - ab[1] * t, ap[2] - ab[2] * t);
   };
-  const inArm = (p) => armLine.some((l) => Math.min(segD(p, l[0], l[1]), segD(p, l[1], l[2]), segD(p, l[2], l[3])) < 0.05);
+  // 5 cm is the arm itself; the next 5 cm is skin blended to stretch with it
+  // (weight smoothing), which should move a little rather than tear.
+  const inArm = (p) => armLine.some((l) => Math.min(segD(p, l[0], l[1]), segD(p, l[1], l[2]), segD(p, l[2], l[3])) < 0.1);
   const P = model.prims[0].attrs.POSITION.data, t = skinPose(model, skel, skin, 'TPose');
   let dragged = 0;
   for (let v = 0; v < P.length / 3; v++) {
