@@ -994,8 +994,8 @@ if (!reduce) requestAnimationFrame(tick);
      tug it back up on every chapter crossed. */
   const reveal = (a) => {
     if (strip.scrollWidth <= strip.clientWidth) return;
-    const li = a.parentElement;
-    strip.scrollTo({ left: li.offsetLeft - (strip.clientWidth - li.offsetWidth) / 2, behavior: reduce ? 'auto' : 'smooth' });
+    const li = a.parentElement.getBoundingClientRect(), box = strip.getBoundingClientRect();
+    strip.scrollTo({ left: strip.scrollLeft + li.left - box.left - (box.width - li.width) / 2, behavior: reduce ? 'auto' : 'smooth' });
   };
   const io2 = new IntersectionObserver((es) => { for (const e of es) if (e.isIntersecting) { links.forEach((a) => a.classList.remove('on')); const a = map.get(e.target.id); if (a) { a.classList.add('on'); reveal(a); } } }, { rootMargin: '-40% 0px -55% 0px' });
   for (const id of map.keys()) { const s = document.getElementById(id); if (s) io2.observe(s); }
