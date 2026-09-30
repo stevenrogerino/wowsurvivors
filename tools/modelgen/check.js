@@ -195,8 +195,8 @@ function skinPose(model, skel, skin, clip) {
   }
   return out;
 }
-for (const [drop, widen] of [[75, 1], [82, 1], [82, 1.35], [75, 1.6]]) {
-  const tag = `rig arms down ${drop}deg, hips x${widen}`;
+for (const [drop, widen, squeeze] of [[75, 1, 0], [82, 1, 0], [82, 1.35, 0], [75, 1.6, 0], [82, 1, 0.05]]) {
+  const tag = `rig arms down ${drop}deg, hips x${widen}` + (squeeze ? ', thighs touching' : '');
   // Pose the figure's arms down with its own rig, then widen hips and thighs.
   const src = Rig.loadModel(MG.toGLB(MG.generate('figure', 1)), 'f');
   Rig.normalizeModel(src, { height: 1.8 });
@@ -210,6 +210,8 @@ for (const [drop, widen] of [[75, 1], [82, 1], [82, 1.35], [75, 1.6]]) {
   for (let v = 0; v < posed.length; v += 3) {
     const y = posed[v + 1];
     if (Math.abs(posed[v]) < 0.17 && y < 1.0 && y > 0.35) posed[v] *= 1 + (widen - 1) * Math.sin(Math.PI * (y - 0.35) / 0.65);
+    // Thighs pressed together (hands hang beside them at the same height).
+    if (squeeze && !isArm[v / 3] && y > 0.45 && y < 0.95) posed[v] -= Math.sign(posed[v]) * squeeze * Math.sin(Math.PI * (y - 0.45) / 0.5);
   }
   src.prims[0].attrs.POSITION.data.set(posed);
   delete src.prims[0].attrs.NORMAL; // Stale after posing: let the loader recompute them.
@@ -248,6 +250,11 @@ for (const [drop, widen] of [[75, 1], [82, 1], [82, 1.35], [75, 1.6]]) {
     if (p[1] < 1.25 && !isArm[v] && !inArm(p) && Math.hypot(t[v * 3] - p[0], t[v * 3 + 1] - p[1], t[v * 3 + 2] - p[2]) > 0.03) dragged++;
   }
   if (dragged > 12) fail(`${tag}: T-pose drags ${dragged} body vertices along with the arms`);
+  // Hip joints sit above the knees, inside the body - not out by the hands.
+  for (const S of ['Left', 'Right']) {
+    const hip = bone(S + 'UpLeg'), knee = bone(S + 'Leg');
+    if (Math.abs(hip[0] - knee[0]) > 0.06 || Math.abs(hip[0]) > 0.16) fail(`${tag}: ${S}UpLeg at x ${hip[0].toFixed(2)}, knee at ${knee[0].toFixed(2)}`);
+  }
 }
 
 console.log(`${models} models, ${tris} triangles, ${Date.now() - t0} ms`);

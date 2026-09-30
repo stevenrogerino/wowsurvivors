@@ -64,9 +64,12 @@ drag its dot in the Front or Side view and download it again.
 
 The picture matters more than any setting.
 
-- **Pose:** have the character stand straight, facing you, arms held a
-  little out from the body (an A-pose). Arms pressed to the sides or crossed
-  confuse both the shape and the skeleton.
+- **Pose:** have the character stand straight, facing you, with the arms
+  held **30–45° out from the body, with a clear gap under the armpits** (an
+  A-pose) and a little space between the hands and the thighs. This matters
+  most of all. When the arms touch the sides, the AI fuses them to the body,
+  and raising them later stretches the skin in between into webbing, however
+  well it is rigged. Crossed arms don't work at all.
 - **Whole body in frame**, not cropped, on a plain background. A
   transparent PNG is best, because it skips background removal.
 - **One character per picture.**

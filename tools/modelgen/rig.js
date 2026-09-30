@@ -477,16 +477,29 @@
     put('HeadTop_End', [cx, max[1], spineZ(0.93)]);
 
     for (const [S, s] of [['Left', 1], ['Right', -1]]) {
-      // Legs: at each height take the piece of cross-section on this side.
-      const legAt = (f) => {
-        const pieces = slicePieces(g, [cx + s * 0.07 * H, y(f), chest[2]], UP, 0.2 * H)
-          .filter((pc) => pc.cells > 1 && (pc.centroid[0] - cx) * s > 0.01 * H);
-        if (pieces.length) return pieces[0].centroid;
-        // Legs joined (a robe or skirt): use the half on this side.
-        const all = slicePieces(g, [cx, y(f), chest[2]], UP, 0.2 * H)[0];
-        return all ? [(cx + (s > 0 ? all.max[0] : all.min[0])) / 2, y(f), all.centroid[2]] : [cx + s * 0.06 * H, y(f), chest[2]];
+      // Legs: at each height, the piece of cross-section nearest where this
+      // leg should be. Not the biggest piece: a hand hanging beside the thigh
+      // is a piece too. Thighs that touch (or a skirt) make one piece across
+      // the centre line: then take its half on this side.
+      const legAt = (f, near) => {
+        const pieces = slicePieces(g, [cx, y(f), chest[2]], UP, 0.3 * H).filter((pc) => pc.cells > 1);
+        const joined = pieces.find((pc) => pc.min[0] < cx && pc.max[0] > cx);
+        let best = null, bd = Infinity;
+        for (const pc of pieces) {
+          if (pc === joined || (pc.centroid[0] - cx) * s <= 0) continue;
+          const d = Math.abs(pc.centroid[0] - near);
+          if (d < bd) { bd = d; best = pc; }
+        }
+        if (best && bd < 0.08 * H) return best.centroid;
+        if (joined) {
+          // Out to the piece's edge, but no further than a leg can be (a hand
+          // fused to the thigh widens the piece).
+          const edge = s > 0 ? Math.min(joined.max[0], near + 0.08 * H) : Math.max(joined.min[0], near - 0.08 * H);
+          return [(cx + edge) / 2, y(f), joined.centroid[2]];
+        }
+        return best ? best.centroid : [near, y(f), chest[2]];
       };
-      const knee = legAt(0.28), shin = legAt(0.1), thigh = legAt(0.4);
+      const knee = legAt(0.28, cx + s * 0.06 * H), shin = legAt(0.1, knee[0]), thigh = legAt(0.4, knee[0]);
       put(S + 'UpLeg', [thigh[0], y(0.48), spineZ(0.5)]);
       put(S + 'Leg', [knee[0], y(0.28), knee[2]]);
       put(S + 'Foot', [shin[0], y(0.05), shin[2]]);
