@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ModelGen Rigger</title>
+<style>
+  :root { --bg: #121317; --panel: #1b1d23; --line: #2c2f38; --text: #e6e6ea; --dim: #8b8f9a; --accent: #f0a23a; --left: #4fc3f7; --right: #ff8a65; --mid: #ffd54f; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
+  body { display: flex; }
+  aside { width: 300px; flex: none; background: var(--panel); border-right: 1px solid var(--line); padding: 14px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+  h1 { font-size: 16px; margin: 0; letter-spacing: .04em; }
+  h1 span { color: var(--accent); }
+  section { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
+  h2 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); }
+  h2 b { color: var(--accent); margin-right: 6px; }
+  select, input, button { font: inherit; color: var(--text); background: #23262e; border: 1px solid var(--line); border-radius: 6px; padding: 6px 9px; min-width: 0; }
+  input[type=checkbox] { padding: 0; }
+  button { cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .45; cursor: default; }
+  button.primary { background: var(--accent); color: #1a1206; border-color: var(--accent); font-weight: 600; }
+  .row { display: flex; gap: 6px; align-items: center; }
+  .row > * { flex: 1; }
+  .row > .fixed { flex: none; }
+  .check { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+  .hint { color: var(--dim); font-size: 12px; }
+  .status { font-size: 12px; color: var(--dim); min-height: 1.4em; }
+  .status.warn { color: var(--accent); }
+  .status.ok { color: #8bd48b; }
+  #warnings { color: var(--accent); font-size: 12px; }
+  main { flex: 1; min-width: 0; display: grid; grid-template-columns: 1.5fr 1fr; grid-template-rows: 1fr 1fr; gap: 1px; background: var(--line); }
+  .pane { position: relative; background: var(--bg); min-height: 0; }
+  .pane.big { grid-row: 1 / 3; }
+  .pane canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+  .label { position: absolute; left: 10px; top: 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); pointer-events: none; }
+  #drop { position: fixed; inset: 0; background: rgba(240,162,58,.12); border: 3px dashed var(--accent); display: none; align-items: center; justify-content: center; font-size: 22px; z-index: 9; pointer-events: none; }
+  body.dragging #drop { display: flex; }
+  #busy { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; font-size: 18px; z-index: 10; }
+  body.busy #busy { display: flex; }
+  @media (max-width: 800px) {
+    body { flex-direction: column; }
+    aside { width: 100%; max-height: 45vh; border-right: 0; border-bottom: 1px solid var(--line); }
+    main { flex: none; height: 110vh; grid-template-columns: 1fr 1fr; grid-template-rows: 1.4fr 1fr; }
+    .pane.big { grid-row: auto; grid-column: 1 / 3; }
+  }
+</style>
+</head>
+<body>
+<aside>
+  <h1><span>&#9650;</span> Rigger</h1>
+  <div class="hint">Load a model standing upright in an A- or T-pose. You get back a rigged .glb for Unity, Unreal, Godot or Blender.</div>
+
+  <section>
+    <h2><b>1</b>Model</h2>
+    <button id="open" class="primary">Open .glb&hellip;</button>
+    <input id="file" type="file" accept=".glb,.gltf" hidden>
+    <div class="row"><span class="fixed hint">or a test figure, seed</span><input id="figSeed" value="1" style="width:60px;flex:none"><button id="figure" class="fixed">Load</button></div>
+    <div id="modelInfo" class="status"></div>
+    <div id="warnings"></div>
+  </section>
+
+  <section>
+    <h2><b>2</b>Prepare</h2>
+    <div class="hint">The <b>Front</b> view should show the face. If it doesn't, turn the model.</div>
+    <div class="row">
+      <button id="turnL" title="Turn 90° left">&#10226; 90&deg;</button>
+      <button id="turnR" title="Turn 90° right">90&deg; &#10227;</button>
+      <button id="standUp" title="For models lying on their back (Z-up)">Stand up</button>
+    </div>
+    <div class="row"><span class="fixed hint">Height (m)</span><input id="height" type="number" step="0.05" min="0.05" value="1.8"><button id="applyHeight" class="fixed">Set</button></div>
+  </section>
+
+  <section>
+    <h2><b>3</b>Skeleton</h2>
+    <button id="fit">Auto-fit skeleton</button>
+    <label class="check"><input id="mirror" type="checkbox" checked> Mirror left &harr; right while dragging</label>
+    <div class="hint">Drag the dots in the <b>Front</b> and <b>Side</b> views so each sits at the middle of its joint. Shift-drag also moves the bones below it. <span style="color:var(--left)">&#9679;</span> left, <span style="color:var(--right)">&#9679;</span> right.</div>
+    <div id="selected" class="status"></div>
+  </section>
+
+  <section>
+    <h2><b>4</b>Weights</h2>
+    <button id="weigh">Compute weights</button>
+    <div id="weightStatus" class="status"></div>
+    <label class="check"><input id="heat" type="checkbox"> Show the selected bone's weights</label>
+  </section>
+
+  <section>
+    <h2><b>5</b>Preview</h2>
+    <select id="clip"></select>
+    <label class="check"><input id="bones" type="checkbox" checked> Show bones</label>
+    <div class="hint">Play <b>Flex</b> to check the weights: it bends each joint in turn.</div>
+  </section>
+
+  <section>
+    <h2><b>6</b>Export</h2>
+    <button id="export" class="primary">Download rigged .glb</button>
+    <div class="hint">Bones use Mixamo names (Hips, Spine, LeftArm&hellip;), so Unity Humanoid, Unreal's retargeter and Godot's bone map recognise them.</div>
+  </section>
+</aside>
+
+<main>
+  <div class="pane big"><canvas id="view3d"></canvas><div class="label">Preview &middot; drag to orbit, scroll to zoom</div></div>
+  <div class="pane"><canvas id="front"></canvas><div class="label">Front</div></div>
+  <div class="pane"><canvas id="side"></canvas><div class="label">Side</div></div>
+</main>
+<div id="drop">Drop a .glb to load it</div>
+<div id="busy">Working&hellip;</div>
+
+<script src="modelgen.js"></script>
+<script src="rig.js"></script>
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const Rig = ModelRig;
+
+let model = null, skel = null, skin = null, stale = true, selected = -1;
+let gpuPrims = [], textures = [];
+
+/* ================================================================ 3D view */
+const c3 = $('view3d');
+const gl = c3.getContext('webgl2', { antialias: true });
+if (!gl) document.body.innerHTML = '<p style="padding:20px">This page needs WebGL 2. Try a current Chrome, Edge or Firefox.</p>';
+
+const VS = `#version 300 es
+in vec3 aPos; in vec3 aNrm; in vec2 aUV; in vec4 aCol; in vec4 aJ; in vec4 aW;
+uniform mat4 uVP; uniform mat4 uJ[64]; uniform bool uSkin; uniform int uSel;
+out vec3 vN; out vec2 vUV; out vec4 vC; out float vHeat;
+void main() {
+  mat4 S = mat4(1.0);
+  if (uSkin) S = aW.x * uJ[int(aJ.x + .5)] + aW.y * uJ[int(aJ.y + .5)] + aW.z * uJ[int(aJ.z + .5)] + aW.w * uJ[int(aJ.w + .5)];
+  vN = mat3(S) * aNrm; vUV = aUV; vC = aCol;
+  vHeat = 0.0;
+  for (int k = 0; k < 4; k++) if (int(aJ[k] + .5) == uSel) vHeat += aW[k];
+  gl_Position = uVP * S * vec4(aPos, 1.0);
+}`;
+const FS = `#version 300 es
+precision highp float;
+in vec3 vN; in vec2 vUV; in vec4 vC; in float vHeat;
+uniform vec4 uBase; uniform bool uTex; uniform sampler2D uS; uniform bool uHeatOn; uniform float uCut; uniform bool uFlat;
+out vec4 o;
+void main() {
+  vec4 base = uBase * vC;
+  if (uTex) { vec4 t = texture(uS, vUV); base *= vec4(pow(t.rgb, vec3(2.2)), t.a); }
+  if (base.a < uCut) discard;
+  vec3 n = normalize(vN);
+  if (!gl_FrontFacing) n = -n;
+  float diff = max(dot(n, normalize(vec3(.5, .85, .55))), 0.0);
+  vec3 amb = mix(vec3(.2, .19, .18), vec3(.42, .46, .55), n.y * .5 + .5);
+  vec3 c = uFlat ? base.rgb : base.rgb * (amb + diff * vec3(1., .95, .85));
+  if (uHeatOn) {
+    vec3 cold = vec3(.08, .1, .25), hot = vec3(1., .25, .1), mid = vec3(1., .85, .2);
+    vec3 h = vHeat < .5 ? mix(cold, mid, vHeat * 2.) : mix(mid, hot, vHeat * 2. - 1.);
+    c = h * (.35 + .65 * diff + .2);
+  }
+  o = vec4(pow(c, vec3(1. / 2.2)), 1.0);
+}`;
+function program(vs, fs) {
+  const p = gl.createProgram();
+  for (const [t, s] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]]) {
+    const sh = gl.createShader(t); gl.shaderSource(sh, s); gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
+    gl.attachShader(p, sh);
+  }
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  return p;
+}
+const prog = program(VS, FS);
+const A = {}, U = {};
+for (const a of ['aPos', 'aNrm', 'aUV', 'aCol', 'aJ', 'aW']) A[a] = gl.getAttribLocation(prog, a);
+for (const u of ['uVP', 'uJ', 'uSkin', 'uSel', 'uBase', 'uTex', 'uS', 'uHeatOn', 'uCut', 'uFlat']) U[u] = gl.getUniformLocation(prog, u);
+
+function perspective(fov, aspect, near, far) {
+  const f = 1 / Math.tan(fov / 2), nf = 1 / (near - far);
+  return [f / aspect, 0, 0, 0, 0, f, 0, 0, 0, 0, (far + near) * nf, -1, 0, 0, 2 * far * near * nf, 0];
+}
+function lookAt(eye, at) {
+  const s = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const n = (a) => { const l = Math.hypot(...a); return a.map((x) => x / l); };
+  const c = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const z = n(s(eye, at)), x = n(c([0, 1, 0], z)), y = c(z, x);
+  const d = (a) => -(a[0] * eye[0] + a[1] * eye[1] + a[2] * eye[2]);
+  return [x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0, d(x), d(y), d(z), 1];
+}
+
+function buffer(data, target) {
+  const b = gl.createBuffer(); gl.bindBuffer(target || gl.ARRAY_BUFFER, b); gl.bufferData(target || gl.ARRAY_BUFFER, data, gl.STATIC_DRAW); return b;
+}
+function freeGPU() {
+  for (const p of gpuPrims) for (const b of Object.values(p.buf)) gl.deleteBuffer(b);
+  for (const t of textures) if (t) gl.deleteTexture(t);
+  gpuPrims = []; textures = [];
+}
+
+async function loadTextures() {
+  const json = model.doc.json;
+  const images = await Promise.all((json.images || []).map(async (im) => {
+    try {
+      let blob;
+      if (im.bufferView !== undefined) {
+        const bv = json.bufferViews[im.bufferView], buf = model.doc.buffers[bv.buffer];
+        blob = new Blob([buf.slice(bv.byteOffset || 0, (bv.byteOffset || 0) + bv.byteLength)], { type: im.mimeType || 'image/png' });
+      } else if (im.uri && im.uri.startsWith('data:')) blob = await (await fetch(im.uri)).blob();
+      else return null;
+      return await createImageBitmap(blob, { imageOrientation: 'none' });
+    } catch (e) { return null; }
+  }));
+  textures = (json.textures || []).map((t) => {
+    const img = images[t.source];
+    if (!img) return null;
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    const s = t.sampler !== undefined ? (json.samplers || [])[t.sampler] || {} : {};
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, s.minFilter || gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, s.magFilter || gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, s.wrapS || gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, s.wrapT || gl.REPEAT);
+    return tex;
+  });
+}
+
+function uploadModel() {
+  for (const p of gpuPrims) for (const b of Object.values(p.buf)) gl.deleteBuffer(b);
+  gpuPrims = model.prims.map((pr, i) => {
+    const buf = { pos: buffer(pr.attrs.POSITION.data), nrm: buffer(pr.attrs.NORMAL.data), idx: buffer(pr.idx, gl.ELEMENT_ARRAY_BUFFER) };
+    if (pr.attrs.TEXCOORD_0) buf.uv = buffer(pr.attrs.TEXCOORD_0.data);
+    if (pr.attrs.COLOR_0) buf.col = buffer(pr.attrs.COLOR_0.data);
+    if (skin) {
+      buf.j = buffer(Float32Array.from(skin[i].joints));
+      buf.w = buffer(skin[i].weights);
+    }
+    const mat = pr.material !== undefined ? (model.doc.json.materials || [])[pr.material] || {} : {};
+    const pbr = mat.pbrMetallicRoughness || {};
+    return {
+      buf, count: pr.idx.length, colN: pr.attrs.COLOR_0 ? pr.attrs.COLOR_0.n : 0,
+      base: pbr.baseColorFactor || [1, 1, 1, 1], tex: pbr.baseColorTexture ? pbr.baseColorTexture.index : -1,
+      cut: mat.alphaMode === 'MASK' ? (mat.alphaCutoff == null ? 0.5 : mat.alphaCutoff) : -1,
+      doubleSided: !!mat.doubleSided, unlit: !!(mat.extensions && mat.extensions.KHR_materials_unlit),
+    };
+  });
+}
+
+function bind(loc, b, n, fallback) {
+  if (loc < 0) return;
+  if (b) { gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, n, gl.FLOAT, false, 0, 0); }
+  else { gl.disableVertexAttribArray(loc); gl.vertexAttrib4f(loc, ...fallback); }
+}
+
+const cam = { yaw: 0.5, pitch: 0.2, dist: 4, target: [0, 1, 0], fit: 4 };
+function fitCamera() {
+  const { min, max } = model.bounds;
+  cam.target = [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2];
+  cam.fit = cam.dist = Math.max(0.3, Math.hypot(max[0] - min[0], max[1] - min[1], max[2] - min[2]) * 1.35);
+}
+
+// Lines for the bones and the floor grid, drawn with a tiny unlit program.
+const lineProg = program(`#version 300 es
+in vec3 aPos; in vec3 aCol; uniform mat4 uVP; out vec3 vC;
+void main() { vC = aCol; gl_Position = uVP * vec4(aPos, 1.0); gl_PointSize = 7.0; }`,
+`#version 300 es
+precision mediump float; in vec3 vC; out vec4 o; void main() { o = vec4(vC, 1.0); }`);
+const LA = { pos: gl.getAttribLocation(lineProg, 'aPos'), col: gl.getAttribLocation(lineProg, 'aCol') }, LVP = gl.getUniformLocation(lineProg, 'uVP');
+const lineBuf = { pos: gl.createBuffer(), col: gl.createBuffer() };
+function drawLines(vp, pos, col, mode) {
+  gl.useProgram(lineProg);
+  gl.uniformMatrix4fv(LVP, false, vp);
+  gl.bindBuffer(gl.ARRAY_BUFFER, lineBuf.pos); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(pos), gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(LA.pos); gl.vertexAttribPointer(LA.pos, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, lineBuf.col); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(col), gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(LA.col); gl.vertexAttribPointer(LA.col, 3, gl.FLOAT, false, 0, 0);
+  gl.drawArrays(mode, 0, pos.length / 3);
+}
+
+const boneColor = (b) => (b.name.startsWith('Left') ? [0.31, 0.76, 0.97] : b.name.startsWith('Right') ? [1, 0.54, 0.4] : [1, 0.84, 0.31]);
+const t0 = performance.now();
+
+function frame() {
+  requestAnimationFrame(frame);
+  const w = c3.clientWidth * devicePixelRatio, h = c3.clientHeight * devicePixelRatio;
+  if (c3.width !== w || c3.height !== h) { c3.width = w; c3.height = h; }
+  gl.viewport(0, 0, w, h);
+  gl.clearColor(0.071, 0.075, 0.09, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  if (!model) return;
+  const t = cam.target, cp = Math.cos(cam.pitch);
+  const eye = [t[0] + Math.sin(cam.yaw) * cp * cam.dist, t[1] + Math.sin(cam.pitch) * cam.dist, t[2] + Math.cos(cam.yaw) * cp * cam.dist];
+  const vp = new Float32Array(Rig.mmul(perspective(0.75, w / Math.max(1, h), cam.dist * 0.02, cam.dist * 30), lookAt(eye, t)));
+
+  gl.enable(gl.DEPTH_TEST);
+  // Floor grid, 0.5 m squares.
+  const g = [], gc = [], R = Math.ceil(cam.fit), step = 0.5;
+  for (let i = -R; i <= R; i += step) { g.push(i, 0, -R, i, 0, R, -R, 0, i, R, 0, i); for (let k = 0; k < 4; k++) gc.push(.16, .17, .2); }
+  drawLines(vp, g, gc, gl.LINES);
+
+  const clip = $('clip').value;
+  const playing = skin && !stale && clip !== 'Rest';
+  const pose = skel ? Rig.poseMatrices(skel, playing ? clip : null, (performance.now() - t0) / 1000) : null;
+
+  gl.useProgram(prog);
+  gl.uniformMatrix4fv(U.uVP, false, vp);
+  const skinOn = !!(skin && !stale);
+  gl.uniform1i(U.uSkin, skinOn ? 1 : 0);
+  if (skinOn) {
+    const flat = new Float32Array(64 * 16);
+    pose.matrices.forEach((m, i) => flat.set(m, i * 16));
+    gl.uniformMatrix4fv(U.uJ, false, flat);
+  }
+  gl.uniform1i(U.uSel, selected);
+  gl.uniform1i(U.uHeatOn, skinOn && $('heat').checked && selected >= 0 ? 1 : 0);
+  gl.uniform1i(U.uS, 0);
+  for (const p of gpuPrims) {
+    if (p.doubleSided) gl.disable(gl.CULL_FACE); else gl.enable(gl.CULL_FACE);
+    bind(A.aPos, p.buf.pos, 3); bind(A.aNrm, p.buf.nrm, 3);
+    bind(A.aUV, p.buf.uv, 2, [0, 0, 0, 0]);
+    bind(A.aCol, p.buf.col, p.colN || 4, [1, 1, 1, 1]);
+    bind(A.aJ, skinOn ? p.buf.j : null, 4, [0, 0, 0, 0]);
+    bind(A.aW, skinOn ? p.buf.w : null, 4, [1, 0, 0, 0]);
+    gl.uniform4fv(U.uBase, p.base);
+    const tex = p.tex >= 0 ? textures[p.tex] : null;
+    gl.uniform1i(U.uTex, tex ? 1 : 0);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.uniform1f(U.uCut, p.cut);
+    gl.uniform1i(U.uFlat, p.unlit ? 1 : 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, p.buf.idx);
+    gl.drawElements(gl.TRIANGLES, p.count, gl.UNSIGNED_INT, 0);
+  }
+
+  if (skel && $('bones').checked) {
+    gl.disable(gl.DEPTH_TEST);
+    const P = pose.positions, lp = [], lc = [], pp = [], pc = [];
+    skel.bones.forEach((b, i) => {
+      const c = i === selected ? [1, 1, 1] : boneColor(b);
+      if (b.parent >= 0) { lp.push(...P[b.parent], ...P[i]); lc.push(...c, ...c); }
+      pp.push(...P[i]); pc.push(...c);
+    });
+    drawLines(vp, lp, lc, gl.LINES);
+    drawLines(vp, pp, pc, gl.POINTS);
+  }
+}
+
+let orbit = null;
+c3.addEventListener('pointerdown', (e) => { orbit = [e.clientX, e.clientY]; c3.setPointerCapture(e.pointerId); });
+c3.addEventListener('pointermove', (e) => {
+  if (!orbit) return;
+  cam.yaw -= (e.clientX - orbit[0]) * 0.008;
+  cam.pitch = Math.max(-0.3, Math.min(1.4, cam.pitch + (e.clientY - orbit[1]) * 0.008));
+  orbit = [e.clientX, e.clientY];
+});
+c3.addEventListener('pointerup', () => { orbit = null; });
+c3.addEventListener('wheel', (e) => { e.preventDefault(); cam.dist = Math.max(cam.fit * 0.15, Math.min(cam.fit * 4, cam.dist * Math.exp(e.deltaY * 0.001))); }, { passive: false });
+
+/* ================================================================ 2D edit views */
+// Front looks along -Z (screen x = world x); Side looks from the character's
+// right (screen x = world z, so the character faces right).
+const VIEWS = {
+  front: { canvas: $('front'), u: 0, depth: 2, towards: 1 },
+  side: { canvas: $('side'), u: 2, depth: 0, towards: -1 },
+};
+function viewTransform(v) {
+  const cv = v.canvas, W = cv.clientWidth, H = cv.clientHeight;
+  const { min, max } = model.bounds;
+  const pad = 30;
+  const k = Math.min((W - 2 * pad) / Math.max(1e-6, max[v.u] - min[v.u]), (H - 2 * pad) / Math.max(1e-6, max[1] - min[1]));
+  const ox = W / 2 - ((min[v.u] + max[v.u]) / 2) * k, oy = H / 2 + ((min[1] + max[1]) / 2) * k;
+  return { k, ox, oy, to: (p) => [ox + p[v.u] * k, oy - p[1] * k], from: (sx, sy) => [(sx - ox) / k, (oy - sy) / k] };
+}
+// Silhouette: every triangle painted back to front, shaded by how squarely it faces the viewer.
+function paintBackground(v) {
+  const cv = v.canvas, W = cv.clientWidth, H = cv.clientHeight, dpr = devicePixelRatio;
+  const bg = v.bg || (v.bg = document.createElement('canvas'));
+  bg.width = W * dpr; bg.height = H * dpr;
+  const g = bg.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.fillStyle = '#121317'; g.fillRect(0, 0, W, H);
+  if (!model) return;
+  const T = viewTransform(v);
+  v.T = T;
+  const tris = [];
+  for (const pr of model.prims) {
+    const P = pr.attrs.POSITION.data, I = pr.idx;
+    for (let t = 0; t < I.length; t += 3) {
+      const a = I[t] * 3, b = I[t + 1] * 3, c = I[t + 2] * 3;
+      const ux = P[b] - P[a], uy = P[b + 1] - P[a + 1], uz = P[b + 2] - P[a + 2];
+      const vx = P[c] - P[a], vy = P[c + 1] - P[a + 1], vz = P[c + 2] - P[a + 2];
+      const n = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
+      const l = Math.hypot(...n) || 1;
+      const facing = Math.abs(n[v.depth]) / l;
+      tris.push([(P[a + v.depth] + P[b + v.depth] + P[c + v.depth]) * v.towards, a, b, c, facing, P]);
+    }
+  }
+  tris.sort((x, y) => x[0] - y[0]);
+  for (const [, a, b, c, f, P] of tris) {
+    const s = Math.round(40 + 90 * f);
+    g.fillStyle = g.strokeStyle = `rgb(${s},${s + 2},${s + 8})`;
+    g.beginPath();
+    g.moveTo(...T.to([P[a], P[a + 1], P[a + 2]]));
+    g.lineTo(...T.to([P[b], P[b + 1], P[b + 2]]));
+    g.lineTo(...T.to([P[c], P[c + 1], P[c + 2]]));
+    g.closePath(); g.fill(); g.stroke();
+  }
+}
+function drawView(v) {
+  const cv = v.canvas, W = cv.clientWidth, H = cv.clientHeight, dpr = devicePixelRatio;
+  if (cv.width !== W * dpr || cv.height !== H * dpr || !v.bg) { cv.width = W * dpr; cv.height = H * dpr; paintBackground(v); }
+  const g = cv.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.drawImage(v.bg, 0, 0);
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (!skel || !v.T) return;
+  const T = v.T, B = skel.bones;
+  // Draw the far side's bones first so the near side stays on top.
+  const order = B.map((_, i) => i).sort((a, b) => B[a].pos[v.depth] * v.towards - B[b].pos[v.depth] * v.towards);
+  g.lineWidth = 2;
+  for (const i of order) {
+    const b = B[i];
+    if (b.parent < 0) continue;
+    const c = boneColor(b).map((x) => Math.round(x * 255));
+    g.strokeStyle = `rgba(${c},.8)`;
+    g.beginPath(); g.moveTo(...T.to(B[b.parent].pos)); g.lineTo(...T.to(b.pos)); g.stroke();
+  }
+  for (const i of order) {
+    const b = B[i], [x, y] = T.to(b.pos);
+    const c = boneColor(b).map((x) => Math.round(x * 255));
+    g.fillStyle = i === selected ? '#fff' : `rgb(${c})`;
+    g.strokeStyle = '#121317';
+    g.beginPath(); g.arc(x, y, i === selected ? 6.5 : b.end ? 3.5 : 5, 0, Math.PI * 2); g.fill(); g.stroke();
+  }
+}
+function drawViews() { for (const v of Object.values(VIEWS)) drawView(v); }
+function repaintViews() { for (const v of Object.values(VIEWS)) { v.bg = null; } drawViews(); }
+
+function descendants(i) {
+  const out = [];
+  const walk = (j) => skel.bones.forEach((b, k) => { if (b.parent === j) { out.push(k); walk(k); } });
+  walk(i);
+  return out;
+}
+for (const v of Object.values(VIEWS)) {
+  let drag = null;
+  v.canvas.addEventListener('pointerdown', (e) => {
+    if (!skel || !v.T) return;
+    const r = v.canvas.getBoundingClientRect(), sx = e.clientX - r.left, sy = e.clientY - r.top;
+    // Nearest joint; prefer the side facing the viewer when two overlap.
+    let best = -1, bd = 14;
+    skel.bones.forEach((b, i) => {
+      const [x, y] = v.T.to(b.pos);
+      const d = Math.hypot(x - sx, y - sy) - (b.pos[v.depth] * v.towards) * 1e-3;
+      if (d < bd) { bd = d; best = i; }
+    });
+    select(best);
+    if (best < 0) return;
+    drag = { i: best, last: v.T.from(sx, sy), kids: e.shiftKey ? descendants(best) : [] };
+    v.canvas.setPointerCapture(e.pointerId);
+  });
+  v.canvas.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const r = v.canvas.getBoundingClientRect(), p = v.T.from(e.clientX - r.left, e.clientY - r.top);
+    const du = p[0] - drag.last[0], dy = p[1] - drag.last[1];
+    drag.last = p;
+    const cx = skel.bones[0].pos[0];
+    for (const i of [drag.i, ...drag.kids]) {
+      const b = skel.bones[i];
+      b.pos[v.u] += du; b.pos[1] += dy;
+      if ($('mirror').checked && b.mirror >= 0) {
+        const m = skel.bones[b.mirror];
+        m.pos = [2 * cx - b.pos[0], b.pos[1], b.pos[2]];
+      }
+    }
+    markStale();
+    drawViews();
+  });
+  const end = () => { drag = null; };
+  v.canvas.addEventListener('pointerup', end);
+  v.canvas.addEventListener('pointercancel', end);
+}
+window.addEventListener('resize', () => repaintViews());
+
+/* ================================================================ workflow */
+function busy(fn) {
+  document.body.classList.add('busy');
+  return new Promise((res) => setTimeout(() => {
+    try { res(fn()); } catch (e) { alert(e.message); res(null); } finally { document.body.classList.remove('busy'); }
+  }, 30));
+}
+function select(i) {
+  selected = i;
+  $('selected').textContent = i >= 0 ? 'Selected: ' + skel.bones[i].name : '';
+  drawViews();
+}
+function markStale() {
+  if (!stale) { stale = true; }
+  $('weightStatus').textContent = skin ? 'Joints moved: compute weights again to see the result.' : 'Not computed yet.';
+  $('weightStatus').className = 'status warn';
+  $('export').disabled = true;
+}
+function refreshInfo() {
+  const { min, max } = model.bounds;
+  const size = max.map((v, i) => (v - min[i]).toFixed(2));
+  $('modelInfo').textContent = `${model.name}: ${model.triangles.toLocaleString()} triangles, ${size.join(' × ')} m`;
+  $('modelInfo').className = 'status ok';
+  $('warnings').textContent = model.warnings.join(' ');
+}
+
+async function useModel(m) {
+  freeGPU();
+  model = m;
+  skin = null; skel = null; selected = -1;
+  Rig.normalizeModel(model, {}); // Centre it and stand it on the ground.
+  await loadTextures();
+  refreshInfo();
+  $('height').value = (model.bounds.max[1] - model.bounds.min[1]).toFixed(2);
+  uploadModel();
+  fitCamera();
+  repaintViews();
+  await autoFit();
+}
+async function reshape(opts) {
+  if (!model) return;
+  Rig.normalizeModel(model, opts);
+  skin = null;
+  uploadModel(); fitCamera(); refreshInfo(); repaintViews();
+  await autoFit();
+}
+async function autoFit() {
+  if (!model) return;
+  skel = Rig.fitHumanoid(model);
+  select(-1);
+  await computeWeights();
+}
+async function computeWeights() {
+  if (!model || !skel) return;
+  const t = performance.now();
+  const res = await busy(() => Rig.computeWeights(model, skel));
+  if (!res) return;
+  skin = res; stale = false;
+  uploadModel();
+  $('weightStatus').textContent = `Up to date (${Math.round(performance.now() - t)} ms).`;
+  $('weightStatus').className = 'status ok';
+  $('export').disabled = false;
+  drawViews();
+}
+
+async function openBytes(bytes, name) {
+  const m = await busy(() => Rig.loadModel(bytes, name.replace(/\.\w+$/, '')));
+  if (m) await useModel(m);
+}
+
+$('open').onclick = () => $('file').click();
+$('file').onchange = async () => {
+  const f = $('file').files[0];
+  if (f) await openBytes(new Uint8Array(await f.arrayBuffer()), f.name);
+  $('file').value = '';
+};
+$('figure').onclick = () => {
+  const mg = ModelGen.generate('figure', $('figSeed').value.trim() || '1');
+  openBytes(ModelGen.toGLB(mg), 'figure_' + mg.seed);
+};
+$('turnL').onclick = () => reshape({ turn: -90 });
+$('turnR').onclick = () => reshape({ turn: 90 });
+$('standUp').onclick = () => reshape({ standUp: true });
+$('applyHeight').onclick = () => { const h = Number($('height').value); if (h > 0) reshape({ height: h }); };
+$('fit').onclick = () => autoFit();
+$('weigh').onclick = () => computeWeights();
+$('heat').onchange = () => { if ($('heat').checked && selected < 0 && skel) select(skel.bones.findIndex((b) => b.name === 'LeftForeArm')); };
+$('export').onclick = () => {
+  if (!skin || stale) return;
+  const bytes = Rig.exportRigged(model, skel, skin);
+  const url = URL.createObjectURL(new Blob([bytes], { type: 'model/gltf-binary' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = model.name + '_rigged.glb';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+for (const c of ['Rest', ...Object.keys(Rig.CLIPS)]) $('clip').add(new Option(c === 'Rest' ? 'Rest pose' : c, c));
+$('clip').value = 'Idle';
+$('export').disabled = true;
+
+document.addEventListener('dragover', (e) => { e.preventDefault(); document.body.classList.add('dragging'); });
+document.addEventListener('dragleave', (e) => { if (!e.relatedTarget) document.body.classList.remove('dragging'); });
+document.addEventListener('drop', async (e) => {
+  e.preventDefault(); document.body.classList.remove('dragging');
+  const f = e.dataTransfer.files[0];
+  if (f) await openBytes(new Uint8Array(await f.arrayBuffer()), f.name);
+});
+
+const q = new URLSearchParams(location.search);
+if (q.get('clip')) $('clip').value = q.get('clip');
+if (q.get('figure')) { $('figSeed').value = q.get('figure'); $('figure').click(); }
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

@@ -69,7 +69,7 @@ const PIVOT_AT_HAND = new Set(['sword', 'axe']);
 // Rough plausible size envelopes in metres: [min tallest dimension, max].
 const SIZE = {
   tree: [2.5, 7], pine: [3, 7], rock: [0.2, 3.5], crystal: [0.4, 2], crate: [0.6, 1.3], barrel: [0.8, 1.4],
-  chest: [0.6, 1.4], sword: [0.7, 1.4], axe: [0.5, 1.2], potion: [0.1, 0.45], mushroom: [0.2, 0.9], house: [3, 8], fence: [1, 5],
+  chest: [0.6, 1.4], sword: [0.7, 1.4], axe: [0.5, 1.2], potion: [0.1, 0.45], mushroom: [0.2, 0.9], house: [3, 8], fence: [1, 5], figure: [1.55, 2.0],
 };
 
 // Winding: a closed mesh whose triangles all face outward has positive signed
@@ -126,6 +126,50 @@ for (const type of MG.types()) {
 }
 if (MG.generate('rock', 'quarry-gate').seed !== MG.generate('rock', 'quarry-gate').seed) fail('string seeds unstable');
 if (Buffer.compare(Buffer.from(MG.toGLB(MG.generate('rock', 7))), Buffer.from(MG.toGLB(MG.generate('tree', 7)))) === 0) fail('types share streams');
+
+// Rigging: fit, weigh, pose and export the test figure at several seeds.
+const Rig = require('./rig');
+for (const seed of [1, 2, 3]) {
+  const tag = `rig figure ${seed}`;
+  const model = Rig.loadModel(MG.toGLB(MG.generate('figure', seed)), 'figure');
+  Rig.normalizeModel(model, { height: 1.8 });
+  const skel = Rig.fitHumanoid(model);
+  const skin = Rig.computeWeights(model, skel);
+  const B = skel.bones, bone = (n) => B.find((b) => b.name === n);
+  // Left/right symmetry about the centre line (the figure is near-symmetric).
+  for (const b of B) if (b.name.startsWith('Left')) {
+    const m = bone('Right' + b.name.slice(4));
+    if (Math.abs(b.pos[0] + m.pos[0] - 2 * bone('Hips').pos[0]) > 0.06) fail(`${tag}: ${b.name} not mirrored`);
+  }
+  if (!(bone('LeftLeg').pos[1] < bone('LeftUpLeg').pos[1] && bone('Head').pos[1] > bone('Neck').pos[1])) fail(`${tag}: joints out of order`);
+  // Skin on the CPU: rest pose is exact; in a walk the feet move and the head barely does.
+  const P = model.prims[0].attrs.POSITION.data, J = skin[0].joints, W = skin[0].weights;
+  const pose = (clip, t) => {
+    const { matrices } = Rig.poseMatrices(skel, clip, t);
+    const out = new Float32Array(P.length);
+    for (let v = 0; v < P.length / 3; v++) for (let k = 0; k < 4; k++) {
+      const w = W[v * 4 + k]; if (!w) continue;
+      const q = Rig.xformPoint(matrices[J[v * 4 + k]], [P[v * 3], P[v * 3 + 1], P[v * 3 + 2]]);
+      out[v * 3] += q[0] * w; out[v * 3 + 1] += q[1] * w; out[v * 3 + 2] += q[2] * w;
+    }
+    return out;
+  };
+  const rest = pose(null, 0);
+  if (rest.some((x, i) => Math.abs(x - P[i]) > 1e-4)) fail(`${tag}: rest pose moves the mesh`);
+  const walk = pose('Walk', 0.275);
+  const dz = (f) => { let s = 0, n = 0; for (let v = 0; v < P.length / 3; v++) if (f(P[v * 3], P[v * 3 + 1])) { s += walk[v * 3 + 2] - P[v * 3 + 2]; n++; } return s / n; };
+  const lf = dz((x, y) => y < 0.1 && x > 0.03), rf = dz((x, y) => y < 0.1 && x < -0.03), hd = dz((x, y) => y > 1.65);
+  if (!(lf > 0.15 && rf < -0.15 && Math.abs(hd) < 0.08)) fail(`${tag}: walk deforms wrongly (feet ${lf.toFixed(2)} ${rf.toFixed(2)}, head ${hd.toFixed(2)})`);
+  for (let v = 0; v < W.length / 4; v++) {
+    const s = W[v * 4] + W[v * 4 + 1] + W[v * 4 + 2] + W[v * 4 + 3];
+    if (Math.abs(s - 1) > 1e-4) { fail(`${tag}: weights don't sum to 1`); break; }
+  }
+  const glb = Rig.exportRigged(model, skel, skin);
+  const back = Rig.loadModel(glb);
+  if (back.triangles !== model.triangles) fail(`${tag}: export lost triangles`);
+  const json = JSON.parse(new TextDecoder().decode(glb.subarray(20, 20 + new DataView(glb.buffer).getUint32(12, true))));
+  if (json.skins[0].joints.length !== B.length || json.animations.length !== Object.keys(Rig.CLIPS).length) fail(`${tag}: skin or clips missing`);
+}
 
 console.log(`${models} models, ${tris} triangles, ${Date.now() - t0} ms`);
 if (fails.length) { console.error(`${fails.length} failures`); process.exit(1); }

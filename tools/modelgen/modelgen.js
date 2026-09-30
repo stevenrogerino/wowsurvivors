@@ -374,6 +374,10 @@
     steel: P_(['#c9ced6', '#b8bec7', '#d8dde3']),
     bronze: P_(['#b87333', '#a8672e']),
     leather: P_(['#5a3620', '#6b3f24', '#3f2a1c', '#7a2e2e', '#2e3f5a']),
+    skin: P_(['#f1c9a5', '#e0ac85', '#c68863', '#9c6644', '#6f4630', '#f6d7c3']),
+    cloth: P_(['#3a5f8a', '#8a3a3a', '#3f6e4a', '#6a4a8a', '#8a7a3a', '#4a4a52', '#b0b4ba']),
+    trousers: P_(['#3b3f4a', '#4a3b2e', '#2e3b4a', '#55503f']),
+    hair: P_(['#2a1d14', '#5a3a1e', '#a86a2e', '#d8b56a', '#1a1a1a', '#8a8a8a']),
     gem: P_(['#e0303a', '#2f7de0', '#30c060', '#b040e0', '#f0c030']),
     glass: hex('#cfe6ea'),
     liquid: P_(['#e0303a', '#2f7de0', '#30c060', '#b040e0', '#f0a020', '#40e0d0', '#f0f0f0']),
@@ -758,6 +762,58 @@
           const cx = r.range(-W * 0.3, W * 0.3), cz = -D * 0.22;
           const ch = rh + 0.8;
           out.add(box(0.5, ch, 0.5).translate(cx, top + ch / 2, cz).paint(r.pick(PAL.foundation), 'stone').tint(r, 0.15));
+        }
+        return out;
+      },
+    },
+
+    figure: {
+      about: 'Humanoid mannequin in an A-pose, facing +Z. A stand-in character and a rigging test.',
+      build(r, d) {
+        const H = r.range(1.6, 1.95), bulk = r.range(0.85, 1.2);
+        const skin = r.pick(PAL.skin), shirt = r.pick(PAL.cloth), legs = r.pick(PAL.trousers);
+        const boots = r.pick(PAL.darkWood), hair = r.pick(PAL.hair);
+        const segs = seg(8, d, 5);
+        // A tapered limb from a to b: a lathe along +Y, tilted onto a->b.
+        const limb = (a, b, r0, r1) => {
+          const v = sub3(b, a), L = len3(v), n = norm3(v);
+          // Rings along the length, so the limb bends smoothly when rigged.
+          const rings = Array.from({ length: 5 }, (_, i) => [r0 + (r1 - r0) * (i / 4), (L * i) / 4]);
+          return lathe(rings, segs)
+            .rotateX(Math.acos(Math.max(-1, Math.min(1, n[1])))).rotateY(Math.atan2(n[0], n[2])).translate(a);
+        };
+        const joint = (p, rad) => icosphere(rad, 1).translate(p);
+        const out = new Part();
+        // Torso: an elliptical lathe from hips to neck.
+        const w = 0.1 * H * bulk;
+        out.add(lathe([[w * 0.9, 0.47 * H], [w, 0.55 * H], [w * 0.88, 0.62 * H], [w * 1.08, 0.72 * H], [w * 1.12, 0.79 * H], [w * 0.5, 0.835 * H]], segs + 2)
+          .scale(1, 1, 0.62).paintBy((t, n, c) => (c[1] < 0.54 * H ? legs : shirt), 'cloth').tint(r, 0.06));
+        out.add(limb([0, 0.82 * H, 0], [0, 0.875 * H, 0], 0.028 * H, 0.025 * H).paint(skin, 'skin'));
+        // Head, with a nose and eyes so the front is unmistakable.
+        const hr = 0.065 * H, hc = [0, 0.93 * H, 0.005 * H];
+        out.add(icosphere(hr, d >= 1.5 ? 2 : 1).scale(0.9, 1.1, 1).translate(hc)
+          .paintBy((t, n, c) => (c[1] > hc[1] + hr * 0.25 && (n[2] < 0.55 || c[1] > hc[1] + hr * 0.7) ? hair : skin), 'skin').tint(r, 0.04));
+        out.add(lathe([[hr * 0.16, 0], [0, hr * 0.3]], 4).rotateX(Math.PI / 2).translate(0, hc[1] - hr * 0.05, hc[2] + hr * 0.95).paint(shade(skin, 0.95), 'skin'));
+        for (const x of [-1, 1]) out.add(icosphere(hr * 0.11, 0).translate(x * hr * 0.35, hc[1] + hr * 0.18, hc[2] + hr * 0.9).paint(hex('#1c1c22'), 'eyes'));
+        for (const side of [-1, 1]) {
+          // Legs: hip, knee, ankle; the foot points forward.
+          const hip = [side * 0.055 * H * bulk, 0.49 * H, 0], knee = [side * 0.06 * H, 0.27 * H, 0.005 * H], ankle = [side * 0.062 * H, 0.045 * H, 0];
+          out.add(limb(hip, knee, 0.055 * H * bulk, 0.04 * H).paint(legs, 'cloth').tint(r, 0.06));
+          out.add(joint(knee, 0.04 * H).paint(legs, 'cloth'));
+          out.add(limb(knee, ankle, 0.04 * H, 0.03 * H).paint(legs, 'cloth').tint(r, 0.06));
+          out.add(box(0.06 * H, 0.05 * H, 0.15 * H).translate(ankle[0], 0.025 * H, 0.035 * H).paint(boots, 'boots').tint(r, 0.1));
+          // Arms: an A-pose about 45 degrees below horizontal.
+          const drop = r.range(0.7, 0.85);
+          const dir = [side * Math.cos(drop), -Math.sin(drop), 0];
+          const sh = [side * 0.12 * H * bulk, 0.8 * H, 0];
+          const el = [sh[0] + dir[0] * 0.17 * H, sh[1] + dir[1] * 0.17 * H, 0];
+          const wr = [el[0] + dir[0] * 0.15 * H, el[1] + dir[1] * 0.15 * H, 0.01 * H];
+          out.add(joint(sh, 0.042 * H * bulk).paint(shirt, 'cloth'));
+          out.add(limb(sh, el, 0.038 * H * bulk, 0.03 * H).paint(shirt, 'cloth').tint(r, 0.06));
+          out.add(joint(el, 0.03 * H).paint(skin, 'skin'));
+          out.add(limb(el, wr, 0.03 * H, 0.022 * H).paint(skin, 'skin').tint(r, 0.04));
+          out.add(icosphere(0.035 * H, 1).scale(0.7, 1.2, 0.45).rotateZ(side * (Math.PI / 2 - drop))
+            .translate(wr[0] + dir[0] * 0.04 * H, wr[1] + dir[1] * 0.04 * H, wr[2]).paint(skin, 'skin'));
         }
         return out;
       },
