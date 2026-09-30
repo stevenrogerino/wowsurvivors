@@ -7,3 +7,6 @@ desktop/steam_appid.txt
 # Steam: the trailer is large and regenerable; build scripts carry your IDs
 steam/trailer/
 steam/build/
+
+# ModelGen CLI default output
+/models/
