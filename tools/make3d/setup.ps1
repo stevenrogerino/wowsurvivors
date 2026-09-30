@@ -109,8 +109,17 @@ function Build-TextureKernel {
   $vsPath = $null
   if (Test-Path $vswhere) { $vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath }
   if (-not $vsPath) {
+    # Microsoft's own installer, fetched directly: winget is missing on some
+    # Windows installs. Windows asks for permission (a Yes/No prompt).
     Info 'installing Visual Studio 2022 Build Tools (C++), about 5 GB - this takes a while'
-    winget install --id Microsoft.VisualStudio.2022.BuildTools -e --accept-package-agreements --accept-source-agreements --override "--quiet --wait --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended" | Out-Host
+    Info 'Windows will ask for permission: click Yes.'
+    $vsExe = Join-Path $Vendor 'vs_BuildTools.exe'
+    try { Invoke-WebRequest -Uri 'https://aka.ms/vs/17/release/vs_BuildTools.exe' -OutFile $vsExe -UseBasicParsing -ErrorAction Stop }
+    catch { return "could not download the Visual Studio Build Tools installer ($_)" }
+    $p = Start-Process -FilePath $vsExe -Verb RunAs -Wait -PassThru -ArgumentList '--quiet --wait --norestart --nocache --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended'
+    Remove-Item $vsExe -ErrorAction SilentlyContinue
+    if ($p -and $p.ExitCode -eq 3010) { Info 'installed (Windows wants a restart; that can wait until setup is done)' }
+    elseif ($p -and $p.ExitCode -ne 0) { Info "the installer returned code $($p.ExitCode)" }
     if (Test-Path $vswhere) { $vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath }
     if (-not $vsPath) { return 'Visual Studio Build Tools did not install. Install "Build Tools for Visual Studio 2022" with "Desktop development with C++" from visualstudio.microsoft.com, or run setup.bat -NoTexture.' }
   }
@@ -124,14 +133,14 @@ function Build-TextureKernel {
   }
   if (-not (Test-Path (Join-Path $cudaHome 'bin\nvcc.exe'))) {
     Info 'installing the NVIDIA CUDA Toolkit 12.8, about 3 GB - this takes a while'
-    winget install --id Nvidia.CUDA --version 12.8 -e --accept-package-agreements --accept-source-agreements --silent | Out-Host
-    if (-not (Test-Path (Join-Path $cudaHome 'bin\nvcc.exe'))) {
-      $exe = Join-Path $Vendor 'cuda_12.8.1_windows_network.exe'
-      Download 'https://developer.download.nvidia.com/compute/cuda/12.8.1/network_installers/cuda_12.8.1_windows_network.exe' $exe
-      Info 'running the CUDA installer silently'
-      Start-Process -FilePath $exe -ArgumentList '-s' -Wait
-      Remove-Item $exe -ErrorAction SilentlyContinue
-    }
+    Info 'Windows will ask for permission: click Yes.'
+    # NVIDIA's installer, fetched directly (winget is missing on some PCs).
+    $exe = Join-Path $Vendor 'cuda_12.8.1_windows_network.exe'
+    try { Invoke-WebRequest -Uri 'https://developer.download.nvidia.com/compute/cuda/12.8.1/network_installers/cuda_12.8.1_windows_network.exe' -OutFile $exe -UseBasicParsing -ErrorAction Stop }
+    catch { return "could not download the CUDA Toolkit installer ($_)" }
+    Info 'running the CUDA installer silently'
+    Start-Process -FilePath $exe -Verb RunAs -Wait -ArgumentList '-s'
+    Remove-Item $exe -ErrorAction SilentlyContinue
     if (-not (Test-Path (Join-Path $cudaHome 'bin\nvcc.exe'))) { return 'CUDA Toolkit 12.8 did not install. Get it from developer.nvidia.com/cuda-12-8-1-download-archive, or run setup.bat -NoTexture.' }
   }
   Info "CUDA: $cudaHome"
@@ -160,7 +169,8 @@ function Build-TextureKernel {
   return $null
 }
 $TextureProblem = $null
-& $Py -c "import custom_rasterizer" 2>$null
+# find_spec, not import: a failed import prints a traceback that PowerShell shows as an error.
+& $Py -c "import importlib.util,sys; sys.exit(0 if importlib.util.find_spec('custom_rasterizer') else 1)"
 if ($LASTEXITCODE -eq 0) { Info 'already built' }
 elseif ($NoTexture) { Info 'skipped (-NoTexture); make3d will make untextured models' }
 else {

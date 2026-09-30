@@ -35,6 +35,7 @@
   const scl = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
   const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
   const len = (a) => Math.sqrt(dot(a, a));
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
   const nrm = (a) => { const l = len(a) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
   const lerp = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
@@ -405,6 +406,51 @@
     return best.centroid;
   }
 
+  // Follows an arm hanging near the body: slice the model horizontally from
+  // armpit height down; below the armpit the arm is its own piece beside the
+  // torso. Stops where it ends or touches the thigh. Returns shoulder, elbow,
+  // wrist and tip, or null when no arm can be told apart from the body.
+  function traceHangingArm(g, s, cx, chest, H, y) {
+    const UP = [0, 1, 0], path = [];
+    for (let f = 0.8; f >= 0.25; f -= 0.01) {
+      const pieces = slicePieces(g, [cx, y(f), chest[2]], UP, 0.5 * H).filter((pc) => pc.cells >= 2);
+      // The torso is the piece spanning the centre line (none below the crotch).
+      const torso = pieces.find((pc) => pc.min[0] <= cx && pc.max[0] >= cx);
+      const side = pieces.filter((pc) => pc !== torso && (pc.centroid[0] - cx) * s > 0);
+      if (!side.length) { if (path.length) break; continue; }
+      const outer = side.reduce((a, b) => ((b.centroid[0] - cx) * s > (a.centroid[0] - cx) * s ? b : a));
+      // Legs only come apart below the crotch (about half height): a first
+      // piece lower than that is a leg, so the arm never came free.
+      if (!path.length && f < 0.52) return null;
+      if (path.length && Math.abs(outer.centroid[0] - path[path.length - 1][0]) > 0.05 * H) break;
+      path.push(outer.centroid);
+    }
+    if (path.length < 2) return null;
+    // The shoulder joint sits at about the same height whatever the arms do:
+    // extend the traced upper arm up to it, however low the arm came free.
+    const k = Math.min(path.length - 1, 6);
+    const d0 = nrm(sub(path[0], path[k]));
+    const rise = y(0.8) - path[0][1];
+    const shoulder = d0[1] > 0.3 && rise > 0 ? add(path[0], scl(d0, rise / d0[1])) : add(path[0], scl(d0, 0.05 * H));
+    const line = [shoulder, ...path];
+    // Arc-length walk from the shoulder, extended straight past the end.
+    const at = (d) => {
+      for (let i = 1; i < line.length; i++) {
+        const l = len(sub(line[i], line[i - 1]));
+        if (d <= l) return lerp(line[i - 1], line[i], d / (l || 1));
+        d -= l;
+      }
+      const n = line.length;
+      return add(line[n - 1], scl(nrm(sub(line[n - 1], line[n - 2])), d));
+    };
+    let total = 0;
+    for (let i = 1; i < line.length; i++) total += len(sub(line[i], line[i - 1]));
+    return {
+      shoulder: [shoulder[0] - s * 0.01 * H, shoulder[1], shoulder[2]],
+      elbow: at(0.17 * H), wrist: at(0.32 * H), tip: at(Math.max(Math.min(total, 0.42 * H), 0.38 * H)),
+    };
+  }
+
   // Places a humanoid skeleton by measuring the model. Assumes it stands
   // upright (+Y), faces +Z, with its arms away from the body (A- or T-pose).
   // Joints go to the middle of the solid body at standard proportions, so
@@ -451,8 +497,10 @@
       put(S + 'ToeBase', [shin[0], y(0.02), shin[2] + (toeZ - shin[2]) * 0.6]);
       put(S + 'Toe_End', [shin[0], y(0.02), toeZ]);
 
-      // Arms: find the fingertip, centre the wrist and elbow in the solid
-      // arm (well clear of the torso), then extend that line to the shoulder.
+      // Arms, two ways. Held well out (T-pose, wide A-pose): find the
+      // fingertip, centre the wrist and elbow in the solid arm, extend that
+      // line to the shoulder. Hanging close to the body: trace the arm down
+      // through horizontal slices, where it is its own piece beside the torso.
       let tip = null;
       for (const pr of model.prims) {
         const P = pr.attrs.POSITION.data;
@@ -462,7 +510,7 @@
         }
       }
       const guessShoulder = [cx + s * 0.11 * H, y(0.81), chest[2]];
-      let arm;
+      let arm = null;
       if (tip && (tip[0] - cx) * s > 0.25 * H) {
         let dir = nrm(sub(tip, guessShoulder));
         const wrist = sliceCentre(g, sub(tip, scl(dir, 0.1 * H)), dir, 0.06 * H);
@@ -471,9 +519,16 @@
         const shoulder = sub(elbow, scl(dir, 0.17 * H));
         arm = { shoulder: [shoulder[0], shoulder[1], spineZ(0.8) * 0.5 + elbow[2] * 0.5], elbow, wrist, tip };
       } else {
-        // Arms down by the sides: no clean way to separate them; use proportions.
-        const sh = guessShoulder;
-        arm = { shoulder: sh, elbow: [sh[0] + s * 0.02 * H, y(0.63), sh[2]], wrist: [sh[0] + s * 0.03 * H, y(0.48), sh[2]], tip: [sh[0] + s * 0.03 * H, y(0.39), sh[2]] };
+        arm = traceHangingArm(g, s, cx, chest, H, y);
+      }
+      if (!arm) {
+        // Arms pressed to the body all the way down: nothing to trace. At chest
+        // height the body's outer edge is then the arm's outer edge, so put
+        // the arm just inside it, and let the user drag it if needed.
+        const torso = slicePieces(g, [cx, y(0.7), chest[2]], UP, 0.3 * H)[0];
+        const edge = torso ? (s > 0 ? torso.max[0] : torso.min[0]) : cx + s * 0.16 * H;
+        const x = edge - s * 0.035 * H;
+        arm = { shoulder: [x - s * 0.02 * H, y(0.81), chest[2]], elbow: [x, y(0.63), chest[2]], wrist: [x + s * 0.01 * H, y(0.48), chest[2]], tip: [x + s * 0.01 * H, y(0.4), chest[2]] };
       }
       put(S + 'Shoulder', [cx + (arm.shoulder[0] - cx) * 0.3, arm.shoulder[1] - 0.005 * H, pos.Spine2[2]]);
       put(S + 'Arm', arm.shoulder);
@@ -540,20 +595,74 @@
     const insideCells = [];
     for (let c = 0; c < N; c++) if (inside(c)) insideCells.push(c);
 
+    // Arms, cut free of the body. Below the armpit, an arm bone may only reach
+    // into a tube around its own arm (shoulder, elbow, wrist, fingertip), and
+    // no other bone may reach into the arm's core. Without this, a hand
+    // resting on a hip is joined to it and claims it: raise the arm and the
+    // hip comes along. The tube's width is the arm's measured thickness.
+    const height = model.bounds.max[1] - model.bounds.min[1];
+    const byName = (nm) => B.findIndex((b) => b.name === nm);
+    const arms = ['Left', 'Right'].map((S) => {
+      const chain = ['Arm', 'ForeArm', 'Hand', 'Hand_End'].map((n) => byName(S + n));
+      if (chain.some((i) => i < 0)) return null;
+      const pts = chain.map((i) => B[i].pos);
+      // Thickness: from points along the forearm and upper arm, step out to the
+      // skin in directions away from the body (outwards, forwards, backwards) -
+      // never inwards, where the arm may touch the chest or hip.
+      const side = Math.sign(pts[0][0] - B[0].pos[0]) || 1;
+      const reach = (from, dirV) => {
+        for (let d = 0; d < 0.15 * height; d += cell * 0.5) if (!inside(cellOf(add(from, scl(dirV, d))))) return d;
+        return 0.15 * height;
+      };
+      const radii = [];
+      for (const [i, j, t] of [[0, 1, 0.5], [1, 2, 0.35], [1, 2, 0.65]]) {
+        const q = lerp(pts[i], pts[j], t), along = nrm(sub(pts[j], pts[i]));
+        const out = nrm(sub([side, 0, 0], scl(along, along[0] * side))); // outward, square to the arm
+        const fwd = nrm(cross(along, out));
+        radii.push(reach(q, out), reach(q, fwd), reach(q, scl(fwd, -1)));
+      }
+      radii.sort((x, y) => x - y);
+      const r = Math.min(0.05 * height, Math.max(0.012 * height, radii[Math.floor(radii.length / 2)]));
+      return { bones: new Set(chain.slice(0, 3)), pts, r, armpit: pts[0][1] - 0.05 * height };
+    }).filter(Boolean);
+    const tubeDist = (arm, p) => Math.min(segDist(p, arm.pts[0], arm.pts[1]), segDist(p, arm.pts[1], arm.pts[2]), segDist(p, arm.pts[2], arm.pts[3]));
+    // Per cell: 0 free, 1 = inside arm k's tube (k+1 stored), with a core flag.
+    const armOf = new Int8Array(N), armCore = new Uint8Array(N);
+    if (arms.length) {
+      for (let c = 0; c < N; c++) {
+        if (!inside(c)) continue;
+        const q = centre(c);
+        arms.forEach((arm, k) => {
+          if (q[1] >= arm.armpit) return;
+          const d = tubeDist(arm, q);
+          if (d < arm.r * 1.2) { armOf[c] = k + 1; if (d < arm.r * 0.8) armCore[c] = 1; }
+        });
+      }
+    }
+    // May bone bi's walk enter cell c?
+    const allowed = (bi, c) => {
+      for (let k = 0; k < arms.length; k++) {
+        if (arms[k].bones.has(bi)) return centre(c)[1] >= arms[k].armpit || armOf[c] === k + 1;
+      }
+      return !armCore[c];
+    };
+
     // 3. Distance from each bone, walking only through the body.
     const dist = deform.map((bi) => {
       const a = B[bi].pos, b = B[B[bi].to].pos;
       const D = new Float64Array(N).fill(Infinity); // Must match the heap keys exactly.
+      const ok = new Uint8Array(N);
+      for (const c of insideCells) ok[c] = allowed(bi, c) ? 1 : 0;
       const heap = new Heap(4096);
       const steps = Math.max(1, Math.ceil(len(sub(b, a)) / (cell * 0.5)));
       for (let s = 0; s <= steps; s++) {
         const c = cellOf(lerp(a, b, s / steps));
-        if (inside(c) && D[c] !== 0) { D[c] = 0; heap.push(0, c); }
+        if (inside(c) && D[c] !== 0 && allowed(bi, c)) { D[c] = 0; heap.push(0, c); }
       }
       if (!heap.n) {
         // The bone runs outside the mesh: start from the nearest body cell.
         let best = -1, bd = Infinity;
-        for (const c of insideCells) { const d = segDist(centre(c), a, b); if (d < bd) { bd = d; best = c; } }
+        for (const c of insideCells) { if (!allowed(bi, c)) continue; const d = segDist(centre(c), a, b); if (d < bd) { bd = d; best = c; } }
         if (best >= 0) { D[best] = bd; heap.push(bd, best); }
       }
       while (heap.n) {
@@ -561,7 +670,7 @@
         if (dc > D[c]) continue;
         for (const [o, w] of nb26) {
           const d = c + o;
-          if (state[d] === 2) continue;
+          if (state[d] === 2 || !ok[d]) continue;
           const nd = dc + w;
           if (nd < D[d]) { D[d] = nd; heap.push(nd, d); }
         }
@@ -571,6 +680,9 @@
 
     // Trilinear distance at a point, from whichever neighbouring cells the walk reached.
     const sample = (D, p) => {
+      // A cell this bone could not reach (another body part, or cut off) means
+      // the bone doesn't reach this vertex - don't borrow from the neighbours.
+      if (!isFinite(D[cellOf(p)])) return Infinity;
       const fx = (p[0] - org[0]) / cell - 0.5, fy = (p[1] - org[1]) / cell - 0.5, fz = (p[2] - org[2]) / cell - 0.5;
       const i0 = Math.floor(fx), j0 = Math.floor(fy), k0 = Math.floor(fz);
       let sum = 0, wsum = 0;
@@ -583,6 +695,15 @@
         sum += v * w; wsum += w;
       }
       return wsum > 1e-6 ? sum / wsum : D[cellOf(p)];
+    };
+
+    const seesBone = (p, a, b) => {
+      const ab = sub(b, a), t = Math.max(0, Math.min(1, dot(sub(p, a), ab) / (dot(ab, ab) || 1)));
+      const q = add(a, scl(ab, t)), d = len(sub(q, p));
+      // Skip the first cell (the vertex sits on the surface) and stop short of the bone.
+      const steps = Math.floor(d / (cell * 0.5));
+      for (let i = 2; i < steps - 1; i++) if (state[cellOf(lerp(p, q, i / steps))] === 2) return false;
+      return true;
     };
 
     // 4. Weights: 1/d^power, strongest four, normalised.
@@ -604,6 +725,21 @@
         if (!reach) for (let d = 0; d < deform.length; d++) cand[d][1] = segDist(p, B[deform[d]].pos, B[B[deform[d]].to].pos);
         for (const c of cand) c[2] = isFinite(c[1]) ? 1 / Math.pow(Math.max(c[1], cell * 0.5), power) : 0;
         cand.sort((x, y) => y[2] - x[2]);
+        // Line of sight: a bone may only move a vertex if the straight line
+        // from the vertex to the bone stays inside the body. Where a hand
+        // rests on a hip, the walk through the body is short, but the line
+        // from the hip to the hand bone crosses open air - so the hip stays put.
+        if (reach && cand[0][2] > 0) {
+          let kept = 0;
+          for (let k = 0; k < Math.min(8, cand.length); k++) {
+            if (!cand[k][2]) break;
+            const bi = cand[k][0];
+            if (seesBone(p, B[bi].pos, B[B[bi].to].pos)) kept++;
+            else cand[k][2] = 0;
+          }
+          if (kept) cand.sort((x, y) => y[2] - x[2]);
+          else for (const c of cand) c[2] = isFinite(c[1]) ? 1 / Math.pow(Math.max(c[1], cell * 0.5), power) : 0;
+        }
         let total = 0;
         for (let k = 0; k < 4; k++) total += cand[k][2];
         for (let k = 0; k < 4; k++) {

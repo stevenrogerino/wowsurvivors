@@ -171,6 +171,73 @@ for (const seed of [1, 2, 3]) {
   if (json.skins[0].joints.length !== B.length || json.animations.length !== Object.keys(Rig.CLIPS).length) fail(`${tag}: skin or clips missing`);
 }
 
+// Arms hanging close to the body - the usual pose in photos - with hips wide
+// enough to touch the hands. The arm bones must be found inside the arms, and
+// raising the arms must not drag the hips along. (A real photo-made model once
+// sprouted "wings" from its hips here.)
+function skinPose(model, skel, skin, clip) {
+  const { matrices } = Rig.poseMatrices(skel, clip, 0);
+  const P = model.prims[0].attrs.POSITION.data, J = skin[0].joints, W = skin[0].weights, out = new Float32Array(P.length);
+  for (let v = 0; v < P.length / 3; v++) for (let k = 0; k < 4; k++) {
+    const w = W[v * 4 + k]; if (!w) continue;
+    const q = Rig.xformPoint(matrices[J[v * 4 + k]], [P[v * 3], P[v * 3 + 1], P[v * 3 + 2]]);
+    out[v * 3] += q[0] * w; out[v * 3 + 1] += q[1] * w; out[v * 3 + 2] += q[2] * w;
+  }
+  return out;
+}
+for (const [drop, widen] of [[75, 1], [82, 1], [82, 1.35], [75, 1.6]]) {
+  const tag = `rig arms down ${drop}deg, hips x${widen}`;
+  // Pose the figure's arms down with its own rig, then widen hips and thighs.
+  const src = Rig.loadModel(MG.toGLB(MG.generate('figure', 1)), 'f');
+  Rig.normalizeModel(src, { height: 1.8 });
+  const s0 = Rig.fitHumanoid(src), w0 = Rig.computeWeights(src, s0);
+  Rig.CLIPS.__check = { seconds: 1, pose: (p, c) => ({ LeftArm: { z: -(drop - c.dropL) }, RightArm: { z: drop - c.dropR } }) };
+  const posed = skinPose(src, s0, w0, '__check');
+  // Which vertices are arm: decided on the original figure, where the arms
+  // stand clear of the body. (Posing and widening keep the vertex order.)
+  const isArm = Array.from({ length: posed.length / 3 }, (_, v) => /Arm|Hand|Shoulder/.test(s0.bones[w0[0].joints[v * 4]].name));
+  delete Rig.CLIPS.__check;
+  for (let v = 0; v < posed.length; v += 3) {
+    const y = posed[v + 1];
+    if (Math.abs(posed[v]) < 0.17 && y < 1.0 && y > 0.35) posed[v] *= 1 + (widen - 1) * Math.sin(Math.PI * (y - 0.35) / 0.65);
+  }
+  src.prims[0].attrs.POSITION.data.set(posed);
+  delete src.prims[0].attrs.NORMAL; // Stale after posing: let the loader recompute them.
+  const model = Rig.loadModel(Rig.exportRigged(src, null, null), 'down');
+  Rig.normalizeModel(model, {});
+  const skel = Rig.fitHumanoid(model), skin = Rig.computeWeights(model, skel);
+  const bone = (n) => skel.bones.find((b) => b.name === n).pos;
+  // Where each arm really is: the figure's shoulder, swung down by `drop`.
+  const r = (drop * Math.PI) / 180;
+  for (const [S, side] of [['Left', 1], ['Right', -1]]) {
+    const sh = bone(S + 'Arm');
+    for (const [name, along] of [[S + 'ForeArm', 0.17], [S + 'Hand', 0.32]]) {
+      const want = [sh[0] + side * Math.cos(r) * along * 1.8, sh[1] - Math.sin(r) * along * 1.8];
+      const got = bone(name);
+      if (Math.hypot(got[0] - want[0], got[1] - want[1]) > 0.06) fail(`${tag}: ${name} at ${got.slice(0, 2).map((x) => x.toFixed(2))}, arm is at ${want.map((x) => x.toFixed(2))}`);
+    }
+    if (Math.abs(sh[1] - 1.44) > 0.05) fail(`${tag}: ${S} shoulder at height ${sh[1].toFixed(2)}, not ~1.44`);
+    if (Math.abs(Math.abs(sh[0]) - 0.19) > 0.04) fail(`${tag}: ${S} shoulder ${sh[0].toFixed(2)} from the centre, not ~0.19`);
+  }
+  // Every vertex below the shoulders that isn't arm must stay put when the
+  // arms go up - except hip that the widening pushed right into a hand (within
+  // 5 cm of the arm's line), which no rig can tell apart from the hand.
+  const armLine = ['Left', 'Right'].map((S) => ['Arm', 'ForeArm', 'Hand', 'Hand_End'].map((n) => bone(S + n)));
+  const segD = (p, a, b) => {
+    const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], ap = [p[0] - a[0], p[1] - a[1], p[2] - a[2]];
+    const t = Math.max(0, Math.min(1, (ab[0] * ap[0] + ab[1] * ap[1] + ab[2] * ap[2]) / (ab[0] ** 2 + ab[1] ** 2 + ab[2] ** 2)));
+    return Math.hypot(ap[0] - ab[0] * t, ap[1] - ab[1] * t, ap[2] - ab[2] * t);
+  };
+  const inArm = (p) => armLine.some((l) => Math.min(segD(p, l[0], l[1]), segD(p, l[1], l[2]), segD(p, l[2], l[3])) < 0.05);
+  const P = model.prims[0].attrs.POSITION.data, t = skinPose(model, skel, skin, 'TPose');
+  let dragged = 0;
+  for (let v = 0; v < P.length / 3; v++) {
+    const p = [P[v * 3], P[v * 3 + 1], P[v * 3 + 2]];
+    if (p[1] < 1.25 && !isArm[v] && !inArm(p) && Math.hypot(t[v * 3] - p[0], t[v * 3 + 1] - p[1], t[v * 3 + 2] - p[2]) > 0.03) dragged++;
+  }
+  if (dragged > 12) fail(`${tag}: T-pose drags ${dragged} body vertices along with the arms`);
+}
+
 console.log(`${models} models, ${tris} triangles, ${Date.now() - t0} ms`);
 if (fails.length) { console.error(`${fails.length} failures`); process.exit(1); }
 console.log('ok');
