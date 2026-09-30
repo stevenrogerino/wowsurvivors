@@ -406,6 +406,59 @@
     return best.centroid;
   }
 
+  // Walks up an arm held out from the body, from the fingertip to the
+  // shoulder: step along the arm, take its cross-section square to the
+  // current direction, move to its centre, turn to follow. The arm bends at
+  // the elbow, so a straight line from the hand overshoots the shoulder into
+  // the chest; walking follows the bend. The walk ends where the arm's
+  // cross-section merges into the torso; the shoulder joint sits a little
+  // beyond, inside the deltoid. Returns null if the walk can't get going.
+  function walkArm(g, tip, guessShoulder, H) {
+    let dir = nrm(sub(guessShoulder, tip));
+    const step = 0.012 * H;
+    let p = add(tip, scl(dir, 0.03 * H));
+    const path = [], radii = [];
+    for (let i = 0; i < 80; i++) {
+      const pieces = slicePieces(g, p, dir, 0.12 * H);
+      let best = null, bd = Infinity;
+      for (const pc of pieces) { const d = len(sub(pc.centroid, p)); if (d < bd) { bd = d; best = pc; } }
+      if (!best) break;
+      const r = Math.sqrt((best.cells * g.cell * g.cell) / Math.PI);
+      const span = Math.max(best.max[0] - best.min[0], best.max[1] - best.min[1], best.max[2] - best.min[2]);
+      // Merged into the torso: the section balloons or widens, or its centre
+      // jumps sideways. And no arm is longer than ~40% of the height from
+      // fingertip to shoulder.
+      if (radii.length >= 4) {
+        const typical = radii.slice().sort((a, b) => a - b)[radii.length >> 1];
+        if (r > 1.8 * typical || span > 3.2 * 2 * typical || bd > 0.03 * H) break;
+      }
+      if (len(sub(best.centroid, tip)) > 0.4 * H) break;
+      path.push(best.centroid);
+      radii.push(r);
+      if (path.length >= 3) {
+        const d2 = nrm(sub(path[path.length - 1], path[path.length - 3]));
+        dir = nrm(add(scl(dir, 0.5), scl(d2, 0.5)));
+      }
+      p = add(best.centroid, scl(dir, step));
+    }
+    if (path.length < 8) return null;
+    // The shoulder joint: past the last clean section, about one arm radius in.
+    const r0 = radii.slice(-6).sort((a, b) => a - b)[3] || radii[radii.length - 1];
+    const shoulder = add(path[path.length - 1], scl(dir, Math.min(0.05 * H, 1.2 * r0)));
+    // Arc lengths from the shoulder back down to the fingertip.
+    const line = [shoulder, ...path.slice().reverse(), tip];
+    const cum = [0];
+    for (let i = 1; i < line.length; i++) cum.push(cum[i - 1] + len(sub(line[i], line[i - 1])));
+    const at = (d) => {
+      for (let i = 1; i < line.length; i++) if (d <= cum[i]) return lerp(line[i - 1], line[i], (d - cum[i - 1]) / ((cum[i] - cum[i - 1]) || 1));
+      return tip;
+    };
+    const total = cum[cum.length - 1];
+    // Hand about a quarter of shoulder-to-fingertip; upper arm a little longer than the forearm.
+    const wristAt = total * 0.77;
+    return { shoulder, elbow: at(wristAt * 0.54), wrist: at(wristAt), tip };
+  }
+
   // Follows an arm hanging near the body: slice the model horizontally from
   // armpit height down; below the armpit the arm is its own piece beside the
   // torso. Stops where it ends or touches the thigh. Returns shoulder, elbow,
@@ -525,13 +578,9 @@
       const guessShoulder = [cx + s * 0.11 * H, y(0.81), chest[2]];
       let arm = null;
       if (tip && (tip[0] - cx) * s > 0.25 * H) {
-        let dir = nrm(sub(tip, guessShoulder));
-        const wrist = sliceCentre(g, sub(tip, scl(dir, 0.1 * H)), dir, 0.06 * H);
-        const elbow = sliceCentre(g, sub(wrist, scl(dir, 0.15 * H)), dir, 0.07 * H);
-        dir = nrm(sub(wrist, elbow));
-        const shoulder = sub(elbow, scl(dir, 0.17 * H));
-        arm = { shoulder: [shoulder[0], shoulder[1], spineZ(0.8) * 0.5 + elbow[2] * 0.5], elbow, wrist, tip };
-      } else {
+        arm = walkArm(g, tip, guessShoulder, H);
+      }
+      if (!arm) {
         arm = traceHangingArm(g, s, cx, chest, H, y);
       }
       if (!arm) {
