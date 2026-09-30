@@ -986,9 +986,18 @@ if (!reduce) requestAnimationFrame(tick);
 
 /* ---------------------------------------------------------- nav highlight */
 (() => {
-  const links = [...document.querySelectorAll('.nav a.chap')];
+  const strip = document.querySelector('.nav ul');
+  const links = [...strip.querySelectorAll('a.chap')];
   const map = new Map(links.map((a) => [a.getAttribute('href').slice(1), a]));
-  const io2 = new IntersectionObserver((es) => { for (const e of es) if (e.isIntersecting) { links.forEach((a) => a.classList.remove('on')); const a = map.get(e.target.id); if (a) { a.classList.add('on'); a.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } } }, { rootMargin: '-40% 0px -55% 0px' });
+  /* Only the strip of links slides to keep the current chapter in view.
+     scrollIntoView would also scroll the page toward the sticky bar and
+     tug it back up on every chapter crossed. */
+  const reveal = (a) => {
+    if (strip.scrollWidth <= strip.clientWidth) return;
+    const li = a.parentElement;
+    strip.scrollTo({ left: li.offsetLeft - (strip.clientWidth - li.offsetWidth) / 2, behavior: reduce ? 'auto' : 'smooth' });
+  };
+  const io2 = new IntersectionObserver((es) => { for (const e of es) if (e.isIntersecting) { links.forEach((a) => a.classList.remove('on')); const a = map.get(e.target.id); if (a) { a.classList.add('on'); reveal(a); } } }, { rootMargin: '-40% 0px -55% 0px' });
   for (const id of map.keys()) { const s = document.getElementById(id); if (s) io2.observe(s); }
 })();
 
