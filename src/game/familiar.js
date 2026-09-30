@@ -77,6 +77,8 @@
       ghoulBurstRadius: 130,
       ghoulBurstMult: 6,
       ghoulRespawn: 6,
+      ghoulBurstRotMult: 1.6,   // the burst's rot lasts this much longer than a rake's
+      ghoulChargeGiveUp: 3.5,   // seconds a breakout runs before it bursts wherever it is
     },
     KINDS: {
       wolf: {
@@ -151,7 +153,7 @@
     for (let i = 0; i < pool.count; i++) {
       const e = pool.active[i];
       if (e._dead) continue;
-      if (WS.dist2(fam.x, fam.y, e.x, e.y) <= (r + e.radius) * (r + e.radius)) WS.Enemy.applyRot(e, t.ghoulRot, t.ghoulRotTime * 1.6);
+      if (WS.dist2(fam.x, fam.y, e.x, e.y) <= (r + e.radius) * (r + e.radius)) WS.Enemy.applyRot(e, t.ghoulRot, t.ghoulRotTime * t.ghoulBurstRotMult);
     }
     WS.FX.flash(fam.x, fam.y, r, fam.spec.tint, 0.5, 12, 'shadow');
     WS.FX.flash(fam.x, fam.y, r * 0.45, [0.85, 1, 0.6], 0.35);
@@ -239,7 +241,7 @@
           fam.chargeTime += dt;
           const damage = (t.dmgBase + t.dmgPerLevel * player.level) * dmgMult * player.damageMultiplier
             * (1 + player.summonDamage) * WS.CONST.PLAYER_DAMAGE_SCALE;
-          if (!c || fam.chargeTime > 3.5 || WS.dist(fam.x, fam.y, c.x, c.y) <= c.radius + 16) {
+          if (!c || fam.chargeTime > t.ghoulChargeGiveUp || WS.dist(fam.x, fam.y, c.x, c.y) <= c.radius + 16) {
             burst(fam, player, t, damage);
             continue;
           }
