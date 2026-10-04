@@ -572,6 +572,7 @@
     run.damagePrevented += (amount - taken);
     run.damageTaken += taken;
     p.health -= taken;
+    if (WS.RunLog) WS.RunLog.hurt(srcName, taken, p);
     // Never shorten a grace already running: the blow above can raise an
     // Aegis (onHurt fills Conviction), and a flat assignment here cut its two
     // seconds down to this half-second while the dome stayed up.

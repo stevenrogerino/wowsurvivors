@@ -4350,14 +4350,45 @@
     }
     const menu = el('button', 'btn', 'Main menu');
     menu.addEventListener('click', () => WS.Game.quitToMenu());
+    /* The run code: the whole night written down (WS.RunLog), for a tester
+       to paste back. One line of text, however long the night was. */
+    const code = el('button', 'btn', 'Copy run code');
+    code.dataset.tip = 'The whole night as one line of text - what you were offered and took, where you went, what hit and what healed. Paste it to the developer.';
+    code.addEventListener('click', async () => {
+      WS.Audio.play('ui');
+      const text = WS.RunLog ? await WS.RunLog.code() : null;
+      if (!text) { code.textContent = 'No record of this run'; return; }
+      code.textContent = (await copyText(text)) ? `Copied (${WS.round(text.length / 1024)} KB)` : 'Select and copy it below';
+      if (code.textContent.startsWith('Select')) showCodeBox(s.body, text);
+    });
     const banked = el('div', 'bank');
     banked.append(el('span', 'label', 'Banked this run'),
       el('span', 'v', WS.formatNumber(run.gold) + ' gold'));
-    s.foot.append(banked, el('div', 'spacer'), menu);
+    s.foot.append(banked, el('div', 'spacer'), menu, code);
     if (share) s.foot.append(share);
     s.foot.append(again);
     this.show(s.inner);
   };
+
+  /** Puts text on the clipboard: the modern way, then the old one. Resolves
+   *  false when neither is allowed. */
+  async function copyText(text) {
+    try { await navigator.clipboard.writeText(text); return true; } catch (e) { /* try the old way */ }
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.append(ta); ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      return ok;
+    } catch (e) { return false; }
+  }
+  /** Where the clipboard is refused, the code itself, selected, to copy by hand. */
+  function showCodeBox(host, text) {
+    let box = host.querySelector('.run-code-box');
+    if (!box) { box = el('textarea', 'run-code-box'); box.readOnly = true; host.append(box); }
+    box.value = text; box.focus(); box.select();
+  }
 
 
   /* ---------------------------------------------------- dropped accounts --

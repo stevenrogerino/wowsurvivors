@@ -296,6 +296,7 @@
       if (pickup.snooze <= 0 && distance < player.radius + pickup.radius + 4) {
         const consumed = collect(player, pickup);
         if (consumed) {
+          if (WS.RunLog) WS.RunLog.pickup(pickup.kind);
           this.pool.releaseAt(i);
           if (!WS.Game.running) return;
           continue;
