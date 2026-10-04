@@ -284,20 +284,28 @@
         `Rank ${WS.WEAPON_MAX_LEVEL} + ${b(up.name)}${has ? ' (learned)' : ''} → ${em(d.evolveName)}`
         + (maxed ? '' : `<small>rank ${level || 0} of ${WS.WEAPON_MAX_LEVEL}</small>`)));
     }
-    // Discoveries: the partner is always named; the result only once found.
+    /* Discoveries: the partner is always named; the result only once found,
+       and once active, what it does. A union stands in for the two weapons
+       it was forged from, so it lists the discoveries of both - it carries
+       them - and was showing none at all. */
+    const union = d.isUnion ? (WS.Unions || []).find((u) => u.result === id) : null;
+    const selves = union ? union.from : [id];
     for (const cid of WS.ComboOrder) {
       const c = WS.Combos[cid];
-      if (c.weapons.indexOf(id) < 0) continue;
-      const other = c.weapons[0] === id ? c.weapons[1] : c.weapons[0];
+      const mine = c.weapons.filter((x) => selves.indexOf(x) >= 0);
+      if (!mine.length) continue;
+      const other = c.weapons[0] === mine[0] ? c.weapons[1] : c.weapons[0];
       const od = WS.Weapons[other];
       if (!od) continue;
       const found = !!(WS.Save.db.combos && WS.Save.db.combos[cid]);
       const active = !!(p.combosActive && p.combosActive[cid]);
-      const held = !!WS.Player.getWeapon(p, other);
+      const held = selves.indexOf(other) >= 0 || !!WS.ComboSystem.find(p, other);
       const state = active ? 'done' : held ? 'ready' : 'need';
+      const what = active ? `<small>active: ${WS.template(c.description, c)}</small>`
+        : found ? '' : `<small>${c.hint}</small>`;
+      const lead = selves.indexOf(other) >= 0 ? 'Carried' : `With ${b(od.name)}`;
       out.push(tipLink(state, od.art, WS.CONST.COLORS[od.school],
-        `With ${b(od.name)} → ${found ? em(c.name) : em('a discovery')}`
-        + (active ? '<small>active</small>' : found ? '' : `<small>${c.hint}</small>`)));
+        `${lead} → ${found ? em(c.name) : em('a discovery')}` + what));
     }
     // Unions: both evolved, made one.
     for (const u of (WS.Unions || [])) {
@@ -1944,6 +1952,7 @@
       ['Armor', c.armor || 'no', true],
       ['Pickup', c.pickupRadius, true],
       c.healthRegen ? ['Regen', c.healthRegen.toFixed(1) + '/s', true] : null,
+      c.perkHealing ? ['Healing', `+${WS.round(c.perkHealing * 100)}%`, true] : null,
       ['Opens with', WS.Weapons[c.weapon].name],
     ]));
     body.append(perk('Knack', WS.template(c.perk, c)));
@@ -3202,6 +3211,8 @@
     const foundN = WS.ComboOrder.filter((id) => p.combosActive && p.combosActive[id]).length;
     const sum = [count(p.weapons.length, 'weapon'), count(learnedN, 'passive')];
     if (foundN) sum.push(foundN + (foundN === 1 ? ' discovery' : ' discoveries'));
+    const goneN = banishedOf(p).length;
+    if (goneN) sum.push(goneN + ' banished');
     toggle.append(el('span', 'bt-chev'), el('span', 'bt-title', 'Your build'),
       el('span', 'bt-sum', sum.join(' \u00b7 ')));
     toggle.addEventListener('click', () => {
@@ -3249,6 +3260,19 @@
       dg.append(chip);
     }
     return drawer;
+  }
+
+  /** Every card banished this run, weapon or passive, in the order the game
+   *  lists them. */
+  function banishedOf(p) {
+    const out = [];
+    for (const id of Object.keys(p.banished || {})) {
+      if (!p.banished[id]) continue;
+      const w = WS.Weapons[id], up = WS.Upgrades[id];
+      if (w) out.push({ name: w.name, art: w.art, colour: WS.CONST.COLORS[w.school] });
+      else if (up) out.push({ name: up.name, art: up.art, colour: qualityColour(up.quality) });
+    }
+    return out;
   }
 
   /* ---------------------------------------------------- spell clips -- */
@@ -3457,6 +3481,8 @@
     ui.reroll.disabled = p.rerolls <= 0;
     ui.banish.textContent = `Banish (${p.banishes})`;
     ui.banish.disabled = p.banishes <= 0;
+    const gone = banishedOf(p).map((g) => g.name);
+    ui.banish.dataset.tip = gone.length ? 'Banished this run: ' + gone.join(', ') : 'Nothing banished yet this run';
   };
 
   /* ------------------------------------------------------- field manual --
@@ -3708,6 +3734,13 @@
       left.append(list);
     }
 
+    // What this run has banished, so it need not be remembered.
+    const gone = banishedOf(p);
+    if (gone.length) {
+      left.append(el('h3', null, 'Banished'));
+      left.append(el('p', 'sheet-banished', gone.map((g) => g.name).join(' · ')));
+    }
+
     /* The passives, with what each is for. The sheet used to list the
        arsenal and nothing else, so the half of a build that decides which
        weapons evolve was invisible on the one screen made for reading it. */
@@ -3762,6 +3795,7 @@
     kv('Experience', `×${p.xpMultiplier.toFixed(2)}`);
     kv('Gold', `×${p.goldMultiplier.toFixed(2)}`);
     if (p.healthRegen > 0) kv('Regeneration', p.healthRegen.toFixed(1) + '/s');
+    if (WS.abs(p.healingMult - 1) > 0.001) kv('Healing received', `×${p.healingMult.toFixed(2)}`);
     if (p.dodgeChance > 0) kv('Evasion', WS.round(p.dodgeChance * 100) + '%');
     if (p.lifesteal > 0) kv('Lifesteal', (p.lifesteal * 100).toFixed(1) + '%');
     if (p.curdled > 0) kv('Curdled Light dealt', WS.formatNumber(p.curdleDealt));

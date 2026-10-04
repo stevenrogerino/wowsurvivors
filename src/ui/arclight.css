@@ -3495,3 +3495,6 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .row.clip-link { cursor: pointer; }
 .row .row-watch { margin-left: auto; font-size: 11px; color: var(--ink-faint); padding-left: 8px; }
 .row.clip-link:hover .row-watch { color: var(--gilt, #f5c56b); }
+
+/* The pause sheet's list of what this run banished. */
+.sheet-banished { margin: 0 0 14px; color: var(--ink-dim, #8b93a7); font-size: 13px; }

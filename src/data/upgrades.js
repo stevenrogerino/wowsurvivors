@@ -226,7 +226,7 @@
     ruthless: {
       name: 'Ruthless', art: 'mask', quality: 'epic', max: 5, calling: 'comboAttuned',
       description: '+{Config.ruthlessEdge%}% Edge from a crit, a Cutthroat {Config.ruthlessBlow%}% harder, and {Config.ruthlessRegroup}s less to regroup',
-      alone: 'A crit that leaves an ordinary creature under {Config.ruthlessExecute%}% health finishes it',
+      alone: 'A crit that leaves an ordinary creature under {Config.ruthlessExecute%}% health per rank finishes it',
       detail: 'For Opportunist, and offered once you take Precision. Without the calling it works on its own: a critical '
         + 'strike finishes a creature it leaves below {Config.ruthlessExecute%}% of its health per rank. It never touches '
         + 'elites, bosses or the finales. With Opportunist, only the Cutthroat\'s half applies.',

@@ -1133,6 +1133,18 @@
     // What the air carries: fireflies, dust, snow, wisps, drizzle.
     if (WS.Atmosphere) WS.Atmosphere.motes(ctx, this, time);
     // What can hurt you, stated again over your own light (drawWarnings).
+    /* Bosses, asserted again over the light, for the same reason as the
+       survivor below: in a full late fight the boss you are trying to read
+       sat under a crowd and a wall of your own effects. Before the warnings,
+       so a lane or a mark on the boss is still drawn over it; the finale's
+       machines are the size of the field and are left where they are. */
+    this._shadowsDone = true;
+    for (let i = 0; i < WS.Enemy.pool.count; i++) {
+      const e = WS.Enemy.pool.active[i];
+      if (e.boss && !e.template.machine) this.drawEnemy(ctx, e, time);
+    }
+    this._shadowsDone = false;
+
     this.drawWarnings(ctx, time);
 
     /* The survivor, asserted again over his own light.
