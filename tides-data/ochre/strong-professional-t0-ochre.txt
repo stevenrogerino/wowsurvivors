@@ -1,0 +1,31 @@
+24 runs in 275s
+
+full · ochre · professional · pilot plan · 24 runs
+
+ by survivor
+  mage                      30.0m   2/2 dawn  lvl 113  potions 108.5  bombs 25.0  freezes 18.0  low  29%  hurt: bolt 66%, charge 18%, contact 16%
+  warrior                   30.0m   2/2 dawn  lvl 108  potions 95.0  bombs 23.5  freezes 14.5  low  44%  hurt: bolt 59%, contact 29%, charge 13%
+  graveblade                17.4m   0/2 dawn  lvl  85  potions 37.0  bombs 11.5  freezes  7.0  low  -3%  hurt: bolt 49%, contact 33%, charge 17%
+  priest                    22.9m   1/2 dawn  lvl  92  potions 67.0  bombs 15.5  freezes 11.5  low  -4%  hurt: contact 48%, bolt 38%, charge 14%
+  warlock                   21.2m   1/2 dawn  lvl  93  potions 73.5  bombs 15.0  freezes 13.5  low -10%  hurt: bolt 47%, contact 36%, charge 16%
+  ruinseeker                19.7m   1/2 dawn  lvl  88  potions 40.0  bombs 14.0  freezes  8.0  low   0%  hurt: bolt 67%, contact 24%, charge 9%
+  rogue                     18.5m   1/2 dawn  lvl  83  potions 68.0  bombs 18.0  freezes  9.5  low  13%  hurt: bolt 52%, contact 39%, charge 8%
+  shaman                    30.0m   2/2 dawn  lvl 109  potions 68.0  bombs 21.5  freezes 10.5  low  45%  hurt: bolt 58%, contact 29%, charge 14%
+  druid                      9.0m   0/2 dawn  lvl  58  potions  9.0  bombs  4.0  freezes  3.5  low  -3%  hurt: contact 55%, bolt 33%, charge 12%
+  hunter                    11.3m   0/2 dawn  lvl  67  potions 19.5  bombs  3.0  freezes  4.5  low  -6%  hurt: bolt 53%, contact 40%, charge 6%
+  paladin                   19.2m   1/2 dawn  lvl  83  potions 65.5  bombs 13.0  freezes 12.0  low  11%  hurt: contact 46%, bolt 35%, charge 20%
+  monk                      28.7m   1/2 dawn  lvl  98  potions 66.5  bombs  9.5  freezes 13.5  low  -2%  hurt: contact 65%, charge 20%, bolt 15%
+  ALL                       21.5m 12/24 dawn  lvl  89  potions 59.8  bombs 14.5  freezes 10.5  low  10%  hurt: bolt 49%, contact 37%, charge 14%
+
+ the killing blow
+     3  contact · Thornhide Battleguard
+     2  bolt · Shrikewing Windcaller
+     2  charge · Karrash Battlelord
+     2  contact · Sunhide Raptor
+     1  contact · Karrash Outrunner
+     1  contact · Warlord Kazrok of the Karrash
+     1  contact · Karrash Battlelord
+
+ bolts that landed: 2847, flying <0.2s 0%, 0.2-0.4s 1%, 0.4-0.8s 23%, longer 76%; mean speed 250; slowed when hit 0%
+
+ pilot: 1.85ms a decision
