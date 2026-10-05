@@ -1,0 +1,28 @@
+24 runs in 269s
+
+full · ochre · veteran · pilot plan · 24 runs
+
+ by survivor
+  mage                      21.1m   1/2 dawn  lvl  88  potions 41.0  bombs 13.0  freezes  6.5  low  22%  hurt: bolt 61%, contact 32%, charge 7%
+  warrior                   30.0m   2/2 dawn  lvl 104  potions 99.5  bombs 23.5  freezes 16.5  low  34%  hurt: bolt 48%, contact 26%, charge 26%
+  graveblade                30.0m   2/2 dawn  lvl 101  potions 80.0  bombs 20.5  freezes 11.5  low  10%  hurt: bolt 48%, contact 28%, charge 24%
+  priest                    30.0m   2/2 dawn  lvl 114  potions 156.0  bombs 25.5  freezes 14.5  low  28%  hurt: bolt 58%, contact 24%, charge 18%
+  warlock                   30.0m   2/2 dawn  lvl 109  potions 74.5  bombs 17.0  freezes 16.0  low  57%  hurt: bolt 52%, contact 26%, charge 21%
+  ruinseeker                30.0m   2/2 dawn  lvl 101  potions 44.5  bombs  6.0  freezes 11.0  low  64%  hurt: bolt 77%, contact 23%
+  rogue                     30.0m   2/2 dawn  lvl 110  potions 115.0  bombs 28.5  freezes 16.5  low  19%  hurt: contact 55%, bolt 35%, charge 10%
+  shaman                    30.0m   2/2 dawn  lvl 103  potions 29.5  bombs  8.0  freezes  8.5  low  75%  hurt: bolt 53%, charge 30%, contact 17%
+  druid                     30.0m   2/2 dawn  lvl 109  potions 71.0  bombs 19.5  freezes  9.0  low  26%  hurt: bolt 72%, contact 16%, charge 12%
+  hunter                    13.9m   0/2 dawn  lvl  72  potions 33.0  bombs  7.0  freezes  7.0  low  -3%  hurt: contact 42%, bolt 38%, charge 19%
+  paladin                   26.5m   1/2 dawn  lvl 106  potions 97.5  bombs 23.0  freezes 17.5  low  27%  hurt: bolt 43%, contact 40%, charge 17%
+  monk                      30.0m   2/2 dawn  lvl 102  potions 100.5  bombs 21.5  freezes 14.0  low  15%  hurt: bolt 50%, contact 41%, charge 10%
+  ALL                       27.6m 20/24 dawn  lvl 101  potions 78.5  bombs 17.8  freezes 12.4  low  31%  hurt: bolt 47%, contact 36%, charge 17%
+
+ the killing blow
+     1  charge · Karrash Battlelord
+     1  contact · Shrikewing Windcaller
+     1  bolt · Shrikewing Windcaller
+     1  bolt · Matriarch Silkfang
+
+ bolts that landed: 2280, flying <0.2s 0%, 0.2-0.4s 1%, 0.4-0.8s 27%, longer 72%; mean speed 250; slowed when hit 0%
+
+ pilot: 1.68ms a decision
