@@ -4361,6 +4361,9 @@ window.WS = window.WS || {};
     tideGather: 40, tideCrest: 1.5,
     tideLull: 22.5, tideLow: 0.35,
     tideLateRamp: 900,
+    // The same late rise on a night without Tides, at half the slope: x1.4
+    // creatures by 30:00 on most battlefields, more to kill, not tougher.
+    defaultLateRamp: 1800,
     /* And the night deepens at each boss: once a scheduled boss's lull is
        over, the horde's health steps up by that boss's share here (easing
        in over tideStepTime), so the stretch a boss's reliquary buys is
@@ -4394,6 +4397,24 @@ window.WS = window.WS || {};
     depthScore: 0.05,
     deathTime: 1800,
     deathInterval: 60,
+    /* Overtime that costs hits instead of one-shotting or never landing.
+       m = minutes past deathTime. A new Death every max(deathIntervalMin,
+       deathInterval - deathIntervalStep*m) s, at most min(deathCapMax,
+       1 + floor(m / deathCapEvery)) alive. His touch costs a share of your
+       health, min(1, deathContactBase + deathContactStep*m) of it (armour
+       still applies): 30% at first, lethal by m = 14. And on one clock, every
+       max(deathBlinkMin, deathBlinkPeriod - m) s, the oldest Death BLINKS: a
+       ring opens where you are headed (deathBlinkLead s ahead), deathBlinkFuse
+       s later he is there, and inside the ring it costs min(deathBlinkMax,
+       deathBlinkBase + deathBlinkStep*m) of your health and withers your
+       healing (x witherMult for witherTime s). A survivor at full speed who
+       turns clears the ring; one who runs straight does not. */
+    deathIntervalMin: 25, deathIntervalStep: 5,
+    deathCapMax: 8, deathCapEvery: 2,
+    deathContactBase: 0.30, deathContactStep: 0.05,
+    deathBlinkPeriod: 15, deathBlinkMin: 6, deathBlinkFuse: 0.8, deathBlinkRadius: 110, deathBlinkLead: 0.4,
+    deathBlinkBase: 0.20, deathBlinkStep: 0.03, deathBlinkMax: 0.6,
+    witherMult: 0.5, witherTime: 4,
 
     /* Standing and taking it. Measured (tools/tank-sim.js) on the hardest
        night: a warrior with every defensive passive at max, 760 health and
@@ -4438,7 +4459,13 @@ window.WS = window.WS || {};
      * (one Recovery rank, no other investment) stays modest at ~20-50 dps
      * either way, since the multiplier only pays off once the healing
      * income actually justifies it. */
-    curdleCoefficient: 2.15,
+    curdleCoefficient: 0.21,
+    /* ...and the pulse grows with Might and with your arsenal (the mean,
+       over held weapons, of 1 + curdleRankStep a rank past the first, x
+       curdleEvolvedMult evolved; Player.curdleScale). */
+    curdleRankStep: 0.20,
+    curdleReach: 380,
+    curdleEvolvedMult: 5,
     /* Measured with tools/curdled-sim.js against a real, moving, killable
      * crowd (gauntlet): 110->140 is +43% total damage for the shared
      * curdleShare=0.25 baseline and +48% for Graveblade's 0.45 - coverage,
@@ -5991,7 +6018,7 @@ window.WS = window.WS || {};
       evolveDescription: 'The sky answers every call.',
     },
     dawnpulse: {
-      damage: 18.34, evolveDamageMult: 4.902, bossDamage: 3.023, evolvedBossDamage: 2.939,
+      damage: 18.34, evolveDamageMult: 3.423, bossDamage: 3.023, evolvedBossDamage: 4.209,
       name: 'Dawnpulse', school: 'holy', behavior: 'nova', art: 'ring',
       rankDamageStep: 0.258,
       cooldown: 2.638, radius: 150, expandTime: 0.35, knockback: 26,
@@ -6044,7 +6071,7 @@ window.WS = window.WS || {};
       healPer: 1.5, evolvedHealPer: 1.5, healCap: 5, healCapRank: 1.67, evolvedHealCap: 15.3,
     },
     reaving_arc: {
-      damage: 18.74, evolveDamageMult: 3.99, bossDamage: 2.504, evolvedBossDamage: 3.65,
+      damage: 18.74, evolveDamageMult: 2.726, bossDamage: 2.504, evolvedBossDamage: 5.343,
       name: 'Reaving Arc', school: 'shadow', behavior: 'nova', art: 'ring',
       rankDamageStep: 0.45,
       cooldown: 2.418, radius: 130, expandTime: 0.28, knockback: 20,
@@ -6055,7 +6082,7 @@ window.WS = window.WS || {};
       evolveDescription: 'The blade drinks deeper than any wound can hold.',
     },
     hallowed_ring: {
-      damage: 1.954, evolveDamageMult: 6.298, bossDamage: 5.989, evolvedBossDamage: 3.719,
+      damage: 1.954, evolveDamageMult: 5.164, bossDamage: 5.989, evolvedBossDamage: 4.536,
       name: 'Hallowed Ring', school: 'holy', behavior: 'zone', art: 'zone',
       rankDamageStep: 0.222,
       cooldown: 3.956, radius: 120, duration: 4.0, tickRate: 0.5,
@@ -6079,7 +6106,7 @@ window.WS = window.WS || {};
       evolveDescription: 'Ruin that nothing can stop.',
     },
     knifestorm: {
-      damage: 19.46, evolveDamageMult: 3.285, bossDamage: 2.787, evolvedBossDamage: 2.315,
+      damage: 19.46, evolveDamageMult: 2.79, bossDamage: 2.787, evolvedBossDamage: 2.726,
       name: 'Knifestorm', school: 'physical', behavior: 'ring', art: 'dagger',
       rankDamageStep: 0.266,
       cooldown: 1.429, speed: 346, projectiles: 6, pierce: 4,
@@ -6090,7 +6117,7 @@ window.WS = window.WS || {};
       evolveDescription: 'The steel never stops moving.',
     },
     axe_gyre: {
-      damage: 10.1, evolveDamageMult: 10.15, bossDamage: 2.895, evolvedBossDamage: 0.707,
+      damage: 10.1, evolveDamageMult: 6.14, bossDamage: 2.895, evolvedBossDamage: 1.169,
       name: 'Axe Gyre', school: 'physical', behavior: 'orbit', art: 'axe',
       rankDamageStep: 0.1,
       color: [0.85, 0.88, 0.96], evolvedColor: [1.00, 0.55, 0.25],
@@ -6370,13 +6397,33 @@ window.WS = window.WS || {};
     },
   };
 
+  /* The summoner's weapon. Its own sigil is a small one: what it is for is
+     the pack. Wolves and ghouls are only offered once it is held, and every
+     rank makes them bite harder and sooner (commandDamage, commandHaste a
+     rank). A cast marks the thickest of the crowd nearby and sends every
+     summon at it at once. */
+  WS.Weapons.dread_command = {
+    damage: 14, evolveDamageMult: 3.0, bossDamage: 1.6, evolvedBossDamage: 1.6,
+    name: 'Dread Command', school: 'shadow', behavior: 'command', art: 'command',
+    rankDamageStep: 0.2,
+    cooldown: 2.2, radius: 78, range: 420, color: [0.62, 0.42, 0.95],
+    /* Measured as a package (the sigil and three ranks of a summon, with
+       four other weapons; meter-test SUMMON=): wolves 1.66x a weapon at
+       9:00, 0.59x at 20:00 in a horde (their work is bosses and elites);
+       ghouls 1.60x and 1.13x. Most of the growth is in the evolution. */
+    commandDamage: 0.04, commandHaste: 0.02, evolvedCommandDamage: 2.5, evolvedCommandHaste: 0.3,
+    description: 'Marks the thick of the crowd with a sigil of shadow and sends every summon at it. Wolves and ghouls answer only to it, and every rank drives them harder.',
+    evolveName: 'The Dread Host', evolvePairing: 'might',
+    evolveDescription: 'The host is unleashed: summons strike three and a half times as hard and a third again as often, their next bite ready whenever the sigil falls, and it falls twice as often.',
+  };
+
   // Shared level-up pool. Every class's starting weapon is findable by anyone.
   WS.WeaponOrder = [
     'seeking_motes', 'cinderfall', 'rimeshard', 'arcweb', 'dawnpulse',
     'hallowed_ring', 'umbral_bolt', 'knifestorm', 'axe_gyre', 'volley',
     'moonbrand', 'judgement_disc', 'reaving_arc', 'verdant_lance',
     'grave_tether', 'blightfield', 'iron_palms', 'spirit_herd', 'thornbloom',
-    'gale_chakram',
+    'gale_chakram', 'dread_command',
   ];
 
   // Both sources must be fully evolved to merge; the union frees a slot.
@@ -7318,22 +7365,16 @@ window.WS = window.WS || {};
     spirit_companion: {
       name: 'Spirit Companion', art: 'spiritwolf', quality: 'rare',
       description: 'Summon a spirit wolf. The pack runs down bosses, elites and archers.', max: 3,
-      detail: 'Each rank calls another spirit wolf. Fast, and far-ranging. When a boss, an elite or something that shoots is in reach, the whole pack goes for it, and every wolf already on it makes the next bite {Familiar.tuning.packBonus%}% harder. A pounce mauls what is around the quarry for less. Otherwise each wolf works the herd on its own. Scales with your damage and level.',
+      offer: (p) => !!WS.Player.getWeapon(p, 'dread_command'),
+      detail: 'Each rank calls another spirit wolf. Fast, and far-ranging. When a boss, an elite or something that shoots is in reach, the whole pack goes for it, and every wolf already on it makes the next bite {Familiar.tuning.packBonus%}% harder. A pounce mauls what is around the quarry for less. Otherwise each wolf works the herd on its own. Answers to Dread Command, and scales with its rank, your damage and your level.',
       apply: () => { WS.Familiar.add('wolf'); },
     },
     grave_call: {
       name: 'Grave Call', art: 'risen', quality: 'rare',
       description: 'Raise a ghoul to guard you. Its claws slow and rot what they rake.', max: 3,
-      detail: 'Each rank raises another ghoul. Slow, and it stays close, turning on whatever is nearest you. Its claws sweep a wide arc, slow what they hit by {Familiar.tuning.ghoulSlow~%}% and leave it rotting: rotting creatures take {Familiar.tuning.ghoulRot*%}% more damage from everything, yours included, for {Familiar.tuning.ghoulRotTime}s. A ghoul with nothing near you to rake for {Familiar.tuning.ghoulRestless}s breaks loose, one at a time: it runs to the thickest of the crowd and bursts there, rotting everything around it for {Familiar.tuning.ghoulBurstMult}x a rake, and rises again at your side {Familiar.tuning.ghoulRespawn}s later. Scales with your damage and level.',
+      offer: (p) => !!WS.Player.getWeapon(p, 'dread_command'),
+      detail: 'Each rank raises another ghoul. Slow, and it stays close, turning on whatever is nearest you. Its claws sweep a wide arc, slow what they hit by {Familiar.tuning.ghoulSlow~%}% and leave it rotting: rotting creatures take {Familiar.tuning.ghoulRot*%}% more damage from everything, yours included, for {Familiar.tuning.ghoulRotTime}s. A ghoul with nothing near you to rake for {Familiar.tuning.ghoulRestless}s breaks loose, one at a time: it runs to the thickest of the crowd and bursts there, rotting everything around it for {Familiar.tuning.ghoulBurstMult}x a rake, and rises again at your side {Familiar.tuning.ghoulRespawn}s later. Answers to Dread Command, and scales with its rank, your damage and your level.',
       apply: () => { WS.Familiar.add('ghoul'); },
-    },
-    dread_command: {
-      name: 'Dread Command', art: 'command', quality: 'epic',
-      description: '+{v%}% summon damage and +{haste%}% summon attack speed', max: 5,
-      detail: 'Drives everything you have summoned, spirit wolves and ghouls alike, to strike harder and more often. Worthless without something to command.',
-      offer: (p) => (p.upgradeLevels.spirit_companion || 0) > 0 || (p.upgradeLevels.grave_call || 0) > 0,
-      v: 0.30, haste: 0.10,
-      apply: (p, up) => { p.summonDamage += up.v; p.summonHaste += up.haste; },
     },
 
     /* ------------------------------------------------ tank / defensive --- */
@@ -7517,7 +7558,7 @@ window.WS = window.WS || {};
     'ferocity', 'area', 'quantity', 'luck', 'wisdom', 'recovery', 'velocity',
     'dark_bargain', 'warding_light', 'chilling_presence', 'spirit_companion',
     'thorns', 'searing', 'dodge', 'curdled', 'ruin_hunger',
-    'grave_call', 'dread_command', 'primal_kinship', 'serenity',
+    'grave_call', 'primal_kinship', 'serenity',
     'serration', 'perennial',
     'undertow', 'hallowed', 'ruthless', 'stalker', 'slow_burn', 'bountiful', 'deep_roots', 'fervor',
   ];
@@ -27240,16 +27281,23 @@ window.WS = window.WS || {};
     return found;
   };
 
-  /** Nearest enemy within range. `excluded` is a Set (arcweb hops). */
-  Enemy.findNearest = function (x, y, range, excluded) {
-    let best = null, bestDist = range * range;
+  /** Nearest enemy within range. `excluded` is a Set (arcweb hops). With
+   *  `away` ({x, y, r}), anything within r of that point is passed over -
+   *  unless nothing else is in range, when the nearest of them is taken. */
+  Enemy.findNearest = function (x, y, range, excluded, away) {
+    let best = null, bestDist = range * range, near = null, nearDist = range * range;
+    const r2 = away ? away.r * away.r : 0;
     for (let i = 0; i < this.pool.count; i++) {
       const e = this.pool.active[i];
       if (e._dead || e.untargetable || (excluded && excluded.has(e))) continue;
       const d = WS.dist2(x, y, e.x, e.y);
+      if (away && WS.dist2(away.x, away.y, e.x, e.y) < r2) {
+        if (d < nearDist) { nearDist = d; near = e; }
+        continue;
+      }
       if (d < bestDist) { bestDist = d; best = e; }
     }
-    return best;
+    return best || near;
   };
 
   Enemy.freezeAll = function (duration) {
@@ -27771,7 +27819,12 @@ window.WS = window.WS || {};
         WS.Arena.onBossDead();
         return;
       }
-      if (e.id === 'death_itself') run.deathsSlain++;
+      if (e.id === 'death_itself') {
+        run.deathsSlain++;
+        // The fun number: every one counts, and the night says so.
+        WS.Game.announce('Death itself falls', run.deathsSlain === 1 ? 'He will be back.'
+          : `${run.deathsSlain} tonight. He keeps coming back.`, 3.0, { kind: 'glory' });
+      }
       else if (WS.Config.reliquaries && run.tides) WS.Pickup.spawn('reliquary', e.x, e.y);
       WS.Save.stats.bosses[e.id] = (WS.Save.stats.bosses[e.id] || 0) + 1;
       const gold = WS.floor((t.gold || 40) * run.goldMult * player.goldMultiplier);
@@ -28251,6 +28304,31 @@ window.WS = window.WS || {};
     return true;
   };
 
+  /* COMMAND (Dread Command): a sigil on the thick of the crowd within reach,
+     and every summon sent at it with its next bite ready. */
+  Weapon.behaviors.command = function (player, w) {
+    const d = w.data;
+    const t = WS.Enemy.findNearest(player.x, player.y, d.range || 420);
+    if (!t) { w.cooldown = retry(); return false; }
+    const r = areaOf(player, w, d.radius || 78);
+    WS.Enemy.damageArea(t.x, t.y, r, damageOf(player, w), null, null, w.id);
+    /* The sigil grows in what it draws, never in what it hits: more spokes
+       and an outer ring at each rank milestone, a third when evolved. */
+    let spokes = 5;
+    if (w.level >= (d.projRankA || WS.Config.projRankA)) spokes += 3;
+    if (w.level >= (d.projRankB || WS.Config.projRankB)) spokes += 3;
+    if (w.evolved) spokes += 3;
+    const hold = 0.35 * (1 + 0.08 * (w.level - 1));
+    WS.FX.flash(t.x, t.y, r, schoolColour(w), hold, spokes, d.school);
+    WS.FX.flash(t.x, t.y, r * 0.45, [0.85, 0.75, 1.0], 0.25);
+    if (w.level >= (d.projRankA || WS.Config.projRankA)) WS.FX.flash(t.x, t.y, r * 0.75, schoolColour(w), hold * 1.2);
+    if (w.level >= (d.projRankB || WS.Config.projRankB)) WS.FX.flash(t.x, t.y, r * 0.25, [0.85, 0.75, 1.0], hold * 1.4);
+    if (w.evolved) WS.FX.flash(t.x, t.y, r * 0.6, [0.55, 0.30, 0.85], hold * 1.5, 0, d.school);
+    WS.Familiar.command(t, w.evolved || !!d.commandRebite);
+    WS.Audio.play('cast', undefined, d.school);
+    return true;
+  };
+
   Weapon.behaviors.zone = function (player, w) {
     const d = w.data;
     /* Most fields grow up under the survivor. One that says `atTarget` goes
@@ -28492,8 +28570,14 @@ window.WS = window.WS || {};
     // Each hop is weaker than the last; an evolved weapon may fade slower.
     const fall = w && w.evolved ? evo(w.data, 'evolveChainFalloff') : WS.Config.chainFalloff;
     let px = x, py = y;
+    /* Skybreak's hops pass over what is right at the survivor's feet, which
+       the close weapons are already killing, and leap out into the crowd -
+       unless there is nothing else to leap to. Testers saw it take kills the
+       blades and auras had all but finished. */
+    const skip = w && w.evolved && w.data.evolveHopSkip ? WS.Game.player : null;
+    const away = skip ? { x: skip.x, y: skip.y, r: WS.min(w.data.evolveHopSkipMax || 220, w.data.evolveHopSkip * skip.areaMultiplier) } : null;
     for (let i = 0; i < chains; i++) {
-      const target = WS.Enemy.findNearest(px, py, range, visited);
+      const target = WS.Enemy.findNearest(px, py, range, visited, away);
       if (!target) break;
       visited.add(target);
       const link = WS.Projectile.spawnBeam(px, py, target.x, target.y, 4 * heavy, colour, 0.16);
@@ -28686,6 +28770,11 @@ window.WS = window.WS || {};
     nova: (p, w, crowd) => {
       const r = areaOf(p, w, w.data.radius || 150);
       return { per: inCircle(r, crowd), why: `burst r=${Math.round(r)}` };
+    },
+    /* The sigil alone; the pack it drives is the summons' own line. */
+    command: (p, w, crowd) => {
+      const r = areaOf(p, w, w.data.radius || 78);
+      return { per: inCircle(r, crowd), why: `sigil r=${Math.round(r)}` };
     },
     /* Everything inside the field, once per tick, for its whole duration. */
     zone: (p, w, crowd) => {
@@ -29159,6 +29248,9 @@ window.WS = window.WS || {};
       p.walkCycle += dt * 2.5;
     }
     p.moving = moving;
+    // Where the survivor is headed, a second's worth (Death's blink aims at it).
+    p.vx = moving ? dx * speed : 0; p.vy = moving ? dy * speed : 0;
+    if (p.witherTimer > 0) p.witherTimer -= dt;
 
     if (p.spinTimer > 0) p.spinTimer -= dt;
     WS.Primal.update(p, dt);
@@ -29220,7 +29312,7 @@ window.WS = window.WS || {};
       p.curdleTimer -= dt;
       if (p.curdleTimer <= 0) {
         p.curdleTimer = WS.Config.curdleInterval;
-        const coeff = WS.Config.curdleCoefficient;
+        const coeff = WS.Config.curdleCoefficient * Player.curdleScale(p);
         const dmg = WS.floor(p.curdlePool * coeff);
         if (dmg >= 1) {
           // Spend only what was dealt and keep the remainder, or a modest
@@ -29228,10 +29320,16 @@ window.WS = window.WS || {};
           p.curdlePool -= dmg / coeff;
           p.curdleDealt += dmg;
           const radius = WS.Config.curdleRadius * p.areaMultiplier;
-          WS.Enemy.damageArea(p.x, p.y, radius, dmg, null, null, 'curdled');
+          /* It erupts on the nearest of the crowd within curdleReach, not at
+             the survivor's feet: late in a night the weapons kill everything
+             before it gets that close, and a pulse at your feet struck air
+             (0.07x a weapon at 20:00, 2.1x at 9:00, in the same builds). */
+          const t = WS.Enemy.findNearest(p.x, p.y, WS.Config.curdleReach * p.areaMultiplier);
+          const cx = t ? t.x : p.x, cy = t ? t.y : p.y;
+          WS.Enemy.damageArea(cx, cy, radius, dmg, null, null, 'curdled');
           const punch = WS.min(1, dmg / 60);
-          WS.FX.flash(p.x, p.y, radius * (0.86 + 0.24 * punch), [0.42, 0.12, 0.55], 0.32);
-          WS.FX.flash(p.x, p.y, radius * (0.60 + 0.18 * punch), [0.30, 0.80 + 0.2 * punch, 0.22], 0.28);
+          WS.FX.flash(cx, cy, radius * (0.86 + 0.24 * punch), [0.42, 0.12, 0.55], 0.32);
+          WS.FX.flash(cx, cy, radius * (0.60 + 0.18 * punch), [0.30, 0.80 + 0.2 * punch, 0.22], 0.28);
           if (punch >= 0.85) WS.FX.shake(3, 0.16);
         }
       }
@@ -29324,6 +29422,21 @@ window.WS = window.WS || {};
     run.healingBySource[source] = (run.healingBySource[source] || 0) + amount;
   };
 
+  /** What a Curdled pulse is worth beyond its healing: your Might, and your
+   *  arsenal - the mean over the weapons you hold of a rank's worth
+   *  (curdleRankStep a rank) and an evolution's (curdleEvolvedMult). Healing
+   *  income grows x2-4 from 9:00 to 20:00 while weapons grow x13; without
+   *  this the pulse that mattered at 9:00 was a rounding error by 20:00. */
+  Player.curdleScale = function (p) {
+    const cfg = WS.Config;
+    let sum = 0, n = 0;
+    for (const w of p.weapons) {
+      sum += (1 + cfg.curdleRankStep * (w.level - 1)) * (w.evolved ? cfg.curdleEvolvedMult : 1);
+      n++;
+    }
+    return p.damageMultiplier * (n ? sum / n : 1);
+  };
+
   Player.desecrate = function (p, amount) {
     if (amount <= 0 || p.curdled <= 0) return;
     p.curdlePool += amount;
@@ -29362,7 +29475,8 @@ window.WS = window.WS || {};
        little every frame (Boil Over's 3% a second, the Spring's pools: a
        fifth of a point a frame) floored to nothing, every frame, and had
        never healed at all. Whole heals are unchanged. */
-    const exact = amount * p.healingMult * (source === 'potion' ? WS.Runs.oath('potion') : 1);
+    const exact = amount * p.healingMult * (source === 'potion' ? WS.Runs.oath('potion') : 1)
+      * (p.witherTimer > 0 ? WS.Config.witherMult : 1);   // Death's blink withers it
     if (!(exact > 0)) return 0;
     const carry = p.healCarry || (p.healCarry = {});
     const key = source || 'other';
@@ -31118,7 +31232,7 @@ window.WS = window.WS || {};
   function recharge(kind, source) {
     const run = WS.Game.run, cfg = WS.Config;
     if (source === 'bomb' || WS.Enemy.freezeTimer > 0) return 0;
-    if (WS.WaveManager.tide(run.time, run) > cfg.dropCrestSuppress) return 0;
+    if (WS.WaveManager.cresting(run.time, run)) return 0;
     const last = run.lastDrop && run.lastDrop[kind];
     if (last === undefined) return 1;
     const k = (run.time - last) / (kind === 'bomb' ? cfg.bombRecharge : cfg.glassRecharge);
@@ -31384,6 +31498,7 @@ window.WS = window.WS || {};
     h.tint = spec.tint || [1.0, 0.45, 0.30];
     h.name = spec.name || 'the ground';
     h.seed = WS.random() * WS.TAU;     // so a field of them does not pulse in lockstep
+    h.onArm = spec.onArm || null;      // called once, as the fuse burns down
     return h;
   };
 
@@ -31398,6 +31513,7 @@ window.WS = window.WS || {};
           h.fuse = 0;
           WS.FX.flash(h.x, h.y, h.radius, WS.hex(h.tint), 0.35);
           WS.Audio.play('enemyHit', h.x);
+          if (h.onArm) h.onArm(h);
         }
         i++;
         continue;
@@ -31486,9 +31602,9 @@ window.WS = window.WS || {};
       packBonus: 0.5,
       packWindow: 1.2,
       packMax: 3,
-      killRebite: 0.5,
+      killRebite: 0.8,
       mauleRadius: 0.8,
-      maulDmg: 0.2,
+      maulDmg: 0.1,
       // The guard: a short leash, and what it rakes is slowed and rots.
       ghoulLeashMult: 0.55,
       ghoulSlow: 0.6,
@@ -31593,6 +31709,31 @@ window.WS = window.WS || {};
     if (run) run.ghoulBursts = (run.ghoulBursts || 0) + 1;
   }
 
+  /** What Dread Command adds to every summon: {dmg, haste}, as fractions,
+   *  from its rank (commandDamage, commandHaste a rank) and evolution - plus
+   *  anything else that raises summonDamage / summonHaste. */
+  Familiar.power = function (player) {
+    const w = WS.Player.getWeapon(player, 'dread_command');
+    let dmg = player.summonDamage || 0, haste = player.summonHaste || 0;
+    if (w) {
+      const d = w.data;
+      dmg += d.commandDamage * w.level + (w.evolved ? d.evolvedCommandDamage : 0);
+      haste += d.commandHaste * w.level + (w.evolved ? d.evolvedCommandHaste : 0);
+    }
+    return { dmg, haste };
+  };
+
+  /** A Dread Command sigil: every summon turns on that creature, its next
+   *  bite ready. */
+  Familiar.command = function (target, rebite) {
+    for (const fam of this.list) {
+      if (fam.down > 0 || fam.charge) continue;
+      fam.target = target;
+      if (rebite) fam.biteTimer = WS.min(fam.biteTimer, 0.05);
+    }
+    if (this.list.some((f) => f.spec.pack)) { this.quarry = target; this.quarryTimer = 1.0; }
+  };
+
   Familiar.add = function (kind) {
     if (this.list.length >= this.tuning.max) return;
     const player = WS.Game.player;
@@ -31625,6 +31766,7 @@ window.WS = window.WS || {};
       }
     }
 
+    const pw = Familiar.power(player);
     for (const fam of this.list) {
       const spec = fam.spec;
       const speedMult = spec.speedMult ? t[spec.speedMult] : 1;
@@ -31666,7 +31808,7 @@ window.WS = window.WS || {};
           if (c._dead) c = fam.charge = WS.Enemy.findNearest(fam.x, fam.y, 260);
           fam.chargeTime += dt;
           const damage = (t.dmgBase + t.dmgPerLevel * player.level) * dmgMult * player.damageMultiplier
-            * (1 + player.summonDamage) * WS.CONST.PLAYER_DAMAGE_SCALE;
+            * (1 + pw.dmg) * WS.CONST.PLAYER_DAMAGE_SCALE;
           if (!c || fam.chargeTime > t.ghoulChargeGiveUp || WS.dist(fam.x, fam.y, c.x, c.y) <= c.radius + 16) {
             burst(fam, player, t, damage);
             continue;
@@ -31731,7 +31873,7 @@ window.WS = window.WS || {};
         speed = t.dashSpeed * speedMult;
       } else if (fam.target) {
         [tx, ty] = WS.normalize(fam.target.x - fam.x, fam.target.y - fam.y);
-        speed = t.dashSpeed * speedMult * (1 + player.summonHaste * 0.25);
+        speed = t.dashSpeed * speedMult * (1 + pw.haste * 0.25);
       } else {
         // Nothing to hunt: lope around the survivor.
         const a = fam.bob;
@@ -31746,7 +31888,7 @@ window.WS = window.WS || {};
       fam.bob += dt * 3;
       if (fam.pounce > 0) fam.pounce -= dt;
 
-      fam.biteTimer -= dt * (1 + player.summonHaste);
+      fam.biteTimer -= dt * (1 + pw.haste);
       if (fam.biteTimer <= 0 && fam.target) {
         const reach = t.biteRadius * radiusMult * 0.6 + fam.target.radius;
         if (WS.dist2(fam.x, fam.y, fam.target.x, fam.target.y) <= reach * reach) {
@@ -31760,7 +31902,7 @@ window.WS = window.WS || {};
           const damage = (t.dmgBase + t.dmgPerLevel * player.level)
             * dmgMult
             * player.damageMultiplier
-            * (1 + player.summonDamage)
+            * (1 + pw.dmg)
             * WS.CONST.PLAYER_DAMAGE_SCALE;
           if (spec.pack) {
             /* One mouth, one creature - harder for each packmate that has
@@ -32108,6 +32250,7 @@ window.WS = window.WS || {};
     this.lastTaken = 0;
     this.lastHealed = 0;
     this.deathTimer = 0;
+    this.blinkTimer = 0;
     this.cacheTimer = cfg.cacheFirst;
     this.merchantTimer = cfg.eggVendorFirst;   // after dawn only (Wave.beans)
     this.beansDue = null;        // when she arrives after the boss that just fell
@@ -32166,7 +32309,15 @@ window.WS = window.WS || {};
    *  phase's pace (Config.tides; see config.js THE TIDE). */
   Wave.tide = function (time, run) {
     const cfg = WS.Config;
-    if (!this.rhythmOn() || run.victorious || run.mode === 'endless') return 1;
+    if (run.victorious || run.mode === 'endless') return 1;
+    if (!this.rhythmOn()) {
+      /* A night without Tides keeps none of the rhythm, but it may keep the
+         late rise (Config.defaultLateRamp; 0 is off): more to kill, not
+         tougher, once the last phase has begun. */
+      const last = this.map && this.map.phases[this.map.phases.length - 1];
+      if (cfg.defaultLateRamp > 0 && last && time > last.at) return 1 + (time - last.at) / cfg.defaultLateRamp;
+      return 1;
+    }
     let f = 1;
     const nb = this.map.bosses[this.bossIndex];
     if (nb && nb.at >= time && nb.at - time < cfg.tideGather) f = 1 + (cfg.tideCrest - 1) * WS.clamp(1 - (nb.at - time) / cfg.tideGather, 0, 1);
@@ -32181,6 +32332,18 @@ window.WS = window.WS || {};
       f *= 1 + (time - last.at) / cfg.tideLateRamp * k;
     }
     return f;
+  };
+
+  /** Is the horde gathering for a boss right now, past dropCrestSuppress of
+   *  its crest (Config.tideGather)? Only the gathering: the late rise never
+   *  counts, or a long night would stop dropping anything at all. */
+  Wave.cresting = function (time, run) {
+    const cfg = WS.Config;
+    if (!this.rhythmOn() || run.victorious || run.mode === 'endless' || !this.map) return false;
+    const nb = this.map.bosses[this.bossIndex];
+    if (!nb || nb.at < time || nb.at - time >= cfg.tideGather) return false;
+    const crest = 1 + (cfg.tideCrest - 1) * WS.clamp(1 - (nb.at - time) / cfg.tideGather, 0, 1);
+    return crest > cfg.dropCrestSuppress;
   };
 
   /** How much the night has deepened by `time`: the product of each
@@ -32285,6 +32448,38 @@ window.WS = window.WS || {};
     WS.FX.shake(6, 0.5);
     WS.FX.screen('rgba(180,40,120,.14)', 0.4);
     return boss;
+  };
+
+  /** Every Death on the field, oldest first. */
+  Wave.deaths = function () {
+    const out = [], pool = WS.Enemy.pool;
+    for (let i = 0; i < pool.count; i++) {
+      const e = pool.active[i];
+      if (!e._dead && e.id === 'death_itself') out.push(e);
+    }
+    return out.sort((a, b) => a.spawnId - b.spawnId);
+  };
+
+  /** Death's blink: a ring where the survivor is headed, and him in it when
+   *  it closes (Config.deathBlinkFuse). */
+  Wave.blink = function (death, m) {
+    const cfg = WS.Config, p = WS.Game.player;
+    const lead = cfg.deathBlinkLead;
+    const x = WS.clamp(p.x + (p.vx || 0) * lead, 60, WS.CONST.WORLD_WIDTH - 60);
+    const y = WS.clamp(p.y + (p.vy || 0) * lead, 60, WS.CONST.WORLD_HEIGHT - 60);
+    const pct = WS.min(cfg.deathBlinkMax, cfg.deathBlinkBase + cfg.deathBlinkStep * m);
+    WS.Hazard.spawn(x, y, {
+      radius: cfg.deathBlinkRadius, fuse: cfg.deathBlinkFuse, life: 0.05, interval: 99,
+      damage: p.maxHealth * pct, tint: [0.80, 0.90, 1.00], name: 'Death Itself',
+      onArm: (h) => {
+        if (!death._dead) { death.x = h.x; death.y = h.y; }
+        const dx = p.x - h.x, dy = p.y - h.y;
+        if (dx * dx + dy * dy < (h.radius + p.radius) * (h.radius + p.radius)) p.witherTimer = cfg.witherTime;
+        WS.FX.flash(h.x, h.y, h.radius * 1.3, [0.80, 0.90, 1.00], 0.5);
+        if (WS.RunLog) WS.RunLog.note('blinks');
+      },
+    });
+    WS.Audio.play('warn', x);
   };
 
   Wave.update = function (dt, run) {
@@ -32452,10 +32647,23 @@ window.WS = window.WS || {};
       WS.Audio.play('warn');
     }
     if (time >= deathTime) {
+      const cfg = WS.Config, m = (time - deathTime) / 60;
+      const deaths = this.deaths();
       this.deathTimer -= dt;
       if (this.deathTimer <= 0) {
-        this.deathTimer = WS.Config.deathInterval;
-        this.spawnBoss('death_itself', 1, false);
+        this.deathTimer = WS.max(cfg.deathIntervalMin, cfg.deathInterval - cfg.deathIntervalStep * m);
+        if (deaths.length < WS.min(cfg.deathCapMax, 1 + WS.floor(m / cfg.deathCapEvery))) {
+          const d = this.spawnBoss('death_itself', 1, false);
+          // His touch is a share of your health, set as he arrives.
+          if (d) d.damage = player.maxHealth * WS.min(1, cfg.deathContactBase + cfg.deathContactStep * m);
+        }
+      }
+      if (deaths.length) {
+        this.blinkTimer = (this.blinkTimer || 0) - dt;
+        if (this.blinkTimer <= 0) {
+          this.blinkTimer = WS.max(cfg.deathBlinkMin, cfg.deathBlinkPeriod - m);
+          this.blink(deaths[0], m);
+        }
       }
     }
 
@@ -37061,7 +37269,7 @@ window.WS = window.WS || {};
   RunLog.note = function (...a) { ev(...a); };
 
   // The callings' tallies (Calling.count) and the like, read at the end.
-  const COUNTERS = ['executions', 'overflows', 'barriersBroken', 'eviscerates', 'marksClaimed', 'enrages',
+  const COUNTERS = ['deathsSlain', 'executions', 'overflows', 'barriersBroken', 'eviscerates', 'marksClaimed', 'enrages',
     'rends', 'storms', 'waystones', 'ghoulBursts', 'revives'];
 
   RunLog.finish = function (reason) {

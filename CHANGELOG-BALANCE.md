@@ -58,7 +58,9 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
   (`evolvedBossDamage` 3.65 -> 5.343, 2.939 -> 4.209, 3.719 -> 4.536,
   2.315 -> 2.726, 0.707 -> 1.169). Re-gated: healers x0.83-0.86, every
   weapon inside x0.8-1.25 except Axe Gyre, which barely answers its damage
-  (it takes whatever comes close); %%AXE%%
+  (it takes whatever comes close), so it was cut again to 6.14. Final gate:
+  every weapon x0.81-1.23 of fair (Knifestorm 1.23, Axe Gyre 1.18, Arcweb
+  and Grave Tether 0.81); healers x0.77-0.88, slows x0.87-0.90: all pass.
 - **Fix:** drops are held back only while the horde gathers for a boss
   (`Wave.cresting`), not whenever the tide is up: on a Tides night the
   late rise kept the tide above 1.15 and no bomb or hourglass would have
