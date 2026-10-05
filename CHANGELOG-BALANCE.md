@@ -5,26 +5,32 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
 
 <!-- new entries go directly below -->
 
-## 2026-10-05 (evening): The finales as fights, fair ones; the scheduled bosses' light touch
+## 2026-10-05 (evening): The finales hurt; fair, never easy; the scheduled bosses' light touch
 
-The owner's ask: bosses too easy or too inconsequential when you mess up;
-make mechanics impactful but never unfair (no cutters scissoring in opposite
-directions); the "dodge the circles" opening must always be reachable; level
-up the indicators. Refocused mid-way on the FINALES (30:00), with only a
-light touch on the scheduled bosses. Overlap is allowed - two mechanics at
-once is the pressure - impossible patterns are not.
+The owner's ask: bosses too easy, too inconsequential when you mess up; make
+mistakes hurt, never unfair (no cutters scissoring in opposite directions);
+the "dodge the circles" opening must always be reachable; level up the
+mechanics' graphics. Refocused on the FINALES (30:00), a light touch on the
+scheduled bosses. And, after a first pass that went the wrong way: the
+finales were never unwinnable, they were too easy - unfairness is the only
+thing to take out; everything else hurts more. Overlap is allowed (two or
+three things at once is the pressure); impossible patterns are not.
 
 How it was measured: bot nights (`tools/botlab.js FINALE=1 TRACE=10`, 12
-survivors x 2 seeds a cell; strong = the default pilot, sloppy = replan 0.2,
-noise 25 with the casual drafter), the new finale bench (the median 30:00
-build from `finaleBuilds`, no healing, strong / human-limited / sloppy), and
-two new gates, `tools/check-finale-fair.js` and `tools/check-bosses.js`.
-Before = the code at cd4fdaf with the new bot; after = this commit.
+survivors a cell) with three pilots - strong (the default bot: perfect
+sight, a decision every 0.1s), human-limited (sees a telegraph 0.25s late,
+reads bolts 10 degrees off, replans every 0.15s: what a player is) and
+sloppy (replan 0.2, noise 25, with the casual drafter) - and two new gates,
+`tools/check-finale-fair.js` and `tools/check-bosses.js`. botlab now books
+every blow a finale offered and why it did or did not land. Before = the
+code at cd4fdaf with the same bot.
 
-**What the finales were.** Every bot night that reached a finale on
-Thornhollow and Dustreach won it - Veteran, Professional and Professional
-Hyper, strong and sloppy - taking a median **0%** of its bar over fights of
-4.5 to 6 minutes. Real builds heal and shield away what little lands.
+**Why the finales cost nothing.** Every bot night that reached a finale on
+Thornhollow and Dustreach won it, Veteran to Professional Hyper, at a
+median **0%** of the bar. Two reasons, both found by booking every blow:
+the strong bot is rarely caught (a blow every 30-60s), and when it was, the
+build ate it - a Stillwater survivor STEPPED every finale blow (12 of 12),
+a block build blocked 10 of 11, barriers swallowed the rest.
 
 **Fairness (every finale and the arena, gated by check-finale-fair):**
 - *Ring openings are computed, not guessed* (`Finale.aimGap`): within 90
@@ -53,71 +59,62 @@ Hyper, strong and sloppy - taking a median **0%** of its bar over fights of
 - Measured pressure (check-finale-fair, a survivor always moving): two or
   more threats live 28-39% of the early fights, 63-66% of Kael's.
 
-**Tuning (finales.js, Config):**
-- Fights ~20-30% shorter: `finaleRefSingle` 1500 -> 2000; Candlecrawler 460k
-  -> 380k, Mordecai 420k -> 320k, Kael 560k -> 480k health. Mordecai's fight
-  is paced by his lanterns (159s of a 182s fight, check-finale --phases):
-  soul lantern 28k -> 15k, exposed 16s at x1.8 (was 14s at x1.4); bench
-  fight ~390s -> ~300s. (The Mourneholt night below predates this: it ran
-  321s -> 383s on the health cut alone.)
-- Candlecrawler denser (bombs 3 a turret every 2.5s, drill 6.5s / 4.5s
-  stripped, the ring in every mode, a shockwave on surfacing); Galleon and
-  Admiral quicker, four kegs; Mordecai's hands and knell quicker.
-- A caught blow costs more on the first two maps: damage scale 8 -> 10
-  (Thornhollow), 9 -> 10 (Dustreach). The Admiral's pistol fan 30 -> 20 at
-  2.6s (no telegraph but its bolts; a quarter-second-slow player lost the
-  bar to it).
-- Pale drill vents 0.7 -> 0.55 rad/s and 900 -> 480px long (an arm 300px
-  out moved 210 px/s, all but running speed: crossing it, half the bar, was
-  the only way out); Kael's arms 0.55 -> 0.45 rad/s.
-- Eclipse Arena: flare / spear / cross damage x4 (26/30/32 -> 104/120/128):
-  against the kit's 385 health and 14 armour a caught flare took under 4%.
+**Telegraphed blows are dodged by reading them** (Player.takeDamage):
+a finale's, a boss's or the arena's shapes, and a boss's or finale unit's
+charge down its drawn lane, are not stepped by Stillwater nor rolled away
+by a dodge chance; a block takes half of one rather than all. The
+blessing's and the passive's text say so.
 
-**Results, bot nights (Thornhollow and Dustreach, before -> after):**
+**More damage, more pressure (finales.js, Config):**
+- `finaleDamage` 1.0 -> 1.4 over every finale, and the first maps' scale
+  8 -> 10 (Thornhollow), 9 -> 10 (Dustreach): on Professional a lantern
+  bomb is about half a median 30:00 build's bar before armour, a drill or
+  a dash a whole one.
+- Every finale quicker: Candlecrawler bombs (3 a turret) every 2s, drill
+  5 / 3.5s, the ring in every mode (6 / 8s), a shockwave on surfacing;
+  Galleon broadside 4, grape 2.6, keg 4.2 (four), dash 3.8, pistols 2.2;
+  Mordecai 4 hands every 3.5s, 6 lances every 3.2s, knell 8 / 5.5s;
+  Stormbreaker stomp 1.1, sweep 8, missiles 4.5, shock 6.5, lighthouse 9;
+  Pale debris (5) 3.2, vent 9, nova 7.5, cross 12, grid 11, spike 4 (winter
+  6 / 10 / 3.2); Kael bolt 3, gale 6, ring 8, arm 10, eye 17 (storm 2.2 /
+  6 / 8 / 13). Two or more threats live 33-74% of a fight (was 20-66%); a
+  survivor standing still takes 70k-178k a fight (was 28k-93k).
+- Eclipse Arena: flare / spear / cross 26/30/32 -> 104/120/128 (a caught
+  flare took under 4% of the kit's bar).
+- Fairness only, not softening: Pale vents 0.7 -> 0.55 rad/s and Kael's arms
+  0.55 -> 0.45 rad/s (an arm 300px out was outrunning the survivor); the
+  Admiral's dash warning 0.55 / 0.5s -> 0.7 / 0.6s (a dash lands for a
+  whole bar; the strong bot lost 2 of 11 duels to the chain's timing).
 
-| finale | cell | won / reached | fight (median) | taken (median / p90) |
+**Results, bot nights, health taken over the finale (median / p90, with
+the build's own healing - over 100% means healed through it):**
+
+| finale | cell | won / reached | taken before | taken after |
 |---|---|---|---|---|
-| Candlecrawler | Veteran strong | 24/24 -> 24/24 | 278s -> 194s | 11% / 45% -> 0% / 27% |
-| Candlecrawler | Professional strong | 24/24 -> 24/24 | 324s -> 294s | 0% / 13% -> 10% / 50% |
-| Candlecrawler | Professional sloppy | 19/19 -> 21/21 | 330s -> 209s | 0% / 13% -> 0% / 15% |
-| Candlecrawler | Pro + Hyper strong | 21/21 -> 17/17 | 335s -> 316s | 0% / 22% -> 6% / 66% |
-| Galleon & Admiral | Veteran strong | 24/24 -> 23/23 | 280s -> 227s | 0% / 27% -> 0% / 9% |
-| Galleon & Admiral | Professional strong | 16/16 -> 17/17 | 341s -> 250s | 0% / 11% -> 0% / 35% |
-| Galleon & Admiral | Professional sloppy | 17/17 -> 15/15 | 249s -> 186s | 0% / 0% -> 0% / 0% |
-| Galleon & Admiral | Pro + Hyper strong | 8/8 -> 9/9 | 361s -> 275s | 0% / 81% -> 0% / 45% |
+| Candlecrawler | Veteran strong | 24/24 -> 12/12 | 11% / 45% | 84% / 139% |
+| Candlecrawler | Veteran human | - -> 12/12 | - | 71% / 331% |
+| Candlecrawler | Professional strong | 24/24 -> 12/12 | 0% / 13% | 72% / 118% |
+| Candlecrawler | Professional human | 12/12 -> 12/12 | 0% / 14% | 126% / 236% |
+| Candlecrawler | Professional sloppy | 19/19 -> 11/11 | 0% / 13% | 12% / 53% |
+| Candlecrawler | Pro + Hyper strong | 21/21 -> 10/11 | 0% / 22% | 127% / 199% |
+| Candlecrawler | Pro + Hyper human | - -> 7/9 | - | 127% / 221% |
+| Galleon & Admiral | Veteran strong | 24/24 -> 11/11 | 0% / 27% | 27% / 70% |
+| Galleon & Admiral | Veteran human | - -> 11/11 | - | 21% / 62% |
+| Galleon & Admiral | Professional strong | 16/16 -> 9/11 | 0% / 11% | 19% / 144% |
+| Galleon & Admiral | Professional human | 11/11 -> 11/11 | 28% / 48% | 50% / 165% |
+| Galleon & Admiral | Professional sloppy | 17/17 -> 10/10 | 0% / 0% | 0% / 6% |
+| Galleon & Admiral | Pro + Hyper strong | 8/8 -> 8/8 | 0% / 81% | 14% / 154% |
+| Galleon & Admiral | Pro + Hyper human | - -> 5/6 | - | 106% / 146% |
 
-| Mordecai | Professional strong | 11/11 -> 12/12 | 321s -> 383s | 0% / 65% -> 0% / 0% |
-| Stormbreaker | Professional strong | 5/5 -> 7/7 | 229s -> 219s | 0% / 76% -> 0% / 56% |
-| Heart-Drill & Pale Lord | Professional strong | 6/6 -> 6/6 | 382s -> 380s | 263% / 681% -> 65% / 408% |
-
-(These nights ran before the damage-scale 8/9 -> 10, pistol, Mordecai-pacing
-and Pale health changes; one seed each for the last three. On the Pale
-Wastes the Frost nova alone took 166% of the bar a fight before - openings
-out of reach, scissoring, or covered - and 31% after: the fight now hurts
-through what you misjudge, not through what could not be solved. Drill 380k
--> 330k and the Pale Lord 700k -> 600k health for its length.) No bot
-night reaches dawn on Highmoor at Professional, before or after (deaths at
-6-27 minutes), so Kael is measured by the finale bench and the fairness
-gate only.
-Dawn (reaching 30:00) moved within seed noise in every cell.
-
-**Results, finale bench (Professional, median 30:00 build, no healing,
-3 fights a cell; won, health taken a minute):**
-
-| fight | strong | human-limited | sloppy |
-|---|---|---|---|
-| Candlecrawler | 3/3, 17%/min | 3/3, 26% | 3/3, 21% |
-| Galleon & Admiral | 3/3, 8% | 2/3, 32% | 3/3, 15% |
-| Mordecai | 3/3, 11% | 3/3, 29% | 3/3, 13% |
-| Stormbreaker | 1/3, 53% | 3/3, 25% | 2/3, 19% |
-| Heart-Drill & Pale Lord | 0/3, 41% | 0/3, 48% | 0/3, 53% |
-| Kael | 1/3, 36% | 2/3, 22% | 1/3, 37% |
-| Eclipse Arena | 3/3, 58% | 3/3, 63% | 2/3, 54% |
-
-Without healing the last three finales kill: they are meant to be survived
-with the night's sustain (Pale Wastes nights before: 6/6 won while taking
-263% of the bar and healing it back). An AFK survivor takes 28k-93k a
-fight in every finale (check-finale).
+Dawn (reaching 30:00) moved within seed noise. The sloppy pilot stays
+light: its noise does not misread telegraphs, and the casual drafter builds
+1,000-1,900 health and 13-24 armour, so it is offered one to eight blows a
+fight; the human-limited pilot is the measure of a player who makes
+mistakes. These nights ran before the Admiral's longer dash warning. The
+later maps' fights were measured before this pass (Pale Wastes: 263% -> 65%
+of the bar, the Frost nova alone 166% -> 31%, once its openings stopped
+being unreachable) and are gated by check-finale-fair since; no bot night
+reaches Highmoor's finale at Professional.
 
 **The scheduled bosses: a light touch** (src/game/bossfight.js). Each keeps
 its old kit and gains one telegraphed blow in the finale's shapes (a slam,
@@ -140,13 +137,24 @@ frame); broods never land within 110px of the survivor. Thornhollow, lives
 
 Dawn: Pro strong 24/24 -> 24/24, sloppy 19/24 -> 21/24.
 
+**The mechanics' graphics.** A landed blast leaves a shockwave, a hot
+core, dying embers and a scorch that cools (ice shatters, hands claw up, a
+lane leaves a burnt strip, spikes stand where they fell). Circles gather
+heat, turn a ring of runes round a crosshair, go white-hot in their last
+quarter-second, and a lobbed shell throws a tightening shadow. Rings are
+waves: a fading wake, a glow, a bright leading edge, sparks riding it.
+Beams have a wide halo, a flickering white core, an afterglow over the
+ground just swept and a flare at the tip; lanes fire with a muzzle flash
+and burn out along their length; the glacial grid's spikes rise through the
+doomed squares. The arena's flares and cross share them.
+
 **Indicators.** A boss gathers itself before a blow (a tightening ring, a
 tether to where a slam lands); at half health an aura and a burst; circles
 carry a countdown arc; a beam's telegraph shows the wedge its first second
 sweeps; a ring's landing shows an arrow toward the nearest opening; a heavy
 hit names the mechanic over the survivor; every mark is restated over the
-survivor's own spells. Reduce Flashes holds pulses still; Vivid paints them
-in the danger colour.
+survivor's own spells. Reduce Flashes stills flicker and pulses; Vivid
+paints threats in the danger colour; the balanced renderer skips sparks.
 
 ## 2026-10-05 (later): Weeks 3-4 of the balance plan (W6, W8, W2-A, W9, Skybreak)
 

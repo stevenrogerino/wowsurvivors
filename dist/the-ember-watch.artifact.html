@@ -4140,6 +4140,9 @@ window.WS = window.WS || {};
     dodgeInvulnerable: 0.2,
 
     blockInterval1: 30, blockInterval2: 22, blockInterval3: 15,
+    // ...and against a telegraphed blow (a finale's, a boss's) it takes
+    // this share instead of all of it (Player.takeDamage).
+    blockTelegraphed: 0.5,
     /* The kit, and the rank ceiling. Read through WS.MAX_WEAPONS and
        WS.WEAPON_MAX_LEVEL, which are getters over these. */
     /* When the one extra blessing arrives, in seconds. Half of deathTime.
@@ -7516,7 +7519,7 @@ window.WS = window.WS || {};
     warding_light: {
       name: 'Warding Light', art: 'aegis', quality: 'rare',
       description: 'Blocks the next single hit against you completely, then recharges.', max: 3,
-      detail: 'Blocks one hit every {Config.blockInterval1} / {Config.blockInterval2} / {Config.blockInterval3} seconds by rank.',
+      detail: 'Blocks one hit every {Config.blockInterval1} / {Config.blockInterval2} / {Config.blockInterval3} seconds by rank (half of a telegraphed boss or finale blow).',
       apply: (p) => {
         const c = WS.Config;
         const intervals = [c.blockInterval1, c.blockInterval2, c.blockInterval3];
@@ -8029,7 +8032,7 @@ window.WS = window.WS || {};
     },
     stillwater: {
       name: 'Stillwater Step', art: 'step', quality: 'legendary',
-      description: 'You are not where the blow lands. {Config.flowSteps} steps: a hit you would take becomes a step through it, a palm on everything you pass, and a stack of Poise (+{Config.poiseDamage%}% damage each). Steps come back on their own.',
+      description: 'You are not where the blow lands. {Config.flowSteps} steps: a hit you would take becomes a step through it, a palm on everything you pass, and a stack of Poise (+{Config.poiseDamage%}% damage each). Steps come back on their own. A boss\u2019s or finale\u2019s telegraphed blow is not stepped: read it.',
       apply: (p) => {
         p.flowAttuned += 1;
         p.flowSteps = WS.Primal.maxSteps(p);
@@ -9124,10 +9127,13 @@ window.WS = window.WS || {};
         damage: 10,   // was 9, for the same reason as the Candlecrawler's
         sailSpeed: 70, broadsideDamage: 40, broadsideTele: 1.2, broadsideWidth: 64,
         grapeDamage: 26, kegDamage: 40, kegRadius: 80, kegTele: 1.2,
-        dashDamage: 42, dashWindup: 0.55, dashTime: 0.35, dashRange: 340,
-        // The second and third dash of a set: quicker, but still a human's
-        // reaction plus a step - below ~0.5s a lane this wide cannot be left.
-        dashChainWindup: 0.5,
+        /* Her dashes land for a whole bar before armour now (finaleDamage),
+           so their warning is a human's reaction plus a real step: 0.7s for
+           the first, 0.6s for the chained (were 0.55 / 0.5). At the old
+           timings the strong bot lost 2 of 11 duels at Professional to the
+           chain alone. */
+        dashDamage: 42, dashWindup: 0.7, dashTime: 0.35, dashRange: 340,
+        dashChainWindup: 0.6,
         pistolDamage: 30, boarders: 8, rally: 4,
         sailInSpeed: 260, crashTime: 2.6,
         // Broadsides fire straight down until the ship falls below aimBelow,
@@ -27672,7 +27678,9 @@ window.WS = window.WS || {};
         e.contactCooldown = e.boss ? cfg.contactCooldownBoss : cfg.contactCooldownNormal;
         struck = true;
         // Run down by a boss's charge: the blow it telegraphed (BossFight.hit).
-        WS.Player.takeDamage(player, e.chargeTimer > 0 && e.chargeHit ? WS.max(e.damage, e.chargeHit) : e.damage, t.name);
+        // A charge ran down the lane it drew: telegraphed (Player.takeDamage).
+        WS.Player.takeDamage(player, e.chargeTimer > 0 && e.chargeHit ? WS.max(e.damage, e.chargeHit) : e.damage, t.name,
+          e.chargeTimer > 0 && (e.boss || e.finale));
         if (!WS.Game.running) return;
       }
 
@@ -29796,17 +29804,24 @@ window.WS = window.WS || {};
 
   /** True if the hit connected (false while invulnerable). A dodge still
    *  counts as connected - the attacker's swing is used up - but deals none. */
-  Player.takeDamage = function (p, amount, srcName) {
+  Player.takeDamage = function (p, amount, srcName, telegraphed) {
     if (p.invulnerable > 0) return false;
     const run = WS.Game.run;
 
+    /* A TELEGRAPHED BLOW IS DODGED BY READING IT. The finales', the arena's
+       and the bosses' shapes (`telegraphed`) said where they would land and
+       when; Stillwater's step and a dodge roll are for the blows nobody
+       could see coming. In bot nights a Stillwater survivor took every one
+       of a finale's hits on its step - 12 of 12, a whole fight at 0% - so
+       the fight asked nothing of them. Blocks still take one: they are
+       earned on a timer, one blow at a time. */
     // Stillwater: the blow finds only where they were.
-    if (WS.Primal.tryStep(p)) {
+    if (!telegraphed && WS.Primal.tryStep(p)) {
       run.damagePrevented += amount;
       return true;
     }
 
-    if (p.dodgeChance && WS.random() < p.dodgeChance) {
+    if (!telegraphed && p.dodgeChance && WS.random() < p.dodgeChance) {
       p.invulnerable = WS.Config.dodgeInvulnerable;
       run.damagePrevented += amount;
       WS.FX.notice(p.x, p.y, 'Dodge', '#bfe6ff');
@@ -29816,11 +29831,20 @@ window.WS = window.WS || {};
     if (p.blockReady) {
       p.blockReady = false;
       p.blockTimer = p.blockInterval;
-      p.invulnerable = WS.Config.hitInvulnerable;
-      run.damagePrevented += amount;
       WS.FX.notice(p.x, p.y, 'BLOCK', '#ffe08a');
       WS.FX.flash(p.x, p.y, 60, WS.CONST.COLORS.holy, 0.3);
-      return true;
+      /* Against a telegraphed blow a block takes half, not all. Those blows
+         come one every half-minute or so, and a block ready every 15s met
+         nearly every one of them: a block build stood in the shapes and
+         took nothing (bot nights: 10 of 11 finale blows blocked). */
+      if (telegraphed) {
+        run.damagePrevented += amount * WS.Config.blockTelegraphed;
+        amount *= 1 - WS.Config.blockTelegraphed;
+      } else {
+        p.invulnerable = WS.Config.hitInvulnerable;
+        run.damagePrevented += amount;
+        return true;
+      }
     }
 
     // Armor is a diminishing % reduction, never a flat subtraction, so it
@@ -33847,7 +33871,7 @@ window.WS = window.WS || {};
           const a = WS.atan2(player.y - h.cy, player.x - h.cx);
           if (!inGap(h, a)) {
             h.hit = true;
-            WS.Player.takeDamage(player, h.damage * this.dmgScale, 'Solar Flare');
+            WS.Player.takeDamage(player, h.damage * this.dmgScale, 'Solar Flare', true);
           }
         }
         if (h.r > 900) this.hazards.splice(i, 1);
@@ -33860,7 +33884,7 @@ window.WS = window.WS || {};
             // The spear lands the moment the telegraph expires.
             if (player.x >= h.x && player.x <= h.x + h.w
               && player.y >= h.y && player.y <= h.y + h.h) {
-              WS.Player.takeDamage(player, h.damage * this.dmgScale, 'Sunfall Spear');
+              WS.Player.takeDamage(player, h.damage * this.dmgScale, 'Sunfall Spear', true);
             }
             WS.FX.flash(h.x + h.w / 2, h.y + h.h / 2, h.w * 0.5, [1.0, 0.86, 0.45], 0.3);
             WS.Finale.impact('spikes', h.x, h.y, 0, [1.0, 0.86, 0.45], { w: h.w, h: h.h, life: 1.6, max: 1.6 });
@@ -33879,7 +33903,7 @@ window.WS = window.WS || {};
             let diff = ((pa - armAng + WS.PI * 3) % WS.TAU) - WS.PI;
             if (WS.abs(diff) <= h.half) {
               h.hitTimer = 0.8;
-              WS.Player.takeDamage(player, h.damage * this.dmgScale, 'Eclipse Cross');
+              WS.Player.takeDamage(player, h.damage * this.dmgScale, 'Eclipse Cross', true);
               break;
             }
           }
@@ -33951,7 +33975,9 @@ window.WS = window.WS || {};
  * a grid, safe ground in a field of doom - so all five fights share one
  * visual language: a shape appears, it tells you how long you have, and it
  * does exactly what it drew. Nothing reaches the survivor except through
- * Player.takeDamage, so armour, dodge, Warding Light and Thorns all work.
+ * Player.takeDamage, so armour, blocks, barriers and Thorns all work - but
+ * not a dodge roll or Stillwater's step: these are telegraphed, and reading
+ * the telegraph is the dodge.
  */
 'use strict';
 (function (WS) {
@@ -35073,7 +35099,7 @@ window.WS = window.WS || {};
   function hurt(m, amount) {
     const p = WS.Game.player;
     const before = p.health;
-    WS.Player.takeDamage(p, amount, m.name);
+    WS.Player.takeDamage(p, amount, m.name, true);
     if (m.name && before - p.health >= p.maxHealth * WS.Config.heavyHitShare) {
       WS.FX.notice(p.x, p.y - 14, m.name, '#ff9a7a');
       WS.FX.flash(p.x, p.y, 70, m.tint || [1, 0.4, 0.3], 0.3);
