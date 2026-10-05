@@ -36,7 +36,7 @@ const path = require('path');
     WS.UI.closeOverlay(); WS.Save.db.seenManual = true; WS.Save.unlockAll();
     WS.Save.save = () => {};
     WS.Save.settings.difficulty = 'professional';
-    WS.Save.db.unlocks.hyper.palewastes = true; WS.Save.db.hyperArmed = true;
+    WS.Save.db.unlocks.hyper.palewastes = true; if (true) { WS.Save.db.oaths = Object.assign({}, WS.Save.db.oaths, { hyper: true }); WS.Save.stats.totalVictories = Math.max(1, WS.Save.stats.totalVictories || 0); } else if (WS.Save.db.oaths) delete WS.Save.db.oaths.hyper;  // Hyper is an Oath
     WS.Game.openLevelUp = () => {}; WS.Game.presentLevelUp = () => {};
     const up = (pl, id, n) => { const u = WS.Upgrades[id]; for (let i = 0; i < n; i++) { u.apply(pl, u); pl.upgradeLevels[id] = (pl.upgradeLevels[id] || 0) + 1; } };
     const SOURCES = [

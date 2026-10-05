@@ -24,6 +24,7 @@
  *   PILOT=kite node tools/botlab.js                       the old bot, for comparison
  *   PILOT_OPTS='{"replan":0.2,"noise":20}'                a sloppier player
  *   DRAFT_OPTS='{"mode":"simple"}'                        the drafter's knobs (tools/bot/draft.js)
+ *   OATHS=hyper,crowd,iron                                swear these Oaths (a Nightly-like night with DIFF=professional)
  *   BLESS=kings,stillwater                                force the first blessing (one cell each)
  *   BLESS=all MIDNIGHT=kings                              the blessing matrix: every blessing, every survivor
  *   MODE=window TIME=1320 LIMIT=90 SAME=1 ...             the fixed-window instrument
@@ -49,7 +50,9 @@ function settings() {
     MAP: env('MAP', 'thornhollow'),
     DIFF: env('DIFF', 'veteran'),
     HYPER: env('HYPER', '0') === '1',
-    TIDES: env('TIDES', '0') === '1',
+    OATHS: env('OATHS', '').split(',').filter(Boolean),
+    // Every night is a Tides night now; TIDES=0 switches the rhythm off (Config.tides) to compare.
+    TIDES: env('TIDES', '1') === '1',
     PILOT: env('PILOT', 'plan'),
     PILOT_OPTS: JSON.parse(env('PILOT_OPTS', '{}')),
     DRAFT_OPTS: JSON.parse(env('DRAFT_OPTS', '{}')),
@@ -84,8 +87,13 @@ function inPage(S, job, sources) {
   WS.Save.settings.difficulty = S.DIFF;
   WS.Save.settings.victoryCinematic = false;
   WS.Save.db.unlocks.hyper[S.MAP] = true;
-  WS.Save.db.hyperArmed = S.HYPER;
-  WS.Save.db.tidesArmed = S.TIDES;
+  if (S.HYPER) { WS.Save.db.oaths = Object.assign({}, WS.Save.db.oaths, { hyper: true }); WS.Save.stats.totalVictories = Math.max(1, WS.Save.stats.totalVictories || 0); } else if (WS.Save.db.oaths) delete WS.Save.db.oaths.hyper;  // Hyper is an Oath
+  if (!S.TIDES) WS.Config.tides = false;
+  // OATHS=hyper,crowd,iron swears exactly these (the Nightly's are Hyper and two more).
+  if (S.OATHS.length) {
+    WS.Save.db.oaths = Object.fromEntries(S.OATHS.map((id) => [id, true]));
+    WS.Save.stats.totalVictories = Math.max(1, WS.Save.stats.totalVictories || 0);
+  }
   Object.assign(WS.Config, S.CONFIG);
   for (const [id, o] of Object.entries(S.CHARS)) Object.assign(WS.Characters[id], o);
   // Weapon, blessing and creature numbers the same way, for testing a patch

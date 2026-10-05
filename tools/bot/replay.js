@@ -51,7 +51,7 @@ const OUT = env('OUT', path.join(require('os').tmpdir(), 'replay'));
     WS.UI.closeOverlay();
     WS.Save.db.seenManual = true; WS.Save.unlockAll();
     WS.Save.settings.difficulty = S.DIFF;
-    WS.Save.db.unlocks.hyper[S.MAP] = true; WS.Save.db.hyperArmed = S.HYPER;
+    WS.Save.db.unlocks.hyper[S.MAP] = true; if (S.HYPER) { WS.Save.db.oaths = Object.assign({}, WS.Save.db.oaths, { hyper: true }); WS.Save.stats.totalVictories = Math.max(1, WS.Save.stats.totalVictories || 0); } else if (WS.Save.db.oaths) delete WS.Save.db.oaths.hyper;  // Hyper is an Oath
     WS.Save.save = () => {}; WS.Save.flush = () => {};
     WS.setSeed(S.SEED);
     WS.Game.startRun(S.MAP, S.HERO);

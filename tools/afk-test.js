@@ -85,7 +85,7 @@ const want = env('BUILD', Object.keys(BUILDS).join(',')).split(',');
         WS.Save.db.seenManual = true; WS.Save.unlockAll();
         WS.Save.save = () => {}; WS.Save.flush = () => {};
         WS.Save.settings.difficulty = S.DIFF;
-        WS.Save.db.unlocks.hyper[S.MAP] = true; WS.Save.db.hyperArmed = S.HYPER;
+        WS.Save.db.unlocks.hyper[S.MAP] = true; if (S.HYPER) { WS.Save.db.oaths = Object.assign({}, WS.Save.db.oaths, { hyper: true }); WS.Save.stats.totalVictories = Math.max(1, WS.Save.stats.totalVictories || 0); } else if (WS.Save.db.oaths) delete WS.Save.db.oaths.hyper;  // Hyper is an Oath
         Object.assign(WS.Config, S.CONFIG);
         for (const [id, o] of Object.entries(S.CHARS)) Object.assign(WS.Characters[id], o);
         for (const [id, o] of Object.entries(S.WEAPONS)) Object.assign(WS.Weapons[id], o);

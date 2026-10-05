@@ -5,6 +5,49 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
 
 <!-- new entries go directly below -->
 
+## 2026-10-05 (evening): Fewer knobs. Two difficulties, Hyper is an Oath, Tides every night
+
+The menu had a difficulty, Hyper, Tides and the Oaths, four ways to set one
+night. Now it has two.
+
+- **Two difficulties: Veteran and Professional.** Beginner (scale 0.75) is
+  gone. A save set to Beginner, or a run record that says so, reads as
+  Veteran (`Runs.diffLabel` keeps the old name on old records).
+- **Hyper is the first Oath.** It is sworn on the Oaths sheet like the
+  others (+50% score, the x1.5 Hyper always gave). Sworn, it sets
+  `run.hyper`, so every Hyper path is unchanged: `hyperScale` on the horde,
+  bosses and finales, and waves a third more often. Like the other Oaths it
+  opens with the first dawn on any battlefield, no longer battlefield by
+  battlefield. A save with Hyper armed starts with the Oath sworn. Results
+  and history still name Hyper apart from the count of other Oaths.
+- **The Nightly is Professional with the Hyper Oath and two more drawn for
+  the day**, the hardest night there is. 2026-01-01 draws Highmoor with
+  Hyper, the Crowd and Iron Hides.
+- **Tides on every night** (not the Eclipse Arena), no toggle. Bot nights,
+  24 a cell (12 survivors x 2 seeds), Tides off -> on, on five battlefields
+  with three players: strong (the min-max drafter and planning pilot), casual
+  (random-ish drafting) and learner (casual drafting, a slower and sloppier
+  pilot):
+  - It does what it is for. Nights with no return to the edge after a
+    stretch ahead (flat nights) fell on almost every battlefield and player:
+    strong Veteran 16 -> 11 on Thornhollow and 7 -> 1 on Mourneholt, and
+    returns to the edge rose. The last ten minutes are a rise, not a flat
+    walk: strong Veteran on Thornhollow went from 0.02-0.03 intensity at
+    25:00-30:00 to 0.06-0.11, and on Mourneholt from 0.17 to 0.26-0.31.
+  - It costs dawns where a build was already only just holding, mostly late.
+    Strong Veteran: Thornhollow 24 -> 24, Mourneholt 21 -> 20, Ochre 20 -> 12,
+    Pale Wastes 14 -> 12, Highmoor 10 -> 2. Learners on Veteran: 24 -> 23,
+    17 -> 20, 17 -> 12, 12 -> 9, 5 -> 6. That is the point (engagement, not
+    dawns), and the deepening still spares a survivor it is draining.
+  - Noted for later, not changed here: Ochre, the Pale Wastes and Highmoor
+    are hard with or without Tides (Highmoor on Professional: 0 of 24 for the
+    strong bot either way).
+- Tools: `botlab.js` plays Tides by default (`TIDES=0` switches the rhythm
+  off to compare) and takes `OATHS=hyper,crowd,...`; the tools that armed
+  Hyper swear the Oath; `check-ui` checks there is no Hyper toggle and that
+  the Oath makes a Hyper run; `check-tides` checks the Arena has no rhythm;
+  `check-ledger` checks the Nightly is Professional with Hyper and two more.
+
 ## 2026-10-05 (later): Weeks 3-4 of the balance plan (W6, W8, W2-A, W9, Skybreak)
 
 - **Skybreak (evolved Arcweb), testers' "steals damage": no change.** The

@@ -55,7 +55,7 @@ const path = require('path');
     WS.Save.unlockAll();
     WS.Save.settings.difficulty = DIFF;
     WS.Save.db.unlocks.hyper[MAP] = true;
-    WS.Save.db.hyperArmed = HYPER;
+    if (HYPER) { WS.Save.db.oaths = Object.assign({}, WS.Save.db.oaths, { hyper: true }); WS.Save.stats.totalVictories = Math.max(1, WS.Save.stats.totalVictories || 0); } else if (WS.Save.db.oaths) delete WS.Save.db.oaths.hyper;  // Hyper is an Oath
     // Nothing may stop the clock to ask a question: level-up cards, the
     // midnight blessing, a merchant.
     WS.Game.openLevelUp = () => {}; WS.Game.presentLevelUp = () => {};

@@ -14,17 +14,23 @@
   /* ---------------------------------------------------------- the score -- */
   /* What a night is worth. Time held is most of it, then what was put down,
    * then what the night ended in; and all of it scales with how hard the
-   * night was set to be - the battlefield, the difficulty, Hyper and every
-   * Oath sworn. Two runs of the same length on the same field only differ by
+   * night was set to be - the battlefield, the difficulty and every Oath
+   * sworn (Hyper among them). Two runs of the same length on the same field only differ by
    * what they killed and how they ended, which is the comparison a player
    * actually wants to make. */
   const DIFF_MULT = { beginner: 0.75, veteran: 1, professional: 1.5 };
 
   Runs.multiplier = function (run) {
     const d = DIFF_MULT[run.difficulty] || 1;
-    const hyper = run.hyper ? 1.5 : 1;
     const field = run.map && run.map.difficulty ? run.map.difficulty : 1;
-    return d * hyper * field * (run.oathMult || 1);
+    return d * field * (run.oathMult || 1);
+  };
+
+  /** A difficulty's name, for records that may predate the current two
+   *  (Beginner went in October 2026 and still names old runs). */
+  Runs.diffLabel = function (id) {
+    const d = WS.Config.difficulties[id];
+    return d ? d.label : id ? id.charAt(0).toUpperCase() + id.slice(1) : '';
   };
 
   Runs.score = function (run, outcome) {
@@ -119,10 +125,11 @@
       const chars = Object.keys(WS.Characters);
       const map = maps[WS.floor(WS.random() * maps.length)];
       const character = chars[WS.floor(WS.random() * chars.length)];
-      const pool = WS.OathOrder.slice();
+      // Always Hyper, and two more Oaths drawn for the day.
+      const pool = WS.OathOrder.filter((id) => id !== 'hyper');
       WS.shuffle(pool);
-      const oaths = pool.slice(0, 2).sort((a, b) => WS.OathOrder.indexOf(a) - WS.OathOrder.indexOf(b));
-      return { day, seed, map, character, oaths, difficulty: 'veteran', draft: (seed ^ 0x5bd1e995) >>> 0 };
+      const oaths = ['hyper'].concat(pool.slice(0, 2).sort((a, b) => WS.OathOrder.indexOf(a) - WS.OathOrder.indexOf(b)));
+      return { day, seed, map, character, oaths, difficulty: 'professional', draft: (seed ^ 0x5bd1e995) >>> 0 };
     });
   };
 

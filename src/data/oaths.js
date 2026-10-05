@@ -1,5 +1,5 @@
 /* Oaths: hardships a survivor can swear to before a night, on top of the
- * difficulty and Hyper. Each one makes the night harder in one plain way and
+ * difficulty. Each one makes the night harder in one plain way and
  * adds its `bonus` to the run's score multiplier, so a sworn night is worth
  * more on the ledger than the same night taken easy.
  *
@@ -13,11 +13,21 @@
  *   potion  healing from potions    bossHp  boss and finale health
  *
  * They open once a battlefield has been held to dawn, and never apply in the
- * Eclipse Arena, which runs its own fight. */
+ * Eclipse Arena, which runs its own fight.
+ *
+ * The Hyper Oath was Hyper Mode, a toggle of its own beside the difficulty.
+ * Sworn, it sets run.hyper (game.js) and every Hyper path is unchanged:
+ * Config.hyperScale on the horde, bosses and finales, waves a third more
+ * often. Its bonus is the x1.5 Hyper always added to the score. */
 'use strict';
 (function (WS) {
 
   WS.Oaths = {
+    hyper: {
+      name: 'The Hyper Oath', art: 'arcane',
+      desc: 'Everything out there is 40% stronger, and waves come a third more often.',
+      bonus: 0.50, mods: {},
+    },
     crowd: {
       name: 'Oath of the Crowd', art: 'skull',
       desc: 'Waves come a third more often.',
@@ -59,6 +69,6 @@
       bonus: 0.25, mods: { bossHp: 1.5 },
     },
   };
-  WS.OathOrder = ['crowd', 'iron', 'teeth', 'chase', 'lean', 'thirst', 'captains', 'giants'];
+  WS.OathOrder = ['hyper', 'crowd', 'iron', 'teeth', 'chase', 'lean', 'thirst', 'captains', 'giants'];
 
 })(window.WS);

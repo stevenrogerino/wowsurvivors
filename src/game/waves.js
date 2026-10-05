@@ -75,7 +75,7 @@
   };
 
   /** Is the night's rhythm playing: built in (Config.tides) and this night
-   *  a Tides night (run.tides, armed from the menu like Hyper). */
+   *  a Tides night (run.tides: every night but the Eclipse Arena's). */
   Wave.rhythmOn = function () {
     const run = WS.Game.run;
     return !!WS.Config.tides && !!(run && run.tides);

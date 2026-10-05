@@ -20,6 +20,9 @@
     return n;
   }
 
+  /** Sworn Oaths other than Hyper, which is always named on its own. */
+  function otherOaths(ids) { return (ids || []).filter((id) => id !== 'hyper').length; }
+
   function icon(art, colour, size) {
     const img = new Image();
     img.src = WS.Icons.url(art, colour, size || 64);
@@ -837,9 +840,12 @@
     }
     const modeBits = [];
     if (run.hyper) modeBits.push('Hyper');
-    if (run.tides) modeBits.push('Tides');
     if (run.nightly) modeBits.push('Nightly');
-    else if (run.oaths && run.oaths.length) modeBits.push(run.oaths.length === 1 ? '1 Oath' : run.oaths.length + ' Oaths');
+    else {
+      // Hyper is an Oath but keeps its own name; the count is the others.
+      const n = otherOaths(run.oaths);
+      if (n) modeBits.push(n === 1 ? '1 Oath' : n + ' Oaths');
+    }
     if ((run.victorious || run.mode === 'endless') && !WS.Finale.running()) modeBits.push('Overtime');
     if (run.map.arena) modeBits.push('Eclipse Arena · Phase ' + WS.Arena.phase);
     if (WS.Finale.running()) modeBits.push(WS.Finale.hudLabel());
@@ -1684,74 +1690,6 @@
       WS.Audio.play('ui');
     });
 
-    /* Hyper is armed globally and applies PER BATTLEFIELD, and this button used
-     * to only know about the first half.
-     *
-     * `hyperArmed` is one flag for the whole account, but a run is only a Hyper
-     * run when the map it is on has been won - game.js: `unlocks.hyper[mapId]
-     * && hyperArmed`. So arming it and then picking a battlefield you have not
-     * cleared gave you a footer reading "Hyper: ON" above a Begin Run that
-     * started an ordinary run. Measured: armed, Thornhollow won, begin
-     * Thornhollow -> run.hyper true; same armed state, begin Pale Wastes ->
-     * run.hyper false, button still reading ON. The summary afterwards was
-     * honest about it, which meant the only place the lie appeared was the
-     * moment the player was deciding.
-     *
-     * It reads the selected battlefield now, and says which of the three
-     * things is true: this one is armed, this one has to be won first, or -
-     * for the Arena, which runs its own fight and never touches the wave
-     * scaling Hyper multiplies - it does not apply here at all. */
-    const hyper = el('button', 'btn', '');
-    const setHyperLabel = () => {
-      const id = WS.Game.selection.map;
-      const map = WS.Maps[id];
-      if (map && map.arena) {
-        hyper.textContent = 'Hyper: n/a';
-        hyper.dataset.tip = map.name + ' runs its own fight, so Hyper has nothing to scale.';
-        hyper.disabled = true;
-        return;
-      }
-      const has = !!(WS.Save.db.unlocks.hyper && WS.Save.db.unlocks.hyper[id]);
-      hyper.disabled = !has;
-      hyper.textContent = has
-        ? 'Hyper: ' + (WS.Save.db.hyperArmed ? 'ON' : 'off')
-        : 'Hyper: win here first';
-      hyper.dataset.tip = has
-        ? 'Enemies and bosses 40% stronger, and waves a third more often.'
-        : (map ? `Survive thirty minutes on ${map.name} to open Hyper there.` : '');
-    };
-    setHyperLabel();
-    hyper.addEventListener('click', () => {
-      WS.Save.db.hyperArmed = !WS.Save.db.hyperArmed;
-      WS.Save.save(); setHyperLabel(); WS.Audio.play('ui');
-    });
-    /* Picking a battlefield does not rebuild the menu - it swaps the cartouche
-       in place - so the footer has to be told. */
-    /* Tides: an addition like Hyper - the night's rhythm around its bosses,
-       the deepening that answers how you are doing, and the reliquaries.
-       Opens with the Oaths, once any battlefield has been held to dawn. */
-    const tides = el('button', 'btn', '');
-    const setTidesLabel = () => {
-      const map = WS.Maps[WS.Game.selection.map];
-      const open = WS.Runs.oathsOpen();
-      if (map && map.arena) {
-        tides.textContent = 'Tides: n/a'; tides.disabled = true;
-        tides.dataset.tip = map.name + ' runs its own fight, so the night has no tides.';
-        return;
-      }
-      tides.disabled = !open;
-      tides.textContent = !open ? 'Tides: hold a night first' : 'Tides: ' + (WS.Save.db.tidesArmed ? 'ON' : 'off');
-      tides.dataset.tip = open
-        ? 'The horde gathers before each boss and falters after it falls. The night deepens after each boss, as far as you can take it, and pays for it: every boss leaves a reliquary of gifts, richer and worth more score the deeper you let the night go.'
-        : 'Hold any battlefield to dawn to open the Tides.';
-    };
-    setTidesLabel();
-    tides.addEventListener('click', () => {
-      WS.Save.db.tidesArmed = !WS.Save.db.tidesArmed;
-      WS.Save.save(); setTidesLabel(); WS.Audio.play('ui');
-    });
-    UI.syncModes = () => { setHyperLabel(); setTidesLabel(); };
-
     /* Oaths: hardships sworn before a night, each worth more score. The
        button says how many are armed and what they multiply the score by. */
     const oathBtn = el('button', 'btn', '');
@@ -1782,7 +1720,7 @@
       WS.Prologue.begin(() => UI.openMenu());
     });
 
-    s.foot.append(bank, el('div', 'spacer'), story, help, diff, hyper, tides, oathBtn, begin);
+    s.foot.append(bank, el('div', 'spacer'), story, help, diff, oathBtn, begin);
     this.show(s.inner);
   };
 
@@ -1983,7 +1921,6 @@
       m.arena ? null : ['Bosses', m.bosses.length, true],
       m.arena ? null : ['Swarms', m.events.length, true],
       m.arena ? null : ['Your best', best ? WS.formatTime(best) : 'not yet'],
-      WS.Save.db.unlocks.hyper[id] ? ['Hyper', 'unlocked'] : null,
     ]));
 
     // The roster this battlefield actually fields, so the pick is informed.
@@ -2081,8 +2018,6 @@
           for (const n of grid.children) n.classList.remove('selected');
           node.classList.add('selected');
           fillMapCartouche(detail, id);
-          // Hyper is per-battlefield, so the footer changes with this pick.
-          if (UI.syncModes) UI.syncModes();
         });
       }
       grid.append(node);
@@ -2637,9 +2572,9 @@
       const tr = el('tr');
       const d = new Date(e.at);
       const when = `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} ${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
-      const diff = WS.Config.difficulties[e.diff] ? WS.Config.difficulties[e.diff].label : e.diff;
+      const diff = WS.Runs.diffLabel(e.diff);
       const setting = e.nightly ? 'Nightly'
-        : [diff, e.hyper ? 'Hyper' : '', e.tides ? 'Tides' : '', e.oaths.length ? `${e.oaths.length} Oath${e.oaths.length > 1 ? 's' : ''}` : ''].filter(Boolean).join(' \u00b7 ');
+        : [diff, e.hyper ? 'Hyper' : '', otherOaths(e.oaths) ? `${otherOaths(e.oaths)} Oath${otherOaths(e.oaths) > 1 ? 's' : ''}` : ''].filter(Boolean).join(' \u00b7 ');
       const end = (OUT[e.outcome] || e.outcome) + (e.finale ? (e.retried ? ', finale (retried)' : ', finale') : '');
       const cells = [when, WS.Characters[e.char] ? WS.Characters[e.char].name : e.char,
         WS.Maps[e.map] ? WS.Maps[e.map].name : e.map, setting, WS.formatTime(e.time), end, WS.formatNumber(e.score)];
@@ -2659,7 +2594,7 @@
     if (!WS.Runs.oathsOpen()) {
       wrap.append(el('p', 'pane-intro book-line',
         'The Nightly opens once you have held any battlefield to dawn. One night a day, the same for '
-        + 'everyone who plays it: a battlefield, a survivor, two Oaths, and the same cards dealt for the same picks.'));
+        + 'everyone who plays it: a battlefield, a survivor, Professional with the Hyper Oath and two more, and the same cards dealt for the same picks.'));
       return wrap;
     }
     const n = WS.Runs.nightly();
@@ -2669,7 +2604,7 @@
     const hrs = WS.max(0, (next - now.getTime()) / 3600000);
     wrap.append(el('p', 'pane-intro book-line',
       `Tonight\u2019s watch, ${n.day}. The same night for everyone who plays it: ${m.name}, ${c.name}, `
-      + `Veteran, two Oaths, and the same cards for the same picks. Your best score today is the one that counts. `
+      + `Professional, the Hyper Oath and two more, and the same cards for the same picks. Your best score today is the one that counts. `
       + `A new night in ${hrs >= 1 ? WS.floor(hrs) + ' hours' : WS.ceil(hrs * 60) + ' minutes'}.`));
     const card = el('div', 'nightly-card');
     const pics = el('div', 'nightly-pics');
@@ -2685,7 +2620,7 @@
     }
     const info = el('div', 'nightly-info');
     info.append(el('div', 'nightly-title', `${c.name} on ${m.name}`));
-    info.append(el('div', 'nightly-sub', `Veteran \u00b7 score \u00d7${WS.Runs.oathMult(n.oaths).toFixed(2)} from its Oaths`));
+    info.append(el('div', 'nightly-sub', `Professional \u00b7 Hyper \u00b7 score \u00d7${WS.Runs.oathMult(n.oaths).toFixed(2)} from its Oaths`));
     for (const id of n.oaths) {
       const o = WS.Oaths[id];
       const row = el('div', 'nightly-oath');
@@ -2756,7 +2691,7 @@
     }
     s.body.append(el('p', 'pane-intro book-line',
       'Oaths hold for every night until you release them, on every battlefield but the Eclipse Arena. '
-      + 'The Nightly swears its own two and ignores these.'), grid);
+      + 'The Nightly swears its own (always Hyper, and two more) and ignores these.'), grid);
     const clear = el('button', 'btn', 'Release all');
     clear.addEventListener('click', () => { WS.Save.db.oaths = {}; WS.Save.save(); WS.Audio.play('ui'); paint(); });
     const done = el('button', 'btn primary', 'Done');
@@ -4243,7 +4178,7 @@
   /** The Nightly or the Oaths sworn, for a results header. */
   function modeTag(run) {
     if (run.nightly) return ' \u00b7 Nightly';
-    const n = run.oaths ? run.oaths.length : 0;
+    const n = otherOaths(run.oaths);
     return n ? ` \u00b7 ${n} Oath${n > 1 ? 's' : ''}` : '';
   }
 
@@ -4261,7 +4196,7 @@
   UI.openVictory = function () {
     const run = WS.Game.run;
     const s = shell(run.map.name,
-      `${WS.Config.difficulties[run.difficulty || WS.Save.settings.difficulty].label}`
+      `${WS.Runs.diffLabel(run.difficulty || WS.Save.settings.difficulty)}`
       + `${run.hyper ? ' · Hyper' : ''}${modeTag(run)} · ${WS.Characters[run.characterId].name}`);
     s.inner.classList.add('sheet-wide');
     /* Three ways this panel can arrive: at 30:00 with a finale still to
@@ -4325,7 +4260,7 @@
     const run = WS.Game.run;
     const def = WS.Finales[run.mapId];
     const s = shell(run.map.name,
-      `${WS.Config.difficulties[run.difficulty || WS.Save.settings.difficulty].label}`
+      `${WS.Runs.diffLabel(run.difficulty || WS.Save.settings.difficulty)}`
       + `${run.hyper ? ' · Hyper' : ''}${modeTag(run)} · ${WS.Characters[run.characterId].name}`);
     s.inner.classList.add('sheet-wide');
     const by = run.killedBy ? run.killedBy.name : def.title;
@@ -4359,7 +4294,7 @@
       ? `Slain by ${run.killedBy ? run.killedBy.name : 'the endless horde'} at ${WS.formatTime(run.time)}.`
       : `${WS.formatTime(run.time)} on ${run.map.name}.`;
     const s = shell(run.map.name,
-      `${WS.Config.difficulties[run.difficulty || WS.Save.settings.difficulty].label}`
+      `${WS.Runs.diffLabel(run.difficulty || WS.Save.settings.difficulty)}`
       + `${run.hyper ? ' · Hyper' : ''}${modeTag(run)} · ${WS.Characters[run.characterId].name}`);
     s.inner.classList.add('sheet-wide');
 
@@ -4368,7 +4303,7 @@
       defeated: `${run.killedBy ? cap(run.killedBy.name) : 'The horde'} got through at ${WS.formatTime(run.time)}`
         + (run.killedBy && run.killedBy.hit > 0 ? `, and they hit you for ${WS.formatNumber(run.killedBy.hit)}. ` : '. ')
         + `${WS.formatNumber(run.kills)} creatures did not make it to dawn.`,
-      victory: 'Banked, and Hyper Mode is open on this battlefield.',
+      victory: 'Banked. The Oaths are open if you want the night harder.',
       abandoned: 'You walked off the field. The gold is still yours.',
       arena_victory: 'Aethelgard is undone. The eclipse holds nothing now.',
     };

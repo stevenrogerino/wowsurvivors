@@ -773,12 +773,15 @@
     // seconds longer.
     fervorBuild: 0.08, fervorJudge: 0.005, fervorAegis: 0.3,
 
+    /* Two difficulties. Beginner (scale 0.75) went: the Tides already ease
+       the night for a survivor who is struggling, and the Oaths are the way
+       up. A save or a run record that still says beginner reads as Veteran
+       (save.js, Runs.diffLabel). */
     difficulties: {
-      beginner: { label: 'Beginner', scale: 0.75, gold: 0.85, interval: 1.1 },
       veteran: { label: 'Veteran', scale: 1.0, gold: 1.0, interval: 1.0 },
       professional: { label: 'Professional', scale: 1.3, gold: 1.25, interval: 0.85 },
     },
-    difficultyOrder: ['beginner', 'veteran', 'professional'],
+    difficultyOrder: ['veteran', 'professional'],
 
     defaultSettings: {
       /* Accessibility. The danger palette recolours every telegraph and

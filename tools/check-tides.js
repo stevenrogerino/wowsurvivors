@@ -31,10 +31,10 @@ const path = require('path');
     if (WS.Prologue.active) WS.Prologue.finish(); WS.UI.closeOverlay(); WS.Save.unlockAll(); WS.Save.save = () => {};
     const cfg = WS.Config, W = WS.WaveManager, G = WS.Game;
     const out = { on: cfg.tides && cfg.reliquaries };
-    // A night without Tides armed has none of it.
-    WS.Save.db.tidesArmed = false; G.startRun('dustreach', 'hunter'); G.chooseBlessing({ type: 'blessing', id: 'kings' });
+    // Every night is a Tides night but the Eclipse Arena's, which runs its own fight.
+    G.startRun('boss_arena', 'hunter'); if (G.state === 'blessing') G.chooseBlessing(G.blessingChoices[0]);
     out.plainOff = !W.rhythmOn() && !G.run.tides;
-    WS.setSeed(5); WS.Save.db.tidesArmed = true; G.startRun('dustreach', 'hunter'); G.chooseBlessing({ type: 'blessing', id: 'kings' });
+    WS.setSeed(5); G.startRun('dustreach', 'hunter'); G.chooseBlessing({ type: 'blessing', id: 'kings' });
     G.openLevelUp = () => {}; G.presentLevelUp = () => {};
     const run = G.run, p = G.player;
     const boss = run.map.bosses[0];
@@ -101,7 +101,7 @@ const path = require('path');
   await b.close();
   const fail = [];
   if (!r.on) fail.push('Config.tides and Config.reliquaries are not both on');
-  if (!r.plainOff) fail.push('a night started without Tides armed still has the rhythm');
+  if (!r.plainOff) fail.push('the Eclipse Arena has the Tides rhythm; it runs its own fight');
   if (!(r.crest > r.calm * 1.3)) fail.push(`the pace does not gather before a boss (${r.calm.toFixed(2)} -> ${r.crest.toFixed(2)})`);
   if (!(r.lull < r.calm * 0.5)) fail.push(`the pace does not falter after a boss falls (${r.lull.toFixed(2)})`);
   if (!(r.fresh > 1.05)) fail.push(`a survivor the night is not hurting gets no step (depth ${r.fresh.toFixed(3)})`);

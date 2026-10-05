@@ -73,9 +73,11 @@
       victorious: false,
       finalBossSeen: false,
       secondBlessing: false,
-      hyper: !!(WS.Save.db.unlocks.hyper[mapId] && WS.Save.db.hyperArmed),
-      // Tides: the night's rhythm around its bosses, and their reliquaries.
-      tides: !!(WS.Save.db.tidesArmed && !map.arena),
+      hyper: false,   // the Hyper Oath sets it (startRun)
+      /* Tides: the night's rhythm around its bosses, its deepening and their
+         reliquaries. Every night has them now (the Arena runs its own fight);
+         it was a toggle opened after the first dawn. */
+      tides: !map.arena,
       goldMult: map.goldMult * diff.gold,
       diffScale: diff.scale,
       diffInterval: diff.interval,
@@ -92,13 +94,12 @@
     const run = this.run;
     const n = opts && opts.nightly;
     if (n) {
-      /* The Nightly is the same night for everyone: Veteran, no Hyper, its
-         own two Oaths, and its own stream for the draft. */
-      const v = WS.Config.difficulties.veteran;
-      run.difficulty = 'veteran';
+      /* The Nightly is the same night for everyone, and the hardest one
+         going: Professional, the Hyper Oath and two more drawn for the day,
+         and its own stream for the draft. */
+      const v = WS.Config.difficulties.professional;
+      run.difficulty = 'professional';
       run.diffScale = v.scale; run.diffInterval = v.interval; run.goldMult = run.map.goldMult * v.gold;
-      run.hyper = false;
-      run.tides = false;
       run.nightly = n;
       run.oaths = n.oaths.slice();
       run.draft = { s: n.draft };
@@ -106,6 +107,8 @@
       run.oaths = WS.Runs.armedOaths();
     }
     run.oathMult = WS.Runs.oathMult(run.oaths);
+    // Hyper is an Oath now; sworn, the night runs every Hyper path as before.
+    run.hyper = run.oaths.includes('hyper');
     this.arenaBounds = null;
     WS.FX.clear();
     WS.Enemy.clear();
@@ -471,9 +474,6 @@
     if (run.victorious) return false;
     run.victorious = true;
     WS.Save.stats.totalVictories++;
-    // A Nightly on a battlefield the player has not opened yet lends it for
-    // the night; it does not open Hyper there.
-    if (!run.nightly || WS.Save.isMapUnlocked(run.mapId)) WS.Save.db.unlocks.hyper[run.mapId] = true;
     WS.Save.save();
     this.state = 'over';
     this.running = false;

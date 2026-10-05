@@ -136,7 +136,7 @@ script without touching code.
 - Certain weapon pairs quietly unlock **Discoveries** — Frostfire Bolt,
   Tempest Pact, Curdle — recorded permanently in the Codex.
 - Bosses arrive at 5:00, 10:30, 16:00, 22:00 and 27:00. Surviving to **30:00**
-  is Victory and unlocks that map's Hyper Mode; at that moment **Death itself**
+  is Victory; at that moment **Death itself**
   walks out, and returns every minute after. Claim the win, fight on, or go
   True Endless.
 - The horde has more than one verb. Wolves and raptors **lunge** — they plant,
@@ -168,15 +168,21 @@ than the build. Phase 2 at 60% health, Total Darkness and a hard enrage at 20%.
 
 ## The ledger, the Nightly and the Oaths
 
+- **Difficulty.** Two: Veteran and Professional. Every night has the
+  **Tides**: the horde gathers before each boss and thins after it falls, the
+  night deepens after each boss as far as the survivor can take it, and every
+  boss leaves a reliquary of gifts.
 - **Score.** Every night is scored: time held, kills, bosses and how it ended,
-  multiplied by the battlefield, the difficulty, Hyper and any Oaths sworn
+  multiplied by the battlefield, the difficulty and any Oaths sworn
   (`src/game/runs.js`). **Statistics** keeps the last sixty nights and the
   best score on every battlefield and with every survivor.
 - **Oaths** (`src/data/oaths.js`) open once any battlefield has been held to
-  dawn: eight opt-in hardships, each adding to the score multiplier. They
-  never apply in the Eclipse Arena.
+  dawn: nine opt-in hardships, each adding to the score multiplier, the first
+  of them the Hyper Oath (everything 40% stronger, waves a third more often,
+  +50% score). They never apply in the Eclipse Arena.
 - **The Nightly** is one run a day, the same for everyone: a battlefield, a
-  survivor, two Oaths, Veteran, and every blessing and level-up offer dealt
+  survivor, Professional with the Hyper Oath and two more, and every
+  blessing and level-up offer dealt
   from the day's own seed, so the same picks see the same cards.
 - **Report a problem** (pause menu, and Settings) builds a JSON report of the
   run, the kit, settings, frame timings and any errors, to copy or save and

@@ -51,7 +51,7 @@ const INDEX = 'file://' + path.resolve(__dirname, '..', 'index.html');
     const a = WS.Runs.nightly('2026-01-01'), b = WS.Runs.nightly('2026-01-01'), c = WS.Runs.nightly('2026-01-02');
     if (JSON.stringify(a) !== JSON.stringify(b)) fail('the same day gave two different Nightlies');
     if (a.map === c.map && a.character === c.character && a.draft === c.draft) fail('two days gave the same Nightly');
-    if (a.oaths.length !== 2) fail(`the Nightly swore ${a.oaths.length} Oaths, not 2`);
+    if (a.oaths.length !== 3 || a.oaths[0] !== 'hyper' || a.oaths.indexOf('hyper', 1) >= 0) fail(`the Nightly swore ${a.oaths.join('+')}, not Hyper and two more`);
     const deal = () => {
       G.startRun(a.map, a.character, { nightly: a });
       const bl = G.blessingChoices.map((x) => x.id).join();
@@ -66,7 +66,7 @@ const INDEX = 'file://' + path.resolve(__dirname, '..', 'index.html');
     const d2 = deal();
     if (d1[0] !== d2[0]) fail(`the Nightly dealt different blessings: ${d1[0]} vs ${d2[0]}`);
     if (d1[1] !== d2[1]) fail(`the Nightly dealt a different first level-up: ${d1[1]} vs ${d2[1]}`);
-    if (d1[2].difficulty !== 'veteran' || d1[2].hyper) fail('the Nightly did not run on Veteran without Hyper');
+    if (d1[2].difficulty !== 'professional' || !d1[2].hyper) fail('the Nightly did not run on Professional with Hyper');
 
     /* oaths */
     WS.Save.stats.totalVictories = 1;
@@ -112,7 +112,7 @@ const INDEX = 'file://' + path.resolve(__dirname, '..', 'index.html');
     if (!(S({ time: 900 }) > s0)) fail('holding longer did not score more');
     if (!(S({ kills: 2000 }) > s0)) fail('killing more did not score more');
     if (!(S({ difficulty: 'professional' }) > s0)) fail('Professional did not score more than Veteran');
-    if (!(S({ hyper: true }) > s0)) fail('Hyper did not score more');
+    if (!(S({ hyper: true, oathMult: WS.Runs.oathMult(['hyper']) }) > s0)) fail('the Hyper Oath did not score more');
     if (!(S({ oathMult: 1.5 }) > s0)) fail('Oaths did not score more');
     if (!(S({ map: WS.Maps.palewastes }) > s0)) fail('a harder battlefield did not score more');
 

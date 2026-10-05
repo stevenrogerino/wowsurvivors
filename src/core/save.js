@@ -133,9 +133,6 @@
       // Set once the Steam Deck defaults have been applied (main.js).
       deckSetup: false,
       gold: 0,
-      hyperArmed: false,
-      // Tides armed for the next night (the rhythm around the bosses; waves.js).
-      tidesArmed: false,
       // Set the first time the manual is closed, so the primer greets a new
       // player once and never interrupts a returning one.
       seenManual: false,
@@ -297,6 +294,11 @@
        nothing of the right shape to check against. The shape check still
        drops anything that is not a flag. */
     db.unions = scrubMap(db.unions, 'flag');
+    // Hyper Mode was its own toggle; armed, it is the Hyper Oath sworn.
+    if (db.hyperArmed === true) db.oaths = Object.assign({}, db.oaths, { hyper: true });
+    delete db.hyperArmed;
+    // Tides was a toggle too; every night has them now.
+    delete db.tidesArmed;
     db.oaths = scrubMap(db.oaths, 'flag', WS.Oaths);
     /* The ledger is a list of small records; any that is not the right shape
        is dropped on its own. */

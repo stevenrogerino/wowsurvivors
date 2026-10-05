@@ -50,9 +50,9 @@
         { name: 'Gold outlives the run',
           text: 'You keep every coin whether you win, die or walk away. Spend it with the Trainer on permanent lessons that apply to every run after.' },
         { name: 'Every night has a score',
-          text: 'Time held, what you put down and how the night ended, multiplied by the battlefield, the difficulty, Hyper and any Oaths you swore. The Statistics tab keeps the ledger and your best on every field and with every survivor.' },
+          text: 'Time held, what you put down and how the night ended, multiplied by the battlefield, the difficulty and any Oaths you swore, the Hyper Oath among them. The Statistics tab keeps the ledger and your best on every field and with every survivor.' },
         { name: 'Oaths and the Nightly',
-          text: 'Once you have held any battlefield to dawn, you can swear Oaths from the menu: harder nights for a bigger score. The Nightly is one run a day, the same for everyone: a battlefield, a survivor, two Oaths and the same cards dealt for the same picks.' },
+          text: 'Once you have held any battlefield to dawn, you can swear Oaths from the menu: harder nights for a bigger score. The Nightly is one run a day, the same for everyone and the hardest night there is: a battlefield, a survivor, Professional with the Hyper Oath and two more, and the same cards dealt for the same picks.' },
       ],
       /* The words the cards use, each said once in plain terms. The
          question players asked was "does this do anything for MY build",
