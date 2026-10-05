@@ -119,7 +119,7 @@ function installDrafter(opts) {
   // Only these touch nothing but the stats above, so only these are measured
   // by applying them; everything else is valued by what it is for.
   const MEASURED = { might: 1, haste: 1, precision: 1, ferocity: 1, area: 1, quantity: 1, velocity: 1, perennial: 1 };
-  const FIXED = { spirit_companion: 7, grave_call: 7, dread_command: 6, serration: 5, chilling_presence: 5 };
+  const FIXED = { spirit_companion: 7, grave_call: 7, serration: 5, chilling_presence: 5 };
   function crowd() { return Math.max(8, Math.min(40, WS.Enemy.pool.count)); }
   function dpsOf(p, id, level, evolved) {
     const r = WS.Weapon.reach(id, level, evolved, crowd(), p);
@@ -157,6 +157,9 @@ function installDrafter(opts) {
       case 'weapon_rank': { const w = WS.Player.getWeapon(p, c.id); return pct(dpsOf(p, c.id, w.level + 1, w.evolved) - dpsOf(p, c.id, w.level, w.evolved)); }
       case 'new_weapon': {
         let s = pct(dpsOf(p, c.id, 1, false)) + O.newBonus * (WS.MAX_WEAPONS - p.weapons.length) / WS.MAX_WEAPONS;
+        // Dread Command's worth is the pack it unlocks, which the reach
+        // model cannot see: valued as a middling weapon.
+        if (c.id === 'dread_command') s += 8;
         for (const q of partners(c.id)) if (owns(p, q)) s += 4;
         return s;
       }

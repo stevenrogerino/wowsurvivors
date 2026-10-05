@@ -26,6 +26,7 @@
     this.lastTaken = 0;
     this.lastHealed = 0;
     this.deathTimer = 0;
+    this.blinkTimer = 0;
     this.cacheTimer = cfg.cacheFirst;
     this.merchantTimer = cfg.eggVendorFirst;   // after dawn only (Wave.beans)
     this.beansDue = null;        // when she arrives after the boss that just fell
@@ -84,7 +85,15 @@
    *  phase's pace (Config.tides; see config.js THE TIDE). */
   Wave.tide = function (time, run) {
     const cfg = WS.Config;
-    if (!this.rhythmOn() || run.victorious || run.mode === 'endless') return 1;
+    if (run.victorious || run.mode === 'endless') return 1;
+    if (!this.rhythmOn()) {
+      /* A night without Tides keeps none of the rhythm, but it may keep the
+         late rise (Config.defaultLateRamp; 0 is off): more to kill, not
+         tougher, once the last phase has begun. */
+      const last = this.map && this.map.phases[this.map.phases.length - 1];
+      if (cfg.defaultLateRamp > 0 && last && time > last.at) return 1 + (time - last.at) / cfg.defaultLateRamp;
+      return 1;
+    }
     let f = 1;
     const nb = this.map.bosses[this.bossIndex];
     if (nb && nb.at >= time && nb.at - time < cfg.tideGather) f = 1 + (cfg.tideCrest - 1) * WS.clamp(1 - (nb.at - time) / cfg.tideGather, 0, 1);
@@ -99,6 +108,18 @@
       f *= 1 + (time - last.at) / cfg.tideLateRamp * k;
     }
     return f;
+  };
+
+  /** Is the horde gathering for a boss right now, past dropCrestSuppress of
+   *  its crest (Config.tideGather)? Only the gathering: the late rise never
+   *  counts, or a long night would stop dropping anything at all. */
+  Wave.cresting = function (time, run) {
+    const cfg = WS.Config;
+    if (!this.rhythmOn() || run.victorious || run.mode === 'endless' || !this.map) return false;
+    const nb = this.map.bosses[this.bossIndex];
+    if (!nb || nb.at < time || nb.at - time >= cfg.tideGather) return false;
+    const crest = 1 + (cfg.tideCrest - 1) * WS.clamp(1 - (nb.at - time) / cfg.tideGather, 0, 1);
+    return crest > cfg.dropCrestSuppress;
   };
 
   /** How much the night has deepened by `time`: the product of each
@@ -203,6 +224,38 @@
     WS.FX.shake(6, 0.5);
     WS.FX.screen('rgba(180,40,120,.14)', 0.4);
     return boss;
+  };
+
+  /** Every Death on the field, oldest first. */
+  Wave.deaths = function () {
+    const out = [], pool = WS.Enemy.pool;
+    for (let i = 0; i < pool.count; i++) {
+      const e = pool.active[i];
+      if (!e._dead && e.id === 'death_itself') out.push(e);
+    }
+    return out.sort((a, b) => a.spawnId - b.spawnId);
+  };
+
+  /** Death's blink: a ring where the survivor is headed, and him in it when
+   *  it closes (Config.deathBlinkFuse). */
+  Wave.blink = function (death, m) {
+    const cfg = WS.Config, p = WS.Game.player;
+    const lead = cfg.deathBlinkLead;
+    const x = WS.clamp(p.x + (p.vx || 0) * lead, 60, WS.CONST.WORLD_WIDTH - 60);
+    const y = WS.clamp(p.y + (p.vy || 0) * lead, 60, WS.CONST.WORLD_HEIGHT - 60);
+    const pct = WS.min(cfg.deathBlinkMax, cfg.deathBlinkBase + cfg.deathBlinkStep * m);
+    WS.Hazard.spawn(x, y, {
+      radius: cfg.deathBlinkRadius, fuse: cfg.deathBlinkFuse, life: 0.05, interval: 99,
+      damage: p.maxHealth * pct, tint: [0.80, 0.90, 1.00], name: 'Death Itself',
+      onArm: (h) => {
+        if (!death._dead) { death.x = h.x; death.y = h.y; }
+        const dx = p.x - h.x, dy = p.y - h.y;
+        if (dx * dx + dy * dy < (h.radius + p.radius) * (h.radius + p.radius)) p.witherTimer = cfg.witherTime;
+        WS.FX.flash(h.x, h.y, h.radius * 1.3, [0.80, 0.90, 1.00], 0.5);
+        if (WS.RunLog) WS.RunLog.note('blinks');
+      },
+    });
+    WS.Audio.play('warn', x);
   };
 
   Wave.update = function (dt, run) {
@@ -370,10 +423,23 @@
       WS.Audio.play('warn');
     }
     if (time >= deathTime) {
+      const cfg = WS.Config, m = (time - deathTime) / 60;
+      const deaths = this.deaths();
       this.deathTimer -= dt;
       if (this.deathTimer <= 0) {
-        this.deathTimer = WS.Config.deathInterval;
-        this.spawnBoss('death_itself', 1, false);
+        this.deathTimer = WS.max(cfg.deathIntervalMin, cfg.deathInterval - cfg.deathIntervalStep * m);
+        if (deaths.length < WS.min(cfg.deathCapMax, 1 + WS.floor(m / cfg.deathCapEvery))) {
+          const d = this.spawnBoss('death_itself', 1, false);
+          // His touch is a share of your health, set as he arrives.
+          if (d) d.damage = player.maxHealth * WS.min(1, cfg.deathContactBase + cfg.deathContactStep * m);
+        }
+      }
+      if (deaths.length) {
+        this.blinkTimer = (this.blinkTimer || 0) - dt;
+        if (this.blinkTimer <= 0) {
+          this.blinkTimer = WS.max(cfg.deathBlinkMin, cfg.deathBlinkPeriod - m);
+          this.blink(deaths[0], m);
+        }
       }
     }
 

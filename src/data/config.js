@@ -301,6 +301,7 @@
     tideGather: 40, tideCrest: 1.5,
     tideLull: 22.5, tideLow: 0.35,
     tideLateRamp: 900,
+    defaultLateRamp: 0,
     /* And the night deepens at each boss: once a scheduled boss's lull is
        over, the horde's health steps up by that boss's share here (easing
        in over tideStepTime), so the stretch a boss's reliquary buys is
@@ -334,6 +335,24 @@
     depthScore: 0.05,
     deathTime: 1800,
     deathInterval: 60,
+    /* Overtime that costs hits instead of one-shotting or never landing.
+       m = minutes past deathTime. A new Death every max(deathIntervalMin,
+       deathInterval - deathIntervalStep*m) s, at most min(deathCapMax,
+       1 + floor(m / deathCapEvery)) alive. His touch costs a share of your
+       health, min(1, deathContactBase + deathContactStep*m) of it (armour
+       still applies): 30% at first, lethal by m = 14. And on one clock, every
+       max(deathBlinkMin, deathBlinkPeriod - m) s, the oldest Death BLINKS: a
+       ring opens where you are headed (deathBlinkLead s ahead), deathBlinkFuse
+       s later he is there, and inside the ring it costs min(deathBlinkMax,
+       deathBlinkBase + deathBlinkStep*m) of your health and withers your
+       healing (x witherMult for witherTime s). A survivor at full speed who
+       turns clears the ring; one who runs straight does not. */
+    deathIntervalMin: 25, deathIntervalStep: 5,
+    deathCapMax: 8, deathCapEvery: 2,
+    deathContactBase: 0.30, deathContactStep: 0.05,
+    deathBlinkPeriod: 15, deathBlinkMin: 6, deathBlinkFuse: 0.8, deathBlinkRadius: 110, deathBlinkLead: 0.4,
+    deathBlinkBase: 0.20, deathBlinkStep: 0.03, deathBlinkMax: 0.6,
+    witherMult: 0.5, witherTime: 4,
 
     /* Standing and taking it. Measured (tools/tank-sim.js) on the hardest
        night: a warrior with every defensive passive at max, 760 health and
@@ -378,7 +397,12 @@
      * (one Recovery rank, no other investment) stays modest at ~20-50 dps
      * either way, since the multiplier only pays off once the healing
      * income actually justifies it. */
-    curdleCoefficient: 2.15,
+    curdleCoefficient: 0.96,
+    /* ...and the pulse grows with Might and with your arsenal (the mean,
+       over held weapons, of 1 + curdleRankStep a rank past the first, x
+       curdleEvolvedMult evolved; Player.curdleScale). */
+    curdleRankStep: 0.20,
+    curdleEvolvedMult: 1.5,
     /* Measured with tools/curdled-sim.js against a real, moving, killable
      * crowd (gauntlet): 110->140 is +43% total damage for the shared
      * curdleShare=0.25 baseline and +48% for Graveblade's 0.45 - coverage,

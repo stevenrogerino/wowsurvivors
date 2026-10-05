@@ -472,13 +472,29 @@
     },
   };
 
+  /* The summoner's weapon. Its own sigil is a small one: what it is for is
+     the pack. Wolves and ghouls are only offered once it is held, and every
+     rank makes them bite harder and sooner (commandDamage, commandHaste a
+     rank). A cast marks the thickest of the crowd nearby and sends every
+     summon at it at once. */
+  WS.Weapons.dread_command = {
+    damage: 26, evolveDamageMult: 3.0, bossDamage: 1.6, evolvedBossDamage: 1.6,
+    name: 'Dread Command', school: 'shadow', behavior: 'command', art: 'command',
+    rankDamageStep: 0.2,
+    cooldown: 2.2, radius: 78, range: 420, color: [0.62, 0.42, 0.95],
+    commandDamage: 0.10, commandHaste: 0.04, evolvedCommandDamage: 0.5, evolvedCommandHaste: 0.25,
+    description: 'Marks the thick of the crowd with a sigil of shadow and sends every summon at it. Wolves and ghouls answer only to it, and every rank drives them harder.',
+    evolveName: 'The Dread Host', evolvePairing: 'might',
+    evolveDescription: 'The host is unleashed: summons strike half again as hard and a quarter again as often, and the sigil falls twice as often.',
+  };
+
   // Shared level-up pool. Every class's starting weapon is findable by anyone.
   WS.WeaponOrder = [
     'seeking_motes', 'cinderfall', 'rimeshard', 'arcweb', 'dawnpulse',
     'hallowed_ring', 'umbral_bolt', 'knifestorm', 'axe_gyre', 'volley',
     'moonbrand', 'judgement_disc', 'reaving_arc', 'verdant_lance',
     'grave_tether', 'blightfield', 'iron_palms', 'spirit_herd', 'thornbloom',
-    'gale_chakram',
+    'gale_chakram', 'dread_command',
   ];
 
   // Both sources must be fully evolved to merge; the union frees a slot.

@@ -180,7 +180,7 @@
   RunLog.note = function (...a) { ev(...a); };
 
   // The callings' tallies (Calling.count) and the like, read at the end.
-  const COUNTERS = ['executions', 'overflows', 'barriersBroken', 'eviscerates', 'marksClaimed', 'enrages',
+  const COUNTERS = ['deathsSlain', 'executions', 'overflows', 'barriersBroken', 'eviscerates', 'marksClaimed', 'enrages',
     'rends', 'storms', 'waystones', 'ghoulBursts', 'revives'];
 
   RunLog.finish = function (reason) {

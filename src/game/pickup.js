@@ -111,7 +111,7 @@
   function recharge(kind, source) {
     const run = WS.Game.run, cfg = WS.Config;
     if (source === 'bomb' || WS.Enemy.freezeTimer > 0) return 0;
-    if (WS.WaveManager.tide(run.time, run) > cfg.dropCrestSuppress) return 0;
+    if (WS.WaveManager.cresting(run.time, run)) return 0;
     const last = run.lastDrop && run.lastDrop[kind];
     if (last === undefined) return 1;
     const k = (run.time - last) / (kind === 'bomb' ? cfg.bombRecharge : cfg.glassRecharge);

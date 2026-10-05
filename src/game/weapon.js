@@ -441,6 +441,21 @@
     return true;
   };
 
+  /* COMMAND (Dread Command): a sigil on the thick of the crowd within reach,
+     and every summon sent at it with its next bite ready. */
+  Weapon.behaviors.command = function (player, w) {
+    const d = w.data;
+    const t = WS.Enemy.findNearest(player.x, player.y, d.range || 420);
+    if (!t) { w.cooldown = retry(); return false; }
+    const r = areaOf(player, w, d.radius || 78);
+    WS.Enemy.damageArea(t.x, t.y, r, damageOf(player, w), null, null, w.id);
+    WS.FX.flash(t.x, t.y, r, schoolColour(w), 0.35, 5, d.school);
+    WS.FX.flash(t.x, t.y, r * 0.45, [0.85, 0.75, 1.0], 0.25);
+    WS.Familiar.command(t);
+    WS.Audio.play('cast', undefined, d.school);
+    return true;
+  };
+
   Weapon.behaviors.zone = function (player, w) {
     const d = w.data;
     /* Most fields grow up under the survivor. One that says `atTarget` goes
@@ -682,8 +697,14 @@
     // Each hop is weaker than the last; an evolved weapon may fade slower.
     const fall = w && w.evolved ? evo(w.data, 'evolveChainFalloff') : WS.Config.chainFalloff;
     let px = x, py = y;
+    /* Skybreak's hops pass over what is right at the survivor's feet, which
+       the close weapons are already killing, and leap out into the crowd -
+       unless there is nothing else to leap to. Testers saw it take kills the
+       blades and auras had all but finished. */
+    const skip = w && w.evolved && w.data.evolveHopSkip ? WS.Game.player : null;
+    const away = skip ? { x: skip.x, y: skip.y, r: WS.min(w.data.evolveHopSkipMax || 220, w.data.evolveHopSkip * skip.areaMultiplier) } : null;
     for (let i = 0; i < chains; i++) {
-      const target = WS.Enemy.findNearest(px, py, range, visited);
+      const target = WS.Enemy.findNearest(px, py, range, visited, away);
       if (!target) break;
       visited.add(target);
       const link = WS.Projectile.spawnBeam(px, py, target.x, target.y, 4 * heavy, colour, 0.16);
@@ -876,6 +897,11 @@
     nova: (p, w, crowd) => {
       const r = areaOf(p, w, w.data.radius || 150);
       return { per: inCircle(r, crowd), why: `burst r=${Math.round(r)}` };
+    },
+    /* The sigil alone; the pack it drives is the summons' own line. */
+    command: (p, w, crowd) => {
+      const r = areaOf(p, w, w.data.radius || 78);
+      return { per: inCircle(r, crowd), why: `sigil r=${Math.round(r)}` };
     },
     /* Everything inside the field, once per tick, for its whole duration. */
     zone: (p, w, crowd) => {

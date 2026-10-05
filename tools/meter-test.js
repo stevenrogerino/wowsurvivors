@@ -177,7 +177,9 @@ function report(rows) {
   const page0 = await b.newPage();
   await page0.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
   await page0.waitForFunction(() => window.WS && WS.Weapons);
-  const pool = await page0.evaluate(() => WS.WeaponOrder.filter((id) => !WS.Weapons[id].isUnion && WS.Weapons[id].evolveName));
+  // Dread Command is the summons' weapon, measured with them (SUMMON=), not
+  // drawn at random: alone it is a small sigil and would only skew the fit.
+  const pool = await page0.evaluate(() => WS.WeaponOrder.filter((id) => !WS.Weapons[id].isUnion && WS.Weapons[id].evolveName && id !== 'dread_command'));
   await page0.close();
   // The builds: seeded, so every shard and every candidate sees the same ones.
   let s = 12345;
@@ -201,6 +203,8 @@ function report(rows) {
     return out;
   });
   if (S.FIXED) for (let i = 0; i < builds.length; i++) builds[i] = S.FIXED.split(',');
+  // The summons answer only to Dread Command: it takes a build's last slot.
+  if (S.SUMMON) for (const bw of builds) bw[bw.length - 1] = 'dread_command';
   const mine = builds.map((w, i) => ({ i, w, ps: S.PASSIVES === 'subset' ? passiveSets[i] : null })).filter((j) => j.i % S.SHARD[1] === S.SHARD[0] - 1);
   const rows = [];
   for (const job of mine) {
@@ -319,19 +323,21 @@ function report(rows) {
     console.log(`curdled took ${(100 * sum / (rows.length || 1)).toFixed(1)}% of the build; the mean weapon ${(100 * wpn / (rows.length || 1)).toFixed(1)}%: x${(sum / wpn).toFixed(2)} of a weapon`);
   }
   if (S.SUMMON) {
-    // The summon against the weapons beside it: its share of what landed,
-    // the mean weapon's share, and the ratio of the two.
+    // The package - Dread Command's sigil and the summons it drives - against
+    // the mean of the other weapons beside it, and what reached the survivor.
     const key = S.SUMMON === 'wolf' ? 'wolves' : 'ghouls';
-    let sum = 0, wpn = 0, hurt = 0;
+    let sum = 0, sig = 0, wpn = 0, hurt = 0;
     for (const r of rows) {
       const tot = Object.values(r.landed).reduce((a, v) => a + v, 0) || 1;
-      sum += (r.landed[key] || 0) / tot;
-      wpn += r.weapons.reduce((a, id) => a + (r.landed[id] || 0) / tot, 0) / r.weapons.length;
+      sum += ((r.landed[key] || 0) + (key === 'ghouls' ? (r.landed.ghoul_rot || 0) : 0)) / tot;
+      sig += (r.landed.dread_command || 0) / tot;
+      const others = r.weapons.filter((id) => id !== 'dread_command');
+      wpn += others.reduce((a, id) => a + (r.landed[id] || 0) / tot, 0) / others.length;
       hurt += r.hurt;
     }
     const n = rows.length || 1;
-    console.log(`${key} (${S.SUMMON_RANKS} ranks) took ${(100 * sum / n).toFixed(1)}% of the build; the mean weapon ${(100 * wpn / n).toFixed(1)}%: `
-      + `x${(sum / wpn).toFixed(2)} of a weapon · ${Math.round(hurt / n)} damage a minute reached the survivor`);
+    console.log(`${key} (${S.SUMMON_RANKS} ranks) took ${(100 * sum / n).toFixed(1)}% and the sigil ${(100 * sig / n).toFixed(1)}%; the mean other weapon ${(100 * wpn / n).toFixed(1)}%: `
+      + `summons x${(sum / wpn).toFixed(2)}, package x${((sum + sig) / wpn).toFixed(2)} of a weapon · ${Math.round(hurt / n)} damage a minute reached the survivor`);
   }
   report(rows);
 })();

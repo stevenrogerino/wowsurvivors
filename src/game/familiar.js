@@ -171,6 +171,31 @@
     if (run) run.ghoulBursts = (run.ghoulBursts || 0) + 1;
   }
 
+  /** What Dread Command adds to every summon: {dmg, haste}, as fractions,
+   *  from its rank (commandDamage, commandHaste a rank) and evolution - plus
+   *  anything else that raises summonDamage / summonHaste. */
+  Familiar.power = function (player) {
+    const w = WS.Player.getWeapon(player, 'dread_command');
+    let dmg = player.summonDamage || 0, haste = player.summonHaste || 0;
+    if (w) {
+      const d = w.data;
+      dmg += d.commandDamage * w.level + (w.evolved ? d.evolvedCommandDamage : 0);
+      haste += d.commandHaste * w.level + (w.evolved ? d.evolvedCommandHaste : 0);
+    }
+    return { dmg, haste };
+  };
+
+  /** A Dread Command sigil: every summon turns on that creature, its next
+   *  bite ready. */
+  Familiar.command = function (target) {
+    for (const fam of this.list) {
+      if (fam.down > 0 || fam.charge) continue;
+      fam.target = target;
+      fam.biteTimer = WS.min(fam.biteTimer, 0.05);
+    }
+    if (this.list.some((f) => f.spec.pack)) { this.quarry = target; this.quarryTimer = 1.0; }
+  };
+
   Familiar.add = function (kind) {
     if (this.list.length >= this.tuning.max) return;
     const player = WS.Game.player;
@@ -203,6 +228,7 @@
       }
     }
 
+    const pw = Familiar.power(player);
     for (const fam of this.list) {
       const spec = fam.spec;
       const speedMult = spec.speedMult ? t[spec.speedMult] : 1;
@@ -244,7 +270,7 @@
           if (c._dead) c = fam.charge = WS.Enemy.findNearest(fam.x, fam.y, 260);
           fam.chargeTime += dt;
           const damage = (t.dmgBase + t.dmgPerLevel * player.level) * dmgMult * player.damageMultiplier
-            * (1 + player.summonDamage) * WS.CONST.PLAYER_DAMAGE_SCALE;
+            * (1 + pw.dmg) * WS.CONST.PLAYER_DAMAGE_SCALE;
           if (!c || fam.chargeTime > t.ghoulChargeGiveUp || WS.dist(fam.x, fam.y, c.x, c.y) <= c.radius + 16) {
             burst(fam, player, t, damage);
             continue;
@@ -309,7 +335,7 @@
         speed = t.dashSpeed * speedMult;
       } else if (fam.target) {
         [tx, ty] = WS.normalize(fam.target.x - fam.x, fam.target.y - fam.y);
-        speed = t.dashSpeed * speedMult * (1 + player.summonHaste * 0.25);
+        speed = t.dashSpeed * speedMult * (1 + pw.haste * 0.25);
       } else {
         // Nothing to hunt: lope around the survivor.
         const a = fam.bob;
@@ -324,7 +350,7 @@
       fam.bob += dt * 3;
       if (fam.pounce > 0) fam.pounce -= dt;
 
-      fam.biteTimer -= dt * (1 + player.summonHaste);
+      fam.biteTimer -= dt * (1 + pw.haste);
       if (fam.biteTimer <= 0 && fam.target) {
         const reach = t.biteRadius * radiusMult * 0.6 + fam.target.radius;
         if (WS.dist2(fam.x, fam.y, fam.target.x, fam.target.y) <= reach * reach) {
@@ -338,7 +364,7 @@
           const damage = (t.dmgBase + t.dmgPerLevel * player.level)
             * dmgMult
             * player.damageMultiplier
-            * (1 + player.summonDamage)
+            * (1 + pw.dmg)
             * WS.CONST.PLAYER_DAMAGE_SCALE;
           if (spec.pack) {
             /* One mouth, one creature - harder for each packmate that has

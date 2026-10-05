@@ -239,6 +239,9 @@
       p.walkCycle += dt * 2.5;
     }
     p.moving = moving;
+    // Where the survivor is headed, a second's worth (Death's blink aims at it).
+    p.vx = moving ? dx * speed : 0; p.vy = moving ? dy * speed : 0;
+    if (p.witherTimer > 0) p.witherTimer -= dt;
 
     if (p.spinTimer > 0) p.spinTimer -= dt;
     WS.Primal.update(p, dt);
@@ -300,7 +303,7 @@
       p.curdleTimer -= dt;
       if (p.curdleTimer <= 0) {
         p.curdleTimer = WS.Config.curdleInterval;
-        const coeff = WS.Config.curdleCoefficient;
+        const coeff = WS.Config.curdleCoefficient * Player.curdleScale(p);
         const dmg = WS.floor(p.curdlePool * coeff);
         if (dmg >= 1) {
           // Spend only what was dealt and keep the remainder, or a modest
@@ -404,6 +407,21 @@
     run.healingBySource[source] = (run.healingBySource[source] || 0) + amount;
   };
 
+  /** What a Curdled pulse is worth beyond its healing: your Might, and your
+   *  arsenal - the mean over the weapons you hold of a rank's worth
+   *  (curdleRankStep a rank) and an evolution's (curdleEvolvedMult). Healing
+   *  income grows x2-4 from 9:00 to 20:00 while weapons grow x13; without
+   *  this the pulse that mattered at 9:00 was a rounding error by 20:00. */
+  Player.curdleScale = function (p) {
+    const cfg = WS.Config;
+    let sum = 0, n = 0;
+    for (const w of p.weapons) {
+      sum += (1 + cfg.curdleRankStep * (w.level - 1)) * (w.evolved ? cfg.curdleEvolvedMult : 1);
+      n++;
+    }
+    return p.damageMultiplier * (n ? sum / n : 1);
+  };
+
   Player.desecrate = function (p, amount) {
     if (amount <= 0 || p.curdled <= 0) return;
     p.curdlePool += amount;
@@ -442,7 +460,8 @@
        little every frame (Boil Over's 3% a second, the Spring's pools: a
        fifth of a point a frame) floored to nothing, every frame, and had
        never healed at all. Whole heals are unchanged. */
-    const exact = amount * p.healingMult * (source === 'potion' ? WS.Runs.oath('potion') : 1);
+    const exact = amount * p.healingMult * (source === 'potion' ? WS.Runs.oath('potion') : 1)
+      * (p.witherTimer > 0 ? WS.Config.witherMult : 1);   // Death's blink withers it
     if (!(exact > 0)) return 0;
     const carry = p.healCarry || (p.healCarry = {});
     const key = source || 'other';

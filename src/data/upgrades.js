@@ -120,22 +120,16 @@
     spirit_companion: {
       name: 'Spirit Companion', art: 'spiritwolf', quality: 'rare',
       description: 'Summon a spirit wolf. The pack runs down bosses, elites and archers.', max: 3,
-      detail: 'Each rank calls another spirit wolf. Fast, and far-ranging. When a boss, an elite or something that shoots is in reach, the whole pack goes for it, and every wolf already on it makes the next bite {Familiar.tuning.packBonus%}% harder. A pounce mauls what is around the quarry for less. Otherwise each wolf works the herd on its own. Scales with your damage and level.',
+      offer: (p) => !!WS.Player.getWeapon(p, 'dread_command'),
+      detail: 'Each rank calls another spirit wolf. Fast, and far-ranging. When a boss, an elite or something that shoots is in reach, the whole pack goes for it, and every wolf already on it makes the next bite {Familiar.tuning.packBonus%}% harder. A pounce mauls what is around the quarry for less. Otherwise each wolf works the herd on its own. Answers to Dread Command, and scales with its rank, your damage and your level.',
       apply: () => { WS.Familiar.add('wolf'); },
     },
     grave_call: {
       name: 'Grave Call', art: 'risen', quality: 'rare',
       description: 'Raise a ghoul to guard you. Its claws slow and rot what they rake.', max: 3,
-      detail: 'Each rank raises another ghoul. Slow, and it stays close, turning on whatever is nearest you. Its claws sweep a wide arc, slow what they hit by {Familiar.tuning.ghoulSlow~%}% and leave it rotting: rotting creatures take {Familiar.tuning.ghoulRot*%}% more damage from everything, yours included, for {Familiar.tuning.ghoulRotTime}s. A ghoul with nothing near you to rake for {Familiar.tuning.ghoulRestless}s breaks loose, one at a time: it runs to the thickest of the crowd and bursts there, rotting everything around it for {Familiar.tuning.ghoulBurstMult}x a rake, and rises again at your side {Familiar.tuning.ghoulRespawn}s later. Scales with your damage and level.',
+      offer: (p) => !!WS.Player.getWeapon(p, 'dread_command'),
+      detail: 'Each rank raises another ghoul. Slow, and it stays close, turning on whatever is nearest you. Its claws sweep a wide arc, slow what they hit by {Familiar.tuning.ghoulSlow~%}% and leave it rotting: rotting creatures take {Familiar.tuning.ghoulRot*%}% more damage from everything, yours included, for {Familiar.tuning.ghoulRotTime}s. A ghoul with nothing near you to rake for {Familiar.tuning.ghoulRestless}s breaks loose, one at a time: it runs to the thickest of the crowd and bursts there, rotting everything around it for {Familiar.tuning.ghoulBurstMult}x a rake, and rises again at your side {Familiar.tuning.ghoulRespawn}s later. Answers to Dread Command, and scales with its rank, your damage and your level.',
       apply: () => { WS.Familiar.add('ghoul'); },
-    },
-    dread_command: {
-      name: 'Dread Command', art: 'command', quality: 'epic',
-      description: '+{v%}% summon damage and +{haste%}% summon attack speed', max: 5,
-      detail: 'Drives everything you have summoned, spirit wolves and ghouls alike, to strike harder and more often. Worthless without something to command.',
-      offer: (p) => (p.upgradeLevels.spirit_companion || 0) > 0 || (p.upgradeLevels.grave_call || 0) > 0,
-      v: 0.30, haste: 0.10,
-      apply: (p, up) => { p.summonDamage += up.v; p.summonHaste += up.haste; },
     },
 
     /* ------------------------------------------------ tank / defensive --- */
@@ -319,7 +313,7 @@
     'ferocity', 'area', 'quantity', 'luck', 'wisdom', 'recovery', 'velocity',
     'dark_bargain', 'warding_light', 'chilling_presence', 'spirit_companion',
     'thorns', 'searing', 'dodge', 'curdled', 'ruin_hunger',
-    'grave_call', 'dread_command', 'primal_kinship', 'serenity',
+    'grave_call', 'primal_kinship', 'serenity',
     'serration', 'perennial',
     'undertow', 'hallowed', 'ruthless', 'stalker', 'slow_burn', 'bountiful', 'deep_roots', 'fervor',
   ];

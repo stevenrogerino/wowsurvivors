@@ -211,16 +211,23 @@
     return found;
   };
 
-  /** Nearest enemy within range. `excluded` is a Set (arcweb hops). */
-  Enemy.findNearest = function (x, y, range, excluded) {
-    let best = null, bestDist = range * range;
+  /** Nearest enemy within range. `excluded` is a Set (arcweb hops). With
+   *  `away` ({x, y, r}), anything within r of that point is passed over -
+   *  unless nothing else is in range, when the nearest of them is taken. */
+  Enemy.findNearest = function (x, y, range, excluded, away) {
+    let best = null, bestDist = range * range, near = null, nearDist = range * range;
+    const r2 = away ? away.r * away.r : 0;
     for (let i = 0; i < this.pool.count; i++) {
       const e = this.pool.active[i];
       if (e._dead || e.untargetable || (excluded && excluded.has(e))) continue;
       const d = WS.dist2(x, y, e.x, e.y);
+      if (away && WS.dist2(away.x, away.y, e.x, e.y) < r2) {
+        if (d < nearDist) { nearDist = d; near = e; }
+        continue;
+      }
       if (d < bestDist) { bestDist = d; best = e; }
     }
-    return best;
+    return best || near;
   };
 
   Enemy.freezeAll = function (duration) {
@@ -742,7 +749,12 @@
         WS.Arena.onBossDead();
         return;
       }
-      if (e.id === 'death_itself') run.deathsSlain++;
+      if (e.id === 'death_itself') {
+        run.deathsSlain++;
+        // The fun number: every one counts, and the night says so.
+        WS.Game.announce('Death itself falls', run.deathsSlain === 1 ? 'He will be back.'
+          : `${run.deathsSlain} tonight. He keeps coming back.`, 3.0, { kind: 'glory' });
+      }
       else if (WS.Config.reliquaries && run.tides) WS.Pickup.spawn('reliquary', e.x, e.y);
       WS.Save.stats.bosses[e.id] = (WS.Save.stats.bosses[e.id] || 0) + 1;
       const gold = WS.floor((t.gold || 40) * run.goldMult * player.goldMultiplier);

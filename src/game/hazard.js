@@ -40,6 +40,7 @@
     h.tint = spec.tint || [1.0, 0.45, 0.30];
     h.name = spec.name || 'the ground';
     h.seed = WS.random() * WS.TAU;     // so a field of them does not pulse in lockstep
+    h.onArm = spec.onArm || null;      // called once, as the fuse burns down
     return h;
   };
 
@@ -54,6 +55,7 @@
           h.fuse = 0;
           WS.FX.flash(h.x, h.y, h.radius, WS.hex(h.tint), 0.35);
           WS.Audio.play('enemyHit', h.x);
+          if (h.onArm) h.onArm(h);
         }
         i++;
         continue;
