@@ -1,0 +1,27 @@
+24 runs in 287s
+
+full · mourneholt · veteran · pilot plan · 24 runs
+
+ by survivor
+  mage                      30.0m   2/2 dawn  lvl 100  potions 40.0  bombs  7.0  freezes  5.5  low  44%  hurt: bolt 78%, contact 21%, charge 1%
+  warrior                   30.0m   2/2 dawn  lvl 103  potions 80.5  bombs 18.0  freezes 11.5  low  52%  hurt: bolt 86%, contact 12%, ground 2%
+  graveblade                30.0m   2/2 dawn  lvl  99  potions 69.0  bombs 16.5  freezes  9.0  low  16%  hurt: bolt 74%, contact 22%, ground 2%, charge 1%
+  priest                    30.0m   2/2 dawn  lvl 108  potions 66.5  bombs 19.0  freezes 10.5  low  80%  hurt: contact 69%, bolt 31%
+  warlock                   25.3m   1/2 dawn  lvl 107  potions 95.5  bombs 21.5  freezes 13.0  low  30%  hurt: bolt 97%, contact 2%, ground 0%, charge 0%
+  ruinseeker                30.0m   2/2 dawn  lvl 115  potions 32.5  bombs 10.0  freezes  6.0  low  39%  hurt: bolt 90%, contact 9%, charge 1%, ground 0%
+  rogue                     26.6m   1/2 dawn  lvl  96  potions 66.5  bombs 20.0  freezes 10.5  low  24%  hurt: bolt 88%, contact 11%, ground 1%
+  shaman                    30.0m   2/2 dawn  lvl 107  potions 47.0  bombs 13.0  freezes  5.5  low  66%  hurt: bolt 62%, contact 26%, charge 12%
+  druid                     30.0m   2/2 dawn  lvl 101  potions 49.5  bombs 14.5  freezes  7.0  low  16%  hurt: bolt 87%, contact 11%, ground 1%, charge 1%
+  hunter                    25.5m   1/2 dawn  lvl 106  potions 126.0  bombs 15.5  freezes 18.5  low   6%  hurt: bolt 62%, contact 36%, charge 1%, ground 1%
+  paladin                   29.9m   1/2 dawn  lvl 114  potions 110.5  bombs 22.5  freezes 16.0  low   6%  hurt: bolt 78%, contact 21%, ground 0%, charge 0%
+  monk                      30.0m   2/2 dawn  lvl 101  potions 84.5  bombs 18.5  freezes 15.0  low  66%  hurt: bolt 83%, contact 16%, ground 0%
+  ALL                       28.9m 20/24 dawn  lvl 105  potions 72.3  bombs 16.3  freezes 10.7  low  37%  hurt: bolt 81%, contact 18%, ground 1%, charge 1%
+
+ the killing blow
+     2  bolt · Skeletal Frostweaver
+     1  contact · Blackfang Moonwretch
+     1  contact · Bone Sentinel
+
+ bolts that landed: 1855, flying <0.2s 0%, 0.2-0.4s 0%, 0.4-0.8s 8%, longer 91%; mean speed 220; slowed when hit 44%
+
+ pilot: 1.60ms a decision

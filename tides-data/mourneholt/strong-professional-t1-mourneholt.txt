@@ -1,0 +1,27 @@
+24 runs in 338s
+
+full · mourneholt · professional · pilot plan · 24 runs
+
+ by survivor
+  mage                      27.8m   1/2 dawn  lvl 103  potions 88.5  bombs 22.0  freezes 11.5  low   0%  hurt: bolt 97%, contact 2%, charge 1%
+  warrior                   30.0m   2/2 dawn  lvl 106  potions 95.0  bombs 26.0  freezes 14.0  low  28%  hurt: bolt 82%, contact 17%, ground 0%, charge 0%
+  graveblade                28.5m   1/2 dawn  lvl 102  potions 74.5  bombs 18.5  freezes 10.5  low   9%  hurt: bolt 86%, contact 13%, ground 1%, charge 0%
+  priest                    27.9m   1/2 dawn  lvl 105  potions 42.5  bombs 12.5  freezes  7.0  low  19%  hurt: bolt 94%, contact 6%, charge 1%
+  warlock                   28.0m   1/2 dawn  lvl 120  potions 129.5  bombs 26.0  freezes 14.5  low  19%  hurt: bolt 87%, contact 11%, ground 1%, charge 1%
+  ruinseeker                30.0m   2/2 dawn  lvl 112  potions 98.5  bombs 28.5  freezes 12.5  low  32%  hurt: bolt 87%, contact 13%, ground 0%
+  rogue                     30.0m   2/2 dawn  lvl 107  potions 100.5  bombs 24.5  freezes 14.5  low  19%  hurt: bolt 78%, contact 21%, ground 1%, charge 0%
+  shaman                    30.0m   2/2 dawn  lvl 106  potions 82.0  bombs 23.5  freezes 14.0  low  16%  hurt: bolt 83%, contact 16%, ground 0%
+  druid                     27.4m   1/2 dawn  lvl 102  potions 57.0  bombs 13.0  freezes  7.5  low  43%  hurt: bolt 75%, contact 24%, charge 1%, ground 1%
+  hunter                    28.4m   1/2 dawn  lvl 118  potions 127.0  bombs 28.0  freezes 15.5  low  14%  hurt: bolt 95%, contact 4%, charge 1%, ground 0%
+  paladin                   27.5m   1/2 dawn  lvl 106  potions 73.0  bombs 15.0  freezes 16.5  low  20%  hurt: bolt 89%, contact 9%, charge 1%, ground 0%
+  monk                      20.4m   1/2 dawn  lvl  88  potions 67.5  bombs 17.0  freezes  7.5  low  10%  hurt: bolt 59%, contact 35%, ground 4%, charge 2%
+  ALL                       28.0m 16/24 dawn  lvl 106  potions 86.3  bombs 21.2  freezes 12.1  low  19%  hurt: bolt 85%, contact 14%, ground 1%, charge 1%
+
+ the killing blow
+     6  bolt · Skeletal Frostweaver
+     1  contact · The Pale Wraith
+     1  contact · Rotting Shambler
+
+ bolts that landed: 2605, flying <0.2s 0%, 0.2-0.4s 0%, 0.4-0.8s 8%, longer 92%; mean speed 220; slowed when hit 49%
+
+ pilot: 1.95ms a decision
