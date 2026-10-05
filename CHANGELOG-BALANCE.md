@@ -86,7 +86,16 @@ Hyper, strong and sloppy - taking a median **0%** of its bar over fights of
 | Galleon & Admiral | Professional sloppy | 17/17 -> 15/15 | 249s -> 186s | 0% / 0% -> 0% / 0% |
 | Galleon & Admiral | Pro + Hyper strong | 8/8 -> 9/9 | 361s -> 275s | 0% / 81% -> 0% / 45% |
 
-(These nights ran before the damage-scale 8/9 -> 10 and pistol changes.)
+| Mordecai | Professional strong | 11/11 -> 12/12 | 321s -> 383s | 0% / 65% -> 0% / 0% |
+| Stormbreaker | Professional strong | 5/5 -> 7/7 | 229s -> 219s | 0% / 76% -> 0% / 56% |
+| Heart-Drill & Pale Lord | Professional strong | 6/6 -> 6/6 | 382s -> 380s | 263% / 681% -> 65% / 408% |
+
+(These nights ran before the damage-scale 8/9 -> 10, pistol, Mordecai-pacing
+and Pale health changes; one seed each for the last three. On the Pale
+Wastes the Frost nova alone took 166% of the bar a fight before - openings
+out of reach, scissoring, or covered - and 31% after: the fight now hurts
+through what you misjudge, not through what could not be solved. Drill 380k
+-> 330k and the Pale Lord 700k -> 600k health for its length.)
 Dawn (reaching 30:00) moved within seed noise in every cell.
 
 **Results, finale bench (Professional, median 30:00 build, no healing,
