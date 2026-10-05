@@ -95,6 +95,13 @@
     };
     // One opening within reach of the survivor - or, for the second flare
     // of a pair, within reach of the first one's opening; see Finale.aimGap.
+    // Never on you before you can see it (see Finale.ring).
+    const pl = WS.Game.player;
+    if (pl) {
+      const travel = WS.max(0, WS.dist(pl.x, pl.y, h.cx, h.cy) - h.r) / h.speed;
+      if (h.delay + travel < WS.Config.bossMinTele) h.delay = WS.Config.bossMinTele - travel;
+    }
+    h.chained = !!(after && after.aim);
     if (gapBase === null) h.gapBase = WS.Finale.aimGap(h, WS.Game.player, after && after.aim);
     this.hazards.push(h);
     return h;
@@ -112,6 +119,11 @@
     // could leave the nearest across the arena with 1.6s to get there.
     WS.Finale.safeCells(cells, safeCount, this.tuning.spearTele,
       (c) => [BOUNDS.minX + c.cx * w, BOUNDS.minY + c.cy * h, w, h]);
+    // And a flare's opening arriving as the spears fall: its square is spared.
+    for (const c of cells) {
+      const x0 = BOUNDS.minX + c.cx * w, y0 = BOUNDS.minY + c.cy * h;
+      if (!c.safe && WS.Finale.sealing(this.tuning.spearTele, (ax, ay) => ax >= x0 && ax <= x0 + w && ay >= y0 && ay <= y0 + h)) c.safe = true;
+    }
     const safe = new Set(cells.filter((c) => c.safe).map((c) => c.cy * cols + c.cx));
     for (let cy = 0; cy < rows; cy++) {
       for (let cx = 0; cx < cols; cx++) {
@@ -137,9 +149,12 @@
        ones, and stay that way. */
     const live = this.hazards.find((q) => q.shape === 'cutter');
     const tele = this.tuning.cutterTele;
-    const ang = live
+    let ang = live
       ? live.ang + live.spin * WS.max(0, tele - WS.max(0, live.telegraph)) + WS.PI / 4
       : WS.random() * WS.PI * 0.5;
+    // Turned off any flare's opening still to come (Finale.clearArms); the
+    // arms are 0.12 rad either side of their line, ~2*d*sin(0.12) wide.
+    ang = WS.Finale.clearArms(ang, 4, this.tuning.cutterSpin, tele, 900, 2 * 450 * WS.sin(0.12), CX, CY, 7);
     this.hazards.push({
       shape: 'cutter', cx: CX, cy: CY,
       ang, spin: this.tuning.cutterSpin,

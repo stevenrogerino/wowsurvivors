@@ -158,6 +158,12 @@ function inPage(S, job, sources) {
           }
         }
         if (WS.Finale.running && WS.Finale.running() && kind !== 'finale') kind = 'finale ' + kind;
+        // The finale's own ledger: what took it, by mechanic, as a share of the bar.
+        if (WS.Finale.running && WS.Finale.running()) {
+          const fl = led.finale = led.finale || {};
+          const k3 = name || '?';
+          fl[k3] = (fl[k3] || 0) + lost / Math.max(1, pl.maxHealth) * 100;
+        }
         /* While a scheduled boss is up, every blow is booked to the fight
            too, split by whether the boss itself dealt it (its body, its
            charge, its shapes and bolts carry its name) or the horde did. */
@@ -426,6 +432,9 @@ function inPage(S, job, sources) {
     overheal: Math.round(Object.values(run.overhealBySource || {}).reduce((a, v) => a + v, 0)),
     maxHp: Math.round(p.maxHealth), armor: Math.round(p.armor || 0),
     rescueGoals: pilot.rescues || 0,
+    finaleBy: L.finale ? Object.fromEntries(Object.entries(L.finale).map(([k, v]) => [k, Math.round(v)])) : null,
+    finaleHp: S.FINALE && reachedDawn ? { power: +(WS.Finale.power || 1).toFixed(2), single: Math.round(WS.Finale.singleTarget(p)),
+      retries: run.finaleRetries || 0, stage: WS.Finale.stage, label: WS.Finale.s && WS.Finale.s.label || '' } : null,
     weapons: p.weapons.map((w) => w.id + ':' + w.level + (w.evolved ? 'E' : '')),
     steps: (WS.WaveManager.stepK || []).map((v) => Math.round(v * 100) / 100),
     blessings: Object.keys(p.blessingsTaken || {}),

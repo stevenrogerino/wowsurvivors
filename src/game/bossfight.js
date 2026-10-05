@@ -9,26 +9,27 @@
  * three-to-four second clock: a boss died before it had used it twice, and
  * none of it asked the player to do anything but keep walking.
  *
- * Three things change, here and in the boss data (src/data/bosses.js):
+ * The finales (src/game/finale.js) are the night's real fights; these are
+ * its punctuation, so the change here is a light one:
  *
- *   HEALTH grows with the night, not to the build. Wave.bossScale's
- *     (1 + t/500) stays the base; Config.bossHealthCurve multiplies it, from
- *     x2.6 at 5:00 to x7 by 22:00, fitted so the median build of the bot
- *     nights takes 20-45 seconds - long enough to see the whole kit twice.
- *     Nothing reads the build: a build twice as strong kills twice as fast.
+ *   HEALTH grows a little with the night, not to the build: on top of
+ *     Wave.bossScale's (1 + t/500), Config.bossHealthCurve, x1.6 at 5:00 to
+ *     x2.6 by 22:00 - enough for the median build to see the kit through.
  *
- *   TELEGRAPHED BLOWS that matter. Each boss throws the finale's shapes
- *     (Finale.circle / lane / ring, run outside the finale by Finale.field):
- *     a slam where you are going, a barrage, a nova with openings, a cross of
- *     lanes, charges in a chain. Each costs a SHARE of the survivor's health
- *     (BossFight.hit) - 25-40% before armour for the big ones - or the boss's
- *     own scaled damage if that is more, so a mistake costs the same bite of
- *     the bar at 5:00 as at 27:00, and a player who reads them takes little.
+ *   ONE TELEGRAPHED BLOW each, in the finale's shapes (Finale.circle /
+ *     lane / ring, run outside the finale by Finale.field): a slam where you
+ *     are going, a barrage, a wave with openings, or a cross of lanes. It
+ *     costs a SHARE of the survivor's health (BossFight.hit), so a mistake
+ *     costs the same bite of the bar at 5:00 as at 27:00.
  *
- *   A SECOND PHASE at half health: the boss says so (a flash, a shout, the
- *     toast), its clock runs Config.bossEnrageRate faster, and it adds its
- *     phase-two moves (pattern entries with `phase: 2`). It opens with its
- *     signature, so the change is seen, not inferred.
+ *   IT TURNS at half health: a flash, its line, an aura that stays, a
+ *     quicker clock (Config.bossEnrageRate). A kit may name moves for the
+ *     second phase only (`phase: 2`, the `signature` thrown as it turns);
+ *     none of the scheduled bosses do today.
+ *
+ * Shapes may overlap - two at once is the pressure - but never into an
+ * impossible pattern: Finale.threatAt keeps every answer (an opening, a
+ * safe square) clear of whatever else lands at the same moment.
  *
  * Every shape obeys the finale's contract: it appears, it says how long you
  * have (never under Config.bossMinTele), and it does exactly what it drew.
@@ -197,7 +198,7 @@
       WS.Audio.play('warn', e.x);
     }
     if (e.enrageGlow > 0) e.enrageGlow -= dt;
-    if (e.sigDue && e.windup <= 0 && e.chargeTimer <= 0 && !(e.chainLeft > 0) && !B.pending()) {
+    if (e.sigDue && e.windup <= 0 && e.chargeTimer <= 0 && !(e.chainLeft > 0)) {
       const sig = e.sigDue;
       e.sigDue = null;
       WS.Enemy.bossAttack(e, dx, dy, sig);
@@ -219,41 +220,24 @@
     const line = (t.enrage || 'Enraged').replace(/^\*|\*$/g, '');
     WS.Game.toast(t.name, line, { kind: 'warn', art: t.art, tint: t.tint });
     // Its signature, at once: the change is something you see happen.
-    // (As soon as nothing else is still to land: B.pending.)
+    // (Its signature, as soon as it is not mid-charge.)
     e.sigDue = t.patterns.find((q) => q.signature) || t.patterns.find((q) => q.phase === 2) || null;
   };
 
-  /** ONE THING TO READ AT A TIME. A shape still to land - a circle or a
-   *  lane not yet fired, a wave that has not yet passed the survivor - from
-   *  any boss on the field. While one is, no boss starts another telegraphed
-   *  move: a charge lane laid across the only opening of a wave already in
-   *  the air is not a test of reading, it is a coin toss. Summons and bolts
-   *  may still come; they are dodged the ordinary way. */
-  B.pending = function () {
-    const p = WS.Game.player;
-    for (const m of WS.Finale.marks) {
-      if (!m.src) continue;
-      if ((m.kind === 'circle' || m.kind === 'lane') && m.tele > 0) return true;
-      if (m.kind === 'ring' && !m.hit && p && m.r - m.thick < WS.dist(p.x, p.y, m.cx, m.cy)) return true;
-    }
-    return false;
-  };
-  const TELEGRAPHED = { slam: 1, barrage: 1, nova: 1, cross: 1, charge: 1 };
-
   /** Which of the boss's patterns comes next: phase-two moves only once it
-   *  is enraged, and nothing telegraphed while another shape is still to
-   *  land (B.pending) - then it waits, or throws what is not. */
+   *  is enraged. Its shapes may overlap anything else on the field - that
+   *  is the pressure - and Finale.threatAt keeps the overlap possible: a
+   *  wave's opening is never placed under another shape due at the same
+   *  moment, and a circle is never dropped on an opening still to come. */
   B.next = function (e) {
     const pats = e.template.patterns;
-    const busy = e.fightAt !== undefined && B.pending();
     for (let n = 0; n < pats.length; n++) {
       const q = pats[e.patternIndex];
-      if (q.phase === 2 && !e.enraged) { e.patternIndex = (e.patternIndex + 1) % pats.length; continue; }
-      if (busy && TELEGRAPHED[q.type]) return null;
       e.patternIndex = (e.patternIndex + 1) % pats.length;
+      if (q.phase === 2 && !e.enraged) continue;
       return q;
     }
-    return busy ? null : pats[0];
+    return pats[0];
   };
 
   /** Seconds between patterns: faster in the second phase. */

@@ -421,8 +421,8 @@
         e.attackTimer -= dt;
         // Not while it is winding up or running a charge: one thing at a time.
         if (e.attackTimer <= 0 && e.windup <= 0 && e.chargeTimer <= 0 && !(e.chainLeft > 0)) {
-          // null: its next move waits for the last shape on the field to land.
-          if (this.bossAttack(e, dx, dy) !== null) e.attackTimer = WS.BossFight.interval(e);
+          this.bossAttack(e, dx, dy);
+          e.attackTimer = WS.BossFight.interval(e);
         }
       }
 

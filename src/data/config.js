@@ -176,6 +176,10 @@
        the time the band takes to reach them, less ringReact to see it. */
     ringReact: 0.45,
     ringWalk: 0.6,
+    // ...and if nowhere within 90 degrees is clear of other shapes landing
+    // as it arrives, it holds at its heart up to ringHold s until somewhere is
+    // (2s: longer than the Pale Lord's glacial grid takes to fall).
+    ringHold: 2.0,
 
     endlessBossInterval: 75,
     endlessBossMinInterval: 30,
@@ -232,41 +236,38 @@
     bossRingSpeed: 220,
     bossRingDamage: 0.6,
     bossChargeGirth: 2.2,
-    /* THE BOSSES AS FIGHTS (src/game/bossfight.js). In 160+ bot nights the
-       scheduled bosses lived a median 6-13s against the build that met them
-       and took nothing off the survivor (tools/boss-snapshots.js).
+    /* THE SCHEDULED BOSSES (src/game/bossfight.js). A light touch: in 160+
+       bot nights they lived a median 6-13s against the build that met them
+       and took nothing off the survivor (tools/boss-snapshots.js), dying
+       before their kit had played once. The finales are the night's real
+       fights; these are its punctuation, so they get just enough to show
+       what they do.
 
        bossHealthCurve: [clock s, x health] on top of Wave.bossScale, linear
-       between points. Fitted on bot nights so the median build takes about
-       20-45s, later bosses longer; it reads the clock, never the build, so a
-       stronger build still wins in proportion.
+       between points: enough that the median build sees the whole kit
+       (15-25s). It reads the clock, never the build.
 
-       A telegraphed blow takes a share of the survivor's max health (each
-       pattern names its own, 0.2-0.4) before armour, weighted from
+       Each boss's one telegraphed blow takes a share of the survivor's max
+       health (the pattern names it, 0.2-0.34) before armour, weighted from
        bossHitEarly at 5:00 to bossHitLate at 27:00 and by (difficulty x
        Hyper) ^ bossHitDifficultyExp - or the boss's own scaled damage if
        that is more - and never more than bossHitCap of the bar.
 
-       bossEnrageAt: the second phase, at this share of health; its clock
-       runs bossEnrageRate faster. No telegraph is shorter than bossMinTele
-       (a human's reaction plus a step). A scheduled boss's charge winds up
-       for bossChargeWindup and its lane stops following bossChargeLock
-       before it goes. A summoned brood lands no nearer the survivor than
-       bossSummonClear. */
-    bossHealthCurve: [[300, 2.6], [630, 3.8], [960, 5.6], [1320, 7.0], [1620, 7.0]],
+       bossEnrageAt: it turns at this share of health and its clock runs
+       bossEnrageRate faster. No telegraph is shorter than bossMinTele. A
+       charge winds up for bossChargeWindup and its lane stops following
+       bossChargeLock before it goes (it used to track to the last frame).
+       A summoned brood lands no nearer the survivor than bossSummonClear. */
+    bossHealthCurve: [[300, 1.6], [630, 1.9], [960, 2.2], [1320, 2.6], [1620, 2.6]],
     // Overtime's bosses take this share of the curve's extra (they ramp on
     // their own: endlessBossMult, endlessRampTime).
     bossHealthOvertime: 0.5,
-    /* First fit 0.85 / 1.15: in bot nights a caught shape landed for 11-18%
-       of the bar at Veteran, because armour (median ~10 at a boss, a 38%
-       cut) took its share. Raised so a caught slam costs ~25% at 5:00 and
-       ~33% late after typical armour; a tank's armour still halves it. */
-    bossHitEarly: 1.1,
-    bossHitLate: 1.45,
+    bossHitEarly: 0.85,
+    bossHitLate: 1.15,
     bossHitDifficultyExp: 0.5,
-    bossHitCap: 0.6,
+    bossHitCap: 0.5,
     bossEnrageAt: 0.5,
-    bossEnrageRate: 1.35,
+    bossEnrageRate: 1.2,
     bossMinTele: 0.6,
     bossChargeWindup: 0.9,
     bossChargeLock: 0.32,

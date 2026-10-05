@@ -10,8 +10,9 @@
  *           pattern runs without an error, every circle and lane it draws
  *           gives at least Config.bossMinTele to leave it, every ring has an
  *           opening, the second phase comes at Config.bossEnrageAt, and
- *           nothing it summons lands on top of the survivor, and no new
- *           shape is thrown while another is still to land.
+ *           nothing it summons lands on top of the survivor, and no
+ *           ring's opening is covered by another shape landing with it
+ *           (shapes may overlap; they may not overlap into the impossible).
  *
  *   RINGS   Finale.aimGap, fuzzed: 4000 rings from random centres at
  *           survivors anywhere on the field, corners and edges included,
@@ -84,13 +85,13 @@ const GAME = 'file://' + path.resolve(__dirname, '..', 'index.html');
             if (G.state === 'blessing') G.chooseBlessing((G.blessingChoices || [])[0]);
             if (G.state === 'levelup') G.chooseLevelUp((G.levelChoices || [])[0]);
             G.pendingLevelUps = 0; G.leveling = false; G.state = 'playing';
-            const n0 = made.length;
-            const live = (m) => F.marks.includes(m) && (((m.kind === 'circle' || m.kind === 'lane') && m.tele > 0)
-              || (m.kind === 'ring' && !m.hit && m.r - m.thick < Math.hypot(p.x - m.cx, p.y - m.cy)));
-            const waiting = made.filter(live);
             G.update(1 / 60);
-            // A new shape while another is still to land: two things at once.
-            if (made.length > n0 && waiting.some(live)) overlaps++;
+            // Shapes may overlap; an opening still to come may not be covered.
+            for (const m of F.marks) {
+              if (m.kind !== 'ring' || m.hit || !m.aim || m._sealed) continue;
+              const left = m.aim.at - WS.Game.run.time;
+              if (left > 0.05 && F.threatAt(m.aim.x, m.aim.y, left, 4, m)) { m._sealed = true; overlaps++; }
+            }
             if (e._dead) break;
             if (e.enraged && enragedAt === null) enragedAt = e.health / e.maxHealth;
             // keep it from simply walking onto the survivor and sitting there
@@ -113,7 +114,7 @@ const GAME = 'file://' + path.resolve(__dirname, '..', 'index.html');
       }
       if (enragedAt === null) fails.push(`${id}: never reached its second phase`);
       else if (enragedAt > cfg.bossEnrageAt + 0.001) fails.push(`${id}: second phase at ${Math.round(enragedAt * 100)}%`);
-      if (overlaps) fails.push(`${id}: ${overlaps} times a new shape came while another was still to land`);
+      if (overlaps) fails.push(`${id}: ${overlaps} ring openings covered by another shape landing with them`);
       if (onTop) fails.push(`${id}: ${onTop} summons landed on the survivor`);
       notes.push(`${id.padEnd(15)} ${String(made.length).padStart(3)} shapes  ${[...types].join(',')}`);
     }
@@ -155,6 +156,30 @@ const GAME = 'file://' + path.resolve(__dirname, '..', 'index.html');
       }
       if (bad) fails.push(`rings: ${bad} of 4000 unreachable, e.g. ${worst}`);
       else notes.push('rings: 4000 aimed, every opening within 90 degrees, on the field and reachable');
+    }
+    /* ------------------------------------------------------ SQUARES --- */
+    {
+      // A 5x4 grid, the Pale Lord's: one safe square always within reach,
+      // and on average a walk away rather than the square next door.
+      const b = { minX: 200, maxX: 1080, minY: 96, maxY: 650 };
+      const p = WS.Game.player, tele = 1.35;
+      const reach = p.moveSpeed * cfg.ringWalk * (tele - cfg.ringReact);
+      let far = 0, n = 0, out = 0;
+      for (let k = 0; k < 600; k++) {
+        p.x = b.minX + 20 + Math.random() * (b.maxX - b.minX - 40); p.y = b.minY + 20 + Math.random() * (b.maxY - b.minY - 40);
+        F.marks.length = 0;
+        F.grid(b, 5, 4, 4, tele, 10, 'test', {});
+        const cells = F.marks[0].cells;
+        const gap = (c) => Math.hypot(Math.max(c.x - p.x, 0, p.x - (c.x + c.w)), Math.max(c.y - p.y, 0, p.y - (c.y + c.h)));
+        const best = Math.min(...cells.filter((c) => c.safe).map(gap));
+        if (best > reach + 1) out++;
+        const reachable = cells.filter((c) => c.safe).map(gap).filter((g) => g <= reach);
+        n++; if (Math.max(...reachable) >= reach / 3) far++;
+      }
+      F.marks.length = 0;
+      if (out) fails.push(`squares: ${out} of 600 grids had no safe square within ${Math.round(reach)}px`);
+      else if (far < n * 0.8) fails.push(`squares: the guaranteed square was a walk away in only ${far} of ${n}`);
+      else notes.push(`squares: 600 grids, a safe square always within ${Math.round(reach)}px, a walk away in ${far}`);
     }
     /* ------------------------------------------------------- SWEEPS --- */
     {
