@@ -135,7 +135,10 @@
        it could not finish, and a harder map read as a stronger build (more
        health to chew through means less overkill wasted), so the Pale Lord
        came out at 10 to 20 times his health and nobody could kill him. */
-    finaleRefSingle: 1500,
+    /* 2000, was 1500: against the build that reaches 30:00 (bot nights,
+       tools/bot/boss-snapshots.json finaleBuilds) the fights ran five to
+       eight minutes; this takes about a sixth off (a factor of 0.82). */
+    finaleRefSingle: 2000,
     finalePowerExp: 0.7,
     finalePowerCap: 6,
     /* Difficulty and Hyper make a finale hit harder in full, and make it

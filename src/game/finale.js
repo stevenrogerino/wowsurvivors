@@ -285,6 +285,7 @@
      a dead boss landing one last blow nobody could answer. */
   F.markDmg = function (dmg, o) { return o && o.raw ? dmg : this.dmg(dmg); };
   F.own = function (o, m) {
+    m.born = WS.Game.run ? WS.Game.run.time : 0;   // when it appeared (tools/bot/pilot.js reads it)
     if (o.src) { m.src = o.src; m.srcId = o.src.spawnId; }
     this.marks.push(m);
     return m;
@@ -662,7 +663,7 @@
     for (const c of cells) {
       if (!c.safe && this.sealing(tele, (ax, ay) => ax >= c.x && ax <= c.x + c.w && ay >= c.y && ay <= c.y + c.h)) c.safe = true;
     }
-    this.marks.push({ kind: 'grid', cells, tele, maxTele: tele, dmg: this.dmg(dmg), name,
+    this.marks.push({ kind: 'grid', born: WS.Game.run ? WS.Game.run.time : 0, cells, tele, maxTele: tele, dmg: this.dmg(dmg), name,
       tint: o.tint || [0.6, 0.85, 1.0] });
   };
 
@@ -701,7 +702,7 @@
 
   /** Doom everywhere except inside the zones. */
   F.safe = function (zones, tele, dmg, name) {
-    this.marks.push({ kind: 'safe', zones, tele, maxTele: tele, dmg: this.dmg(dmg), name });
+    this.marks.push({ kind: 'safe', born: WS.Game.run ? WS.Game.run.time : 0, zones, tele, maxTele: tele, dmg: this.dmg(dmg), name });
   };
 
   /** Lightning strung between two units, live while both stand. */
@@ -1104,8 +1105,18 @@
     return WS.dist(px, py, ax + dx * t, ay + dy * t);
   }
 
+  /* A shape that lands says what it was. A big hit used to be a red flash
+     and a number, and a player who did not know which of four things on the
+     screen had done it learned nothing; the name over their head teaches
+     the fight. Only for a blow worth a real bite of the bar. */
   function hurt(m, amount) {
-    WS.Player.takeDamage(WS.Game.player, amount, m.name);
+    const p = WS.Game.player;
+    const before = p.health;
+    WS.Player.takeDamage(p, amount, m.name);
+    if (m.name && before - p.health >= p.maxHealth * WS.Config.heavyHitShare) {
+      WS.FX.notice(p.x, p.y - 14, m.name, '#ff9a7a');
+      WS.FX.flash(p.x, p.y, 70, m.tint || [1, 0.4, 0.3], 0.3);
+    }
   }
 
   function updateMarks(dt) {
@@ -1394,6 +1405,9 @@
             c.displayName = 'The Candlecrawler';
             F.say('surface');
             Object.assign(s.tm, T.afterSurface);
+            // It breaks the surface with a shockwave: find the opening.
+            F.ring(c.x, c.y, { speed: T.ringSpeed, gaps: T.ringGaps, gapWidth: T.ringGapWidth, dmg: T.ringDamage,
+              name: 'Breaching shockwave', tint: [0.9, 0.6, 0.3], r0: c.radius });
           }
           return;
         }
@@ -1479,7 +1493,7 @@
         WS.FX.flash(c.x, c.y + 40, 60, [1.0, 0.85, 0.5], 0.3);
       }
 
-      if (s.mode === 'stripped' && F.every('ring', dt, E.ring, pace)) {
+      if (F.every(s.mode === 'stripped' ? 'ring' : 'ringShielded', dt, s.mode === 'stripped' ? E.ring : E.ringShielded, pace)) {
         F.ring(c.x, c.y, { speed: T.ringSpeed, gaps: T.ringGaps, gapWidth: T.ringGapWidth, dmg: T.ringDamage,
           name: 'Candle-fire ring', tint: [1.0, 0.55, 0.2] });
       }
@@ -1799,8 +1813,15 @@
       }
 
       if (F.every('blink', dt, E.blink)) {
+        /* Never onto the survivor: the graves are fixed, and a player who
+           happened to be standing on the one he chose had him appear on top
+           of them - in bench fights his body took more of the bar than any
+           of his spells. Only graves clear of them (and not the one he
+           left); if there are none, the furthest. */
+        const clear = GRAVES.map((g, k) => k).filter((k) => k !== s.grave && WS.dist(GRAVES[k][0], GRAVES[k][1], p.x, p.y) > 170);
         let i;
-        do { i = WS.randInt(0, GRAVES.length - 1); } while (i === s.grave);
+        if (clear.length) i = clear[WS.randInt(0, clear.length - 1)];
+        else i = GRAVES.map((g, k) => k).sort((a, b) => WS.dist(GRAVES[b][0], GRAVES[b][1], p.x, p.y) - WS.dist(GRAVES[a][0], GRAVES[a][1], p.x, p.y))[0];
         s.grave = i;
         WS.FX.flash(m.x, m.y, 60, [0.55, 1.0, 0.75], 0.4);
         m.x = GRAVES[i][0]; m.y = GRAVES[i][1];

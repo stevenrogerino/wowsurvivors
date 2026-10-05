@@ -25,12 +25,18 @@
     dmgScale: 1,
   };
 
+  /* Damage was 26 / 30 / 32: against the arena kit's 385 health and 14
+     armour (a 47% cut) a caught flare took under 4% of the bar, and the
+     bot - which prices a blow by what it costs - stopped bothering to dodge
+     them (48% of the bar a minute, in hits of 3-4%). Four times that: a
+     flare ~14% at Veteran, a spear ~17%, a pass of the cross ~18%, all of
+     it x difficulty x Hyper. A mistake is a mistake now. */
   Arena.tuning = {
     phase2HP: 60, phase3HP: 20, enrageTime: 45,
-    ringDamage: 26, ringSpeed: 165, ringGapP1: 40, ringGapP2: 26, ringGapsP2: 7,
+    ringDamage: 104, ringSpeed: 165, ringGapP1: 40, ringGapP2: 26, ringGapsP2: 7,
     ringSpinP2: 0.5, ringDelay: 1.4,
-    spearDamage: 30, gridSafeP1: 4, gridSafeP2: 5, spearTele: 1.6, spearInterval: 8.5,
-    cutterDamage: 32, cutterSpin: 0.7, cutterTele: 1.2, cutterInterval: 9.0,
+    spearDamage: 120, gridSafeP1: 4, gridSafeP2: 5, spearTele: 1.6, spearInterval: 8.5,
+    cutterDamage: 128, cutterSpin: 0.7, cutterTele: 1.2, cutterInterval: 9.0,
     chainInterval: 11.0, chainBreak: 50,
   };
 

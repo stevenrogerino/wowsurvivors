@@ -61,7 +61,8 @@ function installPilot(opts) {
     /* HUMAN LIMITS (tools/bot fairness audit). Off by default so fitted
        numbers stay comparable; turn them on to ask how much of a result is
        reflexes no player has.
-       react: a bolt, a new creature or a fresh telegraph is invisible for
+       react: a bolt, a new creature or a fresh telegraph (a charge lane, or
+       a finale's or boss's mark) is invisible for
        this many seconds after it appears (a human's reaction is ~0.2-0.25).
        misread: a bolt's heading is read this many degrees off, each bolt its
        own fixed error, and its speed up to the same share off. */
@@ -380,6 +381,12 @@ function installPilot(opts) {
         if (Math.hypot(q[0] - s.x, q[1] - s.y) < reach) c += hitCost(p, dmg) * 0.3;
       }
     }
+    // Beams, cutters and the arena's hazards: the game's own foresight
+    // (Finale.threatAt) at every point of the plan, priced by the blow.
+    if (WS.Finale && WS.Finale.threatAt && ((WS.Finale.marks && WS.Finale.marks.some((m) => m.kind === 'sweep'))
+        || (WS.Arena && WS.Arena.active && WS.Arena.hazards.length))) {
+      c += sweptCost(p, path);
+    }
     // The finale's marks, sampled along the path - and a scheduled boss's,
     // which are the same shapes (Finale.field).
     if (WS.Finale && WS.Finale.marks && WS.Finale.marks.length) {
@@ -499,7 +506,9 @@ function installPilot(opts) {
   function markCost(p, path) {
     const F = WS.Finale, pr = p.radius;
     let c = 0;
+    const now = WS.Game.run ? WS.Game.run.time : 0;
     for (const m of F.marks) {
+      if (O.react && m.born !== undefined && now - m.born < O.react) continue;   // not seen yet
       if (m.kind === 'circle') {
         const reach = m.r + pr * 0.5 + 10;
         if (m.tele <= O.horizon) {
@@ -555,20 +564,46 @@ function installPilot(opts) {
     return c;
   }
 
+  /* What turns and sweeps - a finale's beams, the arena's flares, spears
+     and cross - read the way a player reads them: where the arm will be
+     when I am there. The pilot used to see only where a beam was now (and
+     the arena's hazards not at all), and walked into the next quarter-turn
+     of every lighthouse it met. */
+  function sweptCost(p, path) {
+    const F = WS.Finale, A = WS.Arena;
+    const now = WS.Game.run ? WS.Game.run.time : 0;
+    const charged = new Set();
+    let c = 0;
+    for (const q of path) {
+      const m = F.threatAt(q[0], q[1], q[2], p.radius * 0.6 + 6, null);
+      if (!m || charged.has(m)) continue;
+      if ((WS.Moor.strikes || []).includes(m)) continue;   // a storm strike: priced above
+      const arenaH = A && A.active && A.hazards.includes(m);
+      const kind = m.kind || m.shape;
+      // The finale's own circles, lanes and rings: markCost prices them.
+      if (!arenaH && (kind === 'circle' || kind === 'lane' || kind === 'ring' || kind === 'grid' || kind === 'safe' || kind === 'fence')) continue;
+      if (O.react && m.born !== undefined && now - m.born < O.react) continue;
+      charged.add(m);
+      const dmg = m.dmg !== undefined ? m.dmg : (m.damage || 0) * (A ? A.dmgScale || 1 : 1);
+      c += hitCost(p, dmg) * (1.1 - q[2] * 0.3);
+    }
+    return c;
+  }
+
   function finaleCost(p, qx, qy) {
     const F = WS.Finale, pr = p.radius;
     let c = 0;
+    const now = WS.Game.run ? WS.Game.run.time : 0;
     for (const m of F.marks) {
+      if (O.react && m.born !== undefined && now - m.born < O.react) continue;
       if (m.kind === 'circle' || m.kind === 'lane' || m.kind === 'ring') {
         continue;   // markCost prices these, against the whole path
       } else if (m.kind === 'sweep') {
-        const lead = m.tele > 0 ? 0 : m.spin * 0.25;
+        // Priced by sweptCost, where the arm will be, not where it is - but
+        // standing on one right now is still the worst place to be.
         for (let a = 0; a < m.arms; a++) {
-          const a1 = m.ang + lead + (a / m.arms) * Math.PI * 2, a2 = m.ang + (a / m.arms) * Math.PI * 2;
-          if (inLane(m.cx, m.cy, Math.cos(a1), Math.sin(a1), m.len, m.w, qx, qy, pr + 14)
-              || inLane(m.cx, m.cy, Math.cos(a2), Math.sin(a2), m.len, m.w, qx, qy, pr + 8)) {
-            c += m.tele > 0 ? 250 / (m.tele + 0.3) : 1200;
-          }
+          const a2 = m.ang + (a / m.arms) * Math.PI * 2;
+          if (m.tele <= 0 && inLane(m.cx, m.cy, Math.cos(a2), Math.sin(a2), m.len, m.w, qx, qy, pr + 4)) c += 400;
         }
       } else if (m.kind === 'grid') {
         let inBad = false, near = Infinity;
