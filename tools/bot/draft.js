@@ -19,6 +19,18 @@
  *
  * Blessings: a forced one for the experiment if there is one, else the
  * survivor's own signature, else a fixed order. It has no imports.
+ *
+ * STYLES (opts.style), laid over the scoring above, for asking how the way a
+ * player drafts changes a night:
+ *
+ *   minmax   the scoring as it is: the best card by the damage model (default)
+ *   rush     one weapon to rank 8 and evolved before anything else (opts.focus,
+ *            else the starting weapon); its evolution passive as soon as offered.
+ *            opts.rushPassives false: no other passive until it has evolved
+ *   wide     every slot filled first, then the lowest-ranked weapon raised
+ *   casual   a card at random, a little drawn to new weapons; evolutions and
+ *            unions always (the game shouts about them); never rerolls
+ *   passives passives before ranks: every damage passive offered is taken
  */
 'use strict';
 
@@ -31,6 +43,10 @@ function installDrafter(opts) {
     defence: 0.3,         // how much defence is worth against damage (fitted: 0 and 1 both do worse)
     newBonus: 8,          // what an open slot's future is worth, in dps mode
     calib: null,          // per-weapon reach corrections (tools/bot/reach-calibration.json)
+    style: 'minmax',      // see STYLES above
+    focus: null,          // rush: the weapon to rush (else the starting weapon)
+    rushPassives: true,   // rush: other passives allowed before the focus evolves
+    seed: 1,              // casual: its own dice, so the game's are untouched
   }, opts || {});
   const D = window.__draft = { opts: O, picks: [] };
   const OFFENCE = { might: 52, haste: 52, area: 48, quantity: 50, precision: 42, ferocity: 40, velocity: 30 };
@@ -194,16 +210,50 @@ function installDrafter(opts) {
     }
   };
 
+  // The casual player's own dice (a small LCG), seeded per night.
+  let dice = (O.seed >>> 0) || 1;
+  const roll = () => { dice = (dice * 1664525 + 1013904223) >>> 0; return dice / 4294967296; };
+  const DAMAGE_PASSIVES = { might: 1, haste: 1, precision: 1, ferocity: 1, area: 1, quantity: 1, velocity: 1, perennial: 1, serration: 1 };
+  /** A style's push on a card's score (see STYLES). */
+  function styled(p, c, s) {
+    if (c.type === 'union' || c.type === 'evolve') return s + 10000;
+    if (O.style === 'casual') return roll() * 100 + (c.type === 'new_weapon' ? 25 : 0) + (c.type === 'bread' && p.health < p.maxHealth * 0.35 ? 60 : 0);
+    if (O.style === 'rush') {
+      if (!D.focus) D.focus = O.focus && WS.Weapons[O.focus] ? O.focus : (p.weapons[0] && p.weapons[0].id);
+      const f = WS.Player.getWeapon(p, D.focus);
+      if (!f) return c.type === 'new_weapon' && c.id === D.focus ? s + 5000 : s;
+      if (f.evolved) return s;
+      const pair = f.data.evolvePairing;
+      if (c.type === 'weapon_rank' && c.id === D.focus) return s + 3000;
+      if (c.type === 'stat' && c.id === pair && !(p.upgradeLevels[pair] > 0)) return s + 2500;
+      if (!O.rushPassives && c.type === 'stat') return s - 3000;
+      return s;
+    }
+    if (O.style === 'wide') {
+      if (c.type === 'new_weapon') return s + 3000;
+      if (c.type === 'weapon_rank') { const w = WS.Player.getWeapon(p, c.id); return s + (8 - (w ? w.level : 1)) * 40; }
+      return s;
+    }
+    if (O.style === 'passives') {
+      if (c.type === 'stat' && DAMAGE_PASSIVES[c.id]) return s + 2000;
+      return s;
+    }
+    return s;
+  }
+
   D.pickLevel = function (p, choices) {
     const press = pressure(p);
     const dps = O.mode === 'dps';
-    let best = null, bestS = -1;
+    let best = null, bestS = -Infinity, bestRaw = -1, pushed = false;
     for (const c of choices) {
       let s;
       try { s = dps ? D.scoreDps(p, c, press) : D.score(p, c, press); } catch (e) { s = D.score(p, c, press) / 10; }
-      if (s > bestS) { bestS = s; best = c; }
+      const raw = s;
+      if (O.style !== 'minmax') s = styled(p, c, s);
+      if (s > bestS) { bestS = s; best = c; bestRaw = raw; pushed = s - raw > 500; }
     }
-    if (O.reroll && bestS < (dps ? 2 : 30) && p.rerolls > 0 && WS.Game.rerollLevelUp()) {
+    bestS = O.style === 'minmax' ? bestS : bestRaw;
+    if (O.reroll && O.style !== 'casual' && !pushed && bestS < (dps ? 2 : 30) && p.rerolls > 0 && WS.Game.rerollLevelUp()) {
       return D.pickLevel(p, WS.Game.levelChoices || choices);
     }
     D.picks.push([Math.round(WS.Game.run.time), best && best.type, best && best.id]);

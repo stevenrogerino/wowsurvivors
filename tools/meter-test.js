@@ -172,6 +172,7 @@ function report(rows) {
   // RANK=3: every weapon at this rank instead of the stage's (a weaker build
   // for the minute, as a real night often has).
   if (env('RANK', '') !== '') S.st.rank = +env('RANK');
+  if (env('LEVEL', '') !== '') S.st.level = +env('LEVEL');
   if (!process.env.TIME) S.TIME = S.st.t;
   const b = await chromium.launch({ executablePath: process.env.CHROME || undefined, args: ['--no-sandbox'] });
   const page0 = await b.newPage();
@@ -205,7 +206,13 @@ function report(rows) {
   if (S.FIXED) for (let i = 0; i < builds.length; i++) builds[i] = S.FIXED.split(',');
   // The summons answer only to Dread Command: it takes a build's last slot.
   if (S.SUMMON) for (const bw of builds) bw[bw.length - 1] = 'dread_command';
-  const mine = builds.map((w, i) => ({ i, w, ps: S.PASSIVES === 'subset' ? passiveSets[i] : null })).filter((j) => j.i % S.SHARD[1] === S.SHARD[0] - 1);
+  /* JOBS=file.json: an explicit list of builds, each {w: ['volley:8E', ...],
+     pp: {might: 3, ...}, tag}: these passives at these ranks and no others.
+     For comparing builds at an equal number of picks (tools/rush-test.js). */
+  const listed = env('JOBS', null) ? JSON.parse(fs.readFileSync(env('JOBS'), 'utf8')) : null;
+  const mine = (listed ? listed.map((j, i) => ({ i, w: j.w, pp: j.pp || {}, tag: j.tag || null }))
+    : builds.map((w, i) => ({ i, w, ps: S.PASSIVES === 'subset' ? passiveSets[i] : null })))
+    .filter((j) => j.i % S.SHARD[1] === S.SHARD[0] - 1);
   const rows = [];
   for (const job of mine) {
     const page = await b.newPage({ viewport: { width: 1280, height: 720 } });
@@ -247,7 +254,15 @@ function report(rows) {
         w.evolved = rk ? rk.endsWith('E') : lead || S.st.evo;
       }
       WS.ComboSystem.check(p);
-      for (const id of job.ps || ['might', 'haste', 'precision', 'ferocity', 'area', 'quantity', 'velocity', 'perennial', 'serration']) {
+      if (job.pp) {
+        for (const [id, n] of Object.entries(job.pp)) {
+          const up = WS.Upgrades[id];
+          if (!up) continue;
+          for (let k = 0; k < n; k++) up.apply(p, up);
+          p.upgradeLevels[id] = n;
+        }
+      }
+      for (const id of job.pp ? [] : job.ps || ['might', 'haste', 'precision', 'ferocity', 'area', 'quantity', 'velocity', 'perennial', 'serration']) {
         const up = WS.Upgrades[id];
         const n = job.ps ? Math.ceil(up.max * (S.st.evo ? 1 : 0.75)) : Math.ceil(up.max * S.st.frac);
         for (let k = 0; k < n; k++) up.apply(p, up);
@@ -302,7 +317,7 @@ function report(rows) {
       alive = Math.round(alive / S.LIMIT);
       counting = false; WS.Enemy.damage = dmg;
       for (const k of Object.keys(landed)) { landed[k] = Math.round(landed[k] / S.LIMIT); raw[k] = Math.round(raw[k] / S.LIMIT); }
-      return { weapons: job.w.map((w) => w.split(':')[0]), passives: job.ps, lead: S.st.lead ? job.w[0] : null, landed, raw, kills: Math.round((G.run.kills - k0) * 60 / S.LIMIT), alive, hurt: Math.round(hurt * 60 / S.LIMIT), hurtBy, combos: Object.keys(p.combosActive) };
+      return { tag: job.tag || null, pp: job.pp || null, weapons: job.w.map((w) => w.split(':')[0]), passives: job.ps, lead: S.st.lead ? job.w[0] : null, landed, raw, kills: Math.round((G.run.kills - k0) * 60 / S.LIMIT), alive, hurt: Math.round(hurt * 60 / S.LIMIT), hurtBy, combos: Object.keys(p.combosActive) };
     }, { S, job, pilotSrc });
     r.errs = errs.slice(0, 2);
     if (errs.length) console.error('page error: ' + errs[0]);

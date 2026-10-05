@@ -267,7 +267,7 @@ function inPage(S, job, sources) {
   WS.Game.startRun(S.MAP, hero);
   const G = WS.Game;
   const pilot = S.PILOT === 'kite' ? installKiter() : installPilot(S.PILOT_OPTS);
-  const draft = installDrafter(Object.assign({ blessing: blessing === 'auto' ? null : blessing, midnight: S.MIDNIGHT, calib: S.CALIB }, S.DRAFT_OPTS));
+  const draft = installDrafter(Object.assign({ blessing: blessing === 'auto' ? null : blessing, midnight: S.MIDNIGHT, calib: S.CALIB, seed }, S.DRAFT_OPTS));
   WS.Input.poll = function () {};
   let p = G.player;
 
