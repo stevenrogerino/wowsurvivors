@@ -1488,6 +1488,39 @@
     ctx.lineWidth = 2 + 1.5 * k;
     ctx.strokeStyle = rgba(WS.mix(c, [1, 1, 1], 0.3), 0.55 + 0.4 * k);
     ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, WS.TAU); ctx.stroke();
+    /* THE BLOW GATHERING. Heat builds in the middle as it comes (a glow that
+       grows with the square of the time gone, so the last third is the
+       bright part), a ring of runes turns inside the rim, a crosshair marks
+       its heart, and in the last quarter-second the rim goes white-hot: the
+       instant to be out is unmistakable. A lobbed shell throws a shadow
+       that tightens under it as it falls. Reduce Flashes stills the turning
+       and the flare's flicker. */
+    const calm = WS.Renderer.calm();
+    if (m.from) {
+      ctx.fillStyle = `rgba(0,0,0,${(0.12 + 0.3 * k).toFixed(3)})`;
+      ctx.beginPath(); ctx.ellipse(m.x, m.y, m.r * (0.9 - 0.6 * k), m.r * (0.4 - 0.25 * k), 0, 0, WS.TAU); ctx.fill();
+    }
+    glow(ctx, m.x, m.y, m.r * 0.95, c, 0.08 + 0.32 * k * k);
+    ctx.save();
+    ctx.setLineDash([5, 9]); ctx.lineDashOffset = calm ? 0 : -time * 30;
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = rgba(WS.mix(c, [1, 1, 1], 0.4), 0.2 + 0.45 * k);
+    ctx.beginPath(); ctx.arc(m.x, m.y, m.r * 0.78, 0, WS.TAU); ctx.stroke();
+    ctx.restore();
+    const ch = WS.max(6, m.r * 0.16);
+    ctx.lineWidth = 2; ctx.strokeStyle = rgba(WS.mix(c, [1, 1, 1], 0.6), 0.35 + 0.5 * k);
+    ctx.beginPath();
+    ctx.moveTo(m.x - ch, m.y); ctx.lineTo(m.x - ch * 0.35, m.y); ctx.moveTo(m.x + ch * 0.35, m.y); ctx.lineTo(m.x + ch, m.y);
+    ctx.moveTo(m.x, m.y - ch); ctx.lineTo(m.x, m.y - ch * 0.35); ctx.moveTo(m.x, m.y + ch * 0.35); ctx.lineTo(m.x, m.y + ch);
+    ctx.stroke();
+    if (m.tele < 0.25) {
+      const f = 1 - m.tele / 0.25;
+      const flick = calm ? 1 : 0.75 + 0.25 * WS.sin(time * 60);
+      ctx.lineWidth = 3 + 3 * f;
+      ctx.strokeStyle = `rgba(255,248,232,${(0.55 + 0.4 * f * flick).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, WS.TAU); ctx.stroke();
+      glow(ctx, m.x, m.y, m.r * 1.1, [1, 0.95, 0.85], 0.25 * f);
+    }
     /* The time left, as a clock hand would show it: an arc just outside the
        rim that empties toward the top as the blow comes. The fill says how
        close it is; this says how long that is, in a shape that reads in the
@@ -1563,12 +1596,25 @@
         ctx.beginPath(); ctx.moveTo(d, -m.w * 0.2); ctx.lineTo(d + 14, 0); ctx.lineTo(d, m.w * 0.2); ctx.fill();
       }
     } else {
+      /* The shot itself: a muzzle flash where it leaves, a beam that is
+         white-hot at the core and burns out along its length, and a soft
+         halo twice its width - so the moment it fires reads as a blow, not
+         a rectangle changing colour. */
       ctx.globalCompositeOperation = 'lighter';
       const a = WS.clamp(m.active / 0.35, 0, 1);
-      ctx.fillStyle = rgba(c, 0.55 * a);
+      const g = ctx.createLinearGradient(0, 0, m.len, 0);
+      g.addColorStop(0, rgba(c, 0.75 * a)); g.addColorStop(1, rgba(c, 0.25 * a));
+      ctx.fillStyle = rgba(c, 0.14 * a);
+      ctx.fillRect(0, -m.w, m.len, m.w * 2);
+      ctx.fillStyle = g;
       ctx.fillRect(0, -m.w / 2, m.len, m.w);
-      ctx.fillStyle = `rgba(255,245,220,${(0.8 * a).toFixed(3)})`;
+      const gc = ctx.createLinearGradient(0, 0, m.len, 0);
+      gc.addColorStop(0, `rgba(255,250,235,${(0.95 * a).toFixed(3)})`); gc.addColorStop(1, `rgba(255,245,220,${(0.35 * a).toFixed(3)})`);
+      ctx.fillStyle = gc;
       ctx.fillRect(0, -m.w * 0.15, m.len, m.w * 0.3);
+      ctx.restore();
+      ctx.save();
+      glow(ctx, m.x, m.y, m.w * 1.4, WS.mix(c, [1, 1, 1], 0.5), 0.9 * a);
     }
     ctx.restore();
   }
@@ -1604,6 +1650,7 @@
     ctx.restore();
   }
   A.ringGapEdges = ringGapEdges;
+  A.drawRing = (ctx, m) => drawRing(ctx, m);
 
   A.ringLanding = function (ctx, rings, p, time) {
     if (!p) return;
@@ -1676,17 +1723,41 @@
       return;
     }
     ctx.save();
-    ctx.lineWidth = m.thick;
-    ctx.strokeStyle = rgba(m.tint, 0.5);
     const steps = 160;
-    ctx.beginPath();
-    for (let i = 0; i < steps; i++) {
-      const a0 = (i / steps) * WS.TAU;
-      if (WS.Finale.inGap(m, a0 + WS.TAU / steps / 2)) continue;
-      ctx.moveTo(m.cx + WS.cos(a0) * m.r, m.cy + WS.sin(a0) * m.r);
-      ctx.arc(m.cx, m.cy, m.r, a0, a0 + WS.TAU / steps);
+    /* A WAVE, NOT A STROKE. The band was one flat half-transparent line. It
+       is drawn as what it is now: a wake fading behind it, a soft glow, the
+       band, and a bright leading edge - the part that hits - with sparks
+       riding it. Openings are true gaps in all of it. */
+    const band = (r, lw, style) => {
+      if (r <= 0) return;
+      ctx.lineWidth = lw; ctx.strokeStyle = style;
+      ctx.beginPath();
+      for (let i = 0; i < steps; i++) {
+        const a0 = (i / steps) * WS.TAU;
+        if (WS.Finale.inGap(m, a0 + WS.TAU / steps / 2)) continue;
+        ctx.moveTo(m.cx + WS.cos(a0) * r, m.cy + WS.sin(a0) * r);
+        ctx.arc(m.cx, m.cy, r, a0, a0 + WS.TAU / steps);
+      }
+      ctx.stroke();
+    };
+    band(m.r - m.thick * 1.3, m.thick * 1.2, rgba(m.tint, 0.08));
+    ctx.globalCompositeOperation = 'lighter';
+    band(m.r, m.thick * 1.9, rgba(m.tint, 0.1));
+    ctx.globalCompositeOperation = 'source-over';
+    band(m.r, m.thick, rgba(m.tint, 0.5));
+    if (!WS.Renderer.lite) {
+      ctx.globalCompositeOperation = 'lighter';
+      const n = WS.min(90, WS.floor(m.r / 9));
+      const t = WS.Renderer.calm() ? 0 : (WS.Game.run ? WS.Game.run.time : 0);
+      ctx.fillStyle = rgba(WS.mix(m.tint, [1, 1, 1], 0.6), 0.75);
+      for (let i = 0; i < n; i++) {
+        const a0 = (i / n) * WS.TAU + i * 0.37;
+        if (WS.Finale.inGap(m, a0)) continue;
+        const rr = m.r + m.thick * 0.35 * WS.sin(t * 9 + i * 1.7);
+        ctx.beginPath(); ctx.arc(m.cx + WS.cos(a0) * rr, m.cy + WS.sin(a0) * rr, 1.6, 0, WS.TAU); ctx.fill();
+      }
+      ctx.globalCompositeOperation = 'source-over';
     }
-    ctx.stroke();
     ctx.lineWidth = 3;
     ctx.strokeStyle = rgba(WS.mix(m.tint, [1, 1, 1], 0.5), 0.9);
     ctx.beginPath();
@@ -1743,16 +1814,42 @@
         ctx.lineTo(hx + WS.cos(tang - 2.5) * 10, hy + WS.sin(tang - 2.5) * 10);
         ctx.closePath(); ctx.fillStyle = rgba(m.tint, 1); ctx.fill();
       } else {
+        /* The beam live: an afterglow over the ground it has just crossed
+           (which way it is going, read from what it has done), a wide soft
+           halo, the beam, a flickering white core, a flare at its tip and
+           sparks thrown off along it. */
+        const calm = WS.Renderer.calm();
         ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = 'lighter';
+        const trail = -(m.spin >= 0 ? 1 : -1) * WS.min(0.45, WS.abs(m.spin) * 0.6);
+        ctx.fillStyle = rgba(m.tint, 0.1);
+        ctx.beginPath(); ctx.moveTo(m.cx, m.cy);
+        ctx.arc(m.cx, m.cy, m.len, ang, ang + trail, trail < 0);
+        ctx.closePath(); ctx.fill();
         ctx.lineCap = 'round';
-        ctx.strokeStyle = rgba(m.tint, 0.35);
-        ctx.lineWidth = m.w * (1 + 0.1 * WS.sin(time * 40));
+        ctx.strokeStyle = rgba(m.tint, 0.12);
+        ctx.lineWidth = m.w * 2.4;
         ctx.beginPath(); ctx.moveTo(m.cx, m.cy); ctx.lineTo(ex, ey); ctx.stroke();
-        ctx.strokeStyle = 'rgba(255,255,255,.85)';
+        ctx.strokeStyle = rgba(m.tint, 0.38);
+        ctx.lineWidth = m.w * (1 + (calm ? 0 : 0.1 * WS.sin(time * 40)));
+        ctx.beginPath(); ctx.moveTo(m.cx, m.cy); ctx.lineTo(ex, ey); ctx.stroke();
+        ctx.strokeStyle = `rgba(255,255,255,${calm ? 0.85 : (0.75 + 0.2 * WS.sin(time * 53 + a)).toFixed(3)})`;
         ctx.lineWidth = m.w * 0.28;
         ctx.beginPath(); ctx.moveTo(m.cx, m.cy); ctx.lineTo(ex, ey); ctx.stroke();
         ctx.globalCompositeOperation = 'source-over';
+        glow(ctx, ex, ey, m.w * 1.6, m.tint, 0.6);
+        glow(ctx, m.cx, m.cy, m.w * 1.4, WS.mix(m.tint, [1, 1, 1], 0.5), 0.7);
+        if (!WS.Renderer.lite) {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.fillStyle = rgba(WS.mix(m.tint, [1, 1, 1], 0.6), 0.8);
+          const cs = WS.cos(ang), sn = WS.sin(ang);
+          for (let i = 0; i < 14; i++) {
+            const d = ((i * 97 + time * (calm ? 0 : 420)) % m.len);
+            const off = (m.w * 0.7) * WS.sin(i * 2.3 + time * (calm ? 0 : 13));
+            ctx.beginPath(); ctx.arc(m.cx + cs * d - sn * off, m.cy + sn * d + cs * off, 1.8, 0, WS.TAU); ctx.fill();
+          }
+          ctx.globalCompositeOperation = 'source-over';
+        }
       }
     }
     ctx.restore();
@@ -1778,6 +1875,8 @@
         ctx.restore();
         ctx.strokeStyle = rgba(m.tint, 0.5 + 0.45 * k); ctx.lineWidth = 2 + 1.5 * k;
         ctx.strokeRect(x, y, w, h);
+        // In the last quarter the spikes come up through it.
+        if (k > 0.72) spikeRow(ctx, x, y, w, h, (k - 0.72) / 0.28 * 0.55, m.tint, 1);
       }
     }
     ctx.restore();
@@ -1936,10 +2035,86 @@
     A.drawMarks(ctx, time);
   };
 
+  /** A row of ice or bone spikes standing in a cell, `rise` of the way up. */
+  function spikeRow(ctx, x, y, w, h, rise, tint, a) {
+    const n = 5;
+    ctx.save();
+    for (let i = 0; i < n; i++) {
+      const cx = x + w * (i + 0.5) / n, base = y + h * (0.55 + 0.3 * ((i * 37) % 7) / 7);
+      const sh = h * rise * (0.7 + 0.3 * ((i * 53) % 5) / 5), sw = w / n * 0.42;
+      ctx.fillStyle = rgba(WS.mix(tint, [1, 1, 1], 0.55), 0.85 * a);
+      ctx.strokeStyle = rgba(WS.mix(tint, [0, 0, 0], 0.55), 0.9 * a); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(cx - sw, base); ctx.lineTo(cx, base - sh); ctx.lineTo(cx + sw, base); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /** What landed shapes left: Finale.impact. */
+  function drawImpacts(ctx, time) {
+    const F = WS.Finale;
+    const calm = WS.Renderer.calm(), vivid = WS.Renderer.vivid();
+    for (const q of F.impacts) {
+      const f = WS.clamp(q.life / q.max, 0, 1), age = q.max - q.life;
+      const c = vivid ? WS.Renderer.VIVID : q.tint;
+      ctx.save();
+      if (q.kind === 'strip') {
+        ctx.translate(q.x, q.y); ctx.rotate(q.ang);
+        ctx.fillStyle = `rgba(20,12,8,${(0.32 * f).toFixed(3)})`;
+        ctx.fillRect(0, -q.r * 0.35, q.len, q.r * 0.7);
+        ctx.fillStyle = rgba(c, 0.25 * f * f);
+        ctx.fillRect(0, -q.r * 0.12, q.len, q.r * 0.24);
+      } else if (q.kind === 'spikes') {
+        const a = age < 0.15 ? age / 0.15 : f;
+        spikeRow(ctx, q.x + 3, q.y + 3, q.w - 6, q.h - 6, 0.55, c, a);
+      } else {
+        // the scorch, cooling
+        const g = ctx.createRadialGradient(q.x, q.y, 0, q.x, q.y, q.r * 0.95);
+        g.addColorStop(0, `rgba(18,10,6,${(0.42 * f).toFixed(3)})`);
+        g.addColorStop(0.7, `rgba(18,10,6,${(0.22 * f).toFixed(3)})`);
+        g.addColorStop(1, 'rgba(18,10,6,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(q.x, q.y, q.r * 0.95, 0, WS.TAU); ctx.fill();
+        // embers in it, dying
+        if (q.kind === 'blast' && !WS.Renderer.lite) {
+          for (let i = 0; i < 7; i++) {
+            const a0 = q.seed + i * 2.4, rr = q.r * (0.2 + 0.6 * ((i * 41) % 9) / 9);
+            glow(ctx, q.x + WS.cos(a0) * rr, q.y + WS.sin(a0) * rr * 0.8, 7, c, 0.5 * f * f);
+          }
+        }
+        // the shockwave out of it
+        if (age < 0.45) {
+          const k = age / 0.45;
+          ctx.lineWidth = 5 * (1 - k) + 1;
+          ctx.strokeStyle = rgba(WS.mix(c, [1, 1, 1], 0.5), 0.85 * (1 - k));
+          ctx.beginPath(); ctx.arc(q.x, q.y, q.r * (0.5 + 0.8 * k), 0, WS.TAU); ctx.stroke();
+        }
+        // the hot core
+        if (age < 0.3 && !calm) glow(ctx, q.x, q.y, q.r * 1.05, WS.mix(c, [1, 1, 1], 0.4), 0.85 * (1 - age / 0.3));
+        if (q.kind === 'shatter') {
+          ctx.strokeStyle = rgba([0.85, 0.95, 1], 0.8 * f); ctx.lineWidth = 2;
+          for (let i = 0; i < 8; i++) {
+            const a0 = q.seed + i * WS.TAU / 8, r0 = q.r * 0.2, r1 = q.r * (0.5 + 0.35 * WS.min(1, age * 3));
+            ctx.beginPath(); ctx.moveTo(q.x + WS.cos(a0) * r0, q.y + WS.sin(a0) * r0);
+            ctx.lineTo(q.x + WS.cos(a0) * r1, q.y + WS.sin(a0) * r1); ctx.stroke();
+          }
+        } else if (q.kind === 'claw') {
+          ctx.strokeStyle = rgba([0.8, 1, 0.85], 0.7 * f); ctx.lineWidth = 3; ctx.lineCap = 'round';
+          for (let i = 0; i < 4; i++) {
+            const bx = q.x + (i - 1.5) * q.r * 0.3, up = q.r * 0.5 * WS.min(1, age * 4) * f;
+            ctx.beginPath(); ctx.moveTo(bx, q.y + q.r * 0.2); ctx.lineTo(bx + (i - 1.5) * 4, q.y + q.r * 0.2 - up); ctx.stroke();
+          }
+        }
+      }
+      ctx.restore();
+    }
+  }
+
   /** The ground half of the marks: the finale's, or a scheduled boss's
    *  (Finale.field) - the renderer calls this alone when no finale is on. */
   A.drawMarks = function (ctx, time) {
     const F = WS.Finale;
+    drawImpacts(ctx, time);
     // Vivid (Settings): every threat in the one colour, safe ground untouched.
     const vivid = WS.Renderer.vivid();
     for (const m of F.marks) {

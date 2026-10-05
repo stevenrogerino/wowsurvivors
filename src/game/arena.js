@@ -251,6 +251,8 @@
       }
     }
 
+    if (WS.Finale.impacts.length) WS.Finale.ageImpacts(dt);
+
     /* ---- hazard resolution ----------------------------------------------- */
     for (let i = this.hazards.length - 1; i >= 0; i--) {
       const h = this.hazards[i];
@@ -282,6 +284,7 @@
               WS.Player.takeDamage(player, h.damage * this.dmgScale, 'Sunfall Spear');
             }
             WS.FX.flash(h.x + h.w / 2, h.y + h.h / 2, h.w * 0.5, [1.0, 0.86, 0.45], 0.3);
+            WS.Finale.impact('spikes', h.x, h.y, 0, [1.0, 0.86, 0.45], { w: h.w, h: h.h, life: 1.6, max: 1.6 });
             WS.Audio.play('hit');
           }
         }
