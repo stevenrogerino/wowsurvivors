@@ -449,8 +449,18 @@
     if (!t) { w.cooldown = retry(); return false; }
     const r = areaOf(player, w, d.radius || 78);
     WS.Enemy.damageArea(t.x, t.y, r, damageOf(player, w), null, null, w.id);
-    WS.FX.flash(t.x, t.y, r, schoolColour(w), 0.35, 5, d.school);
+    /* The sigil grows in what it draws, never in what it hits: more spokes
+       and an outer ring at each rank milestone, a third when evolved. */
+    let spokes = 5;
+    if (w.level >= (d.projRankA || WS.Config.projRankA)) spokes += 3;
+    if (w.level >= (d.projRankB || WS.Config.projRankB)) spokes += 3;
+    if (w.evolved) spokes += 3;
+    const hold = 0.35 * (1 + 0.08 * (w.level - 1));
+    WS.FX.flash(t.x, t.y, r, schoolColour(w), hold, spokes, d.school);
     WS.FX.flash(t.x, t.y, r * 0.45, [0.85, 0.75, 1.0], 0.25);
+    if (w.level >= (d.projRankA || WS.Config.projRankA)) WS.FX.flash(t.x, t.y, r * 0.75, schoolColour(w), hold * 1.2);
+    if (w.level >= (d.projRankB || WS.Config.projRankB)) WS.FX.flash(t.x, t.y, r * 0.25, [0.85, 0.75, 1.0], hold * 1.4);
+    if (w.evolved) WS.FX.flash(t.x, t.y, r * 0.6, [0.55, 0.30, 0.85], hold * 1.5, 0, d.school);
     WS.Familiar.command(t, w.evolved || !!d.commandRebite);
     WS.Audio.play('cast', undefined, d.school);
     return true;
