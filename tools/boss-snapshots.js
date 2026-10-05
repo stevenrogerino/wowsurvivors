@@ -5,7 +5,8 @@
  * it took off the survivor while it was up. This is the "projected build" a
  * boss is tuned against: a boss that dies in seven seconds to the median
  * build never gets to use its mechanics, and one that only kills a build
- * that stopped moving is not a fight.
+ * that stopped moving is not a fight. It also lists every build that reached
+ * the 30:00 finale (finaleBuilds): level, weapons, damage a second, health.
  *
  *   node tools/boss-snapshots.js night-a.json night-b.json ...
  *   OUT=tools/bot/boss-snapshots.json node tools/boss-snapshots.js ...
@@ -43,8 +44,24 @@ for (const f of files) {
     }
   }
 }
+// The build that reaches the finale: every night still standing at 30:00.
+const finale = [];
+for (const f of files) {
+  const d = JSON.parse(fs.readFileSync(f, 'utf8'));
+  if (!d.runs) continue;
+  const S = d.S || {};
+  for (const r of d.runs) {
+    const cur = (r.curve || []).filter((c) => c[0] <= 30), c1 = cur[cur.length - 1], c0 = cur[cur.length - 2];
+    if (!r.dawn || !c1 || c1[0] < 29) continue;
+    finale.push({ map: S.MAP, diff: S.DIFF, hyper: !!S.HYPER, style: (S.DRAFT_OPTS && S.DRAFT_OPTS.style) || 'minmax', hero: r.hero,
+      level: c1[2], dps: c0 ? Math.round((c1[4] - c0[4]) / 60) : null, weapons: c1[6], maxHp: r.maxHp, armor: r.armor });
+  }
+}
+if (finale.length) {
+  console.log(`\nreaching the finale: ${finale.length} nights; level median ${q(finale.map((x) => x.level), 0.5)}, build dps median ${q(finale.map((x) => x.dps), 0.5)} (p10 ${q(finale.map((x) => x.dps), 0.1)}, p90 ${q(finale.map((x) => x.dps), 0.9)}), max health median ${q(finale.map((x) => x.maxHp), 0.5)}`);
+}
 const rows = Object.values(bosses).sort((a, b) => a.minute - b.minute || a.boss.localeCompare(b.boss));
 console.log('boss                  at    n   health   life med/p90   lost while up med/p90   level   build dps med');
 for (const b of rows) console.log(b.boss.padEnd(20) + `${b.minute}m`.padStart(5) + String(b.life.length).padStart(5) + String(b.hp).padStart(9)
   + `${q(b.life, 0.5)}s / ${q(b.life, 0.9)}s`.padStart(15) + `${q(b.lost, 0.5)}% / ${q(b.lost, 0.9)}%`.padStart(23) + String(q(b.level, 0.5)).padStart(8) + String(q(b.dps, 0.5)).padStart(16));
-if (process.env.OUT) fs.writeFileSync(process.env.OUT, JSON.stringify({ made: new Date().toISOString(), sources: files.map((f) => f.split('/').pop()), bosses: rows.map((b) => ({ boss: b.boss, minute: b.minute, n: b.life.length, health: b.hp, lifeMedian: q(b.life, 0.5), lifeP90: q(b.life, 0.9), lostMedian: q(b.lost, 0.5), lostP90: q(b.lost, 0.9), levelMedian: q(b.level, 0.5), dpsMedian: q(b.dps, 0.5) })), snapshots: snaps }));
+if (process.env.OUT) fs.writeFileSync(process.env.OUT, JSON.stringify({ made: new Date().toISOString(), sources: files.map((f) => f.split('/').pop()), finaleBuilds: finale, bosses: rows.map((b) => ({ boss: b.boss, minute: b.minute, n: b.life.length, health: b.hp, lifeMedian: q(b.life, 0.5), lifeP90: q(b.life, 0.9), lostMedian: q(b.lost, 0.5), lostP90: q(b.lost, 0.9), levelMedian: q(b.level, 0.5), dpsMedian: q(b.dps, 0.5) })), snapshots: snaps }));
