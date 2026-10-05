@@ -22,7 +22,8 @@ const pct = (v) => `${Math.round(v * 100)}%`;
 const groupBy = process.env.GROUP || null;
 const groups = {};
 for (const r of runs) {
-  const k = groupBy === 'style' ? (r._S.DRAFT_OPTS && r._S.DRAFT_OPTS.style) || 'minmax'
+  const o = r._S.DRAFT_OPTS || {};
+  const k = groupBy === 'style' ? (o.style || 'minmax') + (o.rushPassives === false ? ' (no passives)' : '')
     : groupBy === 'file' ? r._file.split('/').pop() : groupBy === 'hero' ? r.hero : 'all';
   (groups[k] = groups[k] || []).push(r);
 }

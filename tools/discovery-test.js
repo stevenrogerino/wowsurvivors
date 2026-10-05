@@ -15,6 +15,9 @@
  *   node tools/discovery-test.js
  *   TIME=1200 EVO=1 LEVEL=150 node tools/discovery-test.js
  *   node tools/discovery-test.js --report /tmp/on.json /tmp/off.json
+ *   COMBOS='{"truestrike":{"dmgMult":1.05}}' OFF_FROM=/tmp/d.off.json node tools/discovery-test.js
+ *     (a candidate: the 'on' run takes COMBOS; the 'off' run is reused from an
+ *     earlier OUT= at the same TIME, LEVEL, SETS and RANK)
  */
 'use strict';
 const fs = require('fs');
@@ -96,7 +99,8 @@ function report(on, off, combos) {
   }))).then((parts) => parts.flat());
   console.error(`${jobs.length} builds x2 at ${TIME}s over ${SH} shards`);
   const on = await run('on', {});
-  const off = await run('off', { COMBOS: JSON.stringify(allOff) });
+  const off = env('OFF_FROM', null) ? JSON.parse(fs.readFileSync(env('OFF_FROM'), 'utf8')).rows
+    : await run('off', { COMBOS: JSON.stringify(allOff) });
   if (env('OUT', null)) {
     fs.writeFileSync(env('OUT') + '.on.json', JSON.stringify({ combos, rows: on }));
     fs.writeFileSync(env('OUT') + '.off.json', JSON.stringify({ combos, rows: off }));
