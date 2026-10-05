@@ -93,7 +93,7 @@
       evolveDescription: 'The sky answers every call.',
     },
     dawnpulse: {
-      damage: 18.34, evolveDamageMult: 4.902, bossDamage: 3.023, evolvedBossDamage: 2.939,
+      damage: 18.34, evolveDamageMult: 3.423, bossDamage: 3.023, evolvedBossDamage: 4.209,
       name: 'Dawnpulse', school: 'holy', behavior: 'nova', art: 'ring',
       rankDamageStep: 0.258,
       cooldown: 2.638, radius: 150, expandTime: 0.35, knockback: 26,
@@ -146,7 +146,7 @@
       healPer: 1.5, evolvedHealPer: 1.5, healCap: 5, healCapRank: 1.67, evolvedHealCap: 15.3,
     },
     reaving_arc: {
-      damage: 18.74, evolveDamageMult: 3.99, bossDamage: 2.504, evolvedBossDamage: 3.65,
+      damage: 18.74, evolveDamageMult: 2.726, bossDamage: 2.504, evolvedBossDamage: 5.343,
       name: 'Reaving Arc', school: 'shadow', behavior: 'nova', art: 'ring',
       rankDamageStep: 0.45,
       cooldown: 2.418, radius: 130, expandTime: 0.28, knockback: 20,
@@ -157,7 +157,7 @@
       evolveDescription: 'The blade drinks deeper than any wound can hold.',
     },
     hallowed_ring: {
-      damage: 1.954, evolveDamageMult: 6.298, bossDamage: 5.989, evolvedBossDamage: 3.719,
+      damage: 1.954, evolveDamageMult: 5.164, bossDamage: 5.989, evolvedBossDamage: 4.536,
       name: 'Hallowed Ring', school: 'holy', behavior: 'zone', art: 'zone',
       rankDamageStep: 0.222,
       cooldown: 3.956, radius: 120, duration: 4.0, tickRate: 0.5,
@@ -181,7 +181,7 @@
       evolveDescription: 'Ruin that nothing can stop.',
     },
     knifestorm: {
-      damage: 19.46, evolveDamageMult: 3.285, bossDamage: 2.787, evolvedBossDamage: 2.315,
+      damage: 19.46, evolveDamageMult: 2.79, bossDamage: 2.787, evolvedBossDamage: 2.726,
       name: 'Knifestorm', school: 'physical', behavior: 'ring', art: 'dagger',
       rankDamageStep: 0.266,
       cooldown: 1.429, speed: 346, projectiles: 6, pierce: 4,
@@ -192,7 +192,7 @@
       evolveDescription: 'The steel never stops moving.',
     },
     axe_gyre: {
-      damage: 10.1, evolveDamageMult: 10.15, bossDamage: 2.895, evolvedBossDamage: 0.707,
+      damage: 10.1, evolveDamageMult: 8.774, bossDamage: 2.895, evolvedBossDamage: 0.818,
       name: 'Axe Gyre', school: 'physical', behavior: 'orbit', art: 'axe',
       rankDamageStep: 0.1,
       color: [0.85, 0.88, 0.96], evolvedColor: [1.00, 0.55, 0.25],
