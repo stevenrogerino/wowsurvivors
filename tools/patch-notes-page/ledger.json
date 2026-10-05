@@ -752,6 +752,22 @@
  },
  {
   "sec": "From the testers",
+  "stamp": "nerf",
+  "title": "Rend and Mend, evolved",
+  "img": "icon_reaving_arc.png",
+  "body": [
+   "Counted by what actually landed, evolved Rend and Mend still took more of the meter than any weapon that only does damage, and it heals as well. Its evolved damage comes down by a third; against bosses it stays where it was.",
+   "Testers also pointed at evolved Arcweb. Counted the same way, it sits a little under its fair share, so it stays as it is."
+  ],
+  "list": [],
+  "chips": [
+   "evolved damage <b>x5.93 → x3.99</b>",
+   "on bosses <b>unchanged</b>",
+   "share against pure damage <b>1.23x</b> → healer band"
+  ]
+ },
+ {
+  "sec": "From the testers",
   "stamp": "fix",
   "title": "Bombs and hourglasses don't feed themselves",
   "img": "icon_p_luck.png",

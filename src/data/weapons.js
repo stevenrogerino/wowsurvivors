@@ -146,7 +146,7 @@
       healPer: 1.5, evolvedHealPer: 1.5, healCap: 5, healCapRank: 1.67, evolvedHealCap: 15.3,
     },
     reaving_arc: {
-      damage: 18.74, evolveDamageMult: 5.93, bossDamage: 2.504, evolvedBossDamage: 2.452,
+      damage: 18.74, evolveDamageMult: 3.99, bossDamage: 2.504, evolvedBossDamage: 3.65,
       name: 'Reaving Arc', school: 'shadow', behavior: 'nova', art: 'ring',
       rankDamageStep: 0.45,
       cooldown: 2.418, radius: 130, expandTime: 0.28, knockback: 20,

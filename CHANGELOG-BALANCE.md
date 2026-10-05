@@ -48,6 +48,14 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
   every rank adds `ruthlessLow` 8% to crits on anything below
   `ruthlessLowLine` 35% health, elites and bosses included
   (`Calling.ruthlessCrit`). About +1.6% boss damage a rank at 40% crit.
+- **W4, Rend and Mend.** The s5 four-condition gate on landed damage
+  (240 builds, kite/pilot x all/subset passives) still put it at x1.23 of
+  the pure-damage mean, against the healer band x0.72-0.90 (raw had said
+  x1.19). `evolveDamageMult 5.93 -> 3.99`; `evolvedBossDamage 2.452 ->
+  3.65` holds its evolved boss damage. Evolved Arcweb, flagged by
+  testers, measured x0.88 of fair on landed damage: unchanged. Dawnpulse
+  (x1.01) and Hallowed Ring (x0.93) are also above the healer band; left
+  for the re-gate. Skybreak unchanged.
 
 ## 2026-09-29 (later): The meter fit, done over four ways to play and three ranks
 
