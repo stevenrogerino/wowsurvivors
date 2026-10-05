@@ -27,3 +27,32 @@ each separable:
   Every scheduled boss currently dies a median 6 to 14 seconds after it
   arrives. This part was measured without Tides, so measure it again with
   Tides always on before using it.
+
+## 2026-10-05-weapon-tuning-pass.patch
+
+Eight weapons, numbers only. Each gets a new unevolved base damage and rank
+step; its evolution multiplier is re-fitted so the evolved weapon deals
+exactly what it does today, and its boss damage is re-fitted so it hits
+bosses at rank 5 exactly as hard as today. Healing is per hit and unchanged.
+
+| Weapon | Rank 1 | Rank 3 | Rank 5 | Rank 8 | Why |
+| --- | --- | --- | --- | --- | --- |
+| Arcweb (Shaman) | x0.90 | x1.27 | x1.40 | x1.49 | x1.9 at rank 1, then x0.59 to x0.74 |
+| Judgement Disc (Paladin) | x0.90 | x1.27 | x1.40 | x1.49 | same shape as Arcweb |
+| Verdant Lance (Ruinseeker) | x1.10 | x1.16 | x1.18 | x1.19 | x0.74 at 9:00 and 14:00 |
+| Blightfield | x1.30 | x1.30 | x1.30 | x1.30 | under even the healers' band |
+| Thornbloom | x1.25 | x1.12 | x1.07 | x1.04 | x0.35 at rank 1 |
+| Axe Gyre (Warrior) | x0.95 | x0.87 | x0.81 | x0.75 | x1.38 to x1.58, most kills at 20:00 |
+| Iron Palms (Monk) | x1.00 | x0.91 | x0.85 | x0.80 | x1.38 to x1.59 at 5:00 and 9:00 |
+| Cinderfall | x0.72 | x0.72 | x0.72 | x0.72 | x1.30 to x1.41, kill share x1.8 |
+
+Starting weapons keep rank 1 within 10%. Reaving Arc (Graveblade's starter,
+above the healers' band) is left alone: Graveblade already loses the most
+health of any survivor, and a candidate that trimmed it saw Graveblade die
+in 3 of 6 nights. Measured with `tools/meter-test.js` (60 seeded builds a
+stage, 1:00 to 14:00): shares outside their band drop from 38 of 60 to 31.
+
+Before shipping: `tools/check-scaling.js` reports Blightfield at +1% under
+Duplicity with the patch (zero tolerance; Duplicity has no zone path), so
+look at that check's tolerance; and run the meter gate in
+`tools/balance-suite.sh`.

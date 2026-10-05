@@ -21,6 +21,7 @@
  *
  *   node tools/botlab.js                                  full runs, every survivor, veteran
  *   MODE=full HEROES=mage,warrior DIFF=professional SEEDS=6 node tools/botlab.js
+ *   SEEDS=12 SEED0=6 ...                                  twelve more seeds after the first six
  *   PILOT=kite node tools/botlab.js                       the old bot, for comparison
  *   PILOT_OPTS='{"replan":0.2,"noise":20}'                a sloppier player
  *   DRAFT_OPTS='{"mode":"simple"}'                        the drafter's knobs (tools/bot/draft.js)
@@ -608,7 +609,8 @@ function matrix(data, owners) {
   const heroes = env('HEROES', 'all') === 'all' ? roster : env('HEROES').split(',');
   const bls = env('BLESS', 'auto') === 'all' ? allBless : env('BLESS', 'auto').split(',');
   const N = +env('SEEDS', 4);
-  const seeds = Array.from({ length: N }, (_, i) => 101 + i * 7919);
+  // SEED0=6 starts at the seventh seed, to add nights to a batch already run.
+  const seeds = Array.from({ length: N }, (_, i) => 101 + (i + +env('SEED0', 0)) * 7919);
   const jobs = [];
   for (const seed of seeds) for (const h of heroes) for (const bl of bls) jobs.push([h, bl, seed]);
   const shards = Math.min(jobs.length, +env('SHARDS', os.cpus().length));
