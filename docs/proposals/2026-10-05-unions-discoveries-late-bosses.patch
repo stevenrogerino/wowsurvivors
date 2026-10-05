@@ -1,0 +1,207 @@
+diff --git a/src/data/combos.js b/src/data/combos.js
+index b9243ee..f3385c6 100644
+--- a/src/data/combos.js
++++ b/src/data/combos.js
+@@ -37,7 +37,7 @@
+       name: 'Deadly Brew', weapons: ['knifestorm', 'rimeshard'],
+       description: 'Every thrown knife is coated in a numbing venom that slows its victim and bites {dmgMult*%}% deeper.',
+       hint: "A rogue with access to the alchemist's icebox is a dangerous thing.",
+-      slowFactor: 0.65, slowDuration: 1.2, dmgMult: 1.15,
++      slowFactor: 0.65, slowDuration: 1.2, dmgMult: 1.25,
+       apply: (w1, w2, c) => {
+         w1.mods.slowFactor = c.slowFactor; w1.mods.slowDuration = c.slowDuration;
+         w1.mods.damageMult = (w1.mods.damageMult || 1) * c.dmgMult;
+@@ -47,7 +47,7 @@
+       name: 'Tempest Pact', weapons: ['axe_gyre', 'arcweb'],
+       description: 'Axe Gyre blades sometimes call the storm, loosing arcweb on those they strike.',
+       hint: 'Blessed blades may yet call the storm...',
+-      procChain: 0.15,
++      procChain: 0.22,
+       apply: (w1, w2, c) => { w1.mods.procChain = c.procChain; },
+     },
+     radiant_gyre: {
+@@ -55,16 +55,19 @@
+       description: 'Every spin of the Axe Gyre begins with a pulse of holy Light, and the blades bite {dmgMult*%}% harder.',
+       hint: 'Steel spun in faith becomes something more.',
+       // The pulse is worth +20% early and +5% once the gyre evolves.
+-      dmgMult: 1.08,
++      dmgMult: 1.18,
+       apply: (w1, w2, c) => { w1.mods.novaOnCast = true; w1.mods.damageMult = (w1.mods.damageMult || 1) * c.dmgMult; },
+     },
+     truestrike: {
+       name: 'Truestrike', weapons: ['volley', 'seeking_motes'],
+-      description: 'Enchanted arrows curve in flight to seek their prey and strike {dmgMult*%}% harder.',
++      description: 'Enchanted arrows curve in flight to seek their prey.',
+       hint: 'The finest rangers fletch their arrows with a whisper of magic.',
+       // Homing alone bends a spread onto one target: -1% to -5% on a crowd
+-      // until the volley evolved (tools/rank-test.js KIND=pair).
+-      dmgMult: 1.10,
++      // until the volley evolved (tools/rank-test.js KIND=pair). Once it has,
++      // homing is the strongest discovery of all: x1.43 to the pair's damage
++      // at 20:00 against a median x1.10 (tools/discovery-test.js). The +10%
++      // went: x1.33, and the arrows still find everything.
++      dmgMult: 1.00,
+       apply: (w1, w2, c) => { w1.mods.homing = true; w1.mods.damageMult = (w1.mods.damageMult || 1) * c.dmgMult; },
+     },
+     celestial: {
+@@ -103,14 +106,14 @@
+       name: 'Thunderpalm', weapons: ['iron_palms', 'arcweb'],
+       description: 'Iron Palms carry the storm: {procChain%}% of strikes loose arcweb from what they hit.',
+       hint: 'An open hand can hold lightning, if it is quick enough.',
+-      procChain: 0.18,
++      procChain: 0.28,
+       apply: (w1, w2, c) => { w1.mods.procChain = WS.max(w1.mods.procChain || 0, c.procChain); },
+     },
+     whirling_discipline: {
+       name: 'Whirling Discipline', weapons: ['iron_palms', 'axe_gyre'],
+       description: 'One more palm in every flurry, each palm draws the crowd IN toward the blades instead of shoving it away, and the gyre spins {dmgMult*%}% harder.',
+       hint: 'The monk and the axe keep the same tempo.',
+-      extraProjectiles: 1, dmgMult: 1.10,
++      extraProjectiles: 1, dmgMult: 1.20,
+       apply: (w1, w2, c) => {
+         w1.mods.extraProjectiles = (w1.mods.extraProjectiles || 0) + c.extraProjectiles;
+         w1.mods.pull = true;
+@@ -170,7 +173,7 @@
+       name: 'Rotbloom', weapons: ['thornbloom', 'blightfield'],
+       description: 'Rot feeds the thicket: both fields hit {dmgMult*%}% harder and the brambles hold faster.',
+       hint: 'Nothing grows as well as it does on something dead.',
+-      dmgMult: 1.12, slowFactor: 0.40,
++      dmgMult: 1.20, slowFactor: 0.40,
+       apply: (w1, w2, c) => {
+         w1.mods.damageMult = (w1.mods.damageMult || 1) * c.dmgMult;
+         w2.mods.damageMult = (w2.mods.damageMult || 1) * c.dmgMult;
+diff --git a/src/data/config.js b/src/data/config.js
+index e60c5b4..c634ea4 100644
+--- a/src/data/config.js
++++ b/src/data/config.js
+@@ -118,6 +118,16 @@
+ 
+     enemyScaleTime: 210,
+     bossScaleTime: 500,
++    /* SCHEDULED BOSSES GROW INTO THE LATE NIGHT. Across 160 bot nights on
++       Professional every scheduled boss died a median 6 to 14 seconds after
++       it arrived, the 27:00 one included (tools/study-nights.js, botlab
++       TRACE): the build outgrows a (1 + t/500) curve by far, so the late
++       bosses were gone before their first mechanic. From bossLateFrom their
++       health rises a further 1/bossLateTime a second: x1.1 at 11:00 (where
++       the night already kills, left nearly alone), x1.6 at 16:00, x2.2 at
++       22:00, x2.7 at 27:00. Endless bosses keep their own ramp. */
++    bossLateFrom: 600,
++    bossLateTime: 600,
+     hyperScale: 1.4,
+     /* One dial over every finale's damage (each also names its own scale,
+        tuning.damage in data/finales.js). */
+diff --git a/src/data/weapons.js b/src/data/weapons.js
+index e29bcbf..8449d0c 100644
+--- a/src/data/weapons.js
++++ b/src/data/weapons.js
+@@ -368,9 +368,9 @@
+      * is what actually limits it.
+      */
+     union_firmament: {
+-      bossDamage: 2.4,
++      bossDamage: 1.2,
+       name: 'Firmament', school: 'arcane', behavior: 'storm', isUnion: true, art: 'moon',
+-      cooldown: 1.154, damage: 24.2, strikes: 8, stormRadius: 270, splash: 72, radius: 12,
++      cooldown: 1.154, damage: 48.4, strikes: 8, stormRadius: 270, splash: 72, radius: 12,
+       description: 'Sun and moon rain from the heavens without end.',
+     },
+     /* A tester: "every time I used it, it was 50% of my damage". Measured on
+@@ -401,16 +401,16 @@
+        -> 24 x3 put it at 34% of a full build (Wild Hunt 34%, Steel 28%) and
+        17% of a bare one (tools/synergy-sweep.js shows every passive's gain). */
+     union_ruin: {
+-      bossDamage: 1.95,
++      bossDamage: 1.5,
+       name: 'Ruin Unbound', school: 'shadow', behavior: 'aimed', isUnion: true, art: 'chaos',
+-      cooldown: 0.989, damage: 24, speed: 428, projectiles: 3, pierce: 4, range: 620,
++      cooldown: 0.989, damage: 31.2, speed: 428, projectiles: 3, pierce: 4, range: 620,
+       splash: 55, homing: true, life: 2.6, radius: 12, color: [0.60, 0.30, 1.00],
+       description: 'Ruin that devours everything in its path.',
+     },
+     union_steel: {
+-      bossDamage: 5.3,
++      bossDamage: 2.524,
+       name: 'Storm of Steel', school: 'physical', behavior: 'ring', isUnion: true, art: 'dagger',
+-      cooldown: 0.934, damage: 25, speed: 400, projectiles: 12, pierce: 12, life: 1.1, radius: 9,
++      cooldown: 0.934, damage: 52.5, speed: 400, projectiles: 12, pierce: 12, life: 1.1, radius: 9,
+       description: 'An unending cyclone of thrown steel.',
+     },
+     /* With every passive at its cap, Sanctuary took 56% of a build's damage
+@@ -427,9 +427,9 @@
+        its cap per cast, not by what it strikes, and slower casts find more
+        gathered: cap 130 -> 146 keeps the ~7 a second it mended before. */
+     union_sanctuary: {
+-      bossDamage: 8.0,
++      bossDamage: 4.706,
+       name: 'Sanctuary', school: 'holy', behavior: 'nova', isUnion: true, art: 'ring',
+-      cooldown: 3.0, damage: 109, radius: 185, expandTime: 0.4, knockback: 34,
++      cooldown: 3.0, damage: 185.3, radius: 185, expandTime: 0.4, knockback: 34,
+       // Forged from the two holy healers, and it used to heal not at all:
+       // taking it threw your healing away. It mends as they did together.
+       healPer: 5, healCap: 146,
+@@ -443,30 +443,30 @@
+        and the fix is its own lightning, the half it took from Skybreak:
+        blades 5 -> 7 and the chance a cut calls lightning 0.35 -> 0.5. */
+     union_stormcall: {
+-      bossDamage: 2.5,
++      bossDamage: 1.394,
+       name: 'Stormcall', school: 'nature', behavior: 'orbit', isUnion: true, art: 'sword',
+-      cooldown: 5.055, damage: 29, projectiles: 7, orbitRadius: 95, orbitSpeed: 5.0,
++      cooldown: 5.055, damage: 52, projectiles: 7, orbitRadius: 125, orbitSpeed: 5.0,
+       duration: 4.0, radius: 22, procChain: 0.5, color: [0.45, 0.85, 1.00],
+       description: 'Blessed blade of the Tempest: a cyclone of steel that answers every cut with lightning.',
+     },
+     union_tempest_kata: {
+-      bossDamage: 4.8,
++      bossDamage: 2.534,
+       name: 'Tempest Kata', school: 'physical', behavior: 'palm', isUnion: true, art: 'palm',
+-      cooldown: 1.0, damage: 13.2, projectiles: 3, reach: 135, arc: 6.2832, knockback: 10,
++      cooldown: 1.0, damage: 25, projectiles: 3, reach: 165, arc: 6.2832, knockback: 10,
+       color: [0.78, 0.92, 1.0],
+       description: 'Palm and ring become one form: strikes in every direction at once, and the wind they leave behind cuts too.',
+     },
+     union_wild_hunt: {
+-      bossDamage: 4.8,
++      bossDamage: 2.087,
+       name: 'The Wild Hunt', school: 'nature', behavior: 'herd', isUnion: true, art: 'herd',
+-      cooldown: 1.9, damage: 46, speed: 360, projectiles: 5, pierce: 99, range: 640,
++      cooldown: 1.9, damage: 105.8, speed: 360, projectiles: 5, pierce: 99, range: 640,
+       life: 2.1, radius: 19, knock: 26, endBurst: 76, color: [0.55, 1.0, 0.25],
+       description: 'The herd runs in green fire, and every beast that reaches the end of its run goes up in it.',
+     },
+     union_rotwood: {
+-      bossDamage: 3.2,
++      bossDamage: 2.207,
+       name: 'Rotwood', school: 'nature', behavior: 'zone', isUnion: true, art: 'bloom',
+-      cooldown: 3.1, damage: 13.4, radius: 130, duration: 5.0, tickRate: 0.45,
++      cooldown: 3.1, damage: 19.43, radius: 130, duration: 5.0, tickRate: 0.45,
+       atTarget: true, slowFactor: 0.45, color: [0.60, 0.80, 0.28],
+       description: 'A grove of blighted brambles grows up under the crowd and rots everything it holds.',
+     },
+diff --git a/src/game/waves.js b/src/game/waves.js
+index 73d401f..6718468 100644
+--- a/src/game/waves.js
++++ b/src/game/waves.js
+@@ -196,6 +196,12 @@
+     return (1 + time / WS.Config.bossScaleTime) * this.map.difficulty * run.diffScale * hyper;
+   };
+ 
++  /** A scheduled boss's late growth (Config.bossLateFrom): 1 until then. */
++  Wave.bossLate = function (time) {
++    const cfg = WS.Config;
++    return 1 + WS.max(0, time - (cfg.bossLateFrom || 0)) / (cfg.bossLateTime || Infinity);
++  };
++
+   /** Endless respawns draw from the tougher half of the map's roster, so a
+    *  returning boss is never a step down from the last scheduled one. */
+   Wave.endlessBossPool = function () {
+@@ -337,7 +343,7 @@
+     if (nextBoss && time >= nextBoss.at) {
+       this.bossIndex++;
+       const isFinal = this.bossIndex >= map.bosses.length;
+-      this.spawnBoss(nextBoss.id, this.bossScale(time), false);
++      this.spawnBoss(nextBoss.id, this.bossScale(time) * this.bossLate(time), false);
+       if (isFinal) run.finalBossSeen = true;
+     }
+ 
