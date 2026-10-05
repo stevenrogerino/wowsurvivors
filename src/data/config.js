@@ -90,6 +90,9 @@
     dodgeInvulnerable: 0.2,
 
     blockInterval1: 30, blockInterval2: 22, blockInterval3: 15,
+    // ...and against a telegraphed blow (a finale's, a boss's) it takes
+    // this share instead of all of it (Player.takeDamage).
+    blockTelegraphed: 0.5,
     /* The kit, and the rank ceiling. Read through WS.MAX_WEAPONS and
        WS.WEAPON_MAX_LEVEL, which are getters over these. */
     /* When the one extra blessing arrives, in seconds. Half of deathTime.

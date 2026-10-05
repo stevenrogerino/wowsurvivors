@@ -11,7 +11,9 @@
  * a grid, safe ground in a field of doom - so all five fights share one
  * visual language: a shape appears, it tells you how long you have, and it
  * does exactly what it drew. Nothing reaches the survivor except through
- * Player.takeDamage, so armour, dodge, Warding Light and Thorns all work.
+ * Player.takeDamage, so armour, blocks, barriers and Thorns all work - but
+ * not a dodge roll or Stillwater's step: these are telegraphed, and reading
+ * the telegraph is the dodge.
  */
 'use strict';
 (function (WS) {
@@ -1133,7 +1135,7 @@
   function hurt(m, amount) {
     const p = WS.Game.player;
     const before = p.health;
-    WS.Player.takeDamage(p, amount, m.name);
+    WS.Player.takeDamage(p, amount, m.name, true);
     if (m.name && before - p.health >= p.maxHealth * WS.Config.heavyHitShare) {
       WS.FX.notice(p.x, p.y - 14, m.name, '#ff9a7a');
       WS.FX.flash(p.x, p.y, 70, m.tint || [1, 0.4, 0.3], 0.3);

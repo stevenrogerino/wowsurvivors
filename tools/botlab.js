@@ -127,8 +127,20 @@ function inPage(S, job, sources) {
     const orig = WS.Player.takeDamage;
     WS.Player.takeDamage = function (pl, amount, name) {
       const before = pl.health;
+      // What the finale OFFERED, before dodge, block, armour and barriers.
+      if (window.__led && WS.Finale.running && WS.Finale.running() && WS.Finale.stage === 'fight' && !(pl.invulnerable > 0)) {
+        const o = window.__led.offered = window.__led.offered || { n: 0, amt: 0, why: {} };
+        o.n++; o.amt += amount / Math.max(1, pl.maxHealth) * 100;
+        o.pending = { block: !!pl.blockReady, step: pl.flowAttuned > 0 && pl.flowSteps > 0, barrier: WS.Calling.barrier ? WS.Calling.barrier(pl) : null };
+      }
       const r = orig.apply(this, arguments);
       const lost = before - pl.health;
+      const ol = window.__led && window.__led.offered;
+      if (ol && ol.pending) {
+        const pd = ol.pending; ol.pending = null;
+        const k = lost > 0 ? 'landed' : pd.step ? 'step' : pd.block ? 'block' : 'absorbed/dodged';
+        ol.why[k] = (ol.why[k] || 0) + 1;
+      }
       const led = window.__led;
       if (led && lost > 0) {
         let kind = window.__ctx || 'other';
@@ -432,6 +444,7 @@ function inPage(S, job, sources) {
     overheal: Math.round(Object.values(run.overhealBySource || {}).reduce((a, v) => a + v, 0)),
     maxHp: Math.round(p.maxHealth), armor: Math.round(p.armor || 0),
     rescueGoals: pilot.rescues || 0,
+    finaleOffered: L.offered ? { n: L.offered.n, pct: Math.round(L.offered.amt), why: L.offered.why } : null,
     finaleBy: L.finale ? Object.fromEntries(Object.entries(L.finale).map(([k, v]) => [k, Math.round(v)])) : null,
     finaleHp: S.FINALE && reachedDawn ? { power: +(WS.Finale.power || 1).toFixed(2), single: Math.round(WS.Finale.singleTarget(p)),
       retries: run.finaleRetries || 0, stage: WS.Finale.stage, label: WS.Finale.s && WS.Finale.s.label || '' } : null,

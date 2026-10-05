@@ -205,7 +205,7 @@
     },
     stillwater: {
       name: 'Stillwater Step', art: 'step', quality: 'legendary',
-      description: 'You are not where the blow lands. {Config.flowSteps} steps: a hit you would take becomes a step through it, a palm on everything you pass, and a stack of Poise (+{Config.poiseDamage%}% damage each). Steps come back on their own.',
+      description: 'You are not where the blow lands. {Config.flowSteps} steps: a hit you would take becomes a step through it, a palm on everything you pass, and a stack of Poise (+{Config.poiseDamage%}% damage each). Steps come back on their own. A boss\u2019s or finale\u2019s telegraphed blow is not stepped: read it.',
       apply: (p) => {
         p.flowAttuned += 1;
         p.flowSteps = WS.Primal.maxSteps(p);

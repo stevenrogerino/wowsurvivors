@@ -402,7 +402,9 @@
         e.contactCooldown = e.boss ? cfg.contactCooldownBoss : cfg.contactCooldownNormal;
         struck = true;
         // Run down by a boss's charge: the blow it telegraphed (BossFight.hit).
-        WS.Player.takeDamage(player, e.chargeTimer > 0 && e.chargeHit ? WS.max(e.damage, e.chargeHit) : e.damage, t.name);
+        // A charge ran down the lane it drew: telegraphed (Player.takeDamage).
+        WS.Player.takeDamage(player, e.chargeTimer > 0 && e.chargeHit ? WS.max(e.damage, e.chargeHit) : e.damage, t.name,
+          e.chargeTimer > 0 && (e.boss || e.finale));
         if (!WS.Game.running) return;
       }
 

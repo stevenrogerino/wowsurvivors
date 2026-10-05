@@ -268,7 +268,7 @@
           const a = WS.atan2(player.y - h.cy, player.x - h.cx);
           if (!inGap(h, a)) {
             h.hit = true;
-            WS.Player.takeDamage(player, h.damage * this.dmgScale, 'Solar Flare');
+            WS.Player.takeDamage(player, h.damage * this.dmgScale, 'Solar Flare', true);
           }
         }
         if (h.r > 900) this.hazards.splice(i, 1);
@@ -281,7 +281,7 @@
             // The spear lands the moment the telegraph expires.
             if (player.x >= h.x && player.x <= h.x + h.w
               && player.y >= h.y && player.y <= h.y + h.h) {
-              WS.Player.takeDamage(player, h.damage * this.dmgScale, 'Sunfall Spear');
+              WS.Player.takeDamage(player, h.damage * this.dmgScale, 'Sunfall Spear', true);
             }
             WS.FX.flash(h.x + h.w / 2, h.y + h.h / 2, h.w * 0.5, [1.0, 0.86, 0.45], 0.3);
             WS.Finale.impact('spikes', h.x, h.y, 0, [1.0, 0.86, 0.45], { w: h.w, h: h.h, life: 1.6, max: 1.6 });
@@ -300,7 +300,7 @@
             let diff = ((pa - armAng + WS.PI * 3) % WS.TAU) - WS.PI;
             if (WS.abs(diff) <= h.half) {
               h.hitTimer = 0.8;
-              WS.Player.takeDamage(player, h.damage * this.dmgScale, 'Eclipse Cross');
+              WS.Player.takeDamage(player, h.damage * this.dmgScale, 'Eclipse Cross', true);
               break;
             }
           }

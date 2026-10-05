@@ -559,17 +559,24 @@
 
   /** True if the hit connected (false while invulnerable). A dodge still
    *  counts as connected - the attacker's swing is used up - but deals none. */
-  Player.takeDamage = function (p, amount, srcName) {
+  Player.takeDamage = function (p, amount, srcName, telegraphed) {
     if (p.invulnerable > 0) return false;
     const run = WS.Game.run;
 
+    /* A TELEGRAPHED BLOW IS DODGED BY READING IT. The finales', the arena's
+       and the bosses' shapes (`telegraphed`) said where they would land and
+       when; Stillwater's step and a dodge roll are for the blows nobody
+       could see coming. In bot nights a Stillwater survivor took every one
+       of a finale's hits on its step - 12 of 12, a whole fight at 0% - so
+       the fight asked nothing of them. Blocks still take one: they are
+       earned on a timer, one blow at a time. */
     // Stillwater: the blow finds only where they were.
-    if (WS.Primal.tryStep(p)) {
+    if (!telegraphed && WS.Primal.tryStep(p)) {
       run.damagePrevented += amount;
       return true;
     }
 
-    if (p.dodgeChance && WS.random() < p.dodgeChance) {
+    if (!telegraphed && p.dodgeChance && WS.random() < p.dodgeChance) {
       p.invulnerable = WS.Config.dodgeInvulnerable;
       run.damagePrevented += amount;
       WS.FX.notice(p.x, p.y, 'Dodge', '#bfe6ff');
@@ -579,11 +586,20 @@
     if (p.blockReady) {
       p.blockReady = false;
       p.blockTimer = p.blockInterval;
-      p.invulnerable = WS.Config.hitInvulnerable;
-      run.damagePrevented += amount;
       WS.FX.notice(p.x, p.y, 'BLOCK', '#ffe08a');
       WS.FX.flash(p.x, p.y, 60, WS.CONST.COLORS.holy, 0.3);
-      return true;
+      /* Against a telegraphed blow a block takes half, not all. Those blows
+         come one every half-minute or so, and a block ready every 15s met
+         nearly every one of them: a block build stood in the shapes and
+         took nothing (bot nights: 10 of 11 finale blows blocked). */
+      if (telegraphed) {
+        run.damagePrevented += amount * WS.Config.blockTelegraphed;
+        amount *= 1 - WS.Config.blockTelegraphed;
+      } else {
+        p.invulnerable = WS.Config.hitInvulnerable;
+        run.damagePrevented += amount;
+        return true;
+      }
     }
 
     // Armor is a diminishing % reduction, never a flat subtraction, so it
