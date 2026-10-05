@@ -1,0 +1,26 @@
+24 runs in 457s
+
+full · mourneholt · veteran · pilot plan · 24 runs
+
+ by survivor
+  mage                      30.0m   2/2 dawn  lvl 127  potions 160.5  bombs 31.5  freezes 21.5  low  40%  hurt: bolt 64%, contact 35%, charge 0%, ground 0%
+  warrior                   21.8m   1/2 dawn  lvl  97  potions 93.5  bombs 22.5  freezes 10.0  low  36%  hurt: contact 72%, bolt 26%, ground 2%, charge 0%
+  graveblade                30.0m   2/2 dawn  lvl 125  potions 144.5  bombs 22.0  freezes 25.0  low  47%  hurt: contact 65%, bolt 33%, ground 1%, charge 0%
+  priest                    30.0m   2/2 dawn  lvl 119  potions 173.5  bombs 35.0  freezes 28.0  low  50%  hurt: contact 55%, bolt 44%, ground 1%
+  warlock                   18.0m   1/2 dawn  lvl  90  potions 86.5  bombs 16.0  freezes 15.0  low  26%  hurt: contact 63%, bolt 35%, ground 2%, charge 0%
+  ruinseeker                30.0m   2/2 dawn  lvl 123  potions 135.5  bombs 27.0  freezes 20.5  low  31%  hurt: bolt 61%, contact 37%, ground 2%, charge 1%
+  rogue                     30.0m   2/2 dawn  lvl 129  potions 150.0  bombs 31.5  freezes 17.5  low  53%  hurt: bolt 49%, contact 48%, ground 2%, charge 1%
+  shaman                    30.0m   2/2 dawn  lvl 131  potions 113.0  bombs 32.0  freezes 20.0  low  49%  hurt: contact 50%, bolt 47%, ground 2%, charge 1%
+  druid                     30.0m   2/2 dawn  lvl 123  potions 169.5  bombs 32.5  freezes 25.0  low  19%  hurt: bolt 57%, contact 41%, ground 2%
+  hunter                    30.0m   2/2 dawn  lvl 120  potions 181.5  bombs 33.5  freezes 22.0  low  60%  hurt: bolt 60%, contact 38%, ground 2%
+  paladin                   18.8m   1/2 dawn  lvl  85  potions 64.0  bombs 15.5  freezes 12.0  low  27%  hurt: bolt 55%, contact 43%, ground 1%, charge 1%
+  monk                      30.0m   2/2 dawn  lvl 121  potions 154.0  bombs 29.0  freezes 26.5  low  33%  hurt: contact 61%, bolt 38%, ground 1%, charge 0%
+  ALL                       27.4m 21/24 dawn  lvl 116  potions 135.5  bombs 27.3  freezes 20.3  low  39%  hurt: contact 54%, bolt 45%, ground 1%, charge 0%
+
+ the killing blow
+     2  contact · Blackfang Moonwretch
+     1  contact · Bone Sentinel
+
+ bolts that landed: 5607, flying <0.2s 0%, 0.2-0.4s 1%, 0.4-0.8s 21%, longer 78%; mean speed 220; slowed when hit 68%
+
+ pilot: 2.74ms a decision
