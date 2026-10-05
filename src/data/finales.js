@@ -383,6 +383,9 @@
         ventLength: 900, ventWidth: 40, ventTime: 6, ventArms: 4,
         // Marrowfrost's frost cross, and the faster, wider one in the winter.
         crossSpin: 0.45, crossWidth: 34, crossTele: 1.2, crossTime: 6, crossArms: 2,
+        // The winter's cross runs 9.2s (tele + time) and comes every 9.6s:
+        // it used to come every 8, so two four-armed crosses turning opposite
+        // ways overlapped for a second and a bit, and their wedges closed.
         winterCrossSpin: 0.5, winterCrossWidth: 36, winterCrossTele: 1.0, winterCrossTime: 8.2, winterCrossArms: 4,
         // The glacial grid: cols x rows, of which gridSafe cells are safe.
         gridCols: 5, gridRows: 4, gridSafe: 4,
@@ -390,7 +393,7 @@
         novaGaps: 3, novaSpin: 0.35, novaDelay: 1.3,
         shardCount: 4, tideSkeletons: 6, tideGhouls: 6,
         every: { debris: 4, vent: 11, ghoul: 12, nova: 9, cross: 15, grid: 14, spike: 5, tide: 16,
-          winterCross: 8, winterNova: 7, winterGrid: 12, winterSpike: 4, winterEnd: 3 },
+          winterCross: 9.6, winterNova: 7, winterGrid: 12, winterSpike: 4, winterEnd: 3 },
         opening: { debris: 3, vent: 7, ghoul: 6 },
         lordOpening: { nova: 4, grid: 9, spike: 3, tide: 8 },
       },

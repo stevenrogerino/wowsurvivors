@@ -87,15 +87,17 @@
     return false;
   }
 
-  Arena.ring = function (gapBase, gapWidth, damage, speed, gapCount, spin, delay) {
+  Arena.ring = function (gapBase, gapWidth, damage, speed, gapCount, spin, delay, after) {
     const h = {
       shape: 'ring', cx: CX, cy: CY, r: 26, speed, thick: 30,
       gapBase, gapWidth, gapCount: gapCount || 1, gapRot: 0, spin: spin || 0,
       damage, delay: delay || 0, life: 9, hit: false,
     };
-    // One opening within reach of the survivor; see Finale.aimGap.
-    if (gapBase === null) h.gapBase = WS.Finale.aimGap(h, WS.Game.player);
+    // One opening within reach of the survivor - or, for the second flare
+    // of a pair, within reach of the first one's opening; see Finale.aimGap.
+    if (gapBase === null) h.gapBase = WS.Finale.aimGap(h, WS.Game.player, after && after.aim);
     this.hazards.push(h);
+    return h;
   };
 
   Arena.spears = function (safeCount) {
@@ -106,8 +108,11 @@
     for (let cy = 0; cy < rows; cy++) {
       for (let cx = 0; cx < cols; cx++) cells.push({ cx, cy });
     }
-    WS.shuffle(cells);
-    const safe = new Set(cells.slice(0, safeCount).map((c) => c.cy * cols + c.cx));
+    // One safe square always within reach (Finale.safeCells): a shuffle
+    // could leave the nearest across the arena with 1.6s to get there.
+    WS.Finale.safeCells(cells, safeCount, this.tuning.spearTele,
+      (c) => [BOUNDS.minX + c.cx * w, BOUNDS.minY + c.cy * h, w, h]);
+    const safe = new Set(cells.filter((c) => c.safe).map((c) => c.cy * cols + c.cx));
     for (let cy = 0; cy < rows; cy++) {
       for (let cx = 0; cx < cols; cx++) {
         const isSafe = safe.has(cy * cols + cx);
@@ -124,9 +129,20 @@
   };
 
   Arena.cutter = function () {
+    /* In the dark (phase 3) the heavy track runs at 0.65x, so a cutter
+       (8.2s) can come up while the last is still turning. Two crosses at
+       random angles left wedges a few degrees wide; this one bisects the
+       live one instead - same spin, arms halfway between where the old
+       arms will be when it starts - so the quadrants become eighths, even
+       ones, and stay that way. */
+    const live = this.hazards.find((q) => q.shape === 'cutter');
+    const tele = this.tuning.cutterTele;
+    const ang = live
+      ? live.ang + live.spin * WS.max(0, tele - WS.max(0, live.telegraph)) + WS.PI / 4
+      : WS.random() * WS.PI * 0.5;
     this.hazards.push({
       shape: 'cutter', cx: CX, cy: CY,
-      ang: WS.random() * WS.PI * 0.5, spin: this.tuning.cutterSpin,
+      ang, spin: this.tuning.cutterSpin,
       half: 0.12, len: 900, damage: this.tuning.cutterDamage,
       telegraph: this.tuning.cutterTele, life: this.tuning.cutterTele + 7, hitTimer: 0,
     });
@@ -191,11 +207,11 @@
       this.trackA = (this.phase >= 2 ? 7.5 : 9.5) * speedUp;
       const t = this.tuning;
       if (this.phase >= 2) {
-        this.ring(null, t.ringGapP2, t.ringDamage, t.ringSpeed, t.ringGapsP2, t.ringSpinP2, 0.7);
-        this.ring(null, t.ringGapP2, t.ringDamage, t.ringSpeed, t.ringGapsP2, t.ringSpinP2, 0.7 + t.ringDelay);
+        const a = this.ring(null, t.ringGapP2, t.ringDamage, t.ringSpeed, t.ringGapsP2, t.ringSpinP2, 0.7);
+        this.ring(null, t.ringGapP2, t.ringDamage, t.ringSpeed, t.ringGapsP2, t.ringSpinP2, 0.7 + t.ringDelay, a);
       } else {
-        this.ring(null, t.ringGapP1 * 2, t.ringDamage, t.ringSpeed, 1, 0, 0.6);
-        this.ring(null, t.ringGapP1, t.ringDamage, t.ringSpeed, 1, 0, 0.6 + t.ringDelay);
+        const a = this.ring(null, t.ringGapP1 * 2, t.ringDamage, t.ringSpeed, 1, 0, 0.6);
+        this.ring(null, t.ringGapP1, t.ringDamage, t.ringSpeed, 1, 0, 0.6 + t.ringDelay, a);
       }
       WS.Game.toast('Solar Flare', 'Stand in the opening.', { kind: 'warn', art: 'sun' });
     }

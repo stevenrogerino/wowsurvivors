@@ -509,7 +509,7 @@ ${css}
   <section id="bosses">
     <div class="kicker">Chapter Five</div>
     <h2 class="stitle">The bosses</h2>
-    <p class="sdesc">Each battlefield sends five on a schedule. Each announces itself, then cycles its patterns: a volley, a ring, a charge, a summons of its own kind, or (on Highmoor) the storm itself.</p>
+    <p class="sdesc">Each battlefield sends five on a schedule. Each announces itself, then cycles its patterns: a volley, a ring, a charge, a summons of its own kind, or (on Highmoor) the storm itself - and the telegraphed blows that decide the fight: a slam where you are going, a barrage, a wave with openings in it, a cross of lanes. Each is drawn before it lands and takes a real bite of your health if you are standing in it. At half health a boss turns: the bar marks where, its pace quickens and it adds its signature move. The health shown is the base, before the night scales it: a boss arriving at 27:00 has many times more.</p>
     ${bosses}
   </section>
 

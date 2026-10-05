@@ -380,8 +380,10 @@ function installPilot(opts) {
         if (Math.hypot(q[0] - s.x, q[1] - s.y) < reach) c += hitCost(p, dmg) * 0.3;
       }
     }
-    // The finale's marks, sampled along the path.
-    if (WS.Finale && WS.Finale.running && WS.Finale.running() && WS.Finale.marks) {
+    // The finale's marks, sampled along the path - and a scheduled boss's,
+    // which are the same shapes (Finale.field).
+    if (WS.Finale && WS.Finale.marks && WS.Finale.marks.length) {
+      c += markCost(p, path);
       for (let k = 0; k < path.length; k++) c += finaleCost(p, path[k][0], path[k][1]) * (1.1 - path[k][2] * 0.5) / path.length * 2;
     }
 
@@ -486,22 +488,79 @@ function installPilot(opts) {
     }
     return best;
   }
-  function finaleCost(p, qx, qy) {
+  /* Circles, lanes and rings, priced like the storm strikes: what the blow
+     would really take (hitCost), if the plan is standing in it at the moment
+     it lands. These used to be a flat 1000 / (time left) whatever they hit
+     for, which was the finale's heavies' order of magnitude - and when the
+     scheduled bosses started throwing the same shapes, the bot would rather
+     stand in a boss's body for 19% a touch than in a circle that hit for
+     less and was a second away. One that lands past the horizon costs a
+     share if the plan ends in it, so it is not walked into. */
+  function markCost(p, path) {
     const F = WS.Finale, pr = p.radius;
     let c = 0;
     for (const m of F.marks) {
       if (m.kind === 'circle') {
-        if (Math.hypot(qx - m.x, qy - m.y) < m.r + pr + 8) c += 1000 / (Math.max(0, m.tele) + 0.3);
-      } else if (m.kind === 'lane') {
-        if (inLane(m.x, m.y, Math.cos(m.ang), Math.sin(m.ang), m.len, m.w, qx, qy, pr + 10)) c += 900 / (Math.max(0, m.tele) + 0.3);
-      } else if (m.kind === 'ring') {
-        if (m.delay > 0.6) continue;
-        const d = Math.hypot(qx - m.cx, qy - m.cy);
-        const eta = (d - m.r) / m.speed - m.delay;
-        if (eta > -0.15 && eta < 1.4) {
-          const g = gapDist(m, Math.atan2(qy - m.cy, qx - m.cx) - m.spin * Math.max(0, eta));
-          if (g > 0) c += (300 + g * 400) / (Math.max(0, eta) + 0.25);
+        const reach = m.r + pr * 0.5 + 10;
+        if (m.tele <= O.horizon) {
+          const q = at(path, Math.max(0, m.tele));
+          if (Math.hypot(q[0] - m.x, q[1] - m.y) < reach) c += hitCost(p, m.dmg) * 1.1;
+        } else {
+          const q = path[path.length - 1];
+          if (Math.hypot(q[0] - m.x, q[1] - m.y) < reach) c += hitCost(p, m.dmg) * 0.35;
         }
+      } else if (m.kind === 'lane') {
+        if (m.hit) continue;
+        const dx = Math.cos(m.ang), dy = Math.sin(m.ang);
+        const t0 = Math.max(0, m.tele), t1 = t0 + Math.max(0, m.active);
+        if (t0 > O.horizon) {
+          const q = path[path.length - 1];
+          if (inLane(m.x, m.y, dx, dy, m.len, m.w, q[0], q[1], pr * 0.6 + 8)) c += hitCost(p, m.dmg) * 0.35;
+          continue;
+        }
+        for (const t of [t0, (t0 + t1) / 2, t1]) {
+          if (t > O.horizon) break;
+          const q = at(path, t);
+          if (inLane(m.x, m.y, dx, dy, m.len, m.w, q[0], q[1], pr * 0.6 + 8)) { c += hitCost(p, m.dmg) * 1.1; break; }
+        }
+      } else if (m.kind === 'ring') {
+        if (m.hit) continue;
+        // Where the band is at each sample, and whether that is where we are.
+        let prevBand = null;
+        for (const q of path) {
+          const t = q[2];
+          const go = Math.max(0, t - Math.max(0, m.delay));
+          const band = m.r + m.speed * go;
+          const d = Math.hypot(q[0] - m.cx, q[1] - m.cy);
+          const lo = prevBand === null ? band : prevBand;
+          prevBand = band;
+          if (go <= 0) continue;
+          const half = m.thick * 0.5 + pr * 0.5 + 8;
+          // The band crossed us during this step, or is on us now.
+          if ((d >= lo - half && d <= band + half)) {
+            const g = gapDist(m, Math.atan2(q[1] - m.cy, q[0] - m.cx) - m.spin * go);
+            if (g > 0) { c += hitCost(p, m.dmg) * (1.1 + Math.min(1, g * 2)); break; }
+          }
+        }
+        // Beyond the horizon: end the plan near the opening it will need.
+        const q = path[path.length - 1];
+        const d = Math.hypot(q[0] - m.cx, q[1] - m.cy);
+        const eta = (d - m.r) / m.speed + Math.max(0, m.delay) - q[2];
+        if (eta > 0 && eta < 2.5) {
+          const g = gapDist(m, Math.atan2(q[1] - m.cy, q[0] - m.cx) - m.spin * Math.max(0, eta));
+          if (g > 0) c += hitCost(p, m.dmg) * Math.min(1, g * 1.5) * 0.6 / (1 + eta);
+        }
+      }
+    }
+    return c;
+  }
+
+  function finaleCost(p, qx, qy) {
+    const F = WS.Finale, pr = p.radius;
+    let c = 0;
+    for (const m of F.marks) {
+      if (m.kind === 'circle' || m.kind === 'lane' || m.kind === 'ring') {
+        continue;   // markCost prices these, against the whole path
       } else if (m.kind === 'sweep') {
         const lead = m.tele > 0 ? 0 : m.spin * 0.25;
         for (let a = 0; a < m.arms; a++) {

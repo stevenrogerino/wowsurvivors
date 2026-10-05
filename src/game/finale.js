@@ -264,16 +264,49 @@
    *  a lobbed shell: the renderer draws it flying in over the telegraph. */
   F.circle = function (x, y, r, tele, dmg, name, opts) {
     const o = opts || {};
-    this.marks.push({ kind: 'circle', x, y, r, tele, maxTele: tele, dmg: this.dmg(dmg), name,
+    return this.own(o, { kind: 'circle', x, y, r, tele, maxTele: tele, dmg: this.markDmg(dmg, o), name,
       tint: o.tint || [1.0, 0.45, 0.25], from: o.from || null, style: o.style || 'blast',
       burn: o.burn || 0 });
+  };
+
+  /* THE SAME SHAPES, OUTSIDE THE FINALE. The scheduled bosses throw these
+     too (src/game/enemy.js Enemy.bossAttack), so a night's bosses and its
+     finale speak one visual language. Two differences: their damage is
+     already worked out by the boss (`raw`, so the finale's own dmgScale is
+     not applied on top), and they belong to the boss that threw them
+     (`src`): when it dies, what it had in the air goes with it, rather than
+     a dead boss landing one last blow nobody could answer. */
+  F.markDmg = function (dmg, o) { return o && o.raw ? dmg : this.dmg(dmg); };
+  F.own = function (o, m) {
+    if (o.src) { m.src = o.src; m.srcId = o.src.spawnId; }
+    this.marks.push(m);
+    return m;
+  };
+  function orphaned(m) {
+    return m.src && (m.src._dead || m.src.spawnId !== m.srcId || !m.src.boss && !m.src.elite);
+  }
+
+  /** The marks, run outside the finale: a scheduled boss's telegraphs. */
+  F.field = function (dt) {
+    // The heading is kept up whether or not anything is on the field: a
+    // boss's first strike leads the survivor with it (F.lead).
+    const p = WS.Game.player;
+    if (!p) return;
+    if (this._px !== undefined && dt > 0) {
+      const a = WS.min(1, dt * 6);
+      this.pv.x += ((p.x - this._px) / dt - this.pv.x) * a;
+      this.pv.y += ((p.y - this._py) / dt - this.pv.y) * a;
+    }
+    this._px = p.x; this._py = p.y;
+    if (!this.marks.length || WS.Enemy.freezeTimer > 0) return;   // a stopped clock stops these too
+    updateMarks(dt);
   };
 
   /** A straight line of trouble: telegraphed, then live for `active`. */
   F.lane = function (x, y, ang, len, w, tele, dmg, name, opts) {
     const o = opts || {};
-    this.marks.push({ kind: 'lane', x, y, ang, len, w, tele, maxTele: tele,
-      active: o.active || 0.3, dmg: this.dmg(dmg), name, hit: false,
+    return this.own(o, { kind: 'lane', x, y, ang, len, w, tele, maxTele: tele,
+      active: o.active || 0.3, dmg: this.markDmg(dmg, o), name, hit: false,
       tint: o.tint || [1.0, 0.55, 0.25], style: o.style || 'shot', sound: o.sound });
   };
 
@@ -283,10 +316,10 @@
     const m = { kind: 'ring', cx, cy, r: o.r0 || 30, speed: o.speed || 180, thick: o.thick || 28,
       gapBase: 0,
       gapWidth: o.gapWidth || 40, gapCount: o.gaps || 1, gapRot: 0, spin: o.spin || 0,
-      delay: o.delay || 0, dmg: this.dmg(o.dmg), name: o.name, hit: false,
+      delay: o.delay || 0, dmg: this.markDmg(o.dmg, o), name: o.name, hit: false,
       tint: o.tint || [1.0, 0.6, 0.3], max: o.max || 1100 };
-    m.gapBase = o.gapBase !== undefined ? o.gapBase : F.aimGap(m, WS.Game.player);
-    this.marks.push(m);
+    m.gapBase = o.gapBase !== undefined ? o.gapBase : F.aimGap(m, WS.Game.player, o.after && o.after.aim);
+    return this.own(o, m);
   };
 
   /** Where a ring's first opening starts, so that one is always within reach.
@@ -294,35 +327,104 @@
    *  It used to be anywhere at all. A single gap could open on the far side
    *  of the boss, and a spinning ring's gaps are not where they look while it
    *  is small - they turn the whole time it travels - so "find the hole" was
-   *  often a hole nobody could get to. Now one opening is aimed at where the
-   *  survivor stands, for the moment the ring actually REACHES them (the spin
-   *  it will have turned by then taken off first), and then pushed aside by
-   *  a random amount no larger than they can cover in the time it takes to
-   *  arrive, walking at half their speed. There is still somewhere to go -
-   *  it is rarely right under their feet - but it is never out of reach. The
-   *  other openings are spaced from that one as before. */
-  F.aimGap = function (m, p) {
+   *  often a hole nobody could get to. The next fix aimed one opening at the
+   *  survivor and pushed it aside by up to a radian, which a tester still
+   *  found "sometimes literally impossible", for three reasons it ignored:
+   *
+   *    - the field has edges. A survivor near a wall or in a corner had the
+   *      opening pushed round the ring to a point off the field;
+   *    - nobody moves the instant a ring appears. The walk it allowed began
+   *      at once and at half speed with no time to see the thing first;
+   *    - rings come in pairs (the arena's flares, the Pale Lord's novas, the
+   *      bosses' own), and the second was aimed from where the survivor
+   *      stood when it was CAST - not from the first ring's opening, which
+   *      is where they were going to be. Pushed the other way, the second
+   *      opening could be two radians from the first, with a second and a
+   *      bit to get there.
+   *
+   *  So now it is computed. The opening goes where the survivor (or, for a
+   *  second ring, the first ring's opening: `from`) will be when the band
+   *  reaches them, then turned aside by an amount chosen among the bearings
+   *  that are ALL of: within 90 degrees either way (never the far side);
+   *  on the field, clear of its edges; and reachable - the walk round the
+   *  ring, less what the opening itself is wide, fits in the time left after
+   *  a reaction (Config.ringReact), at Config.ringWalk of their speed. The
+   *  spin it will have turned by the time it arrives is taken off, as before.
+   *  If nothing aside is reachable, the opening lands on them.
+   *
+   *  It returns the opening's base angle; m.aim records the point and time
+   *  it was aimed at, for a ring that follows this one. */
+  F.aimGap = function (m, p, from) {
     if (!p) return WS.random() * WS.TAU;
-    const dx = p.x - m.cx, dy = p.y - m.cy;
-    const d = Math.hypot(dx, dy);
+    const cfg = WS.Config;
+    const sx = from ? from.x : p.x, sy = from ? from.y : p.y, t0 = from ? from.t : 0;
+    const dx = sx - m.cx, dy = sy - m.cy;
+    const d = WS.max(Math.hypot(dx, dy), 1);
     const at = WS.atan2(dy, dx);
-    const travel = WS.max(0, d - m.r) / (m.speed || 180);    // the time it has to get there
-    const turn = (m.spin || 0) * travel;                      // how far its gaps turn meanwhile
-    // At most 150px of walking round the ring, and never more than a
-    // radian: a single gap with a long way to travel could otherwise be
-    // "reachable" on the far side of the boss at a flat sprint.
-    const walk = WS.min(150, 0.5 * (p.moveSpeed || 220) * (travel + (m.delay || 0)));
-    const reach = WS.min(walk / WS.max(d, 80), 1, WS.PI / (m.gapCount || 1));
-    const side = WS.random() < 0.5 ? -1 : 1;
-    return at - turn + side * reach * (0.35 + 0.65 * WS.random());
+    const travel = WS.max(0, d - m.r) / (m.speed || 180);   // after its delay
+    const arrive = (m.delay || 0) + travel;                  // seconds from now
+    const turn = (m.spin || 0) * travel;                     // how far its gaps turn meanwhile
+    const spare = WS.max(0, arrive - t0 - (cfg.ringReact || 0.45));
+    const speed = (p.moveSpeed || 220) * (cfg.ringWalk || 0.6);
+    const halfArc = (m.gapWidth * WS.PI / 180) * 0.5 * d * 0.6;   // most of the hole counts
+    const b = WS.Game.arenaBounds || { minX: 0, maxX: WS.CONST.WORLD_WIDTH, minY: 0, maxY: WS.CONST.WORLD_HEIGHT };
+    const pad = (p.radius || 12) + 24;
+    const onField = (x, y) => x > b.minX + pad && x < b.maxX - pad && y > b.minY + pad && y < b.maxY - pad;
+    // Never past 90 degrees, and with n openings never past half the
+    // spacing - the next one round is nearer by then.
+    const span = WS.min(WS.PI / 2, WS.PI / (m.gapCount || 1));
+    const ok = [];
+    const N = 24;
+    for (let k = 1; k <= N; k++) {
+      for (const side of [-1, 1]) {
+        const off = side * span * k / N;
+        const x = m.cx + WS.cos(at + off) * d, y = m.cy + WS.sin(at + off) * d;
+        const walk = WS.max(0, 2 * d * WS.sin(WS.abs(off) / 2) - halfArc);
+        if (walk <= speed * spare && onField(x, y)) ok.push(off);
+      }
+    }
+    let off = 0;
+    if (ok.length) {
+      // Somewhere to go, rarely right underfoot: the far half of what is
+      // reachable is twice as likely as the near half.
+      const far = WS.max(...ok.map(WS.abs));
+      const pool = ok.filter((o) => WS.abs(o) >= far * 0.35);
+      const pick = pool.length && WS.random() < 0.67 ? pool : ok;
+      off = pick[WS.randInt(0, pick.length - 1)];
+    }
+    m.aim = { x: m.cx + WS.cos(at + off) * d, y: m.cy + WS.sin(at + off) * d, t: arrive };
+    return at + off - turn;
   };
 
   /** One or more beams turning about a point. `arms` of them, evenly spaced. */
   F.sweep = function (cx, cy, ang, spin, len, w, tele, dur, dmg, name, opts) {
     const o = opts || {};
-    this.marks.push({ kind: 'sweep', cx, cy, ang, spin, len, w, tele, maxTele: tele,
-      dur, maxDur: dur, dmg: this.dmg(dmg), name, cd: 0, arms: o.arms || 1,
-      follow: o.follow || null, oy: o.oy || 0,
+    /* NEVER TWO CUTTERS TURNING AGAINST EACH OTHER. Every caster that
+       alternates its beams' direction (Kael's arms, the Pale Lord's cross,
+       the drill's vents) did it to stop a player learning one way to run -
+       and when a new cutter came up before the last had finished (the
+       winter's cross, 9.2s long, every 8s) the two scissored: arms closing
+       on each other from both sides, a wedge of safe ground that shrank to
+       nothing. A tester: "overlapping cutters going opposite directions".
+       So a cutter that starts while another from the same source is still
+       live turns the SAME way as that one, and is set to bisect it - its
+       arms fall halfway between the old one's where it will be when the new
+       one starts to turn - so the two move as one wheel with twice the
+       spokes, and the wedges between are as even as they can be. */
+    const owner = o.follow || null;
+    for (const q of this.marks) {
+      if (q.kind !== 'sweep' || q.dur <= 0 || (owner ? q.follow !== owner : (q.cx !== cx || q.cy !== cy))) continue;
+      // Same way, same rate (a rigid wheel), and bisecting: by the time
+      // this one starts to turn, the old one has turned for `lead` more.
+      spin = q.spin;
+      const arms = (o.arms || 1) + q.arms;
+      const lead = q.tele > 0 ? WS.max(0, tele - q.tele) : tele;
+      ang = q.ang + q.spin * lead + WS.TAU / arms;
+      break;
+    }
+    return this.own(o, { kind: 'sweep', cx, cy, ang, spin, len, w, tele, maxTele: tele,
+      dur, maxDur: dur, dmg: this.markDmg(dmg, o), name, cd: 0, arms: o.arms || 1,
+      follow: owner, oy: o.oy || 0,
       tint: o.tint || [0.55, 0.85, 1.0] });
   };
 
@@ -334,9 +436,37 @@
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) cells.push({ x: b.minX + c * w, y: b.minY + r * h, w, h, safe: false });
     }
-    WS.shuffle(cells).slice(0, safeCount).forEach((c) => { c.safe = true; });
+    F.safeCells(cells, safeCount, tele, (c) => [c.x, c.y, c.w, c.h]);
     this.marks.push({ kind: 'grid', cells, tele, maxTele: tele, dmg: this.dmg(dmg), name,
       tint: o.tint || [0.6, 0.85, 1.0] });
+  };
+
+  /** Marks `count` of `cells` safe, one of them always within reach.
+   *
+   *  The safe squares were a shuffle. On the Pale Lord's 5x4 grid that is
+   *  four of twenty cells, 176 by 138, with 1.35s to get into one - and the
+   *  nearest could be four cells away, 600px, under the winter's dark. Now
+   *  the first is drawn from the cells whose nearest point the survivor can
+   *  reach at Config.ringWalk of their speed after Config.ringReact (never
+   *  the one they stand in, if any other will do: it is still a dodge), and
+   *  the rest from anywhere. `box(c)` gives a cell's [x, y, w, h]. */
+  F.safeCells = function (cells, count, tele, box) {
+    const p = WS.Game.player, cfg = WS.Config;
+    const order = WS.shuffle(cells.slice());
+    if (p && count > 0) {
+      const reach = (p.moveSpeed || 220) * (cfg.ringWalk || 0.6) * WS.max(0, tele - (cfg.ringReact || 0.45));
+      const gap = (c) => {
+        const [x, y, w, h] = box(c);
+        const dx = WS.max(x - p.x, 0, p.x - (x + w)), dy = WS.max(y - p.y, 0, p.y - (y + h));
+        return Math.hypot(dx, dy);
+      };
+      const near = order.filter((c) => gap(c) <= reach);
+      const step = near.filter((c) => gap(c) > 0);
+      const first = step[0] || near[0] || order.slice().sort((a, b) => gap(a) - gap(b))[0];
+      order.splice(order.indexOf(first), 1);
+      order.unshift(first);
+    }
+    order.slice(0, count).forEach((c) => { c.safe = true; });
   };
 
   /** Doom everywhere except inside the zones. */
@@ -746,6 +876,14 @@
     for (let i = F.marks.length - 1; i >= 0; i--) {
       const m = F.marks[i];
       let done = false;
+      if (orphaned(m)) {
+        // Its boss is dead: the telegraph fizzles where it stood.
+        const fx = m.kind === 'ring' ? m.cx : m.kind === 'sweep' ? m.cx : m.x;
+        const fy = m.kind === 'ring' ? m.cy : m.kind === 'sweep' ? m.cy : m.y;
+        if (fx !== undefined) WS.FX.burst(fx, fy, 4, WS.hex(m.tint || [1, 0.8, 0.5]), 90, 0.4, 2.5);
+        F.marks.splice(i, 1);
+        continue;
+      }
       if (m.kind === 'circle') {
         m.tele -= dt;
         if (m.tele <= 0) {
@@ -762,7 +900,7 @@
         if (m.tele > 0) {
           m.tele -= dt;
           if (m.tele <= 0) {
-            WS.Audio.play(m.sound || 'explode', m.x);
+            if (m.sound !== false) WS.Audio.play(m.sound || 'explode', m.x);
             WS.FX.shake(3, 0.15);
           }
         } else {
@@ -1915,10 +2053,15 @@
     },
     nova(F) {
       const T = F.def.tuning, L = F.s.lord;
-      F.ring(L.x, L.y, { speed: T.novaSpeed, gaps: T.novaGaps, gapWidth: T.novaGap, spin: T.novaSpin,
+      /* Two waves, the second novaDelay behind the first. They used to turn
+         opposite ways, one band's openings sliding left over the other's
+         sliding right - unreadable for no gain. They turn the same way now,
+         and the second's opening is aimed from the first's (Finale.aimGap),
+         so the dance is one step, then the next. */
+      const a = F.ring(L.x, L.y, { speed: T.novaSpeed, gaps: T.novaGaps, gapWidth: T.novaGap, spin: T.novaSpin,
         dmg: T.novaDamage, name: 'Frost nova', tint: [0.7, 0.92, 1.0] });
-      F.ring(L.x, L.y, { speed: T.novaSpeed, gaps: T.novaGaps, gapWidth: T.novaGap, spin: -T.novaSpin, delay: T.novaDelay,
-        dmg: T.novaDamage, name: 'Frost nova', tint: [0.7, 0.92, 1.0] });
+      F.ring(L.x, L.y, { speed: T.novaSpeed, gaps: T.novaGaps, gapWidth: T.novaGap, spin: T.novaSpin, delay: T.novaDelay,
+        dmg: T.novaDamage, name: 'Frost nova', tint: [0.7, 0.92, 1.0], after: a });
     },
     nextLine(F) {
       const s = F.s, L = s.lord;
@@ -2132,8 +2275,11 @@
       const T = F.def.tuning, p = WS.Game.player;
       const b = { minX: 140, maxX: W() - 140, minY: 160, maxY: H() - 110 };
       const zones = [];
+      /* 160-260px out: far enough to have to go, near enough to be seen -
+         the unbound storm's dark (0.45-0.6) shuts the view down to about
+         270px round the survivor, and an eye at 320 could be out in it. */
       for (let i = 0; i < T.eyes; i++) {
-        const a = WS.random() * WS.TAU, d = WS.randRange(180, 320);
+        const a = WS.random() * WS.TAU, d = WS.randRange(160, 260);
         zones.push({ x: WS.clamp(p.x + WS.cos(a) * d, b.minX, b.maxX),
           y: WS.clamp(p.y + WS.sin(a) * d, b.minY, b.maxY), r: T.eyeRadius });
       }

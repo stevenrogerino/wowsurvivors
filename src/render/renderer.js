@@ -1057,6 +1057,7 @@
     this.drawCallingGround(ctx, player, time);
     if (WS.Arena.active) this.drawArena(ctx, time);
     if (WS.Finale.stage !== 'idle') WS.FinaleArt.drawGround(ctx, time);
+    else if (WS.Finale.marks.length) WS.FinaleArt.drawMarks(ctx, time);
 
     this.drawCorpses(ctx);
     this.drawAirdropGround(ctx, time);
@@ -1112,6 +1113,7 @@
     this.drawBeams(ctx);
 
     if (WS.Finale.stage !== 'idle') WS.FinaleArt.drawAir(ctx, time);
+    else if (WS.Finale.marks.length) WS.FinaleArt.drawMarksAir(ctx, time);
 
     /* ---- effects --------------------------------------------------------- */
     /* THE LIGHT BUDGET. Every flash and spark composites 'lighter', so they
@@ -2562,10 +2564,80 @@
     }
   };
 
+  /* A BOSS GATHERING ITSELF. Every shape a boss throws (bossfight.js) is
+     drawn where it will land - and the boss, which is what the eye is on,
+     said nothing. Now it does: while a shape is being drawn, light gathers
+     in onto the boss from a ring three times its size, the ring tightening
+     as the blow comes, and a slam strings a dashed tether from the boss to
+     the circle it is aimed at, so the cause and the place read as one
+     thing. In its second phase the ground under it smoulders in its own
+     colour and a slow ring of embers turns round it: an enraged boss looks
+     enraged across the screen, without a word of text.
+
+     Reduce Flashes holds the pulse still; Vivid paints both in the danger
+     colour. All of it is under the survivor and their spells. */
+  R.drawBossPresence = function (ctx, e, time) {
+    const calm = R.calm();
+    const tint = R.vivid() ? R.VIVID : e.template.tint;
+    const rgb = `${WS.floor(tint[0] * 255)},${WS.floor(tint[1] * 255)},${WS.floor(tint[2] * 255)}`;
+    const gy = e.y + e.radius * 0.55;
+    ctx.save();
+    if (e.enraged) {
+      const pulse = calm ? 0.8 : 0.7 + 0.3 * WS.sin(time * 6);
+      const g = ctx.createRadialGradient(e.x, gy, e.radius * 0.3, e.x, gy, e.radius * 2.2);
+      g.addColorStop(0, `rgba(${rgb},${(0.32 * pulse).toFixed(3)})`);
+      g.addColorStop(1, `rgba(${rgb},0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.ellipse(e.x, gy, e.radius * 2.2, e.radius * 0.95, 0, 0, WS.TAU); ctx.fill();
+      ctx.strokeStyle = `rgba(${rgb},${(0.75 * pulse).toFixed(3)})`;
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([4, 9]); ctx.lineDashOffset = calm ? 0 : -time * 40;
+      ctx.beginPath(); ctx.ellipse(e.x, gy, e.radius * 1.6, e.radius * 0.66, 0, 0, WS.TAU); ctx.stroke();
+      ctx.setLineDash([]);
+      if (e.enrageGlow > 0) {
+        // The moment it turns: a ring blown outward.
+        const k = 1 - e.enrageGlow / 1.2;
+        ctx.globalAlpha = (1 - k) * (calm ? 0.4 : 0.9);
+        ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.ellipse(e.x, gy, e.radius * (1.3 + 3.5 * k), e.radius * (0.55 + 1.5 * k), 0, 0, WS.TAU); ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+    }
+    const c = e.cast;
+    if (c) {
+      const k = WS.clamp(1 - c.life / c.max, 0, 1);
+      const ct = R.vivid() ? R.VIVID : c.tint;
+      const crgb = `${WS.floor(ct[0] * 255)},${WS.floor(ct[1] * 255)},${WS.floor(ct[2] * 255)}`;
+      const r = e.radius * (3 - 1.9 * k);
+      ctx.lineWidth = 2 + 3 * k;
+      ctx.strokeStyle = 'rgba(0,0,0,.45)';
+      ctx.beginPath(); ctx.arc(e.x, e.y, r + 1.5, 0, WS.TAU); ctx.stroke();
+      ctx.strokeStyle = `rgba(${crgb},${(0.35 + 0.55 * k).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(e.x, e.y, r, 0, WS.TAU); ctx.stroke();
+      // Four ticks closing in, so it reads as gathering, not as a circle.
+      for (let q = 0; q < 4; q++) {
+        const a = (q / 4) * WS.TAU + (calm ? 0 : time * 2);
+        ctx.beginPath();
+        ctx.moveTo(e.x + WS.cos(a) * r, e.y + WS.sin(a) * r);
+        ctx.lineTo(e.x + WS.cos(a) * (r + 14), e.y + WS.sin(a) * (r + 14));
+        ctx.stroke();
+      }
+      if (c.to) {
+        ctx.setLineDash([10, 10]); ctx.lineDashOffset = calm ? 0 : -time * 90;
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = `rgba(${crgb},${(0.25 + 0.5 * k).toFixed(3)})`;
+        ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(c.to.x, c.to.y); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+    ctx.restore();
+  };
+
   R.drawTelegraphs = function (ctx, time) {
     const dz = R.danger();
     for (let i = 0; i < WS.Enemy.pool.count; i++) {
       const e = WS.Enemy.pool.active[i];
+      if (e.boss && (e.cast || e.enraged)) R.drawBossPresence(ctx, e, time);
       const t = e.telegraph;
       if (!t) continue;
       const k = 1 - WS.clamp(t.life / t.maxLife, 0, 1);   // 0 -> 1 as it lands
@@ -2678,6 +2750,28 @@
         const fade = WS.clamp(h.life / (h.maxLife || 1), 0, 1);
         twice(1.8, `rgba(${rgb},${(0.85 * a * fade).toFixed(3)})`,
           () => { ctx.beginPath(); ctx.arc(h.x, h.y, h.radius, 0, WS.TAU); });
+      }
+    }
+    /* The finale's marks, and the scheduled bosses' (the same shapes):
+       circles and lanes as their outline, a ring's openings as their edge
+       bars - the one thing about a ring that has to be read through the
+       light of your own spells. */
+    for (const m of (WS.Finale && WS.Finale.marks) || []) {
+      const mc = R.vivid() ? R.VIVID : (m.tint || [1, 0.5, 0.3]);
+      const mrgb = `${WS.floor(mc[0] * 255)},${WS.floor(mc[1] * 255)},${WS.floor(mc[2] * 255)}`;
+      if (m.kind === 'circle') {
+        const k = WS.clamp(1 - m.tele / m.maxTele, 0, 1);
+        twice(1.6 + 1.4 * k, `rgba(${mrgb},${(0.9 * a * (0.55 + 0.45 * k)).toFixed(3)})`,
+          () => { ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, WS.TAU); });
+      } else if (m.kind === 'lane' && m.tele > 0) {
+        ctx.save();
+        ctx.translate(m.x, m.y); ctx.rotate(m.ang);
+        twice(1.8, `rgba(${mrgb},${(0.85 * a).toFixed(3)})`, () => { ctx.beginPath(); ctx.rect(0, -m.w / 2, m.len, m.w); });
+        ctx.restore();
+      } else if (m.kind === 'ring' && !(m.delay > 0) && WS.FinaleArt) {
+        ctx.globalAlpha = a;
+        WS.FinaleArt.ringGapEdges(ctx, m, mc);
+        ctx.globalAlpha = 1;
       }
     }
     // Storm marks, with the time left as the share of the ring still drawn.

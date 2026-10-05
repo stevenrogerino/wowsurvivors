@@ -1887,6 +1887,13 @@
       if (s.orb && !F.pods.some((q) => q.carrying)) glow(ctx, s.orb.x, s.orb.y, 22, [0.55, 1.0, 0.75], 0.9);
     }
 
+    A.drawMarks(ctx, time);
+  };
+
+  /** The ground half of the marks: the finale's, or a scheduled boss's
+   *  (Finale.field) - the renderer calls this alone when no finale is on. */
+  A.drawMarks = function (ctx, time) {
+    const F = WS.Finale;
     // Vivid (Settings): every threat in the one colour, safe ground untouched.
     const vivid = WS.Renderer.vivid();
     for (const m of F.marks) {
@@ -1904,6 +1911,16 @@
 
   A.drawAir = function (ctx, time) {
     const F = WS.Finale;
+    A.drawMarksAir(ctx, time);
+    for (const pod of F.pods) {
+      if (pod.x < -120 || pod.x > WS.CONST.WORLD_WIDTH + 120 || pod.y < -120) continue;
+      drawPod(ctx, pod, time);
+    }
+  };
+
+  /** The air half of the marks: beams, fences, shells in flight. */
+  A.drawMarksAir = function (ctx, time) {
+    const F = WS.Finale;
     const vivid = WS.Renderer.vivid();
     for (const m of F.marks) {
       const t0 = m.tint;
@@ -1912,10 +1929,6 @@
       else if (m.kind === 'fence') drawFence(ctx, m, time);
       else if (m.kind === 'circle' && (m.from || m.style === 'ice')) drawShell(ctx, m, time);
       m.tint = t0;
-    }
-    for (const pod of F.pods) {
-      if (pod.x < -120 || pod.x > WS.CONST.WORLD_WIDTH + 120 || pod.y < -120) continue;
-      drawPod(ctx, pod, time);
     }
   };
 

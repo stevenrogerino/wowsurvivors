@@ -171,6 +171,11 @@
     finaleRehit: 0.7,
     finaleFenceReach: 12,
     finaleChargeLock: 0.3,
+    /* A ring's opening is always reachable (Finale.aimGap): it is placed
+       among bearings the survivor can walk to at ringWalk of their speed in
+       the time the band takes to reach them, less ringReact to see it. */
+    ringReact: 0.45,
+    ringWalk: 0.6,
 
     endlessBossInterval: 75,
     endlessBossMinInterval: 30,
@@ -227,6 +232,45 @@
     bossRingSpeed: 220,
     bossRingDamage: 0.6,
     bossChargeGirth: 2.2,
+    /* THE BOSSES AS FIGHTS (src/game/bossfight.js). In 160+ bot nights the
+       scheduled bosses lived a median 6-13s against the build that met them
+       and took nothing off the survivor (tools/boss-snapshots.js).
+
+       bossHealthCurve: [clock s, x health] on top of Wave.bossScale, linear
+       between points. Fitted on bot nights so the median build takes about
+       20-45s, later bosses longer; it reads the clock, never the build, so a
+       stronger build still wins in proportion.
+
+       A telegraphed blow takes a share of the survivor's max health (each
+       pattern names its own, 0.2-0.4) before armour, weighted from
+       bossHitEarly at 5:00 to bossHitLate at 27:00 and by (difficulty x
+       Hyper) ^ bossHitDifficultyExp - or the boss's own scaled damage if
+       that is more - and never more than bossHitCap of the bar.
+
+       bossEnrageAt: the second phase, at this share of health; its clock
+       runs bossEnrageRate faster. No telegraph is shorter than bossMinTele
+       (a human's reaction plus a step). A scheduled boss's charge winds up
+       for bossChargeWindup and its lane stops following bossChargeLock
+       before it goes. A summoned brood lands no nearer the survivor than
+       bossSummonClear. */
+    bossHealthCurve: [[300, 2.6], [630, 3.8], [960, 5.6], [1320, 7.0], [1620, 7.0]],
+    // Overtime's bosses take this share of the curve's extra (they ramp on
+    // their own: endlessBossMult, endlessRampTime).
+    bossHealthOvertime: 0.5,
+    /* First fit 0.85 / 1.15: in bot nights a caught shape landed for 11-18%
+       of the bar at Veteran, because armour (median ~10 at a boss, a 38%
+       cut) took its share. Raised so a caught slam costs ~25% at 5:00 and
+       ~33% late after typical armour; a tank's armour still halves it. */
+    bossHitEarly: 1.1,
+    bossHitLate: 1.45,
+    bossHitDifficultyExp: 0.5,
+    bossHitCap: 0.6,
+    bossEnrageAt: 0.5,
+    bossEnrageRate: 1.35,
+    bossMinTele: 0.6,
+    bossChargeWindup: 0.9,
+    bossChargeLock: 0.32,
+    bossSummonClear: 110,
     // A ranged creature's bolt is this share of its body's damage, and it
     // fires from up to rangedReach x its range. A lunge's lane is lungeGirth
     // x its radius wide.

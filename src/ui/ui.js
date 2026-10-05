@@ -866,7 +866,7 @@
     const boss = WS.Enemy.leadBoss();
     if (boss) {
       e.boss.classList.remove('hidden');
-      const bossName = boss.displayName || boss.template.name;
+      const bossName = boss.displayName || (boss.template.name + (boss.enraged ? ' · Enraged' : ''));
       if (e.bossName.textContent !== bossName) e.bossName.textContent = bossName;
       const pct = WS.clamp(boss.health / boss.maxHealth, 0, 1);
       const now = performance.now() / 1000;
@@ -886,7 +886,11 @@
       const fillK = (pct * 1000 | 0) / 1000, drainK = (e.bossDrain * 1000 | 0) / 1000;
       if (e.bFillK !== fillK) { e.bFillK = fillK; e.bFill.style.transform = `scaleX(${fillK})`; }
       if (e.bDrainK !== drainK) { e.bDrainK = drainK; e.bDrain.style.transform = `scaleX(${drainK})`; }
-      const gate = boss.hpFloor > 0 ? boss.hpFloor / boss.maxHealth : 0;
+      /* A scheduled boss's second phase is marked on the bar too, where it
+         will come (bossfight.js): the change is something to play toward,
+         not a surprise. Gone once it has happened. */
+      const gate = boss.hpFloor > 0 ? boss.hpFloor / boss.maxHealth
+        : boss.fightAt !== undefined && !boss.enraged ? WS.Config.bossEnrageAt : 0;
       if (e.bGateK !== gate) {
         e.bGateK = gate;
         e.bGate.style.left = (gate * 100).toFixed(2) + '%';
