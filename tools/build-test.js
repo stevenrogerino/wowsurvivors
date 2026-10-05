@@ -40,7 +40,7 @@ const KINDS = {
 };
 const ALL = ['seeking_motes', 'cinderfall', 'rimeshard', 'arcweb', 'dawnpulse', 'hallowed_ring', 'umbral_bolt', 'knifestorm', 'axe_gyre', 'volley',
   'moonbrand', 'judgement_disc', 'reaving_arc', 'verdant_lance', 'grave_tether', 'blightfield', 'iron_palms', 'spirit_herd', 'thornbloom', 'gale_chakram'];
-const CAPS = { might: 5, haste: 5, precision: 5, ferocity: 4, area: 5, quantity: 3, velocity: 3, perennial: 5, serration: 5 };
+const CAPS = { might: 5, haste: 5, precision: 5, ferocity: 4, area: 5, quantity: 3, velocity: 3, perennial: 5, serration: 4 };
 const SETS_OF = {
   none: () => [],
   generic: () => ['might', 'haste', 'precision', 'ferocity'],
