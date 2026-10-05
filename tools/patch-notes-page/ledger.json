@@ -753,17 +753,17 @@
  {
   "sec": "From the testers",
   "stamp": "nerf",
-  "title": "Rend and Mend, evolved",
+  "title": "The healers, evolved",
   "img": "icon_reaving_arc.png",
   "body": [
-   "Counted by what actually landed, evolved Rend and Mend still took more of the meter than any weapon that only does damage, and it heals as well. Its evolved damage comes down by a third; against bosses it stays where it was.",
+   "Counted by what actually landed, evolved Rend and Mend still took more of the meter than any weapon that only does damage, and it heals as well. So did Dawnpulse and Hallowed Ring, a little. Their evolved damage comes down until they sit where a weapon that also heals should; against bosses they stay where they were.",
    "Testers also pointed at evolved Arcweb. Counted the same way, it sits a little under its fair share, so it stays as it is."
   ],
   "list": [],
   "chips": [
-   "evolved damage <b>x5.93 → x3.99</b>",
-   "on bosses <b>unchanged</b>",
-   "share against pure damage <b>1.23x</b> → healer band"
+   "Rend and Mend evolved <b>x0.68</b> damage",
+   "Dawnpulse <b>x0.70</b>, Hallowed Ring <b>x0.82</b>",
+   "on bosses <b>unchanged</b>"
   ]
  },
  {
@@ -892,6 +892,21 @@
   "chips": [
    "creatures by dawn <b>x1.4</b>",
    "not tougher, <b>more</b>"
+  ]
+ },
+ {
+  "sec": "From the testers",
+  "stamp": "nerf",
+  "title": "Knifestorm and Axe Gyre, evolved",
+  "img": "icon_axe_gyre.png",
+  "body": [
+   "With the healers brought down, Knifestorm and Axe Gyre picked up what they gave up and ran over a fair share. Their evolved damage comes down a little; against bosses they stay where they were."
+  ],
+  "list": [],
+  "chips": [
+   "Knifestorm evolved <b>x0.85</b> damage",
+   "Axe Gyre evolved <b>x0.60</b>",
+   "on bosses <b>unchanged</b>"
   ]
  }
 ]

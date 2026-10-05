@@ -192,7 +192,7 @@
       evolveDescription: 'The steel never stops moving.',
     },
     axe_gyre: {
-      damage: 10.1, evolveDamageMult: 8.774, bossDamage: 2.895, evolvedBossDamage: 0.818,
+      damage: 10.1, evolveDamageMult: 6.14, bossDamage: 2.895, evolvedBossDamage: 1.169,
       name: 'Axe Gyre', school: 'physical', behavior: 'orbit', art: 'axe',
       rankDamageStep: 0.1,
       color: [0.85, 0.88, 0.96], evolvedColor: [1.00, 0.55, 0.25],

@@ -47,6 +47,18 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
   Tides keeps its own 900). More to kill, not tougher. Bot nights, 3
   survivors x 2 battlefields, Professional: kills a minute at 25:00-30:00
   1.2k -> 1.6k, one death in six either way.
+- **The s5 gate after all of it** (240 builds, kite/pilot x all/subset
+  passives, landed): Rend and Mend x1.03, Dawnpulse x1.02 and Hallowed Ring
+  x0.95 of the pure-damage mean against the healer band x0.72-0.90;
+  Knifestorm x1.29 and Axe Gyre x1.28 against x0.8-1.25 (they took what
+  Rend gave up). Evolved damage scaled by the share elasticity Rend's first
+  cut measured (0.44), evolved boss damage held: `evolveDamageMult` Rend
+  and Mend 3.99 -> 2.726, Dawnpulse 4.902 -> 3.423, Hallowed Ring 6.298 ->
+  5.164, Knifestorm 3.285 -> 2.79, Axe Gyre 10.15 -> 8.774 -> 6.14
+  (`evolvedBossDamage` 3.65 -> 5.343, 2.939 -> 4.209, 3.719 -> 4.536,
+  2.315 -> 2.726, 0.707 -> 1.169). Re-gated: healers x0.83-0.86, every
+  weapon inside x0.8-1.25 except Axe Gyre, which barely answers its damage
+  (it takes whatever comes close); %%AXE%%
 - **Fix:** drops are held back only while the horde gathers for a boss
   (`Wave.cresting`), not whenever the tide is up: on a Tides night the
   late rise kept the tide above 1.15 and no bomb or hourglass would have
