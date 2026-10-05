@@ -1,0 +1,31 @@
+24 runs in 525s
+
+full · palewastes · veteran · pilot plan {"replan":0.2,"noise":25} · 24 runs
+
+ by survivor
+  mage                      30.0m   2/2 dawn  lvl 173  potions 299.5  bombs 47.0  freezes 33.5  low  16%  hurt: bolt 67%, contact 27%, ground 6%
+  warrior                   11.0m   0/2 dawn  lvl  76  potions 31.5  bombs  7.5  freezes  3.5  low  -4%  hurt: contact 81%, bolt 16%, ground 3%, charge 1%
+  graveblade                21.5m   1/2 dawn  lvl 118  potions 172.0  bombs 26.0  freezes 17.0  low   9%  hurt: bolt 55%, contact 41%, ground 4%, charge 0%
+  priest                    30.0m   2/2 dawn  lvl 157  potions 262.5  bombs 36.0  freezes 35.0  low  30%  hurt: bolt 67%, contact 28%, ground 4%, charge 0%
+  warlock                   20.3m   1/2 dawn  lvl 126  potions 206.5  bombs 25.0  freezes 17.5  low -10%  hurt: contact 50%, bolt 43%, ground 7%
+  ruinseeker                19.2m   1/2 dawn  lvl 113  potions 127.0  bombs 21.5  freezes 16.0  low   4%  hurt: bolt 65%, contact 32%, ground 4%
+  rogue                      9.1m   0/2 dawn  lvl  53  potions 11.0  bombs  2.0  freezes  4.0  low -17%  hurt: contact 79%, bolt 20%, ground 1%
+  shaman                    30.0m   2/2 dawn  lvl 159  potions 298.0  bombs 42.0  freezes 34.0  low  10%  hurt: bolt 58%, contact 38%, ground 3%, charge 1%
+  druid                      4.2m   0/2 dawn  lvl  51  potions  7.5  bombs  2.0  freezes  1.0  low  -1%  hurt: contact 87%, bolt 10%, ground 3%
+  hunter                     6.7m   0/2 dawn  lvl  63  potions 18.0  bombs  3.5  freezes  2.0  low -13%  hurt: contact 82%, bolt 13%, ground 6%
+  paladin                   30.0m   2/2 dawn  lvl 160  potions 307.0  bombs 44.5  freezes 34.5  low  18%  hurt: contact 51%, bolt 46%, ground 3%, charge 0%
+  monk                       3.5m   0/2 dawn  lvl  34  potions  3.5  bombs  1.0  freezes  1.5  low  -3%  hurt: contact 91%, bolt 6%, ground 4%
+  ALL                       18.0m 11/24 dawn  lvl 107  potions 145.3  bombs 21.5  freezes 16.6  low   3%  hurt: bolt 50%, contact 45%, ground 4%, charge 0%
+
+ the killing blow
+     4  contact · Stitched Horror
+     3  contact · Palewaste Ghoul
+     2  contact · Crypt Skitterer
+     1  contact · Hungering Geist
+     1  contact · Gorestitch the Amalgam
+     1  bolt · Cult Necromancer
+     1  contact · Deathbound Vanguard
+
+ bolts that landed: 3546, flying <0.2s 0%, 0.2-0.4s 1%, 0.4-0.8s 15%, longer 83%; mean speed 240; slowed when hit 0%
+
+ pilot: 5.87ms a decision
