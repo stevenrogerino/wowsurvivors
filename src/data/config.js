@@ -21,17 +21,19 @@
     dropChanceBomb: 0.0009,
     dropChanceStone: 0.0009,
     dropChanceHourglass: 0.0006,
-    /* ...but a horde of thousands must not turn them into a screen that never
-       stops clearing. Each kill's chance can fade as the night goes on
-       (x1/(1 + minutes/dropFadeMinutes); 0 is off), and each kind draws on a purse of
-       tokens: refilled bombRefill / glassRefill a minute (x the square root of
-       luck), holding at most bombCap / glassCap. At the cap, one bomb every
-       ~18s and one hourglass every ~23s; nothing stops a lull's saved tokens
-       coming out together. A bomb's or a frozen creature's death rolls neither,
-       and neither drops while the tide crests above dropCrestSuppress. */
+    /* ...but a horde of thousands, or a luck build, must not turn them into a
+       screen that never stops clearing. After a bomb drops, the next bomb's
+       chance starts at nothing and climbs back over bombRecharge seconds
+       (glassRecharge for hourglasses), along a square curve. Still a roll on
+       every kill: a lucky night late gets one about every 15-20s, sometimes
+       8, sometimes 30; an ordinary night, whose gaps are longer than the
+       recharge anyway, barely notices. A bomb's or a frozen creature's death
+       rolls neither, and neither drops while the tide crests above
+       dropCrestSuppress. Each kill's chance can also fade as the night goes
+       on (x1/(1 + minutes/dropFadeMinutes); 0 is off). */
     dropFadeMinutes: 0,
-    bombRefill: 3.33, bombCap: 2,
-    glassRefill: 2.6, glassCap: 1,
+    bombRecharge: 20,
+    glassRecharge: 25,
     dropCrestSuppress: 1.15,
 
     potionHealPct: 0.30,

@@ -151,6 +151,10 @@ function report(rows) {
        weapons beside it (and what reached the survivor). TUNE=k=v,... sets
        Familiar.tuning for the try. */
     SUMMON: env('SUMMON', ''), SUMMON_RANKS: +env('SUMMON_RANKS', 3), TUNE: env('TUNE', ''),
+    /* CURDLE=1: a committed Curdled Light build beside the weapons - Blood
+       Rite, five ranks of Curdled Light and four of Recovery - and its line
+       measured against the mean weapon, like SUMMON. */
+    CURDLE: env('CURDLE', '') === '1',
     // PASSIVES=subset: each build draws SUBSET of the nine weapon passives
     // (by stage 0/2/4/5/6), each at three quarters of its cap (full at s5),
     // as a player who took some and not others. Default: all nine at FRAC.
@@ -249,6 +253,13 @@ function report(rows) {
       for (const kv of S.TUNE.split(',').filter(Boolean)) { const [k, v] = kv.split('='); WS.Familiar.tuning[k] = +v; }
       const sup = { wolf: 'spirit_companion', ghoul: 'grave_call' }[S.SUMMON];
       if (sup) for (let k = 0; k < S.SUMMON_RANKS; k++) { WS.Upgrades[sup].apply(p, WS.Upgrades[sup]); p.upgradeLevels[sup] = k + 1; }
+      if (S.CURDLE) {
+        WS.Blessings.blood_rite.apply(p, WS.Blessings.blood_rite);
+        for (const [id, n] of [['curdled', 5], ['recovery', 4]]) {
+          for (let k = 0; k < n; k++) WS.Upgrades[id].apply(p, WS.Upgrades[id]);
+          p.upgradeLevels[id] = n;
+        }
+      }
       const cx = WS.CONST.WORLD_WIDTH / 2, cy = WS.CONST.WORLD_HEIGHT / 2;
       WS.Input.poll = () => {};
       for (const k of Object.keys(WS.Input.keys)) WS.Input.keys[k] = false;
@@ -298,6 +309,15 @@ function report(rows) {
   }
   await b.close();
   if (env('OUT', null)) fs.writeFileSync(env('OUT'), JSON.stringify({ S, rows }));
+  if (S.CURDLE) {
+    let sum = 0, wpn = 0;
+    for (const r of rows) {
+      const tot = Object.values(r.landed).reduce((a, v) => a + v, 0) || 1;
+      sum += (r.landed.curdled || 0) / tot;
+      wpn += r.weapons.reduce((a, id) => a + (r.landed[id] || 0) / tot, 0) / r.weapons.length;
+    }
+    console.log(`curdled took ${(100 * sum / (rows.length || 1)).toFixed(1)}% of the build; the mean weapon ${(100 * wpn / (rows.length || 1)).toFixed(1)}%: x${(sum / wpn).toFixed(2)} of a weapon`);
+  }
   if (S.SUMMON) {
     // The summon against the weapons beside it: its share of what landed,
     // the mean weapon's share, and the ratio of the two.

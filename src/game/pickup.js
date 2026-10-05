@@ -102,28 +102,24 @@
     return p;
   };
 
-  /** The bomb and hourglass purses (Config.bombRefill): full at the start of
-   *  a night, refilled as it runs. */
-  function purse(run) {
-    const cfg = WS.Config;
-    return run.dropTokens || (run.dropTokens = { bomb: cfg.bombCap, hourglass: cfg.glassCap });
-  }
-  Pickup.refill = function (dt) {
-    const run = WS.Game.run, p = WS.Game.player;
-    if (!run || !p) return;
-    const cfg = WS.Config, t = purse(run), k = WS.sqrt(WS.max(0, p.luck)) * dt / 60;
-    t.bomb = WS.min(cfg.bombCap, t.bomb + cfg.bombRefill * k);
-    t.hourglass = WS.min(cfg.glassCap, t.hourglass + cfg.glassRefill * k);
-  };
-  /** Whether a won bomb or hourglass roll may drop, spending its token. */
-  function draw(kind, source) {
+  /** How far a bomb or hourglass has recharged since the last one dropped:
+   *  0 right after, back to 1 after Config.bombRecharge / glassRecharge
+   *  seconds, along a square curve (so most of the wait is near the start).
+   *  It scales the roll, it never schedules one: the gap is still the dice.
+   *  0 for a bomb's own kills, kills while time is stopped, and while the
+   *  tide crests - none of those roll either. */
+  function recharge(kind, source) {
     const run = WS.Game.run, cfg = WS.Config;
-    if (source === 'bomb' || WS.Enemy.freezeTimer > 0) return false;
-    if (WS.WaveManager.tide(run.time, run) > cfg.dropCrestSuppress) return false;
-    const t = purse(run);
-    if (t[kind] < 1) return false;
-    t[kind] -= 1;
-    return true;
+    if (source === 'bomb' || WS.Enemy.freezeTimer > 0) return 0;
+    if (WS.WaveManager.tide(run.time, run) > cfg.dropCrestSuppress) return 0;
+    const last = run.lastDrop && run.lastDrop[kind];
+    if (last === undefined) return 1;
+    const k = (run.time - last) / (kind === 'bomb' ? cfg.bombRecharge : cfg.glassRecharge);
+    return k >= 1 ? 1 : k * k;
+  }
+  function dropped(kind) {
+    const run = WS.Game.run;
+    (run.lastDrop || (run.lastDrop = {}))[kind] = run.time;
   }
 
   /** Death-roll, called for every kill. Elites and bosses always leave a chest. */
@@ -143,12 +139,12 @@
       this.spawn('coin', enemy.x, enemy.y, WS.floor((cfg.coinMin + WS.randInt(0, cfg.coinSpread)) * WS.Game.run.goldMult));
     } else if (WS.random() < cfg.dropChancePotion * luck) {
       this.spawn('potion', enemy.x, enemy.y);
-    } else if (WS.random() < cfg.dropChanceBomb * luck * fade) {
-      if (draw('bomb', source)) this.spawn('bomb', enemy.x, enemy.y);
+    } else if (WS.random() < cfg.dropChanceBomb * luck * fade * recharge('bomb', source)) {
+      this.spawn('bomb', enemy.x, enemy.y); dropped('bomb');
     } else if (WS.random() < cfg.dropChanceStone * luck) {
       this.spawn('stone', enemy.x, enemy.y);
-    } else if (WS.random() < cfg.dropChanceHourglass * luck * fade) {
-      if (draw('hourglass', source)) this.spawn('hourglass', enemy.x, enemy.y);
+    } else if (WS.random() < cfg.dropChanceHourglass * luck * fade * recharge('hourglass', source)) {
+      this.spawn('hourglass', enemy.x, enemy.y); dropped('hourglass');
     }
   };
 

@@ -32,15 +32,21 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
   | ghouls | 4.38 -> 1.64 | 2.30 -> 0.94 | 0.94 -> 0.83 | 0.79 -> 0.92 |
 
 - **W3, bombs and hourglasses.** A bomb's kills and kills during a freeze
-  no longer roll them (`Pickup.onKill(e, source)`), none drop while the
-  tide is above `dropCrestSuppress` 1.15, and each draws a token from a
-  purse refilled `bombRefill` 3.33 / `glassRefill` 2.6 a minute x sqrt(luck),
-  capped `bombCap` 2 / `glassCap` 1 (the cap: a bomb every ~18s, an
-  hourglass every ~23s). `dropFadeMinutes` (a per-kill fade) exists and
-  is off. Bot nights, 3 survivors x 25 min, same seeds, 20:00-25:00:
-  bombs 1.60 -> 1.13 a minute, hourglasses 1.13 -> 0.93, frozen 5.9 ->
-  5.3 s a minute; 0:00-10:00 identical. Pinned luck 2.5 measured 2.1
-  bombs and 2.4 hourglasses a minute late before the change.
+  no longer roll them (`Pickup.onKill(e, source)`), and none drop while
+  the tide is above `dropCrestSuppress` 1.15. After one drops, the next
+  one's per-kill chance is scaled by min(1, (seconds since / recharge)^2),
+  `bombRecharge` 20, `glassRecharge` 25: still a roll on every kill, but no
+  showers. (A first cut used token purses, a hard ceiling of one per ~18s;
+  replaced: late luck builds ticked like a clock.) `dropFadeMinutes`, a
+  per-kill fade, exists and is off. Warlock bot, 25 min, per 5 minutes
+  from 0:00, bombs / hourglasses:
+
+  | luck | before | after |
+  |---|---|---|
+  | 1 (3 nights, 20:00-25:00) | 1.60 / 1.13 a minute | ~1.1 / ~0.9 a minute |
+  | 3 | 1 6 9 14 16 / 3 4 3 5 9 | 2 0 8 8 10 / 2 3 2 6 8 |
+  | 5 | 1 11 13 16 27 / 5 5 9 17 22 | 3 8 10 16 12 / 3 6 5 9 9 |
+
 - **W5, Tether of Anguish.** `evolvedHealTaper` 0.35: evolved, the mend
   lands in full at or below half health and tapers linearly to 35% at
   full; the withheld part is overheal (`Player.heal(p, a, src, keep)`).

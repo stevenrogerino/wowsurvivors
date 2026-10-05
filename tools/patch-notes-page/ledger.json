@@ -773,13 +773,13 @@
   "img": "icon_p_luck.png",
   "body": [
    "A bomb's own kills could roll more bombs and hourglasses, and so could creatures killed while time was stopped. A luck build once chained 74 charges and 46 hourglasses in one night.",
-   "Those kills no longer roll them, and none drop while the tide crests before a boss. Each also draws on a small purse that refills over time and holds two bombs or one hourglass. At most that is a bomb every 18 seconds or so and an hourglass every 23, rising a little with luck. Early nights are unchanged; potions and gold are untouched."
+   "Those kills no longer roll them, and none drop while the tide crests before a boss. And each one needs a moment to come back: right after a bomb drops, the next bomb's chance starts at nothing and climbs back over about twenty seconds (twenty-five for an hourglass). Every kill is still a roll, so the gaps are still luck, but a lucky build late in the night now gets one roughly every fifteen to twenty-five seconds instead of a constant shower. Early nights are unchanged; potions and gold are untouched."
   ],
   "list": [],
   "chips": [
-   "late bombs <b>1.6 → 1.1</b> a minute",
-   "late hourglasses <b>1.1 → 0.9</b>",
-   "first 10 minutes <b>unchanged</b>"
+   "luck 5, late: bombs <b>every 11s → ~20s</b>",
+   "hourglasses <b>every 14s → ~30s</b>",
+   "early night <b>unchanged</b>"
   ]
  },
  {
