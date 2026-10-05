@@ -701,5 +701,103 @@
   ],
   "list": [],
   "chips": []
+ },
+ {
+  "sec": "From the testers",
+  "stamp": "nerf",
+  "title": "Wolves and ghouls, brought to heel",
+  "img": "icon_p_spirit_companion.png",
+  "body": [
+   "Three wolves or three ghouls did four to five times a weapon's damage at 5:00 and over twice at 9:00, then fell behind by 20:00. Their early power was kills, not damage: a bite or a maul finishes trash whatever it hits for, so softer bites barely moved them.",
+   "So they come slower and hit harder later. Bites come every 0.85s, not 0.55s, and a bite grows with your level alone, with no flat base. The wolves' maul around the quarry is lighter and narrower, and a wolf waits longer before the next bite after a kill. Ghouls rake less often, over a slightly smaller sweep. The pack bonus on a shared quarry, mostly bosses and elites, doubles."
+  ],
+  "list": [],
+  "chips": [
+   "wolves at 9:00 <b>2.3x → 1.3x</b> a weapon",
+   "ghouls at 9:00 <b>2.3x → 0.9x</b>",
+   "at 20:00 <b>held</b>"
+  ]
+ },
+ {
+  "sec": "From the testers",
+  "stamp": "nerf",
+  "title": "Tether of Anguish, a panic heal",
+  "img": "icon_grave_tether.png",
+  "body": [
+   "Evolved, the tether mended about 59 health a second from range once a line of creatures formed, and kiting with it was close to immortality.",
+   "Now it mends in full at half health or below, and less the healthier you are: about a third at full. The rest counts as overheal, so Curdled Light still feeds on it."
+  ],
+  "list": [],
+  "chips": [
+   "at 70% health <b>59 → 44</b> a second",
+   "at 95% <b>59 → 21</b>",
+   "at half health <b>unchanged</b>"
+  ]
+ },
+ {
+  "sec": "From the testers",
+  "stamp": "buff",
+  "title": "Ruthless ranks matter",
+  "img": "icon_p_ruthless.png",
+  "body": [
+   "Taken without Opportunist, Ruthless finished an ordinary creature a crit left under 3% health a rank. Late on a crit kills trash anyway, so ranks two to five did close to nothing.",
+   "Now the execute is a flat 6% from rank 1, and every rank makes your crits land 8% harder on anything below 35% health, elites and bosses included."
+  ],
+  "list": [],
+  "chips": [
+   "execute <b>3% a rank → 6%</b> flat",
+   "crits below 35% <b>+8% a rank</b>",
+   "on bosses too"
+  ]
+ },
+ {
+  "sec": "From the testers",
+  "stamp": "fix",
+  "title": "Bombs and hourglasses don't feed themselves",
+  "img": "icon_p_luck.png",
+  "body": [
+   "A bomb's own kills could roll more bombs and hourglasses, and so could creatures killed while time was stopped. A luck build once chained 74 charges and 46 hourglasses in one night.",
+   "Those kills no longer roll them, and none drop while the tide crests before a boss. Each also draws on a small purse that refills over time and holds two bombs or one hourglass. At most that is a bomb every 18 seconds or so and an hourglass every 23, rising a little with luck. Early nights are unchanged; potions and gold are untouched."
+  ],
+  "list": [],
+  "chips": [
+   "late bombs <b>1.6 → 1.1</b> a minute",
+   "late hourglasses <b>1.1 → 0.9</b>",
+   "first 10 minutes <b>unchanged</b>"
+  ]
+ },
+ {
+  "sec": "From the testers",
+  "stamp": "new",
+  "title": "The meter counts what landed",
+  "img": null,
+  "body": [
+   "A blow that kills counted its whole size on the damage meter, not the health it actually took, so big hits and screen-clears looked stronger than they were. The meter now counts only what landed. Overkill and healing sit behind two buttons under the meter: hover them to see each source's share.",
+   "A ghoul's rot gets its own line, so the extra damage it lends your weapons is no longer counted as theirs."
+  ],
+  "list": [],
+  "chips": []
+ },
+ {
+  "sec": "From the testers",
+  "stamp": "new",
+  "title": "Run codes",
+  "img": null,
+  "body": [
+   "The end of every night has a Copy run code button: one line of text holding the night as it went, every card offered and taken, where you moved, what hit what and what dropped. Paste it to us and we can read the night back for balance."
+  ],
+  "list": [],
+  "chips": []
+ },
+ {
+  "sec": "From the testers",
+  "stamp": "fix",
+  "title": "Healing, bosses, unions and banishes, shown",
+  "img": null,
+  "body": [
+   "The survivor card and build sheet show healing received. Bosses are drawn over the spell light again, so you never lose one in your own effects. A union's tooltip lists the discoveries it carries from both weapons and what each does. What you have banished is listed on the pause sheet and the Banish button."
+  ],
+  "list": [],
+  "chips": []
  }
 ]

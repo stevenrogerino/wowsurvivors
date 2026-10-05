@@ -77,6 +77,7 @@
     b.source = spec.source;
     b.healPer = spec.healPer || 0;
     b.healPool = spec.healPool || null;     // shared by every shot of one cast
+    b.healTaper = spec.healTaper || 0;
     b.procChain = spec.procChain || 0;
     b.spin = WS.random() * WS.TAU;
     b.spinRate = spec.spinRate === undefined ? 0 : spec.spinRate;
@@ -196,7 +197,9 @@
     if (b.healPer && b.healPool && b.healPool.left > 0) {
       const amount = WS.min(b.healPer, b.healPool.left);
       b.healPool.left -= amount;
-      WS.Player.heal(player, amount, b.source || 'holy');
+      // A taper: full at half health or below, down to healTaper at full.
+      const keep = b.healTaper ? 1 - (1 - b.healTaper) * WS.clamp((player.health / player.maxHealth - 0.5) / 0.5, 0, 1) : 1;
+      WS.Player.heal(player, amount, b.source || 'holy', keep);
     }
     if (player.lifesteal > 0) WS.Player.lifesteal(player, dealt * player.lifesteal);
     if (b.procChain > 0 && WS.random() < b.procChain) {

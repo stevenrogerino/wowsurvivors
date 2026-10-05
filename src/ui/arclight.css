@@ -3501,3 +3501,12 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 
 /* The run code, shown to copy by hand when the clipboard is refused. */
 .run-code-box { width: 100%; min-height: 64px; margin-top: 10px; font: 11px/1.3 var(--fig, monospace); background: var(--obsidian-2, #13141c); color: var(--ink, #e9edf6); border: 1px solid var(--arc-deep, #b98c3c); border-radius: 6px; padding: 8px; resize: vertical; word-break: break-all; }
+
+/* Healing and overkill, a line each under the damage meter; the meter itself on hover. */
+.meter-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.meter-chip { display: inline-flex; align-items: baseline; gap: 8px; padding: 5px 10px; border-radius: 6px;
+  border: 1px solid var(--line, rgba(255,255,255,.12)); background: var(--obsidian-2, #13141c); color: var(--ink, #e9edf6);
+  font: 600 12px/1.2 var(--fig, monospace); cursor: help; }
+.meter-chip:hover, .meter-chip:focus-visible { border-color: var(--arc-deep, #b98c3c); }
+.meter-chip .mc-k { color: var(--ink-dim, #8b93a7); font-weight: 500; }
+.meter-tip { min-width: 280px; }

@@ -366,7 +366,7 @@ function inPage(S, job, sources) {
       // [6]: the meter so far and each weapon's rank (E once evolved), to see
       // when in a night one weapon takes the meter over.
       curve.push([Math.round(nextMark / 60), Math.round(f * 100), p.level, WS.Enemy.pool.count, Math.round(G.run.damageDone),
-        Object.fromEntries(Object.entries(G.run.damageByWeapon || {}).map(([k, v]) => [k, Math.round(v)])),
+        Object.fromEntries(Object.entries(G.run.landedByWeapon || G.run.damageByWeapon || {}).map(([k, v]) => [k, Math.round(v)])),
         Object.fromEntries(p.weapons.map((w) => [w.id, w.level + (w.evolved ? 'E' : '')]))]);
       nextMark += 60;
     }
@@ -385,7 +385,7 @@ function inPage(S, job, sources) {
     last: L.last, lowest: Math.round(L.lowest * 100), lowTime: Math.round(L.lowTime),
     potions: L.potions, healed: Math.round(run.healingDone), bombs: L.bombs, freezes: L.freezes,
     dealt: Math.round(run.damageDone), storms: run.storms || 0,
-    byWeapon: Object.fromEntries(Object.entries(run.damageByWeapon || {}).map(([k, v]) => [k, Math.round(v)])),
+    byWeapon: Object.fromEntries(Object.entries(run.landedByWeapon || run.damageByWeapon || {}).map(([k, v]) => [k, Math.round(v)])),
     healBy: Object.fromEntries(Object.entries(run.healingBySource || {}).map(([k, v]) => [k, Math.round(v)])),
     overheal: Math.round(Object.values(run.overhealBySource || {}).reduce((a, v) => a + v, 0)),
     maxHp: Math.round(p.maxHealth), armor: Math.round(p.armor || 0),

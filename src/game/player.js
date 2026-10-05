@@ -411,9 +411,11 @@
 
   /** Splits a heal into the part that lands and the part that would be wasted,
    *  feeding both into curdled at their own rates. */
-  Player.applyHeal = function (p, scaled, source) {
+  /** keep (0-1, default 1): the share of the heal allowed to land; the rest
+      is overheal, as if the survivor were already full. */
+  Player.applyHeal = function (p, scaled, source, keep) {
     const room = WS.max(0, p.maxHealth - p.health);
-    const gained = WS.min(scaled, room);
+    const gained = WS.min(keep === undefined || keep >= 1 ? scaled : WS.floor(scaled * keep), room);
     const wasted = scaled - gained;
     if (wasted > 0) {
       const run = WS.Game.run;
@@ -432,7 +434,7 @@
     return gained;
   };
 
-  Player.heal = function (p, amount, source) {
+  Player.heal = function (p, amount, source, keep) {
     // No early-out at full health: overheal is a resource Curdled Light eats,
     // so the heal still has to be measured.
     /* The fraction is CARRIED, per source, to the next heal. Health is whole
@@ -448,7 +450,7 @@
     const scaled = WS.floor(total);
     carry[key] = total - scaled;
     if (scaled <= 0) return 0;
-    return Player.applyHeal(p, scaled, key);
+    return Player.applyHeal(p, scaled, key, keep);
   };
 
   Player.lifesteal = function (p, amount) {

@@ -3846,14 +3846,14 @@
        heal used to be filed under "Holy" whichever weapon cast it. */
     const SOURCE = {
       regen: 'Regeneration', lifesteal: 'Leech Pact (lifesteal)', potion: 'Healing potions',
-      food: 'Bread', wolves: 'Spirit wolves', ghouls: 'Risen ghouls', bomb: 'Bombs',
+      food: 'Bread', wolves: 'Spirit wolves', ghouls: 'Risen ghouls', ghoul_rot: 'Ghoul rot', bomb: 'Bombs',
       maul: 'Bear maul', starfell: 'Owlbear stars', stillwater: 'Stillwater Step palms',
       second_wind: 'Second Wind', storm: 'Storm cells', shrine_storm: 'Storm shrine',
       soulbond: 'Soul lanterns', coolant: 'Burst coolant pipes', stormbond: 'Storm stones',
       holy: 'Holy Light', other: 'Other', untagged: 'Other',
     };
     // The marks for sources that are not a weapon, passive or blessing.
-    const SOURCE_ART = { wolves: 'spiritwolf', ghouls: 'risen', regen: 'leaf',
+    const SOURCE_ART = { wolves: 'spiritwolf', ghouls: 'risen', ghoul_rot: 'risen', regen: 'leaf',
       potion: 'potion', bomb: 'bomb' };
     const sourceName = (key) => {
       const w = WS.Weapons[key];
@@ -3865,7 +3865,7 @@
         || (WS.Blessings[key] && WS.Blessings[key].name);
       return named || key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
     };
-    const meterFor = (title, table, tint, hits) => {
+    const meterFor = (title, table, tint, hits, raw) => {
       const entries = Object.entries(table).filter((e) => e[1] > 0).sort((a, b) => b[1] - a[1]);
       if (!entries.length) return null;
       const meter = el('div');
@@ -3909,9 +3909,13 @@
         const n = hits && hits[key];
         const src = SOURCE_ART[key] || (WS.Upgrades[key] && WS.Upgrades[key].art)
           || (WS.Blessings[key] && WS.Blessings[key].art);
+        // The hover says how much more the blows carried than they took.
+        const over = raw && raw[key] > value * 1.005 ? raw[key] - value : 0;
+        const tip = [n ? `${WS.formatNumber(n)} hits, ${WS.formatNumber(WS.round(value / n))} each` : null,
+          over ? `${WS.formatNumber(over)} more was overkill, past what the targets had left` : null,
+          key === 'ghoul_rot' ? 'What the ghouls\u2019 rot added to every other blow' : null].filter(Boolean).join('\n');
         row(sourceName(key), value, w ? (WS.CONST.COLORS[w.school] || WS.CONST.COLORS.arc) : tint,
-          n ? `${WS.formatNumber(n)} hits, ${WS.formatNumber(WS.round(value / n))} each` : null,
-          w ? w.art : src);
+          tip || null, w ? w.art : src);
       }
       if (rest.length) {
         row(`${rest.length} more`, rest.reduce((sum, e) => sum + e[1], 0), tint,
@@ -3919,13 +3923,50 @@
       }
       return meter;
     };
-    const dmgMeter = meterFor('Damage meter', run.damageByWeapon, WS.CONST.COLORS.arc, run.hitsBySource);
+    /* What landed, not what was swung: a blow past a creature's last point
+       of health took nothing more, and counting it made the weapons that
+       one-shot the crowd look bigger than they are. The hover keeps it. */
+    const dmgMeter = meterFor('Damage meter', run.landedByWeapon || run.damageByWeapon, WS.CONST.COLORS.arc, run.hitsBySource,
+      run.landedByWeapon ? run.damageByWeapon : null);
     if (dmgMeter) third.append(dmgMeter);
-    const healMeter = meterFor('Healing meter', run.healingBySource, WS.CONST.COLORS.heal);
-    if (healMeter) third.append(healMeter);
-    const overMeter = meterFor('Overhealing', run.overhealBySource, WS.CONST.COLORS.shadow);
-    if (overMeter) third.append(overMeter);
-    if (!dmgMeter && !healMeter && !overMeter) {
+    /* Healing and overkill are read on a hover, so the damage meter keeps
+       the panel: a line each with its total, and the whole meter in the tip.
+       Overkill is what the blows carried past the creatures' last health -
+       the counterpart of overhealing, and like it, not part of the meter. */
+    const overkill = {};
+    if (run.landedByWeapon) {
+      for (const [k, v] of Object.entries(run.damageByWeapon || {})) {
+        const d = v - (run.landedByWeapon[k] || 0);
+        if (d >= 1) overkill[k] = d;
+      }
+    }
+    const sum = (t) => Object.values(t || {}).reduce((a, b) => a + (b > 0 ? b : 0), 0);
+    const chips = el('div', 'meter-chips');
+    const chip = (label, total, build) => {
+      if (!(total > 0)) return;
+      const c = el('button', 'meter-chip');
+      c.type = 'button';
+      c.append(el('span', 'mc-k', label), el('span', 'mc-v', WS.formatNumber(WS.round(total))));
+      tipOn(c, build, { prefer: ['left', 'above'], delay: 60 });
+      chips.append(c);
+    };
+    chip('Healing', sum(run.healingBySource), () => {
+      const box = el('div', 'tip-body meter-tip');
+      const h = meterFor('Healing meter', run.healingBySource, WS.CONST.COLORS.heal);
+      const o = meterFor('Overhealing', run.overhealBySource, WS.CONST.COLORS.shadow);
+      if (h) box.append(h);
+      if (o) box.append(o);
+      return box;
+    });
+    chip('Overkill', sum(overkill), () => {
+      const box = el('div', 'tip-body meter-tip');
+      const m = meterFor('Overkill', overkill, WS.CONST.COLORS.shadow);
+      if (m) box.append(m);
+      box.append(el('p', 'sheet-empty', 'Damage past what the creatures had left. Not counted on the damage meter.'));
+      return box;
+    });
+    if (chips.children.length) third.append(chips);
+    if (!dmgMeter && !chips.children.length) {
       third.append(el('h3', null, 'Damage meter'), el('p', 'sheet-empty', 'Nothing fell to you tonight.'));
     }
 
@@ -4157,7 +4198,7 @@
 
     // Whose work it mostly was.
     let top = null, most = 0;
-    for (const [id, v] of Object.entries(run.damageByWeapon || {})) if (v > most) { most = v; top = id; }
+    for (const [id, v] of Object.entries(run.landedByWeapon || run.damageByWeapon || {})) if (v > most) { most = v; top = id; }
     let topEvolved = null;
     if (top && WS.Weapons[top]) {
       const w = WS.Player.getWeapon(p, top);

@@ -5,6 +5,50 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
 
 <!-- new entries go directly below -->
 
+## 2026-10-05: Weeks 1-2 of the balance plan (SP research plan W0-W7)
+
+- **W0, the meter counts what landed.** `run.landedByWeapon` counts
+  min(blow, health above any floor); `damageByWeapon` stays raw. The
+  difference is the Overkill hover. A ghoul's rot is credited to its own
+  line (`ghoul_rot`), not to the weapon it amplified. meter-test, botlab,
+  afk-test and run codes read landed. Shares below are landed.
+- **W1, run codes (v4).** Pickup drops, 5s kills and luck, landed meter
+  snapshots, overkill/overheal/curdle at the end; run-code.js filters
+  (`--diff --char --map --bal`), `--builds` and per-stretch aggregates.
+- **W2, summons.** Measured in full five-weapon builds with three ranks
+  of the summon (`SUMMON=wolf|ghoul node tools/meter-test.js`, x of the
+  mean weapon). The plan's dmgPerLevel cut was rejected: summon power is
+  kills (a bite or maul finishes trash whatever it does), so it took the
+  late game down with the early (s5 wolves 0.30 -> 0.12). Probes at s2:
+  no maul 5.25 -> 1.45; ghoulCdMult x2 4.38 -> 2.89 and s5 unchanged.
+  `biteCooldown 0.55 -> 0.85, dmgBase 12.74 -> 0, dmgPerLevel 0.91 ->
+  1.35, maulDmg 0.7 -> 0.2, mauleRadius 1.0 -> 0.8, killRebite 0.12 ->
+  0.5, packBonus 0.25 -> 0.5, ghoulCdMult 1.45 -> 3.5, ghoulRadiusMult
+  1.35 -> 1.1`. 24 builds a stage:
+
+  | | s2 5:00 | s3 9:00 | s4 14:00 | s5 20:00 |
+  |---|---|---|---|---|
+  | wolves | 5.25 -> 2.82 | 2.32 -> 1.26 | 1.49 -> 0.91 | 0.30 -> 0.23 |
+  | ghouls | 4.38 -> 1.64 | 2.30 -> 0.94 | 0.94 -> 0.83 | 0.79 -> 0.92 |
+
+- **W3, bombs and hourglasses.** A bomb's kills and kills during a freeze
+  no longer roll them (`Pickup.onKill(e, source)`), none drop while the
+  tide is above `dropCrestSuppress` 1.15, and each draws a token from a
+  purse refilled `bombRefill` 3.33 / `glassRefill` 2.6 a minute x sqrt(luck),
+  capped `bombCap` 2 / `glassCap` 1 (the cap: a bomb every ~18s, an
+  hourglass every ~23s). `dropFadeMinutes` (a per-kill fade) exists and
+  is off. Bot nights, 3 survivors x 25 min, same seeds, 20:00-25:00:
+  bombs 1.60 -> 1.13 a minute, hourglasses 1.13 -> 0.93, frozen 5.9 ->
+  5.3 s a minute; 0:00-10:00 identical. Pinned luck 2.5 measured 2.1
+  bombs and 2.4 hourglasses a minute late before the change.
+- **W5, Tether of Anguish.** `evolvedHealTaper` 0.35: evolved, the mend
+  lands in full at or below half health and tapers linearly to 35% at
+  full; the withheld part is overheal (`Player.heal(p, a, src, keep)`).
+- **W7, Ruthless (alone).** `ruthlessExecute` 0.03 a rank -> 0.06 flat;
+  every rank adds `ruthlessLow` 8% to crits on anything below
+  `ruthlessLowLine` 35% health, elites and bosses included
+  (`Calling.ruthlessCrit`). About +1.6% boss damage a rank at 40% crit.
+
 ## 2026-09-29 (later): The meter fit, done over four ways to play and three ranks
 
 Supersedes the weapon numbers in the entry below. The first fit measured one

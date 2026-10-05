@@ -3593,6 +3593,15 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 /* The run code, shown to copy by hand when the clipboard is refused. */
 .run-code-box { width: 100%; min-height: 64px; margin-top: 10px; font: 11px/1.3 var(--fig, monospace); background: var(--obsidian-2, #13141c); color: var(--ink, #e9edf6); border: 1px solid var(--arc-deep, #b98c3c); border-radius: 6px; padding: 8px; resize: vertical; word-break: break-all; }
 
+/* Healing and overkill, a line each under the damage meter; the meter itself on hover. */
+.meter-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.meter-chip { display: inline-flex; align-items: baseline; gap: 8px; padding: 5px 10px; border-radius: 6px;
+  border: 1px solid var(--line, rgba(255,255,255,.12)); background: var(--obsidian-2, #13141c); color: var(--ink, #e9edf6);
+  font: 600 12px/1.2 var(--fig, monospace); cursor: help; }
+.meter-chip:hover, .meter-chip:focus-visible { border-color: var(--arc-deep, #b98c3c); }
+.meter-chip .mc-k { color: var(--ink-dim, #8b93a7); font-weight: 500; }
+.meter-tip { min-width: 280px; }
+
 </style>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%230b0d12'/><circle cx='50' cy='50' r='30' fill='none' stroke='%23f5c56b' stroke-width='8' stroke-dasharray='120 60'/></svg>">
 </head>
@@ -4072,6 +4081,18 @@ window.WS = window.WS || {};
     dropChanceBomb: 0.0009,
     dropChanceStone: 0.0009,
     dropChanceHourglass: 0.0006,
+    /* ...but a horde of thousands must not turn them into a screen that never
+       stops clearing. Each kill's chance can fade as the night goes on
+       (x1/(1 + minutes/dropFadeMinutes); 0 is off), and each kind draws on a purse of
+       tokens: refilled bombRefill / glassRefill a minute (x the square root of
+       luck), holding at most bombCap / glassCap. At the cap, one bomb every
+       ~18s and one hourglass every ~23s; nothing stops a lull's saved tokens
+       coming out together. A bomb's or a frozen creature's death rolls neither,
+       and neither drops while the tide crests above dropCrestSuppress. */
+    dropFadeMinutes: 0,
+    bombRefill: 3.33, bombCap: 2,
+    glassRefill: 2.6, glassCap: 1,
+    dropCrestSuppress: 1.15,
 
     potionHealPct: 0.30,
     hourglassFreeze: 8,
@@ -4755,8 +4776,12 @@ window.WS = window.WS || {};
     // Ruthless (Opportunist): ruthlessEdge more Edge a crit, a Cutthroat
     // ruthlessBlow harder, ruthlessRegroup seconds less to regroup. Without
     // it: a crit that leaves an ordinary creature (no elite, no boss) below
-    // ruthlessExecute of its health finishes it.
-    ruthlessEdge: 0.10, ruthlessBlow: 0.15, ruthlessRegroup: 0.3, ruthlessExecute: 0.03,
+    // ruthlessExecute of its health finishes it (flat, from rank 1), and every
+    // rank's crits land ruthlessLow harder on anything below ruthlessLowLine
+    // of its health, elites and bosses included. The execute alone added
+    // next to nothing past rank 1: late, a crit kills trash anyway.
+    ruthlessEdge: 0.10, ruthlessBlow: 0.15, ruthlessRegroup: 0.3, ruthlessExecute: 0.06,
+    ruthlessLow: 0.08, ruthlessLowLine: 0.35,
     // Stalker's Patience (The Quarry, no carry-over): a Quarry stalkerHaste
     // sooner, held stalkerLife seconds longer, taking stalkerBonus more.
     stalkerHaste: 0.06, stalkerLife: 1, stalkerBonus: 0.05,
@@ -5993,10 +6018,14 @@ window.WS = window.WS || {};
       range: 600, life: 2.4, radius: 10, color: [0.55, 0.20, 0.75],
       // Per enemy the coils strike, capped per volley: it used to have no cap.
       healPer: 5, evolvedHealPer: 4, healCap: 20, healCapRank: 6, evolvedHealCap: 18,
+      /* Evolved, it mends in full at or below half health and tapers to this
+         much of it at full; the rest is overheal (Curdled Light still eats
+         it). Its ~59 a second from range was immortality while kiting. */
+      evolvedHealTaper: 0.35,
       description: 'A coil of dark magic that wounds the living and knits your own flesh back together.',
       evolvePierce: 99,
       evolveName: 'Tether of Anguish', evolvePairing: 'wisdom',
-      evolveDescription: 'The tether takes more, and gives more back.',
+      evolveDescription: 'The tether takes more, and gives back more the deeper you are hurt: full mending at half health or below, about a third at full health, and the rest is overheal.',
     },
     blightfield: {
       damage: 1.26, evolveDamageMult: 6.031, bossDamage: 6.219, evolvedBossDamage: 3.818,
@@ -7393,10 +7422,11 @@ window.WS = window.WS || {};
     ruthless: {
       name: 'Ruthless', art: 'mask', quality: 'epic', max: 5, calling: 'comboAttuned',
       description: '+{Config.ruthlessEdge%}% Edge from a crit, a Cutthroat {Config.ruthlessBlow%}% harder, and {Config.ruthlessRegroup}s less to regroup',
-      alone: 'A crit that leaves an ordinary creature under {Config.ruthlessExecute%}% health per rank finishes it',
-      detail: 'For Opportunist, and offered once you take Precision. Without the calling it works on its own: a critical '
-        + 'strike finishes a creature it leaves below {Config.ruthlessExecute%}% of its health per rank. It never touches '
-        + 'elites, bosses or the finales. With Opportunist, only the Cutthroat\'s half applies.',
+      alone: 'Crits hit {Config.ruthlessLow%}% harder per rank below {Config.ruthlessLowLine%}% health, and finish an ordinary creature left under {Config.ruthlessExecute%}%',
+      detail: 'For Opportunist, and offered once you take Precision. Without the calling it works on its own: every rank makes '
+        + 'a critical strike land {Config.ruthlessLow%}% harder on anything below {Config.ruthlessLowLine%}% of its health, '
+        + 'elites and bosses included, and a crit that leaves an ordinary creature below {Config.ruthlessExecute%}% of its '
+        + 'health finishes it (never elites, bosses or the finales). With Opportunist, only the Cutthroat\'s half applies.',
       offer: (p) => p.ruthless > 0 || p.comboAttuned > 0 || (p.upgradeLevels.precision || 0) > 0,
       apply: (p) => { p.ruthless += 1; },
     },
@@ -26583,6 +26613,7 @@ window.WS = window.WS || {};
     b.source = spec.source;
     b.healPer = spec.healPer || 0;
     b.healPool = spec.healPool || null;     // shared by every shot of one cast
+    b.healTaper = spec.healTaper || 0;
     b.procChain = spec.procChain || 0;
     b.spin = WS.random() * WS.TAU;
     b.spinRate = spec.spinRate === undefined ? 0 : spec.spinRate;
@@ -26702,7 +26733,9 @@ window.WS = window.WS || {};
     if (b.healPer && b.healPool && b.healPool.left > 0) {
       const amount = WS.min(b.healPer, b.healPool.left);
       b.healPool.left -= amount;
-      WS.Player.heal(player, amount, b.source || 'holy');
+      // A taper: full at half health or below, down to healTaper at full.
+      const keep = b.healTaper ? 1 - (1 - b.healTaper) * WS.clamp((player.health / player.maxHealth - 0.5) / 0.5, 0, 1) : 1;
+      WS.Player.heal(player, amount, b.source || 'holy', keep);
     }
     if (player.lifesteal > 0) WS.Player.lifesteal(player, dealt * player.lifesteal);
     if (b.procChain > 0 && WS.random() < b.procChain) {
@@ -27543,7 +27576,7 @@ window.WS = window.WS || {};
     if (e.finaleTag) amount *= WS.Finale.sunriseMult();
     amount *= WS.Calling.markMult(e);
     const crit = WS.random() < player.critChance;
-    if (crit) { amount *= player.critDamage; WS.Calling.onCrit(player); }
+    if (crit) { amount *= player.critDamage * WS.Calling.ruthlessCrit(player, e); WS.Calling.onCrit(player); }
     if (e.dmgTaken !== 1) amount *= e.dmgTaken;
     // A ghoul's rot (Familiar): everything lands a little harder for a while.
     if (e.rotTimer > 0) amount *= e.rotMult;
@@ -27557,6 +27590,8 @@ window.WS = window.WS || {};
       e.bleedTimer = WS.Config.bleedTime;
       if (e.bleedTick <= 0) e.bleedTick = WS.Config.bleedTick;
     }
+    // The part of this blow that is the rot's, for the meter (Enemy.damage).
+    this._rot = e.rotTimer > 0 && e.rotMult > 1 ? 1 - 1 / e.rotMult : 0;
     this.damage(e, amount, crit, source);
     WS.FX.damage(e.x, e.y - e.radius * 0.6, amount, crit);
     // The blow carries what it was struck with (audio.js STRIKE).
@@ -27576,6 +27611,14 @@ window.WS = window.WS || {};
     // Waystones: damage dealt close builds the Ember - not the stones' own,
     // or an eruption would raise the next stone, and that one the next.
     if (player && player.totemAttuned > 0 && source !== 'waystones') WS.Calling.onDeal(player, e, WS.min(amount, WS.max(0, e.health)));
+    /* What the blow actually took: no more than the creature had left (or
+       had left above a finale boss's phase line). The meter is read on
+       this; the blow itself, overkill and all, stays in damageByWeapon. A
+       chain or a nova that one-shots trash was being credited with every
+       point past the kill. */
+    const landed = WS.min(amount, WS.max(0, e.health - (e.hpFloor > 0 ? e.hpFloor : 0)));
+    const rot = this._rot || 0;
+    this._rot = 0;
     e.health -= amount;
     // A finale boss between lives: the blow lands, the phase ends, nothing
     // past the line is taken.
@@ -27586,9 +27629,15 @@ window.WS = window.WS || {};
     run.damageDone += amount;
     const key = source || 'untagged';
     run.damageByWeapon[key] = (run.damageByWeapon[key] || 0) + amount;
+    /* The ghouls' rot makes every weapon's blow land harder; that share of
+       the blow is theirs, so it is the rot's line on the meter and not the
+       weapon's, which shows what it would have done without it. */
+    const L = run.landedByWeapon || (run.landedByWeapon = {});
+    L[key] = (L[key] || 0) + landed * (1 - rot);
+    if (rot) L.ghoul_rot = (L.ghoul_rot || 0) + landed * rot;
     const hits = run.hitsBySource || (run.hitsBySource = {});   // absent from a run saved before it existed
     hits[key] = (hits[key] || 0) + 1;
-    if (e.health <= 0) this.kill(e);
+    if (e.health <= 0) this.kill(e, source);
   };
 
   /** Returns how many it hit, so a caller can proc on a STRIKE rather than
@@ -27650,7 +27699,7 @@ window.WS = window.WS || {};
   };
 
   /* ---------------------------------------------------------------- kill - */
-  Enemy.kill = function (e) {
+  Enemy.kill = function (e, source) {
     const run = WS.Game.run;
     const t = e.template;
     const player = WS.Game.player;
@@ -27687,7 +27736,7 @@ window.WS = window.WS || {};
     if (e.boss) WS.FX.stop(0.16);
     else if (e.elite) WS.FX.stop(0.05);
     WS.XP.spawnGem(e.x, e.y, e.xp);
-    WS.Pickup.onKill(e);
+    WS.Pickup.onKill(e, source);
     WS.Save.recordKill(t, e.id);
     WS.Encounters.onKill(t);
     run.kills++;
@@ -27962,6 +28011,7 @@ window.WS = window.WS || {};
     const h = healOf(w);
     spec.healPer = h.per;
     spec.healPool = h.per > 0 ? (w._healPool || (w._healPool = { left: h.cap })) : null;
+    spec.healTaper = w.evolved ? (d.evolvedHealTaper || 0) : 0;
     spec.procChain = d.procChain || w.mods.procChain || 0;
     spec.spinRate = d.art === 'dagger' || d.art === 'axe' ? 14 : 0;
     // The newer behaviours' own fields, cleared here so no shot inherits them.
@@ -29279,9 +29329,11 @@ window.WS = window.WS || {};
 
   /** Splits a heal into the part that lands and the part that would be wasted,
    *  feeding both into curdled at their own rates. */
-  Player.applyHeal = function (p, scaled, source) {
+  /** keep (0-1, default 1): the share of the heal allowed to land; the rest
+      is overheal, as if the survivor were already full. */
+  Player.applyHeal = function (p, scaled, source, keep) {
     const room = WS.max(0, p.maxHealth - p.health);
-    const gained = WS.min(scaled, room);
+    const gained = WS.min(keep === undefined || keep >= 1 ? scaled : WS.floor(scaled * keep), room);
     const wasted = scaled - gained;
     if (wasted > 0) {
       const run = WS.Game.run;
@@ -29300,7 +29352,7 @@ window.WS = window.WS || {};
     return gained;
   };
 
-  Player.heal = function (p, amount, source) {
+  Player.heal = function (p, amount, source, keep) {
     // No early-out at full health: overheal is a resource Curdled Light eats,
     // so the heal still has to be measured.
     /* The fraction is CARRIED, per source, to the next heal. Health is whole
@@ -29316,7 +29368,7 @@ window.WS = window.WS || {};
     const scaled = WS.floor(total);
     carry[key] = total - scaled;
     if (scaled <= 0) return 0;
-    return Player.applyHeal(p, scaled, key);
+    return Player.applyHeal(p, scaled, key, keep);
   };
 
   Player.lifesteal = function (p, amount) {
@@ -29936,10 +29988,15 @@ window.WS = window.WS || {};
   K.comboLock = (p) => WS.max(0.5, C().comboLock - C().ruthlessRegroup * p.ruthless);
   /** Ruthless without the calling: a crit that leaves an ordinary creature
    *  below the line finishes it. Returns the blow to land instead. */
+  /** ...and its ranks: a crit lands harder on anything left low, bosses too. */
+  K.ruthlessCrit = function (p, e) {
+    if (p.ruthless <= 0 || p.comboAttuned > 0 || e.health >= e.maxHealth * C().ruthlessLowLine) return 1;
+    return 1 + C().ruthlessLow * p.ruthless;
+  };
   K.execute = function (p, e, amount) {
     if (p.ruthless <= 0 || p.comboAttuned > 0) return amount;
     if (e.boss || e.elite || e.finale || e.finaleTag || e.part) return amount;
-    if (e.health - amount > e.maxHealth * C().ruthlessExecute * p.ruthless) return amount;
+    if (e.health - amount > e.maxHealth * C().ruthlessExecute) return amount;
     count('executions');
     return WS.max(amount, e.health + 1);
   };
@@ -31050,11 +31107,36 @@ window.WS = window.WS || {};
     return p;
   };
 
+  /** The bomb and hourglass purses (Config.bombRefill): full at the start of
+   *  a night, refilled as it runs. */
+  function purse(run) {
+    const cfg = WS.Config;
+    return run.dropTokens || (run.dropTokens = { bomb: cfg.bombCap, hourglass: cfg.glassCap });
+  }
+  Pickup.refill = function (dt) {
+    const run = WS.Game.run, p = WS.Game.player;
+    if (!run || !p) return;
+    const cfg = WS.Config, t = purse(run), k = WS.sqrt(WS.max(0, p.luck)) * dt / 60;
+    t.bomb = WS.min(cfg.bombCap, t.bomb + cfg.bombRefill * k);
+    t.hourglass = WS.min(cfg.glassCap, t.hourglass + cfg.glassRefill * k);
+  };
+  /** Whether a won bomb or hourglass roll may drop, spending its token. */
+  function draw(kind, source) {
+    const run = WS.Game.run, cfg = WS.Config;
+    if (source === 'bomb' || WS.Enemy.freezeTimer > 0) return false;
+    if (WS.WaveManager.tide(run.time, run) > cfg.dropCrestSuppress) return false;
+    const t = purse(run);
+    if (t[kind] < 1) return false;
+    t[kind] -= 1;
+    return true;
+  }
+
   /** Death-roll, called for every kill. Elites and bosses always leave a chest. */
-  Pickup.onKill = function (enemy) {
+  Pickup.onKill = function (enemy, source) {
     const player = WS.Game.player;
     const cfg = WS.Config;
     const luck = player.luck;
+    const fade = cfg.dropFadeMinutes > 0 ? 1 / (1 + WS.Game.run.time / 60 / cfg.dropFadeMinutes) : 1;
 
     if (enemy.elite) {
       this.spawn('chest', enemy.x, enemy.y, WS.floor((cfg.chestMin + WS.randInt(0, cfg.chestSpread)) * WS.Game.run.goldMult));
@@ -31066,12 +31148,12 @@ window.WS = window.WS || {};
       this.spawn('coin', enemy.x, enemy.y, WS.floor((cfg.coinMin + WS.randInt(0, cfg.coinSpread)) * WS.Game.run.goldMult));
     } else if (WS.random() < cfg.dropChancePotion * luck) {
       this.spawn('potion', enemy.x, enemy.y);
-    } else if (WS.random() < cfg.dropChanceBomb * luck) {
-      this.spawn('bomb', enemy.x, enemy.y);
+    } else if (WS.random() < cfg.dropChanceBomb * luck * fade) {
+      if (draw('bomb', source)) this.spawn('bomb', enemy.x, enemy.y);
     } else if (WS.random() < cfg.dropChanceStone * luck) {
       this.spawn('stone', enemy.x, enemy.y);
-    } else if (WS.random() < cfg.dropChanceHourglass * luck) {
-      this.spawn('hourglass', enemy.x, enemy.y);
+    } else if (WS.random() < cfg.dropChanceHourglass * luck * fade) {
+      if (draw('hourglass', source)) this.spawn('hourglass', enemy.x, enemy.y);
     }
   };
 
@@ -31386,25 +31468,29 @@ window.WS = window.WS || {};
       huntIn: 0.90,
       dashSpeed: 340,
       biteRadius: 46,
-      biteCooldown: 0.55,
-      dmgBase: 12.74,
-      dmgPerLevel: 0.91,
+      /* A summon's early power is kills, not damage: a bite or a maul
+         finishes trash whatever it does. So the bites come slower, the
+         maul is lighter and the rakes rarer, and the bite grows with level
+         alone - 2.3x a weapon at 9:00 became ~1.1x, the 20:00 share held. */
+      biteCooldown: 0.85,
+      dmgBase: 0,
+      dmgPerLevel: 1.35,
       huntRange: 560,
       leash: 440,
       wanderSpeed: 150,
       ghoulSpeedMult: 0.70,
-      ghoulRadiusMult: 1.35,
-      ghoulCdMult: 1.45,
+      ghoulRadiusMult: 1.1,
+      ghoulCdMult: 3.5,
       ghoulDmgMult: 1.45,
       // The pack: one-mouth bites, harder for every packmate on the quarry.
       wolfDmgMult: 3.0,
       wolfCdMult: 0.85,
-      packBonus: 0.25,
+      packBonus: 0.5,
       packWindow: 1.2,
       packMax: 3,
-      killRebite: 0.12,
-      mauleRadius: 1.0,
-      maulDmg: 0.7,
+      killRebite: 0.5,
+      mauleRadius: 0.8,
+      maulDmg: 0.2,
       // The guard: a short leash, and what it rakes is slowed and rots.
       ghoulLeashMult: 0.55,
       ghoulSlow: 0.6,
@@ -35706,7 +35792,7 @@ window.WS = window.WS || {};
   /* ------------------------------------------------------ the ledger ------ */
   function topWeapon(run) {
     let top = null, most = 0;
-    for (const [id, v] of Object.entries(run.damageByWeapon || {})) if (v > most) { most = v; top = id; }
+    for (const [id, v] of Object.entries(run.landedByWeapon || run.damageByWeapon || {})) if (v > most) { most = v; top = id; }
     return top;
   }
 
@@ -35919,6 +36005,7 @@ window.WS = window.WS || {};
          could not tell whether you were feeding it or wasting it. */
       overhealDone: 0,
       damageByWeapon: {},
+      landedByWeapon: {},
       hitsBySource: {},
       healingBySource: {},
       overhealBySource: {},
@@ -36588,7 +36675,7 @@ window.WS = window.WS || {};
        it. Everything below keeps running: the settle is 160ms of real ticks
        now, and freezing the particles while the enemies still walk would read
        as a stall rather than a slow-down. */
-    if (!this.leveling) WS.Pickup.update(dt);
+    if (!this.leveling) { WS.Pickup.update(dt); WS.Pickup.refill(dt); }
     if (!this.running) return;
     WS.Hazard.update(dt);
     if (!this.running) return;
@@ -36815,7 +36902,7 @@ window.WS = window.WS || {};
 'use strict';
 (function (WS) {
 
-  const V = 3;
+  const V = 4;
   const SAMPLE = 1;          // seconds between position samples
   const SLOW = 5;            // seconds between health, crowd and damage samples
   const METER_EVERY = 10;    // seconds between meter snapshots
@@ -36873,16 +36960,16 @@ window.WS = window.WS || {};
       // sample (small numbers, which is what makes the code short).
       s: { t: [], dx: [], dy: [] },
       // Everything else every SLOW seconds.
-      s5: { t: [], hp: [], lv: [], field: [], near: [], dealt: [], taken: [], heal: [] },
+      s5: { t: [], hp: [], lv: [], field: [], near: [], dealt: [], taken: [], heal: [], kills: [], luck: [] },
       ev: [],
-      m: [],                // meter snapshots: [t, {source: dealt}, {source: healed}, {source: taken}]
+      m: [],                // meter snapshots: [t, {source: landed}, {source: healed}, {source: taken}]
       taken: {},            // damage taken by what dealt it, the whole night
       end: null,
     };
     next = 0; nextMeter = METER_EVERY;
     seen = new WeakSet();
     last = { kit: kit(p), stage: null, marks: 0, revives: p.revives || 0, qx: 0, qy: 0, slow: 0,
-      dealt: run.damageDone || 0, taken: run.damageTaken || 0, heal: run.healingDone || 0 };
+      dealt: run.damageDone || 0, taken: run.damageTaken || 0, heal: run.healingDone || 0, kills: run.kills || 0 };
     ev('kit', last.kit.w, last.kit.u, last.kit.b);
     // The opening blessing draft is dealt by startRun itself.
     if (G.state === 'blessing' && G.blessingChoices) ev('boffer', G.blessingChoices.map(tok).join(','));
@@ -36921,6 +37008,8 @@ window.WS = window.WS || {};
       F.dealt.push(Math.round((run.damageDone || 0) - last.dealt)); last.dealt = run.damageDone || 0;
       F.taken.push(Math.round((run.damageTaken || 0) - last.taken)); last.taken = run.damageTaken || 0;
       F.heal.push(Math.round((run.healingDone || 0) - last.heal)); last.heal = run.healingDone || 0;
+      F.kills.push((run.kills || 0) - last.kills); last.kills = run.kills || 0;
+      F.luck.push(Math.round((p.luck || 1) * 100) / 100);
     }
 
     // What changed in the build since the last second: ranks, evolutions,
@@ -36943,7 +37032,8 @@ window.WS = window.WS || {};
       for (const [k, v] of Object.entries(o || {})) if (v >= 1) out[k] = Math.round(v);
       return out;
     };
-    RunLog.log.m.push([Math.round(run.time), round(run.damageByWeapon), round(run.healingBySource), round(RunLog.log.taken)]);
+    // What landed, as the meter shows it; the raw blows are kept at the end.
+    RunLog.log.m.push([Math.round(run.time), round(run.landedByWeapon || run.damageByWeapon), round(run.healingBySource), round(RunLog.log.taken)]);
   }
 
   RunLog.tick = function () {
@@ -36966,6 +37056,16 @@ window.WS = window.WS || {};
     ev('got', kind);
   };
 
+  /** A pickup put on the field (Pickup.spawn), whether or not it is ever
+   *  collected: the drop rate is decided on these, not on what was picked up. */
+  const DROPS = { bomb: 1, hourglass: 1, potion: 1, chest: 1, reliquary: 1, stone: 1, cache: 1 };
+  RunLog.drop = function (kind) { if (DROPS[kind]) ev('drop', kind); };
+  RunLog.note = function (...a) { ev(...a); };
+
+  // The callings' tallies (Calling.count) and the like, read at the end.
+  const COUNTERS = ['executions', 'overflows', 'barriersBroken', 'eviscerates', 'marksClaimed', 'enrages',
+    'rends', 'storms', 'waystones', 'ghoulBursts', 'revives'];
+
   RunLog.finish = function (reason) {
     const L = RunLog.log, G = WS.Game, run = G.run, p = G.player;
     if (!L || L.end || !run) return;
@@ -36978,6 +37078,12 @@ window.WS = window.WS || {};
       dealt: Math.round(run.damageDone || 0), taken: Math.round(run.damageTaken || 0),
       healed: Math.round(run.healingDone || 0), prevented: Math.round(run.damagePrevented || 0),
       maxHealth: p ? Math.round(p.maxHealth) : 0, faults: WS.faultCount ? WS.faultCount() : 0,
+      luck: p ? Math.round((p.luck || 1) * 100) / 100 : 1,
+      // Every blow at full size, overkill included, beside the landed meter.
+      raw: Object.fromEntries(Object.entries(run.damageByWeapon || {}).filter((e) => e[1] >= 1).map(([k, v]) => [k, Math.round(v)])),
+      overheal: Object.fromEntries(Object.entries(run.overhealBySource || {}).filter((e) => e[1] >= 1).map(([k, v]) => [k, Math.round(v)])),
+      curdle: p ? Math.round(p.curdleDealt || 0) : 0,
+      counters: Object.fromEntries(COUNTERS.filter((k) => run[k]).map((k) => [k, run[k]])),
     };
     try {
       const rep = WS.Runs.report();
@@ -37032,6 +37138,12 @@ window.WS = window.WS || {};
   wrap('tick', null, () => RunLog.tick());
   // After the run is recorded, so the score is in it.
   wrap('endRun', null, (out, reason) => RunLog.finish(reason));
+
+  const spawnPickup = WS.Pickup.spawn;
+  WS.Pickup.spawn = function (kind) {
+    try { RunLog.drop(kind); } catch (e) { /* never break play */ }
+    return spawnPickup.apply(this, arguments);
+  };
 
   WS.RunLog = RunLog;
 
@@ -53697,14 +53809,14 @@ window.WS = window.WS || {};
        heal used to be filed under "Holy" whichever weapon cast it. */
     const SOURCE = {
       regen: 'Regeneration', lifesteal: 'Leech Pact (lifesteal)', potion: 'Healing potions',
-      food: 'Bread', wolves: 'Spirit wolves', ghouls: 'Risen ghouls', bomb: 'Bombs',
+      food: 'Bread', wolves: 'Spirit wolves', ghouls: 'Risen ghouls', ghoul_rot: 'Ghoul rot', bomb: 'Bombs',
       maul: 'Bear maul', starfell: 'Owlbear stars', stillwater: 'Stillwater Step palms',
       second_wind: 'Second Wind', storm: 'Storm cells', shrine_storm: 'Storm shrine',
       soulbond: 'Soul lanterns', coolant: 'Burst coolant pipes', stormbond: 'Storm stones',
       holy: 'Holy Light', other: 'Other', untagged: 'Other',
     };
     // The marks for sources that are not a weapon, passive or blessing.
-    const SOURCE_ART = { wolves: 'spiritwolf', ghouls: 'risen', regen: 'leaf',
+    const SOURCE_ART = { wolves: 'spiritwolf', ghouls: 'risen', ghoul_rot: 'risen', regen: 'leaf',
       potion: 'potion', bomb: 'bomb' };
     const sourceName = (key) => {
       const w = WS.Weapons[key];
@@ -53716,7 +53828,7 @@ window.WS = window.WS || {};
         || (WS.Blessings[key] && WS.Blessings[key].name);
       return named || key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
     };
-    const meterFor = (title, table, tint, hits) => {
+    const meterFor = (title, table, tint, hits, raw) => {
       const entries = Object.entries(table).filter((e) => e[1] > 0).sort((a, b) => b[1] - a[1]);
       if (!entries.length) return null;
       const meter = el('div');
@@ -53760,9 +53872,13 @@ window.WS = window.WS || {};
         const n = hits && hits[key];
         const src = SOURCE_ART[key] || (WS.Upgrades[key] && WS.Upgrades[key].art)
           || (WS.Blessings[key] && WS.Blessings[key].art);
+        // The hover says how much more the blows carried than they took.
+        const over = raw && raw[key] > value * 1.005 ? raw[key] - value : 0;
+        const tip = [n ? `${WS.formatNumber(n)} hits, ${WS.formatNumber(WS.round(value / n))} each` : null,
+          over ? `${WS.formatNumber(over)} more was overkill, past what the targets had left` : null,
+          key === 'ghoul_rot' ? 'What the ghouls\u2019 rot added to every other blow' : null].filter(Boolean).join('\n');
         row(sourceName(key), value, w ? (WS.CONST.COLORS[w.school] || WS.CONST.COLORS.arc) : tint,
-          n ? `${WS.formatNumber(n)} hits, ${WS.formatNumber(WS.round(value / n))} each` : null,
-          w ? w.art : src);
+          tip || null, w ? w.art : src);
       }
       if (rest.length) {
         row(`${rest.length} more`, rest.reduce((sum, e) => sum + e[1], 0), tint,
@@ -53770,13 +53886,50 @@ window.WS = window.WS || {};
       }
       return meter;
     };
-    const dmgMeter = meterFor('Damage meter', run.damageByWeapon, WS.CONST.COLORS.arc, run.hitsBySource);
+    /* What landed, not what was swung: a blow past a creature's last point
+       of health took nothing more, and counting it made the weapons that
+       one-shot the crowd look bigger than they are. The hover keeps it. */
+    const dmgMeter = meterFor('Damage meter', run.landedByWeapon || run.damageByWeapon, WS.CONST.COLORS.arc, run.hitsBySource,
+      run.landedByWeapon ? run.damageByWeapon : null);
     if (dmgMeter) third.append(dmgMeter);
-    const healMeter = meterFor('Healing meter', run.healingBySource, WS.CONST.COLORS.heal);
-    if (healMeter) third.append(healMeter);
-    const overMeter = meterFor('Overhealing', run.overhealBySource, WS.CONST.COLORS.shadow);
-    if (overMeter) third.append(overMeter);
-    if (!dmgMeter && !healMeter && !overMeter) {
+    /* Healing and overkill are read on a hover, so the damage meter keeps
+       the panel: a line each with its total, and the whole meter in the tip.
+       Overkill is what the blows carried past the creatures' last health -
+       the counterpart of overhealing, and like it, not part of the meter. */
+    const overkill = {};
+    if (run.landedByWeapon) {
+      for (const [k, v] of Object.entries(run.damageByWeapon || {})) {
+        const d = v - (run.landedByWeapon[k] || 0);
+        if (d >= 1) overkill[k] = d;
+      }
+    }
+    const sum = (t) => Object.values(t || {}).reduce((a, b) => a + (b > 0 ? b : 0), 0);
+    const chips = el('div', 'meter-chips');
+    const chip = (label, total, build) => {
+      if (!(total > 0)) return;
+      const c = el('button', 'meter-chip');
+      c.type = 'button';
+      c.append(el('span', 'mc-k', label), el('span', 'mc-v', WS.formatNumber(WS.round(total))));
+      tipOn(c, build, { prefer: ['left', 'above'], delay: 60 });
+      chips.append(c);
+    };
+    chip('Healing', sum(run.healingBySource), () => {
+      const box = el('div', 'tip-body meter-tip');
+      const h = meterFor('Healing meter', run.healingBySource, WS.CONST.COLORS.heal);
+      const o = meterFor('Overhealing', run.overhealBySource, WS.CONST.COLORS.shadow);
+      if (h) box.append(h);
+      if (o) box.append(o);
+      return box;
+    });
+    chip('Overkill', sum(overkill), () => {
+      const box = el('div', 'tip-body meter-tip');
+      const m = meterFor('Overkill', overkill, WS.CONST.COLORS.shadow);
+      if (m) box.append(m);
+      box.append(el('p', 'sheet-empty', 'Damage past what the creatures had left. Not counted on the damage meter.'));
+      return box;
+    });
+    if (chips.children.length) third.append(chips);
+    if (!dmgMeter && !chips.children.length) {
       third.append(el('h3', null, 'Damage meter'), el('p', 'sheet-empty', 'Nothing fell to you tonight.'));
     }
 
@@ -54008,7 +54161,7 @@ window.WS = window.WS || {};
 
     // Whose work it mostly was.
     let top = null, most = 0;
-    for (const [id, v] of Object.entries(run.damageByWeapon || {})) if (v > most) { most = v; top = id; }
+    for (const [id, v] of Object.entries(run.landedByWeapon || run.damageByWeapon || {})) if (v > most) { most = v; top = id; }
     let topEvolved = null;
     if (top && WS.Weapons[top]) {
       const w = WS.Player.getWeapon(p, top);

@@ -19,7 +19,7 @@
 'use strict';
 (function (WS) {
 
-  const V = 3;
+  const V = 4;
   const SAMPLE = 1;          // seconds between position samples
   const SLOW = 5;            // seconds between health, crowd and damage samples
   const METER_EVERY = 10;    // seconds between meter snapshots
@@ -77,16 +77,16 @@
       // sample (small numbers, which is what makes the code short).
       s: { t: [], dx: [], dy: [] },
       // Everything else every SLOW seconds.
-      s5: { t: [], hp: [], lv: [], field: [], near: [], dealt: [], taken: [], heal: [] },
+      s5: { t: [], hp: [], lv: [], field: [], near: [], dealt: [], taken: [], heal: [], kills: [], luck: [] },
       ev: [],
-      m: [],                // meter snapshots: [t, {source: dealt}, {source: healed}, {source: taken}]
+      m: [],                // meter snapshots: [t, {source: landed}, {source: healed}, {source: taken}]
       taken: {},            // damage taken by what dealt it, the whole night
       end: null,
     };
     next = 0; nextMeter = METER_EVERY;
     seen = new WeakSet();
     last = { kit: kit(p), stage: null, marks: 0, revives: p.revives || 0, qx: 0, qy: 0, slow: 0,
-      dealt: run.damageDone || 0, taken: run.damageTaken || 0, heal: run.healingDone || 0 };
+      dealt: run.damageDone || 0, taken: run.damageTaken || 0, heal: run.healingDone || 0, kills: run.kills || 0 };
     ev('kit', last.kit.w, last.kit.u, last.kit.b);
     // The opening blessing draft is dealt by startRun itself.
     if (G.state === 'blessing' && G.blessingChoices) ev('boffer', G.blessingChoices.map(tok).join(','));
@@ -125,6 +125,8 @@
       F.dealt.push(Math.round((run.damageDone || 0) - last.dealt)); last.dealt = run.damageDone || 0;
       F.taken.push(Math.round((run.damageTaken || 0) - last.taken)); last.taken = run.damageTaken || 0;
       F.heal.push(Math.round((run.healingDone || 0) - last.heal)); last.heal = run.healingDone || 0;
+      F.kills.push((run.kills || 0) - last.kills); last.kills = run.kills || 0;
+      F.luck.push(Math.round((p.luck || 1) * 100) / 100);
     }
 
     // What changed in the build since the last second: ranks, evolutions,
@@ -147,7 +149,8 @@
       for (const [k, v] of Object.entries(o || {})) if (v >= 1) out[k] = Math.round(v);
       return out;
     };
-    RunLog.log.m.push([Math.round(run.time), round(run.damageByWeapon), round(run.healingBySource), round(RunLog.log.taken)]);
+    // What landed, as the meter shows it; the raw blows are kept at the end.
+    RunLog.log.m.push([Math.round(run.time), round(run.landedByWeapon || run.damageByWeapon), round(run.healingBySource), round(RunLog.log.taken)]);
   }
 
   RunLog.tick = function () {
@@ -170,6 +173,16 @@
     ev('got', kind);
   };
 
+  /** A pickup put on the field (Pickup.spawn), whether or not it is ever
+   *  collected: the drop rate is decided on these, not on what was picked up. */
+  const DROPS = { bomb: 1, hourglass: 1, potion: 1, chest: 1, reliquary: 1, stone: 1, cache: 1 };
+  RunLog.drop = function (kind) { if (DROPS[kind]) ev('drop', kind); };
+  RunLog.note = function (...a) { ev(...a); };
+
+  // The callings' tallies (Calling.count) and the like, read at the end.
+  const COUNTERS = ['executions', 'overflows', 'barriersBroken', 'eviscerates', 'marksClaimed', 'enrages',
+    'rends', 'storms', 'waystones', 'ghoulBursts', 'revives'];
+
   RunLog.finish = function (reason) {
     const L = RunLog.log, G = WS.Game, run = G.run, p = G.player;
     if (!L || L.end || !run) return;
@@ -182,6 +195,12 @@
       dealt: Math.round(run.damageDone || 0), taken: Math.round(run.damageTaken || 0),
       healed: Math.round(run.healingDone || 0), prevented: Math.round(run.damagePrevented || 0),
       maxHealth: p ? Math.round(p.maxHealth) : 0, faults: WS.faultCount ? WS.faultCount() : 0,
+      luck: p ? Math.round((p.luck || 1) * 100) / 100 : 1,
+      // Every blow at full size, overkill included, beside the landed meter.
+      raw: Object.fromEntries(Object.entries(run.damageByWeapon || {}).filter((e) => e[1] >= 1).map(([k, v]) => [k, Math.round(v)])),
+      overheal: Object.fromEntries(Object.entries(run.overhealBySource || {}).filter((e) => e[1] >= 1).map(([k, v]) => [k, Math.round(v)])),
+      curdle: p ? Math.round(p.curdleDealt || 0) : 0,
+      counters: Object.fromEntries(COUNTERS.filter((k) => run[k]).map((k) => [k, run[k]])),
     };
     try {
       const rep = WS.Runs.report();
@@ -236,6 +255,12 @@
   wrap('tick', null, () => RunLog.tick());
   // After the run is recorded, so the score is in it.
   wrap('endRun', null, (out, reason) => RunLog.finish(reason));
+
+  const spawnPickup = WS.Pickup.spawn;
+  WS.Pickup.spawn = function (kind) {
+    try { RunLog.drop(kind); } catch (e) { /* never break play */ }
+    return spawnPickup.apply(this, arguments);
+  };
 
   WS.RunLog = RunLog;
 

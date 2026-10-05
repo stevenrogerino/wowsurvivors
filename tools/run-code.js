@@ -23,7 +23,18 @@ const zlib = require('zlib');
 
 const args = process.argv.slice(2);
 const asJson = args.includes('--json');
-const inputs = args.filter((a) => a !== '--json');
+const asBuilds = args.includes('--builds');
+/* --diff=professional --char=hunter --map=dustreach --bal=3v60cf keep only
+   the nights that match; --builds prints each night's final weapons as a
+   FIXED= line for tools/meter-test.js and tools/swap-test.js. */
+const FILTER = {};
+for (const a of args) { const m = /^--(diff|char|map|bal)=(.+)$/.exec(a); if (m) FILTER[m[1]] = m[2]; }
+const inputs = args.filter((a) => !a.startsWith('--'));
+// The hourglass's freeze, read from the game's own settings.
+const FREEZE = (() => {
+  try { const m = /hourglassFreeze:\s*([\d.]+)/.exec(fs.readFileSync(path.join(__dirname, '..', 'src', 'data', 'config.js'), 'utf8')); return m ? +m[1] : 8; }
+  catch (e) { return 8; }
+})();
 if (!inputs.length) { console.error('usage: node tools/run-code.js [--json] <code | file | folder | ->...'); process.exit(1); }
 
 /* ----------------------------------------------------------- reading -- */
@@ -186,8 +197,16 @@ function readMany(logs) {
       taken[e[2]] = (taken[e[2]] || 0) + 1;
     }
   }
+  // Of the nights a card was taken in, how many reached dawn.
+  const dawn = (L) => L.end && (L.end.reason === 'victory' || (L.end.time || 0) >= 1800 || L.end.finale);
+  const tookIn = {}, tookWon = {};
+  for (const L of logs) {
+    const mine = new Set(L.ev.filter((e) => e[1] === 'pick').map((e) => e[2]));
+    for (const c of mine) { tookIn[c] = (tookIn[c] || 0) + 1; if (dawn(L)) tookWon[c] = (tookWon[c] || 0) + 1; }
+  }
   const rows = Object.keys(offered).filter((k) => offered[k] >= 3).map((k) => [k, (taken[k] || 0) / offered[k], offered[k]]).sort((a, b) => b[1] - a[1]);
-  for (const [k, r, o] of rows) say(`  ${pad(k, 34)} ${pad((r * 100).toFixed(0) + '%', 5)} of ${o}`);
+  say(`  ${pad('', 34)} ${pad('taken', 14)} reached dawn when taken`);
+  for (const [k, r, o] of rows) say(`  ${pad(k, 34)} ${pad((r * 100).toFixed(0) + '% of ' + o, 14)} ${tookIn[k] ? pct(tookWon[k] || 0, tookIn[k]) + ' of ' + tookIn[k] : '-'}`);
 
   say('\nWEAPON SHARE OF THE METER, IN THE NIGHTS THAT HELD IT');
   const sh = {};
@@ -203,18 +222,77 @@ function readMany(logs) {
   for (const [k, ts] of Object.entries(deaths).sort((a, b) => b[1].length - a[1].length))
     say(`  ${pad(k, 28)} ${pad(ts.length, 3)} at ${ts.map(mmss).join(', ')}`);
 
-  say('\nSCREEN-CLEARS AND OTHER PICKUPS, PER MINUTE, BY STRETCH OF THE NIGHT');
+  /* The share of the meter by how many weapons were evolved at the time:
+     a lone evolved weapon takes the meter whatever it is (docs/BALANCE.md),
+     so only stretches with two or more evolved say anything about balance. */
+  say('\nWEAPON SHARE BY HOW MANY WEAPONS WERE EVOLVED (landed, pooled over 10s windows)');
+  const states = ['none', 'one', 'two+'], pool = {};
+  for (const L of logs) {
+    const kits = L.ev.filter((e) => e[1] === 'kw' || e[1] === 'kit').map((e) => [e[0], e[2] || '']);
+    const evolvedAt = (t) => { let w = ''; for (const [kt, kw] of kits) if (kt <= t) w = kw; return w.split(',').filter((x) => /e$/.test(x)).length; };
+    for (let i = 1; i < L.m.length; i++) {
+      const [t0, a] = L.m[i - 1], [t1, b] = L.m[i];
+      const ne = evolvedAt(t1), st = states[Math.min(2, ne)];
+      let tot = 0; const d = {};
+      for (const [k, v] of Object.entries(b)) { const x = v - (a[k] || 0); if (x > 0) { d[k] = x; tot += x; } }
+      if (!tot) continue;
+      for (const [k, x] of Object.entries(d)) {
+        const P2 = pool[k] || (pool[k] = { none: [0, 0], one: [0, 0], 'two+': [0, 0] });
+        P2[st][0] += x;
+      }
+      for (const k of Object.keys(d)) pool[k][st][1] += tot;
+    }
+  }
+  say(`  ${pad('', 22)} ${states.map((s2) => pad(s2 + ' evolved', 14)).join('')}`);
+  for (const [k, P2] of Object.entries(pool).sort((x, y) => (y[1]['two+'][0] + y[1].one[0]) - (x[1]['two+'][0] + x[1].one[0])).slice(0, 24))
+    say(`  ${pad(k, 22)} ${states.map((s2) => pad(P2[s2][1] ? (100 * P2[s2][0] / P2[s2][1]).toFixed(0) + '%' : '-', 14)).join('')}`);
+
+  say('\nSUMMONS: SHARE OF WHAT LANDED, AND HOW THE NIGHTS WENT WITH AND WITHOUT THEM');
+  const SUM = ['wolves', 'ghouls', 'ghoul_rot'];
+  const groups = { with: [], without: [] };
+  for (const L of logs) {
+    const last = L.m[L.m.length - 1]; if (!last) continue;
+    const tot = Object.values(last[1]).reduce((x, y) => x + y, 0) || 1;
+    const sum = SUM.reduce((x, k) => x + (last[1][k] || 0), 0);
+    const F = L.s5 || { hp: [] }, nf = (F.hp || []).length || 1;
+    const E = L.end || {};
+    (sum > 0 ? groups.with : groups.without).push({ share: sum / tot, parts: SUM.map((k) => (last[1][k] || 0) / tot),
+      low: (F.hp || []).filter((h) => h < 30).length / nf, tpm: (E.taken || 0) / Math.max(1, (E.time || 1) / 60), dawn: dawn(L) });
+  }
+  const avg = (a, f) => (a.length ? a.reduce((x, y) => x + f(y), 0) / a.length : 0);
+  if (groups.with.length) say(`  with summons (${groups.with.length}): ${(100 * avg(groups.with, (g) => g.share)).toFixed(0)}% of the meter`
+    + ` (wolves ${(100 * avg(groups.with, (g) => g.parts[0])).toFixed(0)}%, ghouls ${(100 * avg(groups.with, (g) => g.parts[1])).toFixed(0)}%, rot ${(100 * avg(groups.with, (g) => g.parts[2])).toFixed(0)}%)`);
+  for (const [name, g] of Object.entries(groups)) if (g.length)
+    say(`  ${pad(name, 8)} ${pad(g.length + ' nights', 10)} below 30% health ${(100 * avg(g, (x) => x.low)).toFixed(0)}% of the time · taken ${fmt(avg(g, (x) => x.tpm))}/min · reached dawn ${pct(g.filter((x) => x.dawn).length, g.length)}`);
+
+  /* Drops by stretch: put on the field (drop) and picked up (got), per
+     minute and per 1,000 kills, and the seconds the hourglasses froze. */
+  say('\nPICKUPS BY STRETCH OF THE NIGHT: dropped / picked up per minute, dropped per 1,000 kills');
   const kinds = ['bomb', 'hourglass', 'potion', 'chest', 'reliquary', 'stone'];
   const buckets = [[0, 300], [300, 600], [600, 900], [900, 1200], [1200, 1500], [1500, 1800]];
-  say('  ' + pad('', 11) + buckets.map(([a, b]) => pad(mmss(a) + '-' + mmss(b), 11)).join(''));
+  const killsIn = (L, a, b) => { const F = L.s5 || {}; let n = 0; (F.t || []).forEach((t, i) => { if (t > a && t <= b) n += (F.kills || [])[i] || 0; }); return n; };
+  say('  ' + pad('', 11) + buckets.map(([a, b]) => pad(mmss(a) + '-' + mmss(b), 20)).join(''));
+  const mins = buckets.map(([a, b]) => logs.reduce((x, L) => { const end = (L.end && L.end.time) || 0; return x + (end > a ? (Math.min(end, b) - a) / 60 : 0); }, 0));
+  const kills = buckets.map(([a, b]) => logs.reduce((x, L) => x + killsIn(L, a, b), 0));
   for (const k of kinds) {
-    const cells = buckets.map(([a, b]) => {
-      let n = 0, mins = 0;
-      for (const L of logs) { const end = (L.end && L.end.time) || 0; if (end <= a) continue;
-        mins += (Math.min(end, b) - a) / 60; n += L.ev.filter((e) => e[1] === 'got' && e[2] === k && e[0] >= a && e[0] < b).length; }
-      return mins ? (n / mins).toFixed(2) : '-';
+    const cells = buckets.map(([a, b], i) => {
+      const cnt = (kind) => logs.reduce((x, L) => x + L.ev.filter((e) => e[1] === kind && e[2] === k && e[0] >= a && e[0] < b).length, 0);
+      const dr = cnt('drop'), gt = cnt('got');
+      if (!mins[i]) return '-';
+      return `${(dr / mins[i]).toFixed(2)}/${(gt / mins[i]).toFixed(2)}` + (kills[i] ? ` ${(1000 * dr / kills[i]).toFixed(2)}` : '');
     });
-    if (cells.some((c) => c !== '-' && c !== '0.00')) say('  ' + pad(k, 11) + cells.map((c) => pad(c, 11)).join(''));
+    if (cells.some((c) => c !== '-' && !/^0\.00\/0\.00/.test(c))) say('  ' + pad(k, 11) + cells.map((c) => pad(c, 20)).join(''));
+  }
+  say('  ' + pad('frozen s/min', 11) + buckets.map(([a, b], i) => pad(mins[i] ? (FREEZE * logs.reduce((x, L) => x + L.ev.filter((e) => e[1] === 'got' && e[2] === 'hourglass' && e[0] >= a && e[0] < b).length, 0) / mins[i]).toFixed(1) : '-', 20)).join(''));
+  say('  ' + pad('kills/min', 11) + buckets.map((_, i) => pad(mins[i] ? fmt(kills[i] / mins[i]) : '-', 20)).join(''));
+
+  // Late screen-clears by luck: the top third of nights by luck against the bottom.
+  const late = logs.filter((L) => L.end && (L.end.time || 0) > 900 && L.end.luck).sort((a, b) => a.end.luck - b.end.luck);
+  if (late.length >= 6) {
+    const third = Math.floor(late.length / 3);
+    const rate = (set) => { let n = 0, m = 0; for (const L of set) { m += ((L.end.time || 0) - 900) / 60; n += L.ev.filter((e) => e[1] === 'drop' && e[2] === 'bomb' && e[0] >= 900).length; } return m ? n / m : 0; };
+    const lo = rate(late.slice(0, third)), hi = rate(late.slice(-third));
+    say(`  bombs dropped per minute after 15:00: lowest-luck third ${lo.toFixed(2)}, highest ${hi.toFixed(2)} (x${lo ? (hi / lo).toFixed(2) : '-'})`);
   }
   return out.join('\n');
 }
@@ -224,6 +302,18 @@ const codes = gather();
 if (!codes.length) { console.error('no run codes found (they start with EW1. or EW0.)'); process.exit(1); }
 const logs = [];
 for (const c of codes) { try { logs.push(decode(c)); } catch (e) { console.error(`could not read a code (${c.slice(0, 16)}...): ${e.message}`); } }
+const kept = logs.filter((L) => Object.entries(FILTER).every(([k, v]) => String(L[k]) === v));
+if (kept.length < logs.length) console.error(`${logs.length - kept.length} of ${logs.length} nights left out by the filter`);
+logs.length = 0; logs.push(...kept);
+if (!logs.length) { console.error('no nights match'); process.exit(1); }
 if (asJson) { console.log(JSON.stringify(logs.length === 1 ? logs[0] : logs, null, 1)); process.exit(0); }
+if (asBuilds) {
+  for (const L of logs) {
+    const w = (L.end && L.end.kit && L.end.kit.w) || '';
+    const fixed = w.split(',').filter(Boolean).map((x) => x.replace(/e$/, 'E')).join(',');
+    console.log(`FIXED=${fixed} HERO=${L.char}   # ${L.map} ${L.diff} ${L.end ? L.end.reason + ' ' + mmss(L.end.time || 0) : ''}`);
+  }
+  process.exit(0);
+}
 if (logs.length === 1) console.log(readOne(logs[0]));
 else { console.log(readMany(logs)); }

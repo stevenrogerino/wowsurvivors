@@ -21,6 +21,18 @@
     dropChanceBomb: 0.0009,
     dropChanceStone: 0.0009,
     dropChanceHourglass: 0.0006,
+    /* ...but a horde of thousands must not turn them into a screen that never
+       stops clearing. Each kill's chance can fade as the night goes on
+       (x1/(1 + minutes/dropFadeMinutes); 0 is off), and each kind draws on a purse of
+       tokens: refilled bombRefill / glassRefill a minute (x the square root of
+       luck), holding at most bombCap / glassCap. At the cap, one bomb every
+       ~18s and one hourglass every ~23s; nothing stops a lull's saved tokens
+       coming out together. A bomb's or a frozen creature's death rolls neither,
+       and neither drops while the tide crests above dropCrestSuppress. */
+    dropFadeMinutes: 0,
+    bombRefill: 3.33, bombCap: 2,
+    glassRefill: 2.6, glassCap: 1,
+    dropCrestSuppress: 1.15,
 
     potionHealPct: 0.30,
     hourglassFreeze: 8,
@@ -704,8 +716,12 @@
     // Ruthless (Opportunist): ruthlessEdge more Edge a crit, a Cutthroat
     // ruthlessBlow harder, ruthlessRegroup seconds less to regroup. Without
     // it: a crit that leaves an ordinary creature (no elite, no boss) below
-    // ruthlessExecute of its health finishes it.
-    ruthlessEdge: 0.10, ruthlessBlow: 0.15, ruthlessRegroup: 0.3, ruthlessExecute: 0.03,
+    // ruthlessExecute of its health finishes it (flat, from rank 1), and every
+    // rank's crits land ruthlessLow harder on anything below ruthlessLowLine
+    // of its health, elites and bosses included. The execute alone added
+    // next to nothing past rank 1: late, a crit kills trash anyway.
+    ruthlessEdge: 0.10, ruthlessBlow: 0.15, ruthlessRegroup: 0.3, ruthlessExecute: 0.06,
+    ruthlessLow: 0.08, ruthlessLowLine: 0.35,
     // Stalker's Patience (The Quarry, no carry-over): a Quarry stalkerHaste
     // sooner, held stalkerLife seconds longer, taking stalkerBonus more.
     stalkerHaste: 0.06, stalkerLife: 1, stalkerBonus: 0.05,

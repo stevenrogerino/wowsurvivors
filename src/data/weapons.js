@@ -122,10 +122,14 @@
       range: 600, life: 2.4, radius: 10, color: [0.55, 0.20, 0.75],
       // Per enemy the coils strike, capped per volley: it used to have no cap.
       healPer: 5, evolvedHealPer: 4, healCap: 20, healCapRank: 6, evolvedHealCap: 18,
+      /* Evolved, it mends in full at or below half health and tapers to this
+         much of it at full; the rest is overheal (Curdled Light still eats
+         it). Its ~59 a second from range was immortality while kiting. */
+      evolvedHealTaper: 0.35,
       description: 'A coil of dark magic that wounds the living and knits your own flesh back together.',
       evolvePierce: 99,
       evolveName: 'Tether of Anguish', evolvePairing: 'wisdom',
-      evolveDescription: 'The tether takes more, and gives more back.',
+      evolveDescription: 'The tether takes more, and gives back more the deeper you are hurt: full mending at half health or below, about a third at full health, and the rest is overheal.',
     },
     blightfield: {
       damage: 1.26, evolveDamageMult: 6.031, bossDamage: 6.219, evolvedBossDamage: 3.818,

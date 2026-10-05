@@ -60,6 +60,7 @@
          could not tell whether you were feeding it or wasting it. */
       overhealDone: 0,
       damageByWeapon: {},
+      landedByWeapon: {},
       hitsBySource: {},
       healingBySource: {},
       overhealBySource: {},
@@ -729,7 +730,7 @@
        it. Everything below keeps running: the settle is 160ms of real ticks
        now, and freezing the particles while the enemies still walk would read
        as a stall rather than a slow-down. */
-    if (!this.leveling) WS.Pickup.update(dt);
+    if (!this.leveling) { WS.Pickup.update(dt); WS.Pickup.refill(dt); }
     if (!this.running) return;
     WS.Hazard.update(dt);
     if (!this.running) return;

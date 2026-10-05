@@ -33,7 +33,24 @@ const S = {
   // BOSS=murkgill: also a boss that cannot die, standing 200px off, and
   // the summons' damage to it counted apart (bossdmg/s).
   BOSS: env('BOSS', ''),
+  /* LEVEL: the survivor's level. By default the level a real night has
+     reached at MINUTE (the bot's nights: about 50 at 5:00, 78 at 12:00, 110
+     at 20:00, 138 at 30:00). It used to be 12 + 2 x MINUTE - 36 at 12:00,
+     half the real level, which understated anything that scales with it. */
+  LEVEL: +env('LEVEL', 0),
+  // TUNE='dmgPerLevel=0.15,ghoulRot=1.1': Familiar.tuning overrides to try.
+  TUNE: env('TUNE', ''),
 };
+const LEVEL_AT = [[0, 1], [5, 50], [12, 78], [20, 110], [30, 138]];
+function levelAt(m) {
+  for (let i = 1; i < LEVEL_AT.length; i++) {
+    const [m0, l0] = LEVEL_AT[i - 1], [m1, l1] = LEVEL_AT[i];
+    if (m <= m1) return Math.round(l0 + (l1 - l0) * (m - m0) / (m1 - m0));
+  }
+  return 138;
+}
+if (!S.LEVEL) S.LEVEL = levelAt(S.MINUTE);
+console.log(`summons at ${S.MINUTE}:00 on ${S.MAP}, level ${S.LEVEL}, ${S.RANKS} ranks, beside ${S.WEAPON}${S.TUNE ? ', tuning ' + S.TUNE : ''}`);
 
 (async () => {
   const b = await chromium.launch({ executablePath: process.env.CHROME || undefined, args: ['--no-sandbox'] });
@@ -64,8 +81,10 @@ const S = {
         p.weapons.length = 0; p.weaponLevels = {};
         const [wid, wr] = S.WEAPON.split(':');
         const w = WS.Player.addWeapon(p, wid);
-        w.level = +wr; p.weaponLevels[wid] = +wr;
-        p.level = 12 + S.MINUTE * 2;
+        w.level = parseInt(wr, 10); p.weaponLevels[wid] = w.level;
+        w.evolved = /E$/.test(wr);   // volley:8E is the evolved weapon
+        p.level = S.LEVEL;
+        for (const kv of S.TUNE.split(',').filter(Boolean)) { const [k, v] = kv.split('='); WS.Familiar.tuning[k] = +v; }
         const up = kind === 'wolf' ? 'spirit_companion' : kind === 'ghoul' ? 'grave_call' : null;
         if (up) for (let k = 0; k < S.RANKS; k++) { WS.Upgrades[up].apply(p, WS.Upgrades[up]); p.upgradeLevels[up] = k + 1; }
         WS.Input.poll = () => {};

@@ -226,10 +226,11 @@
     ruthless: {
       name: 'Ruthless', art: 'mask', quality: 'epic', max: 5, calling: 'comboAttuned',
       description: '+{Config.ruthlessEdge%}% Edge from a crit, a Cutthroat {Config.ruthlessBlow%}% harder, and {Config.ruthlessRegroup}s less to regroup',
-      alone: 'A crit that leaves an ordinary creature under {Config.ruthlessExecute%}% health per rank finishes it',
-      detail: 'For Opportunist, and offered once you take Precision. Without the calling it works on its own: a critical '
-        + 'strike finishes a creature it leaves below {Config.ruthlessExecute%}% of its health per rank. It never touches '
-        + 'elites, bosses or the finales. With Opportunist, only the Cutthroat\'s half applies.',
+      alone: 'Crits hit {Config.ruthlessLow%}% harder per rank below {Config.ruthlessLowLine%}% health, and finish an ordinary creature left under {Config.ruthlessExecute%}%',
+      detail: 'For Opportunist, and offered once you take Precision. Without the calling it works on its own: every rank makes '
+        + 'a critical strike land {Config.ruthlessLow%}% harder on anything below {Config.ruthlessLowLine%}% of its health, '
+        + 'elites and bosses included, and a crit that leaves an ordinary creature below {Config.ruthlessExecute%}% of its '
+        + 'health finishes it (never elites, bosses or the finales). With Opportunist, only the Cutthroat\'s half applies.',
       offer: (p) => p.ruthless > 0 || p.comboAttuned > 0 || (p.upgradeLevels.precision || 0) > 0,
       apply: (p) => { p.ruthless += 1; },
     },

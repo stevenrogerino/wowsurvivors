@@ -203,10 +203,15 @@
   K.comboLock = (p) => WS.max(0.5, C().comboLock - C().ruthlessRegroup * p.ruthless);
   /** Ruthless without the calling: a crit that leaves an ordinary creature
    *  below the line finishes it. Returns the blow to land instead. */
+  /** ...and its ranks: a crit lands harder on anything left low, bosses too. */
+  K.ruthlessCrit = function (p, e) {
+    if (p.ruthless <= 0 || p.comboAttuned > 0 || e.health >= e.maxHealth * C().ruthlessLowLine) return 1;
+    return 1 + C().ruthlessLow * p.ruthless;
+  };
   K.execute = function (p, e, amount) {
     if (p.ruthless <= 0 || p.comboAttuned > 0) return amount;
     if (e.boss || e.elite || e.finale || e.finaleTag || e.part) return amount;
-    if (e.health - amount > e.maxHealth * C().ruthlessExecute * p.ruthless) return amount;
+    if (e.health - amount > e.maxHealth * C().ruthlessExecute) return amount;
     count('executions');
     return WS.max(amount, e.health + 1);
   };

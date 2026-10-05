@@ -134,7 +134,7 @@
   /* ------------------------------------------------------ the ledger ------ */
   function topWeapon(run) {
     let top = null, most = 0;
-    for (const [id, v] of Object.entries(run.damageByWeapon || {})) if (v > most) { most = v; top = id; }
+    for (const [id, v] of Object.entries(run.landedByWeapon || run.damageByWeapon || {})) if (v > most) { most = v; top = id; }
     return top;
   }
 

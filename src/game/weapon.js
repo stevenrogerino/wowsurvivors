@@ -203,6 +203,7 @@
     const h = healOf(w);
     spec.healPer = h.per;
     spec.healPool = h.per > 0 ? (w._healPool || (w._healPool = { left: h.cap })) : null;
+    spec.healTaper = w.evolved ? (d.evolvedHealTaper || 0) : 0;
     spec.procChain = d.procChain || w.mods.procChain || 0;
     spec.spinRate = d.art === 'dagger' || d.art === 'axe' ? 14 : 0;
     // The newer behaviours' own fields, cleared here so no shot inherits them.

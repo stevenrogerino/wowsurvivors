@@ -549,7 +549,7 @@
     if (e.finaleTag) amount *= WS.Finale.sunriseMult();
     amount *= WS.Calling.markMult(e);
     const crit = WS.random() < player.critChance;
-    if (crit) { amount *= player.critDamage; WS.Calling.onCrit(player); }
+    if (crit) { amount *= player.critDamage * WS.Calling.ruthlessCrit(player, e); WS.Calling.onCrit(player); }
     if (e.dmgTaken !== 1) amount *= e.dmgTaken;
     // A ghoul's rot (Familiar): everything lands a little harder for a while.
     if (e.rotTimer > 0) amount *= e.rotMult;
@@ -563,6 +563,8 @@
       e.bleedTimer = WS.Config.bleedTime;
       if (e.bleedTick <= 0) e.bleedTick = WS.Config.bleedTick;
     }
+    // The part of this blow that is the rot's, for the meter (Enemy.damage).
+    this._rot = e.rotTimer > 0 && e.rotMult > 1 ? 1 - 1 / e.rotMult : 0;
     this.damage(e, amount, crit, source);
     WS.FX.damage(e.x, e.y - e.radius * 0.6, amount, crit);
     // The blow carries what it was struck with (audio.js STRIKE).
@@ -582,6 +584,14 @@
     // Waystones: damage dealt close builds the Ember - not the stones' own,
     // or an eruption would raise the next stone, and that one the next.
     if (player && player.totemAttuned > 0 && source !== 'waystones') WS.Calling.onDeal(player, e, WS.min(amount, WS.max(0, e.health)));
+    /* What the blow actually took: no more than the creature had left (or
+       had left above a finale boss's phase line). The meter is read on
+       this; the blow itself, overkill and all, stays in damageByWeapon. A
+       chain or a nova that one-shots trash was being credited with every
+       point past the kill. */
+    const landed = WS.min(amount, WS.max(0, e.health - (e.hpFloor > 0 ? e.hpFloor : 0)));
+    const rot = this._rot || 0;
+    this._rot = 0;
     e.health -= amount;
     // A finale boss between lives: the blow lands, the phase ends, nothing
     // past the line is taken.
@@ -592,9 +602,15 @@
     run.damageDone += amount;
     const key = source || 'untagged';
     run.damageByWeapon[key] = (run.damageByWeapon[key] || 0) + amount;
+    /* The ghouls' rot makes every weapon's blow land harder; that share of
+       the blow is theirs, so it is the rot's line on the meter and not the
+       weapon's, which shows what it would have done without it. */
+    const L = run.landedByWeapon || (run.landedByWeapon = {});
+    L[key] = (L[key] || 0) + landed * (1 - rot);
+    if (rot) L.ghoul_rot = (L.ghoul_rot || 0) + landed * rot;
     const hits = run.hitsBySource || (run.hitsBySource = {});   // absent from a run saved before it existed
     hits[key] = (hits[key] || 0) + 1;
-    if (e.health <= 0) this.kill(e);
+    if (e.health <= 0) this.kill(e, source);
   };
 
   /** Returns how many it hit, so a caller can proc on a STRIKE rather than
@@ -656,7 +672,7 @@
   };
 
   /* ---------------------------------------------------------------- kill - */
-  Enemy.kill = function (e) {
+  Enemy.kill = function (e, source) {
     const run = WS.Game.run;
     const t = e.template;
     const player = WS.Game.player;
@@ -693,7 +709,7 @@
     if (e.boss) WS.FX.stop(0.16);
     else if (e.elite) WS.FX.stop(0.05);
     WS.XP.spawnGem(e.x, e.y, e.xp);
-    WS.Pickup.onKill(e);
+    WS.Pickup.onKill(e, source);
     WS.Save.recordKill(t, e.id);
     WS.Encounters.onKill(t);
     run.kills++;

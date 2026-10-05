@@ -146,6 +146,11 @@ function report(rows) {
     MOVE: env('MOVE', 'kite'), HERO: env('HERO', 'mage'),
     // FIXED='arcweb:3,knifestorm:7,...': every build is this one (E evolves).
     FIXED: env('FIXED', ''), FRAC: env('FRAC', ''),
+    /* SUMMON=wolf|ghoul: every build also holds three ranks of the summon,
+       and the report says what share of the build it landed against the
+       weapons beside it (and what reached the survivor). TUNE=k=v,... sets
+       Familiar.tuning for the try. */
+    SUMMON: env('SUMMON', ''), SUMMON_RANKS: +env('SUMMON_RANKS', 3), TUNE: env('TUNE', ''),
     // PASSIVES=subset: each build draws SUBSET of the nine weapon passives
     // (by stage 0/2/4/5/6), each at three quarters of its cap (full at s5),
     // as a player who took some and not others. Default: all nine at FRAC.
@@ -241,6 +246,9 @@ function report(rows) {
         p.upgradeLevels[id] = n;
       }
       p.level = S.st.level;
+      for (const kv of S.TUNE.split(',').filter(Boolean)) { const [k, v] = kv.split('='); WS.Familiar.tuning[k] = +v; }
+      const sup = { wolf: 'spirit_companion', ghoul: 'grave_call' }[S.SUMMON];
+      if (sup) for (let k = 0; k < S.SUMMON_RANKS; k++) { WS.Upgrades[sup].apply(p, WS.Upgrades[sup]); p.upgradeLevels[sup] = k + 1; }
       const cx = WS.CONST.WORLD_WIDTH / 2, cy = WS.CONST.WORLD_HEIGHT / 2;
       WS.Input.poll = () => {};
       for (const k of Object.keys(WS.Input.keys)) WS.Input.keys[k] = false;
@@ -290,5 +298,20 @@ function report(rows) {
   }
   await b.close();
   if (env('OUT', null)) fs.writeFileSync(env('OUT'), JSON.stringify({ S, rows }));
+  if (S.SUMMON) {
+    // The summon against the weapons beside it: its share of what landed,
+    // the mean weapon's share, and the ratio of the two.
+    const key = S.SUMMON === 'wolf' ? 'wolves' : 'ghouls';
+    let sum = 0, wpn = 0, hurt = 0;
+    for (const r of rows) {
+      const tot = Object.values(r.landed).reduce((a, v) => a + v, 0) || 1;
+      sum += (r.landed[key] || 0) / tot;
+      wpn += r.weapons.reduce((a, id) => a + (r.landed[id] || 0) / tot, 0) / r.weapons.length;
+      hurt += r.hurt;
+    }
+    const n = rows.length || 1;
+    console.log(`${key} (${S.SUMMON_RANKS} ranks) took ${(100 * sum / n).toFixed(1)}% of the build; the mean weapon ${(100 * wpn / n).toFixed(1)}%: `
+      + `x${(sum / wpn).toFixed(2)} of a weapon · ${Math.round(hurt / n)} damage a minute reached the survivor`);
+  }
   report(rows);
 })();

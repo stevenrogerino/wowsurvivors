@@ -44,25 +44,29 @@
       huntIn: 0.90,
       dashSpeed: 340,
       biteRadius: 46,
-      biteCooldown: 0.55,
-      dmgBase: 12.74,
-      dmgPerLevel: 0.91,
+      /* A summon's early power is kills, not damage: a bite or a maul
+         finishes trash whatever it does. So the bites come slower, the
+         maul is lighter and the rakes rarer, and the bite grows with level
+         alone - 2.3x a weapon at 9:00 became ~1.1x, the 20:00 share held. */
+      biteCooldown: 0.85,
+      dmgBase: 0,
+      dmgPerLevel: 1.35,
       huntRange: 560,
       leash: 440,
       wanderSpeed: 150,
       ghoulSpeedMult: 0.70,
-      ghoulRadiusMult: 1.35,
-      ghoulCdMult: 1.45,
+      ghoulRadiusMult: 1.1,
+      ghoulCdMult: 3.5,
       ghoulDmgMult: 1.45,
       // The pack: one-mouth bites, harder for every packmate on the quarry.
       wolfDmgMult: 3.0,
       wolfCdMult: 0.85,
-      packBonus: 0.25,
+      packBonus: 0.5,
       packWindow: 1.2,
       packMax: 3,
-      killRebite: 0.12,
-      mauleRadius: 1.0,
-      maulDmg: 0.7,
+      killRebite: 0.5,
+      mauleRadius: 0.8,
+      maulDmg: 0.2,
       // The guard: a short leash, and what it rakes is slowed and rots.
       ghoulLeashMult: 0.55,
       ghoulSlow: 0.6,
