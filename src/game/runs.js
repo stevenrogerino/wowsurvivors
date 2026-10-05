@@ -23,7 +23,8 @@
   Runs.multiplier = function (run) {
     const d = DIFF_MULT[run.difficulty] || 1;
     const field = run.map && run.map.difficulty ? run.map.difficulty : 1;
-    return d * field * (run.oathMult || 1);
+    const classic = run.classic ? WS.Config.classicScoreMult : 1;
+    return d * field * classic * (run.oathMult || 1);
   };
 
   /** A difficulty's name, for records that may predate the current two
@@ -152,7 +153,7 @@
     run.score = score;
     const entry = {
       at: Date.now(), map: run.mapId, char: run.characterId, diff: run.difficulty || 'veteran',
-      hyper: !!run.hyper, tides: !!run.tides, oaths: (run.oaths || []).slice(), nightly: run.nightly ? run.nightly.day : null,
+      hyper: !!run.hyper, tides: !!run.tides, classic: !!run.classic, oaths: (run.oaths || []).slice(), nightly: run.nightly ? run.nightly.day : null,
       outcome, time: WS.floor(run.time), kills: run.kills || 0, bosses: run.bossesSlain || 0,
       level: player ? player.level : 0, finale: !!run.finaleCleared, retried: !!run.finaleRetries,
       top: topWeapon(run), score,

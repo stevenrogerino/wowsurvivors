@@ -3222,6 +3222,10 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .oath-card.on .oath-name { color: #ffd6cf; }
 .oath-card.on .oath-bonus { color: var(--arc); }
 .oath-card.on .oath-seal { background: var(--blood); border-color: #ff9a8e; box-shadow: 0 0 10px rgba(226,72,61,.7); }
+.oath-card.oath-classic { margin-bottom: 12px; }
+.oath-card.oath-classic.on { border-color: rgba(245,197,107,.6); background: linear-gradient(180deg, rgba(245,197,107,.10), rgba(185,140,60,.05)); }
+.oath-card.oath-classic.on .oath-name { color: var(--arc-hot, #ffe6ae); }
+.oath-card.oath-classic.on .oath-seal { background: var(--arc); border-color: #ffe6ae; box-shadow: 0 0 10px rgba(245,197,107,.6); }
 .oath-total { font-family: var(--fig); color: var(--arc); font-size: var(--t-small); }
 
 .report-note { width: 100%; }

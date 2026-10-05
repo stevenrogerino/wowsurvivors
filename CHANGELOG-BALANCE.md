@@ -42,6 +42,13 @@ night. Now it has two.
   - Noted for later, not changed here: Ochre, the Pale Wastes and Highmoor
     are hard with or without Tides (Highmoor on Professional: 0 of 24 for the
     strong bot either way).
+- **The Classic Night**, a card at the top of the Oaths sheet: the night as
+  it was before the Tides (one pace, no deepening, no reliquaries) for x0.9
+  score (`classicScoreMult`), and it never earns the deepening's own bonus
+  (`depthScore`). It is a choice of night, not an Oath ("Release all" leaves
+  it), the Nightly ignores it, and the menu's Oaths button, the HUD and the
+  ledger name it. `check-tides` checks it plays no Tides and scores a little
+  less.
 - Tools: `botlab.js` plays Tides by default (`TIDES=0` switches the rhythm
   off to compare) and takes `OATHS=hyper,crowd,...`; the tools that armed
   Hyper swear the Oath; `check-ui` checks there is no Hyper toggle and that

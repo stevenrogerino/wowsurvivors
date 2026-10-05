@@ -171,7 +171,8 @@ than the build. Phase 2 at 60% health, Total Darkness and a hard enrage at 20%.
 - **Difficulty.** Two: Veteran and Professional. Every night has the
   **Tides**: the horde gathers before each boss and thins after it falls, the
   night deepens after each boss as far as the survivor can take it, and every
-  boss leaves a reliquary of gifts.
+  boss leaves a reliquary of gifts. The **Classic Night** (top of the Oaths
+  sheet) plays the night without them, for a little less score.
 - **Score.** Every night is scored: time held, kills, bosses and how it ended,
   multiplied by the battlefield, the difficulty and any Oaths sworn
   (`src/game/runs.js`). **Statistics** keeps the last sixty nights and the

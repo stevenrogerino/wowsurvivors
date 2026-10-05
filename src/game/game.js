@@ -77,7 +77,9 @@
       /* Tides: the night's rhythm around its bosses, its deepening and their
          reliquaries. Every night has them now (the Arena runs its own fight);
          it was a toggle opened after the first dawn. */
-      tides: !map.arena,
+      tides: !map.arena && !WS.Save.db.classicNight,
+      // The Classic Night: the night before the Tides (Oaths sheet).
+      classic: !map.arena && !!WS.Save.db.classicNight,
       goldMult: map.goldMult * diff.gold,
       diffScale: diff.scale,
       diffInterval: diff.interval,
@@ -101,6 +103,7 @@
       run.difficulty = 'professional';
       run.diffScale = v.scale; run.diffInterval = v.interval; run.goldMult = run.map.goldMult * v.gold;
       run.nightly = n;
+      run.tides = true; run.classic = false;   // the Nightly is always a Tides night
       run.oaths = n.oaths.slice();
       run.draft = { s: n.draft };
     } else if (!run.map.arena && WS.Runs.oathsOpen()) {

@@ -327,6 +327,11 @@
        a build that has run away with the night, not to finish one that has
        not. */
     tideStrainTime: 90, tideStrainFull: 0.003,
+    /* Every night has the Tides. A survivor who wants the old night (one
+       pace, no deepening, no reliquaries) can choose the Classic Night on
+       the Oaths sheet, for a little less score: x0.9 here, and it also never
+       earns the deepening's own bonus (depthScore). */
+    classicScoreMult: 0.9,
     tideLowBar: 0.7, tideLowSpan: 0.4,
     /* ...and the night pays for what it took: each reliquary's odds of three
        and five gifts grow with the share of the last step that landed (x2

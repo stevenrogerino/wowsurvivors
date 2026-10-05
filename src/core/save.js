@@ -133,6 +133,8 @@
       // Set once the Steam Deck defaults have been applied (main.js).
       deckSetup: false,
       gold: 0,
+      // The Classic Night (Oaths sheet): no Tides, a little less score.
+      classicNight: false,
       // Set the first time the manual is closed, so the primer greets a new
       // player once and never interrupts a returning one.
       seenManual: false,

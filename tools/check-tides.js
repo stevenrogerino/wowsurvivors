@@ -7,6 +7,7 @@
  *   - a deepening step lands in full on a survivor the night is not hurting
  *     and not at all on one it is hurting at tideStrainFull
  *   - a boss leaves a reliquary and Death does not
+ *   - the Classic Night (Oaths sheet) has none of it and scores a little less
  *   - a reliquary's gifts go down the build's road in order: the ready
  *     evolution, then the passive a finished weapon waits on, then ranks
  *
@@ -34,6 +35,11 @@ const path = require('path');
     // Every night is a Tides night but the Eclipse Arena's, which runs its own fight.
     G.startRun('boss_arena', 'hunter'); if (G.state === 'blessing') G.chooseBlessing(G.blessingChoices[0]);
     out.plainOff = !W.rhythmOn() && !G.run.tides;
+    // The Classic Night (Oaths sheet): no rhythm, and a little less score.
+    WS.Save.db.classicNight = true; G.startRun('dustreach', 'hunter'); if (G.state === 'blessing') G.chooseBlessing(G.blessingChoices[0]);
+    out.classicOff = !W.rhythmOn() && !G.run.tides && G.run.classic === true;
+    out.classicMult = WS.Runs.multiplier(G.run) / WS.Runs.multiplier(Object.assign({}, G.run, { classic: false }));
+    WS.Save.db.classicNight = false;
     WS.setSeed(5); G.startRun('dustreach', 'hunter'); G.chooseBlessing({ type: 'blessing', id: 'kings' });
     G.openLevelUp = () => {}; G.presentLevelUp = () => {};
     const run = G.run, p = G.player;
@@ -101,6 +107,8 @@ const path = require('path');
   await b.close();
   const fail = [];
   if (!r.on) fail.push('Config.tides and Config.reliquaries are not both on');
+  if (!r.classicOff) fail.push('the Classic Night still plays the Tides');
+  if (!(r.classicMult < 1 && r.classicMult >= 0.85)) fail.push(`the Classic Night scores x${r.classicMult}, not a little less`);
   if (!r.plainOff) fail.push('the Eclipse Arena has the Tides rhythm; it runs its own fight');
   if (!(r.crest > r.calm * 1.3)) fail.push(`the pace does not gather before a boss (${r.calm.toFixed(2)} -> ${r.crest.toFixed(2)})`);
   if (!(r.lull < r.calm * 0.5)) fail.push(`the pace does not falter after a boss falls (${r.lull.toFixed(2)})`);

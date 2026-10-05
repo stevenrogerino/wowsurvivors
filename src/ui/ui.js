@@ -840,6 +840,7 @@
     }
     const modeBits = [];
     if (run.hyper) modeBits.push('Hyper');
+    if (run.classic) modeBits.push('Classic');
     if (run.nightly) modeBits.push('Nightly');
     else {
       // Hyper is an Oath but keeps its own name; the count is the others.
@@ -1697,8 +1698,11 @@
       const open = WS.Runs.oathsOpen();
       const armed = WS.Runs.armedOaths();
       oathBtn.disabled = !open;
+      const classic = !!WS.Save.db.classicNight;
+      const mult = WS.Runs.oathMult(armed) * (classic ? WS.Config.classicScoreMult : 1);
       oathBtn.textContent = !open ? 'Oaths: hold a night first'
-        : armed.length ? `Oaths: ${armed.length} \u00b7 \u00d7${WS.Runs.oathMult(armed).toFixed(2)}` : 'Oaths: none';
+        : armed.length || classic
+          ? `Oaths: ${armed.length}${classic ? ' \u00b7 Classic' : ''} \u00b7 \u00d7${mult.toFixed(2)}` : 'Oaths: none';
       oathBtn.dataset.tip = open
         ? 'Swear to a harder night. Every Oath adds to your score. They do not apply in the Eclipse Arena.'
         : 'Hold any battlefield to dawn to open the Oaths.';
@@ -2574,7 +2578,7 @@
       const when = `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} ${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
       const diff = WS.Runs.diffLabel(e.diff);
       const setting = e.nightly ? 'Nightly'
-        : [diff, e.hyper ? 'Hyper' : '', otherOaths(e.oaths) ? `${otherOaths(e.oaths)} Oath${otherOaths(e.oaths) > 1 ? 's' : ''}` : ''].filter(Boolean).join(' \u00b7 ');
+        : [diff, e.hyper ? 'Hyper' : '', e.classic ? 'Classic' : '', otherOaths(e.oaths) ? `${otherOaths(e.oaths)} Oath${otherOaths(e.oaths) > 1 ? 's' : ''}` : ''].filter(Boolean).join(' \u00b7 ');
       const end = (OUT[e.outcome] || e.outcome) + (e.finale ? (e.retried ? ', finale (retried)' : ', finale') : '');
       const cells = [when, WS.Characters[e.char] ? WS.Characters[e.char].name : e.char,
         WS.Maps[e.map] ? WS.Maps[e.map].name : e.map, setting, WS.formatTime(e.time), end, WS.formatNumber(e.score)];
@@ -2662,12 +2666,34 @@
     s.inner.classList.add('sheet-wide');
     const grid = el('div', 'oath-grid');
     const total = el('div', 'oath-total');
+    /* The Classic Night: not an Oath but a choice of night. Every night has
+       the Tides; this one plays the night as it was before them, for a
+       little less score (Config.classicScoreMult). */
+    const classic = el('button', 'oath-card oath-classic');
+    classic.type = 'button';
+    {
+      const ic = el('div', 'oath-icon');
+      ic.append(icon('hourglass', [0.96, 0.77, 0.42], 40));
+      const t = el('div');
+      t.append(el('div', 'oath-name', 'The Classic Night'),
+        el('div', 'oath-desc', 'No Tides: the horde keeps one pace, the night does not deepen after each boss, and bosses leave no reliquary.'),
+        el('div', 'oath-bonus', `\u2212${WS.round((1 - WS.Config.classicScoreMult) * 100)}% score, and no deepening bonus`));
+      classic.append(ic, t, el('div', 'oath-seal'));
+      classic.addEventListener('click', () => {
+        WS.Save.db.classicNight = !WS.Save.db.classicNight;
+        WS.Save.save();
+        WS.Audio.play(WS.Save.db.classicNight ? 'select' : 'ui');
+        paint();
+      });
+    }
     const paint = () => {
       const armed = WS.Runs.armedOaths();
-      total.textContent = armed.length
-        ? `${armed.length} sworn \u00b7 score \u00d7${WS.Runs.oathMult(armed).toFixed(2)}`
-        : 'None sworn. The night as it comes.';
+      const mult = WS.Runs.oathMult(armed) * (WS.Save.db.classicNight ? WS.Config.classicScoreMult : 1);
+      total.textContent = (armed.length ? `${armed.length} sworn` : 'None sworn')
+        + (WS.Save.db.classicNight ? ' \u00b7 Classic Night' : '')
+        + (armed.length || WS.Save.db.classicNight ? ` \u00b7 score \u00d7${mult.toFixed(2)}` : '. The night as it comes.');
       for (const b of grid.children) b.classList.toggle('on', !!WS.Save.db.oaths[b.dataset.id]);
+      classic.classList.toggle('on', !!WS.Save.db.classicNight);
     };
     for (const id of WS.OathOrder) {
       const o = WS.Oaths[id];
@@ -2691,8 +2717,9 @@
     }
     s.body.append(el('p', 'pane-intro book-line',
       'Oaths hold for every night until you release them, on every battlefield but the Eclipse Arena. '
-      + 'The Nightly swears its own (always Hyper, and two more) and ignores these.'), grid);
+      + 'The Nightly swears its own (always Hyper, and two more) and ignores these.'), classic, grid);
     const clear = el('button', 'btn', 'Release all');
+    // Releases the Oaths only; the Classic Night is a choice of night, not an Oath.
     clear.addEventListener('click', () => { WS.Save.db.oaths = {}; WS.Save.save(); WS.Audio.play('ui'); paint(); });
     const done = el('button', 'btn primary', 'Done');
     done.dataset.back = '1';
@@ -4179,7 +4206,7 @@
   function modeTag(run) {
     if (run.nightly) return ' \u00b7 Nightly';
     const n = otherOaths(run.oaths);
-    return n ? ` \u00b7 ${n} Oath${n > 1 ? 's' : ''}` : '';
+    return (run.classic ? ' \u00b7 Classic' : '') + (n ? ` \u00b7 ${n} Oath${n > 1 ? 's' : ''}` : '');
   }
 
   /** Under the verdict: the records this night set, if any. */

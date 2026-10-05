@@ -68,7 +68,7 @@
       plat: WS.Platform ? WS.Platform.name : 'web',
       seed: WS.getSeed ? WS.getSeed() : null,
       map: run.mapId, char: run.characterId, diff: run.difficulty || WS.Save.settings.difficulty,
-      hyper: !!run.hyper, tides: !!run.tides, oaths: (run.oaths || []).slice(),
+      hyper: !!run.hyper, tides: !!run.tides, classic: !!run.classic, oaths: (run.oaths || []).slice(),
       nightly: run.nightly ? run.nightly.day : null, arena: !!(run.map && run.map.arena),
       quality: WS.Save.settings.quality || null,
       x0: Math.round(p.x), y0: Math.round(p.y),
