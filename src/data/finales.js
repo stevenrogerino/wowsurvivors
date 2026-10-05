@@ -252,7 +252,11 @@
         // The second and third dash of a set: quicker, but still a human's
         // reaction plus a step - below ~0.5s a lane this wide cannot be left.
         dashChainWindup: 0.5,
-        pistolDamage: 30, boarders: 8, rally: 4,
+        /* 20, was 30: a fan of five at 340 px/s from duelling range is the
+           one thing in this fight with no telegraph but the bolts themselves,
+           and at 30 a player reacting a quarter-second late lost the whole
+           bar to it (finale bench: 114% a fight). Still ~17% a bolt. */
+        pistolDamage: 20, boarders: 8, rally: 4,
         sailInSpeed: 260, crashTime: 2.6,
         // Broadsides fire straight down until the ship falls below aimBelow,
         // then at you; each port a broadsideStagger later than the last.
@@ -265,8 +269,8 @@
         dashChain: 2, dashGirth: 1.8, pistolCount: 5, pistolSpread: 0.12, pistolSpeed: 340,
         duelKegRing: 4, duelKegRange: 110, duelKegScale: 0.8, duelKegDelay: 0.3,
         // Quicker throughout (was broadside 6.5, grape 4.2, keg 7, dash 5.5,
-        // pistol 2.6, duelKeg 8): a median 0% taken over 280s in bot nights.
-        every: { broadside: 5, grape: 3.2, keg: 5.2, board: 12, dash: 4.5, pistol: 2.2, duelKeg: 6, rally: 14 },
+        // duelKeg 8): a median 0% taken over 280s in bot nights.
+        every: { broadside: 5, grape: 3.2, keg: 5.2, board: 12, dash: 4.5, pistol: 2.6, duelKeg: 6, rally: 14 },
         opening: { broadside: 3.5, grape: 5, keg: 6.5, board: 8 },
         duelOpening: { dash: 3, pistol: 2, keg: 6, rally: 10 },
       },

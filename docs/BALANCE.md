@@ -22,6 +22,10 @@ gate prints `ok` or `FAIL`; the script exits with the number that failed.
 | `tools/swap-test.js` | Real bot builds where a weapon is evolved, replayed with it and with five other evolved weapons in its place. **Gate: it leads its own builds within x0.8 to x1.25 of what the others would.** | Builds the bot never makes. |
 | `tools/night-curve.js` | The shape of a night from `TRACE` timelines: intensity, waves, how nights end. | Whether a near miss was exciting. |
 | `tools/slot-test.js` | One ability at 20:00 against a crowd and a boss; the oldest instrument. | Company, and every stage but the last. |
+| `tools/boss-snapshots.js` | From `TRACE` nights: the build that meets each scheduled boss, how long it lives, what it costs (split boss vs horde when botlab recorded the fight), and every build that reached 30:00 (`finaleBuilds`). | Why a fight went the way it did. |
+| `tools/finale-bench.js` | The six finales and the Eclipse Arena fought by the pilot (strong, human-limited, sloppy) against the median 30:00 build, no healing: win rate, length, health taken a minute, the mechanics that took it. Minutes, not nights. | Healing, barriers, the night's own build. Confirm with `botlab.js FINALE=1`. |
+| `tools/check-finale-fair.js` | Gate: every finale and the arena, two seeds, every shape held to its contract - no tell under 0.6s, every ring opening within 90 degrees and on the field and never covered by another shape as it arrives, no two cutters from one source turning opposite ways, a safe square or zone always within reach. Reports how much of each fight had two or more threats at once. | Whether it is fun. |
+| `tools/check-bosses.js` | Gate: every scheduled boss's kit, the ring-aim fuzz (4000 rings, corners and edges) and the safe-square fuzz. | Balance. |
 
 ## What the meter test taught us (29 September)
 
@@ -75,6 +79,11 @@ the weapon swapped before touching a number.
 - **Discoveries**: +5% to +60% to the pair at every stage, never negative.
 - **Passives**: no passive makes any weapon it touches worse at its cap.
 - **Unions**: 15% to 30% of a build.
+- **Bosses and finales**: a scheduled boss lives long enough to show its kit
+  (10-25s against the build that meets it) and costs a strong player little;
+  a finale is won by a player who reads it, and a mistake in one costs a
+  real share of the bar. Overlapping mechanics are allowed; impossible ones
+  are not (`check-finale-fair.js`).
 - **Nights**: at Professional the bot reaches dawn on most nights on the first
   three battlefields and on a few on the last two; deaths come after a stretch
   at the edge, not straight out of a stretch ahead.
