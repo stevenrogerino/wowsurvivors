@@ -248,10 +248,13 @@
         damage: 10,   // was 9, for the same reason as the Candlecrawler's
         sailSpeed: 70, broadsideDamage: 40, broadsideTele: 1.2, broadsideWidth: 64,
         grapeDamage: 26, kegDamage: 40, kegRadius: 80, kegTele: 1.2,
-        dashDamage: 42, dashWindup: 0.55, dashTime: 0.35, dashRange: 340,
-        // The second and third dash of a set: quicker, but still a human's
-        // reaction plus a step - below ~0.5s a lane this wide cannot be left.
-        dashChainWindup: 0.5,
+        /* Her dashes land for a whole bar before armour now (finaleDamage),
+           so their warning is a human's reaction plus a real step: 0.7s for
+           the first, 0.6s for the chained (were 0.55 / 0.5). At the old
+           timings the strong bot lost 2 of 11 duels at Professional to the
+           chain alone. */
+        dashDamage: 42, dashWindup: 0.7, dashTime: 0.35, dashRange: 340,
+        dashChainWindup: 0.6,
         pistolDamage: 30, boarders: 8, rally: 4,
         sailInSpeed: 260, crashTime: 2.6,
         // Broadsides fire straight down until the ship falls below aimBelow,
