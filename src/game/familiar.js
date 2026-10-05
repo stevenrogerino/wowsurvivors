@@ -64,9 +64,9 @@
       packBonus: 0.5,
       packWindow: 1.2,
       packMax: 3,
-      killRebite: 0.5,
+      killRebite: 0.8,
       mauleRadius: 0.8,
-      maulDmg: 0.2,
+      maulDmg: 0.1,
       // The guard: a short leash, and what it rakes is slowed and rots.
       ghoulLeashMult: 0.55,
       ghoulSlow: 0.6,
@@ -187,11 +187,11 @@
 
   /** A Dread Command sigil: every summon turns on that creature, its next
    *  bite ready. */
-  Familiar.command = function (target) {
+  Familiar.command = function (target, rebite) {
     for (const fam of this.list) {
       if (fam.down > 0 || fam.charge) continue;
       fam.target = target;
-      fam.biteTimer = WS.min(fam.biteTimer, 0.05);
+      if (rebite) fam.biteTimer = WS.min(fam.biteTimer, 0.05);
     }
     if (this.list.some((f) => f.spec.pack)) { this.quarry = target; this.quarryTimer = 1.0; }
   };

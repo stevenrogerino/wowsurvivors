@@ -478,14 +478,18 @@
      rank). A cast marks the thickest of the crowd nearby and sends every
      summon at it at once. */
   WS.Weapons.dread_command = {
-    damage: 26, evolveDamageMult: 3.0, bossDamage: 1.6, evolvedBossDamage: 1.6,
+    damage: 14, evolveDamageMult: 3.0, bossDamage: 1.6, evolvedBossDamage: 1.6,
     name: 'Dread Command', school: 'shadow', behavior: 'command', art: 'command',
     rankDamageStep: 0.2,
     cooldown: 2.2, radius: 78, range: 420, color: [0.62, 0.42, 0.95],
-    commandDamage: 0.10, commandHaste: 0.04, evolvedCommandDamage: 0.5, evolvedCommandHaste: 0.25,
+    /* Measured as a package (the sigil and three ranks of a summon, with
+       four other weapons; meter-test SUMMON=): wolves 1.66x a weapon at
+       9:00, 0.59x at 20:00 in a horde (their work is bosses and elites);
+       ghouls 1.60x and 1.13x. Most of the growth is in the evolution. */
+    commandDamage: 0.04, commandHaste: 0.02, evolvedCommandDamage: 2.5, evolvedCommandHaste: 0.3,
     description: 'Marks the thick of the crowd with a sigil of shadow and sends every summon at it. Wolves and ghouls answer only to it, and every rank drives them harder.',
     evolveName: 'The Dread Host', evolvePairing: 'might',
-    evolveDescription: 'The host is unleashed: summons strike half again as hard and a quarter again as often, and the sigil falls twice as often.',
+    evolveDescription: 'The host is unleashed: summons strike three and a half times as hard and a third again as often, their next bite ready whenever the sigil falls, and it falls twice as often.',
   };
 
   // Shared level-up pool. Every class's starting weapon is findable by anyone.

@@ -301,7 +301,9 @@
     tideGather: 40, tideCrest: 1.5,
     tideLull: 22.5, tideLow: 0.35,
     tideLateRamp: 900,
-    defaultLateRamp: 0,
+    // The same late rise on a night without Tides, at half the slope: x1.4
+    // creatures by 30:00 on most battlefields, more to kill, not tougher.
+    defaultLateRamp: 1800,
     /* And the night deepens at each boss: once a scheduled boss's lull is
        over, the horde's health steps up by that boss's share here (easing
        in over tideStepTime), so the stretch a boss's reliquary buys is
@@ -397,12 +399,13 @@
      * (one Recovery rank, no other investment) stays modest at ~20-50 dps
      * either way, since the multiplier only pays off once the healing
      * income actually justifies it. */
-    curdleCoefficient: 0.96,
+    curdleCoefficient: 0.21,
     /* ...and the pulse grows with Might and with your arsenal (the mean,
        over held weapons, of 1 + curdleRankStep a rank past the first, x
        curdleEvolvedMult evolved; Player.curdleScale). */
     curdleRankStep: 0.20,
-    curdleEvolvedMult: 1.5,
+    curdleReach: 380,
+    curdleEvolvedMult: 5,
     /* Measured with tools/curdled-sim.js against a real, moving, killable
      * crowd (gauntlet): 110->140 is +43% total damage for the shared
      * curdleShare=0.25 baseline and +48% for Graveblade's 0.45 - coverage,

@@ -840,13 +840,58 @@
   "img": "icon_p_dread_command.png",
   "body": [
    "Wolves and ghouls now need a weapon slot. Dread Command, which used to be a passive, is the summoner's weapon. Its own sigil marks the thick of the crowd and sends every summon at it at once, and every rank drives them harder and faster.",
-   "Spirit Companion and Grave Call are only offered while you hold it. Evolved with Might it becomes The Dread Host: summons strike half again as hard, a quarter again as often, and the sigil falls twice as often."
+   "Spirit Companion and Grave Call are only offered while you hold it. Evolved with Might it becomes The Dread Host: summons strike three and a half times as hard and a third again as often, and the sigil falls twice as often with every summon's next bite ready."
   ],
   "list": [],
   "chips": [
    "summons need <b>a weapon slot</b>",
-   "each rank <b>+10%</b> summon damage, <b>+4%</b> speed",
+   "each rank <b>+4%</b> summon damage, <b>+2%</b> speed; evolved <b>+250%</b>",
    "evolves with <b>Might</b>"
+  ]
+ },
+ {
+  "sec": "From the testers",
+  "stamp": "buff",
+  "title": "Curdled Light keeps up",
+  "img": null,
+  "body": [
+   "Curdled Light was a build at 9:00 and an afterthought by 20:00, because its pulse never grew with you and erupted at your feet, where nothing lived late in a night.",
+   "Now it grows with your Might and with your arsenal, more for every rank and far more for every evolved weapon. And it erupts on the nearest of the crowd instead of around you. A committed Curdled build is now worth a bit over half a weapon all night long."
+  ],
+  "list": [],
+  "chips": [
+   "at 9:00 <b>2.1x → 0.6x</b> a weapon",
+   "at 20:00 <b>0.07x → 0.6x</b>",
+   "erupts <b>on the crowd</b>"
+  ]
+ },
+ {
+  "sec": "From the testers",
+  "stamp": "kept",
+  "title": "Skybreak stays",
+  "img": "icon_arcweb.png",
+  "body": [
+   "Testers felt evolved Arcweb took kills that belonged to their other weapons. We tested it as the first weapon to evolve, beside weapons at rank 3 and at rank 6, and with all five evolved: it came out at or below its fair share every time. Sending its hops past what is at your feet changed nothing, so it stays as it is.",
+   "Part of what you saw was the meter: it used to credit a killing blow with its full size. It now counts only what landed. If it still looks greedy, send us the run code."
+  ],
+  "list": [],
+  "chips": [
+   "first to evolve <b>0.66–0.75x</b> of others",
+   "all evolved <b>0.88x</b> fair"
+  ]
+ },
+ {
+  "sec": "From the testers",
+  "stamp": "new",
+  "title": "The last stretch thickens",
+  "img": null,
+  "body": [
+   "Without Tides, the back half of a night went flat. Now, once the last phase begins, the horde keeps growing - more to kill, not tougher - to about two-fifths more by dawn. Tides nights keep their own steeper rise."
+  ],
+  "list": [],
+  "chips": [
+   "creatures by dawn <b>x1.4</b>",
+   "not tougher, <b>more</b>"
   ]
  }
 ]

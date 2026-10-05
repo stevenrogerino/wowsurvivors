@@ -5,6 +5,53 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
 
 <!-- new entries go directly below -->
 
+## 2026-10-05 (later): Weeks 3-4 of the balance plan (W6, W8, W2-A, W9, Skybreak)
+
+- **Skybreak (evolved Arcweb), testers' "steals damage": no change.** The
+  first-evolution test (STAGE=lead: one weapon evolved, four beside it)
+  put it the weakest lead of all twenty at every setting: x0.67 kiting,
+  x0.75 piloting with partners at rank 6, x0.66 with partners at rank 3
+  (240 builds each). All evolved at s5: x0.88 of fair. The planned fix,
+  hops passing over what is at the survivor's feet (`evolveHopSkip`), moved
+  neither its share (x0.68) nor the close weapons' beside it (Axe Gyre
+  75.6% -> 76%), so it ships off. Counting landed damage (W0) already took
+  away the overkill a chain used to be credited with.
+- **W6, Curdled Light at 0.6x a weapon.** The pulse grows with Might and the
+  arsenal (`Player.curdleScale`: mean over held weapons of 1 +
+  `curdleRankStep` 0.20 a rank, x `curdleEvolvedMult` 5 evolved), and it
+  erupts on the nearest creature within `curdleReach` 380 instead of at
+  the survivor's feet - late, the weapons kill everything before it gets
+  close, and the pulse struck air. `curdleCoefficient` 2.15 -> 0.21.
+  Committed build (Blood Rite, Curdled Light 5, Recovery 4) beside five
+  weapons, `CURDLE=1 node tools/meter-test.js`, 24 builds: s3 2.12x ->
+  0.59x of a weapon, s5 0.07x -> 0.62x.
+- **W8, Death.** m = minutes past 30:00: a new Death every max(25, 60 -
+  5m)s, at most min(8, 1 + m/2) alive, his touch `deathContactBase` 30% +
+  5% a minute of the survivor's health (armour applies), and on one clock
+  every max(6, 15 - m)s the oldest blinks: a 110px ring 0.4s ahead of the
+  survivor, 0.8s fuse, 20% + 3% a minute (cap 60%) and healing x0.5 for 4s
+  (Withering). Probe over ten minutes: alive 1 -> 5, touch 30% -> 71%,
+  blinks 4 -> 10 a minute; killable, each kill announced with the count,
+  `deathsSlain` in run codes.
+- **W2-A, Dread Command is a weapon.** The passive retires; the weapon's
+  sigil (damage 14, r78, 2.2s) marks the nearest crowd and sends every
+  summon at it; Spirit Companion and Grave Call are offered only while it
+  is held. Summon power: +4% damage and +2% speed a rank, evolved (The
+  Dread Host, paired with Might) +250% and +30% and every sigil readies
+  their next bite. Wolves' `maulDmg` 0.2 -> 0.1, `killRebite` 0.5 -> 0.8.
+  Package (sigil + three ranks of a summon) against the four other weapons,
+  `SUMMON=wolf|ghoul`, 24 builds: wolves s3 1.66x, s5 0.59x (a horde; their
+  work is bosses and elites); ghouls s3 1.60x, s5 1.13x.
+- **W9, the late rise without Tides.** `defaultLateRamp` 1800: once the last
+  phase begins the ambient pace rises one 1800th a second (x1.4 by 30:00;
+  Tides keeps its own 900). More to kill, not tougher. Bot nights, 3
+  survivors x 2 battlefields, Professional: kills a minute at 25:00-30:00
+  1.2k -> 1.6k, one death in six either way.
+- **Fix:** drops are held back only while the horde gathers for a boss
+  (`Wave.cresting`), not whenever the tide is up: on a Tides night the
+  late rise kept the tide above 1.15 and no bomb or hourglass would have
+  dropped after the last phase.
+
 ## 2026-10-05: Weeks 1-2 of the balance plan (SP research plan W0-W7)
 
 - **W0, the meter counts what landed.** `run.landedByWeapon` counts

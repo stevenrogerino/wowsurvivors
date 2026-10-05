@@ -311,10 +311,16 @@
           p.curdlePool -= dmg / coeff;
           p.curdleDealt += dmg;
           const radius = WS.Config.curdleRadius * p.areaMultiplier;
-          WS.Enemy.damageArea(p.x, p.y, radius, dmg, null, null, 'curdled');
+          /* It erupts on the nearest of the crowd within curdleReach, not at
+             the survivor's feet: late in a night the weapons kill everything
+             before it gets that close, and a pulse at your feet struck air
+             (0.07x a weapon at 20:00, 2.1x at 9:00, in the same builds). */
+          const t = WS.Enemy.findNearest(p.x, p.y, WS.Config.curdleReach * p.areaMultiplier);
+          const cx = t ? t.x : p.x, cy = t ? t.y : p.y;
+          WS.Enemy.damageArea(cx, cy, radius, dmg, null, null, 'curdled');
           const punch = WS.min(1, dmg / 60);
-          WS.FX.flash(p.x, p.y, radius * (0.86 + 0.24 * punch), [0.42, 0.12, 0.55], 0.32);
-          WS.FX.flash(p.x, p.y, radius * (0.60 + 0.18 * punch), [0.30, 0.80 + 0.2 * punch, 0.22], 0.28);
+          WS.FX.flash(cx, cy, radius * (0.86 + 0.24 * punch), [0.42, 0.12, 0.55], 0.32);
+          WS.FX.flash(cx, cy, radius * (0.60 + 0.18 * punch), [0.30, 0.80 + 0.2 * punch, 0.22], 0.28);
           if (punch >= 0.85) WS.FX.shake(3, 0.16);
         }
       }

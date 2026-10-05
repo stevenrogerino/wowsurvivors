@@ -451,7 +451,7 @@
     WS.Enemy.damageArea(t.x, t.y, r, damageOf(player, w), null, null, w.id);
     WS.FX.flash(t.x, t.y, r, schoolColour(w), 0.35, 5, d.school);
     WS.FX.flash(t.x, t.y, r * 0.45, [0.85, 0.75, 1.0], 0.25);
-    WS.Familiar.command(t);
+    WS.Familiar.command(t, w.evolved || !!d.commandRebite);
     WS.Audio.play('cast', undefined, d.school);
     return true;
   };
