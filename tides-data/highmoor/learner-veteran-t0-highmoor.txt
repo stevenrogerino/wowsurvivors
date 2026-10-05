@@ -1,0 +1,31 @@
+24 runs in 179s
+
+full · highmoor · veteran · pilot plan {"replan":0.2,"noise":25} · 24 runs
+
+ by survivor
+  mage                      20.3m   1/2 dawn  lvl 122  potions 174.5  bombs 27.5  freezes 16.5  low  -1%  hurt: contact 63%, bolt 20%, charge 10%, ground 4%
+  warrior                   22.4m   1/2 dawn  lvl 121  potions 147.0  bombs 25.0  freezes 18.0  low   2%  hurt: contact 60%, bolt 24%, charge 11%, ground 3%
+  graveblade                 7.3m   0/2 dawn  lvl  65  potions 25.0  bombs  3.0  freezes  4.0  low  -7%  hurt: contact 80%, bolt 10%, charge 6%, ground 3%
+  priest                    19.0m   1/2 dawn  lvl 110  potions 88.5  bombs 16.5  freezes 12.5  low   1%  hurt: contact 58%, bolt 25%, charge 8%, ground 7%
+  warlock                    8.4m   0/2 dawn  lvl  81  potions 26.0  bombs  6.0  freezes  8.0  low  -9%  hurt: contact 61%, bolt 23%, ground 9%, charge 7%
+  ruinseeker                12.2m   0/2 dawn  lvl  92  potions 47.0  bombs  8.0  freezes  9.5  low -10%  hurt: contact 77%, bolt 13%, charge 4%, ground 4%
+  rogue                     17.3m   1/2 dawn  lvl  98  potions 112.0  bombs 19.5  freezes 19.0  low -14%  hurt: contact 54%, bolt 28%, charge 11%, ground 5%
+  shaman                    17.5m   1/2 dawn  lvl 109  potions 137.0  bombs 18.0  freezes 15.5  low   1%  hurt: contact 43%, bolt 37%, charge 9%, storm 6%
+  druid                      6.1m   0/2 dawn  lvl  59  potions 12.0  bombs  1.0  freezes  1.0  low  -2%  hurt: contact 81%, bolt 10%, charge 4%, ground 4%
+  hunter                     5.7m   0/2 dawn  lvl  66  potions 13.0  bombs  2.5  freezes  2.5  low  -4%  hurt: contact 84%, bolt 9%, charge 4%, ground 3%
+  paladin                    6.9m   0/2 dawn  lvl  73  potions 25.0  bombs  3.0  freezes  3.5  low  -3%  hurt: contact 84%, bolt 10%, ground 4%, charge 2%
+  monk                       5.5m   0/2 dawn  lvl  57  potions 11.0  bombs  2.0  freezes  2.0  low -11%  hurt: contact 83%, bolt 13%, ground 3%, charge 2%
+  ALL                       12.4m  5/24 dawn  lvl  87  potions 68.2  bombs 11.0  freezes  9.3  low  -5%  hurt: contact 63%, bolt 22%, charge 8%, ground 4%
+
+ the killing blow
+     6  contact · Mossback Stonehide
+     5  contact · Stormhorn Ram
+     2  contact · Stormwisp
+     2  charge · Thunderscale Drake
+     2  bolt · Galewing Harpy
+     1  contact · Skreeva, Queen of the Galewing
+     1  contact · Thunderscale Drake
+
+ bolts that landed: 2367, flying <0.2s 1%, 0.2-0.4s 4%, 0.4-0.8s 35%, longer 60%; mean speed 260; slowed when hit 0%
+
+ pilot: 2.64ms a decision
