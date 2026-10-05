@@ -1,0 +1,29 @@
+24 runs in 98s
+
+full · highmoor · professional · pilot plan · 24 runs
+
+ by survivor
+  mage                       5.1m   0/2 dawn  lvl  59  potions 14.0  bombs  2.5  freezes  2.5  low -16%  hurt: contact 59%, bolt 29%, ground 10%, storm 2%
+  warrior                    7.6m   0/2 dawn  lvl  72  potions 26.5  bombs  4.0  freezes  2.0  low  -2%  hurt: contact 82%, bolt 10%, charge 6%, ground 1%
+  graveblade                 8.1m   0/2 dawn  lvl  70  potions 15.0  bombs  4.0  freezes  3.5  low -11%  hurt: contact 81%, bolt 11%, charge 5%, ground 2%
+  priest                     7.0m   0/2 dawn  lvl  75  potions 17.0  bombs  6.5  freezes  2.5  low  -7%  hurt: contact 70%, bolt 16%, ground 8%, charge 4%
+  warlock                    7.1m   0/2 dawn  lvl  75  potions 19.0  bombs  4.5  freezes  4.5  low  -7%  hurt: contact 78%, bolt 11%, charge 8%, ground 2%
+  ruinseeker                 4.7m   0/2 dawn  lvl  53  potions  8.5  bombs  2.5  freezes  2.0  low -11%  hurt: contact 73%, bolt 16%, ground 7%, storm 2%
+  rogue                      9.0m   0/2 dawn  lvl  73  potions 24.0  bombs  3.5  freezes  3.5  low -17%  hurt: contact 79%, bolt 13%, charge 4%, ground 3%
+  shaman                     5.6m   0/2 dawn  lvl  68  potions 21.5  bombs  5.0  freezes  3.5  low  -6%  hurt: contact 62%, bolt 18%, ground 14%, charge 4%
+  druid                      2.9m   0/2 dawn  lvl  36  potions  5.5  bombs  0.5  freezes  0.5  low  -4%  hurt: contact 87%, bolt 9%, ground 4%, storm 0%
+  hunter                     3.9m   0/2 dawn  lvl  52  potions  7.5  bombs  3.0  freezes  2.0  low  -3%  hurt: contact 83%, bolt 9%, charge 4%, ground 3%
+  paladin                    5.1m   0/2 dawn  lvl  63  potions 12.0  bombs  3.0  freezes  1.0  low  -7%  hurt: contact 82%, bolt 12%, ground 4%, storm 2%
+  monk                       7.0m   0/2 dawn  lvl  55  potions  7.0  bombs  2.0  freezes  3.0  low -14%  hurt: contact 88%, bolt 7%, charge 3%, storm 2%
+  ALL                        6.1m  0/24 dawn  lvl  62  potions 14.8  bombs  3.4  freezes  2.5  low  -9%  hurt: contact 77%, bolt 13%, ground 4%, charge 4%
+
+ the killing blow
+    14  contact · Mossback Stonehide
+     7  contact · Stormhorn Ram
+     1  charge · Thunderscale Drake
+     1  storm · Grandhorn, Lord of the High Pasture
+     1  contact · Thunderscale Drake
+
+ bolts that landed: 650, flying <0.2s 2%, 0.2-0.4s 5%, 0.4-0.8s 51%, longer 42%; mean speed 260; slowed when hit 0%
+
+ pilot: 2.59ms a decision
