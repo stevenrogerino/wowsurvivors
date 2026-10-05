@@ -60,7 +60,9 @@
   Object.assign(WS.Bosses, {
     candlecrawler: {
       name: 'The Candlecrawler', family: 'lampling', art: 'candlecrawler', machine: 'candlecrawler',
-      tint: [0.95, 0.66, 0.30], health: 460000, speed: 0, damage: 34, xp: 900, radius: 64,
+      // 380k, was 460k: against the median 30:00 build (finale bench) the
+      // fight ran six minutes. Five is plenty, and denser.
+      tint: [0.95, 0.66, 0.30], health: 380000, speed: 0, damage: 34, xp: 900, radius: 64,
       gold: 400, drawScale: 1.3, interval: 99, finale: true, stationary: true, school: 'fire',
       yell: 'Candlecrawler! Dig me out a thief!',
     },
@@ -82,7 +84,9 @@
     },
     mordecai_bound: {
       name: 'Mordecai, Lantern-Bound', family: 'undead', art: 'mordecai',
-      tint: [0.55, 0.92, 0.72], health: 420000, speed: 0, damage: 44, xp: 1200, radius: 42,
+      // 320k, was 420k: seven and a half minutes of lanterns against the
+      // median 30:00 build (finale bench); about five now.
+      tint: [0.55, 0.92, 0.72], health: 320000, speed: 0, damage: 44, xp: 1200, radius: 42,
       gold: 500, interval: 99, finale: true, stationary: true, school: 'shadow',
       yell: 'Four lanterns, four lives. You have one.',
     },
@@ -94,13 +98,16 @@
     },
     heart_drill: {
       name: 'The Heart-Drill', family: 'mechanical', art: 'heartdrill', machine: 'heartdrill',
-      tint: [0.86, 0.52, 0.26], health: 380000, speed: 0, damage: 56, xp: 1500, radius: 80,
+      // 330k, was 380k, and the Lord 600k, was 700k: the last fight ran
+      // six and a half minutes in bot nights at Professional.
+      tint: [0.86, 0.52, 0.26], health: 330000, speed: 0, damage: 56, xp: 1500, radius: 80,
       gold: 600, drawScale: 1.25, interval: 99, finale: true, stationary: true, school: 'fire',
       yell: 'One more meter and it is ALL mine!',
     },
     kael_stormbound: {
       name: 'Brother Kael, the Stormbound', family: 'highland', art: 'kael',
-      tint: [0.62, 0.72, 1.00], health: 560000, speed: 0, damage: 60, xp: 2400, radius: 40,
+      // 480k, was 560k: five and a half minutes; under five now.
+      tint: [0.62, 0.72, 1.00], health: 480000, speed: 0, damage: 60, xp: 2400, radius: 40,
       spriteScale: 1.15,
       gold: 1200, interval: 99, finale: true, stationary: true, school: 'nature',
       yell: 'Stand still. It is the only thing the storm cannot forgive.',
@@ -108,7 +115,7 @@
     pale_lord: {
       // His own art (sprites.js), crown and all - no borrowed regalia.
       name: 'Marrowfrost, the Pale Lord', family: 'undead', art: 'marrowfrost',
-      tint: [0.62, 0.88, 1.00], health: 700000, speed: 0, damage: 64, xp: 3000, radius: 56,
+      tint: [0.62, 0.88, 1.00], health: 600000, speed: 0, damage: 64, xp: 3000, radius: 56,
       spriteScale: 1.25,
       gold: 1500, interval: 99, finale: true, stationary: true, school: 'frost',
       yell: 'Every night your kind burns my ember. Tonight I take it back.',
@@ -131,7 +138,11 @@
     },
     soul_lantern: {
       name: 'Soul Lantern', family: 'undead', art: 'turret', machine: 'soullantern',
-      tint: [0.55, 1.00, 0.75], health: 28000, speed: 0, damage: 20, xp: 120, radius: 26,
+      // 15k, was 28k: Mordecai's fight is paced by his lanterns, not his
+      // health (each window takes him one life, then they relight): 159s of
+      // a 182s fight was spent breaking them (check-finale --phases), and
+      // it ran six to seven minutes in bot nights.
+      tint: [0.55, 1.00, 0.75], health: 15000, speed: 0, damage: 20, xp: 120, radius: 26,
       finale: true, part: true, stationary: true,
     },
     walker_leg: {
@@ -188,7 +199,11 @@
       ],
       epilogue: ['Grimtunnel escapes', 'His pod drifts south, toward the Dustreach.'],
       tuning: {
-        damage: 8,   // x difficulty x Hyper x Config.finaleDamage
+        /* 10, was 8. In bot nights the builds that reach 30:00 healed and
+           shielded away nearly everything the Candlecrawler landed (median
+           0% of the bar over the fight, sloppy players included); a blow
+           that is caught should be felt through that. */
+        damage: 10,   // x difficulty x Hyper x Config.finaleDamage
         turretHpGrowth: 0.18, overheat: 10, overheatLines: [0.85, 0.70], overheatVuln: 1.5,
         burrowAt: 0.60, burrowTime: 12, meltdownAt: 0.25,
         bombDamage: 34, bombRadius: 64, bombTele: 1.1,
@@ -199,13 +214,20 @@
         riseTime: 1.8, burrowSpeed: 150, meltdownPace: 1.55,
         // It hunts from keepAway px, faster once it melts down.
         keepAway: 250, huntSpeed: 55, meltSpeed: 80, drillGirth: 1.5,
-        bombs: 2, bombsStripped: 3, bombScatter: 150, bombStagger: 0.15, bombBurn: 2, meltBurn: 3,
+        bombs: 3, bombsStripped: 3, bombScatter: 150, bombStagger: 0.15, bombBurn: 2, meltBurn: 3,
         // The burning track a meltdown drill leaves behind it.
         trailRadius: 34, trailLife: 3.2, trailDamage: 12, trailTick: 0.45,
         // Seconds between each attack, and before the first of each.
-        every: { erupt: 3.3, trail: 0.1, drill: 8, drillStripped: 6, bomb: 3.4, bombStripped: 4,
-          hatch: 10, hatchStripped: 12, ring: 9 },
-        opening: { bomb: 4.5, drill: 8, hatch: 7, ring: 9 },
+        /* Paced for the build that gets here. In bot nights the strong player
+           took a median 0% of its bar over a five-minute fight: one bomb
+           volley every 3.4s and a drill every 8 never asked it to do two
+           things at once. Now bombs (three a turret) every 2.5s, a drill
+           every 6.5 (4.5 stripped), the candle-fire ring in every mode
+           (ringShielded while the turrets stand), and a shockwave as the
+           hull breaks the surface. */
+        every: { erupt: 2.4, trail: 0.1, drill: 6.5, drillStripped: 4.5, bomb: 2.5, bombStripped: 3,
+          hatch: 10, hatchStripped: 12, ring: 7, ringShielded: 10 },
+        opening: { bomb: 4, drill: 7, hatch: 7, ring: 9 },
         afterSurface: { drill: 3, ring: 5 },
       },
     },
@@ -233,26 +255,35 @@
       ],
       epilogue: ['The Admiral strikes her colours', 'The stolen ember was bound for Mourneholt.'],
       tuning: {
-        damage: 9,   // x difficulty x Hyper x Config.finaleDamage
+        // 10, was 9, for the same reason as the Candlecrawler's - not 11: its
+        // grapeshot and pistols are bolts, not shapes, and at 11 a player a
+        // quarter-second slow lost the Hyper duel (finale bench, no healing).
+        damage: 10,   // x difficulty x Hyper x Config.finaleDamage
         sailSpeed: 70, broadsideDamage: 40, broadsideTele: 1.2, broadsideWidth: 64,
         grapeDamage: 26, kegDamage: 40, kegRadius: 80, kegTele: 1.2,
         dashDamage: 42, dashWindup: 0.55, dashTime: 0.35, dashRange: 340,
         // The second and third dash of a set: quicker, but still a human's
         // reaction plus a step - below ~0.5s a lane this wide cannot be left.
         dashChainWindup: 0.5,
-        pistolDamage: 30, boarders: 8, rally: 4,
+        /* 20, was 30: a fan of five at 340 px/s from duelling range is the
+           one thing in this fight with no telegraph but the bolts themselves,
+           and at 30 a player reacting a quarter-second late lost the whole
+           bar to it (finale bench: 114% a fight). Still ~17% a bolt. */
+        pistolDamage: 20, boarders: 8, rally: 4,
         sailInSpeed: 260, crashTime: 2.6,
         // Broadsides fire straight down until the ship falls below aimBelow,
         // then at you; each port a broadsideStagger later than the last.
         aimBelow: 0.7, broadsideLength: 800, broadsideActive: 0.35, broadsideStagger: 0.3,
         grapeCount: 7, grapeSpread: 0.14, grapeSpeed: 300,
-        kegs: 3, kegScatter: 120, kegStagger: 0.2, boardBruisers: 3,
+        kegs: 4, kegScatter: 120, kegStagger: 0.2, boardBruisers: 3,
         wreckFireDamage: 14, wreckFireRadius: 46, wreckFireTick: 0.5,
         // The duel: the Admiral circles at duelRange and hurries below duelLowAt.
         duelRange: 210, duelSpeed: 170, duelCircle: 0.9, duelLowAt: 0.3, duelLowPace: 1.35,
         dashChain: 2, dashGirth: 1.8, pistolCount: 5, pistolSpread: 0.12, pistolSpeed: 340,
         duelKegRing: 4, duelKegRange: 110, duelKegScale: 0.8, duelKegDelay: 0.3,
-        every: { broadside: 6.5, grape: 4.2, keg: 7, board: 12, dash: 5.5, pistol: 2.6, duelKeg: 8, rally: 14 },
+        // Quicker throughout (was broadside 6.5, grape 4.2, keg 7, dash 5.5,
+        // duelKeg 8): a median 0% taken over 280s in bot nights.
+        every: { broadside: 5, grape: 3.2, keg: 5.2, board: 12, dash: 4.5, pistol: 2.6, duelKeg: 6, rally: 14 },
         opening: { broadside: 3.5, grape: 5, keg: 6.5, board: 8 },
         duelOpening: { dash: 3, pistol: 2, keg: 6, rally: 10 },
       },
@@ -279,7 +310,12 @@
       epilogue: ['Grimtunnel steals the lantern-ember', 'His pod races east, over the Ochre Plains.'],
       tuning: {
         damage: 10.5,   // x difficulty x Hyper x Config.finaleDamage
-        lanternBond: 0.05, exposedTime: 14, exposedVuln: 1.4, relight: 3,
+        /* exposed 16s at x1.8 (was 14s at x1.4): the fight is paced by its
+           windows, and against the median 30:00 build a window often ended
+           short of his next life - so the lanterns came back, again, and it
+           ran six to seven minutes. A window that is used should take a
+           life. */
+        lanternBond: 0.05, exposedTime: 16, exposedVuln: 1.8, relight: 3,
         // His four lives: an exposed window cannot take him below the next.
         lives: [0.70, 0.45, 0.20],
         riseAt: 0.30, handDamage: 44, handRadius: 58, handTele: 1.0,
@@ -288,7 +324,7 @@
         lanternHpGrowth: 0.15, lanternAdds: 2, riseSkeletons: 12, riseGhouls: 10, risenPace: 1.35,
         hands: 3, lanceCount: 5, lanceSpread: 0.16, lanceSpeed: 260, knellGaps: 3,
         // knellFast once he is exposed or risen; handStep between the hands of one volley.
-        every: { spawn: 9, blink: 8, hand: 5, handStep: 0.45, lance: 4, knell: 11, knellFast: 7.5 },
+        every: { spawn: 9, blink: 8, hand: 4.2, handStep: 0.45, lance: 4, knell: 9, knellFast: 6.5 },
         opening: { hand: 3, lance: 4, knell: 7, blink: 8, spawn: 6 },
       },
     },
@@ -373,16 +409,25 @@
         // Pale wards him once more at lastWardAt inside it.
         pipeShield: 0.35, drillFloor: 0.45, wardLines: [0.80, 0.60], lastWardAt: 0.20,
         pipeBreak: 0.15, debrisDamage: 48, debrisRadius: 70, debrisTele: 1.1,
-        ventDamage: 44, ventSpin: 0.7, ventTele: 1.2,
+        ventDamage: 44, ventSpin: 0.55, ventTele: 1.2,
         shardReduce: 0.40, shardEvery: 30, winterAt: 0.40, winterEnrage: 130,
         novaDamage: 40, novaSpeed: 200, novaGap: 30,
         gridDamage: 56, gridTele: 1.35, spikeDamage: 44,
         ghouls: 10,
         dropGravity: 1100, breachTime: 7.4,
         debris: 4, debrisScatter: 190, debrisStagger: 0.15,
-        ventLength: 900, ventWidth: 40, ventTime: 6, ventArms: 4,
+        /* The vents: four arms. At 0.7 rad/s an arm 300px out moved at 210
+           px/s, all but a survivor's running speed - there was no keeping
+           ahead of it, only crossing it, and a crossing at Professional cost
+           half the bar. 0.55 is 165 px/s there: a hard run, not a toll. */
+        // And 480 long, not 900: the far field is out of their reach, so
+        // there is a choice - dance close, or run for the edges.
+        ventLength: 480, ventWidth: 40, ventTime: 5, ventArms: 4,
         // Marrowfrost's frost cross, and the faster, wider one in the winter.
         crossSpin: 0.45, crossWidth: 34, crossTele: 1.2, crossTime: 6, crossArms: 2,
+        // The winter's cross runs 9.2s (tele + time) and comes every 9.6s:
+        // it used to come every 8, so two four-armed crosses turning opposite
+        // ways overlapped for a second and a bit, and their wedges closed.
         winterCrossSpin: 0.5, winterCrossWidth: 36, winterCrossTele: 1.0, winterCrossTime: 8.2, winterCrossArms: 4,
         // The glacial grid: cols x rows, of which gridSafe cells are safe.
         gridCols: 5, gridRows: 4, gridSafe: 4,
@@ -390,7 +435,7 @@
         novaGaps: 3, novaSpin: 0.35, novaDelay: 1.3,
         shardCount: 4, tideSkeletons: 6, tideGhouls: 6,
         every: { debris: 4, vent: 11, ghoul: 12, nova: 9, cross: 15, grid: 14, spike: 5, tide: 16,
-          winterCross: 8, winterNova: 7, winterGrid: 12, winterSpike: 4, winterEnd: 3 },
+          winterCross: 9.6, winterNova: 7, winterGrid: 12, winterSpike: 4, winterEnd: 3 },
         opening: { debris: 3, vent: 7, ghoul: 6 },
         lordOpening: { nova: 4, grid: 9, spike: 3, tide: 8 },
       },
@@ -434,7 +479,9 @@
         galeDamage: 40, galeWidth: 60, galeLength: 900, galeTele: 1.0,
         ringDamage: 42, ringSpeed: 210, ringGaps: 2, ringGap: 38,
         eyeDamage: 70, eyeTele: 3.2, eyeRadius: 90, eyes: 2,
-        armDamage: 38, armSpin: 0.55, armWidth: 30, armTele: 1.1, armTime: 7, arms: 3, stormArms: 4,
+        // 0.45 rad/s, was 0.55: three or four arms the length of the field,
+        // at 300px an arm moved 165 px/s and the only way out was through.
+        armDamage: 38, armSpin: 0.45, armWidth: 30, armTele: 1.1, armTime: 7, arms: 3, stormArms: 4,
         wisps: 8, harpies: 4,
         drift: 150, driftSpeed: 0.35,
         every: { bolt: 3.6, gale: 7.5, ring: 10, adds: 13, eye: 20, arm: 12,

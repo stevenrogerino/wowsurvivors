@@ -64,4 +64,28 @@ const rows = Object.values(bosses).sort((a, b) => a.minute - b.minute || a.boss.
 console.log('boss                  at    n   health   life med/p90   lost while up med/p90   level   build dps med');
 for (const b of rows) console.log(b.boss.padEnd(20) + `${b.minute}m`.padStart(5) + String(b.life.length).padStart(5) + String(b.hp).padStart(9)
   + `${q(b.life, 0.5)}s / ${q(b.life, 0.9)}s`.padStart(15) + `${q(b.lost, 0.5)}% / ${q(b.lost, 0.9)}%`.padStart(23) + String(q(b.level, 0.5)).padStart(8) + String(q(b.dps, 0.5)).padStart(16));
+/* The fights themselves, where the night recorded them (tools/botlab.js
+   books every blow taken while a scheduled boss is up, split by whether the
+   boss dealt it - body, charge, its marks, its bolts - or the horde). */
+const fights = {};
+for (const f of files) {
+  const d = JSON.parse(fs.readFileSync(f, 'utf8'));
+  for (const r of d.runs || []) for (const x of r.fights || []) {
+    const k = x.id + '@' + Math.round(x.at / 60);
+    const b = (fights[k] = fights[k] || { id: x.id, minute: Math.round(x.at / 60), life: [], boss: [], horde: [], mark: [], contact: [], enr: 0, n: 0 });
+    if (x.life === null) continue;   // the night ended with it up
+    b.n++; b.life.push(x.life); if (x.enraged) b.enr++;
+    const L = x.lost || {};
+    const own = Object.entries(L).filter(([k2]) => k2 !== 'horde').reduce((a, [, v]) => a + v, 0);
+    b.boss.push(own); b.horde.push(L.horde || 0); b.mark.push(L.mark || 0); b.contact.push((L.contact || 0) + (L.charge || 0));
+  }
+}
+const frows = Object.values(fights).sort((a, b) => a.minute - b.minute || a.id.localeCompare(b.id));
+if (frows.length) {
+  console.log('\nfights (share of max health, median / p90)        n   life      from boss      its marks   body+charge     horde    phase 2');
+  for (const b of frows) console.log(b.id.padEnd(20) + `${b.minute}m`.padStart(5) + String(b.n).padStart(24) + `${q(b.life, 0.5)}s`.padStart(7)
+    + `${q(b.boss, 0.5)}/${q(b.boss, 0.9)}%`.padStart(14) + `${q(b.mark, 0.5)}/${q(b.mark, 0.9)}%`.padStart(13)
+    + `${q(b.contact, 0.5)}/${q(b.contact, 0.9)}%`.padStart(14) + `${q(b.horde, 0.5)}/${q(b.horde, 0.9)}%`.padStart(10)
+    + `${Math.round(b.enr / Math.max(1, b.n) * 100)}%`.padStart(10));
+}
 if (process.env.OUT) fs.writeFileSync(process.env.OUT, JSON.stringify({ made: new Date().toISOString(), sources: files.map((f) => f.split('/').pop()), finaleBuilds: finale, bosses: rows.map((b) => ({ boss: b.boss, minute: b.minute, n: b.life.length, health: b.hp, lifeMedian: q(b.life, 0.5), lifeP90: q(b.life, 0.9), lostMedian: q(b.lost, 0.5), lostP90: q(b.lost, 0.9), levelMedian: q(b.level, 0.5), dpsMedian: q(b.dps, 0.5) })), snapshots: snaps }));

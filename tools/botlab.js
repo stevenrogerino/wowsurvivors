@@ -129,6 +129,8 @@ function inPage(S, job, sources) {
     tag(WS.Hazard, 'update', 'ground');
     tag(WS.Moor, 'update', 'storm');
     tag(WS.Finale, 'update', 'finale');
+    // A scheduled boss's telegraphs (the finale's shapes, run by Finale.field).
+    tag(WS.Finale, 'field', 'boss mark');
     tag(WS.Arena, 'update', 'arena');
     const orig = WS.Player.takeDamage;
     WS.Player.takeDamage = function (pl, amount, name) {
@@ -164,6 +166,27 @@ function inPage(S, job, sources) {
           }
         }
         if (WS.Finale.running && WS.Finale.running() && kind !== 'finale') kind = 'finale ' + kind;
+        // The finale's own ledger: what took it, by mechanic, as a share of the bar.
+        if (WS.Finale.running && WS.Finale.running()) {
+          const fl = led.finale = led.finale || {};
+          const k3 = name || '?';
+          fl[k3] = (fl[k3] || 0) + lost / Math.max(1, pl.maxHealth) * 100;
+        }
+        /* While a scheduled boss is up, every blow is booked to the fight
+           too, split by whether the boss itself dealt it (its body, its
+           charge, its shapes and bolts carry its name) or the horde did. */
+        const fight = window.__fights && window.__fights.open;
+        if (fight) {
+          const own = name === fight.name;
+          const k2 = own ? (kind === 'contact' || kind === 'charge' ? kind : kind === 'boss mark' ? 'mark' : kind) : 'horde';
+          fight.lost[k2] = (fight.lost[k2] || 0) + lost / Math.max(1, pl.maxHealth) * 100;
+          if (own) fight.hits++;
+          if (fight.log.length < 60) {
+            const fe = fight.e;
+            fight.log.push([Math.round((WS.Game.run.time - fight.at) * 10) / 10, own ? k2 : 'horde:' + (name || '?'), Math.round(lost / Math.max(1, pl.maxHealth) * 100),
+              fe ? Math.round(Math.hypot(fe.x - pl.x, fe.y - pl.y)) : -1, fe ? (fe.windup > 0 ? 'w' : fe.chargeTimer > 0 ? 'c' : '') : '']);
+          }
+        }
         led.byKind[kind] = (led.byKind[kind] || 0) + lost;
         const k = name || '?';
         led.bySource[k] = (led.bySource[k] || 0) + lost;
@@ -204,8 +227,24 @@ function inPage(S, job, sources) {
       const T = window.__tr;
       if (e && T && !(e.template && (e.template.finale || e.template.part))) {
         e.__born = WS.Game.run.time;
-        if (e.boss) T.ev.push([now(), 'boss', e.id, e.maxHealth]);
+        if (e.boss) { /* booked by spawnBoss below, once its health is final */ }
         else { T.w.spawns++; T.w.spawnHP += e.maxHealth; if (e.elite) T.w.elites++; }
+      }
+      return e;
+    };
+    /* Each scheduled boss as a fight: when, its health once it is final,
+       the survivor's bar and the kit's single-target damage on arrival, and
+       (filled in as it goes) how long it lived and what it cost. */
+    const sb = WS.WaveManager.spawnBoss;
+    WS.WaveManager.spawnBoss = function (id) {
+      const e = sb.apply(this, arguments);
+      const T = window.__tr, pl = WS.Game.player;
+      if (e && T && id !== 'death_itself') {
+        T.ev.push([now(), 'boss', e.id, e.maxHealth]);
+        const F = window.__fights = window.__fights || { list: [] };
+        F.open = { id, name: e.template.name, at: now(), hp: e.maxHealth, maxHp: Math.round(pl.maxHealth),
+          single: Math.round(WS.Finale.singleTarget(pl)), level: pl.level, lost: {}, hits: 0, life: null, e, log: [] };
+        F.list.push(F.open);
       }
       return e;
     };
@@ -233,6 +272,8 @@ function inPage(S, job, sources) {
         const pl = WS.Game.player;
         const life = WS.Game.run.time - e.__born;
         if (e.boss) T.ev.push([now(), 'slain', e.id, Math.round(life)]);
+        const F = window.__fights;
+        if (e.boss && F && F.open && F.open.e === e) { F.open.life = Math.round(life * 10) / 10; F.open.enraged = !!e.enraged; F.open.e = null; F.open = null; }
         else { T.w.kd.push(Math.hypot(e.x - pl.x, e.y - pl.y)); T.w.life.push(life); if (e.rangedTimer !== null && e.rangedTimer !== undefined) T.w.clife.push(life); }
       }
       return kl.apply(this, arguments);
@@ -269,6 +310,7 @@ function inPage(S, job, sources) {
   const freshWindow = () => ({ spawns: 0, spawnHP: 0, elites: 0, kd: [], life: [], clife: [], near: 0, screen: 0, casters: 0, samples: 0, hpMin: 1 });
   const TR = S.TRACE > 0 ? { w: freshWindow(), ev: [], rows: [], sub: 0, kills: {} } : null;
   window.__tr = TR;
+  window.__fights = { list: [], open: null };
 
   const [hero, blessing, seed] = job;
   WS.setSeed(seed);
@@ -398,12 +440,18 @@ function inPage(S, job, sources) {
     overheal: Math.round(Object.values(run.overhealBySource || {}).reduce((a, v) => a + v, 0)),
     maxHp: Math.round(p.maxHealth), armor: Math.round(p.armor || 0),
     rescueGoals: pilot.rescues || 0,
+    finaleBy: L.finale ? Object.fromEntries(Object.entries(L.finale).map(([k, v]) => [k, Math.round(v)])) : null,
+    finaleHp: S.FINALE && reachedDawn ? { power: +(WS.Finale.power || 1).toFixed(2), single: Math.round(WS.Finale.singleTarget(p)),
+      retries: run.finaleRetries || 0, stage: WS.Finale.stage, label: WS.Finale.s && WS.Finale.s.label || '' } : null,
     weapons: p.weapons.map((w) => w.id + ':' + w.level + (w.evolved ? 'E' : '')),
     steps: (WS.WaveManager.stepK || []).map((v) => Math.round(v * 100) / 100),
     blessings: Object.keys(p.blessingsTaken || {}),
     curve, trace: TR ? { cols: 't hp hpMin lost healed near screen alive spawns spawnHP kills dealt killDist life level boss elites casters casterLife'.split(' '), rows: TR.rows, ev: TR.ev, kills: TR.kills } : null,
     pilotMs: Math.round(wall), plans: pilot.stats.plans || 1, bolts: L.bolts,
     picks: window.__draft ? window.__draft.picks : null,
+    fights: (window.__fights ? window.__fights.list : []).map((f) => ({ id: f.id, at: f.at, hp: f.hp, maxHp: f.maxHp, single: f.single,
+      level: f.level, life: f.life, enraged: !!f.enraged, hits: f.hits, log: f.log,
+      lost: Object.fromEntries(Object.entries(f.lost).map(([k, v]) => [k, Math.round(v)])) })),
   };
 }
 

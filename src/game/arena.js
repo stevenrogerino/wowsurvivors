@@ -25,12 +25,18 @@
     dmgScale: 1,
   };
 
+  /* Damage was 26 / 30 / 32: against the arena kit's 385 health and 14
+     armour (a 47% cut) a caught flare took under 4% of the bar, and the
+     bot - which prices a blow by what it costs - stopped bothering to dodge
+     them (48% of the bar a minute, in hits of 3-4%). Four times that: a
+     flare ~14% at Veteran, a spear ~17%, a pass of the cross ~18%, all of
+     it x difficulty x Hyper. A mistake is a mistake now. */
   Arena.tuning = {
     phase2HP: 60, phase3HP: 20, enrageTime: 45,
-    ringDamage: 26, ringSpeed: 165, ringGapP1: 40, ringGapP2: 26, ringGapsP2: 7,
+    ringDamage: 104, ringSpeed: 165, ringGapP1: 40, ringGapP2: 26, ringGapsP2: 7,
     ringSpinP2: 0.5, ringDelay: 1.4,
-    spearDamage: 30, gridSafeP1: 4, gridSafeP2: 5, spearTele: 1.6, spearInterval: 8.5,
-    cutterDamage: 32, cutterSpin: 0.7, cutterTele: 1.2, cutterInterval: 9.0,
+    spearDamage: 120, gridSafeP1: 4, gridSafeP2: 5, spearTele: 1.6, spearInterval: 8.5,
+    cutterDamage: 128, cutterSpin: 0.7, cutterTele: 1.2, cutterInterval: 9.0,
     chainInterval: 11.0, chainBreak: 50,
   };
 
@@ -87,15 +93,24 @@
     return false;
   }
 
-  Arena.ring = function (gapBase, gapWidth, damage, speed, gapCount, spin, delay) {
+  Arena.ring = function (gapBase, gapWidth, damage, speed, gapCount, spin, delay, after) {
     const h = {
       shape: 'ring', cx: CX, cy: CY, r: 26, speed, thick: 30,
       gapBase, gapWidth, gapCount: gapCount || 1, gapRot: 0, spin: spin || 0,
       damage, delay: delay || 0, life: 9, hit: false,
     };
-    // One opening within reach of the survivor; see Finale.aimGap.
-    if (gapBase === null) h.gapBase = WS.Finale.aimGap(h, WS.Game.player);
+    // One opening within reach of the survivor - or, for the second flare
+    // of a pair, within reach of the first one's opening; see Finale.aimGap.
+    // Never on you before you can see it (see Finale.ring).
+    const pl = WS.Game.player;
+    if (pl) {
+      const travel = WS.max(0, WS.dist(pl.x, pl.y, h.cx, h.cy) - h.r) / h.speed;
+      if (h.delay + travel < WS.Config.bossMinTele) h.delay = WS.Config.bossMinTele - travel;
+    }
+    h.chained = !!(after && after.aim);
+    if (gapBase === null) h.gapBase = WS.Finale.aimGap(h, WS.Game.player, after && after.aim);
     this.hazards.push(h);
+    return h;
   };
 
   Arena.spears = function (safeCount) {
@@ -106,8 +121,16 @@
     for (let cy = 0; cy < rows; cy++) {
       for (let cx = 0; cx < cols; cx++) cells.push({ cx, cy });
     }
-    WS.shuffle(cells);
-    const safe = new Set(cells.slice(0, safeCount).map((c) => c.cy * cols + c.cx));
+    // One safe square always within reach (Finale.safeCells): a shuffle
+    // could leave the nearest across the arena with 1.6s to get there.
+    WS.Finale.safeCells(cells, safeCount, this.tuning.spearTele,
+      (c) => [BOUNDS.minX + c.cx * w, BOUNDS.minY + c.cy * h, w, h]);
+    // And a flare's opening arriving as the spears fall: its square is spared.
+    for (const c of cells) {
+      const x0 = BOUNDS.minX + c.cx * w, y0 = BOUNDS.minY + c.cy * h;
+      if (!c.safe && WS.Finale.sealing(this.tuning.spearTele, (ax, ay) => ax >= x0 && ax <= x0 + w && ay >= y0 && ay <= y0 + h)) c.safe = true;
+    }
+    const safe = new Set(cells.filter((c) => c.safe).map((c) => c.cy * cols + c.cx));
     for (let cy = 0; cy < rows; cy++) {
       for (let cx = 0; cx < cols; cx++) {
         const isSafe = safe.has(cy * cols + cx);
@@ -124,9 +147,23 @@
   };
 
   Arena.cutter = function () {
+    /* In the dark (phase 3) the heavy track runs at 0.65x, so a cutter
+       (8.2s) can come up while the last is still turning. Two crosses at
+       random angles left wedges a few degrees wide; this one bisects the
+       live one instead - same spin, arms halfway between where the old
+       arms will be when it starts - so the quadrants become eighths, even
+       ones, and stay that way. */
+    const live = this.hazards.find((q) => q.shape === 'cutter');
+    const tele = this.tuning.cutterTele;
+    let ang = live
+      ? live.ang + live.spin * WS.max(0, tele - WS.max(0, live.telegraph)) + WS.PI / 4
+      : WS.random() * WS.PI * 0.5;
+    // Turned off any flare's opening still to come (Finale.clearArms); the
+    // arms are 0.12 rad either side of their line, ~2*d*sin(0.12) wide.
+    ang = WS.Finale.clearArms(ang, 4, this.tuning.cutterSpin, tele, 900, 2 * 450 * WS.sin(0.12), CX, CY, 7);
     this.hazards.push({
       shape: 'cutter', cx: CX, cy: CY,
-      ang: WS.random() * WS.PI * 0.5, spin: this.tuning.cutterSpin,
+      ang, spin: this.tuning.cutterSpin,
       half: 0.12, len: 900, damage: this.tuning.cutterDamage,
       telegraph: this.tuning.cutterTele, life: this.tuning.cutterTele + 7, hitTimer: 0,
     });
@@ -191,11 +228,11 @@
       this.trackA = (this.phase >= 2 ? 7.5 : 9.5) * speedUp;
       const t = this.tuning;
       if (this.phase >= 2) {
-        this.ring(null, t.ringGapP2, t.ringDamage, t.ringSpeed, t.ringGapsP2, t.ringSpinP2, 0.7);
-        this.ring(null, t.ringGapP2, t.ringDamage, t.ringSpeed, t.ringGapsP2, t.ringSpinP2, 0.7 + t.ringDelay);
+        const a = this.ring(null, t.ringGapP2, t.ringDamage, t.ringSpeed, t.ringGapsP2, t.ringSpinP2, 0.7);
+        this.ring(null, t.ringGapP2, t.ringDamage, t.ringSpeed, t.ringGapsP2, t.ringSpinP2, 0.7 + t.ringDelay, a);
       } else {
-        this.ring(null, t.ringGapP1 * 2, t.ringDamage, t.ringSpeed, 1, 0, 0.6);
-        this.ring(null, t.ringGapP1, t.ringDamage, t.ringSpeed, 1, 0, 0.6 + t.ringDelay);
+        const a = this.ring(null, t.ringGapP1 * 2, t.ringDamage, t.ringSpeed, 1, 0, 0.6);
+        this.ring(null, t.ringGapP1, t.ringDamage, t.ringSpeed, 1, 0, 0.6 + t.ringDelay, a);
       }
       WS.Game.toast('Solar Flare', 'Stand in the opening.', { kind: 'warn', art: 'sun' });
     }

@@ -4199,7 +4199,10 @@ window.WS = window.WS || {};
        it could not finish, and a harder map read as a stronger build (more
        health to chew through means less overkill wasted), so the Pale Lord
        came out at 10 to 20 times his health and nobody could kill him. */
-    finaleRefSingle: 1500,
+    /* 2000, was 1500: against the build that reaches 30:00 (bot nights,
+       tools/bot/boss-snapshots.json finaleBuilds) the fights ran five to
+       eight minutes; this takes about a sixth off (a factor of 0.82). */
+    finaleRefSingle: 2000,
     finalePowerExp: 0.7,
     finalePowerCap: 6,
     /* Difficulty and Hyper make a finale hit harder in full, and make it
@@ -4235,6 +4238,15 @@ window.WS = window.WS || {};
     finaleRehit: 0.7,
     finaleFenceReach: 12,
     finaleChargeLock: 0.3,
+    /* A ring's opening is always reachable (Finale.aimGap): it is placed
+       among bearings the survivor can walk to at ringWalk of their speed in
+       the time the band takes to reach them, less ringReact to see it. */
+    ringReact: 0.45,
+    ringWalk: 0.6,
+    // ...and if nowhere within 90 degrees is clear of other shapes landing
+    // as it arrives, it holds at its heart up to ringHold s until somewhere is
+    // (2s: longer than the Pale Lord's glacial grid takes to fall).
+    ringHold: 2.0,
 
     endlessBossInterval: 75,
     endlessBossMinInterval: 30,
@@ -4291,6 +4303,42 @@ window.WS = window.WS || {};
     bossRingSpeed: 220,
     bossRingDamage: 0.6,
     bossChargeGirth: 2.2,
+    /* THE SCHEDULED BOSSES (src/game/bossfight.js). A light touch: in 160+
+       bot nights they lived a median 6-13s against the build that met them
+       and took nothing off the survivor (tools/boss-snapshots.js), dying
+       before their kit had played once. The finales are the night's real
+       fights; these are its punctuation, so they get just enough to show
+       what they do.
+
+       bossHealthCurve: [clock s, x health] on top of Wave.bossScale, linear
+       between points: enough that the median build sees the whole kit
+       (15-25s). It reads the clock, never the build.
+
+       Each boss's one telegraphed blow takes a share of the survivor's max
+       health (the pattern names it, 0.2-0.34) before armour, weighted from
+       bossHitEarly at 5:00 to bossHitLate at 27:00 and by (difficulty x
+       Hyper) ^ bossHitDifficultyExp - or the boss's own scaled damage if
+       that is more - and never more than bossHitCap of the bar.
+
+       bossEnrageAt: it turns at this share of health and its clock runs
+       bossEnrageRate faster. No telegraph is shorter than bossMinTele. A
+       charge winds up for bossChargeWindup and its lane stops following
+       bossChargeLock before it goes (it used to track to the last frame).
+       A summoned brood lands no nearer the survivor than bossSummonClear. */
+    bossHealthCurve: [[300, 1.6], [630, 1.9], [960, 2.2], [1320, 2.6], [1620, 2.6]],
+    // Overtime's bosses take this share of the curve's extra (they ramp on
+    // their own: endlessBossMult, endlessRampTime).
+    bossHealthOvertime: 0.5,
+    bossHitEarly: 0.85,
+    bossHitLate: 1.15,
+    bossHitDifficultyExp: 0.5,
+    bossHitCap: 0.5,
+    bossEnrageAt: 0.5,
+    bossEnrageRate: 1.2,
+    bossMinTele: 0.6,
+    bossChargeWindup: 0.9,
+    bossChargeLock: 0.32,
+    bossSummonClear: 110,
     // A ranged creature's bolt is this share of its body's damage, and it
     // fires from up to rangedReach x its range. A lunge's lane is lungeGirth
     // x its radius wide.
@@ -6810,6 +6858,11 @@ window.WS = window.WS || {};
 /* Bosses. Each announces itself, then cycles attack patterns:
  *   summon (count adds of id) | volley (fan of bolts) | ring (full circle)
  *   | charge (a roaring burst of speed toward the survivor)
+ * and one telegraphed blow of its own, drawn in the finale's shapes
+ * (src/game/bossfight.js): slam | barrage | nova (a wave with openings)
+ * | cross (lanes). `share` is the share of the survivor's health it takes
+ * if they are standing in it (BossFight.hit). `enrage` is what the toast
+ * says when it turns, at half health.
  * `interval` is seconds between pattern uses. Stats are pre-scaling. */
 'use strict';
 (function (WS) {
@@ -6820,7 +6873,13 @@ window.WS = window.WS || {};
       // His own art (src/render/villains.js): the hard hat is his crown.
       name: 'Foreman Grimtunnel', family: 'lampling', art: 'grimtunnel', tint: [1.00, 0.86, 0.50],
       health: 2052, speed: 55, damage: 32, xp: 160, radius: 40, gold: 35, interval: 4.0,
-      patterns: [{ type: 'summon', id: 'lampling', count: 7 }, { type: 'charge' }],
+      patterns: [
+        { type: 'summon', id: 'lampling', count: 7 },
+        // His pick, swung where you are going.
+        { type: 'slam', share: 0.28, radius: 92, tint: [1.0, 0.72, 0.30] },
+        { type: 'charge' },
+      ],
+      enrage: 'MINE! Every last lamp of it!',
       yell: 'Mine! My light! MINE!',
     },
     murkgill: {
@@ -6828,14 +6887,27 @@ window.WS = window.WS || {};
       name: 'Murk-Gill the Ancient', family: 'gilkin', art: 'gilkin', tint: [0.30, 0.95, 0.85],
       health: 3132, speed: 58, damage: 37, xp: 220, radius: 44, gold: 40,
       interval: 3.6, school: 'frost',
-      patterns: [{ type: 'volley', bolts: 5 }, { type: 'summon', id: 'gilkin', count: 8 }],
+      patterns: [
+        { type: 'volley', bolts: 5 },
+        // A tide of frost out of him, with holes in it. Wider than most:
+        // he comes at 5:00 and at 11:00 in the thickest crowd of the night,
+        // and at 50 degrees the strong bot still took 14% a fight from it.
+        { type: 'nova', gaps: 2, gap: 56, share: 0.26, tint: [0.45, 0.95, 1.0] },
+        { type: 'summon', id: 'gilkin', count: 8 },
+      ],
+      enrage: 'BLORRRP! The deep remembers!',
       yell: 'Blorp! Blorp-blorp-BLORRRP!',
     },
     gnarlfang: {
       bossKit: ['mane', 'trophies'],
       name: 'Gnarlfang the Ravager', family: 'mongrel', art: 'mongrel', tint: [0.95, 0.55, 0.20],
       health: 4536, speed: 60, damage: 43, xp: 300, radius: 48, gold: 50, interval: 3.4,
-      patterns: [{ type: 'summon', id: 'mongrel', count: 6 }, { type: 'charge' }],
+      patterns: [
+        { type: 'summon', id: 'mongrel', count: 6 },
+        { type: 'charge', share: 0.3 },
+        { type: 'slam', share: 0.32, radius: 100, tint: [0.95, 0.55, 0.20] },
+      ],
+      enrage: 'The Snarlpack does not retreat!',
       yell: 'This forest belongs to the Snarlpack!',
     },
     redcowl: {
@@ -6843,7 +6915,13 @@ window.WS = window.WS || {};
       name: 'Captain Redcowl', family: 'kerchief', art: 'bandit', tint: [0.95, 0.25, 0.20],
       health: 6048, speed: 70, damage: 48, xp: 360, radius: 46, gold: 55,
       interval: 3.2, school: 'physical',
-      patterns: [{ type: 'volley', bolts: 7 }, { type: 'charge' }],
+      patterns: [
+        { type: 'volley', bolts: 7 },
+        // Powder kegs, rolled where you will be.
+        { type: 'barrage', count: 4, share: 0.2, radius: 72, tint: [1.0, 0.50, 0.25] },
+        { type: 'charge', share: 0.3 },
+      ],
+      enrage: 'Kerchiefs! Volley fire!',
       yell: 'The Kerchiefs send their regards!',
     },
     fenroth: {
@@ -6851,7 +6929,14 @@ window.WS = window.WS || {};
       name: 'Fenroth, Terror of the Vale', family: 'beast', art: 'moonwretch', tint: [0.85, 0.20, 0.20],
       health: 9720, speed: 66, damage: 56, xp: 700, radius: 54, gold: 100,
       interval: 3.0, school: 'shadow',
-      patterns: [{ type: 'summon', id: 'wolf', count: 8 }, { type: 'charge' }, { type: 'ring', bolts: 10 }],
+      patterns: [
+        { type: 'summon', id: 'wolf', count: 8 },
+        { type: 'charge', share: 0.32 },
+        // The howl: a wave of dread with two ways through it.
+        { type: 'nova', gaps: 2, gap: 46, share: 0.3, tint: [0.85, 0.25, 0.30] },
+        { type: 'ring', bolts: 10 },
+      ],
+      enrage: 'The moon is mine! RUN!',
       yell: 'The vale runs red tonight!',
     },
     /* ------------------------------------------------------ Dustreach ---- */
@@ -6860,7 +6945,13 @@ window.WS = window.WS || {};
       name: 'The Harvest King', family: 'mechanical', art: 'golem', tint: [1.00, 0.80, 0.30],
       health: 5184, speed: 48, damage: 45, xp: 320, radius: 50, gold: 50,
       interval: 3.8, school: 'fire',
-      patterns: [{ type: 'ring', bolts: 9 }, { type: 'charge' }],
+      patterns: [
+        { type: 'ring', bolts: 9 },
+        // The scythe, swung in a cross through the field.
+        { type: 'cross', lanes: 4, share: 0.3, width: 60, tint: [1.0, 0.70, 0.25] },
+        { type: 'charge', share: 0.3 },
+      ],
+      enrage: 'THE. HARVEST. IS. NOW.',
       yell: 'CROPS. REQUIRE. BLOOD.',
     },
     masked_admiral: {
@@ -6868,7 +6959,14 @@ window.WS = window.WS || {};
       name: 'The Masked Admiral', family: 'kerchief', art: 'admiral', tint: [0.90, 0.20, 0.25],
       health: 11880, speed: 72, damage: 59, xp: 800, radius: 52, gold: 110,
       interval: 2.9, school: 'physical',
-      patterns: [{ type: 'volley', bolts: 9 }, { type: 'summon', id: 'kerchief', count: 8 }, { type: 'charge' }],
+      patterns: [
+        { type: 'volley', bolts: 9 },
+        // A broadside: three lanes, one aimed at you.
+        { type: 'cross', lanes: 3, share: 0.3, width: 56, tint: [1.0, 0.55, 0.30], sound: 'cannon' },
+        { type: 'summon', id: 'kerchief', count: 8 },
+        { type: 'charge', share: 0.32 },
+      ],
+      enrage: 'All hands! Sink this lapdog!',
       yell: "You'll never take me alive, lapdog!",
     },
     /* ------------------------------------------------------ Mourneholt ---- */
@@ -6876,7 +6974,12 @@ window.WS = window.WS || {};
       bossKit: ['horns', 'spines'],
       name: 'Old Barkfang', family: 'moonwretch', art: 'moonwretch', tint: [0.70, 0.62, 0.80],
       health: 5616, speed: 74, damage: 45, xp: 330, radius: 46, gold: 50, interval: 3.4,
-      patterns: [{ type: 'charge' }, { type: 'summon', id: 'moonwretch', count: 5 }],
+      patterns: [
+        { type: 'charge', share: 0.3 },
+        { type: 'summon', id: 'moonwretch', count: 5 },
+        { type: 'slam', share: 0.3, radius: 96, tint: [0.70, 0.62, 0.80] },
+      ],
+      enrage: 'The hunt ends with you!',
       yell: 'The hunt is joined!',
     },
     silkfang: {
@@ -6884,7 +6987,13 @@ window.WS = window.WS || {};
       name: 'Matriarch Silkfang', family: 'beast', art: 'spider', tint: [0.70, 0.40, 0.90],
       health: 6912, speed: 60, damage: 50, xp: 380, radius: 48, gold: 55,
       interval: 3.5, school: 'nature',
-      patterns: [{ type: 'summon', id: 'spider', count: 9 }, { type: 'ring', bolts: 8 }],
+      patterns: [
+        { type: 'summon', id: 'spider', count: 9 },
+        // Egg sacs, burst where you stand.
+        { type: 'barrage', count: 4, share: 0.2, radius: 66, tint: [0.70, 0.40, 0.90] },
+        { type: 'ring', bolts: 8 },
+      ],
+      enrage: '*the brood stirs in every dark corner*',
       yell: '*a chittering shriek echoes from the dark*',
     },
     mordecai: {
@@ -6892,7 +7001,13 @@ window.WS = window.WS || {};
       name: 'Mordecai the Unburied', family: 'undead', art: 'mordecai', tint: [0.75, 0.90, 0.80],
       health: 8424, speed: 56, damage: 52, xp: 420, radius: 50, gold: 60,
       interval: 3.3, school: 'shadow',
-      patterns: [{ type: 'summon', id: 'skeleton', count: 7 }, { type: 'volley', bolts: 7 }],
+      patterns: [
+        { type: 'summon', id: 'skeleton', count: 7 },
+        // The dead reach up where you are going.
+        { type: 'barrage', count: 3, share: 0.22, radius: 60, style: 'hands', lob: false, tint: [0.55, 1.0, 0.70] },
+        { type: 'volley', bolts: 7 },
+      ],
+      enrage: 'The door opens both ways.',
       yell: 'Death is a door. I walked back through it.',
     },
     palewraith: {
@@ -6900,7 +7015,13 @@ window.WS = window.WS || {};
       name: 'The Pale Wraith', family: 'undead', art: 'wraith', tint: [0.80, 0.85, 1.00],
       health: 14580, speed: 62, damage: 63, xp: 900, radius: 52, gold: 120,
       interval: 2.8, school: 'shadow',
-      patterns: [{ type: 'volley', bolts: 9 }, { type: 'summon', id: 'ghoul', count: 8 }, { type: 'ring', bolts: 12 }],
+      patterns: [
+        { type: 'volley', bolts: 9 },
+        { type: 'nova', gaps: 2, gap: 44, share: 0.3, tint: [0.80, 0.85, 1.0] },
+        { type: 'summon', id: 'ghoul', count: 8 },
+        { type: 'ring', bolts: 12 },
+      ],
+      enrage: 'Every candle. Out.',
       yell: 'The candles gutter. The dark remains.',
     },
     /* --------------------------------------------------- Ochre Plains ---- */
@@ -6908,7 +7029,12 @@ window.WS = window.WS || {};
       bossKit: ['banner', 'mane'],
       name: 'Warlord Bristlegore', family: 'bristlekin', art: 'bristlekin', tint: [0.95, 0.45, 0.25],
       health: 7344, speed: 62, damage: 52, xp: 400, radius: 48, gold: 55, interval: 3.4,
-      patterns: [{ type: 'summon', id: 'bristlekin', count: 6 }, { type: 'charge' }],
+      patterns: [
+        { type: 'summon', id: 'bristlekin', count: 6 },
+        { type: 'charge', share: 0.3 },
+        { type: 'slam', share: 0.32, radius: 98, tint: [0.95, 0.45, 0.25] },
+      ],
+      enrage: 'Thornhide! TRAMPLE THEM!',
       yell: 'Thornhide! Take back the land!',
     },
     shriekfeather: {
@@ -6916,14 +7042,26 @@ window.WS = window.WS || {};
       name: 'Windmatron Shriekfeather', family: 'shrikewing', art: 'shrikewing', tint: [0.60, 0.85, 1.00],
       health: 8208, speed: 68, damage: 54, xp: 440, radius: 46, gold: 60,
       interval: 3.2, school: 'nature',
-      patterns: [{ type: 'volley', bolts: 8 }, { type: 'summon', id: 'shrikewing', count: 6 }],
+      patterns: [
+        { type: 'volley', bolts: 8 },
+        // Gusts down the field, one at you.
+        { type: 'cross', lanes: 3, share: 0.26, width: 62, tint: [0.60, 0.85, 1.0] },
+        { type: 'summon', id: 'shrikewing', count: 6 },
+      ],
+      enrage: 'The sky screams with me!',
       yell: 'The wind will strip your bones!',
     },
     kazrok: {
       bossKit: ['banner', 'pauldrons'],
       name: 'Warlord Kazrok of the Karrash', family: 'karrash', art: 'karrash', tint: [1.00, 0.55, 0.15],
       health: 9936, speed: 76, damage: 58, xp: 500, radius: 52, gold: 70, interval: 3.0,
-      patterns: [{ type: 'charge' }, { type: 'volley', bolts: 7 }, { type: 'summon', id: 'karrash', count: 5 }],
+      patterns: [
+        { type: 'charge', share: 0.32 },
+        { type: 'volley', bolts: 7 },
+        { type: 'slam', share: 0.34, radius: 102, tint: [1.0, 0.55, 0.15] },
+        { type: 'summon', id: 'karrash', count: 5 },
+      ],
+      enrage: 'KARRASH! BLOOD FOR THE PLAINS!',
       yell: 'The Karrash own these plains! Die, two-legs!',
     },
     stormhide: {
@@ -6931,7 +7069,13 @@ window.WS = window.WS || {};
       name: 'Stormhide the Colossus', family: 'beast', art: 'strider', tint: [0.40, 0.70, 1.00],
       health: 17280, speed: 52, damage: 67, xp: 1000, radius: 58, gold: 130,
       interval: 3.0, school: 'nature',
-      patterns: [{ type: 'ring', bolts: 12 }, { type: 'charge' }, { type: 'volley', bolts: 9 }],
+      patterns: [
+        { type: 'ring', bolts: 12 },
+        { type: 'nova', gaps: 2, gap: 46, share: 0.3, tint: [0.40, 0.70, 1.0] },
+        { type: 'charge', share: 0.34 },
+        { type: 'volley', bolts: 9 },
+      ],
+      enrage: '*the sky splits open*',
       yell: '*thunder rolls across the savannah*',
     },
     /* ----------------------------------------------------- Pale Wastes ---- */
@@ -6940,7 +7084,12 @@ window.WS = window.WS || {};
       name: 'Ossuar the Boneweaver', family: 'undead', art: 'necromancer', tint: [0.80, 0.55, 1.00],
       health: 9504, speed: 58, damage: 56, xp: 480, radius: 50, gold: 65,
       interval: 3.2, school: 'shadow',
-      patterns: [{ type: 'summon', id: 'pale_ghoul', count: 8 }, { type: 'volley', bolts: 8 }],
+      patterns: [
+        { type: 'summon', id: 'pale_ghoul', count: 8 },
+        { type: 'barrage', count: 4, share: 0.22, radius: 62, style: 'hands', lob: false, tint: [0.80, 0.55, 1.0] },
+        { type: 'volley', bolts: 8 },
+      ],
+      enrage: 'Rise, and rise again!',
       yell: 'Your bones will serve the Pale!',
     },
     gorestitch: {
@@ -6948,7 +7097,12 @@ window.WS = window.WS || {};
       name: 'Gorestitch the Amalgam', family: 'undead', art: 'abomination', tint: [0.75, 0.95, 0.55],
       health: 12960, speed: 44, damage: 65, xp: 560, radius: 58, gold: 75,
       interval: 3.6, school: 'shadow',
-      patterns: [{ type: 'ring', bolts: 10 }, { type: 'charge' }],
+      patterns: [
+        { type: 'ring', bolts: 10 },
+        { type: 'slam', share: 0.36, radius: 110, tint: [0.75, 0.95, 0.55] },
+        { type: 'charge', share: 0.34 },
+      ],
+      enrage: 'MORE! MORE PIECES!',
       yell: 'Fresh meat for the pile!',
     },
     /* The id is historical - saves and statistics key on it. The Pale Lord
@@ -6962,9 +7116,11 @@ window.WS = window.WS || {};
       interval: 2.7, school: 'frost',
       patterns: [
         { type: 'volley', bolts: 9 },
+        { type: 'nova', gaps: 2, gap: 44, share: 0.3, tint: [0.55, 0.85, 1.0] },
         { type: 'ring', bolts: 14 },
         { type: 'summon', id: 'crypt_fiend', count: 6 },
       ],
+      enrage: 'My lord will have your light. ALL of it.',
       yell: 'My lord is counting your lights, little one. I have come to put some out.',
     },
 
@@ -6974,7 +7130,13 @@ window.WS = window.WS || {};
       name: 'Grandhorn, Lord of the High Pasture', family: 'highland', art: 'ram', tint: [0.92, 0.86, 0.72],
       health: 11000, speed: 64, damage: 58, xp: 500, radius: 50, gold: 65,
       interval: 3.0, school: 'nature',
-      patterns: [{ type: 'summon', id: 'stormhorn_ram', count: 6 }, { type: 'charge' }, { type: 'storm', strikes: 4 }],
+      patterns: [
+        { type: 'summon', id: 'stormhorn_ram', count: 6 },
+        { type: 'charge', share: 0.3 },
+        { type: 'storm', strikes: 4 },
+        { type: 'slam', share: 0.32, radius: 100, tint: [0.92, 0.86, 0.72] },
+      ],
+      enrage: 'The whole mountain comes down on you!',
       yell: 'This slope has been ours since before there were slopes!',
     },
     skreeva: {
@@ -6982,7 +7144,13 @@ window.WS = window.WS || {};
       name: 'Skreeva, Queen of the Galewing', family: 'galewing', art: 'galewing', tint: [0.72, 0.56, 0.96],
       health: 14200, speed: 72, damage: 62, xp: 620, radius: 48, gold: 80,
       interval: 2.9, school: 'nature',
-      patterns: [{ type: 'volley', bolts: 9 }, { type: 'summon', id: 'galewing_harpy', count: 6 }, { type: 'ring', bolts: 12 }],
+      patterns: [
+        { type: 'volley', bolts: 9 },
+        { type: 'cross', lanes: 3, share: 0.28, width: 60, tint: [0.72, 0.56, 0.96] },
+        { type: 'summon', id: 'galewing_harpy', count: 6 },
+        { type: 'ring', bolts: 12 },
+      ],
+      enrage: 'Fall, little prey. FALL!',
       yell: 'Down there, you are only ever prey. Up here, you are only ever falling.',
     },
     mossback: {
@@ -6990,7 +7158,14 @@ window.WS = window.WS || {};
       name: 'Old Mossback, the Stonehide Elder', family: 'highland', art: 'stonehide', tint: [0.50, 0.62, 0.46],
       health: 20500, speed: 46, damage: 72, xp: 1100, radius: 58, gold: 130,
       interval: 2.8, school: 'nature',
-      patterns: [{ type: 'charge' }, { type: 'storm', strikes: 6 }, { type: 'summon', id: 'stormwisp', count: 8 }, { type: 'ring', bolts: 12 }],
+      patterns: [
+        { type: 'charge', share: 0.34 },
+        { type: 'storm', strikes: 6 },
+        { type: 'slam', share: 0.36, radius: 112, tint: [0.50, 0.62, 0.46] },
+        { type: 'summon', id: 'stormwisp', count: 8 },
+        { type: 'ring', bolts: 12 },
+      ],
+      enrage: 'Enough talking. The storm and I agree.',
       yell: 'You woke me for this? The storm and I were talking.',
     },
 
@@ -8784,7 +8959,9 @@ window.WS = window.WS || {};
   Object.assign(WS.Bosses, {
     candlecrawler: {
       name: 'The Candlecrawler', family: 'lampling', art: 'candlecrawler', machine: 'candlecrawler',
-      tint: [0.95, 0.66, 0.30], health: 460000, speed: 0, damage: 34, xp: 900, radius: 64,
+      // 380k, was 460k: against the median 30:00 build (finale bench) the
+      // fight ran six minutes. Five is plenty, and denser.
+      tint: [0.95, 0.66, 0.30], health: 380000, speed: 0, damage: 34, xp: 900, radius: 64,
       gold: 400, drawScale: 1.3, interval: 99, finale: true, stationary: true, school: 'fire',
       yell: 'Candlecrawler! Dig me out a thief!',
     },
@@ -8806,7 +8983,9 @@ window.WS = window.WS || {};
     },
     mordecai_bound: {
       name: 'Mordecai, Lantern-Bound', family: 'undead', art: 'mordecai',
-      tint: [0.55, 0.92, 0.72], health: 420000, speed: 0, damage: 44, xp: 1200, radius: 42,
+      // 320k, was 420k: seven and a half minutes of lanterns against the
+      // median 30:00 build (finale bench); about five now.
+      tint: [0.55, 0.92, 0.72], health: 320000, speed: 0, damage: 44, xp: 1200, radius: 42,
       gold: 500, interval: 99, finale: true, stationary: true, school: 'shadow',
       yell: 'Four lanterns, four lives. You have one.',
     },
@@ -8818,13 +8997,16 @@ window.WS = window.WS || {};
     },
     heart_drill: {
       name: 'The Heart-Drill', family: 'mechanical', art: 'heartdrill', machine: 'heartdrill',
-      tint: [0.86, 0.52, 0.26], health: 380000, speed: 0, damage: 56, xp: 1500, radius: 80,
+      // 330k, was 380k, and the Lord 600k, was 700k: the last fight ran
+      // six and a half minutes in bot nights at Professional.
+      tint: [0.86, 0.52, 0.26], health: 330000, speed: 0, damage: 56, xp: 1500, radius: 80,
       gold: 600, drawScale: 1.25, interval: 99, finale: true, stationary: true, school: 'fire',
       yell: 'One more meter and it is ALL mine!',
     },
     kael_stormbound: {
       name: 'Brother Kael, the Stormbound', family: 'highland', art: 'kael',
-      tint: [0.62, 0.72, 1.00], health: 560000, speed: 0, damage: 60, xp: 2400, radius: 40,
+      // 480k, was 560k: five and a half minutes; under five now.
+      tint: [0.62, 0.72, 1.00], health: 480000, speed: 0, damage: 60, xp: 2400, radius: 40,
       spriteScale: 1.15,
       gold: 1200, interval: 99, finale: true, stationary: true, school: 'nature',
       yell: 'Stand still. It is the only thing the storm cannot forgive.',
@@ -8832,7 +9014,7 @@ window.WS = window.WS || {};
     pale_lord: {
       // His own art (sprites.js), crown and all - no borrowed regalia.
       name: 'Marrowfrost, the Pale Lord', family: 'undead', art: 'marrowfrost',
-      tint: [0.62, 0.88, 1.00], health: 700000, speed: 0, damage: 64, xp: 3000, radius: 56,
+      tint: [0.62, 0.88, 1.00], health: 600000, speed: 0, damage: 64, xp: 3000, radius: 56,
       spriteScale: 1.25,
       gold: 1500, interval: 99, finale: true, stationary: true, school: 'frost',
       yell: 'Every night your kind burns my ember. Tonight I take it back.',
@@ -8855,7 +9037,11 @@ window.WS = window.WS || {};
     },
     soul_lantern: {
       name: 'Soul Lantern', family: 'undead', art: 'turret', machine: 'soullantern',
-      tint: [0.55, 1.00, 0.75], health: 28000, speed: 0, damage: 20, xp: 120, radius: 26,
+      // 15k, was 28k: Mordecai's fight is paced by his lanterns, not his
+      // health (each window takes him one life, then they relight): 159s of
+      // a 182s fight was spent breaking them (check-finale --phases), and
+      // it ran six to seven minutes in bot nights.
+      tint: [0.55, 1.00, 0.75], health: 15000, speed: 0, damage: 20, xp: 120, radius: 26,
       finale: true, part: true, stationary: true,
     },
     walker_leg: {
@@ -8912,7 +9098,11 @@ window.WS = window.WS || {};
       ],
       epilogue: ['Grimtunnel escapes', 'His pod drifts south, toward the Dustreach.'],
       tuning: {
-        damage: 8,   // x difficulty x Hyper x Config.finaleDamage
+        /* 10, was 8. In bot nights the builds that reach 30:00 healed and
+           shielded away nearly everything the Candlecrawler landed (median
+           0% of the bar over the fight, sloppy players included); a blow
+           that is caught should be felt through that. */
+        damage: 10,   // x difficulty x Hyper x Config.finaleDamage
         turretHpGrowth: 0.18, overheat: 10, overheatLines: [0.85, 0.70], overheatVuln: 1.5,
         burrowAt: 0.60, burrowTime: 12, meltdownAt: 0.25,
         bombDamage: 34, bombRadius: 64, bombTele: 1.1,
@@ -8923,13 +9113,20 @@ window.WS = window.WS || {};
         riseTime: 1.8, burrowSpeed: 150, meltdownPace: 1.55,
         // It hunts from keepAway px, faster once it melts down.
         keepAway: 250, huntSpeed: 55, meltSpeed: 80, drillGirth: 1.5,
-        bombs: 2, bombsStripped: 3, bombScatter: 150, bombStagger: 0.15, bombBurn: 2, meltBurn: 3,
+        bombs: 3, bombsStripped: 3, bombScatter: 150, bombStagger: 0.15, bombBurn: 2, meltBurn: 3,
         // The burning track a meltdown drill leaves behind it.
         trailRadius: 34, trailLife: 3.2, trailDamage: 12, trailTick: 0.45,
         // Seconds between each attack, and before the first of each.
-        every: { erupt: 3.3, trail: 0.1, drill: 8, drillStripped: 6, bomb: 3.4, bombStripped: 4,
-          hatch: 10, hatchStripped: 12, ring: 9 },
-        opening: { bomb: 4.5, drill: 8, hatch: 7, ring: 9 },
+        /* Paced for the build that gets here. In bot nights the strong player
+           took a median 0% of its bar over a five-minute fight: one bomb
+           volley every 3.4s and a drill every 8 never asked it to do two
+           things at once. Now bombs (three a turret) every 2.5s, a drill
+           every 6.5 (4.5 stripped), the candle-fire ring in every mode
+           (ringShielded while the turrets stand), and a shockwave as the
+           hull breaks the surface. */
+        every: { erupt: 2.4, trail: 0.1, drill: 6.5, drillStripped: 4.5, bomb: 2.5, bombStripped: 3,
+          hatch: 10, hatchStripped: 12, ring: 7, ringShielded: 10 },
+        opening: { bomb: 4, drill: 7, hatch: 7, ring: 9 },
         afterSurface: { drill: 3, ring: 5 },
       },
     },
@@ -8957,26 +9154,35 @@ window.WS = window.WS || {};
       ],
       epilogue: ['The Admiral strikes her colours', 'The stolen ember was bound for Mourneholt.'],
       tuning: {
-        damage: 9,   // x difficulty x Hyper x Config.finaleDamage
+        // 10, was 9, for the same reason as the Candlecrawler's - not 11: its
+        // grapeshot and pistols are bolts, not shapes, and at 11 a player a
+        // quarter-second slow lost the Hyper duel (finale bench, no healing).
+        damage: 10,   // x difficulty x Hyper x Config.finaleDamage
         sailSpeed: 70, broadsideDamage: 40, broadsideTele: 1.2, broadsideWidth: 64,
         grapeDamage: 26, kegDamage: 40, kegRadius: 80, kegTele: 1.2,
         dashDamage: 42, dashWindup: 0.55, dashTime: 0.35, dashRange: 340,
         // The second and third dash of a set: quicker, but still a human's
         // reaction plus a step - below ~0.5s a lane this wide cannot be left.
         dashChainWindup: 0.5,
-        pistolDamage: 30, boarders: 8, rally: 4,
+        /* 20, was 30: a fan of five at 340 px/s from duelling range is the
+           one thing in this fight with no telegraph but the bolts themselves,
+           and at 30 a player reacting a quarter-second late lost the whole
+           bar to it (finale bench: 114% a fight). Still ~17% a bolt. */
+        pistolDamage: 20, boarders: 8, rally: 4,
         sailInSpeed: 260, crashTime: 2.6,
         // Broadsides fire straight down until the ship falls below aimBelow,
         // then at you; each port a broadsideStagger later than the last.
         aimBelow: 0.7, broadsideLength: 800, broadsideActive: 0.35, broadsideStagger: 0.3,
         grapeCount: 7, grapeSpread: 0.14, grapeSpeed: 300,
-        kegs: 3, kegScatter: 120, kegStagger: 0.2, boardBruisers: 3,
+        kegs: 4, kegScatter: 120, kegStagger: 0.2, boardBruisers: 3,
         wreckFireDamage: 14, wreckFireRadius: 46, wreckFireTick: 0.5,
         // The duel: the Admiral circles at duelRange and hurries below duelLowAt.
         duelRange: 210, duelSpeed: 170, duelCircle: 0.9, duelLowAt: 0.3, duelLowPace: 1.35,
         dashChain: 2, dashGirth: 1.8, pistolCount: 5, pistolSpread: 0.12, pistolSpeed: 340,
         duelKegRing: 4, duelKegRange: 110, duelKegScale: 0.8, duelKegDelay: 0.3,
-        every: { broadside: 6.5, grape: 4.2, keg: 7, board: 12, dash: 5.5, pistol: 2.6, duelKeg: 8, rally: 14 },
+        // Quicker throughout (was broadside 6.5, grape 4.2, keg 7, dash 5.5,
+        // duelKeg 8): a median 0% taken over 280s in bot nights.
+        every: { broadside: 5, grape: 3.2, keg: 5.2, board: 12, dash: 4.5, pistol: 2.6, duelKeg: 6, rally: 14 },
         opening: { broadside: 3.5, grape: 5, keg: 6.5, board: 8 },
         duelOpening: { dash: 3, pistol: 2, keg: 6, rally: 10 },
       },
@@ -9003,7 +9209,12 @@ window.WS = window.WS || {};
       epilogue: ['Grimtunnel steals the lantern-ember', 'His pod races east, over the Ochre Plains.'],
       tuning: {
         damage: 10.5,   // x difficulty x Hyper x Config.finaleDamage
-        lanternBond: 0.05, exposedTime: 14, exposedVuln: 1.4, relight: 3,
+        /* exposed 16s at x1.8 (was 14s at x1.4): the fight is paced by its
+           windows, and against the median 30:00 build a window often ended
+           short of his next life - so the lanterns came back, again, and it
+           ran six to seven minutes. A window that is used should take a
+           life. */
+        lanternBond: 0.05, exposedTime: 16, exposedVuln: 1.8, relight: 3,
         // His four lives: an exposed window cannot take him below the next.
         lives: [0.70, 0.45, 0.20],
         riseAt: 0.30, handDamage: 44, handRadius: 58, handTele: 1.0,
@@ -9012,7 +9223,7 @@ window.WS = window.WS || {};
         lanternHpGrowth: 0.15, lanternAdds: 2, riseSkeletons: 12, riseGhouls: 10, risenPace: 1.35,
         hands: 3, lanceCount: 5, lanceSpread: 0.16, lanceSpeed: 260, knellGaps: 3,
         // knellFast once he is exposed or risen; handStep between the hands of one volley.
-        every: { spawn: 9, blink: 8, hand: 5, handStep: 0.45, lance: 4, knell: 11, knellFast: 7.5 },
+        every: { spawn: 9, blink: 8, hand: 4.2, handStep: 0.45, lance: 4, knell: 9, knellFast: 6.5 },
         opening: { hand: 3, lance: 4, knell: 7, blink: 8, spawn: 6 },
       },
     },
@@ -9097,16 +9308,25 @@ window.WS = window.WS || {};
         // Pale wards him once more at lastWardAt inside it.
         pipeShield: 0.35, drillFloor: 0.45, wardLines: [0.80, 0.60], lastWardAt: 0.20,
         pipeBreak: 0.15, debrisDamage: 48, debrisRadius: 70, debrisTele: 1.1,
-        ventDamage: 44, ventSpin: 0.7, ventTele: 1.2,
+        ventDamage: 44, ventSpin: 0.55, ventTele: 1.2,
         shardReduce: 0.40, shardEvery: 30, winterAt: 0.40, winterEnrage: 130,
         novaDamage: 40, novaSpeed: 200, novaGap: 30,
         gridDamage: 56, gridTele: 1.35, spikeDamage: 44,
         ghouls: 10,
         dropGravity: 1100, breachTime: 7.4,
         debris: 4, debrisScatter: 190, debrisStagger: 0.15,
-        ventLength: 900, ventWidth: 40, ventTime: 6, ventArms: 4,
+        /* The vents: four arms. At 0.7 rad/s an arm 300px out moved at 210
+           px/s, all but a survivor's running speed - there was no keeping
+           ahead of it, only crossing it, and a crossing at Professional cost
+           half the bar. 0.55 is 165 px/s there: a hard run, not a toll. */
+        // And 480 long, not 900: the far field is out of their reach, so
+        // there is a choice - dance close, or run for the edges.
+        ventLength: 480, ventWidth: 40, ventTime: 5, ventArms: 4,
         // Marrowfrost's frost cross, and the faster, wider one in the winter.
         crossSpin: 0.45, crossWidth: 34, crossTele: 1.2, crossTime: 6, crossArms: 2,
+        // The winter's cross runs 9.2s (tele + time) and comes every 9.6s:
+        // it used to come every 8, so two four-armed crosses turning opposite
+        // ways overlapped for a second and a bit, and their wedges closed.
         winterCrossSpin: 0.5, winterCrossWidth: 36, winterCrossTele: 1.0, winterCrossTime: 8.2, winterCrossArms: 4,
         // The glacial grid: cols x rows, of which gridSafe cells are safe.
         gridCols: 5, gridRows: 4, gridSafe: 4,
@@ -9114,7 +9334,7 @@ window.WS = window.WS || {};
         novaGaps: 3, novaSpin: 0.35, novaDelay: 1.3,
         shardCount: 4, tideSkeletons: 6, tideGhouls: 6,
         every: { debris: 4, vent: 11, ghoul: 12, nova: 9, cross: 15, grid: 14, spike: 5, tide: 16,
-          winterCross: 8, winterNova: 7, winterGrid: 12, winterSpike: 4, winterEnd: 3 },
+          winterCross: 9.6, winterNova: 7, winterGrid: 12, winterSpike: 4, winterEnd: 3 },
         opening: { debris: 3, vent: 7, ghoul: 6 },
         lordOpening: { nova: 4, grid: 9, spike: 3, tide: 8 },
       },
@@ -9158,7 +9378,9 @@ window.WS = window.WS || {};
         galeDamage: 40, galeWidth: 60, galeLength: 900, galeTele: 1.0,
         ringDamage: 42, ringSpeed: 210, ringGaps: 2, ringGap: 38,
         eyeDamage: 70, eyeTele: 3.2, eyeRadius: 90, eyes: 2,
-        armDamage: 38, armSpin: 0.55, armWidth: 30, armTele: 1.1, armTime: 7, arms: 3, stormArms: 4,
+        // 0.45 rad/s, was 0.55: three or four arms the length of the field,
+        // at 300px an arm moved 165 px/s and the only way out was through.
+        armDamage: 38, armSpin: 0.45, armWidth: 30, armTele: 1.1, armTime: 7, arms: 3, stormArms: 4,
         wisps: 8, harpies: 4,
         drift: 150, driftSpeed: 0.35,
         every: { bolt: 3.6, gale: 7.5, ring: 10, adds: 13, eye: 20, arm: 12,
@@ -27497,7 +27719,8 @@ window.WS = window.WS || {};
       if (!frozen && !e.hidden && e.contactCooldown <= 0 && distance < e.radius + player.radius) {
         e.contactCooldown = e.boss ? cfg.contactCooldownBoss : cfg.contactCooldownNormal;
         struck = true;
-        WS.Player.takeDamage(player, e.damage, t.name);
+        // Run down by a boss's charge: the blow it telegraphed (BossFight.hit).
+        WS.Player.takeDamage(player, e.chargeTimer > 0 && e.chargeHit ? WS.max(e.damage, e.chargeHit) : e.damage, t.name);
         if (!WS.Game.running) return;
       }
 
@@ -27512,10 +27735,12 @@ window.WS = window.WS || {};
       }
 
       if (e.boss && !t.arena && !t.finale && !frozen) {
+        WS.BossFight.update(e, dt, dx, dy);
         e.attackTimer -= dt;
-        if (e.attackTimer <= 0) {
+        // Not while it is winding up or running a charge: one thing at a time.
+        if (e.attackTimer <= 0 && e.windup <= 0 && e.chargeTimer <= 0 && !(e.chainLeft > 0)) {
           this.bossAttack(e, dx, dy);
-          e.attackTimer = t.interval || cfg.bossInterval;
+          e.attackTimer = WS.BossFight.interval(e);
         }
       }
 
@@ -27560,11 +27785,13 @@ window.WS = window.WS || {};
   };
 
   /* ------------------------------------------------------ boss patterns -- */
-  Enemy.bossAttack = function (e, dx, dy) {
+  Enemy.bossAttack = function (e, dx, dy, forced) {
     const t = e.template;
-    const pattern = t.patterns[e.patternIndex];
-    e.patternIndex = (e.patternIndex + 1) % t.patterns.length;
+    const pattern = forced || WS.BossFight.next(e);
+    if (!pattern) return null;
     const school = t.school || 'shadow';
+    // The telegraphed shapes (slam, barrage, nova, cross): src/game/bossfight.js.
+    if (WS.BossFight.attack(e, pattern, dx, dy)) return;
     /* Every figure here is a Config dial (bossVolleySpeed and the rest), and
        any one pattern entry may carry its own - { type: 'volley', bolts: 8,
        speed: 300 } - which wins over the dial for that boss alone. */
@@ -27574,10 +27801,20 @@ window.WS = window.WS || {};
     if (pattern.type === 'summon') {
       const scale = 1 + WS.WaveManager.clock(WS.Game.run) / cfg.bossSummonScaleTime;
       const near = opt('near', cfg.bossSummonNear), far = opt('far', cfg.bossSummonFar);
+      const player = WS.Game.player;
       for (let n = 0; n < (pattern.count || 6); n++) {
-        const a = WS.random() * WS.TAU;
-        const range = near + WS.random() * (far - near);
-        this.spawn(pattern.id, e.x + WS.cos(a) * range, e.y + WS.sin(a) * range, scale);
+        /* Never on top of the survivor: a boss that had walked up to them
+           used to drop its brood in their lap, a hit nobody could see
+           coming. A few tries for a spot clear of them, then the far side. */
+        let x = 0, y = 0;
+        for (let tries = 0; tries < 6; tries++) {
+          const a = WS.random() * WS.TAU;
+          const range = near + WS.random() * (far - near);
+          x = e.x + WS.cos(a) * range; y = e.y + WS.sin(a) * range;
+          if (!player || WS.dist(x, y, player.x, player.y) > cfg.bossSummonClear) break;
+          if (tries === 5) { x = e.x - dx * range; y = e.y - dy * range; }
+        }
+        this.spawn(pattern.id, WS.clamp(x, 20, WS.CONST.WORLD_WIDTH - 20), WS.clamp(y, 20, WS.CONST.WORLD_HEIGHT - 20), scale);
       }
       WS.FX.flash(e.x, e.y, e.radius * 2.4, WS.CONST.COLORS.shadow, 0.4);
       e.telegraph = { kind: 'ring', life: 0.4, maxLife: 0.4, radius: e.radius * 3 };
@@ -27613,8 +27850,21 @@ window.WS = window.WS || {};
        * still being aimed; the update loop turns that off the moment the
        * charge commits, and the same lane stays on screen while it happens so
        * the player can see the promise kept. */
-      this.beginCharge(e, dx, dy, opt('windup', cfg.chargeWindup), opt('time', cfg.chargeTime),
-        opt('range', cfg.chargeRange), opt('girth', cfg.bossChargeGirth));
+      /* A scheduled boss's lane stops following Config.bossChargeLock before
+         it goes. It used to track to the last frame, so a boss a step away
+         committed down a lane aimed at you with a quarter of a second to
+         cross its width - the one way to dodge was to have already been
+         running. Locked early, the tell says "now" while there is still
+         time to act on it, and the charge hits like it means it
+         (BossFight.chargeHit). `chain` runs that many more, back to back. */
+      const fight = e.fightAt !== undefined;
+      this.beginCharge(e, dx, dy, opt('windup', fight ? cfg.bossChargeWindup : cfg.chargeWindup), opt('time', cfg.chargeTime),
+        opt('range', cfg.chargeRange), opt('girth', cfg.bossChargeGirth), fight ? cfg.bossChargeLock : 0);
+      if (fight) {
+        e.chargeHit = WS.BossFight.chargeHit(e, pattern);
+        e.chainPattern = pattern;
+        e.chainLeft = opt('chain', 0) + (e.enraged ? opt('chainEnraged', 0) : 0);
+      }
       WS.FX.flash(e.x, e.y, e.radius * 1.6, WS.CONST.COLORS.enemy, 0.5);
     }
   };
@@ -32454,7 +32704,7 @@ window.WS = window.WS || {};
     return pool.length ? pool : [bosses[bosses.length - 1]];
   };
 
-  Wave.spawnBoss = function (id, scale, final) {
+  Wave.spawnBoss = function (id, scale, final, overtime) {
     const player = WS.Game.player;
     const a = WS.random() * WS.TAU, far = WS.Config.bossSpawnDistance;
     const boss = WS.Enemy.spawn(id,
@@ -32463,6 +32713,8 @@ window.WS = window.WS || {};
       scale, true);
     if (!boss) return null;
     boss.finalBoss = !!final;
+    // A fight, not a speed bump: its health for this point in the night.
+    WS.BossFight.arrive(boss, this.clock(WS.Game.run), overtime);
     const t = boss.template;
     /* A yell between asterisks is a stage direction - a shriek, thunder -
        not a line: it is shown without them, and nobody speaks it. */
@@ -32705,7 +32957,7 @@ window.WS = window.WS || {};
         const pick = pool[WS.randInt(0, pool.length - 1)];
         const over = WS.max(0, time - cfg.endlessRampStart);
         this.spawnBoss(pick.id,
-          this.bossScale(time) * cfg.endlessBossMult * (1 + over / cfg.endlessRampTime), false);
+          this.bossScale(time) * cfg.endlessBossMult * (1 + over / cfg.endlessRampTime), false, true);
       }
       this.endlessEventTimer -= dt;
       if (this.endlessEventTimer <= 0) {
@@ -33400,12 +33652,18 @@ window.WS = window.WS || {};
     dmgScale: 1,
   };
 
+  /* Damage was 26 / 30 / 32: against the arena kit's 385 health and 14
+     armour (a 47% cut) a caught flare took under 4% of the bar, and the
+     bot - which prices a blow by what it costs - stopped bothering to dodge
+     them (48% of the bar a minute, in hits of 3-4%). Four times that: a
+     flare ~14% at Veteran, a spear ~17%, a pass of the cross ~18%, all of
+     it x difficulty x Hyper. A mistake is a mistake now. */
   Arena.tuning = {
     phase2HP: 60, phase3HP: 20, enrageTime: 45,
-    ringDamage: 26, ringSpeed: 165, ringGapP1: 40, ringGapP2: 26, ringGapsP2: 7,
+    ringDamage: 104, ringSpeed: 165, ringGapP1: 40, ringGapP2: 26, ringGapsP2: 7,
     ringSpinP2: 0.5, ringDelay: 1.4,
-    spearDamage: 30, gridSafeP1: 4, gridSafeP2: 5, spearTele: 1.6, spearInterval: 8.5,
-    cutterDamage: 32, cutterSpin: 0.7, cutterTele: 1.2, cutterInterval: 9.0,
+    spearDamage: 120, gridSafeP1: 4, gridSafeP2: 5, spearTele: 1.6, spearInterval: 8.5,
+    cutterDamage: 128, cutterSpin: 0.7, cutterTele: 1.2, cutterInterval: 9.0,
     chainInterval: 11.0, chainBreak: 50,
   };
 
@@ -33462,15 +33720,24 @@ window.WS = window.WS || {};
     return false;
   }
 
-  Arena.ring = function (gapBase, gapWidth, damage, speed, gapCount, spin, delay) {
+  Arena.ring = function (gapBase, gapWidth, damage, speed, gapCount, spin, delay, after) {
     const h = {
       shape: 'ring', cx: CX, cy: CY, r: 26, speed, thick: 30,
       gapBase, gapWidth, gapCount: gapCount || 1, gapRot: 0, spin: spin || 0,
       damage, delay: delay || 0, life: 9, hit: false,
     };
-    // One opening within reach of the survivor; see Finale.aimGap.
-    if (gapBase === null) h.gapBase = WS.Finale.aimGap(h, WS.Game.player);
+    // One opening within reach of the survivor - or, for the second flare
+    // of a pair, within reach of the first one's opening; see Finale.aimGap.
+    // Never on you before you can see it (see Finale.ring).
+    const pl = WS.Game.player;
+    if (pl) {
+      const travel = WS.max(0, WS.dist(pl.x, pl.y, h.cx, h.cy) - h.r) / h.speed;
+      if (h.delay + travel < WS.Config.bossMinTele) h.delay = WS.Config.bossMinTele - travel;
+    }
+    h.chained = !!(after && after.aim);
+    if (gapBase === null) h.gapBase = WS.Finale.aimGap(h, WS.Game.player, after && after.aim);
     this.hazards.push(h);
+    return h;
   };
 
   Arena.spears = function (safeCount) {
@@ -33481,8 +33748,16 @@ window.WS = window.WS || {};
     for (let cy = 0; cy < rows; cy++) {
       for (let cx = 0; cx < cols; cx++) cells.push({ cx, cy });
     }
-    WS.shuffle(cells);
-    const safe = new Set(cells.slice(0, safeCount).map((c) => c.cy * cols + c.cx));
+    // One safe square always within reach (Finale.safeCells): a shuffle
+    // could leave the nearest across the arena with 1.6s to get there.
+    WS.Finale.safeCells(cells, safeCount, this.tuning.spearTele,
+      (c) => [BOUNDS.minX + c.cx * w, BOUNDS.minY + c.cy * h, w, h]);
+    // And a flare's opening arriving as the spears fall: its square is spared.
+    for (const c of cells) {
+      const x0 = BOUNDS.minX + c.cx * w, y0 = BOUNDS.minY + c.cy * h;
+      if (!c.safe && WS.Finale.sealing(this.tuning.spearTele, (ax, ay) => ax >= x0 && ax <= x0 + w && ay >= y0 && ay <= y0 + h)) c.safe = true;
+    }
+    const safe = new Set(cells.filter((c) => c.safe).map((c) => c.cy * cols + c.cx));
     for (let cy = 0; cy < rows; cy++) {
       for (let cx = 0; cx < cols; cx++) {
         const isSafe = safe.has(cy * cols + cx);
@@ -33499,9 +33774,23 @@ window.WS = window.WS || {};
   };
 
   Arena.cutter = function () {
+    /* In the dark (phase 3) the heavy track runs at 0.65x, so a cutter
+       (8.2s) can come up while the last is still turning. Two crosses at
+       random angles left wedges a few degrees wide; this one bisects the
+       live one instead - same spin, arms halfway between where the old
+       arms will be when it starts - so the quadrants become eighths, even
+       ones, and stay that way. */
+    const live = this.hazards.find((q) => q.shape === 'cutter');
+    const tele = this.tuning.cutterTele;
+    let ang = live
+      ? live.ang + live.spin * WS.max(0, tele - WS.max(0, live.telegraph)) + WS.PI / 4
+      : WS.random() * WS.PI * 0.5;
+    // Turned off any flare's opening still to come (Finale.clearArms); the
+    // arms are 0.12 rad either side of their line, ~2*d*sin(0.12) wide.
+    ang = WS.Finale.clearArms(ang, 4, this.tuning.cutterSpin, tele, 900, 2 * 450 * WS.sin(0.12), CX, CY, 7);
     this.hazards.push({
       shape: 'cutter', cx: CX, cy: CY,
-      ang: WS.random() * WS.PI * 0.5, spin: this.tuning.cutterSpin,
+      ang, spin: this.tuning.cutterSpin,
       half: 0.12, len: 900, damage: this.tuning.cutterDamage,
       telegraph: this.tuning.cutterTele, life: this.tuning.cutterTele + 7, hitTimer: 0,
     });
@@ -33566,11 +33855,11 @@ window.WS = window.WS || {};
       this.trackA = (this.phase >= 2 ? 7.5 : 9.5) * speedUp;
       const t = this.tuning;
       if (this.phase >= 2) {
-        this.ring(null, t.ringGapP2, t.ringDamage, t.ringSpeed, t.ringGapsP2, t.ringSpinP2, 0.7);
-        this.ring(null, t.ringGapP2, t.ringDamage, t.ringSpeed, t.ringGapsP2, t.ringSpinP2, 0.7 + t.ringDelay);
+        const a = this.ring(null, t.ringGapP2, t.ringDamage, t.ringSpeed, t.ringGapsP2, t.ringSpinP2, 0.7);
+        this.ring(null, t.ringGapP2, t.ringDamage, t.ringSpeed, t.ringGapsP2, t.ringSpinP2, 0.7 + t.ringDelay, a);
       } else {
-        this.ring(null, t.ringGapP1 * 2, t.ringDamage, t.ringSpeed, 1, 0, 0.6);
-        this.ring(null, t.ringGapP1, t.ringDamage, t.ringSpeed, 1, 0, 0.6 + t.ringDelay);
+        const a = this.ring(null, t.ringGapP1 * 2, t.ringDamage, t.ringSpeed, 1, 0, 0.6);
+        this.ring(null, t.ringGapP1, t.ringDamage, t.ringSpeed, 1, 0, 0.6 + t.ringDelay, a);
       }
       WS.Game.toast('Solar Flare', 'Stand in the opening.', { kind: 'warn', art: 'sun' });
     }
@@ -33960,16 +34249,69 @@ window.WS = window.WS || {};
    *  a lobbed shell: the renderer draws it flying in over the telegraph. */
   F.circle = function (x, y, r, tele, dmg, name, opts) {
     const o = opts || {};
-    this.marks.push({ kind: 'circle', x, y, r, tele, maxTele: tele, dmg: this.dmg(dmg), name,
+    // Never on an opening still to come: pushed off it, just clear.
+    const seal = this.sealing(tele, (ax, ay, pad) => WS.dist(x, y, ax, ay) < r + pad);
+    if (seal) {
+      const [ux, uy, ud] = WS.normalize(x - seal.x, y - seal.y);
+      const away = r + (WS.Game.player ? WS.Game.player.radius : 12) + 22;
+      x = seal.x + (ud > 0.5 ? ux : 1) * away; y = seal.y + (ud > 0.5 ? uy : 0) * away;
+    }
+    return this.own(o, { kind: 'circle', x, y, r, tele, maxTele: tele, dmg: this.markDmg(dmg, o), name,
       tint: o.tint || [1.0, 0.45, 0.25], from: o.from || null, style: o.style || 'blast',
       burn: o.burn || 0 });
+  };
+
+  /* THE SAME SHAPES, OUTSIDE THE FINALE. The scheduled bosses throw these
+     too (src/game/enemy.js Enemy.bossAttack), so a night's bosses and its
+     finale speak one visual language. Two differences: their damage is
+     already worked out by the boss (`raw`, so the finale's own dmgScale is
+     not applied on top), and they belong to the boss that threw them
+     (`src`): when it dies, what it had in the air goes with it, rather than
+     a dead boss landing one last blow nobody could answer. */
+  F.markDmg = function (dmg, o) { return o && o.raw ? dmg : this.dmg(dmg); };
+  F.own = function (o, m) {
+    m.born = WS.Game.run ? WS.Game.run.time : 0;   // when it appeared (tools/bot/pilot.js reads it)
+    if (o.src) { m.src = o.src; m.srcId = o.src.spawnId; }
+    this.marks.push(m);
+    return m;
+  };
+  function orphaned(m) {
+    return m.src && (m.src._dead || m.src.spawnId !== m.srcId || !m.src.boss && !m.src.elite);
+  }
+
+  /** The marks, run outside the finale: a scheduled boss's telegraphs. */
+  F.field = function (dt) {
+    // The heading is kept up whether or not anything is on the field: a
+    // boss's first strike leads the survivor with it (F.lead).
+    const p = WS.Game.player;
+    if (!p) return;
+    if (this._px !== undefined && dt > 0) {
+      const a = WS.min(1, dt * 6);
+      this.pv.x += ((p.x - this._px) / dt - this.pv.x) * a;
+      this.pv.y += ((p.y - this._py) / dt - this.pv.y) * a;
+    }
+    this._px = p.x; this._py = p.y;
+    if (!this.marks.length || WS.Enemy.freezeTimer > 0) return;   // a stopped clock stops these too
+    updateMarks(dt);
   };
 
   /** A straight line of trouble: telegraphed, then live for `active`. */
   F.lane = function (x, y, ang, len, w, tele, dmg, name, opts) {
     const o = opts || {};
-    this.marks.push({ kind: 'lane', x, y, ang, len, w, tele, maxTele: tele,
-      active: o.active || 0.3, dmg: this.dmg(dmg), name, hit: false,
+    // Never across an opening still to come: slid sideways, just clear.
+    const c0 = WS.cos(ang), s0 = WS.sin(ang);
+    const across = (ax, ay) => -(ax - x) * s0 + (ay - y) * c0;
+    const seal = this.sealing(tele + (o.active || 0.3) * 0.5, (ax, ay, pad) => {
+      const along = (ax - x) * c0 + (ay - y) * s0;
+      return along > -pad && along < len + pad && WS.abs(across(ax, ay)) < w / 2 + pad;
+    });
+    if (seal) {
+      const a = across(seal.x, seal.y), need = w / 2 + (WS.Game.player ? WS.Game.player.radius : 12) + 22;
+      const shift = (a >= 0 ? -1 : 1) * (need - WS.abs(a));
+      x += -s0 * shift; y += c0 * shift;
+    }
+    return this.own(o, { kind: 'lane', x, y, ang, len, w, tele, maxTele: tele,
+      active: o.active || 0.3, dmg: this.markDmg(dmg, o), name, hit: false,
       tint: o.tint || [1.0, 0.55, 0.25], style: o.style || 'shot', sound: o.sound });
   };
 
@@ -33979,10 +34321,177 @@ window.WS = window.WS || {};
     const m = { kind: 'ring', cx, cy, r: o.r0 || 30, speed: o.speed || 180, thick: o.thick || 28,
       gapBase: 0,
       gapWidth: o.gapWidth || 40, gapCount: o.gaps || 1, gapRot: 0, spin: o.spin || 0,
-      delay: o.delay || 0, dmg: this.dmg(o.dmg), name: o.name, hit: false,
+      delay: o.delay || 0, dmg: this.markDmg(o.dmg, o), name: o.name, hit: false,
       tint: o.tint || [1.0, 0.6, 0.3], max: o.max || 1100 };
-    m.gapBase = o.gapBase !== undefined ? o.gapBase : F.aimGap(m, WS.Game.player);
-    this.marks.push(m);
+    /* Never on you before you can see it: a ring cast at point blank used
+       to reach a survivor standing beside its centre in a fifth of a second.
+       It holds (its delay, drawn as the dashed circle at its heart) until it
+       would take Config.bossMinTele to arrive. */
+    const pl = WS.Game.player;
+    if (pl) {
+      const travel = WS.max(0, WS.dist(pl.x, pl.y, cx, cy) - m.r) / m.speed;
+      const minT = WS.Config.bossMinTele || 0.6;
+      if (m.delay + travel < minT) m.delay = minT - travel;
+    }
+    m.chained = !!(o.after && o.after.aim);   // aimed from the ring before it
+    m.gapBase = o.gapBase !== undefined ? o.gapBase : F.aimGap(m, WS.Game.player, o.after && o.after.aim);
+    return this.own(o, m);
+  };
+
+  /** IS THIS GROUND ABOUT TO BE HIT? True if (x, y) is inside something
+   *  due to land `t` seconds from now: a circle going off, a lane live, a
+   *  ring's band passing outside its openings, a beam's arm sweeping over
+   *  it, a fence, the doom outside a safe zone, an unsafe grid square, a
+   *  storm strike - the finale's marks, the arena's hazards and the moor's
+   *  strikes alike. `skip` is the mark asking.
+   *
+   *  Shapes are allowed to overlap - two at once is the pressure a fight is
+   *  made of - but never into a pattern nobody can survive. So every ANSWER
+   *  a shape offers (a ring's opening, a safe square, the eye of the storm)
+   *  is placed where this says false at the moment it is needed, and a new
+   *  circle or lane is never laid over an opening still to come. */
+  F.threatAt = function (x, y, t, pad, skip, slack) {
+    // `slack` widens every timing window: whoever places an answer asks with
+    // some, so a shape a frame off the edge of one is not called clear.
+    const sl = slack || 0;
+    const near = (a) => WS.abs(a - t) < 0.35 + sl;
+    const cfg = WS.Config;
+    const ringHit = (m, delay, gapRot) => {
+      const go = t - WS.max(0, delay);
+      if (go < 0) return false;
+      const band = m.r + m.speed * go;
+      const d = WS.dist(x, y, m.cx, m.cy);
+      if (WS.abs(d - band) > m.thick * 0.5 + pad) return false;
+      const half = (m.gapWidth * WS.PI / 180) * 0.5;
+      const a = WS.atan2(y - m.cy, x - m.cx);
+      for (let i = 0; i < m.gapCount; i++) {
+        const c = m.gapBase + gapRot + (m.spin || 0) * go + (i / m.gapCount) * WS.TAU;
+        if (WS.abs(((a - c + WS.PI * 3) % WS.TAU) - WS.PI) <= half) return false;
+      }
+      return true;
+    };
+    const armsHit = (cx, cy, ang, arms, w, len) => {
+      const d = WS.dist(x, y, cx, cy);
+      if (d > len + pad) return false;
+      const a = WS.atan2(y - cy, x - cx);
+      for (let k = 0; k < arms; k++) {
+        const diff = ((a - (ang + (k / arms) * WS.TAU) + WS.PI * 3) % WS.TAU) - WS.PI;
+        if (WS.abs(diff) < WS.PI / 2 && WS.abs(d * WS.sin(diff)) < w / 2 + pad) return true;
+      }
+      return false;
+    };
+    for (const m of this.marks) {
+      if (m === skip) continue;
+      if (m.kind === 'circle') {
+        if (near(m.tele) && WS.dist(x, y, m.x, m.y) < m.r + pad) return m;
+      } else if (m.kind === 'lane') {
+        if (t > WS.max(0, m.tele) - 0.2 - sl && t < WS.max(0, m.tele) + m.active + 0.2 + sl && !m.hit) {
+          const c = WS.cos(m.ang), sn = WS.sin(m.ang), dx = x - m.x, dy = y - m.y;
+          const along = dx * c + dy * sn, across = -dx * sn + dy * c;
+          if (along > -pad && along < m.len + pad && WS.abs(across) < m.w / 2 + pad) return m;
+        }
+      } else if (m.kind === 'ring') {
+        if (!m.hit && ringHit(m, m.delay, m.gapRot)) return m;
+      } else if (m.kind === 'sweep') {
+        if (t < m.tele + m.dur + sl && t >= m.tele - 0.2 - sl) {
+          const ang = m.ang + m.spin * WS.max(0, t - WS.max(0, m.tele));
+          /* A beam on a caster that drifts (Kael, the Pale Lord) is where its
+             centre will be: carried on at the caster's measured velocity, and
+             a little wider for the curve it is on (their drifts are slow
+             sines: ~18 px/s/s at most, under 40px of error in 2s). */
+          const ahead = WS.max(0, t);
+          let cx = m.cx + (m.vx || 0) * ahead, cy = m.cy + (m.vy || 0) * ahead;
+          let drift = m.follow ? 6 + 9 * ahead * ahead : 0;
+          // A caster on a scripted path says exactly where it will be.
+          if (m.follow && m.follow.predict) {
+            const q = m.follow.predict(ahead);
+            cx = q[0]; cy = q[1] + (m.oy || 0); drift = 6;
+          }
+          if (armsHit(cx, cy, ang, m.arms, m.w + 2 * drift, m.len)) return m;
+        }
+      } else if (m.kind === 'fence') {
+        if (this.live(m.a) && this.live(m.b) && segDist(x, y, m.a.x, m.a.y, m.b.x, m.b.y) < cfg.finaleFenceReach + pad) return m;
+      } else if (m.kind === 'safe') {
+        if (near(m.tele) && !m.zones.some((z) => WS.dist(x, y, z.x, z.y) < z.r - pad * 0.5)) return m;
+      } else if (m.kind === 'grid') {
+        if (near(m.tele) && m.cells.some((c) => !c.safe && x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h)) return m;
+      }
+    }
+    if (WS.Arena && WS.Arena.active) {
+      for (const h of WS.Arena.hazards) {
+        if (h === skip) continue;
+        if (h.shape === 'ring') {
+          if (!h.hit && ringHit(h, h.delay, h.gapRot)) return h;
+        } else if (h.shape === 'square') {
+          if (!h.safe && h.telegraph > 0 && near(h.telegraph) && x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h) return h;
+        } else if (h.shape === 'cutter') {
+          const live = t >= h.telegraph - 0.2 && t < h.life;
+          if (live && armsHit(h.cx, h.cy, h.ang + h.spin * WS.max(0, t - WS.max(0, h.telegraph)), 4,
+            2 * WS.dist(x, y, h.cx, h.cy) * WS.sin(h.half), h.len)) return h;
+        }
+      }
+    }
+    for (const st of (WS.Moor && WS.Moor.strikes) || []) {
+      if (near(st.tele) && WS.dist(x, y, st.x, st.y) < st.r + pad) return st;
+    }
+    return null;
+  };
+
+  /** Keeps a new circle or lane off the openings of rings still to come:
+   *  `cover(x, y, pad)` says whether the shape would cover a point; `at` is
+   *  when it lands. Returns the opening it would seal, or null. */
+  F.sealing = function (at, cover) {
+    const now = WS.Game.run ? WS.Game.run.time : 0;
+    const rings = this.marks.concat(WS.Arena && WS.Arena.active ? WS.Arena.hazards : []);
+    for (const m of rings) {
+      if (!(m.kind === 'ring' || m.shape === 'ring') || m.hit || !m.aim || m.aim.at === undefined) continue;
+      if (WS.abs((m.aim.at - now) - at) > 0.6) continue;
+      const pad = (m.gapWidth * WS.PI / 180) * 0.25 * WS.dist(m.aim.x, m.aim.y, m.cx, m.cy) + 16;
+      if (cover(m.aim.x, m.aim.y, pad)) return m.aim;
+    }
+    return null;
+  };
+
+  /** A beam's starting angle, turned (by as little as will do) so that none
+   *  of its arms is over a ring's opening when that ring arrives. A beam
+   *  bisecting another (F.sweep) is kept on its spoke if that is clear. */
+  F.clearArms = function (ang, arms, spin, tele, len, w, cx, cy, dur, follows) {
+    const now = WS.Game.run ? WS.Game.run.time : 0;
+    const p = WS.Game.player;
+    const pad = (p ? p.radius : 12) + 10;
+    const rings = this.marks.concat(WS.Arena && WS.Arena.active ? WS.Arena.hazards : []);
+    const aims = [];
+    for (const m of rings) {
+      if ((m.kind === 'ring' || m.shape === 'ring') && !m.hit && m.aim && m.aim.at !== undefined) {
+        const left = m.aim.at - now;
+        if (left > tele - 0.3 && left < tele + dur + 0.3) aims.push([m.aim.x, m.aim.y, left]);
+      }
+    }
+    if (!aims.length) return ang;
+    const vx = follows ? follows.fvx || 0 : 0, vy = follows ? follows.fvy || 0 : 0;
+    const oy = cy - (follows ? follows.y : cy);
+    const centre = (left) => (follows && follows.predict ? (() => { const q = follows.predict(left); return [q[0], q[1] + oy]; })()
+      : [cx + vx * left, cy + vy * left]);
+    const covers = (a0) => aims.some(([x, y, left]) => {
+      const a = a0 + spin * WS.max(0, left - tele);
+      const [ccx, ccy] = centre(left);
+      const d = WS.dist(x, y, ccx, ccy);
+      // Wider than the foresight in F.threatAt: this one gets one look.
+      const pad2 = pad + (!follows ? 0 : follows.predict ? 12 : 20 + 15 * left * left);
+      if (d > len + pad) return false;
+      const at = WS.atan2(y - ccy, x - ccx);
+      for (let k = 0; k < arms; k++) {
+        const diff = ((at - (a + (k / arms) * WS.TAU) + WS.PI * 3) % WS.TAU) - WS.PI;
+        if (WS.abs(diff) < WS.PI / 2 && WS.abs(d * WS.sin(diff)) < w / 2 + pad2) return true;
+      }
+      return false;
+    });
+    if (!covers(ang)) return ang;
+    const step = WS.TAU / arms / 24;
+    for (let k = 1; k < 24; k++) {
+      for (const sd of [1, -1]) if (!covers(ang + sd * k * step)) return ang + sd * k * step;
+    }
+    return ang;
   };
 
   /** Where a ring's first opening starts, so that one is always within reach.
@@ -33990,35 +34499,139 @@ window.WS = window.WS || {};
    *  It used to be anywhere at all. A single gap could open on the far side
    *  of the boss, and a spinning ring's gaps are not where they look while it
    *  is small - they turn the whole time it travels - so "find the hole" was
-   *  often a hole nobody could get to. Now one opening is aimed at where the
-   *  survivor stands, for the moment the ring actually REACHES them (the spin
-   *  it will have turned by then taken off first), and then pushed aside by
-   *  a random amount no larger than they can cover in the time it takes to
-   *  arrive, walking at half their speed. There is still somewhere to go -
-   *  it is rarely right under their feet - but it is never out of reach. The
-   *  other openings are spaced from that one as before. */
-  F.aimGap = function (m, p) {
+   *  often a hole nobody could get to. The next fix aimed one opening at the
+   *  survivor and pushed it aside by up to a radian, which a tester still
+   *  found "sometimes literally impossible", for three reasons it ignored:
+   *
+   *    - the field has edges. A survivor near a wall or in a corner had the
+   *      opening pushed round the ring to a point off the field;
+   *    - nobody moves the instant a ring appears. The walk it allowed began
+   *      at once and at half speed with no time to see the thing first;
+   *    - rings come in pairs (the arena's flares, the Pale Lord's novas, the
+   *      bosses' own), and the second was aimed from where the survivor
+   *      stood when it was CAST - not from the first ring's opening, which
+   *      is where they were going to be. Pushed the other way, the second
+   *      opening could be two radians from the first, with a second and a
+   *      bit to get there.
+   *
+   *  So now it is computed. The opening goes where the survivor (or, for a
+   *  second ring, the first ring's opening: `from`) will be when the band
+   *  reaches them, then turned aside by an amount chosen among the bearings
+   *  that are ALL of: within 90 degrees either way (never the far side);
+   *  on the field, clear of its edges; not under anything else due to land
+   *  as the band arrives (F.threatAt); and reachable - the walk round the
+   *  ring, less what the opening itself is wide, fits in the time left after
+   *  a reaction (Config.ringReact), at Config.ringWalk of their speed. The
+   *  spin it will have turned by the time it arrives is taken off, as before.
+   *  If nothing aside is reachable, the opening lands on them.
+   *
+   *  It returns the opening's base angle; m.aim records the point and time
+   *  it was aimed at, for a ring that follows this one. */
+  F.aimGap = function (m, p, from) {
     if (!p) return WS.random() * WS.TAU;
-    const dx = p.x - m.cx, dy = p.y - m.cy;
-    const d = Math.hypot(dx, dy);
-    const at = WS.atan2(dy, dx);
-    const travel = WS.max(0, d - m.r) / (m.speed || 180);    // the time it has to get there
-    const turn = (m.spin || 0) * travel;                      // how far its gaps turn meanwhile
-    // At most 150px of walking round the ring, and never more than a
-    // radian: a single gap with a long way to travel could otherwise be
-    // "reachable" on the far side of the boss at a flat sprint.
-    const walk = WS.min(150, 0.5 * (p.moveSpeed || 220) * (travel + (m.delay || 0)));
-    const reach = WS.min(walk / WS.max(d, 80), 1, WS.PI / (m.gapCount || 1));
-    const side = WS.random() < 0.5 ? -1 : 1;
-    return at - turn + side * reach * (0.35 + 0.65 * WS.random());
+    /* No clear, reachable bearing at all - everything within 90 degrees is
+       under something else landing as it arrives? Then it is not thrown
+       into that: it holds a quarter-second longer at its heart (its delay)
+       and looks again, up to Config.ringHold more, so the other shape has
+       landed and gone by the time it comes. */
+    const hold = WS.Config.ringHold || 1.25;
+    let extra = 0, base = 0;
+    for (;;) {
+      base = aimOnce(m, p, from);
+      if (!m.aim.stuck || extra >= hold - 1e-6) return base;
+      m.delay = (m.delay || 0) + 0.25; extra += 0.25;
+    }
   };
+  function aimOnce(m, p, from) {
+    const cfg = WS.Config;
+    const sx = from ? from.x : p.x, sy = from ? from.y : p.y, t0 = from ? from.t : 0;
+    const dx = sx - m.cx, dy = sy - m.cy;
+    const d = WS.max(Math.hypot(dx, dy), 1);
+    const at = WS.atan2(dy, dx);
+    const speed = (p.moveSpeed || 220) * (cfg.ringWalk || 0.6);
+    const b = WS.Game.arenaBounds || { minX: 0, maxX: WS.CONST.WORLD_WIDTH, minY: 0, maxY: WS.CONST.WORLD_HEIGHT };
+    const pad = (p.radius || 12) + 24;
+    const onField = (x, y) => x > b.minX + pad && x < b.maxX - pad && y > b.minY + pad && y < b.maxY - pad;
+    // Never past 90 degrees, and with n openings never past half the
+    // spacing - the next one round is nearer by then.
+    const span = WS.min(WS.PI / 2, WS.PI / (m.gapCount || 1));
+    const N = 24;
+    const pr = (p.radius || 12) * 0.6;
+    /* At their own distance from the centre first; only if nothing there is
+       clear, a step out or in (standing on top of a caster whose cutter
+       sweeps everything near it, the way through is further out). */
+    const radii = [d, d + 90, d + 180, d - 70].filter((r, i) => i === 0 || r > m.r + 40);
+    let pickR = d, ok = [];
+    const clearFar = [];
+    for (const dd of radii) {
+      const arrive = (m.delay || 0) + WS.max(0, dd - m.r) / (m.speed || 180);
+      const spare = WS.max(0, arrive - t0 - (cfg.ringReact || 0.45));
+      const halfArc = (m.gapWidth * WS.PI / 180) * 0.5 * dd * 0.6;   // most of the hole counts
+      ok = [];
+      for (let k = 0; k <= N; k++) {
+        for (const side of k ? [-1, 1] : [1]) {
+          const off = side * span * k / N;
+          const x = m.cx + WS.cos(at + off) * dd, y = m.cy + WS.sin(at + off) * dd;
+          if (!onField(x, y) && (k || dd !== d)) continue;
+          const walk = WS.max(0, Math.hypot(x - sx, y - sy) - halfArc);
+          if (F.threatAt(x, y, arrive, pr + 6, m, 0.15)) continue;
+          if (walk <= speed * spare) { if (k) ok.push(off); else ok.zero = true; }
+          // A human at a flat sprint who saw it at once: the last resort.
+          else if (walk <= (p.moveSpeed || 220) * WS.max(0, arrive - t0 - 0.25)) clearFar.push([walk, off, dd]);
+        }
+      }
+      if (!ok.length && ok.zero) ok.push(0);
+      if (ok.length) { pickR = dd; break; }
+    }
+    let off = 0;
+    if (!ok.length && clearFar.length) { const c = clearFar.sort((a, b) => a[0] - b[0])[0]; ok.push(c[1]); pickR = c[2]; }
+    if (ok.length > 1) {
+      // Somewhere to go, rarely right underfoot: the far half of what is
+      // reachable is twice as likely as the near half.
+      const far = WS.max(...ok.map(WS.abs));
+      const pool = ok.filter((o) => WS.abs(o) >= far * 0.35);
+      const pick = pool.length && WS.random() < 0.67 ? pool : ok;
+      off = pick[WS.randInt(0, pick.length - 1)];
+    } else if (ok.length) off = ok[0];
+    const travel = WS.max(0, pickR - m.r) / (m.speed || 180);   // after its delay
+    const arrive = (m.delay || 0) + travel;                      // seconds from now
+    const turn = (m.spin || 0) * travel;                         // how far its gaps turn meanwhile
+    m.aim = { x: m.cx + WS.cos(at + off) * pickR, y: m.cy + WS.sin(at + off) * pickR, t: arrive,
+      at: (WS.Game.run ? WS.Game.run.time : 0) + arrive, stuck: !ok.length };
+    return at + off - turn;
+  }
 
   /** One or more beams turning about a point. `arms` of them, evenly spaced. */
   F.sweep = function (cx, cy, ang, spin, len, w, tele, dur, dmg, name, opts) {
     const o = opts || {};
-    this.marks.push({ kind: 'sweep', cx, cy, ang, spin, len, w, tele, maxTele: tele,
-      dur, maxDur: dur, dmg: this.dmg(dmg), name, cd: 0, arms: o.arms || 1,
-      follow: o.follow || null, oy: o.oy || 0,
+    /* NEVER TWO CUTTERS TURNING AGAINST EACH OTHER. Every caster that
+       alternates its beams' direction (Kael's arms, the Pale Lord's cross,
+       the drill's vents) did it to stop a player learning one way to run -
+       and when a new cutter came up before the last had finished (the
+       winter's cross, 9.2s long, every 8s) the two scissored: arms closing
+       on each other from both sides, a wedge of safe ground that shrank to
+       nothing. A tester: "overlapping cutters going opposite directions".
+       So a cutter that starts while another from the same source is still
+       live turns the SAME way as that one, and is set to bisect it - its
+       arms fall halfway between the old one's where it will be when the new
+       one starts to turn - so the two move as one wheel with twice the
+       spokes, and the wedges between are as even as they can be. */
+    const owner = o.follow || null;
+    for (const q of this.marks) {
+      if (q.kind !== 'sweep' || q.dur <= 0 || (owner ? q.follow !== owner : (q.cx !== cx || q.cy !== cy))) continue;
+      // Same way, same rate (a rigid wheel), and bisecting: by the time
+      // this one starts to turn, the old one has turned for `lead` more.
+      spin = q.spin;
+      const arms = (o.arms || 1) + q.arms;
+      const lead = q.tele > 0 ? WS.max(0, tele - q.tele) : tele;
+      ang = q.ang + q.spin * lead + WS.TAU / arms;
+      break;
+    }
+    ang = F.clearArms(ang, o.arms || 1, spin, tele, len, w, cx, cy, dur, owner);
+    return this.own(o, { kind: 'sweep', cx, cy, ang, spin, len, w, tele, maxTele: tele,
+      vx: owner ? owner.fvx || 0 : 0, vy: owner ? owner.fvy || 0 : 0,
+      dur, maxDur: dur, dmg: this.markDmg(dmg, o), name, cd: 0, arms: o.arms || 1,
+      follow: owner, oy: o.oy || 0,
       tint: o.tint || [0.55, 0.85, 1.0] });
   };
 
@@ -34030,14 +34643,51 @@ window.WS = window.WS || {};
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) cells.push({ x: b.minX + c * w, y: b.minY + r * h, w, h, safe: false });
     }
-    WS.shuffle(cells).slice(0, safeCount).forEach((c) => { c.safe = true; });
-    this.marks.push({ kind: 'grid', cells, tele, maxTele: tele, dmg: this.dmg(dmg), name,
+    F.safeCells(cells, safeCount, tele, (c) => [c.x, c.y, c.w, c.h]);
+    // A ring's opening arriving as the spikes fall: its square is spared.
+    for (const c of cells) {
+      if (!c.safe && this.sealing(tele, (ax, ay) => ax >= c.x && ax <= c.x + c.w && ay >= c.y && ay <= c.y + c.h)) c.safe = true;
+    }
+    this.marks.push({ kind: 'grid', born: WS.Game.run ? WS.Game.run.time : 0, cells, tele, maxTele: tele, dmg: this.dmg(dmg), name,
       tint: o.tint || [0.6, 0.85, 1.0] });
+  };
+
+  /** Marks `count` of `cells` safe, one of them always within reach.
+   *
+   *  The safe squares were a shuffle. On the Pale Lord's 5x4 grid that is
+   *  four of twenty cells, 176 by 138, with 1.35s to get into one - and the
+   *  nearest could be four cells away, 600px, under the winter's dark. Now
+   *  the first is drawn from the cells whose nearest point the survivor can
+   *  reach at Config.ringWalk of their speed after Config.ringReact, and the
+   *  rest from anywhere. `box(c)` gives a cell's [x, y, w, h]. */
+  F.safeCells = function (cells, count, tele, box) {
+    const p = WS.Game.player, cfg = WS.Config;
+    const order = WS.shuffle(cells.slice());
+    if (p && count > 0) {
+      const reach = (p.moveSpeed || 220) * (cfg.ringWalk || 0.6) * WS.max(0, tele - (cfg.ringReact || 0.45));
+      const gap = (c) => {
+        const [x, y, w, h] = box(c);
+        const dx = WS.max(x - p.x, 0, p.x - (x + w)), dy = WS.max(y - p.y, 0, p.y - (y + h));
+        return Math.hypot(dx, dy);
+      };
+      /* Within walking reach - and a walk: the guaranteed square is drawn
+         from the reachable ones at least a third of that reach away, so it
+         is somewhere to go, not the next square over (the others are random
+         and may be, by luck). Never one something else lands on then. */
+      const clear = (c) => { const [x, y, w, h] = box(c); return !F.threatAt(x + w / 2, y + h / 2, tele, 10, null, 0.15); };
+      const near = order.filter((c) => gap(c) <= reach && clear(c));
+      const walk = near.filter((c) => gap(c) >= reach / 3);
+      const first = walk[0] || near.filter((c) => gap(c) > 0)[0] || near[0]
+        || order.slice().sort((a, b) => gap(a) - gap(b))[0];
+      order.splice(order.indexOf(first), 1);
+      order.unshift(first);
+    }
+    order.slice(0, count).forEach((c) => { c.safe = true; });
   };
 
   /** Doom everywhere except inside the zones. */
   F.safe = function (zones, tele, dmg, name) {
-    this.marks.push({ kind: 'safe', zones, tele, maxTele: tele, dmg: this.dmg(dmg), name });
+    this.marks.push({ kind: 'safe', born: WS.Game.run ? WS.Game.run.time : 0, zones, tele, maxTele: tele, dmg: this.dmg(dmg), name });
   };
 
   /** Lightning strung between two units, live while both stand. */
@@ -34336,6 +34986,14 @@ window.WS = window.WS || {};
       for (let i = this.units.length - 1; i >= 0; i--) {
         const e = this.units[i];
         if (!this.live(e)) { this.units.splice(i, 1); continue; }
+        // How fast it is drifting, smoothed: a beam it is about to cast
+        // turns about where it will be (F.clearArms).
+        if (e._lx !== undefined && dt > 0) {
+          const k = WS.min(1, dt * 4);
+          e.fvx = (e.fvx || 0) + ((e.x - e._lx) / dt - (e.fvx || 0)) * k;
+          e.fvy = (e.fvy || 0) + ((e.y - e._ly) / dt - (e.fvy || 0)) * k;
+        }
+        e._lx = e.x; e._ly = e.y;
         if (e.host) {
           if (!this.live(e.host)) { this.units.splice(i, 1); this.remove(e); continue; }
           e.x = e.host.x + e.ox; e.y = e.host.y + e.oy;
@@ -34432,8 +35090,18 @@ window.WS = window.WS || {};
     return WS.dist(px, py, ax + dx * t, ay + dy * t);
   }
 
+  /* A shape that lands says what it was. A big hit used to be a red flash
+     and a number, and a player who did not know which of four things on the
+     screen had done it learned nothing; the name over their head teaches
+     the fight. Only for a blow worth a real bite of the bar. */
   function hurt(m, amount) {
-    WS.Player.takeDamage(WS.Game.player, amount, m.name);
+    const p = WS.Game.player;
+    const before = p.health;
+    WS.Player.takeDamage(p, amount, m.name);
+    if (m.name && before - p.health >= p.maxHealth * WS.Config.heavyHitShare) {
+      WS.FX.notice(p.x, p.y - 14, m.name, '#ff9a7a');
+      WS.FX.flash(p.x, p.y, 70, m.tint || [1, 0.4, 0.3], 0.3);
+    }
   }
 
   function updateMarks(dt) {
@@ -34442,6 +35110,14 @@ window.WS = window.WS || {};
     for (let i = F.marks.length - 1; i >= 0; i--) {
       const m = F.marks[i];
       let done = false;
+      if (orphaned(m)) {
+        // Its boss is dead: the telegraph fizzles where it stood.
+        const fx = m.kind === 'ring' ? m.cx : m.kind === 'sweep' ? m.cx : m.x;
+        const fy = m.kind === 'ring' ? m.cy : m.kind === 'sweep' ? m.cy : m.y;
+        if (fx !== undefined) WS.FX.burst(fx, fy, 4, WS.hex(m.tint || [1, 0.8, 0.5]), 90, 0.4, 2.5);
+        F.marks.splice(i, 1);
+        continue;
+      }
       if (m.kind === 'circle') {
         m.tele -= dt;
         if (m.tele <= 0) {
@@ -34458,7 +35134,7 @@ window.WS = window.WS || {};
         if (m.tele > 0) {
           m.tele -= dt;
           if (m.tele <= 0) {
-            WS.Audio.play(m.sound || 'explode', m.x);
+            if (m.sound !== false) WS.Audio.play(m.sound || 'explode', m.x);
             WS.FX.shake(3, 0.15);
           }
         } else {
@@ -34477,7 +35153,16 @@ window.WS = window.WS || {};
         if (m.r > m.max) done = true;
       } else if (m.kind === 'sweep') {
         if (m.follow) {
-          if (F.live(m.follow)) { m.cx = m.follow.x; m.cy = m.follow.y + m.oy; } else done = true;
+          if (F.live(m.follow)) {
+            // Its velocity, smoothed, so what it will sweep can be foreseen.
+            const nx = m.follow.x, ny = m.follow.y + m.oy;
+            if (dt > 0) {
+              const k = WS.min(1, dt * 4);
+              m.vx = (m.vx || 0) + ((nx - m.cx) / dt - (m.vx || 0)) * k;
+              m.vy = (m.vy || 0) + ((ny - m.cy) / dt - (m.vy || 0)) * k;
+            }
+            m.cx = nx; m.cy = ny;
+          } else done = true;
         }
         if (m.tele > 0) {
           m.tele -= dt;
@@ -34705,6 +35390,9 @@ window.WS = window.WS || {};
             c.displayName = 'The Candlecrawler';
             F.say('surface');
             Object.assign(s.tm, T.afterSurface);
+            // It breaks the surface with a shockwave: find the opening.
+            F.ring(c.x, c.y, { speed: T.ringSpeed, gaps: T.ringGaps, gapWidth: T.ringGapWidth, dmg: T.ringDamage,
+              name: 'Breaching shockwave', tint: [0.9, 0.6, 0.3], r0: c.radius });
           }
           return;
         }
@@ -34790,7 +35478,7 @@ window.WS = window.WS || {};
         WS.FX.flash(c.x, c.y + 40, 60, [1.0, 0.85, 0.5], 0.3);
       }
 
-      if (s.mode === 'stripped' && F.every('ring', dt, E.ring, pace)) {
+      if (F.every(s.mode === 'stripped' ? 'ring' : 'ringShielded', dt, s.mode === 'stripped' ? E.ring : E.ringShielded, pace)) {
         F.ring(c.x, c.y, { speed: T.ringSpeed, gaps: T.ringGaps, gapWidth: T.ringGapWidth, dmg: T.ringDamage,
           name: 'Candle-fire ring', tint: [1.0, 0.55, 0.2] });
       }
@@ -35110,8 +35798,15 @@ window.WS = window.WS || {};
       }
 
       if (F.every('blink', dt, E.blink)) {
+        /* Never onto the survivor: the graves are fixed, and a player who
+           happened to be standing on the one he chose had him appear on top
+           of them - in bench fights his body took more of the bar than any
+           of his spells. Only graves clear of them (and not the one he
+           left); if there are none, the furthest. */
+        const clear = GRAVES.map((g, k) => k).filter((k) => k !== s.grave && WS.dist(GRAVES[k][0], GRAVES[k][1], p.x, p.y) > 170);
         let i;
-        do { i = WS.randInt(0, GRAVES.length - 1); } while (i === s.grave);
+        if (clear.length) i = clear[WS.randInt(0, clear.length - 1)];
+        else i = GRAVES.map((g, k) => k).sort((a, b) => WS.dist(GRAVES[b][0], GRAVES[b][1], p.x, p.y) - WS.dist(GRAVES[a][0], GRAVES[a][1], p.x, p.y))[0];
         s.grave = i;
         WS.FX.flash(m.x, m.y, 60, [0.55, 1.0, 0.75], 0.4);
         m.x = GRAVES[i][0]; m.y = GRAVES[i][1];
@@ -35528,6 +36223,8 @@ window.WS = window.WS || {};
         s.orbit += dt * 0.9;
         L.x = 640 + WS.cos(F.t * 0.33) * 170;
         L.y = 240 + WS.sin(F.t * 0.5) * 40;
+        // Where his drift takes him `a` seconds from now (F.threatAt).
+        L.predict = (a) => [640 + WS.cos((F.t + a) * 0.33) * 170, 240 + WS.sin((F.t + a) * 0.5) * 40];
         s.shards = s.shards.filter((q) => F.live(q));
         s.shards.forEach((q, i) => {
           const a = s.orbit + (i / 4) * WS.TAU;
@@ -35574,6 +36271,7 @@ window.WS = window.WS || {};
         s.enrage -= dt;
         L.x += (640 - L.x) * WS.min(1, dt * 0.8);
         L.y += (250 - L.y) * WS.min(1, dt * 0.8);
+        { const x0 = L.x, y0 = L.y; L.predict = (a) => { const k = 1 - Math.exp(-0.8 * a); return [x0 + (640 - x0) * k, y0 + (250 - y0) * k]; }; }
         // The last of the Pale: shards may ward him one final time.
         s.orbit += dt * 1.2;
         s.shards = s.shards.filter((q) => F.live(q));
@@ -35611,10 +36309,15 @@ window.WS = window.WS || {};
     },
     nova(F) {
       const T = F.def.tuning, L = F.s.lord;
-      F.ring(L.x, L.y, { speed: T.novaSpeed, gaps: T.novaGaps, gapWidth: T.novaGap, spin: T.novaSpin,
+      /* Two waves, the second novaDelay behind the first. They used to turn
+         opposite ways, one band's openings sliding left over the other's
+         sliding right - unreadable for no gain. They turn the same way now,
+         and the second's opening is aimed from the first's (Finale.aimGap),
+         so the dance is one step, then the next. */
+      const a = F.ring(L.x, L.y, { speed: T.novaSpeed, gaps: T.novaGaps, gapWidth: T.novaGap, spin: T.novaSpin,
         dmg: T.novaDamage, name: 'Frost nova', tint: [0.7, 0.92, 1.0] });
-      F.ring(L.x, L.y, { speed: T.novaSpeed, gaps: T.novaGaps, gapWidth: T.novaGap, spin: -T.novaSpin, delay: T.novaDelay,
-        dmg: T.novaDamage, name: 'Frost nova', tint: [0.7, 0.92, 1.0] });
+      F.ring(L.x, L.y, { speed: T.novaSpeed, gaps: T.novaGaps, gapWidth: T.novaGap, spin: T.novaSpin, delay: T.novaDelay,
+        dmg: T.novaDamage, name: 'Frost nova', tint: [0.7, 0.92, 1.0], after: a });
     },
     nextLine(F) {
       const s = F.s, L = s.lord;
@@ -35770,9 +36473,11 @@ window.WS = window.WS || {};
       const s = F.s, T = F.def.tuning, E = T.every, k = s.core;
       if (!F.live(k)) return;
       const p = WS.Game.player;
-      s.ph += dt * T.driftSpeed * (s.mode === 'storm' ? 1.5 : 1);
+      const rate = T.driftSpeed * (s.mode === 'storm' ? 1.5 : 1);
+      s.ph += dt * rate;
       k.x = 640 + WS.sin(s.ph) * T.drift;
       k.y = 250 + WS.sin(s.ph * 2) * T.drift * 0.3;
+      { const ph = s.ph; k.predict = (a) => [640 + WS.sin(ph + a * rate) * T.drift, 250 + WS.sin((ph + a * rate) * 2) * T.drift * 0.3]; }
       k.facing = p.x < k.x ? -1 : 1;
       const hp = k.health / k.maxHealth;
 
@@ -35828,11 +36533,22 @@ window.WS = window.WS || {};
       const T = F.def.tuning, p = WS.Game.player;
       const b = { minX: 140, maxX: W() - 140, minY: 160, maxY: H() - 110 };
       const zones = [];
+      /* 160-260px out: far enough to have to go, near enough to be seen -
+         the unbound storm's dark (0.45-0.6) shuts the view down to about
+         270px round the survivor, and an eye at 320 could be out in it. */
+      // And never where a lightning arm or a tether will be when it lands.
       for (let i = 0; i < T.eyes; i++) {
-        const a = WS.random() * WS.TAU, d = WS.randRange(180, 320);
-        zones.push({ x: WS.clamp(p.x + WS.cos(a) * d, b.minX, b.maxX),
-          y: WS.clamp(p.y + WS.sin(a) * d, b.minY, b.maxY), r: T.eyeRadius });
+        let z = null;
+        for (let k = 0; k < 16; k++) {
+          const a = WS.random() * WS.TAU, d = WS.randRange(160, 260);
+          z = { x: WS.clamp(p.x + WS.cos(a) * d, b.minX, b.maxX), y: WS.clamp(p.y + WS.sin(a) * d, b.minY, b.maxY), r: T.eyeRadius };
+          if (!F.threatAt(z.x, z.y, T.eyeTele, T.eyeRadius * 0.5, null, 0.15)) break;
+        }
+        zones.push(z);
       }
+      // A thunderclap's opening arriving as the sky comes down is quiet too.
+      const seal = F.sealing(T.eyeTele, () => true);
+      if (seal) zones.push({ x: seal.x, y: seal.y, r: T.eyeRadius * 0.75 });
       F.safe(zones, T.eyeTele, T.eyeDamage, 'The storm');
       F.sayOnce('eye');
       WS.Game.toast('The eye of the storm', 'The whole sky is coming down. Get into the quiet.',
@@ -35884,6 +36600,257 @@ window.WS = window.WS || {};
   };
 
   WS.Finale = F;
+
+})(window.WS);
+
+/* ===== src/game/bossfight.js ===== */
+/* The scheduled bosses as fights.
+ *
+ * Measured over 160+ bot nights (tools/boss-snapshots.js, the data in
+ * tools/bot/boss-snapshots.json), the bosses a night schedules were not
+ * fights. Against the build that actually meets them they lived a median 6
+ * to 13 seconds - Gnarlfang 7s at 16:00, Redcowl 6s at 22:00 - and took
+ * nothing off the survivor while they were up (median 0% for five of seven).
+ * Their kit was a summon, a fan of bolts, a ring of bolts and a charge, on a
+ * three-to-four second clock: a boss died before it had used it twice, and
+ * none of it asked the player to do anything but keep walking.
+ *
+ * The finales (src/game/finale.js) are the night's real fights; these are
+ * its punctuation, so the change here is a light one:
+ *
+ *   HEALTH grows a little with the night, not to the build: on top of
+ *     Wave.bossScale's (1 + t/500), Config.bossHealthCurve, x1.6 at 5:00 to
+ *     x2.6 by 22:00 - enough for the median build to see the kit through.
+ *
+ *   ONE TELEGRAPHED BLOW each, in the finale's shapes (Finale.circle /
+ *     lane / ring, run outside the finale by Finale.field): a slam where you
+ *     are going, a barrage, a wave with openings, or a cross of lanes. It
+ *     costs a SHARE of the survivor's health (BossFight.hit), so a mistake
+ *     costs the same bite of the bar at 5:00 as at 27:00.
+ *
+ *   IT TURNS at half health: a flash, its line, an aura that stays, a
+ *     quicker clock (Config.bossEnrageRate). A kit may name moves for the
+ *     second phase only (`phase: 2`, the `signature` thrown as it turns);
+ *     none of the scheduled bosses do today.
+ *
+ * Shapes may overlap - two at once is the pressure - but never into an
+ * impossible pattern: Finale.threatAt keeps every answer (an opening, a
+ * safe square) clear of whatever else lands at the same moment.
+ *
+ * Every shape obeys the finale's contract: it appears, it says how long you
+ * have (never under Config.bossMinTele), and it does exactly what it drew.
+ */
+'use strict';
+(function (WS) {
+
+  const B = WS.BossFight = {};
+  const C = () => WS.Config;
+
+  /** How much more health a scheduled boss brings at `time`, on top of
+   *  Wave.bossScale: Config.bossHealthCurve, linear between its points and
+   *  flat past either end. */
+  B.healthMult = function (time) {
+    const pts = C().bossHealthCurve;
+    if (!pts || !pts.length) return 1;
+    if (time <= pts[0][0]) return pts[0][1];
+    for (let i = 1; i < pts.length; i++) {
+      if (time <= pts[i][0]) {
+        const [t0, v0] = pts[i - 1], [t1, v1] = pts[i];
+        return v0 + (v1 - v0) * (time - t0) / (t1 - t0);
+      }
+    }
+    return pts[pts.length - 1][1];
+  };
+
+  /** Called by Wave.spawnBoss once the boss is on the field. */
+  B.arrive = function (e, time, overtime) {
+    const t = e.template;
+    if (!t || t.finale || t.arena || t.family === 'death') return;
+    /* Overtime's bosses already climb on their own (Config.endlessBossMult,
+       endlessRampTime: x2.2 a 27:00 boss by 30:00 and rising) and come every
+       75s down to 30s; the full curve on top of that stacked them three
+       deep. They take Config.bossHealthOvertime of it instead. */
+    const m = overtime ? 1 + (B.healthMult(time) - 1) * C().bossHealthOvertime : B.healthMult(time);
+    e.maxHealth = WS.floor(e.maxHealth * m);
+    e.health = e.maxHealth;
+    e.fightAt = time;
+    e.enraged = false;
+    e.chainLeft = 0;
+    e.cast = null;
+  };
+
+  /** What a telegraphed blow costs: `share` of the survivor's maximum
+   *  health (before armour, which still applies), weighted by how late in
+   *  the night it is and by the setting - or `mult` of the boss's own
+   *  scaled damage if that is more. Capped at Config.bossHitCap of the bar,
+   *  so nothing that can be read is a one-shot from full. */
+  B.hit = function (e, share, mult) {
+    const cfg = C(), p = WS.Game.player, run = WS.Game.run;
+    const clock = run ? WS.WaveManager.clock(run) : 0;
+    const late = WS.clamp((clock - 300) / 1320, 0, 1);
+    const weight = (cfg.bossHitEarly + (cfg.bossHitLate - cfg.bossHitEarly) * late)
+      * Math.pow((run ? run.diffScale : 1) * (run && run.hyper ? cfg.hyperScale : 1), cfg.bossHitDifficultyExp);
+    const byShare = p ? p.maxHealth * share * weight : 0;
+    const byBody = e.damage * (mult === undefined ? 1 : mult);
+    const cap = p ? p.maxHealth * cfg.bossHitCap : Infinity;
+    return WS.min(cap, WS.max(byShare, byBody));
+  };
+
+  /** The wind-up the boss itself shows while a shape is being drawn: a
+   *  glow that gathers on it, and a line to where the blow will land. */
+  function cast(e, dur, tint, to) {
+    e.cast = { life: dur, max: dur, tint: tint || e.template.tint, to: to || null };
+  }
+
+  function tele(v, d) { return WS.max(C().bossMinTele, v !== undefined ? v : d); }
+
+  /* ------------------------------------------------------------ patterns -- */
+  /** One of the new shapes, or false if `pattern` is not one of them. */
+  B.attack = function (e, pattern, dx, dy) {
+    const F = WS.Finale, t = e.template, p = WS.Game.player;
+    /* Its own colour, warmed a third of the way toward the danger red: a
+       boss's shapes say whose they are, and none of them - Mordecai's green
+       least of all - can be mistaken for the pale green of safe ground. */
+    const tint = WS.mix(pattern.tint || t.tint, [1.0, 0.36, 0.22], 0.3);
+    const src = { src: e, raw: true, tint };
+    const opt = (k, d) => (pattern[k] !== undefined ? pattern[k] : d);
+    switch (pattern.type) {
+      case 'slam': {
+        /* One heavy blow where the survivor is going. Lobbed (`lob`) it
+           arcs over from the boss; otherwise the ground cracks under them. */
+        const T = tele(pattern.tele, 1.15);
+        const n = opt('count', 1);
+        for (let k = 0; k < n; k++) {
+          const [x, y] = k === 0 ? F.lead(T) : F.near(opt('scatter', 140), F.lead(T));
+          F.circle(x, y, opt('radius', 96), T + k * opt('stagger', 0.35), B.hit(e, opt('share', 0.32), opt('mult', 1.0)), t.name,
+            Object.assign({ style: pattern.lob ? 'blast' : 'stomp', from: pattern.lob ? { x: e.x, y: e.y - e.radius } : null }, src));
+          if (k === 0) cast(e, T, tint, { x, y });
+        }
+        WS.Audio.play('warn', e.x);
+        return true;
+      }
+      case 'barrage': {
+        // Several smaller blows: one where you go, one where you are, the
+        // rest around - walking on is not safe, and neither is stopping.
+        const T = tele(pattern.tele, 1.05);
+        const n = opt('count', 4);
+        for (let k = 0; k < n; k++) {
+          const [x, y] = F.target(k, n, T, opt('scatter', 170));
+          F.circle(x, y, opt('radius', 70), T + k * opt('stagger', 0.16), B.hit(e, opt('share', 0.2), opt('mult', 0.7)), t.name,
+            Object.assign({ style: pattern.style || 'blast', from: pattern.lob === false ? null : { x: e.x, y: e.y - e.radius },
+              burn: pattern.burn ? 2.5 : 0 }, src));
+        }
+        cast(e, T, tint);
+        WS.Audio.play('warn', e.x);
+        return true;
+      }
+      case 'nova': {
+        /* An expanding wave with openings, from where the boss stands -
+           stand in an opening as it passes. The openings are always within
+           reach (Finale.aimGap); a second wave (`waves: 2`) is aimed from
+           the first one's opening, so it is one step and then the next. */
+        const waves = opt('waves', 1);
+        const delay = WS.max(0.35, opt('windup', 0.6));
+        let prev = null;
+        for (let k = 0; k < waves; k++) {
+          prev = F.ring(e.x, e.y, Object.assign({
+            speed: opt('speed', 210), gaps: opt('gaps', 2), gapWidth: opt('gap', 46), spin: opt('spin', 0),
+            dmg: B.hit(e, opt('share', 0.28), opt('mult', 0.8)), name: t.name,
+            delay: delay + k * opt('every', 1.25), after: prev, r0: e.radius,
+          }, src));
+        }
+        cast(e, delay, tint);
+        WS.Audio.play('warn', e.x);
+        return true;
+      }
+      case 'cross': {
+        /* Lanes out of the boss, one of them aimed at the survivor: step
+           off the line. `lanes` evenly round; `twist` turns the set so it is
+           not always a plus. */
+        const T = tele(pattern.tele, 1.1);
+        const n = opt('lanes', 4);
+        const base = WS.atan2(dy, dx) + (pattern.offset ? WS.PI / n : 0);
+        for (let k = 0; k < n; k++) {
+          F.lane(e.x, e.y, base + (k / n) * WS.TAU, opt('length', 900), opt('width', 58), T,
+            B.hit(e, opt('share', 0.3), opt('mult', 0.8)), t.name,
+            Object.assign({ active: 0.32, style: 'shot', sound: k === 0 ? (pattern.sound || 'explode') : false }, src));
+        }
+        cast(e, T, tint);
+        WS.Audio.play('warn', e.x);
+        return true;
+      }
+      default: return false;
+    }
+  };
+
+  /** The charge's blow, when it is a boss's: see Enemy.update's contact. */
+  B.chargeHit = function (e, pattern) {
+    return B.hit(e, pattern && pattern.share !== undefined ? pattern.share : 0.3, 1.0);
+  };
+
+  /* ------------------------------------------------------- every frame -- */
+  /** The boss half of Enemy.update: the phase change, a chain of charges,
+   *  the cast glow running down. */
+  B.update = function (e, dt, dx, dy) {
+    const t = e.template;
+    if (e.cast) { e.cast.life -= dt; if (e.cast.life <= 0) e.cast = null; }
+    if (!e.enraged && e.fightAt !== undefined && e.health <= e.maxHealth * C().bossEnrageAt) B.enrage(e, dx, dy);
+    if (e.chainLeft > 0 && e.windup <= 0 && e.chargeTimer <= 0) {
+      e.chainLeft--;
+      const cfg = C();
+      WS.Enemy.beginCharge(e, dx, dy, WS.max(cfg.bossMinTele + 0.1, cfg.chargeWindup * 0.8), cfg.chargeTime * 0.8,
+        cfg.chargeRange * 0.85, cfg.bossChargeGirth, cfg.bossChargeLock);
+      e.chargeHit = B.chargeHit(e, e.chainPattern);
+      WS.Audio.play('warn', e.x);
+    }
+    if (e.enrageGlow > 0) e.enrageGlow -= dt;
+    if (e.sigDue && e.windup <= 0 && e.chargeTimer <= 0 && !(e.chainLeft > 0)) {
+      const sig = e.sigDue;
+      e.sigDue = null;
+      WS.Enemy.bossAttack(e, dx, dy, sig);
+      e.attackTimer = WS.max(e.attackTimer, B.interval(e));
+    }
+    return t;
+  };
+
+  /** Half health: the second phase. */
+  B.enrage = function (e, dx, dy) {
+    const t = e.template;
+    e.enraged = true;
+    e.enrageGlow = 1.2;
+    WS.FX.flash(e.x, e.y, e.radius * 4, t.tint, 0.7);
+    WS.FX.burst(e.x, e.y, 22, WS.hex(t.tint), 260, 0.7, 4);
+    WS.FX.shake(8, 0.5);
+    WS.FX.screen('rgba(200,40,40,.16)', 0.5);
+    WS.Audio.play('boss', e.x);
+    const line = (t.enrage || 'Enraged').replace(/^\*|\*$/g, '');
+    WS.Game.toast(t.name, line, { kind: 'warn', art: t.art, tint: t.tint });
+    // Its signature, at once: the change is something you see happen.
+    // (Its signature, as soon as it is not mid-charge.)
+    e.sigDue = t.patterns.find((q) => q.signature) || t.patterns.find((q) => q.phase === 2) || null;
+  };
+
+  /** Which of the boss's patterns comes next: phase-two moves only once it
+   *  is enraged. Its shapes may overlap anything else on the field - that
+   *  is the pressure - and Finale.threatAt keeps the overlap possible: a
+   *  wave's opening is never placed under another shape due at the same
+   *  moment, and a circle is never dropped on an opening still to come. */
+  B.next = function (e) {
+    const pats = e.template.patterns;
+    for (let n = 0; n < pats.length; n++) {
+      const q = pats[e.patternIndex];
+      e.patternIndex = (e.patternIndex + 1) % pats.length;
+      if (q.phase === 2 && !e.enraged) continue;
+      return q;
+    }
+    return pats[0];
+  };
+
+  /** Seconds between patterns: faster in the second phase. */
+  B.interval = function (e) {
+    const base = e.template.interval || C().bossInterval;
+    return e.enraged ? base / C().bossEnrageRate : base;
+  };
 
 })(window.WS);
 
@@ -36898,7 +37865,7 @@ window.WS = window.WS || {};
 
     if (run.map.arena) WS.Arena.update(dt);
     else if (WS.Finale.running()) WS.Finale.update(dt);
-    else WS.WaveManager.update(dt, run);
+    else { WS.WaveManager.update(dt, run); WS.Finale.field(dt); }
     if (!this.running) return;
     WS.Airdrop.update(dt);
     WS.Encounters.update(dt, run);
@@ -43383,6 +44350,16 @@ window.WS = window.WS || {};
     ctx.lineWidth = 2 + 1.5 * k;
     ctx.strokeStyle = rgba(WS.mix(c, [1, 1, 1], 0.3), 0.55 + 0.4 * k);
     ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, WS.TAU); ctx.stroke();
+    /* The time left, as a clock hand would show it: an arc just outside the
+       rim that empties toward the top as the blow comes. The fill says how
+       close it is; this says how long that is, in a shape that reads in the
+       corner of an eye and in any palette. */
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,.5)';
+    ctx.beginPath(); ctx.arc(m.x, m.y, m.r + 6, -WS.PI / 2, -WS.PI / 2 + WS.TAU * (1 - k)); ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = rgba(WS.mix(c, [1, 1, 1], 0.55), 0.9);
+    ctx.beginPath(); ctx.arc(m.x, m.y, m.r + 6, -WS.PI / 2, -WS.PI / 2 + WS.TAU * (1 - k)); ctx.stroke();
     if (m.style === 'hands' && k > 0.4) {
       ctx.strokeStyle = rgba([0.85, 1.0, 0.9], (k - 0.4) * 1.4);
       ctx.lineWidth = 3; ctx.lineCap = 'round';
@@ -43516,6 +44493,28 @@ window.WS = window.WS || {};
       near.push([WS.abs(((c - at + WS.PI * 3) % WS.TAU) - WS.PI), c]);
     }
     near.sort((a, b) => a[0] - b[0]);
+    /* And at the survivor's feet, an arrow round the ring toward the nearest
+       opening, while it is more than a step away: which way to go, before
+       working out where the arc is. */
+    if (near.length && near[0][0] > half * 0.8) {
+      const c = near[0][1];
+      const dir = ((c - at + WS.PI * 3) % WS.TAU) - WS.PI > 0 ? 1 : -1;
+      const tx = -WS.sin(at) * dir, ty = WS.cos(at) * dir;   // round the ring, toward it
+      const ax = p.x + tx * 30, ay = p.y + ty * 30;
+      ctx.save();
+      ctx.globalAlpha = (0.45 + 0.5 * k) * pulse;
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      for (const [lw, col] of [[7, 'rgba(10,30,18,.65)'], [3.5, 'rgba(150,250,180,.95)']]) {
+        ctx.lineWidth = lw; ctx.strokeStyle = col;
+        ctx.beginPath();
+        ctx.moveTo(ax - tx * 14, ay - ty * 14); ctx.lineTo(ax + tx * 8, ay + ty * 8);
+        ctx.moveTo(ax + tx * 8 - ty * 7 - tx * 7, ay + ty * 8 + tx * 7 - ty * 7);
+        ctx.lineTo(ax + tx * 8, ay + ty * 8);
+        ctx.lineTo(ax + tx * 8 + ty * 7 - tx * 7, ay + ty * 8 - tx * 7 - ty * 7);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
     for (let n = 0; n < WS.min(2, near.length); n++) {
       const c = near[n][1];
       ctx.globalAlpha = (0.35 + 0.6 * k) * pulse * (n === 0 ? 1 : 0.5);
@@ -43579,6 +44578,20 @@ window.WS = window.WS || {};
         ctx.lineDashOffset = -time * 60;
         ctx.beginPath(); ctx.moveTo(m.cx, m.cy); ctx.lineTo(ex, ey); ctx.stroke();
         ctx.setLineDash([]);
+        /* Where it will go: the ground its first second sweeps, as a faint
+           wedge off the arm in the direction it turns - so the safe side
+           of a beam reads before the beam does. */
+        {
+          const sg = m.spin >= 0 ? 1 : -1, reachA = WS.min(1.2, WS.abs(m.spin) * 1.0);
+          ctx.save();
+          ctx.setLineDash([]);
+          ctx.globalAlpha = 0.07 + 0.12 * k;
+          ctx.fillStyle = rgba(m.tint, 1);
+          ctx.beginPath(); ctx.moveTo(m.cx, m.cy);
+          ctx.arc(m.cx, m.cy, m.len, ang, ang + sg * reachA, sg < 0);
+          ctx.closePath(); ctx.fill();
+          ctx.restore();
+        }
         // which way it will turn
         const r = 150, sgn = m.spin >= 0 ? 1 : -1;
         ctx.lineWidth = 3;
@@ -43782,6 +44795,13 @@ window.WS = window.WS || {};
       if (s.orb && !F.pods.some((q) => q.carrying)) glow(ctx, s.orb.x, s.orb.y, 22, [0.55, 1.0, 0.75], 0.9);
     }
 
+    A.drawMarks(ctx, time);
+  };
+
+  /** The ground half of the marks: the finale's, or a scheduled boss's
+   *  (Finale.field) - the renderer calls this alone when no finale is on. */
+  A.drawMarks = function (ctx, time) {
+    const F = WS.Finale;
     // Vivid (Settings): every threat in the one colour, safe ground untouched.
     const vivid = WS.Renderer.vivid();
     for (const m of F.marks) {
@@ -43799,6 +44819,16 @@ window.WS = window.WS || {};
 
   A.drawAir = function (ctx, time) {
     const F = WS.Finale;
+    A.drawMarksAir(ctx, time);
+    for (const pod of F.pods) {
+      if (pod.x < -120 || pod.x > WS.CONST.WORLD_WIDTH + 120 || pod.y < -120) continue;
+      drawPod(ctx, pod, time);
+    }
+  };
+
+  /** The air half of the marks: beams, fences, shells in flight. */
+  A.drawMarksAir = function (ctx, time) {
+    const F = WS.Finale;
     const vivid = WS.Renderer.vivid();
     for (const m of F.marks) {
       const t0 = m.tint;
@@ -43807,10 +44837,6 @@ window.WS = window.WS || {};
       else if (m.kind === 'fence') drawFence(ctx, m, time);
       else if (m.kind === 'circle' && (m.from || m.style === 'ice')) drawShell(ctx, m, time);
       m.tint = t0;
-    }
-    for (const pod of F.pods) {
-      if (pod.x < -120 || pod.x > WS.CONST.WORLD_WIDTH + 120 || pod.y < -120) continue;
-      drawPod(ctx, pod, time);
     }
   };
 
@@ -45090,6 +46116,7 @@ window.WS = window.WS || {};
     this.drawCallingGround(ctx, player, time);
     if (WS.Arena.active) this.drawArena(ctx, time);
     if (WS.Finale.stage !== 'idle') WS.FinaleArt.drawGround(ctx, time);
+    else if (WS.Finale.marks.length) WS.FinaleArt.drawMarks(ctx, time);
 
     this.drawCorpses(ctx);
     this.drawAirdropGround(ctx, time);
@@ -45145,6 +46172,7 @@ window.WS = window.WS || {};
     this.drawBeams(ctx);
 
     if (WS.Finale.stage !== 'idle') WS.FinaleArt.drawAir(ctx, time);
+    else if (WS.Finale.marks.length) WS.FinaleArt.drawMarksAir(ctx, time);
 
     /* ---- effects --------------------------------------------------------- */
     /* THE LIGHT BUDGET. Every flash and spark composites 'lighter', so they
@@ -46595,10 +47623,80 @@ window.WS = window.WS || {};
     }
   };
 
+  /* A BOSS GATHERING ITSELF. Every shape a boss throws (bossfight.js) is
+     drawn where it will land - and the boss, which is what the eye is on,
+     said nothing. Now it does: while a shape is being drawn, light gathers
+     in onto the boss from a ring three times its size, the ring tightening
+     as the blow comes, and a slam strings a dashed tether from the boss to
+     the circle it is aimed at, so the cause and the place read as one
+     thing. In its second phase the ground under it smoulders in its own
+     colour and a slow ring of embers turns round it: an enraged boss looks
+     enraged across the screen, without a word of text.
+
+     Reduce Flashes holds the pulse still; Vivid paints both in the danger
+     colour. All of it is under the survivor and their spells. */
+  R.drawBossPresence = function (ctx, e, time) {
+    const calm = R.calm();
+    const tint = R.vivid() ? R.VIVID : e.template.tint;
+    const rgb = `${WS.floor(tint[0] * 255)},${WS.floor(tint[1] * 255)},${WS.floor(tint[2] * 255)}`;
+    const gy = e.y + e.radius * 0.55;
+    ctx.save();
+    if (e.enraged) {
+      const pulse = calm ? 0.8 : 0.7 + 0.3 * WS.sin(time * 6);
+      const g = ctx.createRadialGradient(e.x, gy, e.radius * 0.3, e.x, gy, e.radius * 2.2);
+      g.addColorStop(0, `rgba(${rgb},${(0.32 * pulse).toFixed(3)})`);
+      g.addColorStop(1, `rgba(${rgb},0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.ellipse(e.x, gy, e.radius * 2.2, e.radius * 0.95, 0, 0, WS.TAU); ctx.fill();
+      ctx.strokeStyle = `rgba(${rgb},${(0.75 * pulse).toFixed(3)})`;
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([4, 9]); ctx.lineDashOffset = calm ? 0 : -time * 40;
+      ctx.beginPath(); ctx.ellipse(e.x, gy, e.radius * 1.6, e.radius * 0.66, 0, 0, WS.TAU); ctx.stroke();
+      ctx.setLineDash([]);
+      if (e.enrageGlow > 0) {
+        // The moment it turns: a ring blown outward.
+        const k = 1 - e.enrageGlow / 1.2;
+        ctx.globalAlpha = (1 - k) * (calm ? 0.4 : 0.9);
+        ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.ellipse(e.x, gy, e.radius * (1.3 + 3.5 * k), e.radius * (0.55 + 1.5 * k), 0, 0, WS.TAU); ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+    }
+    const c = e.cast;
+    if (c) {
+      const k = WS.clamp(1 - c.life / c.max, 0, 1);
+      const ct = R.vivid() ? R.VIVID : c.tint;
+      const crgb = `${WS.floor(ct[0] * 255)},${WS.floor(ct[1] * 255)},${WS.floor(ct[2] * 255)}`;
+      const r = e.radius * (3 - 1.9 * k);
+      ctx.lineWidth = 2 + 3 * k;
+      ctx.strokeStyle = 'rgba(0,0,0,.45)';
+      ctx.beginPath(); ctx.arc(e.x, e.y, r + 1.5, 0, WS.TAU); ctx.stroke();
+      ctx.strokeStyle = `rgba(${crgb},${(0.35 + 0.55 * k).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(e.x, e.y, r, 0, WS.TAU); ctx.stroke();
+      // Four ticks closing in, so it reads as gathering, not as a circle.
+      for (let q = 0; q < 4; q++) {
+        const a = (q / 4) * WS.TAU + (calm ? 0 : time * 2);
+        ctx.beginPath();
+        ctx.moveTo(e.x + WS.cos(a) * r, e.y + WS.sin(a) * r);
+        ctx.lineTo(e.x + WS.cos(a) * (r + 14), e.y + WS.sin(a) * (r + 14));
+        ctx.stroke();
+      }
+      if (c.to) {
+        ctx.setLineDash([10, 10]); ctx.lineDashOffset = calm ? 0 : -time * 90;
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = `rgba(${crgb},${(0.25 + 0.5 * k).toFixed(3)})`;
+        ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(c.to.x, c.to.y); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+    ctx.restore();
+  };
+
   R.drawTelegraphs = function (ctx, time) {
     const dz = R.danger();
     for (let i = 0; i < WS.Enemy.pool.count; i++) {
       const e = WS.Enemy.pool.active[i];
+      if (e.boss && (e.cast || e.enraged)) R.drawBossPresence(ctx, e, time);
       const t = e.telegraph;
       if (!t) continue;
       const k = 1 - WS.clamp(t.life / t.maxLife, 0, 1);   // 0 -> 1 as it lands
@@ -46711,6 +47809,28 @@ window.WS = window.WS || {};
         const fade = WS.clamp(h.life / (h.maxLife || 1), 0, 1);
         twice(1.8, `rgba(${rgb},${(0.85 * a * fade).toFixed(3)})`,
           () => { ctx.beginPath(); ctx.arc(h.x, h.y, h.radius, 0, WS.TAU); });
+      }
+    }
+    /* The finale's marks, and the scheduled bosses' (the same shapes):
+       circles and lanes as their outline, a ring's openings as their edge
+       bars - the one thing about a ring that has to be read through the
+       light of your own spells. */
+    for (const m of (WS.Finale && WS.Finale.marks) || []) {
+      const mc = R.vivid() ? R.VIVID : (m.tint || [1, 0.5, 0.3]);
+      const mrgb = `${WS.floor(mc[0] * 255)},${WS.floor(mc[1] * 255)},${WS.floor(mc[2] * 255)}`;
+      if (m.kind === 'circle') {
+        const k = WS.clamp(1 - m.tele / m.maxTele, 0, 1);
+        twice(1.6 + 1.4 * k, `rgba(${mrgb},${(0.9 * a * (0.55 + 0.45 * k)).toFixed(3)})`,
+          () => { ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, WS.TAU); });
+      } else if (m.kind === 'lane' && m.tele > 0) {
+        ctx.save();
+        ctx.translate(m.x, m.y); ctx.rotate(m.ang);
+        twice(1.8, `rgba(${mrgb},${(0.85 * a).toFixed(3)})`, () => { ctx.beginPath(); ctx.rect(0, -m.w / 2, m.len, m.w); });
+        ctx.restore();
+      } else if (m.kind === 'ring' && !(m.delay > 0) && WS.FinaleArt) {
+        ctx.globalAlpha = a;
+        WS.FinaleArt.ringGapEdges(ctx, m, mc);
+        ctx.globalAlpha = 1;
       }
     }
     // Storm marks, with the time left as the share of the ring still drawn.
@@ -51079,7 +52199,7 @@ window.WS = window.WS || {};
     const boss = WS.Enemy.leadBoss();
     if (boss) {
       e.boss.classList.remove('hidden');
-      const bossName = boss.displayName || boss.template.name;
+      const bossName = boss.displayName || (boss.template.name + (boss.enraged ? ' · Enraged' : ''));
       if (e.bossName.textContent !== bossName) e.bossName.textContent = bossName;
       const pct = WS.clamp(boss.health / boss.maxHealth, 0, 1);
       const now = performance.now() / 1000;
@@ -51099,7 +52219,11 @@ window.WS = window.WS || {};
       const fillK = (pct * 1000 | 0) / 1000, drainK = (e.bossDrain * 1000 | 0) / 1000;
       if (e.bFillK !== fillK) { e.bFillK = fillK; e.bFill.style.transform = `scaleX(${fillK})`; }
       if (e.bDrainK !== drainK) { e.bDrainK = drainK; e.bDrain.style.transform = `scaleX(${drainK})`; }
-      const gate = boss.hpFloor > 0 ? boss.hpFloor / boss.maxHealth : 0;
+      /* A scheduled boss's second phase is marked on the bar too, where it
+         will come (bossfight.js): the change is something to play toward,
+         not a surprise. Gone once it has happened. */
+      const gate = boss.hpFloor > 0 ? boss.hpFloor / boss.maxHealth
+        : boss.fightAt !== undefined && !boss.enraged ? WS.Config.bossEnrageAt : 0;
       if (e.bGateK !== gate) {
         e.bGateK = gate;
         e.bGate.style.left = (gate * 100).toFixed(2) + '%';

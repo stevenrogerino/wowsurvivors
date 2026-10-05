@@ -401,7 +401,8 @@
       if (!frozen && !e.hidden && e.contactCooldown <= 0 && distance < e.radius + player.radius) {
         e.contactCooldown = e.boss ? cfg.contactCooldownBoss : cfg.contactCooldownNormal;
         struck = true;
-        WS.Player.takeDamage(player, e.damage, t.name);
+        // Run down by a boss's charge: the blow it telegraphed (BossFight.hit).
+        WS.Player.takeDamage(player, e.chargeTimer > 0 && e.chargeHit ? WS.max(e.damage, e.chargeHit) : e.damage, t.name);
         if (!WS.Game.running) return;
       }
 
@@ -416,10 +417,12 @@
       }
 
       if (e.boss && !t.arena && !t.finale && !frozen) {
+        WS.BossFight.update(e, dt, dx, dy);
         e.attackTimer -= dt;
-        if (e.attackTimer <= 0) {
+        // Not while it is winding up or running a charge: one thing at a time.
+        if (e.attackTimer <= 0 && e.windup <= 0 && e.chargeTimer <= 0 && !(e.chainLeft > 0)) {
           this.bossAttack(e, dx, dy);
-          e.attackTimer = t.interval || cfg.bossInterval;
+          e.attackTimer = WS.BossFight.interval(e);
         }
       }
 
@@ -464,11 +467,13 @@
   };
 
   /* ------------------------------------------------------ boss patterns -- */
-  Enemy.bossAttack = function (e, dx, dy) {
+  Enemy.bossAttack = function (e, dx, dy, forced) {
     const t = e.template;
-    const pattern = t.patterns[e.patternIndex];
-    e.patternIndex = (e.patternIndex + 1) % t.patterns.length;
+    const pattern = forced || WS.BossFight.next(e);
+    if (!pattern) return null;
     const school = t.school || 'shadow';
+    // The telegraphed shapes (slam, barrage, nova, cross): src/game/bossfight.js.
+    if (WS.BossFight.attack(e, pattern, dx, dy)) return;
     /* Every figure here is a Config dial (bossVolleySpeed and the rest), and
        any one pattern entry may carry its own - { type: 'volley', bolts: 8,
        speed: 300 } - which wins over the dial for that boss alone. */
@@ -478,10 +483,20 @@
     if (pattern.type === 'summon') {
       const scale = 1 + WS.WaveManager.clock(WS.Game.run) / cfg.bossSummonScaleTime;
       const near = opt('near', cfg.bossSummonNear), far = opt('far', cfg.bossSummonFar);
+      const player = WS.Game.player;
       for (let n = 0; n < (pattern.count || 6); n++) {
-        const a = WS.random() * WS.TAU;
-        const range = near + WS.random() * (far - near);
-        this.spawn(pattern.id, e.x + WS.cos(a) * range, e.y + WS.sin(a) * range, scale);
+        /* Never on top of the survivor: a boss that had walked up to them
+           used to drop its brood in their lap, a hit nobody could see
+           coming. A few tries for a spot clear of them, then the far side. */
+        let x = 0, y = 0;
+        for (let tries = 0; tries < 6; tries++) {
+          const a = WS.random() * WS.TAU;
+          const range = near + WS.random() * (far - near);
+          x = e.x + WS.cos(a) * range; y = e.y + WS.sin(a) * range;
+          if (!player || WS.dist(x, y, player.x, player.y) > cfg.bossSummonClear) break;
+          if (tries === 5) { x = e.x - dx * range; y = e.y - dy * range; }
+        }
+        this.spawn(pattern.id, WS.clamp(x, 20, WS.CONST.WORLD_WIDTH - 20), WS.clamp(y, 20, WS.CONST.WORLD_HEIGHT - 20), scale);
       }
       WS.FX.flash(e.x, e.y, e.radius * 2.4, WS.CONST.COLORS.shadow, 0.4);
       e.telegraph = { kind: 'ring', life: 0.4, maxLife: 0.4, radius: e.radius * 3 };
@@ -517,8 +532,21 @@
        * still being aimed; the update loop turns that off the moment the
        * charge commits, and the same lane stays on screen while it happens so
        * the player can see the promise kept. */
-      this.beginCharge(e, dx, dy, opt('windup', cfg.chargeWindup), opt('time', cfg.chargeTime),
-        opt('range', cfg.chargeRange), opt('girth', cfg.bossChargeGirth));
+      /* A scheduled boss's lane stops following Config.bossChargeLock before
+         it goes. It used to track to the last frame, so a boss a step away
+         committed down a lane aimed at you with a quarter of a second to
+         cross its width - the one way to dodge was to have already been
+         running. Locked early, the tell says "now" while there is still
+         time to act on it, and the charge hits like it means it
+         (BossFight.chargeHit). `chain` runs that many more, back to back. */
+      const fight = e.fightAt !== undefined;
+      this.beginCharge(e, dx, dy, opt('windup', fight ? cfg.bossChargeWindup : cfg.chargeWindup), opt('time', cfg.chargeTime),
+        opt('range', cfg.chargeRange), opt('girth', cfg.bossChargeGirth), fight ? cfg.bossChargeLock : 0);
+      if (fight) {
+        e.chargeHit = WS.BossFight.chargeHit(e, pattern);
+        e.chainPattern = pattern;
+        e.chainLeft = opt('chain', 0) + (e.enraged ? opt('chainEnraged', 0) : 0);
+      }
       WS.FX.flash(e.x, e.y, e.radius * 1.6, WS.CONST.COLORS.enemy, 0.5);
     }
   };

@@ -713,7 +713,7 @@
 
     if (run.map.arena) WS.Arena.update(dt);
     else if (WS.Finale.running()) WS.Finale.update(dt);
-    else WS.WaveManager.update(dt, run);
+    else { WS.WaveManager.update(dt, run); WS.Finale.field(dt); }
     if (!this.running) return;
     WS.Airdrop.update(dt);
     WS.Encounters.update(dt, run);

@@ -204,7 +204,7 @@
     return pool.length ? pool : [bosses[bosses.length - 1]];
   };
 
-  Wave.spawnBoss = function (id, scale, final) {
+  Wave.spawnBoss = function (id, scale, final, overtime) {
     const player = WS.Game.player;
     const a = WS.random() * WS.TAU, far = WS.Config.bossSpawnDistance;
     const boss = WS.Enemy.spawn(id,
@@ -213,6 +213,8 @@
       scale, true);
     if (!boss) return null;
     boss.finalBoss = !!final;
+    // A fight, not a speed bump: its health for this point in the night.
+    WS.BossFight.arrive(boss, this.clock(WS.Game.run), overtime);
     const t = boss.template;
     /* A yell between asterisks is a stage direction - a shriek, thunder -
        not a line: it is shown without them, and nobody speaks it. */
@@ -455,7 +457,7 @@
         const pick = pool[WS.randInt(0, pool.length - 1)];
         const over = WS.max(0, time - cfg.endlessRampStart);
         this.spawnBoss(pick.id,
-          this.bossScale(time) * cfg.endlessBossMult * (1 + over / cfg.endlessRampTime), false);
+          this.bossScale(time) * cfg.endlessBossMult * (1 + over / cfg.endlessRampTime), false, true);
       }
       this.endlessEventTimer -= dt;
       if (this.endlessEventTimer <= 0) {

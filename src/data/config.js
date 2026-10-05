@@ -135,7 +135,10 @@
        it could not finish, and a harder map read as a stronger build (more
        health to chew through means less overkill wasted), so the Pale Lord
        came out at 10 to 20 times his health and nobody could kill him. */
-    finaleRefSingle: 1500,
+    /* 2000, was 1500: against the build that reaches 30:00 (bot nights,
+       tools/bot/boss-snapshots.json finaleBuilds) the fights ran five to
+       eight minutes; this takes about a sixth off (a factor of 0.82). */
+    finaleRefSingle: 2000,
     finalePowerExp: 0.7,
     finalePowerCap: 6,
     /* Difficulty and Hyper make a finale hit harder in full, and make it
@@ -171,6 +174,15 @@
     finaleRehit: 0.7,
     finaleFenceReach: 12,
     finaleChargeLock: 0.3,
+    /* A ring's opening is always reachable (Finale.aimGap): it is placed
+       among bearings the survivor can walk to at ringWalk of their speed in
+       the time the band takes to reach them, less ringReact to see it. */
+    ringReact: 0.45,
+    ringWalk: 0.6,
+    // ...and if nowhere within 90 degrees is clear of other shapes landing
+    // as it arrives, it holds at its heart up to ringHold s until somewhere is
+    // (2s: longer than the Pale Lord's glacial grid takes to fall).
+    ringHold: 2.0,
 
     endlessBossInterval: 75,
     endlessBossMinInterval: 30,
@@ -227,6 +239,42 @@
     bossRingSpeed: 220,
     bossRingDamage: 0.6,
     bossChargeGirth: 2.2,
+    /* THE SCHEDULED BOSSES (src/game/bossfight.js). A light touch: in 160+
+       bot nights they lived a median 6-13s against the build that met them
+       and took nothing off the survivor (tools/boss-snapshots.js), dying
+       before their kit had played once. The finales are the night's real
+       fights; these are its punctuation, so they get just enough to show
+       what they do.
+
+       bossHealthCurve: [clock s, x health] on top of Wave.bossScale, linear
+       between points: enough that the median build sees the whole kit
+       (15-25s). It reads the clock, never the build.
+
+       Each boss's one telegraphed blow takes a share of the survivor's max
+       health (the pattern names it, 0.2-0.34) before armour, weighted from
+       bossHitEarly at 5:00 to bossHitLate at 27:00 and by (difficulty x
+       Hyper) ^ bossHitDifficultyExp - or the boss's own scaled damage if
+       that is more - and never more than bossHitCap of the bar.
+
+       bossEnrageAt: it turns at this share of health and its clock runs
+       bossEnrageRate faster. No telegraph is shorter than bossMinTele. A
+       charge winds up for bossChargeWindup and its lane stops following
+       bossChargeLock before it goes (it used to track to the last frame).
+       A summoned brood lands no nearer the survivor than bossSummonClear. */
+    bossHealthCurve: [[300, 1.6], [630, 1.9], [960, 2.2], [1320, 2.6], [1620, 2.6]],
+    // Overtime's bosses take this share of the curve's extra (they ramp on
+    // their own: endlessBossMult, endlessRampTime).
+    bossHealthOvertime: 0.5,
+    bossHitEarly: 0.85,
+    bossHitLate: 1.15,
+    bossHitDifficultyExp: 0.5,
+    bossHitCap: 0.5,
+    bossEnrageAt: 0.5,
+    bossEnrageRate: 1.2,
+    bossMinTele: 0.6,
+    bossChargeWindup: 0.9,
+    bossChargeLock: 0.32,
+    bossSummonClear: 110,
     // A ranged creature's bolt is this share of its body's damage, and it
     // fires from up to rangedReach x its range. A lunge's lane is lungeGirth
     // x its radius wide.

@@ -1488,6 +1488,16 @@
     ctx.lineWidth = 2 + 1.5 * k;
     ctx.strokeStyle = rgba(WS.mix(c, [1, 1, 1], 0.3), 0.55 + 0.4 * k);
     ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, WS.TAU); ctx.stroke();
+    /* The time left, as a clock hand would show it: an arc just outside the
+       rim that empties toward the top as the blow comes. The fill says how
+       close it is; this says how long that is, in a shape that reads in the
+       corner of an eye and in any palette. */
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,.5)';
+    ctx.beginPath(); ctx.arc(m.x, m.y, m.r + 6, -WS.PI / 2, -WS.PI / 2 + WS.TAU * (1 - k)); ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = rgba(WS.mix(c, [1, 1, 1], 0.55), 0.9);
+    ctx.beginPath(); ctx.arc(m.x, m.y, m.r + 6, -WS.PI / 2, -WS.PI / 2 + WS.TAU * (1 - k)); ctx.stroke();
     if (m.style === 'hands' && k > 0.4) {
       ctx.strokeStyle = rgba([0.85, 1.0, 0.9], (k - 0.4) * 1.4);
       ctx.lineWidth = 3; ctx.lineCap = 'round';
@@ -1621,6 +1631,28 @@
       near.push([WS.abs(((c - at + WS.PI * 3) % WS.TAU) - WS.PI), c]);
     }
     near.sort((a, b) => a[0] - b[0]);
+    /* And at the survivor's feet, an arrow round the ring toward the nearest
+       opening, while it is more than a step away: which way to go, before
+       working out where the arc is. */
+    if (near.length && near[0][0] > half * 0.8) {
+      const c = near[0][1];
+      const dir = ((c - at + WS.PI * 3) % WS.TAU) - WS.PI > 0 ? 1 : -1;
+      const tx = -WS.sin(at) * dir, ty = WS.cos(at) * dir;   // round the ring, toward it
+      const ax = p.x + tx * 30, ay = p.y + ty * 30;
+      ctx.save();
+      ctx.globalAlpha = (0.45 + 0.5 * k) * pulse;
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      for (const [lw, col] of [[7, 'rgba(10,30,18,.65)'], [3.5, 'rgba(150,250,180,.95)']]) {
+        ctx.lineWidth = lw; ctx.strokeStyle = col;
+        ctx.beginPath();
+        ctx.moveTo(ax - tx * 14, ay - ty * 14); ctx.lineTo(ax + tx * 8, ay + ty * 8);
+        ctx.moveTo(ax + tx * 8 - ty * 7 - tx * 7, ay + ty * 8 + tx * 7 - ty * 7);
+        ctx.lineTo(ax + tx * 8, ay + ty * 8);
+        ctx.lineTo(ax + tx * 8 + ty * 7 - tx * 7, ay + ty * 8 - tx * 7 - ty * 7);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
     for (let n = 0; n < WS.min(2, near.length); n++) {
       const c = near[n][1];
       ctx.globalAlpha = (0.35 + 0.6 * k) * pulse * (n === 0 ? 1 : 0.5);
@@ -1684,6 +1716,20 @@
         ctx.lineDashOffset = -time * 60;
         ctx.beginPath(); ctx.moveTo(m.cx, m.cy); ctx.lineTo(ex, ey); ctx.stroke();
         ctx.setLineDash([]);
+        /* Where it will go: the ground its first second sweeps, as a faint
+           wedge off the arm in the direction it turns - so the safe side
+           of a beam reads before the beam does. */
+        {
+          const sg = m.spin >= 0 ? 1 : -1, reachA = WS.min(1.2, WS.abs(m.spin) * 1.0);
+          ctx.save();
+          ctx.setLineDash([]);
+          ctx.globalAlpha = 0.07 + 0.12 * k;
+          ctx.fillStyle = rgba(m.tint, 1);
+          ctx.beginPath(); ctx.moveTo(m.cx, m.cy);
+          ctx.arc(m.cx, m.cy, m.len, ang, ang + sg * reachA, sg < 0);
+          ctx.closePath(); ctx.fill();
+          ctx.restore();
+        }
         // which way it will turn
         const r = 150, sgn = m.spin >= 0 ? 1 : -1;
         ctx.lineWidth = 3;
@@ -1887,6 +1933,13 @@
       if (s.orb && !F.pods.some((q) => q.carrying)) glow(ctx, s.orb.x, s.orb.y, 22, [0.55, 1.0, 0.75], 0.9);
     }
 
+    A.drawMarks(ctx, time);
+  };
+
+  /** The ground half of the marks: the finale's, or a scheduled boss's
+   *  (Finale.field) - the renderer calls this alone when no finale is on. */
+  A.drawMarks = function (ctx, time) {
+    const F = WS.Finale;
     // Vivid (Settings): every threat in the one colour, safe ground untouched.
     const vivid = WS.Renderer.vivid();
     for (const m of F.marks) {
@@ -1904,6 +1957,16 @@
 
   A.drawAir = function (ctx, time) {
     const F = WS.Finale;
+    A.drawMarksAir(ctx, time);
+    for (const pod of F.pods) {
+      if (pod.x < -120 || pod.x > WS.CONST.WORLD_WIDTH + 120 || pod.y < -120) continue;
+      drawPod(ctx, pod, time);
+    }
+  };
+
+  /** The air half of the marks: beams, fences, shells in flight. */
+  A.drawMarksAir = function (ctx, time) {
+    const F = WS.Finale;
     const vivid = WS.Renderer.vivid();
     for (const m of F.marks) {
       const t0 = m.tint;
@@ -1912,10 +1975,6 @@
       else if (m.kind === 'fence') drawFence(ctx, m, time);
       else if (m.kind === 'circle' && (m.from || m.style === 'ice')) drawShell(ctx, m, time);
       m.tint = t0;
-    }
-    for (const pod of F.pods) {
-      if (pod.x < -120 || pod.x > WS.CONST.WORLD_WIDTH + 120 || pod.y < -120) continue;
-      drawPod(ctx, pod, time);
     }
   };
 
