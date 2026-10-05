@@ -61,7 +61,7 @@
       evolveDescription: 'The motes multiply beyond counting.',
     },
     cinderfall: {
-      damage: 29.61, evolveDamageMult: 1.354, bossDamage: 1.161, evolvedBossDamage: 1.73,
+      damage: 21.32, evolveDamageMult: 1.88, bossDamage: 1.612, evolvedBossDamage: 1.73,
       name: 'Cinderfall', school: 'fire', behavior: 'aimed', art: 'ember',
       rankDamageStep: 0.1,
       cooldown: 1.758, speed: 346, projectiles: 1, pierce: 0, range: 600,
@@ -82,9 +82,9 @@
       evolveDescription: 'Winter itself takes the field.',
     },
     arcweb: {
-      damage: 51.77, evolveDamageMult: 0.922, bossDamage: 0.864, evolvedBossDamage: 1.52, evolveChains: 14, evolveChainFalloff: 0.03,
+      damage: 46.593, evolveDamageMult: 0.619, bossDamage: 0.617, evolvedBossDamage: 1.52, evolveChains: 14, evolveChainFalloff: 0.03,
       name: 'Arcweb', school: 'nature', behavior: 'chain',
-      rankDamageStep: 0.45,
+      rankDamageStep: 0.839,
       color: [0.55, 0.80, 1.00], art: 'spark',
       cooldown: 1.649, chains: 10, range: 250,
       description: 'Lightning that leaps from foe to foe.',
@@ -104,9 +104,9 @@
       healPer: 3, evolvedHealPer: 2, healCap: 30, healCapRank: 8, evolvedHealCap: 44,
     },
     verdant_lance: {
-      damage: 22.44, evolveDamageMult: 5.83, bossDamage: 1.439, evolvedBossDamage: 1.509,
+      damage: 24.7, evolveDamageMult: 4.885, bossDamage: 1.22, evolvedBossDamage: 1.509,
       name: 'Verdant Lance', school: 'nature', behavior: 'beam', art: 'beam',
-      rankDamageStep: 0.45,
+      rankDamageStep: 0.5,
       cooldown: 1.429, range: 620, beamWidth: 26,
       metaWidthMult: 1.8, color: [0.55, 1.00, 0.20],
       description: 'A lance of green fire that burns everything standing in its path.',
@@ -132,7 +132,7 @@
       evolveDescription: 'The tether takes more, and gives back more the deeper you are hurt: full mending at half health or below, about a third at full health, and the rest is overheal.',
     },
     blightfield: {
-      damage: 1.26, evolveDamageMult: 6.031, bossDamage: 6.219, evolvedBossDamage: 3.818,
+      damage: 1.638, evolveDamageMult: 4.639, bossDamage: 4.784, evolvedBossDamage: 3.818,
       name: 'Blightfield', school: 'shadow', behavior: 'zone', art: 'zone',
       rankDamageStep: 0.211,
       cooldown: 4.286, radius: 130, duration: 4.5, tickRate: 0.45,
@@ -192,9 +192,9 @@
       evolveDescription: 'The steel never stops moving.',
     },
     axe_gyre: {
-      damage: 10.1, evolveDamageMult: 6.14, bossDamage: 2.895, evolvedBossDamage: 1.169,
+      damage: 9.6, evolveDamageMult: 8.135, bossDamage: 3.553, evolvedBossDamage: 1.169,
       name: 'Axe Gyre', school: 'physical', behavior: 'orbit', art: 'axe',
-      rankDamageStep: 0.1,
+      rankDamageStep: 0.05,
       color: [0.85, 0.88, 0.96], evolvedColor: [1.00, 0.55, 0.25],
       /* Three blades and a shorter breath between gyres. Measured in the
          training ground, the old pair at a 5.5s cooldown cleared 8 of 282 at
@@ -240,9 +240,9 @@
       evolvedBehavior: 'storm', strikes: 5, stormRadius: 230, splash: 60,
     },
     judgement_disc: {
-      damage: 31.36, evolveDamageMult: 0.583, bossDamage: 2.18, evolvedBossDamage: 6.352,
+      damage: 28.224, evolveDamageMult: 0.391, bossDamage: 1.557, evolvedBossDamage: 6.352,
       name: 'Judgement Disc', school: 'holy', behavior: 'bounce', art: 'shield',
-      rankDamageStep: 0.45,
+      rankDamageStep: 0.839,
       cooldown: 2.308, speed: 391, projectiles: 1, bounces: 12, range: 600,
       life: 3.0, radius: 11,
       description: 'A hurled shield that ricochets between enemies.',
@@ -261,9 +261,9 @@
      * and back. Every figure was fitted against the rest of the arsenal in
      * tools/sim.js, alone at rank 1 and rank 8. */
     iron_palms: {
-      damage: 7.49, evolveDamageMult: 4.813, bossDamage: 0.991, evolvedBossDamage: 0.689,
+      damage: 7.49, evolveDamageMult: 6.043, bossDamage: 1.165, evolvedBossDamage: 0.689,
       name: 'Iron Palms', school: 'physical', behavior: 'palm', art: 'palm',
-      rankDamageStep: 0.152,
+      rankDamageStep: 0.092,
       cooldown: 0.95, projectiles: 3, reach: 118, arc: 1.25, knockback: 14,
       waveReach: 2.8, waveDamage: 0.8, waveSpeed: 520,
       color: [0.58, 0.92, 0.76], evolvedColor: [1.0, 0.84, 0.48],
@@ -282,9 +282,9 @@
       evolveDescription: 'The herd does not end. It only thins.',
     },
     thornbloom: {
-      damage: 1.697, evolveDamageMult: 6.88, bossDamage: 3.383, evolvedBossDamage: 2.734,
+      damage: 2.121, evolveDamageMult: 6.622, bossDamage: 3.158, evolvedBossDamage: 2.734,
       name: 'Thornbloom', school: 'nature', behavior: 'zone', art: 'bloom',
-      rankDamageStep: 0.45,
+      rankDamageStep: 0.35,
       cooldown: 3.8, radius: 92, duration: 4.0, tickRate: 0.5,
       atTarget: true, slowFactor: 0.55, color: [0.52, 0.86, 0.38],
       description: 'Brambles burst up under the nearest crowd, tearing at everything caught in them and holding it slow.',

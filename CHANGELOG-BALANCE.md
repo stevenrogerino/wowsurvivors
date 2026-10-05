@@ -5,6 +5,49 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
 
 <!-- new entries go directly below -->
 
+## 2026-10-05 (night): A weapon tuning pass that leaves the starting classes whole
+
+Eight weapons, numbers only (`src/data/weapons.js`). Each gets a new
+unevolved base damage and rank step; `evolveDamageMult` is re-fitted so the
+evolved weapon deals exactly what it did, and `bossDamage` so it hits bosses
+at rank 5 exactly as hard. Healing is per hit and unchanged. Starting
+weapons keep rank 1 within 10%.
+
+| weapon | rank 1 | rank 3 | rank 5 | rank 8 | measured (share x fair, 5:00 / 9:00 / 14:00) |
+|---|---|---|---|---|---|
+| Arcweb (Shaman) | x0.90 | x1.27 | x1.40 | x1.49 | 0.67 / 0.59 / 0.74 |
+| Judgement Disc (Paladin) | x0.90 | x1.27 | x1.40 | x1.49 | 0.72 / 0.71 / 0.63 |
+| Verdant Lance (Ruinseeker) | x1.10 | x1.16 | x1.18 | x1.19 | 1.18 / 0.74 / 0.74 |
+| Blightfield (heals) | x1.30 | x1.30 | x1.30 | x1.30 | 0.80 / 0.73 / 0.70 |
+| Thornbloom (slows) | x1.25 | x1.12 | x1.07 | x1.04 | 0.35 at rank 1 |
+| Axe Gyre (Warrior) | x0.95 | x0.87 | x0.81 | x0.75 | 1.51 / 1.45 / 1.58, most kills at 20:00 |
+| Iron Palms (Monk) | x1.00 | x0.91 | x0.85 | x0.80 | 1.59 / 1.38 / 0.96 |
+| Cinderfall | x0.72 | x0.72 | x0.72 | x0.72 | 1.30 / 1.38 / 1.41, kill share x1.8 |
+
+- How it was found: `tools/build-test.js` (projectile, aura and mixed builds
+  x no / damage-only / own / all nine passives x 9:00, 14:00, 20:00, 216
+  builds; `MODE=passives` takes each passive away in turn), the meter climb
+  (60 seeded builds a stage at 1:00, 5:00, 9:00, 14:00), and `meter-test`
+  now books kills to the ability that landed the last hit.
+- Result in the climb: shares outside their role's band (pure 0.8-1.25,
+  healers 0.72-0.90, slows 0.84-1.0) 38 of 60 -> 31, mean distance from the
+  band's middle 0.25 -> 0.22 (|log|).
+- Whole nights, every survivor from their own starting weapon, Thornhollow
+  Professional, 18 seeds each (`botlab SEEDS=12 SEED0=6` added to 6): deaths
+  9/216 -> 11/216, health lost 13.3% -> 12.4% of max a minute, low point 48%
+  -> 50%. The Monk went 1 -> 4 of 18 (within noise; watch it). The first ten
+  minutes are easy for everyone either way (at most 7% a minute, never
+  below 84%).
+- Held back: Reaving Arc (a healer above its band) is the Graveblade's
+  starter, and the Graveblade already loses the most health of any survivor
+  (28% a minute); a candidate that trimmed it saw Graveblade die in 3 of 6.
+  Passives: none changed; none is dead weight (each taken away lets 1.2x to
+  2.2x more damage through at 20:00).
+- Also: the Nightly's Copy result falls back to a selected box where the
+  clipboard is blocked, like Copy run code; `check-scaling` turns crits off
+  (extra projectiles drew more dice and moved Blightfield 261 -> 263 on
+  crit luck alone).
+
 ## 2026-10-05 (evening): Fewer knobs. Two difficulties, Hyper is an Oath, Tides every night
 
 The menu had a difficulty, Hyper, Tides and the Oaths, four ways to set one

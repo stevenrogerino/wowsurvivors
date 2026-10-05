@@ -28,7 +28,7 @@ each separable:
   arrives. This part was measured without Tides, so measure it again with
   Tides always on before using it.
 
-## 2026-10-05-weapon-tuning-pass.patch
+## 2026-10-05-weapon-tuning-pass.patch (applied 5 October)
 
 Eight weapons, numbers only. Each gets a new unevolved base damage and rank
 step; its evolution multiplier is re-fitted so the evolved weapon deals

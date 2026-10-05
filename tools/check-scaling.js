@@ -82,6 +82,9 @@ const DUPLICITY = {
       for (const c of WS.ComboOrder) pl.combosActive[c] = true;   // guarded elsewhere
       WS.Player.addWeapon(pl, id);
       pl.projectileBonus = bonus;
+      // No crits: extra projectiles draw more dice, which moved a zone's total by
+      // a point or two on crit luck alone (Blightfield 261 -> 263) - not Duplicity.
+      pl.critChance = 0;
       WS.Enemy.pool.releaseAll();
       WS.Hazard.pool.releaseAll();
       WS.Projectile.bolts.releaseAll();

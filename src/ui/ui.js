@@ -2653,8 +2653,9 @@
     if (best && last) {
       const share = el('button', 'btn', 'Copy result');
       share.addEventListener('click', async () => {
-        try { await navigator.clipboard.writeText(WS.Runs.shareLine(last)); share.textContent = 'Copied'; }
-        catch (e) { share.textContent = 'Clipboard blocked'; }
+        const line = WS.Runs.shareLine(last);
+        if (await copyText(line)) share.textContent = 'Copied';
+        else { share.textContent = 'Select and copy it below'; showCodeBox(info, line); }
       });
       btns.append(share);
     }
@@ -4351,8 +4352,9 @@
       share = el('button', 'btn', 'Copy result');
       share.dataset.tip = 'A line with today\u2019s Nightly, your time and your score, to paste wherever you are comparing.';
       share.addEventListener('click', async () => {
-        try { await navigator.clipboard.writeText(WS.Runs.shareLine(run.entry)); share.textContent = 'Copied'; }
-        catch (e) { share.textContent = 'Clipboard blocked'; }
+        const line = WS.Runs.shareLine(run.entry);
+        if (await copyText(line)) share.textContent = 'Copied';
+        else { share.textContent = 'Select and copy it below'; showCodeBox(s.body, line); }
       });
     }
     const menu = el('button', 'btn', 'Main menu');
