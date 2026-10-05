@@ -395,6 +395,7 @@ function inPage(S, job, sources) {
     blessings: Object.keys(p.blessingsTaken || {}),
     curve, trace: TR ? { cols: 't hp hpMin lost healed near screen alive spawns spawnHP kills dealt killDist life level boss elites casters casterLife'.split(' '), rows: TR.rows, ev: TR.ev, kills: TR.kills } : null,
     pilotMs: Math.round(wall), plans: pilot.stats.plans || 1, bolts: L.bolts,
+    picks: window.__draft ? window.__draft.picks : null,
   };
 }
 

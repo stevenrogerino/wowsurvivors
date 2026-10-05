@@ -256,7 +256,9 @@ function installDrafter(opts) {
     if (O.reroll && O.style !== 'casual' && !pushed && bestS < (dps ? 2 : 30) && p.rerolls > 0 && WS.Game.rerollLevelUp()) {
       return D.pickLevel(p, WS.Game.levelChoices || choices);
     }
-    D.picks.push([Math.round(WS.Game.run.time), best && best.type, best && best.id]);
+    // [time, type, id, every card offered] - pick rate when offered, the way
+    // Slay the Spire's metrics read a card.
+    D.picks.push([Math.round(WS.Game.run.time), best && best.type, best && best.id, choices.map((c) => c.type + ':' + c.id)]);
     return best;
   };
 
