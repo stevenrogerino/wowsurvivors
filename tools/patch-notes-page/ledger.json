@@ -815,5 +815,38 @@
   ],
   "list": [],
   "chips": []
+ },
+ {
+  "sec": "From the testers",
+  "stamp": "new",
+  "title": "Death keeps coming, and you can kill him",
+  "img": "boss_death_itself.webp",
+  "body": [
+   "Staying for Death used to be a coin toss: one touch either killed you outright or never landed. Now overtime costs hits. Death's touch takes a share of your health, 30% at first and 5% more every minute. He comes back sooner as the minutes pass, and more of him can be on the field at once.",
+   "And he blinks. A pale ring opens where you are running; less than a second later he is standing in it. Turn and you are clear. Run straight and it costs you a fifth of your health or more, and your healing withers to half for a few seconds.",
+   "He is still killable. Every Death you put down is announced with the night's count, and it goes on the end screen and in your records."
+  ],
+  "list": [],
+  "chips": [
+   "touch <b>30%</b> of your health, <b>+5%</b> a minute",
+   "up to <b>8</b> at once",
+   "a blink every <b>15s → 6s</b>"
+  ]
+ },
+ {
+  "sec": "From the testers",
+  "stamp": "new",
+  "title": "Dread Command is a weapon",
+  "img": "icon_p_dread_command.png",
+  "body": [
+   "Wolves and ghouls now need a weapon slot. Dread Command, which used to be a passive, is the summoner's weapon. Its own sigil marks the thick of the crowd and sends every summon at it at once, and every rank drives them harder and faster.",
+   "Spirit Companion and Grave Call are only offered while you hold it. Evolved with Might it becomes The Dread Host: summons strike half again as hard, a quarter again as often, and the sigil falls twice as often."
+  ],
+  "list": [],
+  "chips": [
+   "summons need <b>a weapon slot</b>",
+   "each rank <b>+10%</b> summon damage, <b>+4%</b> speed",
+   "evolves with <b>Might</b>"
+  ]
  }
 ]
