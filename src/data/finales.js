@@ -193,7 +193,11 @@
       ],
       epilogue: ['Grimtunnel escapes', 'His pod drifts south, toward the Dustreach.'],
       tuning: {
-        damage: 8,   // x difficulty x Hyper x Config.finaleDamage
+        /* 10, was 8. In bot nights the builds that reach 30:00 healed and
+           shielded away nearly everything the Candlecrawler landed (median
+           0% of the bar over the fight, sloppy players included); a blow
+           that is caught should be felt through that. */
+        damage: 10,   // x difficulty x Hyper x Config.finaleDamage
         turretHpGrowth: 0.18, overheat: 10, overheatLines: [0.85, 0.70], overheatVuln: 1.5,
         burrowAt: 0.60, burrowTime: 12, meltdownAt: 0.25,
         bombDamage: 34, bombRadius: 64, bombTele: 1.1,
@@ -245,7 +249,10 @@
       ],
       epilogue: ['The Admiral strikes her colours', 'The stolen ember was bound for Mourneholt.'],
       tuning: {
-        damage: 9,   // x difficulty x Hyper x Config.finaleDamage
+        // 10, was 9, for the same reason as the Candlecrawler's - not 11: its
+        // grapeshot and pistols are bolts, not shapes, and at 11 a player a
+        // quarter-second slow lost the Hyper duel (finale bench, no healing).
+        damage: 10,   // x difficulty x Hyper x Config.finaleDamage
         sailSpeed: 70, broadsideDamage: 40, broadsideTele: 1.2, broadsideWidth: 64,
         grapeDamage: 26, kegDamage: 40, kegRadius: 80, kegTele: 1.2,
         dashDamage: 42, dashWindup: 0.55, dashTime: 0.35, dashRange: 340,

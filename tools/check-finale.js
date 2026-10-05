@@ -114,6 +114,16 @@ const fail = [];
       const before = WS.Enemy.count();
       WS.Game.faceFinale();
       window.__fin.before = before;
+      /* What the fight throws at a survivor standing in it, counted as it
+         lands - before any barrier. The survivor here has ten million
+         health, and a barrier that grows with health (the mage's calling)
+         swallowed every blow of the Galleon fight, so it read as "took 0"
+         though powder kegs and the burning wreck landed hundreds of times. */
+      const td = WS.Player.takeDamage;
+      WS.Player.takeDamage = function (pl, amount) {
+        if (pl.invulnerable <= 0 && WS.Finale.stage === 'fight') window.__fin.landed = (window.__fin.landed || 0) + amount;
+        return td.apply(this, arguments);
+      };
     });
 
     let done = false, slices = 0, shots = 0;
@@ -170,7 +180,7 @@ const fail = [];
     console.log(`  stages : ${r.stages.join(' > ')}`);
     console.log(`  phases : ${r.labels.join(' > ')}`);
     console.log(`  fight  : ${r.fight ? r.fight.toFixed(1) + 's' : 'did not finish'}`
-      + `   damage a standing target would have taken: ${Math.round(r.taken)}`);
+      + `   damage a standing target would have taken: ${Math.round(Math.max(r.taken, r.landed || 0))}`);
     console.log(`  horde  : ${r.before} on the field at 30:00, ${r.purged} left after first light`);
     if (!r.cleared) fail.push(`${map}: the finale never finished (stuck in ${r.stages.slice(-1)[0]})`);
     if (!r.blessing) fail.push(`${map}: no third blessing was offered`);
@@ -188,7 +198,7 @@ const fail = [];
     if (r.fight !== null && (r.fight < minFight || r.fight > 420)) {
       fail.push(`${map}: the fight took ${r.fight.toFixed(0)}s with a finished build`);
     }
-    if (r.taken < 150) fail.push(`${map}: a survivor standing in it took only ${Math.round(r.taken)}`);
+    if (Math.max(r.taken, r.landed || 0) < 150) fail.push(`${map}: a survivor standing in it took only ${Math.round(Math.max(r.taken, r.landed || 0))}`);
     if (r.cleared && r.buttons.some((b) => b.startsWith('Face'))) {
       fail.push(`${map}: the panel after the finale still offers to face it`);
     }
