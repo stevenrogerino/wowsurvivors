@@ -95,7 +95,10 @@ and Pale health changes; one seed each for the last three. On the Pale
 Wastes the Frost nova alone took 166% of the bar a fight before - openings
 out of reach, scissoring, or covered - and 31% after: the fight now hurts
 through what you misjudge, not through what could not be solved. Drill 380k
--> 330k and the Pale Lord 700k -> 600k health for its length.)
+-> 330k and the Pale Lord 700k -> 600k health for its length.) No bot
+night reaches dawn on Highmoor at Professional, before or after (deaths at
+6-27 minutes), so Kael is measured by the finale bench and the fairness
+gate only.
 Dawn (reaching 30:00) moved within seed noise in every cell.
 
 **Results, finale bench (Professional, median 30:00 build, no healing,
