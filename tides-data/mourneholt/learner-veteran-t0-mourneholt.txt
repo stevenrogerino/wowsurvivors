@@ -1,0 +1,28 @@
+24 runs in 305s
+
+full · mourneholt · veteran · pilot plan {"replan":0.2,"noise":25} · 24 runs
+
+ by survivor
+  mage                      26.8m   1/2 dawn  lvl 123  potions 77.5  bombs 21.0  freezes 14.0  low   6%  hurt: bolt 68%, contact 31%, ground 1%, charge 0%
+  warrior                   30.0m   2/2 dawn  lvl 128  potions 177.5  bombs 33.5  freezes 21.5  low  66%  hurt: contact 62%, bolt 36%, ground 2%, charge 0%
+  graveblade                20.4m   1/2 dawn  lvl  89  potions 78.5  bombs 12.0  freezes 14.5  low  11%  hurt: contact 75%, bolt 24%, ground 1%, charge 0%
+  priest                    30.0m   2/2 dawn  lvl 113  potions 125.5  bombs 25.0  freezes 21.5  low  68%  hurt: contact 59%, bolt 40%, ground 1%, charge 0%
+  warlock                   30.0m   2/2 dawn  lvl 132  potions 197.5  bombs 30.5  freezes 23.0  low  26%  hurt: bolt 55%, contact 42%, ground 3%
+  ruinseeker                30.0m   2/2 dawn  lvl 129  potions 180.5  bombs 29.0  freezes 24.5  low  39%  hurt: bolt 71%, contact 27%, ground 1%, charge 1%
+  rogue                     30.0m   2/2 dawn  lvl 130  potions 170.5  bombs 34.5  freezes 26.0  low  35%  hurt: contact 64%, bolt 34%, ground 2%
+  shaman                    30.0m   2/2 dawn  lvl 133  potions 170.5  bombs 29.0  freezes 24.5  low  23%  hurt: bolt 51%, contact 48%, ground 0%, charge 0%
+  druid                     18.9m   1/2 dawn  lvl  95  potions 80.5  bombs 15.0  freezes 13.0  low  15%  hurt: contact 57%, bolt 41%, ground 2%, charge 0%
+  hunter                     8.1m   0/2 dawn  lvl  59  potions 17.0  bombs  2.5  freezes  4.5  low  -2%  hurt: contact 77%, bolt 17%, ground 6%
+  paladin                   30.0m   2/2 dawn  lvl 124  potions 187.0  bombs 34.0  freezes 30.5  low  55%  hurt: contact 62%, bolt 36%, ground 2%, charge 0%
+  monk                       7.6m   0/2 dawn  lvl  59  potions 13.0  bombs  4.0  freezes  4.0  low  -3%  hurt: contact 80%, bolt 17%, ground 3%
+  ALL                       24.3m 17/24 dawn  lvl 109  potions 123.0  bombs 22.5  freezes 18.5  low  28%  hurt: contact 57%, bolt 41%, ground 2%, charge 0%
+
+ the killing blow
+     3  bolt · Skeletal Frostweaver
+     2  contact · Blackfang Moonwretch
+     1  contact · Skeletal Frostweaver
+     1  contact · Rotting Shambler
+
+ bolts that landed: 4305, flying <0.2s 0%, 0.2-0.4s 1%, 0.4-0.8s 22%, longer 77%; mean speed 220; slowed when hit 67%
+
+ pilot: 2.83ms a decision
