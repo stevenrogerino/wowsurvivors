@@ -21,6 +21,8 @@
  *   node tools/build-test.js                       runs and reports
  *   SETS=6 STAGES=s3,s4,s5 OUT=/tmp/b.json node tools/build-test.js
  *   node tools/build-test.js --report /tmp/b.json
+ *   MODE=passives STAGES=s4,s5 node tools/build-test.js   each passive's worth:
+ *     mixed builds with all nine, and with each one taken away
  *
  * Set CHROME to point at an existing Chromium binary. */
 'use strict';
@@ -89,7 +91,17 @@ function report(rows) {
   const rnd = () => { s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648; };
   const pick = (pool, n) => { const bag = pool.slice(), out = []; while (out.length < n) out.push(bag.splice(Math.floor(rnd() * bag.length), 1)[0]); return out; };
   const jobs = [];
-  for (const kind of Object.keys(KINDS)) {
+  /* MODE=passives: what each passive is worth. Mixed builds with all nine,
+     then the same builds with one taken away, for each of the nine. */
+  if (env('MODE', '') === 'passives') {
+    const builds = Array.from({ length: SETS }, () => pick(ALL, 5));
+    for (const drop of ['', ...Object.keys(CAPS)]) for (const st of STAGES) builds.forEach((b, i) => {
+      const pp = {};
+      for (const id of Object.keys(CAPS)) if (id !== drop) pp[id] = Math.max(1, Math.round(CAPS[id] * STAGE[st].frac));
+      jobs.push({ tag: `loo:${drop || 'all'}:${st}:${i}`, w: b.map((w) => w + ':' + STAGE[st].rank), pp, stage: st });
+    });
+  }
+  for (const kind of env('MODE', '') === 'passives' ? [] : Object.keys(KINDS)) {
     const builds = Array.from({ length: SETS }, () => pick(KINDS[kind] || ALL, 5));
     for (const set of Object.keys(SETS_OF)) for (const st of STAGES) builds.forEach((b, i) => {
       const pp = {};
