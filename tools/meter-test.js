@@ -297,7 +297,15 @@ function report(rows) {
       const landed = {}, raw = {};
       let counting = false;
       const dmg = WS.Enemy.damage;
+      // Which ability made each kill (clear speed by ability, tools/build-test.js).
+      const killsBy = {};
+      const kl = WS.Enemy.kill;
+      WS.Enemy.kill = function (e) {
+        if (counting && e && !e.boss) { const k = e.__src || '?'; killsBy[k] = (killsBy[k] || 0) + 1; }
+        return kl.apply(this, arguments);
+      };
       WS.Enemy.damage = function (e, amount, crit, source) {
+        if (e && source) e.__src = source;
         if (counting && e && !e._dead && !(e.invuln > 0)) {
           const k = source || '?';
           landed[k] = (landed[k] || 0) + Math.min(amount, Math.max(0, e.health));
@@ -315,9 +323,10 @@ function report(rows) {
       let alive = 0;
       for (let i = 0; i < S.LIMIT * 60; i++) { tick(); if (i % 60 === 0) alive += WS.Enemy.pool.count; }
       alive = Math.round(alive / S.LIMIT);
-      counting = false; WS.Enemy.damage = dmg;
+      counting = false; WS.Enemy.damage = dmg; WS.Enemy.kill = kl;
+      for (const k of Object.keys(killsBy)) killsBy[k] = Math.round(killsBy[k] * 60 / S.LIMIT);
       for (const k of Object.keys(landed)) { landed[k] = Math.round(landed[k] / S.LIMIT); raw[k] = Math.round(raw[k] / S.LIMIT); }
-      return { tag: job.tag || null, pp: job.pp || null, weapons: job.w.map((w) => w.split(':')[0]), passives: job.ps, lead: S.st.lead ? job.w[0] : null, landed, raw, kills: Math.round((G.run.kills - k0) * 60 / S.LIMIT), alive, hurt: Math.round(hurt * 60 / S.LIMIT), hurtBy, combos: Object.keys(p.combosActive) };
+      return { tag: job.tag || null, pp: job.pp || null, weapons: job.w.map((w) => w.split(':')[0]), passives: job.ps, lead: S.st.lead ? job.w[0] : null, landed, raw, kills: Math.round((G.run.kills - k0) * 60 / S.LIMIT), killsBy, alive, hurt: Math.round(hurt * 60 / S.LIMIT), hurtBy, combos: Object.keys(p.combosActive) };
     }, { S, job, pilotSrc });
     r.errs = errs.slice(0, 2);
     if (errs.length) console.error('page error: ' + errs[0]);
