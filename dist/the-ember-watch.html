@@ -9019,7 +9019,11 @@ window.WS = window.WS || {};
     },
     soul_lantern: {
       name: 'Soul Lantern', family: 'undead', art: 'turret', machine: 'soullantern',
-      tint: [0.55, 1.00, 0.75], health: 28000, speed: 0, damage: 20, xp: 120, radius: 26,
+      // 15k, was 28k: Mordecai's fight is paced by his lanterns, not his
+      // health (each window takes him one life, then they relight): 159s of
+      // a 182s fight was spent breaking them (check-finale --phases), and
+      // it ran six to seven minutes in bot nights.
+      tint: [0.55, 1.00, 0.75], health: 15000, speed: 0, damage: 20, xp: 120, radius: 26,
       finale: true, part: true, stationary: true,
     },
     walker_leg: {
@@ -9187,7 +9191,12 @@ window.WS = window.WS || {};
       epilogue: ['Grimtunnel steals the lantern-ember', 'His pod races east, over the Ochre Plains.'],
       tuning: {
         damage: 10.5,   // x difficulty x Hyper x Config.finaleDamage
-        lanternBond: 0.05, exposedTime: 14, exposedVuln: 1.4, relight: 3,
+        /* exposed 16s at x1.8 (was 14s at x1.4): the fight is paced by its
+           windows, and against the median 30:00 build a window often ended
+           short of his next life - so the lanterns came back, again, and it
+           ran six to seven minutes. A window that is used should take a
+           life. */
+        lanternBond: 0.05, exposedTime: 16, exposedVuln: 1.8, relight: 3,
         // His four lives: an exposed window cannot take him below the next.
         lives: [0.70, 0.45, 0.20],
         riseAt: 0.30, handDamage: 44, handRadius: 58, handTele: 1.0,

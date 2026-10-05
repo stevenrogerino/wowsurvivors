@@ -55,7 +55,11 @@ Hyper, strong and sloppy - taking a median **0%** of its bar over fights of
 
 **Tuning (finales.js, Config):**
 - Fights ~20-30% shorter: `finaleRefSingle` 1500 -> 2000; Candlecrawler 460k
-  -> 380k, Mordecai 420k -> 320k, Kael 560k -> 480k health.
+  -> 380k, Mordecai 420k -> 320k, Kael 560k -> 480k health. Mordecai's fight
+  is paced by his lanterns (159s of a 182s fight, check-finale --phases):
+  soul lantern 28k -> 15k, exposed 16s at x1.8 (was 14s at x1.4); bench
+  fight ~390s -> ~300s. (The Mourneholt night below predates this: it ran
+  321s -> 383s on the health cut alone.)
 - Candlecrawler denser (bombs 3 a turret every 2.5s, drill 6.5s / 4.5s
   stripped, the ring in every mode, a shockwave on surfacing); Galleon and
   Admiral quicker, four kegs; Mordecai's hands and knell quicker.
