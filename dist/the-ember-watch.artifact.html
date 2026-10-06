@@ -3938,7 +3938,7 @@ window.WS = window.WS || {};
    * sprite tints that never change, so the cache is small and stable, and
    * alpha is quantised to a hundredth - finer than the eye and far finer than
    * the 8-bit channel it ends up in. */
-  const rgbCache = new Map();
+  const rgbCache = new Map(), rgbaCache = new Map();
   WS.rgb = function (c, a) {
     const r = (c[0] * 255) | 0, g = (c[1] * 255) | 0, b = (c[2] * 255) | 0;
     if (a === undefined) {
@@ -3947,12 +3947,20 @@ window.WS = window.WS || {};
       if (v === undefined) { v = `rgb(${r},${g},${b})`; rgbCache.set(k, v); }
       return v;
     }
-    const q = a < 0 ? 0 : a > 1 ? 1 : Math.round(a * 100) / 100;
-    const k = (r * 65536 + g * 256 + b) * 128 + (q * 100);
-    let v = rgbCache.get(k);
-    if (v === undefined) { v = `rgba(${r},${g},${b},${q})`; rgbCache.set(k, v); }
+    /* Keyed on two small integers. One key made of both, (rgb * 128 + alpha),
+       runs past V8's small-integer range for most colours, so every lookup
+       boxed a fresh number; with alpha as a float it could also miss the
+       cache outright (0.07 * 100 is 7.000000000000001). Measured in the late
+       horde it was 30MB of garbage in ten seconds. */
+    const q = a < 0 ? 0 : a > 1 ? 100 : Math.round(a * 100);
+    const k = r * 65536 + g * 256 + b;
+    let row = rgbaCache.get(k);
+    if (row === undefined) { row = new Array(101).fill(undefined); rgbaCache.set(k, row); }
+    let v = row[q];
+    if (v === undefined) { v = `rgba(${r},${g},${b},${q / 100})`; row[q] = v; }
     return v;
   };
+  WS.rgb.cacheSize = () => rgbCache.size + rgbaCache.size;
   const hexCache = new Map();
   function hexByte(v) {
     const n = v < 0 ? 0 : v > 255 ? 255 : v;
@@ -5969,7 +5977,7 @@ window.WS = window.WS || {};
     const target = this.chaseTarget;
     const p = WS.Game && WS.Game.player;
     if (target && p) {
-      const [nx, ny, len] = WS.normalize(target.x - p.x, target.y - p.y);
+      const _unx = WS.normalize(target.x - p.x, target.y - p.y), nx = _unx[0], ny = _unx[1], len = _unx[2];
       // Closer than this and re-aiming only makes the survivor twitch in
       // place, chasing a point it has effectively already reached.
       const ARRIVED = 10;
@@ -26981,7 +26989,7 @@ window.WS = window.WS || {};
    *  connected. Normalising here rather than at the call site means no future
    *  caller can reintroduce it. */
   FX.spray = function (x, y, dx, dy, count, colour, speed, life) {
-    const [nx, ny] = WS.normalize(dx, dy);
+    const _unx = WS.normalize(dx, dy), nx = _unx[0], ny = _unx[1];
     if (nx === 0 && ny === 0) return;
     for (let i = 0; i < count; i++) {
       const p = FX.particles.acquire();
@@ -27311,7 +27319,7 @@ window.WS = window.WS || {};
     }
     if (b.slowFactor) WS.Enemy.applySlow(e, b.slowFactor, b.slowDuration || 1.5);
     if (b.knock && !e._dead && !e.boss && !e.finale) {
-      const [kx, ky] = WS.normalize(b.vx, b.vy);
+      const _ukx = WS.normalize(b.vx, b.vy), kx = _ukx[0], ky = _ukx[1];
       e.x += kx * b.knock; e.y += ky * b.knock;
     }
     if (b.healPer && b.healPool && b.healPool.left > 0) {
@@ -27377,7 +27385,7 @@ window.WS = window.WS || {};
             b.hitBy.clear();
           }
         } else {
-          const [hx, hy] = WS.normalize(player.x - b.x, player.y - b.y);
+          const _uhx = WS.normalize(player.x - b.x, player.y - b.y), hx = _uhx[0], hy = _uhx[1];
           b.vx = hx * b.speed * 1.1; b.vy = hy * b.speed * 1.1;
           if (WS.dist2(b.x, b.y, player.x, player.y) < 24 * 24) {
             this.bolts.releaseAt(i); continue;
@@ -27405,8 +27413,8 @@ window.WS = window.WS || {};
              makes right after piercing something, it shed most of its speed in
              a few frames and settled into a hover, sitting on the field like a
              mine. Rotating cannot do that: direction changes, speed does not. */
-          const [tx, ty] = WS.normalize(b.homingTarget.x - b.x, b.homingTarget.y - b.y);
-          const [cx, cy] = WS.normalize(b.vx, b.vy);
+          const _utx = WS.normalize(b.homingTarget.x - b.x, b.homingTarget.y - b.y), tx = _utx[0], ty = _utx[1];
+          const _ucx = WS.normalize(b.vx, b.vy), cx = _ucx[0], cy = _ucx[1];
           // Signed angle from the current heading to the target heading.
           const cross = cx * ty - cy * tx;
           const dot = WS.clamp(cx * tx + cy * ty, -1, 1);
@@ -27450,7 +27458,7 @@ window.WS = window.WS || {};
           const next = WS.Enemy.findNearest(b.x, b.y, 320, b.hitBy);
           if (next) {
             const speed = WS.sqrt(b.vx * b.vx + b.vy * b.vy);
-            const [nx, ny] = WS.normalize(next.x - b.x, next.y - b.y);
+            const _unx = WS.normalize(next.x - b.x, next.y - b.y), nx = _unx[0], ny = _unx[1];
             b.vx = nx * speed; b.vy = ny * speed;
             b.life = WS.max(b.life, 1.2);
           } else { this.bolts.releaseAt(i); continue; }
@@ -27622,8 +27630,70 @@ window.WS = window.WS || {};
     spawnCounter: 0,
   };
 
+  /* Every field a creature will ever carry, made up front and in the order
+   * spawn writes them. A pooled `{}` grew its fields as they came: the ones
+   * spawn sets, then a flinch when first hit, a lunge when it first struck,
+   * a crit flash, the renderer's interpolation and sprite cache, a boss's
+   * fight state. Each creature ended up with whichever of those it had met,
+   * so a late horde held eleven different object layouts, and every loop
+   * that walks it (moving them, hitting them, drawing them) read and wrote
+   * them through V8's slowest path, which boxes each number it touches.
+   * Measured at 25:00 that was most of 480MB of garbage in ten seconds, and
+   * the collections it caused were the p99 of the simulation. With one
+   * layout the same loops run on unboxed numbers.
+   *
+   * Numbers start as numbers (rangedTimer included, so it is never null)
+   * and objects as null, so no field ever changes kind. Adding a field to a
+   * creature anywhere else means adding it here too. */
+  Enemy.blank = function () {
+    /* -0 is a zero that V8 stores as a float, so a field that will hold
+       fractions starts in the layout it keeps; a plain 0 would start as an
+       integer and be relaid out the first time it took a fraction. */
+    const z = -0;
+    return {
+      _dead: false, _ts: -1,
+      id: '', template: null, x: z, y: z, radius: z,
+      boss: false, elite: false, part: false, finale: false,
+      untargetable: false, hidden: false, dmgTaken: 1, hpFloor: z,
+      host: null, displayName: null, finaleAdd: false, finaleTag: 0, stationary: false,
+      maxHealth: z, health: z, damage: z, xp: 0, speed: z,
+      contactCooldown: z, slowTimer: z, slowFactor: 1, rotTimer: z, rotMult: 1,
+      _packN: 0, _packAt: -1e9,
+      bleedDps: z, bleedTimer: z, bleedTick: z, chargeTimer: z, flash: z,
+      chilled: false, invuln: z, spawnId: 0, patternIndex: 0,
+      windup: z, windupMax: z, chargeDir: null, chargeLock: z, chargeLen: z, chargeDur: z,
+      scale: 1, orbitDir: 1, lungeTimer: z, trailTimer: z, noSplit: false, telegraph: null,
+      bornAt: z, attackTimer: z, rangedTimer: z, finalBoss: false,
+      bob: z, facing: 1, spriteSize: z,
+      // Set lazily before; reset by spawn (Enemy.fresh) so each life starts clean.
+      flashCrit: false, lastStruck: -1,
+      swing: z, swingDx: z, swingDy: z, recoil: z, flinch: z,
+      fightAt: -1, cast: null, sigDue: null, enraged: false, enrageGlow: z,
+      chainLeft: 0, chainPattern: null, chargeHit: z,
+      ox: z, oy: z, fvx: z, fvy: z, _lx: NaN, _ly: NaN, fade: 1,
+      // The renderer's: interpolation, sprite cache, draw order.
+      _px: z, _py: z, _rx: z, _ry: z, _ra: undefined,
+      _spr: null, _sprChill: -1, _sprSize: -1, _dq: 0, _dk: 0,
+      _aq: 0,   // damageAreaGrid's visit stamp
+    };
+  };
+
+  /** The fields a creature used to gain as it went, back to how a new one
+   *  has them. A pooled slot kept them from its last life: a lunge or a
+   *  flinch still running, a boss's fight state on the fodder that took its
+   *  slot, and the sprite it last drew, which a new creature of the same
+   *  size then wore. */
+  function fresh(e) {
+    e.flashCrit = false; e.lastStruck = -1;
+    e.swing = 0; e.swingDx = 0; e.swingDy = 0; e.recoil = 0; e.flinch = 0;
+    e.fightAt = -1; e.cast = null; e.sigDue = null; e.enraged = false; e.enrageGlow = 0;
+    e.chainLeft = 0; e.chainPattern = null; e.chargeHit = 0;
+    e.fvx = 0; e.fvy = 0; e._lx = NaN; e._ly = NaN; e.fade = 1;
+    e._spr = null; e._sprChill = -1; e._sprSize = -1;
+  }
+
   Enemy.init = function () {
-    this.pool = new WS.Pool(() => ({}), null, WS.CONST.MAX_ENEMIES);
+    this.pool = new WS.Pool(() => Enemy.blank(), null, WS.CONST.MAX_ENEMIES);
     this.grid = new WS.Grid(80);
     this.freezeTimer = 0;
   };
@@ -27733,7 +27803,7 @@ window.WS = window.WS || {};
     e.telegraph = null;      // {kind, life, maxLife, ...} drawn by the renderer
     e.bornAt = WS.Game.run ? WS.Game.run.time : 0;   // for the rise out of the ground
     e.attackTimer = template.interval || 3.6;
-    e.rangedTimer = template.ranged ? WS.randRange(0.4, template.ranged.cooldown) : null;
+    e.rangedTimer = template.ranged ? WS.randRange(0.4, template.ranged.cooldown) : 0;   // read only when ranged
     e.finalBoss = false;
     e.bob = WS.random() * WS.TAU;      // idle animation offset, so a crowd breathes
     e.facing = 1;
@@ -27744,6 +27814,9 @@ window.WS = window.WS || {};
        overhangs the hitbox threefold; a little more on one creature is a
        drawing decision, not a balance one. */
     e.spriteSize = template.radius * (isBoss ? 3.4 : 3.0) * (template.spriteScale || 1);
+    fresh(e);
+    // Into the grid now, so a splash this same tick can find it (damageAreaGrid).
+    if (this.grid) this.grid.insert(e);
     // Whatever Oaths the survivor swore for tonight (WS.Runs).
     if (WS.Runs) WS.Runs.applyToEnemy(e);
     return e;
@@ -27874,7 +27947,7 @@ window.WS = window.WS || {};
         if (e.bleedTimer <= 0) e.bleedDps = 0;
       }
       const t = e.template;
-      const [dx, dy, distance] = WS.normalize(player.x - e.x, player.y - e.y);
+      const _udx = WS.normalize(player.x - e.x, player.y - e.y), dx = _udx[0], dy = _udx[1], distance = _udx[2];
 
       // Time freeze halts everything except Death itself.
       const frozen = timeFrozen && t.family !== 'death';
@@ -28020,7 +28093,7 @@ window.WS = window.WS || {};
         if (!WS.Game.running) return;
       }
 
-      if (e.rangedTimer !== null && !frozen) {
+      if (t.ranged && !frozen) {
         e.rangedTimer -= dt;
         if (e.rangedTimer <= 0 && distance <= t.ranged.range * cfg.rangedReach) {
           e.rangedTimer = t.ranged.cooldown;
@@ -28158,7 +28231,7 @@ window.WS = window.WS || {};
          running. Locked early, the tell says "now" while there is still
          time to act on it, and the charge hits like it means it
          (BossFight.chargeHit). `chain` runs that many more, back to back. */
-      const fight = e.fightAt !== undefined;
+      const fight = e.fightAt >= 0;
       this.beginCharge(e, dx, dy, opt('windup', fight ? cfg.bossChargeWindup : cfg.chargeWindup), opt('time', cfg.chargeTime),
         opt('range', cfg.chargeRange), opt('girth', cfg.bossChargeGirth), fight ? cfg.bossChargeLock : 0);
       if (fight) {
@@ -28287,6 +28360,14 @@ window.WS = window.WS || {};
    *  having to infer one from the pool count changing - which only ever told
    *  it about a kill. */
   Enemy.damageArea = function (x, y, radius, amount, hitBy, knockback, source) {
+    /* From the grid, not the whole horde. Every splash walked all three
+       hundred creatures to find the handful under it, and a late build
+       throws dozens a tick: in the busiest twentieth of frames that was
+       0.8ms of the simulation. The grid is the one findCollision reads,
+       rebuilt each tick, so the search widens by AREA_SLACK for what has
+       moved since, and the exact test below is on where each creature is
+       now. A blast the size of the field still walks the list. */
+    if (radius <= AREA_GRID_MAX && this.grid) return this.damageAreaGrid(x, y, radius, amount, hitBy, knockback, source);
     let i = 0, struck = 0;
     while (i < this.pool.count) {
       const e = this.pool.active[i];
@@ -28296,13 +28377,47 @@ window.WS = window.WS || {};
         if (hitBy) hitBy.set(e, e.spawnId);
         struck++;
         if (knockback && !e.boss && !e.finale) {
-          const [kx, ky] = WS.normalize(e.x - x, e.y - y);
+          const _ukx = WS.normalize(e.x - x, e.y - y), kx = _ukx[0], ky = _ukx[1];
           e.x += kx * knockback;
           e.y += ky * knockback;
         }
         this.hit(e, amount, source);
         if (!e._dead) i++;
       } else i++;
+    }
+    return struck;
+  };
+
+  const AREA_GRID_MAX = 320, AREA_SLACK = 40;
+  let areaStamp = 0;
+  Enemy.damageAreaGrid = function (x, y, radius, amount, hitBy, knockback, source) {
+    const g = this.grid, c = g.cell, R = radius + AREA_SLACK;
+    const x0 = ((x - R) / c) | 0, x1 = ((x + R) / c) | 0;
+    const y0 = ((y - R) / c) | 0, y1 = ((y + R) / c) | 0;
+    let struck = 0;
+    // A slot that died and came back this tick can sit in two cells: visit it once.
+    const stamp = ++areaStamp;
+    for (let gy = y0; gy <= y1; gy++) {
+      for (let gx = x0; gx <= x1; gx++) {
+        const b = g.buckets.get(gy * 4096 + gx);
+        if (b === undefined) continue;
+        for (let i = 0; i < b.length; i++) {
+          const e = b[i];
+          if (e._dead || e.untargetable || e._aq === stamp) continue;
+          e._aq = stamp;
+          const reach = radius + e.radius;
+          if ((!hitBy || hitBy.get(e) !== e.spawnId) && WS.dist2(x, y, e.x, e.y) <= reach * reach) {
+            if (hitBy) hitBy.set(e, e.spawnId);
+            struck++;
+            if (knockback && !e.boss && !e.finale) {
+              const _uk = WS.normalize(e.x - x, e.y - y);
+              e.x += _uk[0] * knockback;
+              e.y += _uk[1] * knockback;
+            }
+            this.hit(e, amount, source);
+          }
+        }
+      }
     }
     return struck;
   };
@@ -28706,7 +28821,7 @@ window.WS = window.WS || {};
     const d = w.data;
     fillSpec(player, w);
     const speed = speedOf(player, w);
-    const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
+    const _udx = WS.normalize(target.x - player.x, target.y - player.y), dx = _udx[0], dy = _udx[1];
     if (spec.homing) spec.homingTarget = target;
     /* A fan, when several shots leave at once at the same mark. Measured with
        three extra projectiles bought and one creature on the field, Cinderfall,
@@ -28801,7 +28916,7 @@ window.WS = window.WS || {};
     fillSpec(player, w);
     const speed = speedOf(player, w);
     const count = countOf(player, w);
-    const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
+    const _udx = WS.normalize(target.x - player.x, target.y - player.y), dx = _udx[0], dy = _udx[1];
     if (spec.homing) spec.homingTarget = target;
     const spread = d.spread || 0.16;
     for (let i = 0; i < count; i++) {
@@ -28985,7 +29100,7 @@ window.WS = window.WS || {};
          first one moved, or every strike past the first swings at air. */
       const knock = first ? d.knockback * (w.mods.pull ? -0.6 : 1) : 0;
       if (knock && !e.boss && !e.finale) {
-        const [kx, ky] = WS.normalize(dx, dy);
+        const _ukx = WS.normalize(dx, dy), kx = _ukx[0], ky = _ukx[1];
         e.x += kx * knock; e.y += ky * knock;
       }
       const dealt = WS.Enemy.hit(e, dmg, w.id);
@@ -29032,7 +29147,7 @@ window.WS = window.WS || {};
     spec.radius = 13 * (w.evolved ? 1.3 : 1);
     spec.life = (reach * (d.waveReach || 2.8)) / speed;
     spec.spinRate = 0;
-    const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
+    const _udx = WS.normalize(target.x - player.x, target.y - player.y), dx = _udx[0], dy = _udx[1];
     WS.Projectile.launchBolt(muzzleX(player, dx), muzzleY(player, dy), dx * speed, dy * speed, spec);
     const colour = w.mods.blend ? WS.mix(schoolColour(w), w.mods.blend, 0.45) : schoolColour(w);
     WS.FX.flash(player.x + dx * 20, player.y - 14 + dy * 20, 26, colour, 0.14, 5, 'physical');
@@ -29073,7 +29188,7 @@ window.WS = window.WS || {};
     const count = countOf(player, w);
     spec.burst = count;
     const speed = speedOf(player, w);
-    const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
+    const _udx = WS.normalize(target.x - player.x, target.y - player.y), dx = _udx[0], dy = _udx[1];
     const nx = -dy, ny = dx;
     for (let i = 0; i < count; i++) {
       const side = (i - (count - 1) / 2);
@@ -29109,7 +29224,7 @@ window.WS = window.WS || {};
     const count = countOf(player, w);
     spec.burst = count;
     const speed = speedOf(player, w);
-    const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
+    const _udx = WS.normalize(target.x - player.x, target.y - player.y), dx = _udx[0], dy = _udx[1];
     const spread = 0.42;
     for (let i = 0; i < count; i++) {
       const a = (i - (count - 1) / 2) * spread;
@@ -29144,7 +29259,7 @@ window.WS = window.WS || {};
     const first = WS.Enemy.findNearest(player.x, player.y, range * WS.Config.chainFirstReach);
     if (!first) { w.cooldown = retry(); return false; }
     const chains = chainCount(player, w);
-    const [cdx, cdy] = WS.normalize(first.x - player.x, first.y - player.y);
+    const _ucdx = WS.normalize(first.x - player.x, first.y - player.y), cdx = _ucdx[0], cdy = _ucdx[1];
     Weapon.chainFrom(muzzleX(player, cdx), muzzleY(player, cdy),
       damageOf(player, w), chains, range, w.id,
       schoolColour(w), w);
@@ -29272,7 +29387,7 @@ window.WS = window.WS || {};
     const count = 1 + (w.evolved ? 1 : 0);
     for (let i = 0; i < count; i++) {
       const t = i === 0 ? target : (WS.Enemy.findNearest(player.x, player.y, d.range || 600, new Set([target])) || target);
-      const [dx, dy] = WS.normalize(t.x - player.x, t.y - player.y);
+      const _udx = WS.normalize(t.x - player.x, t.y - player.y), dx = _udx[0], dy = _udx[1];
       WS.Projectile.launchBolt(player.x, player.y, dx * speed, dy * speed, spec);
     }
     return true;
@@ -29282,7 +29397,7 @@ window.WS = window.WS || {};
     const d = w.data;
     const target = WS.Enemy.findNearest(player.x, player.y, d.range || 620);
     if (!target) { w.cooldown = retry(); return false; }
-    const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
+    const _udx = WS.normalize(target.x - player.x, target.y - player.y), dx = _udx[0], dy = _udx[1];
     const range = areaOf(player, w, d.range || 620);
     let width = areaOf(player, w, d.beamWidth || 26);
     if (player.metaTimer > 0) width *= (d.metaWidthMult || 1.8);
@@ -31693,7 +31808,7 @@ window.WS = window.WS || {};
     let i = 0;
     while (i < this.pool.count) {
       const gem = this.pool.active[i];
-      const [dx, dy, distance] = WS.normalize(player.x - gem.x, player.y - gem.y);
+      const _udx = WS.normalize(player.x - gem.x, player.y - gem.y), dx = _udx[0], dy = _udx[1], distance = _udx[2];
       if (gem.pop > 0) gem.pop -= dt;
       if (vacuum) {
         gem.x += dx * 900 * dt;
@@ -32027,7 +32142,7 @@ window.WS = window.WS || {};
       // A watcher is not collected: you stand with them (Encounters.tend).
       if (pickup.kind === 'watcher') { i++; continue; }
       if (pickup.kind === 'calf') WS.Trials.amble(pickup, dt);
-      const [dx, dy, distance] = WS.normalize(player.x - pickup.x, player.y - pickup.y);
+      const _udx = WS.normalize(player.x - pickup.x, player.y - pickup.y), dx = _udx[0], dy = _udx[1], distance = _udx[2];
 
       if (!pickup.type.noMagnet && distance < player.pickupRadius) {
         const pull = WS.max(150, 380 * (1 - distance / player.pickupRadius));
@@ -32419,7 +32534,7 @@ window.WS = window.WS || {};
             burst(fam, player, t, damage);
             continue;
           }
-          const [cx, cy] = WS.normalize(c.x - fam.x, c.y - fam.y);
+          const _ucx = WS.normalize(c.x - fam.x, c.y - fam.y), cx = _ucx[0], cy = _ucx[1];
           const sp = t.dashSpeed * speedMult * t.ghoulChargeMult;
           fam.x += cx * sp * dt; fam.y += cy * sp * dt;
           fam.facing = cx < 0 ? -1 : 1;
@@ -34343,7 +34458,7 @@ window.WS = window.WS || {};
         if (h.delay > 0) { h.delay -= dt; continue; }
         h.r += h.speed * dt;
         h.gapRot += h.spin * dt;
-        const [, , d] = WS.normalize(player.x - h.cx, player.y - h.cy);
+        const _uv = WS.normalize(player.x - h.cx, player.y - h.cy), d = _uv[2];
         if (!h.hit && WS.abs(d - h.r) < h.thick * 0.5 + player.radius * 0.5) {
           const a = WS.atan2(player.y - h.cy, player.x - h.cx);
           if (!inGap(h, a)) {
@@ -34408,7 +34523,7 @@ window.WS = window.WS || {};
       }
       // The chains drag the survivor toward the centre while any remain.
       if (this.anchors.length) {
-        const [dx, dy] = WS.normalize(CX - player.x, CY - player.y);
+        const _udx = WS.normalize(CX - player.x, CY - player.y), dx = _udx[0], dy = _udx[1];
         const pull = 26 * this.anchors.length;
         player.x = WS.clamp(player.x + dx * pull * dt, BOUNDS.minX, BOUNDS.maxX);
         player.y = WS.clamp(player.y + dy * pull * dt, BOUNDS.minY, BOUNDS.maxY);
@@ -34716,7 +34831,7 @@ window.WS = window.WS || {};
     // Never on an opening still to come: pushed off it, just clear.
     const seal = this.sealing(tele, (ax, ay, pad) => WS.dist(x, y, ax, ay) < r + pad);
     if (seal) {
-      const [ux, uy, ud] = WS.normalize(x - seal.x, y - seal.y);
+      const _uux = WS.normalize(x - seal.x, y - seal.y), ux = _uux[0], uy = _uux[1], ud = _uux[2];
       const away = r + (WS.Game.player ? WS.Game.player.radius : 12) + 22;
       x = seal.x + (ud > 0.5 ? ux : 1) * away; y = seal.y + (ud > 0.5 ? uy : 0) * away;
     }
@@ -35452,7 +35567,7 @@ window.WS = window.WS || {};
         if (!this.live(e)) { this.units.splice(i, 1); continue; }
         // How fast it is drifting, smoothed: a beam it is about to cast
         // turns about where it will be (F.clearArms).
-        if (e._lx !== undefined && dt > 0) {
+        if (e._lx === e._lx && dt > 0) {   // not NaN: it has a last position
           const k = WS.min(1, dt * 4);
           e.fvx = (e.fvx || 0) + ((e.x - e._lx) / dt - (e.fvx || 0)) * k;
           e.fvy = (e.fvy || 0) + ((e.y - e._ly) / dt - (e.fvy || 0)) * k;
@@ -35508,7 +35623,7 @@ window.WS = window.WS || {};
       if (pod.frozen || pod.done) continue;
       const wp = pod.path[0];
       if (!wp) { pod.done = true; continue; }
-      const [dx, dy, d] = WS.normalize(wp[0] - pod.x, wp[1] - pod.y);
+      const _udx = WS.normalize(wp[0] - pod.x, wp[1] - pod.y), dx = _udx[0], dy = _udx[1], d = _udx[2];
       const step = pod.speed * dt;
       if (d <= step) {
         pod.x = wp[0]; pod.y = wp[1]; pod.path.shift();
@@ -35732,11 +35847,11 @@ window.WS = window.WS || {};
      toward a point on the far side of where it already is. */
   function keepAway(F, e, dist, speed, dt, box) {
     const p = WS.Game.player;
-    const [dx, dy] = WS.normalize(e.x - p.x, e.y - p.y);
+    const _udx = WS.normalize(e.x - p.x, e.y - p.y), dx = _udx[0], dy = _udx[1];
     const b = box || { minX: 110, maxX: W() - 110, minY: 110, maxY: H() - 110 };
     const tx = WS.clamp(p.x + dx * dist, b.minX, b.maxX);
     const ty = WS.clamp(p.y + dy * dist, b.minY, b.maxY);
-    const [mx, my, d] = WS.normalize(tx - e.x, ty - e.y);
+    const _umx = WS.normalize(tx - e.x, ty - e.y), mx = _umx[0], my = _umx[1], d = _umx[2];
     const step = WS.min(d, speed * dt);
     e.x += mx * step; e.y += my * step;
     if (WS.abs(mx) > 0.1) e.facing = p.x < e.x ? -1 : 1;
@@ -35753,7 +35868,7 @@ window.WS = window.WS || {};
      beat is the one a player reacts to. */
   function charge(e, windup, time, range, girth) {
     const p = WS.Game.player;
-    const [dx, dy] = WS.normalize(p.x - e.x, p.y - e.y);
+    const _udx = WS.normalize(p.x - e.x, p.y - e.y), dx = _udx[0], dy = _udx[1];
     WS.Enemy.beginCharge(e, dx, dy, windup, time, range, girth, WS.min(C().finaleChargeLock, windup * 0.6));
     WS.Audio.play('warn', e.x);
   }
@@ -35860,7 +35975,7 @@ window.WS = window.WS || {};
           }
           return;
         }
-        const [dx, dy, d] = WS.normalize(p.x - s.mx, p.y - s.my);
+        const _udx = WS.normalize(p.x - s.mx, p.y - s.my), dx = _udx[0], dy = _udx[1], d = _udx[2];
         const step = WS.min(d, T.burrowSpeed * dt);
         s.mx += dx * step; s.my += dy * step;
         s.burrowT -= dt;
@@ -36086,11 +36201,11 @@ window.WS = window.WS || {};
             charge(a, T.dashChainWindup, T.dashTime, T.dashRange, T.dashGirth);
           } else {
             // Circles you at a duelling distance.
-            const [dx, dy, d] = WS.normalize(a.x - p.x, a.y - p.y);
+            const _udx = WS.normalize(a.x - p.x, a.y - p.y), dx = _udx[0], dy = _udx[1], d = _udx[2];
             const ang = WS.atan2(dy, dx) + T.duelCircle * dt;
             const tx = WS.clamp(p.x + WS.cos(ang) * T.duelRange, 60, W() - 60);
             const ty = WS.clamp(p.y + WS.sin(ang) * T.duelRange, 60, H() - 60);
-            const [mx, my, md] = WS.normalize(tx - a.x, ty - a.y);
+            const _umx = WS.normalize(tx - a.x, ty - a.y), mx = _umx[0], my = _umx[1], md = _umx[2];
             const step = WS.min(md, T.duelSpeed * dt);
             a.x += mx * step; a.y += my * step;
             a.facing = p.x < a.x ? -1 : 1;
@@ -37139,7 +37254,7 @@ window.WS = window.WS || {};
     const T = run.bossDps || (run.bossDps = { dealt: 0, time: 0, at: run.time });
     const k = Math.pow(0.5, WS.max(0, run.time - T.at) / C().bossDpsHalfLife);
     T.dealt *= k; T.time *= k; T.at = run.time;
-    const gap = e.lastStruck === undefined ? 0.25 : WS.clamp(run.time - e.lastStruck, 0, 0.5);
+    const gap = e.lastStruck < 0 ? 0.25 : WS.clamp(run.time - e.lastStruck, 0, 0.5);
     e.lastStruck = run.time;
     T.dealt += landed;
     T.time += gap;
@@ -37292,7 +37407,7 @@ window.WS = window.WS || {};
   B.update = function (e, dt, dx, dy) {
     const t = e.template;
     if (e.cast) { e.cast.life -= dt; if (e.cast.life <= 0) e.cast = null; }
-    if (!e.enraged && e.fightAt !== undefined && e.health <= e.maxHealth * C().bossEnrageAt) B.enrage(e, dx, dy);
+    if (!e.enraged && e.fightAt >= 0 && e.health <= e.maxHealth * C().bossEnrageAt) B.enrage(e, dx, dy);
     if (e.chainLeft > 0 && e.windup <= 0 && e.chargeTimer <= 0) {
       e.chainLeft--;
       const cfg = C();
@@ -45307,7 +45422,7 @@ window.WS = window.WS || {};
   function drawFence(ctx, m, time) {
     if (!WS.Finale.live(m.a) || !WS.Finale.live(m.b)) return;
     const ax = m.a.x, ay = m.a.y - m.a.radius * 1.6, bx = m.b.x, by = m.b.y - m.b.radius * 1.6;
-    const [nx, ny] = WS.normalize(-(by - ay), bx - ax);
+    const _unx = WS.normalize(-(by - ay), bx - ax), nx = _unx[0], ny = _unx[1];
     const pts = [];
     const segs = 14;
     for (let i = 0; i <= segs; i++) {
@@ -46502,13 +46617,99 @@ window.WS = window.WS || {};
     }
     const w = e.radius * 2, h = champion ? 3 : 2;
     const x = e.x - w / 2, y = e.y - e.radius * 1.9;
-    ctx.save();
+    hold(ctx);
     ctx.globalAlpha = alpha;
     ctx.fillStyle = 'rgba(0,0,0,.55)';
     ctx.fillRect(x, y, w, h);
     ctx.fillStyle = e.boss ? '#e2483d' : e.elite ? '#f5c56b' : '#c6483d';
     ctx.fillRect(x, y, w * pct, h);
-    ctx.restore();
+    release(ctx);
+  }
+
+  /* SAVE AND RESTORE WITHOUT THE BROWSER'S STACK.
+   *
+   * ctx.save() makes a state object on Blink's heap every time, and the late
+   * horde called it over 700 times a frame (a few per creature, per bolt, per
+   * corpse). That heap is swept by the same full collection as the game's,
+   * and it was the trigger for nearly all of them: with save and restore
+   * stubbed out, a 25:00 horde ran 9 full collections where it had run 58,
+   * and the simulation's p99 went from 11.5ms to 4.6ms.
+   *
+   * The per-object draws all start from the world transform drawFrame sets
+   * up, so `hold` notes the few properties they change and `release` puts
+   * those back and returns the transform to the world's with setTransform,
+   * which allocates nothing. The world transform is mirrored here in plain
+   * numbers as drawFrame builds it (WT). Only the frame's own canvas, while
+   * drawFrame runs (WCTX), takes that path: the same draws aimed at any
+   * other canvas (the bestiary, a harness's tile) use the real save and
+   * restore, since their transform is not the world's. They nest a few deep. */
+  const WT = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+  function wtSet(a, d) { WT.a = a; WT.b = 0; WT.c = 0; WT.d = d; WT.e = 0; WT.f = 0; }
+  function wtTranslate(x, y) { WT.e += WT.a * x + WT.c * y; WT.f += WT.b * x + WT.d * y; }
+  function wtScale(sx, sy) { WT.a *= sx; WT.b *= sx; WT.c *= sy; WT.d *= sy; }
+  const HELD = 6;
+  const hAlpha = new Float64Array(HELD), hOp = new Array(HELD).fill('source-over'),
+    hFill = new Array(HELD).fill('#000'), hStroke = new Array(HELD).fill('#000'),
+    hLine = new Float64Array(HELD);
+  let held = 0, WCTX = null;
+  const hReal = new Uint8Array(HELD);
+  function hold(ctx) {
+    if (ctx !== WCTX) { ctx.save(); hReal[held++] = 1; return; }
+    if (R.checkWT) {   // a harness's check that the drawing really is at the world transform
+      const m = ctx.getTransform();
+      if (Math.abs(m.a - WT.a) + Math.abs(m.b - WT.b) + Math.abs(m.c - WT.c) + Math.abs(m.d - WT.d)
+        + Math.abs(m.e - WT.e) + Math.abs(m.f - WT.f) > 1e-3) R.wtMiss = (R.wtMiss || 0) + 1;
+      R.wtChecked = (R.wtChecked || 0) + 1;
+    }
+    const i = held++;
+    hReal[i] = 0;
+    hAlpha[i] = ctx.globalAlpha; hOp[i] = ctx.globalCompositeOperation;
+    hFill[i] = ctx.fillStyle; hStroke[i] = ctx.strokeStyle; hLine[i] = ctx.lineWidth;
+  }
+  function release(ctx) {
+    const i = --held;
+    if (hReal[i]) { ctx.restore(); return; }
+    ctx.setTransform(WT.a, WT.b, WT.c, WT.d, WT.e, WT.f);
+    ctx.globalAlpha = hAlpha[i];
+    if (ctx.globalCompositeOperation !== hOp[i]) ctx.globalCompositeOperation = hOp[i];
+    ctx.fillStyle = hFill[i]; ctx.strokeStyle = hStroke[i]; ctx.lineWidth = hLine[i];
+  }
+  R._wt = WT;   // read by a test harness to check the mirror against the canvas
+
+  /* Gradients drawn in an object's own frame (translated and rotated to it)
+     depend only on their colour and size, so they are made once and reused.
+     A canvas gradient is a browser-side object, and the bolts alone made
+     about 140 of them a frame in a late horde; with the props' shadows,
+     300. They are cheap to make and not cheap to collect: they live on
+     Blink's heap, which is swept by the same full collection as the game's,
+     and the late horde ran one every twenty frames at 8-17ms each. Keys are
+     two small integers, so a lookup allocates nothing. The cache is
+     dropped if it ever grows past what a night's colours and sizes need. */
+  const GRADS = new Map();
+  let gradCount = 0;
+  function gradRow(c, kind) {
+    const k = (((c[0] * 255) | 0) * 65536 + ((c[1] * 255) | 0) * 256 + ((c[2] * 255) | 0)) * 8 + kind;
+    let row = GRADS.get(k);
+    if (row === undefined) {
+      if (gradCount > 4000) { GRADS.clear(); gradCount = 0; }
+      row = new Map(); GRADS.set(k, row);
+    }
+    return row;
+  }
+  function gq(v, step) { return Math.round(v / step); }
+
+  /* The y-sorted draw list (drawFrame), carried from one frame to the next
+     so it arrives nearly in order and the insertion sort is one pass. `_dq`
+     marks what is on the field this frame, `_dk` what is already listed. */
+  const DRAWS = [];
+  let drawStamp = 0;
+  function ySort(a) {
+    for (let i = 1; i < a.length; i++) {
+      const v = a[i], y = v.y;
+      let j = i - 1;
+      while (j >= 0 && a[j].y > y) { a[j + 1] = a[j]; j--; }
+      a[j + 1] = v;
+    }
   }
 
   /* ------------------------------------------------------ interpolation --
@@ -46529,22 +46730,38 @@ window.WS = window.WS || {};
    * second life) or that moved further than anything can walk in a tick (a
    * teleport, a reset) is drawn where it is. */
   let TICK = 0;
-  const LISTS = () => [WS.Enemy.pool && WS.Enemy.pool.active, WS.Projectile.bolts && WS.Projectile.bolts.active,
-    WS.Projectile.hostiles && WS.Projectile.hostiles.active, WS.XP.pool && WS.XP.pool.active,
-    WS.Pickup.pool && WS.Pickup.pool.active, WS.Familiar.list];
   const JUMP = 120;
+  /* Each kind of thing has its own loop below, written out rather than shared.
+     One function walking creatures, bolts, gems and the rest sees half a
+     dozen object layouts at every line, and V8 then reads and writes their
+     coordinates the slow way, as freshly boxed numbers: 57MB of garbage in
+     ten seconds of the late horde, much of it kept just long enough to be
+     promoted and swept by a full collection. Written once per kind, each
+     loop sees one layout. The kinds are creatures, bolts (yours and
+     theirs share a pool layout), gems, and the few odd ones together. */
+  const ODD = () => [WS.Pickup.pool && WS.Pickup.pool.active, WS.Familiar.list];
   R.snapshot = function () {
     TICK++;
     const p = WS.Game.player;
     if (p) { p._px = p.x; p._py = p.y; p._ts = TICK; }
-    for (const list of LISTS()) {
+    const en = WS.Enemy.pool ? WS.Enemy.pool.active : NONE;
+    for (let i = 0; i < en.length; i++) { const e = en[i]; e._px = e.x; e._py = e.y; e._ts = TICK; }
+    const bo = WS.Projectile.bolts ? WS.Projectile.bolts.active : NONE;
+    for (let i = 0; i < bo.length; i++) { const b = bo[i]; b._px = b.x; b._py = b.y; b._ts = TICK; }
+    const ho = WS.Projectile.hostiles ? WS.Projectile.hostiles.active : NONE;
+    for (let i = 0; i < ho.length; i++) { const b = ho[i]; b._px = b.x; b._py = b.y; b._ts = TICK; }
+    const ge = WS.XP.pool ? WS.XP.pool.active : NONE;
+    for (let i = 0; i < ge.length; i++) { const g = ge[i]; g._px = g.x; g._py = g.y; g._ts = TICK; }
+    for (const list of ODD()) {
       if (!list) continue;
-      for (let i = 0; i < list.length; i++) { const e = list[i]; e._px = e.x; e._py = e.y; e._ts = TICK; }
+      for (let i = 0; i < list.length; i++) { const o = list[i]; o._px = o.x; o._py = o.y; o._ts = TICK; }
     }
     const orb = WS.Projectile.orbits;
     if (orb) for (let i = 0; i < orb.active.length; i++) { const o = orb.active[i]; o._pa = o.angle; o._ts = TICK; }
   };
-  const swapped = [];
+  const NONE = [];
+  // What was moved, by kind, so each is put back by its own loop too.
+  const swapped = [], swappedEn = [], swappedBo = [], swappedGe = [], swappedOrb = [];
   function lerpIn(e, a) {
     if (e._ts !== TICK) return;
     const dx = e.x - e._px, dy = e.y - e._py;
@@ -46560,7 +46777,40 @@ window.WS = window.WS || {};
     // alpha 0 is not "nothing to do": it is "draw where the tick began".
     const a = WS.clamp(G.accumulator / WS.CONST.TICK_RATE, 0, 1);
     lerpIn(G.player, a);
-    for (const list of LISTS()) {
+    const en = WS.Enemy.pool ? WS.Enemy.pool.active : NONE;
+    for (let i = 0; i < en.length; i++) {
+      const e = en[i];
+      if (e._ts !== TICK) continue;
+      const dx = e.x - e._px, dy = e.y - e._py;
+      if (dx > JUMP || dx < -JUMP || dy > JUMP || dy < -JUMP) continue;
+      e._rx = e.x; e._ry = e.y;
+      e.x = e._px + dx * a; e.y = e._py + dy * a;
+      swappedEn.push(e);
+    }
+    for (let k = 0; k < 2; k++) {
+      const pool = k ? WS.Projectile.hostiles : WS.Projectile.bolts;
+      const bo = pool ? pool.active : NONE;
+      for (let i = 0; i < bo.length; i++) {
+        const b = bo[i];
+        if (b._ts !== TICK) continue;
+        const dx = b.x - b._px, dy = b.y - b._py;
+        if (dx > JUMP || dx < -JUMP || dy > JUMP || dy < -JUMP) continue;
+        b._rx = b.x; b._ry = b.y;
+        b.x = b._px + dx * a; b.y = b._py + dy * a;
+        swappedBo.push(b);
+      }
+    }
+    const ge = WS.XP.pool ? WS.XP.pool.active : NONE;
+    for (let i = 0; i < ge.length; i++) {
+      const g = ge[i];
+      if (g._ts !== TICK) continue;
+      const dx = g.x - g._px, dy = g.y - g._py;
+      if (dx > JUMP || dx < -JUMP || dy > JUMP || dy < -JUMP) continue;
+      g._rx = g.x; g._ry = g.y;
+      g.x = g._px + dx * a; g.y = g._py + dy * a;
+      swappedGe.push(g);
+    }
+    for (const list of ODD()) {
       if (!list) continue;
       for (let i = 0; i < list.length; i++) lerpIn(list[i], a);
     }
@@ -46570,18 +46820,18 @@ window.WS = window.WS || {};
         const o = orb.active[i];
         if (o._ts !== TICK) continue;
         o._ra = o.angle; o.angle = o._pa + (o.angle - o._pa) * a;
-        swapped.push(o);
+        swappedOrb.push(o);
       }
     }
   };
   /** And back to where they really are. */
   R.lerpOut = function () {
-    for (let i = 0; i < swapped.length; i++) {
-      const e = swapped[i];
-      if (e._ra !== undefined) { e.angle = e._ra; e._ra = undefined; }
-      else { e.x = e._rx; e.y = e._ry; }
-    }
-    swapped.length = 0;
+    for (let i = 0; i < swappedEn.length; i++) { const e = swappedEn[i]; e.x = e._rx; e.y = e._ry; }
+    for (let i = 0; i < swappedBo.length; i++) { const b = swappedBo[i]; b.x = b._rx; b.y = b._ry; }
+    for (let i = 0; i < swappedGe.length; i++) { const g = swappedGe[i]; g.x = g._rx; g.y = g._ry; }
+    for (let i = 0; i < swapped.length; i++) { const o = swapped[i]; o.x = o._rx; o.y = o._ry; }
+    for (let i = 0; i < swappedOrb.length; i++) { const o = swappedOrb[i]; o.angle = o._ra; o._ra = undefined; }
+    swappedEn.length = 0; swappedBo.length = 0; swappedGe.length = 0; swapped.length = 0; swappedOrb.length = 0;
   };
 
   /* The dice are the simulation's. A frame drawn - a crackle, a jolt, a
@@ -46596,7 +46846,7 @@ window.WS = window.WS || {};
     const dice = WS.random;
     WS.random = cosmetic;
     this.lerpIn();
-    try { this.drawFrame(time); } finally { this.lerpOut(); WS.random = dice; }
+    try { this.drawFrame(time); } finally { this.lerpOut(); WS.random = dice; WCTX = null; }
     this.warmOne();
   };
 
@@ -46643,8 +46893,12 @@ window.WS = window.WS || {};
     ctx.fillRect(0, 0, this.viewW, this.viewH);
 
     ctx.save();
-    ctx.translate(this.offsetX + WS.FX.shakeX * this.scale, this.offsetY + WS.FX.shakeY * this.scale);
+    const tx = this.offsetX + WS.FX.shakeX * this.scale, ty = this.offsetY + WS.FX.shakeY * this.scale;
+    ctx.translate(tx, ty);
     ctx.scale(this.scale, this.scale);
+    // The same transform in numbers, for release() (see hold above).
+    wtSet(this.dpr, this.dpr); wtTranslate(tx, ty); wtScale(this.scale, this.scale);
+    WCTX = ctx;
     ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
     // The punch leans the field in toward the survivor (FX.punch).
     const punch = WS.FX.punchNow ? WS.FX.punchNow() : 0;
@@ -46652,6 +46906,7 @@ window.WS = window.WS || {};
       const at = WS.FX.punchAt;
       const px = at ? at.x : game.player.x, py = at ? at.y : game.player.y;
       ctx.translate(px, py); ctx.scale(1 + punch, 1 + punch); ctx.translate(-px, -py);
+      wtTranslate(px, py); wtScale(1 + punch, 1 + punch); wtTranslate(-px, -py);
     }
 
     /* The prologue owns the frame while it runs. It rides this loop rather
@@ -46700,19 +46955,24 @@ window.WS = window.WS || {};
     for (const p of this.props) {
       const sh = p.shadow === undefined ? 0.3 : p.shadow;
       if (sh > 0) {
-        ctx.save();
+        hold(ctx);
         ctx.globalAlpha = p.alpha * sh;
         const r = p.size * 0.28;
-        const grd = ctx.createRadialGradient(p.x, p.y + p.size * 0.22, 0,
-          p.x, p.y + p.size * 0.22, r);
-        grd.addColorStop(0, 'rgba(0,0,0,.85)');
-        grd.addColorStop(0.55, 'rgba(0,0,0,.45)');
-        grd.addColorStop(1, 'rgba(0,0,0,0)');
+        // Props never move, so the shadow's gradient is made once and kept.
+        let grd = p._shade;
+        if (!grd || p._shadeAt !== p.x + p.y * 8192 + p.size) {
+          grd = ctx.createRadialGradient(p.x, p.y + p.size * 0.22, 0,
+            p.x, p.y + p.size * 0.22, r);
+          grd.addColorStop(0, 'rgba(0,0,0,.85)');
+          grd.addColorStop(0.55, 'rgba(0,0,0,.45)');
+          grd.addColorStop(1, 'rgba(0,0,0,0)');
+          p._shade = grd; p._shadeAt = p.x + p.y * 8192 + p.size;
+        }
         ctx.fillStyle = grd;
         ctx.beginPath();
         ctx.ellipse(p.x + p.size * 0.05, p.y + p.size * 0.22, r, r * 0.42, 0, 0, WS.TAU);
         ctx.fill();
-        ctx.restore();
+        release(ctx);
       }
       ctx.globalAlpha = p.alpha;
       const sprite = WS.Sprites.prop(p.kind, p.size);
@@ -46729,12 +46989,12 @@ window.WS = window.WS || {};
       const sway = SWAY[p.kind];
       if (sway) {
         const foot = p.y + p.size * 0.22;
-        ctx.save();
+        hold(ctx);
         ctx.translate(p.x, foot);
         ctx.rotate(WS.sin(time * 0.9 + p.phase) * sway
           + WS.sin(time * 2.3 + p.phase * 1.7) * sway * 0.35);
         ctx.drawImage(sprite, -p.size / 2, -p.size * 0.72, p.size, p.size);
-        ctx.restore();
+        release(ctx);
       } else {
         ctx.drawImage(sprite, p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
       }
@@ -46761,12 +47021,29 @@ window.WS = window.WS || {};
     this.drawPickups(ctx, time);
 
     /* ---- entities, y-sorted --------------------------------------------- */
-    const draws = [];
-    for (let i = 0; i < WS.Enemy.pool.count; i++) draws.push(WS.Enemy.pool.active[i]);
-    for (const f of WS.Familiar.list) draws.push(f);
-    for (const t of player.totems || []) draws.push(t);
-    draws.push(player);
-    draws.sort((a, b) => a.y - b.y);
+    /* One list kept from frame to frame and put in order by insertion. The
+       order hardly changes between two frames, so this is a pass over a list
+       that is already sorted; Array.sort with a comparator was a fresh
+       number boxed for every comparison, thousands a frame in a horde. */
+    const draws = DRAWS, stamp = ++drawStamp;
+    for (let i = 0; i < WS.Enemy.pool.count; i++) WS.Enemy.pool.active[i]._dq = stamp;
+    for (let i = 0; i < WS.Familiar.list.length; i++) WS.Familiar.list[i]._dq = stamp;
+    if (player.totems) for (let i = 0; i < player.totems.length; i++) player.totems[i]._dq = stamp;
+    player._dq = stamp;
+    // Keep last frame's order for whatever is still here...
+    let n = 0;
+    for (let i = 0; i < draws.length; i++) {
+      const o = draws[i];
+      if (o._dq === stamp && o._dk !== stamp) { o._dk = stamp; draws[n++] = o; }
+    }
+    draws.length = n;
+    // ...and add what is new.
+    const add = (o) => { if (o._dk !== stamp) { o._dk = stamp; draws.push(o); } };
+    for (let i = 0; i < WS.Enemy.pool.count; i++) add(WS.Enemy.pool.active[i]);
+    for (let i = 0; i < WS.Familiar.list.length; i++) add(WS.Familiar.list[i]);
+    if (player.totems) for (let i = 0; i < player.totems.length; i++) add(player.totems[i]);
+    add(player);
+    ySort(draws);
 
     /* Every creature's shadow in one path and one fill, before any of them
        stands on it. Drawn one by one inside drawEnemy they cost a path, a fill
@@ -46925,7 +47202,7 @@ window.WS = window.WS || {};
       const t = 1 - WS.clamp(c.life / c.maxLife, 0, 1);
       const sprite = WS.Sprites.creature(c.art, c.tint, c.size, c.kit);
       const flip = c.facing > 0 ? -1 : 1;
-      ctx.save();
+      hold(ctx);
       if (c.style === 'topple') {
         // Over it goes, pivoting on its feet, away from the blow; gone as it lands.
         ctx.globalAlpha = 0.9 * (1 - t * t);
@@ -46962,7 +47239,7 @@ window.WS = window.WS || {};
         ctx.scale(flip * (1 + t * 0.3), 1 - t * 0.55);
         ctx.drawImage(sprite, -c.size / 2, -c.size * 0.62, c.size, c.size);
       }
-      ctx.restore();
+      release(ctx);
       if (c.boss) {
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
@@ -46999,14 +47276,14 @@ window.WS = window.WS || {};
 
     if (e.elite || e.boss) {
       // Champions get an arc-lit ground ring so they read out of a crowd.
-      ctx.save();
+      hold(ctx);
       ctx.globalAlpha = 0.55 + 0.2 * WS.sin(time * 3);
       ctx.strokeStyle = e.boss ? '#e05ad8' : '#f5c56b';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.ellipse(e.x, e.y + e.radius * 0.55, e.radius * 1.25, e.radius * 0.5, 0, 0, WS.TAU);
       ctx.stroke();
-      ctx.restore();
+      release(ctx);
     }
 
     /* Held on the creature, for the same reason as the gem above. The only
@@ -47018,7 +47295,7 @@ window.WS = window.WS || {};
       e._sprChill = chill; e._sprSize = size;
     }
     const sprite = e._spr;
-    ctx.save();
+    hold(ctx);
     if (e.fade !== undefined && e.fade < 1) ctx.globalAlpha = e.fade;
     ctx.translate(e.x, e.y + bob);
     /* A creature that arrives where you can see it - a summon, a split, a
@@ -47085,13 +47362,13 @@ window.WS = window.WS || {};
       ctx.globalCompositeOperation = 'lighter';
       ctx.drawImage(WS.SpellArt.flashOf(sprite, e.flashCrit ? '#ffd45c' : '#ff6b5c'), -size / 2, -size * 0.62, size, size);
     }
-    ctx.restore();
+    release(ctx);
     /* Rotting (a ghoul's rake, Familiar): a few sick-green motes lifting off
        the body, so the creatures your weapons will hit harder can be seen. */
     if (e.rotTimer > 0) {
       const now = WS.Game.run ? WS.Game.run.time : 0;
       const fade = WS.clamp(e.rotTimer / 0.6, 0, 1);
-      ctx.save();
+      hold(ctx);
       ctx.fillStyle = '#9fe06a';
       for (let k = 0; k < 3; k++) {
         const ph = (now * 0.9 + k / 3 + (e.spawnId || 0) * 0.37) % 1;
@@ -47100,7 +47377,7 @@ window.WS = window.WS || {};
         const my = e.y + bob - size * (0.15 + ph * 0.55);
         ctx.fillRect(mx - 1.2, my - 1.2, 2.4, 2.4);
       }
-      ctx.restore();
+      release(ctx);
     }
 
     /* THE ONES THAT SHOOT.
@@ -47124,7 +47401,7 @@ window.WS = window.WS || {};
      * the mark can grow and brighten toward the shot and flare on the frame
      * before it - which turns "that one is a caster" into "that one is about
      * to fire", for nothing but a value that was already there. */
-    if (t.ranged && e.rangedTimer !== null && e.rangedTimer !== undefined) {
+    if (t.ranged) {
       const cd = t.ranged.cooldown || 3;
       const k = WS.clamp(1 - e.rangedTimer / cd, 0, 1);
       const col = WS.CONST.COLORS[t.ranged.school] || WS.CONST.COLORS.arcane;
@@ -47139,7 +47416,7 @@ window.WS = window.WS || {};
         ctx.lineTo(cx - w, cy);
         ctx.closePath();
       };
-      ctx.save();
+      hold(ctx);
       ctx.fillStyle = 'rgba(3,5,9,.86)';
       kite(fx, fy, r * 1.55, r * 2.15); ctx.fill();
       ctx.fillStyle = WS.rgb(col, 0.55 + 0.45 * k);
@@ -47153,7 +47430,7 @@ window.WS = window.WS || {};
         ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.arc(fx, fy, r * 3.0, 0, WS.TAU); ctx.stroke();
       }
-      ctx.restore();
+      release(ctx);
     }
 
     if (e.finale && WS.FinaleArt) WS.FinaleArt.adorn(ctx, e, time);
@@ -48259,6 +48536,7 @@ window.WS = window.WS || {};
     }
   };
 
+  const HAZARD_DASH = [7, 6], NO_DASH = [];
   R.drawHazards = function (ctx, time) {
     const pool = WS.Hazard.pool;
     if (!pool) return;
@@ -48266,18 +48544,19 @@ window.WS = window.WS || {};
       const h = pool.active[i];
       const c = R.vivid() ? R.VIVID : h.tint;
       const rgb = `${WS.floor(c[0] * 255)},${WS.floor(c[1] * 255)},${WS.floor(c[2] * 255)}`;
-      ctx.save();
+      hold(ctx);   // not save(): see hold
       if (h.fuse > 0) {
         const k = 1 - h.fuse / (h.maxFuse || 1);       // 0 -> 1 as it arms
         ctx.beginPath();
         ctx.arc(h.x, h.y, h.radius * (0.45 + 0.55 * k), 0, WS.TAU);
         ctx.fillStyle = `rgba(${rgb},${(0.05 + 0.09 * k).toFixed(3)})`;
         ctx.fill();
-        ctx.setLineDash([7, 6]);
+        ctx.setLineDash(HAZARD_DASH);
         ctx.lineDashOffset = -time * 26;
         ctx.strokeStyle = `rgba(${rgb},${(0.45 + 0.4 * k).toFixed(3)})`;
         ctx.lineWidth = 2;
         ctx.stroke();
+        ctx.setLineDash(NO_DASH); ctx.lineDashOffset = 0;
       } else {
         const fade = WS.clamp(h.life / (h.maxLife || 1), 0, 1);
         const pulse = 0.86 + 0.14 * WS.sin(time * 7 + h.seed);
@@ -48296,7 +48575,7 @@ window.WS = window.WS || {};
           ctx.fill();
         }
       }
-      ctx.restore();
+      release(ctx);
     }
   };
 
@@ -49094,7 +49373,7 @@ window.WS = window.WS || {};
         const t = k / 4, u = 1 - t;
         const px = u * u * sx + 2 * u * t * cx + t * t * ex, py = u * u * sy + 2 * u * t * cy + t * t * ey;
         const tx = 2 * u * (cx - sx) + 2 * t * (ex - cx), ty = 2 * u * (cy - sy) + 2 * t * (ey - cy);
-        const [nx, ny] = WS.normalize(-ty, tx);
+        const _unx = WS.normalize(-ty, tx), nx = _unx[0], ny = _unx[1];
         const side = k % 2 ? 1 : -1;
         ctx.beginPath();
         ctx.moveTo(px, py);
@@ -49842,13 +50121,18 @@ window.WS = window.WS || {};
         // it just thickens the blob. At 0.055 it did exactly that.
         const len = WS.min(speed * 0.13 * heft, r * 14 * heft);
         if (len > r * 3) {
-          ctx.save();
+          hold(ctx);
           ctx.translate(b.x, b.y);
           ctx.rotate(WS.atan2(b.vy, b.vx));
-          const tg = ctx.createLinearGradient(0, 0, -len, 0);
-          tg.addColorStop(0, WS.rgb(c, 0.75));
-          tg.addColorStop(0.3, WS.rgb(c, 0.32));
-          tg.addColorStop(1, WS.rgb(c, 0));
+          const row = gradRow(c, 0), lq = gq(len, 1);
+          let tg = row.get(lq);
+          if (tg === undefined) {
+            tg = ctx.createLinearGradient(0, 0, -lq, 0);
+            tg.addColorStop(0, WS.rgb(c, 0.75));
+            tg.addColorStop(0.3, WS.rgb(c, 0.32));
+            tg.addColorStop(1, WS.rgb(c, 0));
+            row.set(lq, tg); gradCount++;
+          }
           ctx.fillStyle = tg;
           ctx.beginPath();
           ctx.moveTo(0, -r * 0.8);
@@ -49856,11 +50140,11 @@ window.WS = window.WS || {};
           ctx.quadraticCurveTo(-len * 0.5, r * 0.24, 0, r * 0.8);
           ctx.closePath();
           ctx.fill();
-          ctx.restore();
+          release(ctx);
         }
       }
 
-      ctx.save();
+      hold(ctx);
       ctx.translate(b.x, b.y);
       const ang = b.spinRate ? b.spin : WS.atan2(b.vy, b.vx);
       ctx.rotate(ang);
@@ -49887,9 +50171,16 @@ window.WS = window.WS || {};
           const burst = b.burst || 1;
           const burstDamp = burst > 1 ? WS.max(0.45, 1 / WS.pow(burst, 0.22)) : 1;
           const far = r * (rank >= WS.Config.projRankB ? 5.2 : 4.2) * (b.evolved ? 1.2 : 1) * burstDamp;
-          const ring = ctx.createRadialGradient(0, 0, r * 1.6, 0, 0, far);
-          ring.addColorStop(0, WS.rgb(c, (0.20 / WS.sqrt(heft)) * (burst > 1 ? 1 / WS.sqrt(burst) : 1)));
-          ring.addColorStop(1, WS.rgb(c, 0));
+          const al = (0.20 / WS.sqrt(heft)) * (burst > 1 ? 1 / WS.sqrt(burst) : 1);
+          const row = gradRow(c, 1), rq = gq(r, 0.25), fq = gq(far, 0.5), aq = gq(al, 0.01);
+          const gk = (rq * 1024 + fq) * 128 + aq;
+          let ring = row.get(gk);
+          if (ring === undefined) {
+            ring = ctx.createRadialGradient(0, 0, rq * 0.25 * 1.6, 0, 0, fq * 0.5);
+            ring.addColorStop(0, WS.rgb(c, aq * 0.01));
+            ring.addColorStop(1, WS.rgb(c, 0));
+            row.set(gk, ring); gradCount++;
+          }
           ctx.fillStyle = ring;
           ctx.beginPath(); ctx.arc(0, 0, far, 0, WS.TAU); ctx.fill();
         }
@@ -49905,10 +50196,15 @@ window.WS = window.WS || {};
          * A glow belongs AROUND a thing. Starting the gradient at the
          * bolt's own radius puts the light where light goes and leaves the
          * shape somewhere to be read against it. */
-        const grd = ctx.createRadialGradient(0, 0, r * 0.85, 0, 0, r * 2.4);
-        grd.addColorStop(0, WS.rgb(c, 0.55));
-        grd.addColorStop(0.35, WS.rgb(c, 0.42));
-        grd.addColorStop(1, WS.rgb(c, 0));
+        const row = gradRow(c, 2), rq = gq(r, 0.25);
+        let grd = row.get(rq);
+        if (grd === undefined) {
+          grd = ctx.createRadialGradient(0, 0, rq * 0.25 * 0.85, 0, 0, rq * 0.25 * 2.4);
+          grd.addColorStop(0, WS.rgb(c, 0.55));
+          grd.addColorStop(0.35, WS.rgb(c, 0.42));
+          grd.addColorStop(1, WS.rgb(c, 0));
+          row.set(rq, grd); gradCount++;
+        }
         ctx.fillStyle = grd;
         ctx.beginPath(); ctx.arc(0, 0, r * 2.4, 0, WS.TAU); ctx.fill();
       }
@@ -49957,7 +50253,7 @@ window.WS = window.WS || {};
         ctx.fill();
       }
       drawBoltShape(ctx, b, r, c);
-      ctx.restore();
+      release(ctx);
     }
     /* Hostile bolts, which must not be mistaken for something worth walking
      * into.
@@ -49996,13 +50292,18 @@ window.WS = window.WS || {};
         ctx.lineTo(0, wide);
         ctx.closePath();
       };
-      ctx.save();
+      hold(ctx);
       ctx.translate(h.x, h.y);
       ctx.rotate(ang);
       if (!this.lite) {
-        const tail = ctx.createLinearGradient(-r * 3.6, 0, 0, 0);
-        tail.addColorStop(0, WS.rgb(h.colour, 0));
-        tail.addColorStop(1, WS.rgb(h.colour, 0.45));
+        const row = gradRow(h.colour, 3), rq = gq(r, 0.25);
+        let tail = row.get(rq);
+        if (tail === undefined) {
+          tail = ctx.createLinearGradient(-rq * 0.25 * 3.6, 0, 0, 0);
+          tail.addColorStop(0, WS.rgb(h.colour, 0));
+          tail.addColorStop(1, WS.rgb(h.colour, 0.45));
+          row.set(rq, tail); gradCount++;
+        }
         ctx.fillStyle = tail;
         ctx.beginPath();
         ctx.moveTo(-r * 3.6, 0); ctx.lineTo(0, -r * 0.55); ctx.lineTo(0, r * 0.55);
@@ -50015,7 +50316,7 @@ window.WS = window.WS || {};
       dart(r * 2.0, r * 0.88, r * 1.05); ctx.fill();
       ctx.fillStyle = 'rgba(255,255,255,.92)';
       dart(r * 0.95, r * 0.36, r * 0.5); ctx.fill();
-      ctx.restore();
+      release(ctx);
     }
     ctx.restore();
   };
@@ -53057,7 +53358,7 @@ window.WS = window.WS || {};
          will come (bossfight.js): the change is something to play toward,
          not a surprise. Gone once it has happened. */
       const gate = boss.hpFloor > 0 ? boss.hpFloor / boss.maxHealth
-        : boss.fightAt !== undefined && !boss.enraged ? WS.Config.bossEnrageAt : 0;
+        : boss.fightAt >= 0 && !boss.enraged ? WS.Config.bossEnrageAt : 0;
       if (e.bGateK !== gate) {
         e.bGateK = gate;
         e.bGate.style.left = (gate * 100).toFixed(2) + '%';

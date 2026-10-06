@@ -5,6 +5,52 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
 
 <!-- new entries go directly below -->
 
+## 2026-10-06 (late): The late horde back under its frame budget
+
+No number in a fight changes. `check-perf` passes on every battlefield
+again (2x CPU throttle; simulation p95 <= 4.2 ms, p99 <= 8.3 ms):
+
+Before this, the six horde scenes measured p95 4.9-5.9 ms and p99
+8.7-15.4 ms. Now:
+
+| horde, 25:00 | sim p95 | sim p99 |
+|---|---|---|
+| Thornhollow | 3.0 | 5.1 |
+| Dustreach | 3.1 | 7.9 |
+| Mourneholt | 3.4 | 5.3 |
+| Ochre | 3.9 | 6.8 |
+| Pale Wastes | 3.7 | 5.9 |
+| Highmoor | 3.9 | 6.1 |
+
+Creatures went from ~0.9 to ~0.45 ms a frame and bolts from ~1.0 to
+~0.55 ms. The p99 was garbage collection: 52-58 full collections in a
+measured scene, almost all triggered by the browser's own heap.
+
+- **One object layout per creature** (`Enemy.blank`): a pooled `{}` grew
+  its fields as it met things, so a late horde held 11 layouts and the
+  loops that move, hit and draw creatures boxed every number they touched
+  (480 MB of garbage in ten seconds). Spawn resets the lazily set fields
+  (lunge, flinch, crit flash, a boss's fight state, the sprite cache), so
+  a reused slot no longer wears its last life's sprite. `rangedTimer` is
+  never null.
+- **No iterator in the hot loops:** `WS.normalize` results are read by
+  index (33 sites). `WS.rgb`'s alpha cache is keyed on two small integers.
+- **Renderer:** interpolation runs one loop per kind of thing; the y-sort
+  keeps last frame's order; bolt, hostile and prop-shadow gradients are
+  made once and reused (310 a frame down to ~30).
+- **No `ctx.save()` per object** (`hold`/`release`): save makes a state
+  object on Blink's heap, 700+ a frame, and that drove nearly every full
+  collection (58 down to 9 with it stubbed). Creatures, health bars,
+  bolts, corpses, props and hazards put back what they changed and return
+  to the world transform, which drawFrame mirrors in numbers. A harness
+  check compared the mirror with the canvas over ~2.7M draws on all six
+  battlefields: no mismatch. Any other canvas still gets real save/restore.
+- **Splashes read the spatial grid** (`damageAreaGrid`, radius <= 320)
+  instead of walking all 300 creatures; spawns enter the grid on arrival.
+  Seeds still replay exactly (check-seed); skills, unions, combos,
+  callings and the boss checks are unchanged.
+
+
 ## 2026-10-06 (night): The AA pass - hierarchy, moments, action, master
 
 Polish only; no number in a fight changes.
@@ -54,8 +100,8 @@ Polish only; no number in a fight changes.
 - **check-perf:** the 25:00 horde scenes go over the simulation budget on
   this machine, both before this pass (p95 4.9-6.4 ms, p99 8.3-14.3 ms)
   and after it (p95 4.9-5.9 ms, p99 8.7-15.4 ms). The two overlap within
-  noise, so the overrun was already there. Finales pass. It is open: the
-  horde's simulation cost at 300 creatures needs its own look.
+  noise, so the overrun was already there. Finales pass. (Fixed in
+  "The late horde back under its frame budget", above.)
 
 ## 2026-10-06 (later): Game speed, and a graphics sweep
 
