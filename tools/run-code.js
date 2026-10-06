@@ -165,6 +165,7 @@ function readOne(L) {
     else if (k === 'banish') say(`  ${mmss(t)}  banished ${a}`);
     else if (k === 'boffer') say(`  ${mmss(t)}  blessings offered ${a}`);
     else if (k === 'bpick') say(`  ${mmss(t)}  blessing ${a}`);
+    else if (k === 'speed') say(`  ${mmss(t)}  game speed ${a}x`);
     else if (k === 'kw') {
       const now = kitMap(a);
       for (const [id, v] of Object.entries(now)) if (prevW[id] !== v && v.endsWith('e') && !(prevW[id] || '').endsWith('e')) say(`  ${mmss(t)}  ${id} evolved`);

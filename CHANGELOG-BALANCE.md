@@ -5,6 +5,29 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
 
 <!-- new entries go directly below -->
 
+## 2026-10-06 (later): Game speed, and a graphics sweep
+
+- **Game speed** (`Game.speed`, `Game.SPEEDS` 1 / 1.5 / 2 / 3): a bar
+  appears when the pointer reaches the middle of the bottom edge, with
+  slower, pause and faster. Speed runs more of the same fixed 60-a-second
+  steps per real second, and the catch-up ceiling grows with it. No number
+  in the fight changes. It can't go below normal, and every run starts at
+  1x. While faster than 1x, a gold badge under the clock shows the speed.
+  Run codes record each change as a `speed` event.
+- **Light budget** (`renderer.js`): ground fields now count toward a busy
+  frame's own light (6 each). Their wash takes the budget's dimming, and the
+  floor drops 0.55 -> 0.45. On a fixed late scene with six evolved
+  weapons, near-white pixels went from 3.8% to 2.6% of the field and bright
+  pixels from 10.2% to 8.0%. The blow-out over the survivor is smaller.
+- **Toasts:** the same notice arriving while the first still stands counts
+  up on it (x2, x3) and restarts its clock. A late night used to show three
+  "Treasure!" cards and nothing else.
+- **HUD:** a soft pool of shade sits behind the top-left survivor block and
+  the top-right figures, so they read on bright ground.
+- **Nightly, before your first dawn:** tonight's card is shown under a red
+  seal (the survivor and battlefield veiled, the Oaths it will be sworn
+  under) instead of one sentence on an empty page.
+
 ## 2026-10-06: Bosses read what you land on them; Death sharper; wolves stronger
 
 From a tester's first night on Professional (a decoded run code: shaman,

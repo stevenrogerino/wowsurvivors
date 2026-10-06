@@ -1126,7 +1126,11 @@
        after it and are not in it. */
     {
       const bl = WS.Projectile.bolts ? WS.Projectile.bolts.count : 0;
-      const load = WS.FX.flashes.count * 2 + WS.FX.particles.count * 0.25 + bl * 0.5;
+      /* Fields count too: each is the size of a nova that never fades, and a
+         late build keeps half a dozen down under the survivor - they were the
+         one source of light the budget never weighed. */
+      const zn = WS.Projectile.zones ? WS.Projectile.zones.count : 0;
+      const load = WS.FX.flashes.count * 2 + WS.FX.particles.count * 0.25 + bl * 0.5 + zn * 6;
       R.lightDim = WS.clamp(1 - WS.max(0, load - LIGHT_EASY) / LIGHT_SPAN, LIGHT_FLOOR, 1);
     }
     this.drawFlashes(ctx);
@@ -2884,7 +2888,8 @@
         bg.globalAlpha = fade;
         bg.drawImage(zoneBurn(), z.x - R, z.y - R, R * 2, R * 2);
       }
-      lg.globalAlpha = fade * stackDamp;
+      // the frame's light budget (R.lightDim, weighed last frame) holds here too
+      lg.globalAlpha = fade * stackDamp * (R.lightDim || 1);
       lg.drawImage(art.canvas, z.x - span, z.y - span, span * 2, span * 2);
       const sx = m.a * z.x + m.c * z.y + m.e, sy = m.b * z.x + m.d * z.y + m.f;
       const sr = span * Math.hypot(m.a, m.b);
@@ -4755,7 +4760,7 @@
     ctx.restore();
   };
 
-  const LIGHT_EASY = 60, LIGHT_SPAN = 300, LIGHT_FLOOR = 0.55;
+  const LIGHT_EASY = 60, LIGHT_SPAN = 300, LIGHT_FLOOR = 0.45;
   R.lightDim = 1;
   R.drawFlashes = function (ctx) {
     const flashes = WS.FX.flashes;

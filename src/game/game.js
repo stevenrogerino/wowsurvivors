@@ -93,6 +93,7 @@
     // The menu's fire goes out when the run begins.
     if (WS.Audio.setAmbience) WS.Audio.setAmbience(null);
     this.run = newRun(mapId, characterId);
+    this.speed = 1;                 // every night starts at normal speed
     const run = this.run;
     const n = opts && opts.nightly;
     if (n) {
@@ -198,6 +199,29 @@
     }
   };
 
+  /* GAME SPEED (the transport bar, UI.buildHUD). The night runs on the same
+     fixed 60-a-second steps at every speed - more of them per real second,
+     nothing else - so a slow stretch can go by faster and not one number in
+     the fight changes. Never below normal: the slower button only walks back
+     what faster did. A new run starts at normal. */
+  Game.SPEEDS = [1, 1.5, 2, 3];
+  Game.speed = 1;
+  Game.setSpeed = function (v) {
+    const S = this.SPEEDS, was = this.speed;
+    this.speed = S.includes(v) ? v : 1;
+    // In the run code, so a night read back says when it ran fast.
+    if (this.speed !== was && WS.RunLog && this.run) WS.RunLog.note('speed', this.speed);
+    return this.speed;
+  };
+  Game.faster = function () {
+    const S = this.SPEEDS, i = S.indexOf(this.speed);
+    return this.setSpeed(S[WS.min(S.length - 1, (i < 0 ? 0 : i) + 1)]);
+  };
+  Game.slower = function () {
+    const S = this.SPEEDS, i = S.indexOf(this.speed);
+    return this.setSpeed(S[WS.max(0, (i < 0 ? 0 : i) - 1)]);
+  };
+
   Game.pause = function () {
     if (this.state !== 'playing') return;
     this.state = 'paused';
@@ -278,6 +302,12 @@
    * All optional; a bare toast is a plain one with a rune. */
   Game.toast = function (title, body, opts) {
     const o = opts || {};
+    /* The same notice again while the first still stands - a chest paying
+       out, then another - counts up on that one (x2, x3) and starts its
+       clock over, instead of pushing everything else off the stack. A late
+       night was three "Treasure!" cards and nothing else. */
+    const same = this.toasts.find((t) => t.title === title && t.body === body && t.life > 0.4);
+    if (same) { same.count = (same.count || 1) + 1; same.life = same.maxLife; return; }
     this.toasts.push({
       title, body, life: 4.5, maxLife: 4.5,
       art: o.art, tint: o.tint, kind: o.kind || 'plain', id: ++this.toastSeq,
@@ -920,15 +950,19 @@
     }
 
     const step = WS.CONST.TICK_RATE;
-    this.accumulator += WS.min(frameDt, 0.25) * this.timeScale;
+    const speed = this.speed || 1;
+    this.accumulator += WS.min(frameDt, 0.25) * this.timeScale * speed;
+    // The ceiling on catching up grows with the speed, so 3x is three times
+    // the steps and not a stall at the old ceiling.
+    const cap = WS.CONST.MAX_TICKS_PER_FRAME * WS.ceil(speed);
     let ticks = 0;
-    while (this.accumulator >= step && ticks < WS.CONST.MAX_TICKS_PER_FRAME) {
+    while (this.accumulator >= step && ticks < cap) {
       this.accumulator -= step;
       ticks++;
       this.tick(step);
       if (this.state !== 'playing') break;
     }
-    if (ticks >= WS.CONST.MAX_TICKS_PER_FRAME) this.accumulator = 0;
+    if (ticks >= cap) this.accumulator = 0;
     if (this.timeScale < 1 && this.settle <= 0) {
       this.timeScale = WS.min(1, this.timeScale + frameDt * 2.2);
     }

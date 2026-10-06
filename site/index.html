@@ -3667,6 +3667,97 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .run-code-row .rc-what { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
 .run-code-row .rc-size { font-family: var(--fig); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
+/* A notice counted again (Game.toast): x2, x3 beside its title. */
+.toast .t-count { margin-left: 8px; font-family: var(--fig); font-variant-numeric: tabular-nums; color: var(--ink); opacity: .85; letter-spacing: 0; display: inline-block; }
+.toast .t-count.bump { animation: toast-count .32s var(--ease-out, ease-out); }
+@keyframes toast-count { 0% { transform: scale(1.5); color: #fff; } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .toast .t-count.bump { animation: none; } }
+
+/* A pool of shade behind the two top corners. The figures sat straight on
+   the field, and on bright ground - the dawn-lit overtime, a late build's
+   light - "slain" and "dps" went pale on pale. A soft ellipse, not a box:
+   it reads as the night gathering behind the numbers. */
+#hud-stats, #hud-portrait { isolation: isolate; }
+#hud-stats::before, #hud-portrait::before {
+  content: ''; position: absolute; z-index: -1; pointer-events: none;
+}
+#hud-stats::before {
+  inset: -22px -26px -18px -60px;
+  background: radial-gradient(ellipse 70% 68% at 72% 46%, rgba(4,5,9,.62), rgba(4,5,9,.36) 52%, rgba(4,5,9,0) 100%);
+}
+#hud-portrait::before {
+  inset: -24px -70px -26px -26px;
+  background: radial-gradient(ellipse 64% 70% at 34% 48%, rgba(4,5,9,.58), rgba(4,5,9,.32) 55%, rgba(4,5,9,0) 100%);
+}
+#hud-stats .stat-line .label { text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+
+/* The Nightly before its first dawn: tonight's card under a seal. */
+.nightly-card.sealed { background: radial-gradient(120% 120% at 0% 0%, rgba(160,150,140,.05), transparent 60%), rgba(11,13,18,.6); }
+.nightly-card.sealed .nightly-title { color: #cfc4b2; }
+.nightly-card.sealed .nightly-sub { color: var(--ink-dim); }
+.nightly-card.sealed .nightly-oath { opacity: .62; }
+.np-veil { position: relative; display: block; border-radius: 10px; overflow: hidden; }
+.np-veil img { filter: grayscale(.85) brightness(.32) blur(1.2px); }
+.np-seal {
+  position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #c4523f, #8a2418 62%, #4a0f09);
+  box-shadow: 0 0 0 2px rgba(10,6,4,.85), 0 4px 14px rgba(0,0,0,.6), inset 0 0 0 3px rgba(255,190,160,.12);
+}
+/* the keyhole: a round head and a tapered foot */
+.np-seal::before { content: ''; position: absolute; left: 50%; top: 13px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: #1c0704; }
+.np-seal::after { content: ''; position: absolute; left: 50%; top: 20px; width: 0; height: 0; margin-left: -5px;
+  border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 13px solid #1c0704; }
+
+/* ---- the transport: slower, pause, faster (Game.speed) ---------------- */
+/* Out of sight at the bottom edge until the pointer comes down to it. The
+   catch area is a band in the middle of the edge, clear of the weapon and
+   passive rows at the corners. */
+#hud-transport {
+  position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
+  width: 340px; height: 86px; pointer-events: auto;
+  display: flex; align-items: flex-end; justify-content: center; padding-bottom: 16px;
+}
+#hud-transport .tp-bar {
+  display: flex; align-items: center; gap: 6px; padding: 6px 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(22,24,32,.92), rgba(9,10,14,.94));
+  border: 1px solid rgba(245,197,107,.28);
+  box-shadow: 0 10px 28px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,236,190,.08);
+  opacity: 0; transform: translateY(14px) scale(.96);
+  transition: opacity .18s ease, transform .22s cubic-bezier(.2,.8,.2,1);
+}
+#hud-transport:hover .tp-bar, #hud-transport:has(.tp-btn:focus-visible) .tp-bar,
+body.touch #hud-transport .tp-bar { opacity: 1; transform: none; }
+body.touch #hud-transport .tp-bar { opacity: .7; }
+#hud-transport .tp-btn {
+  width: 40px; height: 40px; border-radius: 50%; padding: 0;
+  display: grid; place-items: center; cursor: pointer;
+  background: radial-gradient(circle at 50% 35%, rgba(255,255,255,.07), rgba(255,255,255,0) 70%), rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.08); color: #e7dcc6;
+  transition: background .15s ease, color .15s ease, transform .1s ease, border-color .15s ease;
+}
+#hud-transport .tp-btn svg { width: 20px; height: 20px; fill: currentColor; }
+#hud-transport .tp-btn:hover:not(:disabled) { color: #fff1cf; border-color: rgba(245,197,107,.55); background: rgba(245,197,107,.12); }
+#hud-transport .tp-btn:active:not(:disabled) { transform: scale(.94); }
+#hud-transport .tp-btn:disabled { opacity: .3; cursor: default; }
+#hud-transport .tp-btn.tp-pause { width: 46px; height: 46px; color: var(--arc-hot); border-color: rgba(245,197,107,.4); }
+#hud-transport .tp-btn:focus-visible { outline: 2px solid var(--arc); outline-offset: 2px; }
+#hud-transport .tp-read { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 52px; }
+#hud-transport .tp-num { font-family: var(--fig); font-weight: 700; font-size: 17px; color: var(--arc-hot); font-variant-numeric: tabular-nums; line-height: 1; }
+#hud-transport .tp-pips { display: flex; gap: 3px; }
+#hud-transport .tp-pips i { width: 8px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.14); }
+#hud-transport .tp-pips i.on { background: var(--arc); box-shadow: 0 0 6px rgba(245,197,107,.6); }
+@media (prefers-reduced-motion: reduce) { #hud-transport .tp-bar { transition: none; } }
+
+/* Under the clock while the night runs fast. */
+#hud-timer .speed-badge {
+  width: max-content; margin: 6px auto 0; padding: 2px 10px; border-radius: 999px;
+  font-family: var(--fig); font-weight: 700; font-size: 12px; letter-spacing: .04em;
+  color: #1c1204; background: linear-gradient(180deg, #ffd98a, #e2a93c);
+  box-shadow: 0 0 0 1px rgba(10,7,2,.8), 0 0 12px rgba(245,197,107,.45);
+}
+#hud-timer .speed-badge.hidden { display: none; }
+
 </style>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%230b0d12'/><circle cx='50' cy='50' r='30' fill='none' stroke='%23f5c56b' stroke-width='8' stroke-dasharray='120 60'/></svg>">
 </head>
@@ -8656,6 +8747,7 @@ window.WS = window.WS || {};
         { key: '1  2  3', text: 'Take the matching card when you level up.' },
         { key: '{kReroll}  /  {kBanish}', text: 'Reroll or banish the cards on offer, if you have any left.' },
         { key: '{kPause}', text: 'Pause. Your build, the damage meter and the settings are in there.' },
+        { key: 'Bottom of the screen', text: 'Bring the pointer down to the middle of the bottom edge for slower, pause and faster. Faster runs the night at up to 3x; the fight is exactly as hard, it only passes sooner.' },
         { key: 'Arrow keys  /  pad', text: 'Move around any menu. Enter or A picks.' },
         { key: 'Pad', text: 'Start pauses, B backs out, LB and RB change tabs, and on a level-up X rerolls and Y banishes.' },
       ],
@@ -37523,6 +37615,7 @@ window.WS = window.WS || {};
     // The menu's fire goes out when the run begins.
     if (WS.Audio.setAmbience) WS.Audio.setAmbience(null);
     this.run = newRun(mapId, characterId);
+    this.speed = 1;                 // every night starts at normal speed
     const run = this.run;
     const n = opts && opts.nightly;
     if (n) {
@@ -37628,6 +37721,29 @@ window.WS = window.WS || {};
     }
   };
 
+  /* GAME SPEED (the transport bar, UI.buildHUD). The night runs on the same
+     fixed 60-a-second steps at every speed - more of them per real second,
+     nothing else - so a slow stretch can go by faster and not one number in
+     the fight changes. Never below normal: the slower button only walks back
+     what faster did. A new run starts at normal. */
+  Game.SPEEDS = [1, 1.5, 2, 3];
+  Game.speed = 1;
+  Game.setSpeed = function (v) {
+    const S = this.SPEEDS, was = this.speed;
+    this.speed = S.includes(v) ? v : 1;
+    // In the run code, so a night read back says when it ran fast.
+    if (this.speed !== was && WS.RunLog && this.run) WS.RunLog.note('speed', this.speed);
+    return this.speed;
+  };
+  Game.faster = function () {
+    const S = this.SPEEDS, i = S.indexOf(this.speed);
+    return this.setSpeed(S[WS.min(S.length - 1, (i < 0 ? 0 : i) + 1)]);
+  };
+  Game.slower = function () {
+    const S = this.SPEEDS, i = S.indexOf(this.speed);
+    return this.setSpeed(S[WS.max(0, (i < 0 ? 0 : i) - 1)]);
+  };
+
   Game.pause = function () {
     if (this.state !== 'playing') return;
     this.state = 'paused';
@@ -37708,6 +37824,12 @@ window.WS = window.WS || {};
    * All optional; a bare toast is a plain one with a rune. */
   Game.toast = function (title, body, opts) {
     const o = opts || {};
+    /* The same notice again while the first still stands - a chest paying
+       out, then another - counts up on that one (x2, x3) and starts its
+       clock over, instead of pushing everything else off the stack. A late
+       night was three "Treasure!" cards and nothing else. */
+    const same = this.toasts.find((t) => t.title === title && t.body === body && t.life > 0.4);
+    if (same) { same.count = (same.count || 1) + 1; same.life = same.maxLife; return; }
     this.toasts.push({
       title, body, life: 4.5, maxLife: 4.5,
       art: o.art, tint: o.tint, kind: o.kind || 'plain', id: ++this.toastSeq,
@@ -38350,15 +38472,19 @@ window.WS = window.WS || {};
     }
 
     const step = WS.CONST.TICK_RATE;
-    this.accumulator += WS.min(frameDt, 0.25) * this.timeScale;
+    const speed = this.speed || 1;
+    this.accumulator += WS.min(frameDt, 0.25) * this.timeScale * speed;
+    // The ceiling on catching up grows with the speed, so 3x is three times
+    // the steps and not a stall at the old ceiling.
+    const cap = WS.CONST.MAX_TICKS_PER_FRAME * WS.ceil(speed);
     let ticks = 0;
-    while (this.accumulator >= step && ticks < WS.CONST.MAX_TICKS_PER_FRAME) {
+    while (this.accumulator >= step && ticks < cap) {
       this.accumulator -= step;
       ticks++;
       this.tick(step);
       if (this.state !== 'playing') break;
     }
-    if (ticks >= WS.CONST.MAX_TICKS_PER_FRAME) this.accumulator = 0;
+    if (ticks >= cap) this.accumulator = 0;
     if (this.timeScale < 1 && this.settle <= 0) {
       this.timeScale = WS.min(1, this.timeScale + frameDt * 2.2);
     }
@@ -46562,7 +46688,11 @@ window.WS = window.WS || {};
        after it and are not in it. */
     {
       const bl = WS.Projectile.bolts ? WS.Projectile.bolts.count : 0;
-      const load = WS.FX.flashes.count * 2 + WS.FX.particles.count * 0.25 + bl * 0.5;
+      /* Fields count too: each is the size of a nova that never fades, and a
+         late build keeps half a dozen down under the survivor - they were the
+         one source of light the budget never weighed. */
+      const zn = WS.Projectile.zones ? WS.Projectile.zones.count : 0;
+      const load = WS.FX.flashes.count * 2 + WS.FX.particles.count * 0.25 + bl * 0.5 + zn * 6;
       R.lightDim = WS.clamp(1 - WS.max(0, load - LIGHT_EASY) / LIGHT_SPAN, LIGHT_FLOOR, 1);
     }
     this.drawFlashes(ctx);
@@ -48320,7 +48450,8 @@ window.WS = window.WS || {};
         bg.globalAlpha = fade;
         bg.drawImage(zoneBurn(), z.x - R, z.y - R, R * 2, R * 2);
       }
-      lg.globalAlpha = fade * stackDamp;
+      // the frame's light budget (R.lightDim, weighed last frame) holds here too
+      lg.globalAlpha = fade * stackDamp * (R.lightDim || 1);
       lg.drawImage(art.canvas, z.x - span, z.y - span, span * 2, span * 2);
       const sx = m.a * z.x + m.c * z.y + m.e, sy = m.b * z.x + m.d * z.y + m.f;
       const sr = span * Math.hypot(m.a, m.b);
@@ -50191,7 +50322,7 @@ window.WS = window.WS || {};
     ctx.restore();
   };
 
-  const LIGHT_EASY = 60, LIGHT_SPAN = 300, LIGHT_FLOOR = 0.55;
+  const LIGHT_EASY = 60, LIGHT_SPAN = 300, LIGHT_FLOOR = 0.45;
   R.lightDim = 1;
   R.drawFlashes = function (ctx) {
     const flashes = WS.FX.flashes;
@@ -52350,7 +52481,47 @@ window.WS = window.WS || {};
     const passives = el('div'); passives.id = 'hud-passives';
     const toasts = el('div'); toasts.id = 'hud-toasts';
 
-    hud.append(portraitWrap, timer, boss, stats, weapons, passives, toasts);
+    /* -- the transport ---------------------------------------------------- */
+    /* A player's remote along the bottom edge: out of sight until the pointer
+       comes down to it, then slower, pause and faster, and the speed between
+       them. Speed is Game.speed - more of the same fixed steps a second, so
+       the fight is exactly as hard at 3x; "slower" only walks faster back,
+       never below normal. */
+    const transport = el('div'); transport.id = 'hud-transport';
+    const tbar = el('div', 'tp-bar');
+    const glyph = (d) => {
+      const g = svgEl('svg', { viewBox: '0 0 24 24', 'aria-hidden': 'true' });
+      g.append(svgEl('path', { d }));
+      return g;
+    };
+    const tbtn = (cls, label, d) => {
+      const b = el('button', 'tp-btn ' + cls);
+      b.type = 'button';
+      b.setAttribute('aria-label', label);
+      b.append(glyph(d));
+      return b;
+    };
+    const slower = tbtn('tp-slower', 'Slower', 'M11.5 6v12L3 12zM21 6v12l-8.5-6z');
+    const pauseB = tbtn('tp-pause', 'Pause', 'M7 5h3.6v14H7zM13.4 5H17v14h-3.6z');
+    pauseB.dataset.tip = 'Pause';
+    const faster = tbtn('tp-faster', 'Faster', 'M3 6v12l8.5-6zM12.5 6v12L21 12z');
+    const tread = el('div', 'tp-read');
+    const tnum = el('span', 'tp-num', '1\u00d7');
+    const tpips = el('span', 'tp-pips');
+    for (let i = 0; i < WS.Game.SPEEDS.length; i++) tpips.append(el('i'));
+    tread.append(tnum, tpips);
+    tbar.append(slower, pauseB, tread, faster);
+    transport.append(tbar);
+    // The field under the bar is not steered by a click on the bar.
+    transport.addEventListener('pointerdown', (ev) => ev.stopPropagation());
+    slower.addEventListener('click', () => { WS.Audio.play('ui'); WS.Game.slower(); this.paintSpeed(); if (slower.disabled) slower.blur(); });
+    faster.addEventListener('click', () => { WS.Audio.play('ui'); WS.Game.faster(); this.paintSpeed(); if (faster.disabled) faster.blur(); });
+    pauseB.addEventListener('click', () => { WS.Audio.play('ui'); pauseB.blur(); WS.Game.pause(); });
+    // Under the clock while the night runs fast, so it is never forgotten.
+    const speedBadge = el('div', 'speed-badge hidden');
+    timer.append(speedBadge);
+
+    hud.append(portraitWrap, timer, boss, stats, weapons, passives, toasts, transport);
 
     this.els = {
       gauge, aHP, aXP, portrait, lvl, name, hpText, meters, autoBp, timers,
@@ -52358,6 +52529,7 @@ window.WS = window.WS || {};
       timeText, railFill, railHead, rail, mode,
       boss, bossName, bFill, bDrain, bGate, bossPct,
       goldV, killV, dpsV, hpsV, weapons, passives, toasts,
+      transport, tslower: slower, tfaster: faster, tnum, tpips, speedBadge,
       hpCirc: 2 * Math.PI * rHP, xpCirc: 2 * Math.PI * rXP,
       bossLen: 0,
       weaponSlots: new Map(), passiveSlots: new Map(),
@@ -52470,6 +52642,23 @@ window.WS = window.WS || {};
     this.els.portrait.append(img);
   };
 
+  /** The transport's readout and the badge under the clock, from Game.speed. */
+  UI.paintSpeed = function () {
+    const e = this.els, G = WS.Game;
+    if (!e || !e.tnum) return;
+    const v = G.speed || 1, S = G.SPEEDS, i = S.indexOf(v);
+    const txt = (v % 1 ? v.toFixed(1) : String(v)) + '\u00d7';
+    e.tnum.textContent = txt;
+    [...e.tpips.children].forEach((pip, k) => pip.classList.toggle('on', k <= i));
+    e.tslower.disabled = i <= 0;
+    e.tfaster.disabled = i >= S.length - 1;
+    e.tslower.dataset.tip = i <= 0 ? 'Already at normal speed' : 'Slower, back toward normal';
+    e.tfaster.dataset.tip = i >= S.length - 1 ? 'As fast as it goes' : `Faster: ${S[i + 1]}\u00d7. The fight is exactly as hard, it only passes sooner.`;
+    e.speedBadge.textContent = '\u25B8\u25B8 ' + txt;
+    e.speedBadge.classList.toggle('hidden', v === 1);
+    this._speedShown = v;
+  };
+
   UI.enterGame = function () {
     this.closeOverlay();
     this.hud.classList.remove('hidden');
@@ -52481,6 +52670,7 @@ window.WS = window.WS || {};
     this._passiveSig = null;
     this.rebuildWeapons();
     this.rebuildPassives();
+    this.paintSpeed();
   };
 
   UI.rebuildWeapons = function () {
@@ -52565,6 +52755,7 @@ window.WS = window.WS || {};
     if (e.lvl.textContent !== lv) e.lvl.textContent = lv;
     e.hpText.innerHTML = `${WS.max(0, WS.floor(p.health))}<small> / ${WS.floor(p.maxHealth)}</small>`;
 
+    if (this._speedShown !== game.speed) this.paintSpeed();
     e.timeText.textContent = WS.formatTime(run.time);
     const clockPct = WS.min(100, run.time / WS.Config.deathTime * 100);
     e.railFill.style.width = clockPct + '%';
@@ -52785,7 +52976,7 @@ window.WS = window.WS || {};
   UI.updateToasts = function () {
     const wrap = this.els.toasts;
     const live = WS.Game.toasts;
-    const sig = live.map(t => t.id).join(',');
+    const sig = live.map(t => t.id + 'x' + (t.count || 1)).join(',');
     if (sig === this._toastSig) return;
     this._toastSig = sig;
     const keep = new Set(live.map(t => String(t.id)));
@@ -52795,7 +52986,21 @@ window.WS = window.WS || {};
       setTimeout(() => node.remove(), this.leaveMs());
     }
     for (const t of live) {
-      if (wrap.querySelector(`[data-id="${t.id}"]`)) continue;
+      const had = wrap.querySelector(`[data-id="${t.id}"]`);
+      if (had) {
+        // Counted again (Game.toast): the tally, and the wick lit afresh.
+        const n = t.count || 1;
+        if (n > 1 && had.dataset.n !== String(n)) {
+          had.dataset.n = String(n);
+          let tally = had.querySelector('.t-count');
+          if (!tally) { tally = el('span', 't-count'); had.querySelector('.t-title').append(tally); }
+          tally.textContent = '\u00d7' + n;
+          tally.classList.remove('bump'); void tally.offsetWidth; tally.classList.add('bump');
+          had.style.setProperty('--wick', Math.max(0.2, t.life) + 's');
+          had.querySelector('.t-wick').replaceWith(el('i', 't-wick'));
+        }
+        continue;
+      }
       const k = TOAST_KIND[t.kind] || TOAST_KIND.plain;
       const tint = t.tint || k.tint;
       const node = el('div', 'toast k-' + t.kind);
@@ -54445,6 +54650,42 @@ window.WS = window.WS || {};
       wrap.append(el('p', 'pane-intro book-line',
         'The Nightly opens once you have held any battlefield to dawn. One night a day, the same for '
         + 'everyone who plays it: a battlefield, a survivor, Professional with the Hyper Oath and two more, and the same cards dealt for the same picks.'));
+      /* Tonight's card, under a seal: the shapes of who and where, the
+         Oaths it will be sworn under, and what breaks it. It was a sentence
+         on an empty page - the one tab with nothing to look at. */
+      const n = WS.Runs.nightly();
+      const m = WS.Maps[n.map], c = WS.Characters[n.character];
+      const card = el('div', 'nightly-card sealed');
+      const pics = el('div', 'nightly-pics');
+      const who = new Image();
+      who.src = WS.Sprites.dataURL(WS.Sprites.portrait(n.character, c.color, 150));
+      const where = new Image();
+      where.src = WS.Sprites.dataURL(WS.Sprites.zoneCard(m, 'rune', 150));
+      for (const img of [who, where]) {
+        const f = el('figure', 'nightly-pic');
+        img.width = img.height = 150; img.alt = '';
+        const veil = el('div', 'np-veil');
+        veil.append(img, el('span', 'np-seal'));
+        f.append(veil, el('figcaption', '', 'Sealed'));
+        pics.append(f);
+      }
+      const info = el('div', 'nightly-info');
+      info.append(el('div', 'nightly-title', 'Tonight\u2019s watch is sealed'));
+      info.append(el('div', 'nightly-sub', 'Professional \u00b7 Hyper \u00b7 two Oaths drawn for the day'));
+      const rows = [[WS.Oaths.hyper ? WS.Oaths.hyper.name : 'The Hyper Oath', 'Always sworn on the Nightly.'],
+        ['An Oath drawn for the day', 'The same for everyone who plays it.'],
+        ['An Oath drawn for the day', 'The same for everyone who plays it.']];
+      for (const [name, desc] of rows) {
+        const row = el('div', 'nightly-oath');
+        row.append(icon(WS.Oaths.hyper ? WS.Oaths.hyper.art : 'rune', [0.45, 0.42, 0.4], 26));
+        const t = el('div');
+        t.append(el('div', 'no-name', name), el('div', 'no-desc', desc));
+        row.append(t);
+        info.append(row);
+      }
+      info.append(el('div', 'nightly-best', 'Hold any battlefield to dawn and the seal breaks.'));
+      card.append(pics, info);
+      wrap.append(card);
       return wrap;
     }
     const n = WS.Runs.nightly();

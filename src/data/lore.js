@@ -73,6 +73,7 @@
         { key: '1  2  3', text: 'Take the matching card when you level up.' },
         { key: '{kReroll}  /  {kBanish}', text: 'Reroll or banish the cards on offer, if you have any left.' },
         { key: '{kPause}', text: 'Pause. Your build, the damage meter and the settings are in there.' },
+        { key: 'Bottom of the screen', text: 'Bring the pointer down to the middle of the bottom edge for slower, pause and faster. Faster runs the night at up to 3x; the fight is exactly as hard, it only passes sooner.' },
         { key: 'Arrow keys  /  pad', text: 'Move around any menu. Enter or A picks.' },
         { key: 'Pad', text: 'Start pauses, B backs out, LB and RB change tabs, and on a level-up X rerolls and Y banishes.' },
       ],

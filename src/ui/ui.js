@@ -647,7 +647,47 @@
     const passives = el('div'); passives.id = 'hud-passives';
     const toasts = el('div'); toasts.id = 'hud-toasts';
 
-    hud.append(portraitWrap, timer, boss, stats, weapons, passives, toasts);
+    /* -- the transport ---------------------------------------------------- */
+    /* A player's remote along the bottom edge: out of sight until the pointer
+       comes down to it, then slower, pause and faster, and the speed between
+       them. Speed is Game.speed - more of the same fixed steps a second, so
+       the fight is exactly as hard at 3x; "slower" only walks faster back,
+       never below normal. */
+    const transport = el('div'); transport.id = 'hud-transport';
+    const tbar = el('div', 'tp-bar');
+    const glyph = (d) => {
+      const g = svgEl('svg', { viewBox: '0 0 24 24', 'aria-hidden': 'true' });
+      g.append(svgEl('path', { d }));
+      return g;
+    };
+    const tbtn = (cls, label, d) => {
+      const b = el('button', 'tp-btn ' + cls);
+      b.type = 'button';
+      b.setAttribute('aria-label', label);
+      b.append(glyph(d));
+      return b;
+    };
+    const slower = tbtn('tp-slower', 'Slower', 'M11.5 6v12L3 12zM21 6v12l-8.5-6z');
+    const pauseB = tbtn('tp-pause', 'Pause', 'M7 5h3.6v14H7zM13.4 5H17v14h-3.6z');
+    pauseB.dataset.tip = 'Pause';
+    const faster = tbtn('tp-faster', 'Faster', 'M3 6v12l8.5-6zM12.5 6v12L21 12z');
+    const tread = el('div', 'tp-read');
+    const tnum = el('span', 'tp-num', '1\u00d7');
+    const tpips = el('span', 'tp-pips');
+    for (let i = 0; i < WS.Game.SPEEDS.length; i++) tpips.append(el('i'));
+    tread.append(tnum, tpips);
+    tbar.append(slower, pauseB, tread, faster);
+    transport.append(tbar);
+    // The field under the bar is not steered by a click on the bar.
+    transport.addEventListener('pointerdown', (ev) => ev.stopPropagation());
+    slower.addEventListener('click', () => { WS.Audio.play('ui'); WS.Game.slower(); this.paintSpeed(); if (slower.disabled) slower.blur(); });
+    faster.addEventListener('click', () => { WS.Audio.play('ui'); WS.Game.faster(); this.paintSpeed(); if (faster.disabled) faster.blur(); });
+    pauseB.addEventListener('click', () => { WS.Audio.play('ui'); pauseB.blur(); WS.Game.pause(); });
+    // Under the clock while the night runs fast, so it is never forgotten.
+    const speedBadge = el('div', 'speed-badge hidden');
+    timer.append(speedBadge);
+
+    hud.append(portraitWrap, timer, boss, stats, weapons, passives, toasts, transport);
 
     this.els = {
       gauge, aHP, aXP, portrait, lvl, name, hpText, meters, autoBp, timers,
@@ -655,6 +695,7 @@
       timeText, railFill, railHead, rail, mode,
       boss, bossName, bFill, bDrain, bGate, bossPct,
       goldV, killV, dpsV, hpsV, weapons, passives, toasts,
+      transport, tslower: slower, tfaster: faster, tnum, tpips, speedBadge,
       hpCirc: 2 * Math.PI * rHP, xpCirc: 2 * Math.PI * rXP,
       bossLen: 0,
       weaponSlots: new Map(), passiveSlots: new Map(),
@@ -767,6 +808,23 @@
     this.els.portrait.append(img);
   };
 
+  /** The transport's readout and the badge under the clock, from Game.speed. */
+  UI.paintSpeed = function () {
+    const e = this.els, G = WS.Game;
+    if (!e || !e.tnum) return;
+    const v = G.speed || 1, S = G.SPEEDS, i = S.indexOf(v);
+    const txt = (v % 1 ? v.toFixed(1) : String(v)) + '\u00d7';
+    e.tnum.textContent = txt;
+    [...e.tpips.children].forEach((pip, k) => pip.classList.toggle('on', k <= i));
+    e.tslower.disabled = i <= 0;
+    e.tfaster.disabled = i >= S.length - 1;
+    e.tslower.dataset.tip = i <= 0 ? 'Already at normal speed' : 'Slower, back toward normal';
+    e.tfaster.dataset.tip = i >= S.length - 1 ? 'As fast as it goes' : `Faster: ${S[i + 1]}\u00d7. The fight is exactly as hard, it only passes sooner.`;
+    e.speedBadge.textContent = '\u25B8\u25B8 ' + txt;
+    e.speedBadge.classList.toggle('hidden', v === 1);
+    this._speedShown = v;
+  };
+
   UI.enterGame = function () {
     this.closeOverlay();
     this.hud.classList.remove('hidden');
@@ -778,6 +836,7 @@
     this._passiveSig = null;
     this.rebuildWeapons();
     this.rebuildPassives();
+    this.paintSpeed();
   };
 
   UI.rebuildWeapons = function () {
@@ -862,6 +921,7 @@
     if (e.lvl.textContent !== lv) e.lvl.textContent = lv;
     e.hpText.innerHTML = `${WS.max(0, WS.floor(p.health))}<small> / ${WS.floor(p.maxHealth)}</small>`;
 
+    if (this._speedShown !== game.speed) this.paintSpeed();
     e.timeText.textContent = WS.formatTime(run.time);
     const clockPct = WS.min(100, run.time / WS.Config.deathTime * 100);
     e.railFill.style.width = clockPct + '%';
@@ -1082,7 +1142,7 @@
   UI.updateToasts = function () {
     const wrap = this.els.toasts;
     const live = WS.Game.toasts;
-    const sig = live.map(t => t.id).join(',');
+    const sig = live.map(t => t.id + 'x' + (t.count || 1)).join(',');
     if (sig === this._toastSig) return;
     this._toastSig = sig;
     const keep = new Set(live.map(t => String(t.id)));
@@ -1092,7 +1152,21 @@
       setTimeout(() => node.remove(), this.leaveMs());
     }
     for (const t of live) {
-      if (wrap.querySelector(`[data-id="${t.id}"]`)) continue;
+      const had = wrap.querySelector(`[data-id="${t.id}"]`);
+      if (had) {
+        // Counted again (Game.toast): the tally, and the wick lit afresh.
+        const n = t.count || 1;
+        if (n > 1 && had.dataset.n !== String(n)) {
+          had.dataset.n = String(n);
+          let tally = had.querySelector('.t-count');
+          if (!tally) { tally = el('span', 't-count'); had.querySelector('.t-title').append(tally); }
+          tally.textContent = '\u00d7' + n;
+          tally.classList.remove('bump'); void tally.offsetWidth; tally.classList.add('bump');
+          had.style.setProperty('--wick', Math.max(0.2, t.life) + 's');
+          had.querySelector('.t-wick').replaceWith(el('i', 't-wick'));
+        }
+        continue;
+      }
       const k = TOAST_KIND[t.kind] || TOAST_KIND.plain;
       const tint = t.tint || k.tint;
       const node = el('div', 'toast k-' + t.kind);
@@ -2742,6 +2816,42 @@
       wrap.append(el('p', 'pane-intro book-line',
         'The Nightly opens once you have held any battlefield to dawn. One night a day, the same for '
         + 'everyone who plays it: a battlefield, a survivor, Professional with the Hyper Oath and two more, and the same cards dealt for the same picks.'));
+      /* Tonight's card, under a seal: the shapes of who and where, the
+         Oaths it will be sworn under, and what breaks it. It was a sentence
+         on an empty page - the one tab with nothing to look at. */
+      const n = WS.Runs.nightly();
+      const m = WS.Maps[n.map], c = WS.Characters[n.character];
+      const card = el('div', 'nightly-card sealed');
+      const pics = el('div', 'nightly-pics');
+      const who = new Image();
+      who.src = WS.Sprites.dataURL(WS.Sprites.portrait(n.character, c.color, 150));
+      const where = new Image();
+      where.src = WS.Sprites.dataURL(WS.Sprites.zoneCard(m, 'rune', 150));
+      for (const img of [who, where]) {
+        const f = el('figure', 'nightly-pic');
+        img.width = img.height = 150; img.alt = '';
+        const veil = el('div', 'np-veil');
+        veil.append(img, el('span', 'np-seal'));
+        f.append(veil, el('figcaption', '', 'Sealed'));
+        pics.append(f);
+      }
+      const info = el('div', 'nightly-info');
+      info.append(el('div', 'nightly-title', 'Tonight\u2019s watch is sealed'));
+      info.append(el('div', 'nightly-sub', 'Professional \u00b7 Hyper \u00b7 two Oaths drawn for the day'));
+      const rows = [[WS.Oaths.hyper ? WS.Oaths.hyper.name : 'The Hyper Oath', 'Always sworn on the Nightly.'],
+        ['An Oath drawn for the day', 'The same for everyone who plays it.'],
+        ['An Oath drawn for the day', 'The same for everyone who plays it.']];
+      for (const [name, desc] of rows) {
+        const row = el('div', 'nightly-oath');
+        row.append(icon(WS.Oaths.hyper ? WS.Oaths.hyper.art : 'rune', [0.45, 0.42, 0.4], 26));
+        const t = el('div');
+        t.append(el('div', 'no-name', name), el('div', 'no-desc', desc));
+        row.append(t);
+        info.append(row);
+      }
+      info.append(el('div', 'nightly-best', 'Hold any battlefield to dawn and the seal breaks.'));
+      card.append(pics, info);
+      wrap.append(card);
       return wrap;
     }
     const n = WS.Runs.nightly();
