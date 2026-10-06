@@ -5,6 +5,53 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
 
 <!-- new entries go directly below -->
 
+## 2026-10-06: Bosses read what you land on them; Death sharper; wolves stronger
+
+From a tester's first night on Professional (a decoded run code: shaman,
+Highmoor, level 181). Bosses fell in 2-24 s, Brother Kael (1.8M) in about
+6 s at roughly 300k a second, Death (5.4M) in 7-12 s. What killed them in
+the end was the ordinary horde.
+
+- **Observed boss damage** (`BossFight.record`, `observedDps`): every blow
+  that lands on a boss or a finale machine is kept as a decaying average
+  (half-life `bossDpsHalfLife` 180 s). Each fight then brings at least this
+  many seconds of it as health:
+  - finales: 45 s (`bossFloorFinale`)
+  - Death: 30 s, plus 4 s for each one before it (`bossFloorDeath`, `bossFloorDeathStep`)
+  - overtime bosses: 20 s (`bossFloorOvertime`)
+  - scheduled bosses from 10:00: 14 s (`bossFloorScheduled`, `bossFloorFrom`)
+
+  A night that reaches 300k a second meets a 13.5M Kael. A night that
+  never does sees nothing change.
+- **Death:**
+  - Speed 265 -> 368 (+39%).
+  - Slows reach it at a fifth of their strength (`deathSlowTake` 0.2).
+  - It no longer appears in the moment before a boss arrives: it walks
+    only after the dawn is banked or in endless.
+  - It is on the timers in overtime.
+  - The Ruthless execute already skipped bosses, Death included.
+- **Ruthless:** its low-health crit bonus is halved against bosses,
+  finales and their parts (`ruthlessBossShare` 0.5).
+- **Spirit wolves:** `wolfDmgMult` 3.0 -> 3.6 and `maulDmg` 0.1 -> 0.22.
+  Measured with summon-test (three wolves beside volley:5):
+  - 10:00 horde: +24%
+  - 20:00 horde: +18%
+  - boss: +31%
+
+  In a horde they were half a ghoul's damage at 10:00 and two thirds at
+  20:00. Now, wolves plus their weapon match ghouls at 10:00 and pass them
+  at 20:00.
+- **Perennial (Duration)** now lengthens Waystones and the Spring's pools,
+  as its card always said ("anything else with a lifetime"). Area already
+  widened their reach and the pools.
+- **Meter:** a row's hover now splits a source into its parts:
+  - wolves: lone bites, pack bites and mauls
+  - ghouls: rakes and bursts
+  - Waystones: searing and eruptions
+  - Dread Command and its summons: the whole host's total
+
+  Overkill has its own meter. Run codes carry these parts too (`end.parts`).
+
 ## 2026-10-05 (night): A weapon tuning pass that leaves the starting classes whole
 
 Eight weapons, numbers only (`src/data/weapons.js`). Each gets a new

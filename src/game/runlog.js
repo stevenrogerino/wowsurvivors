@@ -216,6 +216,9 @@
       raw: Object.fromEntries(Object.entries(run.damageByWeapon || {}).filter((e) => e[1] >= 1).map(([k, v]) => [k, Math.round(v)])),
       overheal: Object.fromEntries(Object.entries(run.overhealBySource || {}).filter((e) => e[1] >= 1).map(([k, v]) => [k, Math.round(v)])),
       curdle: p ? Math.round(p.curdleDealt || 0) : 0,
+      // The tagged parts of a source (wolves' pack bites and mauls, a ghoul's bursts...).
+      parts: Object.fromEntries(Object.entries(run.partsBySource || {}).map(([k, t]) => [k,
+        Object.fromEntries(Object.entries(t).map(([q, v]) => [q, Math.round(v)]))])),
       counters: Object.fromEntries(COUNTERS.filter((k) => run[k]).map((k) => [k, run[k]])),
     };
     try {

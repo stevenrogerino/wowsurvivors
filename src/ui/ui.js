@@ -625,8 +625,8 @@
       const run = WS.Game.run;
       if (!run) return null;
       const box = el('div', 'tip-body meter-tip hud-meter-tip');
-      for (const [title, table, tint, hits, raw] of parts(run)) {
-        const m = meterFor(title, table || {}, tint, hits, raw);
+      for (const [title, table, tint, hits, split] of parts(run)) {
+        const m = meterFor(title, table || {}, tint, hits, split);
         if (m) box.append(m);
       }
       if (!box.children.length) box.append(el('div', 'tip-desc', empty));
@@ -634,7 +634,7 @@
     };
     const meterTip = { prefer: ['left', 'below'], delay: 60, live: 1000, focus: false };
     tipOn(dpsV.parentNode, hudMeter((run) => [['Damage meter', run.landedByWeapon || run.damageByWeapon, WS.CONST.COLORS.arc,
-      run.hitsBySource, run.landedByWeapon ? run.damageByWeapon : null]], 'Nothing has fallen to you yet.'), meterTip);
+      run.hitsBySource, run.partsBySource || {}]], 'Nothing has fallen to you yet.'), meterTip);
     tipOn(hpsV.parentNode, hudMeter((run) => [['Healing meter', run.healingBySource, WS.CONST.COLORS.heal],
       ['Overhealing', run.overhealBySource, WS.CONST.COLORS.shadow]], 'Nothing has mended you yet.'), meterTip);
 
@@ -3757,7 +3757,41 @@
       || (WS.Blessings[key] && WS.Blessings[key].name);
     return named || key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
   };
-  const meterFor = (title, table, tint, hits, raw) => {
+  /* The parts of a source the hover breaks it into (Enemy.tag): '_' names
+     the blows no part was tagged on. */
+  const PARTS = {
+    wolves: { _: 'Lone bites', pack: 'Pack bites (packmates on it)', maul: 'Pounce mauls' },
+    ghouls: { _: 'Rakes', burst: 'Breakout bursts' },
+    waystones: { _: 'Ember stone searing', erupt: 'Ember eruptions' },
+  };
+  // Dread Command and everything it drives, added up on any of their rows.
+  const HOST = ['dread_command', 'wolves', 'ghouls', 'ghoul_rot'];
+  const pctOf = (v, of) => `${WS.round(v / (of || 1) * 1000) / 10}%`;
+  function partLines(key, value, table, parts, total) {
+    const lines = [];
+    const named = PARTS[key];
+    if (named) {
+      const own = (parts && parts[key]) || {};
+      let tagged = 0;
+      const rows = [];
+      for (const [k, v] of Object.entries(own)) { tagged += v; rows.push([named[k] || k, v]); }
+      rows.push([named._, WS.max(0, value - tagged)]);
+      for (const [n, v] of rows.filter((r) => r[1] >= 1).sort((a, b) => b[1] - a[1])) {
+        lines.push(`${n}: ${WS.formatNumber(WS.round(v))} (${pctOf(v, value)})`);
+      }
+    }
+    if (HOST.includes(key) && table.dread_command !== undefined) {
+      const held = HOST.filter((k) => table[k] > 0);
+      if (held.length > 1) {
+        const all = held.reduce((a, k) => a + table[k], 0);
+        if (lines.length) lines.push('');
+        lines.push(`The whole host: ${WS.formatNumber(WS.round(all))}, ${pctOf(all, total)} of the meter`);
+        for (const k of held) lines.push(`  ${sourceName(k)}: ${pctOf(table[k], all)}`);
+      }
+    }
+    return lines;
+  }
+  const meterFor = (title, table, tint, hits, parts) => {
     const entries = Object.entries(table).filter((e) => e[1] > 0).sort((a, b) => b[1] - a[1]);
     if (!entries.length) return null;
     const meter = el('div');
@@ -3801,11 +3835,11 @@
       const n = hits && hits[key];
       const src = SOURCE_ART[key] || (WS.Upgrades[key] && WS.Upgrades[key].art)
         || (WS.Blessings[key] && WS.Blessings[key].art);
-      // The hover says how much more the blows carried than they took.
-      const over = raw && raw[key] > value * 1.005 ? raw[key] - value : 0;
+      /* The hover breaks a source into its parts (a wolf's pack bites and
+         mauls, the whole Dread host); overkill has its own meter now. */
       const tip = [n ? `${WS.formatNumber(n)} hits, ${WS.formatNumber(WS.round(value / n))} each` : null,
-        over ? `${WS.formatNumber(over)} more was overkill, past what the targets had left` : null,
-        key === 'ghoul_rot' ? 'What the ghouls\u2019 rot added to every other blow' : null].filter(Boolean).join('\n');
+        key === 'ghoul_rot' ? 'What the ghouls\u2019 rot added to every other blow' : null,
+        ...(parts ? partLines(key, value, table, parts, total) : [])].filter((x) => x !== null).join('\n').trim();
       row(sourceName(key), value, w ? (WS.CONST.COLORS[w.school] || WS.CONST.COLORS.arc) : tint,
         tip || null, w ? w.art : src);
     }
@@ -3994,11 +4028,11 @@
        now damage, overkill, healing and overhealing stack in that order, each
        with its total on a header that folds it away (Save.db.meterFold, so a
        fold is remembered). Damage is what landed, not what was swung: a blow
-       past a creature's last point of health took nothing more; its hover
-       keeps the overkill per weapon. */
+       past a creature's last point of health took nothing more (that is the
+       overkill meter); a row's hover breaks the source into its parts. */
     const fold = WS.Save.db.meterFold || (WS.Save.db.meterFold = {});
-    const foldable = (key, title, table, tint, hits, raw, note) => {
-      const m = meterFor(title, table, tint, hits, raw);
+    const foldable = (key, title, table, tint, hits, split, note) => {
+      const m = meterFor(title, table, tint, hits, split);
       if (!m) return false;
       const head = m.querySelector('h3');
       const btn = el('button', 'meter-fold');
@@ -4022,7 +4056,7 @@
       return true;
     };
     let any = foldable('damage', 'Damage', run.landedByWeapon || run.damageByWeapon, WS.CONST.COLORS.arc, run.hitsBySource,
-      run.landedByWeapon ? run.damageByWeapon : null);
+      run.partsBySource || {});
     any = foldable('overkill', 'Overkill', overkillOf(run), WS.CONST.COLORS.shadow, null, null,
       'Damage past what the creatures had left. Not counted on the damage meter.') || any;
     any = foldable('healing', 'Healing', run.healingBySource, WS.CONST.COLORS.heal) || any;

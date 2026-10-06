@@ -59,14 +59,17 @@
       ghoulCdMult: 3.5,
       ghoulDmgMult: 1.45,
       // The pack: one-mouth bites, harder for every packmate on the quarry.
-      wolfDmgMult: 3.0,
+      /* Measured (summon-test, three wolves beside volley:5): 3.0 and a
+         0.1 maul landed half a ghoul's damage in a horde at 10:00 and two
+         thirds at 20:00. 3.6 and 0.22: +24% and +18%, +31% on a boss. */
+      wolfDmgMult: 3.6,
       wolfCdMult: 0.85,
       packBonus: 0.5,
       packWindow: 1.2,
       packMax: 3,
       killRebite: 0.8,
       mauleRadius: 0.8,
-      maulDmg: 0.1,
+      maulDmg: 0.22,
       // The guard: a short leash, and what it rakes is slowed and rots.
       ghoulLeashMult: 0.55,
       ghoulSlow: 0.6,
@@ -152,7 +155,9 @@
   /** The burst: rot over a wide circle, and the ghoul goes down. */
   function burst(fam, player, t, damage) {
     const r = t.ghoulBurstRadius * player.areaMultiplier;
+    WS.Enemy.tag(fam.spec.source, 'burst');
     WS.Enemy.damageArea(fam.x, fam.y, r, damage * t.ghoulBurstMult, null, 20, fam.spec.source);
+    WS.Enemy.tag();
     const pool = WS.Enemy.pool;
     for (let i = 0; i < pool.count; i++) {
       const e = pool.active[i];
@@ -375,7 +380,9 @@
             q._packN = (q._packN || 0) + 1;
             q._packAt = now;
             const qx = q.x, qy = q.y;
+            if (mates) WS.Enemy.tag(spec.source, 'pack');
             WS.Enemy.hit(q, damage * (1 + t.packBonus * mates), spec.source);
+            WS.Enemy.tag(spec.source, 'maul');
             /* ...and the pounce mauls what is packed around it, lighter. A
                bite that could only ever touch one creature measured a tenth
                of a ghoul's damage in a horde: the wolves spent their time
@@ -383,6 +390,7 @@
             const skip = new Map([[q, q.spawnId]]);
             WS.Enemy.damageArea(qx, qy, t.biteRadius * t.mauleRadius * player.areaMultiplier,
               damage * t.maulDmg, skip, null, spec.source);
+            WS.Enemy.tag();
             // (the bite itself is drawn by the renderer; this is the pack's weight)
             if (mates) WS.FX.flash(qx, qy, 10 + 5 * mates, spec.tint, 0.15);
             // A kill does not stop a wolf: it is on the next one at once.

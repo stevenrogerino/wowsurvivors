@@ -336,7 +336,7 @@
   /* ------------------------------------------------------------ waystones -- */
   const STONE_NAME = { searing: 'ember', healing: 'spring', windfury: 'gale' };
   K.totemReach = (p) => C().totemRadius * p.areaMultiplier * (1 + p.totemReach + C().deepRootsReach * p.deepRoots);
-  K.totemLife = (p) => C().totemLife + C().deepRootsLife * p.deepRoots;
+  K.totemLife = (p) => (C().totemLife + C().deepRootsLife * p.deepRoots) * (p.durationMult || 1);
   function plant(p, kind) {
     // One of each at most (two with Deep Roots): a new one replaces the oldest.
     const keep = p.deepRoots >= C().deepRootsPair ? 2 : 1;
@@ -351,7 +351,9 @@
     // The ember stone comes up out of the ground in a gout of fire.
     if (kind === 'searing') {
       const cfg = C();
+      WS.Enemy.tag('waystones', 'erupt');
       WS.Enemy.damageArea(t.x, t.y, K.totemReach(p), strike(p, cfg.emberEruptBase, cfg.emberEruptPerLevel), null, 22, 'waystones');
+      WS.Enemy.tag();
       WS.FX.flash(t.x, t.y, K.totemReach(p), TOTEM_COL.searing, 0.35, 10, 'fire');
       WS.FX.shake(3, 0.15);
     }
@@ -510,7 +512,8 @@
         let x = p.x + WS.cos(a) * d, y = p.y + WS.sin(a) * d;
         const dx = x - t.x, dy = y - t.y, dd = Math.hypot(dx, dy);
         if (dd > r * 0.9) { x = t.x + dx / dd * r * 0.9; y = t.y + dy / dd * r * 0.9; }
-        p.pools.push({ x, y, life: cfg.springPoolLife, max: cfg.springPoolLife });
+        const life = cfg.springPoolLife * (p.durationMult || 1);
+        p.pools.push({ x, y, life, max: life });
       }
       let inPool = false;
       const pr = cfg.springPoolRadius * p.areaMultiplier;

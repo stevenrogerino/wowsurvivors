@@ -647,8 +647,21 @@
     if (rot) L.ghoul_rot = (L.ghoul_rot || 0) + landed * rot;
     const hits = run.hitsBySource || (run.hitsBySource = {});   // absent from a run saved before it existed
     hits[key] = (hits[key] || 0) + 1;
+    /* A source with parts (a wolf's pack bite and its maul, a ghoul's burst,
+       an ember stone's eruption) names the part it is dealing (Enemy.tag)
+       for the meter's hover. Untagged blows are the source's plain part. */
+    if (this.partOf === key && this.part) {
+      const P = run.partsBySource || (run.partsBySource = {});
+      const S = P[key] || (P[key] = {});
+      S[this.part] = (S[this.part] || 0) + landed * (1 - rot);
+    }
     if (e.health <= 0) this.kill(e, source);
   };
+
+  /** Names the part of `source` the next blows are (Enemy.damage); call
+   *  with no arguments when they are done. */
+  Enemy.part = null; Enemy.partOf = null;
+  Enemy.tag = function (source, part) { this.partOf = part ? source : null; this.part = part || null; };
 
   /** Returns how many it hit, so a caller can proc on a STRIKE rather than
    *  having to infer one from the pool count changing - which only ever told

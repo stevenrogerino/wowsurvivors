@@ -151,6 +151,7 @@
       name: 'Waystones', art: 'totem', quality: 'legendary',
       description: 'Three stones, each built by how you fight: the Ember by damage dealt close, the Spring by healing, the Gale by ground covered. Full, it rises where you stand.',
       detail: 'Each stands {Config.totemLife}s; a new one of a kind replaces the old\n'
+        + 'Their reach and the pools grow with Area; they and the pools stand longer with Duration\n'
         + 'Ember: erupts as it rises, then burns everything near it\n'
         + 'Spring: rains pools near you; standing in one mends {Config.springPoolHeal%}% health a second\n'
         + 'Gale: weapons {Config.totemHaste~%}% faster while you are near\n'

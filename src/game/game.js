@@ -60,7 +60,7 @@
          could not tell whether you were feeding it or wasting it. */
       overhealDone: 0,
       damageByWeapon: {},
-      landedByWeapon: {},
+      landedByWeapon: {}, partsBySource: {},
       hitsBySource: {},
       healingBySource: {},
       overhealBySource: {},
