@@ -20,7 +20,7 @@
 const { chromium } = require('playwright');
 const path = require('path');
 
-const EXPECTED_GLYPHS = 81;
+const EXPECTED_GLYPHS = 82;   // 82nd: totem, the Waystones and Deep Roots (the callings)
 const FIELD = 50;   // half-extent of the 100-unit field: beyond this is clipped
 
 (async () => {

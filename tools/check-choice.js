@@ -69,11 +69,22 @@ const note = [];
   await page.waitForTimeout(500);
   const settle = await page.evaluate(async () => {
     const t = [];
+    /* A run opens with a headstart of levels, and half a second in its cards
+       are already up with more owed - openLevelUp below is then a no-op and
+       no slow-down is ever seen. Clear it first, as the auto-take test does. */
+    WS.UI.closeOverlay();
+    WS.Game.state = 'playing'; WS.Game.leveling = false; WS.Game.settle = 0;
+    WS.Game.timeScale = 1; WS.Game._dealt = null;
+    await new Promise((r) => requestAnimationFrame(r));
     WS.Game.pendingLevelUps = 1;
     WS.Game.openLevelUp();
+    /* Stepped here at 60 frames a second of game time, in one task so the
+       page's own loop cannot step it too. Sampling real frames measured the
+       machine: a headless page drawing in software takes ~100ms a frame, so
+       the 160ms settle showed as one frame and failed a slow-down that works. */
     for (let i = 0; i < 30; i++) {
-      await new Promise((r) => requestAnimationFrame(r));
-      t.push({ s: WS.Game.state, ts: WS.Game.timeScale, at: performance.now() });
+      WS.Game.update(1 / 60);
+      t.push({ s: WS.Game.state, ts: WS.Game.timeScale, at: i * 1000 / 60 });
       if (WS.Game.state === 'levelup' && i > 2) break;
     }
     return t;
@@ -520,7 +531,12 @@ const note = [];
       // Off the cards, so none of them is lifted by a hover when measured.
       await page.mouse.move(4, 4);
       await page.waitForTimeout(700);
-      const boxes = () => page.evaluate(() => {
+      /* Positions where the cards REST: on a busy machine 700ms could end
+         mid deal-in (a card read at y 260 that comes to rest at 249). */
+      const boxes = () => page.evaluate(async () => {
+        await Promise.all(document.getAnimations()
+          .filter((a) => a.effect && a.effect.getTiming().iterations !== Infinity)
+          .map((a) => a.finished.catch(() => {})));
         const r = (n) => { const b = n.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.top)]; };
         const t = document.querySelector('#overlay .bt-toggle');
         return { cards: [...document.querySelectorAll('#overlay .card')].map(r), toggle: t && r(t),

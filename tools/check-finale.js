@@ -141,6 +141,14 @@ const fail = [];
           G.update(1 / 60);
           if (p.health < hp) f.taken += hp - p.health;
           p.health = p.maxHealth;
+          /* Standing in the MIDDLE of it, as the header says. Nothing here
+             steers, but the third blessing can be Stillwater Step, which
+             dashes away from the nearest creature on every blow it takes:
+             on the Pale Wastes the drill's ghouls walked this survivor into
+             the right-hand wall, 550px from a drill that does not move, and
+             half the damage went into ghouls (the drill alone ran 248s, the
+             fight 470s). A player walks back; this one is put back. */
+          if (F.stage === 'fight') { p.x = WS.CONST.WORLD_WIDTH / 2; p.y = WS.CONST.WORLD_HEIGHT / 2; }
           if (f.stages[f.stages.length - 1] !== F.stage) {
             f.stages.push(F.stage);
             if (F.stage === 'fight') f.fightStart = G.run.time;

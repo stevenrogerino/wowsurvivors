@@ -211,7 +211,14 @@ function setup(WS, id, opts) {
     }
   }
   if (born5.ruinborn <= 0) fail.push('the Ruinous Pact did not make the Ruinseeker ruinborn');
-  if (!(born5.uptime - pact5.uptime > 0.03)) {
+  /* At least a point ahead. This was three, from when the ruinborn's rest was
+     2.5s against 4.5s (83.9% against 74.3% at most). The Pact balance pass
+     (db4f2f8) cut the edge on purpose, to a rest a fifth shorter (4.4s
+     against 5.5s, 74.7% against 70.3% at most), because the Pact plus that
+     edge was the strongest signature in the draft; measured in this siege it
+     lands about two points ahead. The rule is that the class is ahead, not by
+     how much a retired tuning put it. */
+  if (!(born5.uptime - pact5.uptime > 0.01)) {
     fail.push(`the ruinborn edge at max Ruin Hunger is ${((born5.uptime - pact5.uptime) * 100).toFixed(1)} `
       + 'points - the class it belongs to has to be ahead');
   }

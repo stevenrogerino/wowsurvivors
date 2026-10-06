@@ -37,6 +37,15 @@ const GAME = 'file://' + path.resolve(__dirname, '..', 'index.html');
 
   /* Park the pointer near the bottom of `sel` (the n-th match) and watch. */
   async function probe(name, sel, n) {
+    /* Measure where the tile RESTS. Screens slide and deal in, and on a busy
+       machine the fixed waits below could land mid-animation: the box was
+       read while the menu was still moving, the pointer was parked where the
+       tile had not arrived, and it read as "hovered on 0 of 40 frames" - not a
+       flicker (that is 40 of 40 off, steadily), just a pointer in the wrong
+       place. Every running animation is let finish first. */
+    await page.evaluate(() => Promise.all(document.getAnimations()
+      .filter((a) => a.effect && a.effect.getTiming().iterations !== Infinity)
+      .map((a) => a.finished.catch(() => {}))));
     const box = await page.evaluate(([sel, n]) => {
       const el = document.querySelectorAll(sel)[n || 0];
       if (!el) return null;
