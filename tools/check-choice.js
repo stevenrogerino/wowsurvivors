@@ -111,12 +111,20 @@ const note = [];
 
   /* --------------------------------------------------------------- lift -- */
   await page.waitForTimeout(300);
+  /* From where the cards REST. Stepping the settle in game time (above) gets
+     here quickly, and the 300ms could end with the cards still dealing in,
+     so the "before" was read mid-rise and the lift measured short. */
+  const settled = () => page.evaluate(() => Promise.all(document.getAnimations()
+    .filter((a) => a.effect && a.effect.getTiming().iterations !== Infinity)
+    .map((a) => a.finished.catch(() => {}))));
+  await settled();
   const first = await page.$('.card');
   if (!first) { fail.push('lift: no cards on screen'); }
   else {
     const before = await first.boundingBox();
     await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
     await page.waitForTimeout(350);
+    await settled();
     const after = await (await page.$('.card')).boundingBox();
     const dy = after.y - before.y;
     if (dy > -2) {
@@ -237,25 +245,30 @@ const note = [];
   if (frame.committing) fail.push('frame: the re-dealt cards are still wearing the dimmed state');
 
   /* --------------------------------------------------------------- exit -- */
+  /* Timed by the overlay's own class changes, not counted in 20ms samples:
+     on a page drawing ~100ms frames in software the samples bunch up, and a
+     fade that ran its full length could be caught on its way out by one. */
   const exit = await page.evaluate(async () => {
     const o = document.getElementById('overlay');
-    const seen = [];
+    let leftAt = null, goneAt = null;
+    const mo = new MutationObserver(() => {
+      const t = performance.now();
+      if (leftAt === null && o.classList.contains('leaving')) leftAt = t;
+      if (goneAt === null && o.classList.contains('hidden')) goneAt = t;
+    });
+    mo.observe(o, { attributes: true, attributeFilter: ['class'] });
     document.querySelector('.card').click();
-    for (let i = 0; i < 26; i++) {
-      await new Promise((r) => setTimeout(r, 20));
-      seen.push(o.classList.contains('hidden') ? 'gone'
-        : (o.classList.contains('leaving') ? 'leaving' : 'up'));
-    }
-    return seen;
+    for (let i = 0; i < 40 && goneAt === null; i++) await new Promise((r) => setTimeout(r, 25));
+    mo.disconnect();
+    return { fade: leftAt !== null && goneAt !== null ? goneAt - leftAt : null, gone: goneAt !== null };
   });
-  const leaving = exit.filter((v) => v === 'leaving').length;
-  if (leaving < 3) {
-    fail.push(`exit: the overlay is cut rather than faded - ${leaving} sample(s) of 20ms`
-      + ' caught it on its way out');
+  if (!exit.gone) fail.push('exit: the overlay never finished leaving');
+  else if (exit.fade === null || exit.fade < 60) {
+    fail.push(`exit: the overlay is cut rather than faded - it was on its way out for `
+      + `${exit.fade === null ? 0 : exit.fade.toFixed(0)}ms`);
   } else {
-    note.push(`the overlay fades out over ~${leaving * 20}ms instead of vanishing in a frame`);
+    note.push(`the overlay fades out over ${exit.fade.toFixed(0)}ms instead of vanishing in a frame`);
   }
-  if (exit[exit.length - 1] !== 'gone') fail.push('exit: the overlay never finished leaving');
 
   await page.waitForTimeout(200);
   const back = await page.evaluate(() => ({
