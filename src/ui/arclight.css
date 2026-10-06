@@ -502,13 +502,19 @@ html, body {
    crisp cross at every size. */
 /* Evolution ready: a gold seal on the plate's bottom-left, an up-chevron. */
 .card .card-evolve {
-  position: absolute; left: -9px; bottom: -9px; z-index: 2;
+  position: absolute; left: -9px; top: -9px; z-index: 2;
   width: 22px; height: 22px; border-radius: 50%;
   display: grid; place-items: center;
   font: 700 11px/1 var(--ui); color: #2a1a04;
   background: radial-gradient(circle at 35% 30%, #ffe7a3, #e2a93c 65%, #9a6a1c);
   box-shadow: 0 0 0 1.5px rgba(14,10,4,.9), 0 0 10px rgba(245,197,107,.6);
   pointer-events: auto;
+}
+.card .card-evolve.needed {
+  top: auto; bottom: -9px;
+  font: 800 13px/1 var(--ui); color: #fff3ef;
+  background: radial-gradient(circle at 35% 30%, #ff9a86, #d8402c 65%, #84180e);
+  box-shadow: 0 0 0 1.5px rgba(14,6,4,.9), 0 0 10px rgba(232,80,56,.6);
 }
 .card .card-heal {
   position: absolute; right: -9px; bottom: -9px; z-index: 2;
@@ -2847,6 +2853,7 @@ body.hud-rail #hud-passives { gap: 9px; }
 .card .card-body { font-family: var(--voice); font-size: 17px; line-height: 1.4; color: #ddd3c1; font-variant-numeric: lining-nums; }
 .card .card-detail { font-family: var(--voice); font-style: italic; font-size: 14px; line-height: 1.4; color: var(--ink-dim); }
 .card .card-reacts .react { font-family: var(--voice); font-size: 14px; }
+.card .card-body .card-em { font-weight: 700; color: #f5c56b; }
 
 .manual-lede {
   border: 1px solid transparent; border-image: var(--frame-panel) 24 / 12px stretch;

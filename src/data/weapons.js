@@ -487,7 +487,9 @@
        9:00, 0.59x at 20:00 in a horde (their work is bosses and elites);
        ghouls 1.60x and 1.13x. Most of the growth is in the evolution. */
     commandDamage: 0.04, commandHaste: 0.02, evolvedCommandDamage: 2.5, evolvedCommandHaste: 0.3,
-    description: 'Marks the thick of the crowd with a sigil of shadow and sends every summon at it. Wolves and ghouls answer only to it, and every rank drives them harder.',
+    description: 'Unlocks Spirit Companion (wolves) and Grave Call (ghouls). Its sigil sends every summon at the thick of the crowd, and every rank drives them harder.',
+    // Set in bold on the card, first so it is never clamped: what taking it opens up.
+    keys: ['Unlocks Spirit Companion (wolves) and Grave Call (ghouls).'],
     evolveName: 'The Dread Host', evolvePairing: 'might',
     evolveDescription: 'The host is unleashed: summons strike three and a half times as hard and a third again as often, their next bite ready whenever the sigil falls, and it falls twice as often.',
   };

@@ -58,6 +58,53 @@ function decode(code) {
 }
 /** Every version of the record, read into one shape: positions as absolute
  *  8px cells every second (s.t, s.x, s.y) and the slower figures in s5. */
+/* Version 5 (runlog.js): card types as one letter, a pick as its place in
+   the hand, the build's changes as diffs, slices as \`f\` with dt and q
+   figures, meters as per-minute q rows against key lists. Read back into the
+   shape of version 4. */
+const TYPE = { s: 'stat', n: 'new_weapon', r: 'weapon_rank', e: 'evolve', u: 'union', g: 'gold', b: 'bread',
+  p: 'breaking_point', B: 'blessing' };
+const deq = (x) => (x ? Math.floor(x / 10) * 10 ** (x % 10) : 0);
+const untok = (t) => { t = String(t); const i = t.indexOf(':'); return i < 0 ? t : (TYPE[t.slice(0, i)] || t.slice(0, i)) + t.slice(i); };
+const unhand = (h) => String(h || '').split(',').filter(Boolean).map(untok).join(',');
+function fromV5(L) {
+  const kitOf = (s) => Object.fromEntries(String(s || '').split(',').filter(Boolean).map((x) => { const i = x.indexOf(':'); return i < 0 ? [x, '1'] : [x.slice(0, i), x.slice(i + 1)]; }));
+  const kitStr = (m) => Object.entries(m).filter(([, v]) => v !== '0').map(([k, v]) => k + ':' + v).join(',');
+  const cur = { w: {}, u: {}, d: {}, b: {} };
+  for (const e of L.ev) {
+    const k = e[1];
+    if (k === 'kit') { cur.w = kitOf(e[2]); cur.u = kitOf(e[3]); cur.b = kitOf(e[4]); }
+    else if (k === 'pick') {
+      const hand = unhand(e[3]);
+      e[3] = hand;
+      e[2] = typeof e[2] === 'number' ? hand.split(',')[e[2]] : untok(e[2]);
+      const [type, id] = String(e[2]).split(':');
+      if (type === 'stat') cur.u[id] = String((+cur.u[id] || 0) + 1);
+    } else if (k === 'boffer' || k === 'reroll') e[2] = unhand(e[2]);
+    else if (k === 'bpick' || k === 'banish') {
+      e[2] = untok(e[2]);
+      if (k === 'bpick') cur.b[String(e[2]).split(':')[1]] = '1';
+    } else if (k === 'kw' || k === 'ku' || k === 'kd' || k === 'kb') {
+      const part = k[1], m = cur[part];
+      for (const [id, v] of Object.entries(kitOf(e[2]))) { if (v === '0') delete m[id]; else m[id] = v; }
+      e[2] = part === 'd' || part === 'b' ? Object.keys(m).join(',') : kitStr(m);
+    }
+  }
+  const F = L.f || {}, t = [];
+  let at = 0;
+  for (const d of F.dt || []) t.push((at += d));
+  L.s5 = { t, hp: F.hp || [], field: F.field || [], near: F.near || [], dealt: (F.dealt || []).map(deq),
+    taken: (F.taken || []).map(deq), heal: (F.heal || []).map(deq), kills: F.kills || [], mv: F.mv || [], still: F.still || [] };
+  // Meters: per-minute rows back into running totals.
+  const run = [{}, {}, {}];
+  L.m = (L.m || []).map((row) => [row[0], ...[0, 1, 2].map((i) => {
+    (row[i + 1] || []).forEach((v, j) => { const key = L.mk[i][j]; run[i][key] = (run[i][key] || 0) + deq(v); });
+    return Object.assign({}, run[i]);
+  })]);
+  const E = L.end || {}, lastRow = L.m[L.m.length - 1];
+  if (lastRow && E.landed) { lastRow[1] = E.landed; lastRow[2] = E.heals || lastRow[2]; }
+  L.s = { t: [], x: [], y: [] };
+}
 function normalise(L) {
   /* Pickups counted by the minute (runlog.js TALLY) come back as events,
      spread across their minute, so every reader below sees one shape. */
@@ -69,7 +116,8 @@ function normalise(L) {
     }
     L.ev.sort((a, b) => a[0] - b[0]);
   }
-  if (L.v >= 2) {
+  if (L.v >= 5) fromV5(L);
+  else if (L.v >= 2) {
     let x = 0, y = 0;
     L.s.x = L.s.dx.map((d) => (x += d)); L.s.y = L.s.dy.map((d) => (y += d));
   } else {
@@ -159,7 +207,15 @@ function readOne(L) {
     const hits = L.ev.filter((e) => e[1] === 'hit');
     if (hits.length) say(`  ${hits.length} heavy blows: ` + hits.slice(-8).map((e) => `${mmss(e[0])} ${e[2]} ${e[3]} (left ${e[4]}%)`).join(' · '));
   }
-  if (n > 2) {
+  if (F.mv && F.mv.length) {
+    say('\nMOVEMENT');
+    const dist = 8 * F.mv.reduce((a, b) => a + b, 0), still = F.still.reduce((a, b) => a + b, 0);
+    const box = E.box || [0, 0, 0, 0];
+    say(`  walked ${fmt(dist)}px, ${Math.round(dist / Math.max(1, end))}px/s on average · still ${pct(still, end)} of the time · ranged over ${fmt(box[2] - box[0])} x ${fmt(box[3] - box[1])}px`);
+    const near = F.near.reduce((a, b) => a + b, 0) / nf;
+    const crowd = F.near.filter((v) => v >= 30).length;
+    say(`  ${near.toFixed(0)} creatures within 320px on average · in a crowd of 30+ for ${pct(crowd, nf)} of the night · field peaked at ${Math.max(...F.field)}`);
+  } else if (n > 2) {
     say('\nMOVEMENT');
     let dist = 0, still = 0;
     for (let i = 1; i < n; i++) {

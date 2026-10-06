@@ -1426,13 +1426,20 @@
       plus.title = 'Heals you';
       plate.append(plus);
     }
-    /* A gold seal on the other corner: you already hold this weapon's
-       evolution passive, so rank 8 is an evolution, not the end of it. */
+    /* Evolutions, on the left. A gold seal top left: you already hold this
+       weapon's evolution passive, so rank 8 is an evolution, not the end of
+       it. A red mark bottom left on a passive: a weapon you carry needs it
+       to evolve and you have none of it yet (one rank is all it takes, so
+       the mark goes once you have it). */
     if (choice.evolveReady) {
       const seal = el('span', 'card-evolve', '\u25B2');
       seal.dataset.tip = `Evolution ready: you hold ${choice.evolveReady.with}, so at rank ${WS.WEAPON_MAX_LEVEL} this becomes ${choice.evolveReady.into}.`;
       plate.append(seal);
       card.classList.add('evolve-ready');
+    } else if (choice.evolveNeeded) {
+      const seal = el('span', 'card-evolve needed', '!');
+      seal.dataset.tip = `Needed to evolve: your ${choice.evolveNeeded.weapon} becomes ${choice.evolveNeeded.into} at rank ${WS.WEAPON_MAX_LEVEL} once you hold ${choice.name}.`;
+      plate.append(seal);
     }
     card.append(plate);
 
@@ -1506,7 +1513,23 @@
     }
     if (choice.type === 'evolve' || choice.type === 'union') card.classList.add('crowning');
 
-    card.append(el('div', 'card-body', choice.description || ''));
+    /* The body, with a weapon's key phrases (weapons.js keys) in bold: what
+       taking it unlocks should not read like the rest of the sentence. */
+    {
+      const body = el('div', 'card-body');
+      const text = choice.description || '';
+      const wd = (choice.type === 'new_weapon' || choice.type === 'weapon_rank') && WS.Weapons[choice.id];
+      const keys = (wd && wd.keys) || [];
+      let at = 0;
+      for (const k of keys) {
+        const i = text.indexOf(k, at);
+        if (i < 0) continue;
+        body.append(document.createTextNode(text.slice(at, i)), el('strong', 'card-em', k));
+        at = i + k.length;
+      }
+      body.append(document.createTextNode(text.slice(at)));
+      card.append(body);
+    }
 
     /* What this will react with. See LevelUp.reactionsFor - the whole game is
        built on things combining and the card used to say none of it. Two on

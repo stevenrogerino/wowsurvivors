@@ -51,6 +51,19 @@ the end was the ordinary horde.
   - Dread Command and its summons: the whole host's total
 
   Overkill has its own meter. Run codes carry these parts too (`end.parts`).
+- **Run codes, version 5** (`src/game/runlog.js`, read by `tools/run-code.js`):
+  a 32-minute night at level 140 went from 21k to 7.3k characters. The
+  survivor's path is gone; per 15 s slice, the code keeps distance walked
+  and seconds stood still, plus the ground covered. Big figures are kept to
+  two significant digits. A pick is stored as its place in the hand.
+  Passive changes are recorded only when no card explains them. Meters are
+  written once a minute as that minute's amounts, with the exact totals at
+  the end. Every pickup and drop is counted per minute. Older codes still
+  read.
+- **Cards:** the gold evolution seal moves to the top left. A red **!** at
+  the bottom left marks a passive that a weapon you carry needs to evolve,
+  while you hold none of it. Dread Command's card opens with
+  "**Unlocks Spirit Companion (wolves) and Grave Call (ghouls).**" in bold.
 
 ## 2026-10-05 (night): A weapon tuning pass that leaves the starting classes whole
 

@@ -304,6 +304,9 @@
           rank: rank + 1, maxRank: up.max,
           note: `Rank ${rank + 1} of ${up.max}`,
           stats: passiveStats(p, id, rank),
+          // Not yet held, and a weapon you carry needs it to evolve.
+          evolveNeeded: rank === 0 ? (p.weapons.filter((w) => !w.evolved && w.data.evolvePairing === id)
+            .map((w) => ({ weapon: w.data.name, into: w.data.evolveName }))[0] || null) : null,
           reacts: (() => {
             /* A stat that only some weapons read says up front whether it
                reads any of yours - see src/data/scaling.js. */
