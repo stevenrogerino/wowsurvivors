@@ -51,6 +51,11 @@ Polish only; no number in a fight changes.
   - The level-up cards (15 ms) and the pause sheet (25 ms, on a slow
     headless machine) are the heaviest. Both build while the world is
     already stopped.
+- **check-perf:** the 25:00 horde scenes go over the simulation budget on
+  this machine, both before this pass (p95 4.9-6.4 ms, p99 8.3-14.3 ms)
+  and after it (p95 4.9-5.9 ms, p99 8.7-15.4 ms). The two overlap within
+  noise, so the overrun was already there. Finales pass. It is open: the
+  horde's simulation cost at 300 creatures needs its own look.
 
 ## 2026-10-06 (later): Game speed, and a graphics sweep
 
