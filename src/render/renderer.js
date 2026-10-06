@@ -956,7 +956,8 @@
     // The punch leans the field in toward the survivor (FX.punch).
     const punch = WS.FX.punchNow ? WS.FX.punchNow() : 0;
     if (punch > 0 && game.player) {
-      const px = game.player.x, py = game.player.y;
+      const at = WS.FX.punchAt;
+      const px = at ? at.x : game.player.x, py = at ? at.y : game.player.y;
       ctx.translate(px, py); ctx.scale(1 + punch, 1 + punch); ctx.translate(-px, -py);
     }
 
@@ -1339,6 +1340,37 @@
       ctx.globalAlpha *= 0.35 + 0.65 * ease;
       ctx.translate(0, size * 0.3 * (1 - ease));
       ctx.scale(1, 0.25 + 0.75 * ease);
+    }
+    /* THE ACTION LAYER. One cached picture per creature can still act:
+       it lunges at you when its blow lands, kicks back when it looses a
+       shot, flinches away from you when struck, leans into its stride as it
+       walks, and a champion breathes while it waits. All of it transforms
+       of the one sprite, from clocks the simulation sets and never reads. */
+    if (!this.lite) {
+      const pl = WS.Game.player;
+      if (e.swing > 0) {
+        const k = 1 - e.swing / 0.24, out = WS.sin(k * Math.PI);
+        const reach = e.radius * (e.boss ? 0.35 : 0.55) * out;
+        ctx.translate((e.swingDx || 0) * reach, (e.swingDy || 0) * reach);
+        ctx.rotate((e.swingDx || 0) * 0.14 * out);
+      }
+      if (e.flinch > 0 && pl) {
+        const k = e.flinch / 0.18, ax = e.x - pl.x, ay = e.y - pl.y, d = Math.hypot(ax, ay) || 1;
+        const push = (e.boss ? 1.2 : 3.2) * k;
+        ctx.translate(ax / d * push, ay / d * push);
+        ctx.rotate((ax < 0 ? -1 : 1) * 0.09 * k * (e.boss ? 0.3 : 1));
+      }
+      if (e.recoil > 0) {
+        const k = e.recoil / 0.2;
+        ctx.scale(1 + 0.08 * k, 1 - 0.07 * k);
+      }
+      if (e.boss || e.elite) {
+        const br = 1 + 0.018 * WS.sin(time * 2.1 + (e.spawnId || 0));
+        ctx.scale(br, 2 - br);
+      } else if (!(e.swing > 0) && !t.stationary) {
+        // The waddle: a lean from foot to foot, on the step the bob already counts.
+        ctx.rotate(WS.sin(e.bob * 0.5) * 0.06);
+      }
     }
     // Bracing for a charge: the body compresses, then springs.
     if (e.windup > 0) {
@@ -1748,6 +1780,13 @@
       p.lean = (p.lean || 0) * 0.86;
     }
     if (p.lean) ctx.rotate(p.facing < 0 ? -p.lean : p.lean);
+    /* The cast: a short lunge into it, a lift and settle, so the shot comes
+       from someone and not from a point (Weapon.fire sets castT). */
+    if (p.castT > 0 && !pose) {
+      const k = WS.sin((1 - p.castT / 0.16) * Math.PI);
+      ctx.translate(2.2 * k, -1.2 * k);
+      ctx.scale(1 + 0.035 * k, 1 - 0.03 * k);
+    }
     /* A SHAPE IS DRAWN INSTEAD OF THE SURVIVOR, not over them: for as long as
        it holds they ARE a bear or an owlbear, bigger than they were, and only
        their colour stays - a fifth of it, mixed into the hide or the feathers.
@@ -3635,14 +3674,42 @@
     ctx.restore();
   };
 
+  /* A PILE IS NOT A HANDFUL. The call-out below was built on "there are
+     only ever a handful of these", and a long night breaks that: a hundred
+     chests waiting under a fight each wore a full halo and ring, and the
+     field became a field of loot. So past QUIET_KEEP of one kind, the
+     nearest QUIET_KEEP keep the whole call-out and the rest are told
+     quieter - still ringed, still there, no longer shouting over the horde. */
+  const QUIET_KEEP = 6;
+  const quietSet = new Set();
+  function quietPickups(pool, player) {
+    quietSet.clear();
+    if (!player || pool.count <= QUIET_KEEP) return;
+    const byKind = new Map();
+    for (let i = 0; i < pool.count; i++) {
+      const p = pool.active[i];
+      if (!(CALLOUT[p.kind] || p.type.noMagnet)) continue;
+      let list = byKind.get(p.kind);
+      if (!list) byKind.set(p.kind, list = []);
+      list.push(p);
+    }
+    for (const list of byKind.values()) {
+      if (list.length <= QUIET_KEEP) continue;
+      list.sort((a, b) => WS.dist2(a.x, a.y, player.x, player.y) - WS.dist2(b.x, b.y, player.x, player.y));
+      for (let i = QUIET_KEEP; i < list.length; i++) quietSet.add(list[i]);
+    }
+  }
+
   R.drawPickups = function (ctx, time) {
     const pool = WS.Pickup.pool;
+    quietPickups(pool, WS.Game.player);
     for (let i = 0; i < pool.count; i++) {
       const p = pool.active[i];
       const lift = WS.sin(p.bob) * 3;
       const size = p.type.size;
       const y = p.y + lift;
       const callout = CALLOUT[p.kind] || p.type.noMagnet;
+      const hush = quietSet.has(p) ? 0.35 : 1;
 
       /* The pad, first: a dark disc that takes the ground out from under the
        * item, so what follows is read against black rather than against
@@ -3672,7 +3739,7 @@
         ctx.globalCompositeOperation = 'lighter';
         const beat = 0.5 + 0.5 * WS.sin(time * 2.6 + p.bob);
         const halo = ctx.createRadialGradient(p.x, y, size * 0.2, p.x, y, size * (1.1 + beat * 0.3));
-        halo.addColorStop(0, WS.rgb(p.type.tint, 0.30 + beat * 0.16));
+        halo.addColorStop(0, WS.rgb(p.type.tint, (0.30 + beat * 0.16) * hush));
         halo.addColorStop(1, WS.rgb(p.type.tint, 0));
         ctx.fillStyle = halo;
         ctx.beginPath(); ctx.arc(p.x, y, size * (1.1 + beat * 0.3), 0, WS.TAU); ctx.fill();
@@ -3719,7 +3786,7 @@
         // The floor matters more than the swing: a ring that fades to a
         // quarter alpha has a moment every couple of seconds where the object
         // is barely outlined, and that is the moment the player looks.
-        ctx.globalAlpha = 0.72 + 0.2 * WS.sin(time * 2.6 + p.bob);
+        ctx.globalAlpha = (0.72 + 0.2 * WS.sin(time * 2.6 + p.bob)) * (hush < 1 ? 0.6 : 1);
         ctx.strokeStyle = WS.rgb(WS.mix(p.type.tint, [1, 1, 1], 0.45), 1);
         ctx.lineWidth = 1.6;
         ctx.beginPath(); ctx.arc(p.x, y, size * 0.72, 0, WS.TAU); ctx.stroke();

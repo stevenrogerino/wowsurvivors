@@ -3751,6 +3751,41 @@ body.touch #hud-transport .tp-bar { opacity: .7; }
 }
 #hud-timer .speed-badge.hidden { display: none; }
 
+/* ---- moments ------------------------------------------------------------ */
+/* The field comes up out of the dark as a run begins (UI.veil). */
+.scene-veil { position: fixed; inset: 0; z-index: 500; background: #050608; pointer-events: none;
+  animation: scene-veil 750ms cubic-bezier(.4,0,.2,1) forwards; }
+@keyframes scene-veil { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+/* Cinema bars for an entrance (UI.cinema). Over the field, under the HUD's own text. */
+#hud::before, #hud::after {
+  content: ''; position: absolute; left: 0; right: 0; height: 9vh; z-index: -1; pointer-events: none;
+  background: #040406; transform: scaleY(0); transition: transform .45s cubic-bezier(.2,.8,.2,1);
+}
+#hud::before { top: 0; transform-origin: top; }
+#hud::after { bottom: 0; transform-origin: bottom; }
+#hud.cinema::before, #hud.cinema::after { transform: scaleY(1); }
+
+/* Where the night is (UI.locationCard): low on the left, in, held, out. */
+.loc-card {
+  position: absolute; left: 6vw; bottom: 22vh; pointer-events: none;
+  animation: loc-card 5s cubic-bezier(.2,.7,.2,1) forwards;
+  text-shadow: 0 2px 12px rgba(0,0,0,.9);
+}
+.loc-card .lc-rule { width: 64px; height: 2px; margin-bottom: 10px;
+  background: linear-gradient(90deg, var(--arc), rgba(245,197,107,0)); }
+.loc-card .lc-name { font-family: var(--voice); font-weight: 800; font-size: clamp(30px, 3.4vw, 52px);
+  color: var(--arc-hot); letter-spacing: .01em; line-height: 1; }
+.loc-card .lc-sub { font-family: var(--voice); font-style: italic; font-size: clamp(15px, 1.35vw, 20px); color: #ddd3c1; margin-top: 6px; }
+.loc-card .lc-meta { font-family: var(--fig); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-dim); margin-top: 10px; }
+@keyframes loc-card {
+  0% { opacity: 0; transform: translateX(-24px); }
+  12% { opacity: 1; transform: none; }
+  78% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateX(10px); }
+}
+@media (prefers-reduced-motion: reduce) { .loc-card { animation-duration: .01s; animation-delay: 4s; } }
+
 </style>
 <div id="stage">
     <canvas id="game-canvas"></canvas>
@@ -14636,6 +14671,28 @@ window.WS = window.WS || {};
     og.drawImage(ring, 0, 0);
     og.globalAlpha = 1;
     og.drawImage(src, 0, 0);
+
+    /* A RIM OF MOONLIGHT on the upper left, the side everything is lit from.
+       A dark line alone separates a creature from the ground only where the
+       ground is light; on a dark field a horde of dark animals was a mass.
+       The edge band is the shape minus itself nudged down-right, so it is
+       exactly as wide as the nudge and only on the lit side. Screened, so it
+       brightens what is there instead of painting over it. Baked once per
+       sprite, like the outline: nothing at draw time. */
+    const R = 3;                            // device pixels: 1.5 at world scale
+    const rim = make(res, res);
+    const rr = rim.getContext('2d');
+    rr.drawImage(mask, 0, 0);
+    rr.globalCompositeOperation = 'destination-out';
+    rr.drawImage(mask, R, R * 1.2);
+    rr.globalCompositeOperation = 'source-in';
+    rr.fillStyle = 'rgb(205,222,255)';
+    rr.fillRect(0, 0, res, res);
+    og.globalCompositeOperation = 'screen';
+    og.globalAlpha = 0.42;
+    og.drawImage(rim, 0, 0);
+    og.globalAlpha = 1;
+    og.globalCompositeOperation = 'source-over';
     return out;
   }
 
@@ -23803,7 +23860,7 @@ window.WS = window.WS || {};
   const CHATTER_DUCK = 0.45;
 
   /** What the output stage gives back after the glue (see init). */
-  const MAKEUP = 1.4;
+  const MAKEUP = 1.95;                 // was 1.4: the mastering EQ (below) took the rumble out, this gives the level back
 
   /** Created on the first user gesture - browsers block audio before that. */
   Audio.init = function () {
@@ -23837,8 +23894,32 @@ window.WS = window.WS || {};
     this.limiter.ratio.value = 20;
     this.limiter.attack.value = 0.001;
     this.limiter.release.value = 0.12;
+    /* THE MASTERING EQ, between the glue and the limiter. Measured off
+       rendered nights (tools/audio-render.js), the mix was two thirds sub and
+       low end - 11% sub, 56% low, under 10% mid and 2% above it - which is
+       what "muddy" and "far away" are in numbers. So: rumble under 35Hz goes
+       (nothing in the game lives there, and it eats the limiter's headroom),
+       the boxy low-mids come down a little, and presence and air come up,
+       the way a mix is finished. Shelves and a bell, all gentle. */
+    const eq = (type, f, gain, q) => {
+      const b = this.ctx.createBiquadFilter();
+      b.type = type; b.frequency.value = f;
+      if (gain !== undefined) b.gain.value = gain;
+      if (q !== undefined) b.Q.value = q;
+      return b;
+    };
+    this.eqRumble = eq('highpass', 35, undefined, 0.7);
+    this.eqLow = eq('lowshelf', 150, -2.0);
+    this.eqMud = eq('peaking', 260, -2.5, 0.9);
+    this.eqPresence = eq('peaking', 2600, 2.0, 0.8);
+    this.eqAir = eq('highshelf', 7000, 3.0);
     this.master.connect(this.makeup);
-    this.makeup.connect(this.limiter);
+    this.makeup.connect(this.eqRumble);
+    this.eqRumble.connect(this.eqLow);
+    this.eqLow.connect(this.eqMud);
+    this.eqMud.connect(this.eqPresence);
+    this.eqPresence.connect(this.eqAir);
+    this.eqAir.connect(this.limiter);
     this.limiter.connect(this.ctx.destination);
 
     this.sfxGain = this.ctx.createGain();
@@ -23900,7 +23981,15 @@ window.WS = window.WS || {};
     };
     this.sfxRoom = room(this.sfxGain, 0.9);
     this.musicRoom = room(this.musicGain, 0.8);
-    this.musicGain.connect(this.duck);
+    /* The score sat at 27% sub on its own: drones and bass pads stacked
+       under everything. A low shelf takes that back so the effects' weight
+       has room, and the score keeps its warmth above it. */
+    this.musicShelf = this.ctx.createBiquadFilter();
+    this.musicShelf.type = 'lowshelf';
+    this.musicShelf.frequency.value = 110;
+    this.musicShelf.gain.value = -4;
+    this.musicGain.connect(this.musicShelf);
+    this.musicShelf.connect(this.duck);
     /* Peril: the score goes under water as the survivor nears death. A
        low-pass after the duck, wide open (no effect at all) until
        setPeril asks for it. */
@@ -26692,6 +26781,16 @@ window.WS = window.WS || {};
    * number gets back when it does. */
   const MERGE_X = 30, MERGE_Y = 22, MERGE_KEEP = 0.72;
 
+  /** A damage figure as it is printed: whole below ten thousand, then
+   *  12.3k / 4.56M - shorter, and the size reads at a glance. */
+  function shortNum(v) {
+    v = WS.floor(v);
+    if (v < 10000) return String(v);
+    if (v < 1e6) return (v / 1000).toFixed(v < 1e5 ? 1 : 0) + 'k';
+    return (v / 1e6).toFixed(v < 1e7 ? 2 : 1) + 'M';
+  }
+  FX.shortNum = shortNum;
+
   FX.damage = function (x, y, amount, crit) {
     if (!WS.Save.settings.damageNumbers) return;
 
@@ -26712,12 +26811,17 @@ window.WS = window.WS || {};
      * pinning it there for ever. */
     const pool = FX.texts;
     const ty = y - 8;
+    /* The fuller the screen, the wider a number reaches to take a hit in:
+       past a third of the pool, neighbours fold together up to twice as
+       far, so a packed fight reads as a few sums instead of a carpet. */
+    const crowd = WS.clamp((pool.count / pool.cap - 0.33) / 0.4, 0, 1);
+    const mx = MERGE_X * (1 + crowd), my = MERGE_Y * (1 + crowd * 0.6);
     for (let i = 0; i < pool.count; i++) {
       const t = pool.active[i];
       if (t.kind !== 'dmg' || t.crit !== !!crit) continue;
-      if (WS.abs(t.x - x) > MERGE_X || WS.abs(t.y - ty) > MERGE_Y) continue;
+      if (WS.abs(t.x - x) > mx || WS.abs(t.y - ty) > my) continue;
       t.value += amount;
-      t.text = String(WS.floor(t.value));
+      t.text = shortNum(t.value);
       t.life = WS.max(t.life, t.maxLife * MERGE_KEEP);
       t.pop = crit ? 1 : 0.45;
       FX.bigHit = FX.bigHit * 0.995 + amount * 0.005;
@@ -26730,7 +26834,7 @@ window.WS = window.WS || {};
       if (amount < FX.bigHit) return;
     }
     FX.bigHit = FX.bigHit * 0.995 + amount * 0.005;
-    const t = push(x, ty, String(WS.floor(amount)),
+    const t = push(x, ty, shortNum(amount),
       crit ? '#ffd45c' : '#f2f4f8', crit ? 21 : 14, crit ? 0.85 : 0.6, -46,
       crit ? 1 : 0.35);
     if (t) { t.kind = 'dmg'; t.value = amount; t.crit = !!crit; }
@@ -26899,10 +27003,13 @@ window.WS = window.WS || {};
    * so a boss falling or a bomb going off lands as a moment rather than as
    * one more flash in a screen full of them. It answers to the same switch
    * as the shake: a player who asked for a still screen gets one. */
-  FX.punch = function (amount, duration) {
+  /* `fx, fy`: where the field leans in toward - a boss as it arrives. Left
+     out, it is the survivor, as it always was. */
+  FX.punch = function (amount, duration, fx, fy) {
     if (!WS.Save.settings.screenShake) return;
     if (amount >= this.punchAmt * (this.punchTime / (this.punchMax || 1))) {
       this.punchAmt = amount; this.punchTime = duration; this.punchMax = duration;
+      this.punchAt = fx === undefined ? null : { x: fx, y: fy };
     }
   };
   /** The zoom to draw at right now: up fast, back out slowly. */
@@ -26994,6 +27101,20 @@ window.WS = window.WS || {};
 
   WS.FX = FX;
 
+})(window.WS);
+
+/* A MOMENT: the beat a build changes shape. The world slows for a breath,
+   leans in on the survivor, and the change goes off in its own colour.
+   Used by an evolution and a union (LevelUp.apply). */
+(function (WS) {
+  WS.FX.moment = function (x, y, colour, big) {
+    const FX = WS.FX, c = colour || [1, 0.85, 0.5];
+    FX.punch(big ? 0.07 : 0.05, big ? 1.1 : 0.9);
+    if (WS.Game.slowmo) WS.Game.slowmo(big ? 0.25 : 0.35);
+    FX.flash(x, y, big ? 300 : 230, c, 0.75, 14);
+    FX.flash(x, y, big ? 140 : 110, [1, 1, 1], 0.35);
+    if (FX.screen) FX.screen(`rgba(${(c[0] * 255) | 0},${(c[1] * 255) | 0},${(c[2] * 255) | 0},.12)`, 0.45);
+  };
 })(window.WS);
 
 /* ===== src/game/projectile.js ===== */
@@ -27892,6 +28013,8 @@ window.WS = window.WS || {};
       if (!frozen && !e.hidden && e.contactCooldown <= 0 && distance < e.radius + player.radius) {
         e.contactCooldown = e.boss ? cfg.contactCooldownBoss : cfg.contactCooldownNormal;
         struck = true;
+        // The lunge (renderer): drawn only, never read by the simulation.
+        e.swing = 0.24; e.swingDx = dx; e.swingDy = dy;
         // Run down by a boss's charge: the blow it telegraphed (BossFight.hit).
         WS.Player.takeDamage(player, e.chargeTimer > 0 && e.chargeHit ? WS.max(e.damage, e.chargeHit) : e.damage, t.name);
         if (!WS.Game.running) return;
@@ -27901,6 +28024,7 @@ window.WS = window.WS || {};
         e.rangedTimer -= dt;
         if (e.rangedTimer <= 0 && distance <= t.ranged.range * cfg.rangedReach) {
           e.rangedTimer = t.ranged.cooldown;
+          e.recoil = 0.2;               // drawn only (renderer)
           const r = t.ranged;
           WS.Projectile.spawnHostile(e.x, e.y, dx * r.speed, dy * r.speed,
             e.damage * cfg.rangedDamagePct, r.school, t.name, e, r.slowFactor, r.slowDuration);
@@ -27918,6 +28042,10 @@ window.WS = window.WS || {};
       }
 
       if (e.flash > 0) e.flash -= dt;
+      // The action layer's clocks (lunge, recoil, flinch): drawn, never read here.
+      if (e.swing > 0) e.swing -= dt;
+      if (e.recoil > 0) e.recoil -= dt;
+      if (e.flinch > 0) e.flinch -= dt;
       if (e.invuln > 0) e.invuln -= dt;
       /* A lane still being aimed is owned by the windup above, which sets its
          life every frame; letting the clock here have a second go at it
@@ -28125,6 +28253,8 @@ window.WS = window.WS || {};
     if (e.hpFloor > 0 && e.health < e.hpFloor) e.health = e.hpFloor;
     e.flash = 0.09;
     e.flashCrit = isCrit;
+    // A flinch, harder for a crit; a boss only shrugs (renderer).
+    if (!(e.flinch > 0.05)) e.flinch = isCrit ? 0.18 : 0.12;
     const run = WS.Game.run;
     run.damageDone += amount;
     const key = source || 'untagged';
@@ -29375,6 +29505,8 @@ window.WS = window.WS || {};
     w._healPool = null;     // a new cast, a new purse (see fillSpec)
     const fired = handler(player, w);
     if (fired === false) return;
+    // The survivor puts themselves into it: a short cast lunge (renderer).
+    if (!(player.castT > 0.08)) player.castT = 0.16;
     // A muzzle flash in the weapon's own colour, so a six-weapon build reads
     // as six distinct instruments rather than one undifferentiated stream.
     const b = behaviorOf(w);
@@ -29691,6 +29823,7 @@ window.WS = window.WS || {};
     const moving = dx !== 0 || dy !== 0;
 
     if (p.hurtTimer > 0) p.hurtTimer -= dt;
+    if (p.castT > 0) p.castT -= dt;          // the cast lunge, drawn only
 
     let speed = p.moveSpeed * WS.Primal.moveMult(p) * WS.Moor.moveMult();
     if (p.slowTimer > 0) { p.slowTimer -= dt; speed *= p.slowFactor; }
@@ -32925,6 +33058,9 @@ window.WS = window.WS || {};
     if (t.yell && !cue) setTimeout(() => WS.Audio.babble(WS.Audio.voiceFor(id, t), t.yell), 650);
     WS.FX.shake(6, 0.5);
     WS.FX.screen('rgba(180,40,120,.14)', 0.4);
+    // Its entrance: the field leans toward it, and the frame closes in.
+    WS.FX.punch(0.045, 1.2, boss.x, boss.y);
+    if (WS.UI.cinema) WS.UI.cinema(2.2);
     return boss;
   };
 
@@ -33858,6 +33994,7 @@ window.WS = window.WS || {};
       WS.Save.db.unions[choice.id] = true;   // for the codex, which wants which
       WS.Audio.play('evolve');
       WS.FX.shake(6, 0.5);
+      if (WS.FX.moment) WS.FX.moment(p.x, p.y, w ? WS.Weapon.colour(w) : null, true);
       WS.Game.announce(choice.name + '!', 'Two weapons become one.', 3.0, { kind: 'glory' });
 
     } else if (choice.type === 'new_weapon') {
@@ -33876,6 +34013,7 @@ window.WS = window.WS || {};
         WS.Save.db.evolved[choice.id] = true;   // ditto
         WS.Audio.play('evolve');
         WS.FX.shake(5, 0.4);
+        if (WS.FX.moment) WS.FX.moment(p.x, p.y, WS.Weapon.colour(w), false);
         WS.Game.announce(w.data.evolveName + '!', 'Your weapon has grown into something else.', 3.0,
           { kind: 'glory' });
       }
@@ -37606,6 +37744,7 @@ window.WS = window.WS || {};
     if (WS.Audio.setAmbience) WS.Audio.setAmbience(null);
     this.run = newRun(mapId, characterId);
     this.speed = 1;                 // every night starts at normal speed
+    if (WS.UI.veil) WS.UI.veil(750); // the menu goes out, the field comes up out of the dark
     const run = this.run;
     const n = opts && opts.nightly;
     if (n) {
@@ -37707,8 +37846,10 @@ window.WS = window.WS || {};
       const run = this.run;
       const w = WS.Lore && WS.Lore.watchers && WS.Lore.watchers[run.characterId];
       const said = w && w.says ? `\u201c${w.says}\u201d` : 'Thirty minutes until dawn.';
-      this.announce(run.map.name, said, 3.6, { kind: 'plain' });
+      // Where you are is the card in the corner; the banner is who is standing there.
+      this.announce(this.player.character.name, said, 3.6, { kind: 'plain' });
     }
+    if (WS.UI.locationCard) WS.UI.locationCard(this.run);
   };
 
   /* GAME SPEED (the transport bar, UI.buildHUD). The night runs on the same
@@ -46508,7 +46649,8 @@ window.WS = window.WS || {};
     // The punch leans the field in toward the survivor (FX.punch).
     const punch = WS.FX.punchNow ? WS.FX.punchNow() : 0;
     if (punch > 0 && game.player) {
-      const px = game.player.x, py = game.player.y;
+      const at = WS.FX.punchAt;
+      const px = at ? at.x : game.player.x, py = at ? at.y : game.player.y;
       ctx.translate(px, py); ctx.scale(1 + punch, 1 + punch); ctx.translate(-px, -py);
     }
 
@@ -46891,6 +47033,37 @@ window.WS = window.WS || {};
       ctx.globalAlpha *= 0.35 + 0.65 * ease;
       ctx.translate(0, size * 0.3 * (1 - ease));
       ctx.scale(1, 0.25 + 0.75 * ease);
+    }
+    /* THE ACTION LAYER. One cached picture per creature can still act:
+       it lunges at you when its blow lands, kicks back when it looses a
+       shot, flinches away from you when struck, leans into its stride as it
+       walks, and a champion breathes while it waits. All of it transforms
+       of the one sprite, from clocks the simulation sets and never reads. */
+    if (!this.lite) {
+      const pl = WS.Game.player;
+      if (e.swing > 0) {
+        const k = 1 - e.swing / 0.24, out = WS.sin(k * Math.PI);
+        const reach = e.radius * (e.boss ? 0.35 : 0.55) * out;
+        ctx.translate((e.swingDx || 0) * reach, (e.swingDy || 0) * reach);
+        ctx.rotate((e.swingDx || 0) * 0.14 * out);
+      }
+      if (e.flinch > 0 && pl) {
+        const k = e.flinch / 0.18, ax = e.x - pl.x, ay = e.y - pl.y, d = Math.hypot(ax, ay) || 1;
+        const push = (e.boss ? 1.2 : 3.2) * k;
+        ctx.translate(ax / d * push, ay / d * push);
+        ctx.rotate((ax < 0 ? -1 : 1) * 0.09 * k * (e.boss ? 0.3 : 1));
+      }
+      if (e.recoil > 0) {
+        const k = e.recoil / 0.2;
+        ctx.scale(1 + 0.08 * k, 1 - 0.07 * k);
+      }
+      if (e.boss || e.elite) {
+        const br = 1 + 0.018 * WS.sin(time * 2.1 + (e.spawnId || 0));
+        ctx.scale(br, 2 - br);
+      } else if (!(e.swing > 0) && !t.stationary) {
+        // The waddle: a lean from foot to foot, on the step the bob already counts.
+        ctx.rotate(WS.sin(e.bob * 0.5) * 0.06);
+      }
     }
     // Bracing for a charge: the body compresses, then springs.
     if (e.windup > 0) {
@@ -47300,6 +47473,13 @@ window.WS = window.WS || {};
       p.lean = (p.lean || 0) * 0.86;
     }
     if (p.lean) ctx.rotate(p.facing < 0 ? -p.lean : p.lean);
+    /* The cast: a short lunge into it, a lift and settle, so the shot comes
+       from someone and not from a point (Weapon.fire sets castT). */
+    if (p.castT > 0 && !pose) {
+      const k = WS.sin((1 - p.castT / 0.16) * Math.PI);
+      ctx.translate(2.2 * k, -1.2 * k);
+      ctx.scale(1 + 0.035 * k, 1 - 0.03 * k);
+    }
     /* A SHAPE IS DRAWN INSTEAD OF THE SURVIVOR, not over them: for as long as
        it holds they ARE a bear or an owlbear, bigger than they were, and only
        their colour stays - a fifth of it, mixed into the hide or the feathers.
@@ -49187,14 +49367,42 @@ window.WS = window.WS || {};
     ctx.restore();
   };
 
+  /* A PILE IS NOT A HANDFUL. The call-out below was built on "there are
+     only ever a handful of these", and a long night breaks that: a hundred
+     chests waiting under a fight each wore a full halo and ring, and the
+     field became a field of loot. So past QUIET_KEEP of one kind, the
+     nearest QUIET_KEEP keep the whole call-out and the rest are told
+     quieter - still ringed, still there, no longer shouting over the horde. */
+  const QUIET_KEEP = 6;
+  const quietSet = new Set();
+  function quietPickups(pool, player) {
+    quietSet.clear();
+    if (!player || pool.count <= QUIET_KEEP) return;
+    const byKind = new Map();
+    for (let i = 0; i < pool.count; i++) {
+      const p = pool.active[i];
+      if (!(CALLOUT[p.kind] || p.type.noMagnet)) continue;
+      let list = byKind.get(p.kind);
+      if (!list) byKind.set(p.kind, list = []);
+      list.push(p);
+    }
+    for (const list of byKind.values()) {
+      if (list.length <= QUIET_KEEP) continue;
+      list.sort((a, b) => WS.dist2(a.x, a.y, player.x, player.y) - WS.dist2(b.x, b.y, player.x, player.y));
+      for (let i = QUIET_KEEP; i < list.length; i++) quietSet.add(list[i]);
+    }
+  }
+
   R.drawPickups = function (ctx, time) {
     const pool = WS.Pickup.pool;
+    quietPickups(pool, WS.Game.player);
     for (let i = 0; i < pool.count; i++) {
       const p = pool.active[i];
       const lift = WS.sin(p.bob) * 3;
       const size = p.type.size;
       const y = p.y + lift;
       const callout = CALLOUT[p.kind] || p.type.noMagnet;
+      const hush = quietSet.has(p) ? 0.35 : 1;
 
       /* The pad, first: a dark disc that takes the ground out from under the
        * item, so what follows is read against black rather than against
@@ -49224,7 +49432,7 @@ window.WS = window.WS || {};
         ctx.globalCompositeOperation = 'lighter';
         const beat = 0.5 + 0.5 * WS.sin(time * 2.6 + p.bob);
         const halo = ctx.createRadialGradient(p.x, y, size * 0.2, p.x, y, size * (1.1 + beat * 0.3));
-        halo.addColorStop(0, WS.rgb(p.type.tint, 0.30 + beat * 0.16));
+        halo.addColorStop(0, WS.rgb(p.type.tint, (0.30 + beat * 0.16) * hush));
         halo.addColorStop(1, WS.rgb(p.type.tint, 0));
         ctx.fillStyle = halo;
         ctx.beginPath(); ctx.arc(p.x, y, size * (1.1 + beat * 0.3), 0, WS.TAU); ctx.fill();
@@ -49271,7 +49479,7 @@ window.WS = window.WS || {};
         // The floor matters more than the swing: a ring that fades to a
         // quarter alpha has a moment every couple of seconds where the object
         // is barely outlined, and that is the moment the player looks.
-        ctx.globalAlpha = 0.72 + 0.2 * WS.sin(time * 2.6 + p.bob);
+        ctx.globalAlpha = (0.72 + 0.2 * WS.sin(time * 2.6 + p.bob)) * (hush < 1 ? 0.6 : 1);
         ctx.strokeStyle = WS.rgb(WS.mix(p.type.tint, [1, 1, 1], 0.45), 1);
         ctx.lineWidth = 1.6;
         ctx.beginPath(); ctx.arc(p.x, y, size * 0.72, 0, WS.TAU); ctx.stroke();
@@ -52630,6 +52838,40 @@ window.WS = window.WS || {};
       false, undefined, null, WS.Player.rank(p)).toDataURL();
     img.width = img.height = 76;
     this.els.portrait.append(img);
+  };
+
+  /* ---- moments: the seams between the beats of a night ------------------ */
+  const reduced = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /** The field comes up out of the dark: a black veil that lifts over `ms`. */
+  UI.veil = function (ms) {
+    const v = el('div', 'scene-veil');
+    v.style.animationDuration = (reduced() ? 1 : ms) + 'ms';
+    document.body.append(v);
+    setTimeout(() => v.remove(), (reduced() ? 1 : ms) + 60);
+  };
+
+  /** Bars close in top and bottom for `sec`, the frame of an entrance. */
+  UI.cinema = function (sec) {
+    if (!this.hud || reduced()) return;
+    this.hud.classList.add('cinema');
+    clearTimeout(this._cinema);
+    this._cinema = setTimeout(() => this.hud.classList.remove('cinema'), sec * 1000);
+  };
+
+  /** Where the night is: a card low on the left as the first wave comes. */
+  UI.locationCard = function (run) {
+    if (!this.hud || !run || !run.map) return;
+    const old = this.hud.querySelector('.loc-card');
+    if (old) old.remove();
+    const card = el('div', 'loc-card');
+    const nights = WS.Save.stats && WS.Save.stats.totalRuns;
+    const setting = run.nightly ? 'The Nightly' : WS.Runs.diffLabel(run.difficulty);
+    card.append(el('div', 'lc-rule'), el('div', 'lc-name', run.map.name),
+      el('div', 'lc-sub', run.map.subtitle || ''),
+      el('div', 'lc-meta', [setting, nights ? 'Night ' + nights : ''].filter(Boolean).join(' \u00b7 ')));
+    this.hud.append(card);
+    setTimeout(() => card.remove(), 5200);
   };
 
   /** The transport's readout and the badge under the clock, from Game.speed. */

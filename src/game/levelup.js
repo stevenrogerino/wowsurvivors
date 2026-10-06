@@ -406,6 +406,7 @@
       WS.Save.db.unions[choice.id] = true;   // for the codex, which wants which
       WS.Audio.play('evolve');
       WS.FX.shake(6, 0.5);
+      if (WS.FX.moment) WS.FX.moment(p.x, p.y, w ? WS.Weapon.colour(w) : null, true);
       WS.Game.announce(choice.name + '!', 'Two weapons become one.', 3.0, { kind: 'glory' });
 
     } else if (choice.type === 'new_weapon') {
@@ -424,6 +425,7 @@
         WS.Save.db.evolved[choice.id] = true;   // ditto
         WS.Audio.play('evolve');
         WS.FX.shake(5, 0.4);
+        if (WS.FX.moment) WS.FX.moment(p.x, p.y, WS.Weapon.colour(w), false);
         WS.Game.announce(w.data.evolveName + '!', 'Your weapon has grown into something else.', 3.0,
           { kind: 'glory' });
       }

@@ -63,6 +63,28 @@
     og.drawImage(ring, 0, 0);
     og.globalAlpha = 1;
     og.drawImage(src, 0, 0);
+
+    /* A RIM OF MOONLIGHT on the upper left, the side everything is lit from.
+       A dark line alone separates a creature from the ground only where the
+       ground is light; on a dark field a horde of dark animals was a mass.
+       The edge band is the shape minus itself nudged down-right, so it is
+       exactly as wide as the nudge and only on the lit side. Screened, so it
+       brightens what is there instead of painting over it. Baked once per
+       sprite, like the outline: nothing at draw time. */
+    const R = 3;                            // device pixels: 1.5 at world scale
+    const rim = make(res, res);
+    const rr = rim.getContext('2d');
+    rr.drawImage(mask, 0, 0);
+    rr.globalCompositeOperation = 'destination-out';
+    rr.drawImage(mask, R, R * 1.2);
+    rr.globalCompositeOperation = 'source-in';
+    rr.fillStyle = 'rgb(205,222,255)';
+    rr.fillRect(0, 0, res, res);
+    og.globalCompositeOperation = 'screen';
+    og.globalAlpha = 0.42;
+    og.drawImage(rim, 0, 0);
+    og.globalAlpha = 1;
+    og.globalCompositeOperation = 'source-over';
     return out;
   }
 

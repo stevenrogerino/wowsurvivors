@@ -3666,3 +3666,38 @@ body.touch #hud-transport .tp-bar { opacity: .7; }
   box-shadow: 0 0 0 1px rgba(10,7,2,.8), 0 0 12px rgba(245,197,107,.45);
 }
 #hud-timer .speed-badge.hidden { display: none; }
+
+/* ---- moments ------------------------------------------------------------ */
+/* The field comes up out of the dark as a run begins (UI.veil). */
+.scene-veil { position: fixed; inset: 0; z-index: 500; background: #050608; pointer-events: none;
+  animation: scene-veil 750ms cubic-bezier(.4,0,.2,1) forwards; }
+@keyframes scene-veil { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+/* Cinema bars for an entrance (UI.cinema). Over the field, under the HUD's own text. */
+#hud::before, #hud::after {
+  content: ''; position: absolute; left: 0; right: 0; height: 9vh; z-index: -1; pointer-events: none;
+  background: #040406; transform: scaleY(0); transition: transform .45s cubic-bezier(.2,.8,.2,1);
+}
+#hud::before { top: 0; transform-origin: top; }
+#hud::after { bottom: 0; transform-origin: bottom; }
+#hud.cinema::before, #hud.cinema::after { transform: scaleY(1); }
+
+/* Where the night is (UI.locationCard): low on the left, in, held, out. */
+.loc-card {
+  position: absolute; left: 6vw; bottom: 22vh; pointer-events: none;
+  animation: loc-card 5s cubic-bezier(.2,.7,.2,1) forwards;
+  text-shadow: 0 2px 12px rgba(0,0,0,.9);
+}
+.loc-card .lc-rule { width: 64px; height: 2px; margin-bottom: 10px;
+  background: linear-gradient(90deg, var(--arc), rgba(245,197,107,0)); }
+.loc-card .lc-name { font-family: var(--voice); font-weight: 800; font-size: clamp(30px, 3.4vw, 52px);
+  color: var(--arc-hot); letter-spacing: .01em; line-height: 1; }
+.loc-card .lc-sub { font-family: var(--voice); font-style: italic; font-size: clamp(15px, 1.35vw, 20px); color: #ddd3c1; margin-top: 6px; }
+.loc-card .lc-meta { font-family: var(--fig); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-dim); margin-top: 10px; }
+@keyframes loc-card {
+  0% { opacity: 0; transform: translateX(-24px); }
+  12% { opacity: 1; transform: none; }
+  78% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateX(10px); }
+}
+@media (prefers-reduced-motion: reduce) { .loc-card { animation-duration: .01s; animation-delay: 4s; } }

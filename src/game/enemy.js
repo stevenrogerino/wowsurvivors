@@ -402,6 +402,8 @@
       if (!frozen && !e.hidden && e.contactCooldown <= 0 && distance < e.radius + player.radius) {
         e.contactCooldown = e.boss ? cfg.contactCooldownBoss : cfg.contactCooldownNormal;
         struck = true;
+        // The lunge (renderer): drawn only, never read by the simulation.
+        e.swing = 0.24; e.swingDx = dx; e.swingDy = dy;
         // Run down by a boss's charge: the blow it telegraphed (BossFight.hit).
         WS.Player.takeDamage(player, e.chargeTimer > 0 && e.chargeHit ? WS.max(e.damage, e.chargeHit) : e.damage, t.name);
         if (!WS.Game.running) return;
@@ -411,6 +413,7 @@
         e.rangedTimer -= dt;
         if (e.rangedTimer <= 0 && distance <= t.ranged.range * cfg.rangedReach) {
           e.rangedTimer = t.ranged.cooldown;
+          e.recoil = 0.2;               // drawn only (renderer)
           const r = t.ranged;
           WS.Projectile.spawnHostile(e.x, e.y, dx * r.speed, dy * r.speed,
             e.damage * cfg.rangedDamagePct, r.school, t.name, e, r.slowFactor, r.slowDuration);
@@ -428,6 +431,10 @@
       }
 
       if (e.flash > 0) e.flash -= dt;
+      // The action layer's clocks (lunge, recoil, flinch): drawn, never read here.
+      if (e.swing > 0) e.swing -= dt;
+      if (e.recoil > 0) e.recoil -= dt;
+      if (e.flinch > 0) e.flinch -= dt;
       if (e.invuln > 0) e.invuln -= dt;
       /* A lane still being aimed is owned by the windup above, which sets its
          life every frame; letting the clock here have a second go at it
@@ -635,6 +642,8 @@
     if (e.hpFloor > 0 && e.health < e.hpFloor) e.health = e.hpFloor;
     e.flash = 0.09;
     e.flashCrit = isCrit;
+    // A flinch, harder for a crit; a boss only shrugs (renderer).
+    if (!(e.flinch > 0.05)) e.flinch = isCrit ? 0.18 : 0.12;
     const run = WS.Game.run;
     run.damageDone += amount;
     const key = source || 'untagged';

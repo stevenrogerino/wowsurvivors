@@ -5,6 +5,53 @@ tuning pass leaves a record of itself instead of a mystery diff. Newest first.
 
 <!-- new entries go directly below -->
 
+## 2026-10-06 (night): The AA pass - hierarchy, moments, action, master
+
+Polish only; no number in a fight changes.
+
+- **Hierarchy:**
+  - Every creature and summon sprite now bakes in a thin moonlit rim on
+    its upper left (`sprites.js` outline: the shape minus itself nudged
+    down-right, screened at 0.42). It separates a dark horde from dark
+    ground at no cost per frame.
+  - Past six pickups of one kind, the six nearest you keep the full
+    call-out and the rest go quieter: halo x0.35, ring x0.6.
+  - Damage numbers merge up to twice as far as the screen fills, and
+    print 12.3k / 4.56M instead of every digit.
+- **Moments:**
+  - A run comes up out of black, and a location card (battlefield,
+    subtitle, setting, night number) slides in low on the left. The
+    opening banner now names the survivor beside their line.
+  - A boss's entrance leans the field toward the boss
+    (`FX.punch(amount, dur, x, y)` now takes a focus point), and cinema
+    bars close in for 2.2 s.
+  - An evolution or a union is a beat (`FX.moment`): a breath of slow
+    motion, a push-in on the survivor, and a burst in the weapon's
+    colour.
+- **Action layer** (renderer only; the clocks are set by the simulation and
+  never read back by it):
+  - A creature lunges when its blow lands, kicks back when it fires, and
+    flinches away from you when struck (harder on a crit; a boss only
+    shrugs).
+  - Walkers lean foot to foot, and elites and bosses breathe.
+  - The survivor puts a small lunge into every cast.
+- **Master** (`audio.js`):
+  - A mastering EQ between the glue and the limiter: high-pass at 35 Hz,
+    low shelf -2 dB at 150 Hz, -2.5 dB at 260 Hz, +2 dB at 2.6 kHz,
+    +3 dB shelf at 7 kHz.
+  - The score gets a -4 dB low shelf at 110 Hz.
+  - Makeup gain 1.4 -> 1.95.
+  - Rendered nights (`audio-render`):
+    - late night: sub-bass 11.3% -> 4.2%, mid 7.8% -> 10%, high 1.8% -> 2.8%
+    - boss fight: mid 19.5% -> 29.4%, high 3.7% -> 5.9%, loudness -26.9 -> about -24.5 dB
+    - peaks stay below about -2 dB
+- **Stutter hunt:**
+  - Evolve, new weapon, boss arrival and union each cost 0.2-1.3 ms in
+    their own code, and nothing spikes in the draws after them.
+  - The level-up cards (15 ms) and the pause sheet (25 ms, on a slow
+    headless machine) are the heaviest. Both build while the world is
+    already stopped.
+
 ## 2026-10-06 (later): Game speed, and a graphics sweep
 
 - **Game speed** (`Game.speed`, `Game.SPEEDS` 1 / 1.5 / 2 / 3): a bar

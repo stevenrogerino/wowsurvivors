@@ -225,6 +225,9 @@
     if (t.yell && !cue) setTimeout(() => WS.Audio.babble(WS.Audio.voiceFor(id, t), t.yell), 650);
     WS.FX.shake(6, 0.5);
     WS.FX.screen('rgba(180,40,120,.14)', 0.4);
+    // Its entrance: the field leans toward it, and the frame closes in.
+    WS.FX.punch(0.045, 1.2, boss.x, boss.y);
+    if (WS.UI.cinema) WS.UI.cinema(2.2);
     return boss;
   };
 

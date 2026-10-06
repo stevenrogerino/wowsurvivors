@@ -94,6 +94,7 @@
     if (WS.Audio.setAmbience) WS.Audio.setAmbience(null);
     this.run = newRun(mapId, characterId);
     this.speed = 1;                 // every night starts at normal speed
+    if (WS.UI.veil) WS.UI.veil(750); // the menu goes out, the field comes up out of the dark
     const run = this.run;
     const n = opts && opts.nightly;
     if (n) {
@@ -195,8 +196,10 @@
       const run = this.run;
       const w = WS.Lore && WS.Lore.watchers && WS.Lore.watchers[run.characterId];
       const said = w && w.says ? `\u201c${w.says}\u201d` : 'Thirty minutes until dawn.';
-      this.announce(run.map.name, said, 3.6, { kind: 'plain' });
+      // Where you are is the card in the corner; the banner is who is standing there.
+      this.announce(this.player.character.name, said, 3.6, { kind: 'plain' });
     }
+    if (WS.UI.locationCard) WS.UI.locationCard(this.run);
   };
 
   /* GAME SPEED (the transport bar, UI.buildHUD). The night runs on the same

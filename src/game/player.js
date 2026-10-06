@@ -219,6 +219,7 @@
     const moving = dx !== 0 || dy !== 0;
 
     if (p.hurtTimer > 0) p.hurtTimer -= dt;
+    if (p.castT > 0) p.castT -= dt;          // the cast lunge, drawn only
 
     let speed = p.moveSpeed * WS.Primal.moveMult(p) * WS.Moor.moveMult();
     if (p.slowTimer > 0) { p.slowTimer -= dt; speed *= p.slowFactor; }

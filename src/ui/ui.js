@@ -808,6 +808,40 @@
     this.els.portrait.append(img);
   };
 
+  /* ---- moments: the seams between the beats of a night ------------------ */
+  const reduced = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /** The field comes up out of the dark: a black veil that lifts over `ms`. */
+  UI.veil = function (ms) {
+    const v = el('div', 'scene-veil');
+    v.style.animationDuration = (reduced() ? 1 : ms) + 'ms';
+    document.body.append(v);
+    setTimeout(() => v.remove(), (reduced() ? 1 : ms) + 60);
+  };
+
+  /** Bars close in top and bottom for `sec`, the frame of an entrance. */
+  UI.cinema = function (sec) {
+    if (!this.hud || reduced()) return;
+    this.hud.classList.add('cinema');
+    clearTimeout(this._cinema);
+    this._cinema = setTimeout(() => this.hud.classList.remove('cinema'), sec * 1000);
+  };
+
+  /** Where the night is: a card low on the left as the first wave comes. */
+  UI.locationCard = function (run) {
+    if (!this.hud || !run || !run.map) return;
+    const old = this.hud.querySelector('.loc-card');
+    if (old) old.remove();
+    const card = el('div', 'loc-card');
+    const nights = WS.Save.stats && WS.Save.stats.totalRuns;
+    const setting = run.nightly ? 'The Nightly' : WS.Runs.diffLabel(run.difficulty);
+    card.append(el('div', 'lc-rule'), el('div', 'lc-name', run.map.name),
+      el('div', 'lc-sub', run.map.subtitle || ''),
+      el('div', 'lc-meta', [setting, nights ? 'Night ' + nights : ''].filter(Boolean).join(' \u00b7 ')));
+    this.hud.append(card);
+    setTimeout(() => card.remove(), 5200);
+  };
+
   /** The transport's readout and the badge under the clock, from Game.speed. */
   UI.paintSpeed = function () {
     const e = this.els, G = WS.Game;

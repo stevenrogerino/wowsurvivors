@@ -44,7 +44,7 @@
   const CHATTER_DUCK = 0.45;
 
   /** What the output stage gives back after the glue (see init). */
-  const MAKEUP = 1.4;
+  const MAKEUP = 1.95;                 // was 1.4: the mastering EQ (below) took the rumble out, this gives the level back
 
   /** Created on the first user gesture - browsers block audio before that. */
   Audio.init = function () {
@@ -78,8 +78,32 @@
     this.limiter.ratio.value = 20;
     this.limiter.attack.value = 0.001;
     this.limiter.release.value = 0.12;
+    /* THE MASTERING EQ, between the glue and the limiter. Measured off
+       rendered nights (tools/audio-render.js), the mix was two thirds sub and
+       low end - 11% sub, 56% low, under 10% mid and 2% above it - which is
+       what "muddy" and "far away" are in numbers. So: rumble under 35Hz goes
+       (nothing in the game lives there, and it eats the limiter's headroom),
+       the boxy low-mids come down a little, and presence and air come up,
+       the way a mix is finished. Shelves and a bell, all gentle. */
+    const eq = (type, f, gain, q) => {
+      const b = this.ctx.createBiquadFilter();
+      b.type = type; b.frequency.value = f;
+      if (gain !== undefined) b.gain.value = gain;
+      if (q !== undefined) b.Q.value = q;
+      return b;
+    };
+    this.eqRumble = eq('highpass', 35, undefined, 0.7);
+    this.eqLow = eq('lowshelf', 150, -2.0);
+    this.eqMud = eq('peaking', 260, -2.5, 0.9);
+    this.eqPresence = eq('peaking', 2600, 2.0, 0.8);
+    this.eqAir = eq('highshelf', 7000, 3.0);
     this.master.connect(this.makeup);
-    this.makeup.connect(this.limiter);
+    this.makeup.connect(this.eqRumble);
+    this.eqRumble.connect(this.eqLow);
+    this.eqLow.connect(this.eqMud);
+    this.eqMud.connect(this.eqPresence);
+    this.eqPresence.connect(this.eqAir);
+    this.eqAir.connect(this.limiter);
     this.limiter.connect(this.ctx.destination);
 
     this.sfxGain = this.ctx.createGain();
@@ -141,7 +165,15 @@
     };
     this.sfxRoom = room(this.sfxGain, 0.9);
     this.musicRoom = room(this.musicGain, 0.8);
-    this.musicGain.connect(this.duck);
+    /* The score sat at 27% sub on its own: drones and bass pads stacked
+       under everything. A low shelf takes that back so the effects' weight
+       has room, and the score keeps its warmth above it. */
+    this.musicShelf = this.ctx.createBiquadFilter();
+    this.musicShelf.type = 'lowshelf';
+    this.musicShelf.frequency.value = 110;
+    this.musicShelf.gain.value = -4;
+    this.musicGain.connect(this.musicShelf);
+    this.musicShelf.connect(this.duck);
     /* Peril: the score goes under water as the survivor nears death. A
        low-pass after the duck, wide open (no effect at all) until
        setPeril asks for it. */

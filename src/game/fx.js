@@ -115,6 +115,16 @@
    * number gets back when it does. */
   const MERGE_X = 30, MERGE_Y = 22, MERGE_KEEP = 0.72;
 
+  /** A damage figure as it is printed: whole below ten thousand, then
+   *  12.3k / 4.56M - shorter, and the size reads at a glance. */
+  function shortNum(v) {
+    v = WS.floor(v);
+    if (v < 10000) return String(v);
+    if (v < 1e6) return (v / 1000).toFixed(v < 1e5 ? 1 : 0) + 'k';
+    return (v / 1e6).toFixed(v < 1e7 ? 2 : 1) + 'M';
+  }
+  FX.shortNum = shortNum;
+
   FX.damage = function (x, y, amount, crit) {
     if (!WS.Save.settings.damageNumbers) return;
 
@@ -135,12 +145,17 @@
      * pinning it there for ever. */
     const pool = FX.texts;
     const ty = y - 8;
+    /* The fuller the screen, the wider a number reaches to take a hit in:
+       past a third of the pool, neighbours fold together up to twice as
+       far, so a packed fight reads as a few sums instead of a carpet. */
+    const crowd = WS.clamp((pool.count / pool.cap - 0.33) / 0.4, 0, 1);
+    const mx = MERGE_X * (1 + crowd), my = MERGE_Y * (1 + crowd * 0.6);
     for (let i = 0; i < pool.count; i++) {
       const t = pool.active[i];
       if (t.kind !== 'dmg' || t.crit !== !!crit) continue;
-      if (WS.abs(t.x - x) > MERGE_X || WS.abs(t.y - ty) > MERGE_Y) continue;
+      if (WS.abs(t.x - x) > mx || WS.abs(t.y - ty) > my) continue;
       t.value += amount;
-      t.text = String(WS.floor(t.value));
+      t.text = shortNum(t.value);
       t.life = WS.max(t.life, t.maxLife * MERGE_KEEP);
       t.pop = crit ? 1 : 0.45;
       FX.bigHit = FX.bigHit * 0.995 + amount * 0.005;
@@ -153,7 +168,7 @@
       if (amount < FX.bigHit) return;
     }
     FX.bigHit = FX.bigHit * 0.995 + amount * 0.005;
-    const t = push(x, ty, String(WS.floor(amount)),
+    const t = push(x, ty, shortNum(amount),
       crit ? '#ffd45c' : '#f2f4f8', crit ? 21 : 14, crit ? 0.85 : 0.6, -46,
       crit ? 1 : 0.35);
     if (t) { t.kind = 'dmg'; t.value = amount; t.crit = !!crit; }
@@ -322,10 +337,13 @@
    * so a boss falling or a bomb going off lands as a moment rather than as
    * one more flash in a screen full of them. It answers to the same switch
    * as the shake: a player who asked for a still screen gets one. */
-  FX.punch = function (amount, duration) {
+  /* `fx, fy`: where the field leans in toward - a boss as it arrives. Left
+     out, it is the survivor, as it always was. */
+  FX.punch = function (amount, duration, fx, fy) {
     if (!WS.Save.settings.screenShake) return;
     if (amount >= this.punchAmt * (this.punchTime / (this.punchMax || 1))) {
       this.punchAmt = amount; this.punchTime = duration; this.punchMax = duration;
+      this.punchAt = fx === undefined ? null : { x: fx, y: fy };
     }
   };
   /** The zoom to draw at right now: up fast, back out slowly. */
@@ -417,4 +435,18 @@
 
   WS.FX = FX;
 
+})(window.WS);
+
+/* A MOMENT: the beat a build changes shape. The world slows for a breath,
+   leans in on the survivor, and the change goes off in its own colour.
+   Used by an evolution and a union (LevelUp.apply). */
+(function (WS) {
+  WS.FX.moment = function (x, y, colour, big) {
+    const FX = WS.FX, c = colour || [1, 0.85, 0.5];
+    FX.punch(big ? 0.07 : 0.05, big ? 1.1 : 0.9);
+    if (WS.Game.slowmo) WS.Game.slowmo(big ? 0.25 : 0.35);
+    FX.flash(x, y, big ? 300 : 230, c, 0.75, 14);
+    FX.flash(x, y, big ? 140 : 110, [1, 1, 1], 0.35);
+    if (FX.screen) FX.screen(`rgba(${(c[0] * 255) | 0},${(c[1] * 255) | 0},${(c[2] * 255) | 0},.12)`, 0.45);
+  };
 })(window.WS);

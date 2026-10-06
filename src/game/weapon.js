@@ -1049,6 +1049,8 @@
     w._healPool = null;     // a new cast, a new purse (see fillSpec)
     const fired = handler(player, w);
     if (fired === false) return;
+    // The survivor puts themselves into it: a short cast lunge (renderer).
+    if (!(player.castT > 0.08)) player.castT = 0.16;
     // A muzzle flash in the weapon's own colour, so a six-weapon build reads
     // as six distinct instruments rather than one undifferentiated stream.
     const b = behaviorOf(w);
