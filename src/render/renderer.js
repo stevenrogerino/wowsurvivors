@@ -2721,6 +2721,7 @@
     }
   };
 
+  const HAZARD_DASH = [7, 6], NO_DASH = [];
   R.drawHazards = function (ctx, time) {
     const pool = WS.Hazard.pool;
     if (!pool) return;
@@ -2728,18 +2729,19 @@
       const h = pool.active[i];
       const c = R.vivid() ? R.VIVID : h.tint;
       const rgb = `${WS.floor(c[0] * 255)},${WS.floor(c[1] * 255)},${WS.floor(c[2] * 255)}`;
-      ctx.save();
+      hold(ctx);   // not save(): see hold
       if (h.fuse > 0) {
         const k = 1 - h.fuse / (h.maxFuse || 1);       // 0 -> 1 as it arms
         ctx.beginPath();
         ctx.arc(h.x, h.y, h.radius * (0.45 + 0.55 * k), 0, WS.TAU);
         ctx.fillStyle = `rgba(${rgb},${(0.05 + 0.09 * k).toFixed(3)})`;
         ctx.fill();
-        ctx.setLineDash([7, 6]);
+        ctx.setLineDash(HAZARD_DASH);
         ctx.lineDashOffset = -time * 26;
         ctx.strokeStyle = `rgba(${rgb},${(0.45 + 0.4 * k).toFixed(3)})`;
         ctx.lineWidth = 2;
         ctx.stroke();
+        ctx.setLineDash(NO_DASH); ctx.lineDashOffset = 0;
       } else {
         const fade = WS.clamp(h.life / (h.maxLife || 1), 0, 1);
         const pulse = 0.86 + 0.14 * WS.sin(time * 7 + h.seed);
@@ -2758,7 +2760,7 @@
           ctx.fill();
         }
       }
-      ctx.restore();
+      release(ctx);
     }
   };
 
