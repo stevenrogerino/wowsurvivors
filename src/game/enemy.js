@@ -11,8 +11,69 @@
     spawnCounter: 0,
   };
 
+  /* Every field a creature will ever carry, made up front and in the order
+   * spawn writes them. A pooled `{}` grew its fields as they came: the ones
+   * spawn sets, then a flinch when first hit, a lunge when it first struck,
+   * a crit flash, the renderer's interpolation and sprite cache, a boss's
+   * fight state. Each creature ended up with whichever of those it had met,
+   * so a late horde held eleven different object layouts, and every loop
+   * that walks it (moving them, hitting them, drawing them) read and wrote
+   * them through V8's slowest path, which boxes each number it touches.
+   * Measured at 25:00 that was most of 480MB of garbage in ten seconds, and
+   * the collections it caused were the p99 of the simulation. With one
+   * layout the same loops run on unboxed numbers.
+   *
+   * Numbers start as numbers (rangedTimer included, so it is never null)
+   * and objects as null, so no field ever changes kind. Adding a field to a
+   * creature anywhere else means adding it here too. */
+  Enemy.blank = function () {
+    /* -0 is a zero that V8 stores as a float, so a field that will hold
+       fractions starts in the layout it keeps; a plain 0 would start as an
+       integer and be relaid out the first time it took a fraction. */
+    const z = -0;
+    return {
+      _dead: false, _ts: -1,
+      id: '', template: null, x: z, y: z, radius: z,
+      boss: false, elite: false, part: false, finale: false,
+      untargetable: false, hidden: false, dmgTaken: 1, hpFloor: z,
+      host: null, displayName: null, finaleAdd: false, finaleTag: 0, stationary: false,
+      maxHealth: z, health: z, damage: z, xp: 0, speed: z,
+      contactCooldown: z, slowTimer: z, slowFactor: 1, rotTimer: z, rotMult: 1,
+      _packN: 0, _packAt: -1e9,
+      bleedDps: z, bleedTimer: z, bleedTick: z, chargeTimer: z, flash: z,
+      chilled: false, invuln: z, spawnId: 0, patternIndex: 0,
+      windup: z, windupMax: z, chargeDir: null, chargeLock: z, chargeLen: z, chargeDur: z,
+      scale: 1, orbitDir: 1, lungeTimer: z, trailTimer: z, noSplit: false, telegraph: null,
+      bornAt: z, attackTimer: z, rangedTimer: z, finalBoss: false,
+      bob: z, facing: 1, spriteSize: z,
+      // Set lazily before; reset by spawn (Enemy.fresh) so each life starts clean.
+      flashCrit: false, lastStruck: -1,
+      swing: z, swingDx: z, swingDy: z, recoil: z, flinch: z,
+      fightAt: -1, cast: null, sigDue: null, enraged: false, enrageGlow: z,
+      chainLeft: 0, chainPattern: null, chargeHit: z,
+      ox: z, oy: z, fvx: z, fvy: z, _lx: NaN, _ly: NaN, fade: 1,
+      // The renderer's: interpolation, sprite cache, draw order.
+      _px: z, _py: z, _rx: z, _ry: z, _ra: undefined,
+      _spr: null, _sprChill: -1, _sprSize: -1, _dq: 0, _dk: 0,
+    };
+  };
+
+  /** The fields a creature used to gain as it went, back to how a new one
+   *  has them. A pooled slot kept them from its last life: a lunge or a
+   *  flinch still running, a boss's fight state on the fodder that took its
+   *  slot, and the sprite it last drew, which a new creature of the same
+   *  size then wore. */
+  function fresh(e) {
+    e.flashCrit = false; e.lastStruck = -1;
+    e.swing = 0; e.swingDx = 0; e.swingDy = 0; e.recoil = 0; e.flinch = 0;
+    e.fightAt = -1; e.cast = null; e.sigDue = null; e.enraged = false; e.enrageGlow = 0;
+    e.chainLeft = 0; e.chainPattern = null; e.chargeHit = 0;
+    e.fvx = 0; e.fvy = 0; e._lx = NaN; e._ly = NaN; e.fade = 1;
+    e._spr = null; e._sprChill = -1; e._sprSize = -1;
+  }
+
   Enemy.init = function () {
-    this.pool = new WS.Pool(() => ({}), null, WS.CONST.MAX_ENEMIES);
+    this.pool = new WS.Pool(() => Enemy.blank(), null, WS.CONST.MAX_ENEMIES);
     this.grid = new WS.Grid(80);
     this.freezeTimer = 0;
   };
@@ -122,7 +183,7 @@
     e.telegraph = null;      // {kind, life, maxLife, ...} drawn by the renderer
     e.bornAt = WS.Game.run ? WS.Game.run.time : 0;   // for the rise out of the ground
     e.attackTimer = template.interval || 3.6;
-    e.rangedTimer = template.ranged ? WS.randRange(0.4, template.ranged.cooldown) : null;
+    e.rangedTimer = template.ranged ? WS.randRange(0.4, template.ranged.cooldown) : 0;   // read only when ranged
     e.finalBoss = false;
     e.bob = WS.random() * WS.TAU;      // idle animation offset, so a crowd breathes
     e.facing = 1;
@@ -133,6 +194,7 @@
        overhangs the hitbox threefold; a little more on one creature is a
        drawing decision, not a balance one. */
     e.spriteSize = template.radius * (isBoss ? 3.4 : 3.0) * (template.spriteScale || 1);
+    fresh(e);
     // Whatever Oaths the survivor swore for tonight (WS.Runs).
     if (WS.Runs) WS.Runs.applyToEnemy(e);
     return e;
@@ -263,7 +325,7 @@
         if (e.bleedTimer <= 0) e.bleedDps = 0;
       }
       const t = e.template;
-      const [dx, dy, distance] = WS.normalize(player.x - e.x, player.y - e.y);
+      const _udx = WS.normalize(player.x - e.x, player.y - e.y), dx = _udx[0], dy = _udx[1], distance = _udx[2];
 
       // Time freeze halts everything except Death itself.
       const frozen = timeFrozen && t.family !== 'death';
@@ -409,7 +471,7 @@
         if (!WS.Game.running) return;
       }
 
-      if (e.rangedTimer !== null && !frozen) {
+      if (t.ranged && !frozen) {
         e.rangedTimer -= dt;
         if (e.rangedTimer <= 0 && distance <= t.ranged.range * cfg.rangedReach) {
           e.rangedTimer = t.ranged.cooldown;
@@ -547,7 +609,7 @@
          running. Locked early, the tell says "now" while there is still
          time to act on it, and the charge hits like it means it
          (BossFight.chargeHit). `chain` runs that many more, back to back. */
-      const fight = e.fightAt !== undefined;
+      const fight = e.fightAt >= 0;
       this.beginCharge(e, dx, dy, opt('windup', fight ? cfg.bossChargeWindup : cfg.chargeWindup), opt('time', cfg.chargeTime),
         opt('range', cfg.chargeRange), opt('girth', cfg.bossChargeGirth), fight ? cfg.bossChargeLock : 0);
       if (fight) {
@@ -685,7 +747,7 @@
         if (hitBy) hitBy.set(e, e.spawnId);
         struck++;
         if (knockback && !e.boss && !e.finale) {
-          const [kx, ky] = WS.normalize(e.x - x, e.y - y);
+          const _ukx = WS.normalize(e.x - x, e.y - y), kx = _ukx[0], ky = _ukx[1];
           e.x += kx * knockback;
           e.y += ky * knockback;
         }

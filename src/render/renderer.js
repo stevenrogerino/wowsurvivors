@@ -818,6 +818,42 @@
     ctx.restore();
   }
 
+  /* Gradients drawn in an object's own frame (translated and rotated to it)
+     depend only on their colour and size, so they are made once and reused.
+     A canvas gradient is a browser-side object, and the bolts alone made
+     about 140 of them a frame in a late horde; with the props' shadows,
+     300. They are cheap to make and not cheap to collect: they live on
+     Blink's heap, which is swept by the same full collection as the game's,
+     and the late horde ran one every twenty frames at 8-17ms each. Keys are
+     two small integers, so a lookup allocates nothing. The cache is
+     dropped if it ever grows past what a night's colours and sizes need. */
+  const GRADS = new Map();
+  let gradCount = 0;
+  function gradRow(c, kind) {
+    const k = (((c[0] * 255) | 0) * 65536 + ((c[1] * 255) | 0) * 256 + ((c[2] * 255) | 0)) * 8 + kind;
+    let row = GRADS.get(k);
+    if (row === undefined) {
+      if (gradCount > 4000) { GRADS.clear(); gradCount = 0; }
+      row = new Map(); GRADS.set(k, row);
+    }
+    return row;
+  }
+  function gq(v, step) { return Math.round(v / step); }
+
+  /* The y-sorted draw list (drawFrame), carried from one frame to the next
+     so it arrives nearly in order and the insertion sort is one pass. `_dq`
+     marks what is on the field this frame, `_dk` what is already listed. */
+  const DRAWS = [];
+  let drawStamp = 0;
+  function ySort(a) {
+    for (let i = 1; i < a.length; i++) {
+      const v = a[i], y = v.y;
+      let j = i - 1;
+      while (j >= 0 && a[j].y > y) { a[j + 1] = a[j]; j--; }
+      a[j + 1] = v;
+    }
+  }
+
   /* ------------------------------------------------------ interpolation --
    * THE FRAME DRAWS BETWEEN TWO TICKS. The simulation steps at a fixed 60 a
    * second and the screen refreshes at whatever the monitor does - 120, 144,
@@ -836,22 +872,38 @@
    * second life) or that moved further than anything can walk in a tick (a
    * teleport, a reset) is drawn where it is. */
   let TICK = 0;
-  const LISTS = () => [WS.Enemy.pool && WS.Enemy.pool.active, WS.Projectile.bolts && WS.Projectile.bolts.active,
-    WS.Projectile.hostiles && WS.Projectile.hostiles.active, WS.XP.pool && WS.XP.pool.active,
-    WS.Pickup.pool && WS.Pickup.pool.active, WS.Familiar.list];
   const JUMP = 120;
+  /* Each kind of thing has its own loop below, written out rather than shared.
+     One function walking creatures, bolts, gems and the rest sees half a
+     dozen object layouts at every line, and V8 then reads and writes their
+     coordinates the slow way, as freshly boxed numbers: 57MB of garbage in
+     ten seconds of the late horde, much of it kept just long enough to be
+     promoted and swept by a full collection. Written once per kind, each
+     loop sees one layout. The kinds are creatures, bolts (yours and
+     theirs share a pool layout), gems, and the few odd ones together. */
+  const ODD = () => [WS.Pickup.pool && WS.Pickup.pool.active, WS.Familiar.list];
   R.snapshot = function () {
     TICK++;
     const p = WS.Game.player;
     if (p) { p._px = p.x; p._py = p.y; p._ts = TICK; }
-    for (const list of LISTS()) {
+    const en = WS.Enemy.pool ? WS.Enemy.pool.active : NONE;
+    for (let i = 0; i < en.length; i++) { const e = en[i]; e._px = e.x; e._py = e.y; e._ts = TICK; }
+    const bo = WS.Projectile.bolts ? WS.Projectile.bolts.active : NONE;
+    for (let i = 0; i < bo.length; i++) { const b = bo[i]; b._px = b.x; b._py = b.y; b._ts = TICK; }
+    const ho = WS.Projectile.hostiles ? WS.Projectile.hostiles.active : NONE;
+    for (let i = 0; i < ho.length; i++) { const b = ho[i]; b._px = b.x; b._py = b.y; b._ts = TICK; }
+    const ge = WS.XP.pool ? WS.XP.pool.active : NONE;
+    for (let i = 0; i < ge.length; i++) { const g = ge[i]; g._px = g.x; g._py = g.y; g._ts = TICK; }
+    for (const list of ODD()) {
       if (!list) continue;
-      for (let i = 0; i < list.length; i++) { const e = list[i]; e._px = e.x; e._py = e.y; e._ts = TICK; }
+      for (let i = 0; i < list.length; i++) { const o = list[i]; o._px = o.x; o._py = o.y; o._ts = TICK; }
     }
     const orb = WS.Projectile.orbits;
     if (orb) for (let i = 0; i < orb.active.length; i++) { const o = orb.active[i]; o._pa = o.angle; o._ts = TICK; }
   };
-  const swapped = [];
+  const NONE = [];
+  // What was moved, by kind, so each is put back by its own loop too.
+  const swapped = [], swappedEn = [], swappedBo = [], swappedGe = [], swappedOrb = [];
   function lerpIn(e, a) {
     if (e._ts !== TICK) return;
     const dx = e.x - e._px, dy = e.y - e._py;
@@ -867,7 +919,40 @@
     // alpha 0 is not "nothing to do": it is "draw where the tick began".
     const a = WS.clamp(G.accumulator / WS.CONST.TICK_RATE, 0, 1);
     lerpIn(G.player, a);
-    for (const list of LISTS()) {
+    const en = WS.Enemy.pool ? WS.Enemy.pool.active : NONE;
+    for (let i = 0; i < en.length; i++) {
+      const e = en[i];
+      if (e._ts !== TICK) continue;
+      const dx = e.x - e._px, dy = e.y - e._py;
+      if (dx > JUMP || dx < -JUMP || dy > JUMP || dy < -JUMP) continue;
+      e._rx = e.x; e._ry = e.y;
+      e.x = e._px + dx * a; e.y = e._py + dy * a;
+      swappedEn.push(e);
+    }
+    for (let k = 0; k < 2; k++) {
+      const pool = k ? WS.Projectile.hostiles : WS.Projectile.bolts;
+      const bo = pool ? pool.active : NONE;
+      for (let i = 0; i < bo.length; i++) {
+        const b = bo[i];
+        if (b._ts !== TICK) continue;
+        const dx = b.x - b._px, dy = b.y - b._py;
+        if (dx > JUMP || dx < -JUMP || dy > JUMP || dy < -JUMP) continue;
+        b._rx = b.x; b._ry = b.y;
+        b.x = b._px + dx * a; b.y = b._py + dy * a;
+        swappedBo.push(b);
+      }
+    }
+    const ge = WS.XP.pool ? WS.XP.pool.active : NONE;
+    for (let i = 0; i < ge.length; i++) {
+      const g = ge[i];
+      if (g._ts !== TICK) continue;
+      const dx = g.x - g._px, dy = g.y - g._py;
+      if (dx > JUMP || dx < -JUMP || dy > JUMP || dy < -JUMP) continue;
+      g._rx = g.x; g._ry = g.y;
+      g.x = g._px + dx * a; g.y = g._py + dy * a;
+      swappedGe.push(g);
+    }
+    for (const list of ODD()) {
       if (!list) continue;
       for (let i = 0; i < list.length; i++) lerpIn(list[i], a);
     }
@@ -877,18 +962,18 @@
         const o = orb.active[i];
         if (o._ts !== TICK) continue;
         o._ra = o.angle; o.angle = o._pa + (o.angle - o._pa) * a;
-        swapped.push(o);
+        swappedOrb.push(o);
       }
     }
   };
   /** And back to where they really are. */
   R.lerpOut = function () {
-    for (let i = 0; i < swapped.length; i++) {
-      const e = swapped[i];
-      if (e._ra !== undefined) { e.angle = e._ra; e._ra = undefined; }
-      else { e.x = e._rx; e.y = e._ry; }
-    }
-    swapped.length = 0;
+    for (let i = 0; i < swappedEn.length; i++) { const e = swappedEn[i]; e.x = e._rx; e.y = e._ry; }
+    for (let i = 0; i < swappedBo.length; i++) { const b = swappedBo[i]; b.x = b._rx; b.y = b._ry; }
+    for (let i = 0; i < swappedGe.length; i++) { const g = swappedGe[i]; g.x = g._rx; g.y = g._ry; }
+    for (let i = 0; i < swapped.length; i++) { const o = swapped[i]; o.x = o._rx; o.y = o._ry; }
+    for (let i = 0; i < swappedOrb.length; i++) { const o = swappedOrb[i]; o.angle = o._ra; o._ra = undefined; }
+    swappedEn.length = 0; swappedBo.length = 0; swappedGe.length = 0; swapped.length = 0; swappedOrb.length = 0;
   };
 
   /* The dice are the simulation's. A frame drawn - a crackle, a jolt, a
@@ -1010,11 +1095,16 @@
         ctx.save();
         ctx.globalAlpha = p.alpha * sh;
         const r = p.size * 0.28;
-        const grd = ctx.createRadialGradient(p.x, p.y + p.size * 0.22, 0,
-          p.x, p.y + p.size * 0.22, r);
-        grd.addColorStop(0, 'rgba(0,0,0,.85)');
-        grd.addColorStop(0.55, 'rgba(0,0,0,.45)');
-        grd.addColorStop(1, 'rgba(0,0,0,0)');
+        // Props never move, so the shadow's gradient is made once and kept.
+        let grd = p._shade;
+        if (!grd || p._shadeAt !== p.x + p.y * 8192 + p.size) {
+          grd = ctx.createRadialGradient(p.x, p.y + p.size * 0.22, 0,
+            p.x, p.y + p.size * 0.22, r);
+          grd.addColorStop(0, 'rgba(0,0,0,.85)');
+          grd.addColorStop(0.55, 'rgba(0,0,0,.45)');
+          grd.addColorStop(1, 'rgba(0,0,0,0)');
+          p._shade = grd; p._shadeAt = p.x + p.y * 8192 + p.size;
+        }
         ctx.fillStyle = grd;
         ctx.beginPath();
         ctx.ellipse(p.x + p.size * 0.05, p.y + p.size * 0.22, r, r * 0.42, 0, 0, WS.TAU);
@@ -1068,12 +1158,29 @@
     this.drawPickups(ctx, time);
 
     /* ---- entities, y-sorted --------------------------------------------- */
-    const draws = [];
-    for (let i = 0; i < WS.Enemy.pool.count; i++) draws.push(WS.Enemy.pool.active[i]);
-    for (const f of WS.Familiar.list) draws.push(f);
-    for (const t of player.totems || []) draws.push(t);
-    draws.push(player);
-    draws.sort((a, b) => a.y - b.y);
+    /* One list kept from frame to frame and put in order by insertion. The
+       order hardly changes between two frames, so this is a pass over a list
+       that is already sorted; Array.sort with a comparator was a fresh
+       number boxed for every comparison, thousands a frame in a horde. */
+    const draws = DRAWS, stamp = ++drawStamp;
+    for (let i = 0; i < WS.Enemy.pool.count; i++) WS.Enemy.pool.active[i]._dq = stamp;
+    for (let i = 0; i < WS.Familiar.list.length; i++) WS.Familiar.list[i]._dq = stamp;
+    if (player.totems) for (let i = 0; i < player.totems.length; i++) player.totems[i]._dq = stamp;
+    player._dq = stamp;
+    // Keep last frame's order for whatever is still here...
+    let n = 0;
+    for (let i = 0; i < draws.length; i++) {
+      const o = draws[i];
+      if (o._dq === stamp && o._dk !== stamp) { o._dk = stamp; draws[n++] = o; }
+    }
+    draws.length = n;
+    // ...and add what is new.
+    const add = (o) => { if (o._dk !== stamp) { o._dk = stamp; draws.push(o); } };
+    for (let i = 0; i < WS.Enemy.pool.count; i++) add(WS.Enemy.pool.active[i]);
+    for (let i = 0; i < WS.Familiar.list.length; i++) add(WS.Familiar.list[i]);
+    if (player.totems) for (let i = 0; i < player.totems.length; i++) add(player.totems[i]);
+    add(player);
+    ySort(draws);
 
     /* Every creature's shadow in one path and one fill, before any of them
        stands on it. Drawn one by one inside drawEnemy they cost a path, a fill
@@ -1431,7 +1538,7 @@
      * the mark can grow and brighten toward the shot and flare on the frame
      * before it - which turns "that one is a caster" into "that one is about
      * to fire", for nothing but a value that was already there. */
-    if (t.ranged && e.rangedTimer !== null && e.rangedTimer !== undefined) {
+    if (t.ranged) {
       const cd = t.ranged.cooldown || 3;
       const k = WS.clamp(1 - e.rangedTimer / cd, 0, 1);
       const col = WS.CONST.COLORS[t.ranged.school] || WS.CONST.COLORS.arcane;
@@ -3401,7 +3508,7 @@
         const t = k / 4, u = 1 - t;
         const px = u * u * sx + 2 * u * t * cx + t * t * ex, py = u * u * sy + 2 * u * t * cy + t * t * ey;
         const tx = 2 * u * (cx - sx) + 2 * t * (ex - cx), ty = 2 * u * (cy - sy) + 2 * t * (ey - cy);
-        const [nx, ny] = WS.normalize(-ty, tx);
+        const _unx = WS.normalize(-ty, tx), nx = _unx[0], ny = _unx[1];
         const side = k % 2 ? 1 : -1;
         ctx.beginPath();
         ctx.moveTo(px, py);
@@ -4152,10 +4259,15 @@
           ctx.save();
           ctx.translate(b.x, b.y);
           ctx.rotate(WS.atan2(b.vy, b.vx));
-          const tg = ctx.createLinearGradient(0, 0, -len, 0);
-          tg.addColorStop(0, WS.rgb(c, 0.75));
-          tg.addColorStop(0.3, WS.rgb(c, 0.32));
-          tg.addColorStop(1, WS.rgb(c, 0));
+          const row = gradRow(c, 0), lq = gq(len, 1);
+          let tg = row.get(lq);
+          if (tg === undefined) {
+            tg = ctx.createLinearGradient(0, 0, -lq, 0);
+            tg.addColorStop(0, WS.rgb(c, 0.75));
+            tg.addColorStop(0.3, WS.rgb(c, 0.32));
+            tg.addColorStop(1, WS.rgb(c, 0));
+            row.set(lq, tg); gradCount++;
+          }
           ctx.fillStyle = tg;
           ctx.beginPath();
           ctx.moveTo(0, -r * 0.8);
@@ -4194,9 +4306,16 @@
           const burst = b.burst || 1;
           const burstDamp = burst > 1 ? WS.max(0.45, 1 / WS.pow(burst, 0.22)) : 1;
           const far = r * (rank >= WS.Config.projRankB ? 5.2 : 4.2) * (b.evolved ? 1.2 : 1) * burstDamp;
-          const ring = ctx.createRadialGradient(0, 0, r * 1.6, 0, 0, far);
-          ring.addColorStop(0, WS.rgb(c, (0.20 / WS.sqrt(heft)) * (burst > 1 ? 1 / WS.sqrt(burst) : 1)));
-          ring.addColorStop(1, WS.rgb(c, 0));
+          const al = (0.20 / WS.sqrt(heft)) * (burst > 1 ? 1 / WS.sqrt(burst) : 1);
+          const row = gradRow(c, 1), rq = gq(r, 0.25), fq = gq(far, 0.5), aq = gq(al, 0.01);
+          const gk = (rq * 1024 + fq) * 128 + aq;
+          let ring = row.get(gk);
+          if (ring === undefined) {
+            ring = ctx.createRadialGradient(0, 0, rq * 0.25 * 1.6, 0, 0, fq * 0.5);
+            ring.addColorStop(0, WS.rgb(c, aq * 0.01));
+            ring.addColorStop(1, WS.rgb(c, 0));
+            row.set(gk, ring); gradCount++;
+          }
           ctx.fillStyle = ring;
           ctx.beginPath(); ctx.arc(0, 0, far, 0, WS.TAU); ctx.fill();
         }
@@ -4212,10 +4331,15 @@
          * A glow belongs AROUND a thing. Starting the gradient at the
          * bolt's own radius puts the light where light goes and leaves the
          * shape somewhere to be read against it. */
-        const grd = ctx.createRadialGradient(0, 0, r * 0.85, 0, 0, r * 2.4);
-        grd.addColorStop(0, WS.rgb(c, 0.55));
-        grd.addColorStop(0.35, WS.rgb(c, 0.42));
-        grd.addColorStop(1, WS.rgb(c, 0));
+        const row = gradRow(c, 2), rq = gq(r, 0.25);
+        let grd = row.get(rq);
+        if (grd === undefined) {
+          grd = ctx.createRadialGradient(0, 0, rq * 0.25 * 0.85, 0, 0, rq * 0.25 * 2.4);
+          grd.addColorStop(0, WS.rgb(c, 0.55));
+          grd.addColorStop(0.35, WS.rgb(c, 0.42));
+          grd.addColorStop(1, WS.rgb(c, 0));
+          row.set(rq, grd); gradCount++;
+        }
         ctx.fillStyle = grd;
         ctx.beginPath(); ctx.arc(0, 0, r * 2.4, 0, WS.TAU); ctx.fill();
       }
@@ -4307,9 +4431,14 @@
       ctx.translate(h.x, h.y);
       ctx.rotate(ang);
       if (!this.lite) {
-        const tail = ctx.createLinearGradient(-r * 3.6, 0, 0, 0);
-        tail.addColorStop(0, WS.rgb(h.colour, 0));
-        tail.addColorStop(1, WS.rgb(h.colour, 0.45));
+        const row = gradRow(h.colour, 3), rq = gq(r, 0.25);
+        let tail = row.get(rq);
+        if (tail === undefined) {
+          tail = ctx.createLinearGradient(-rq * 0.25 * 3.6, 0, 0, 0);
+          tail.addColorStop(0, WS.rgb(h.colour, 0));
+          tail.addColorStop(1, WS.rgb(h.colour, 0.45));
+          row.set(rq, tail); gradCount++;
+        }
         ctx.fillStyle = tail;
         ctx.beginPath();
         ctx.moveTo(-r * 3.6, 0); ctx.lineTo(0, -r * 0.55); ctx.lineTo(0, r * 0.55);

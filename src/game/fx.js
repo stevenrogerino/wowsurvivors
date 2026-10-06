@@ -315,7 +315,7 @@
    *  connected. Normalising here rather than at the call site means no future
    *  caller can reintroduce it. */
   FX.spray = function (x, y, dx, dy, count, colour, speed, life) {
-    const [nx, ny] = WS.normalize(dx, dy);
+    const _unx = WS.normalize(dx, dy), nx = _unx[0], ny = _unx[1];
     if (nx === 0 && ny === 0) return;
     for (let i = 0; i < count; i++) {
       const p = FX.particles.acquire();

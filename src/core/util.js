@@ -110,7 +110,7 @@ window.WS = window.WS || {};
    * sprite tints that never change, so the cache is small and stable, and
    * alpha is quantised to a hundredth - finer than the eye and far finer than
    * the 8-bit channel it ends up in. */
-  const rgbCache = new Map();
+  const rgbCache = new Map(), rgbaCache = new Map();
   WS.rgb = function (c, a) {
     const r = (c[0] * 255) | 0, g = (c[1] * 255) | 0, b = (c[2] * 255) | 0;
     if (a === undefined) {
@@ -119,12 +119,20 @@ window.WS = window.WS || {};
       if (v === undefined) { v = `rgb(${r},${g},${b})`; rgbCache.set(k, v); }
       return v;
     }
-    const q = a < 0 ? 0 : a > 1 ? 1 : Math.round(a * 100) / 100;
-    const k = (r * 65536 + g * 256 + b) * 128 + (q * 100);
-    let v = rgbCache.get(k);
-    if (v === undefined) { v = `rgba(${r},${g},${b},${q})`; rgbCache.set(k, v); }
+    /* Keyed on two small integers. One key made of both, (rgb * 128 + alpha),
+       runs past V8's small-integer range for most colours, so every lookup
+       boxed a fresh number; with alpha as a float it could also miss the
+       cache outright (0.07 * 100 is 7.000000000000001). Measured in the late
+       horde it was 30MB of garbage in ten seconds. */
+    const q = a < 0 ? 0 : a > 1 ? 100 : Math.round(a * 100);
+    const k = r * 65536 + g * 256 + b;
+    let row = rgbaCache.get(k);
+    if (row === undefined) { row = new Array(101).fill(undefined); rgbaCache.set(k, row); }
+    let v = row[q];
+    if (v === undefined) { v = `rgba(${r},${g},${b},${q / 100})`; row[q] = v; }
     return v;
   };
+  WS.rgb.cacheSize = () => rgbCache.size + rgbaCache.size;
   const hexCache = new Map();
   function hexByte(v) {
     const n = v < 0 ? 0 : v > 255 ? 255 : v;

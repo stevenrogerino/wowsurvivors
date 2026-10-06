@@ -69,7 +69,7 @@
     const T = run.bossDps || (run.bossDps = { dealt: 0, time: 0, at: run.time });
     const k = Math.pow(0.5, WS.max(0, run.time - T.at) / C().bossDpsHalfLife);
     T.dealt *= k; T.time *= k; T.at = run.time;
-    const gap = e.lastStruck === undefined ? 0.25 : WS.clamp(run.time - e.lastStruck, 0, 0.5);
+    const gap = e.lastStruck < 0 ? 0.25 : WS.clamp(run.time - e.lastStruck, 0, 0.5);
     e.lastStruck = run.time;
     T.dealt += landed;
     T.time += gap;
@@ -222,7 +222,7 @@
   B.update = function (e, dt, dx, dy) {
     const t = e.template;
     if (e.cast) { e.cast.life -= dt; if (e.cast.life <= 0) e.cast = null; }
-    if (!e.enraged && e.fightAt !== undefined && e.health <= e.maxHealth * C().bossEnrageAt) B.enrage(e, dx, dy);
+    if (!e.enraged && e.fightAt >= 0 && e.health <= e.maxHealth * C().bossEnrageAt) B.enrage(e, dx, dy);
     if (e.chainLeft > 0 && e.windup <= 0 && e.chargeTimer <= 0) {
       e.chainLeft--;
       const cfg = C();

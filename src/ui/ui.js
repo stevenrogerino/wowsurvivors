@@ -1025,7 +1025,7 @@
          will come (bossfight.js): the change is something to play toward,
          not a surprise. Gone once it has happened. */
       const gate = boss.hpFloor > 0 ? boss.hpFloor / boss.maxHealth
-        : boss.fightAt !== undefined && !boss.enraged ? WS.Config.bossEnrageAt : 0;
+        : boss.fightAt >= 0 && !boss.enraged ? WS.Config.bossEnrageAt : 0;
       if (e.bGateK !== gate) {
         e.bGateK = gate;
         e.bGate.style.left = (gate * 100).toFixed(2) + '%';

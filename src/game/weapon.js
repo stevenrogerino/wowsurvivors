@@ -250,7 +250,7 @@
     const d = w.data;
     fillSpec(player, w);
     const speed = speedOf(player, w);
-    const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
+    const _udx = WS.normalize(target.x - player.x, target.y - player.y), dx = _udx[0], dy = _udx[1];
     if (spec.homing) spec.homingTarget = target;
     /* A fan, when several shots leave at once at the same mark. Measured with
        three extra projectiles bought and one creature on the field, Cinderfall,
@@ -345,7 +345,7 @@
     fillSpec(player, w);
     const speed = speedOf(player, w);
     const count = countOf(player, w);
-    const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
+    const _udx = WS.normalize(target.x - player.x, target.y - player.y), dx = _udx[0], dy = _udx[1];
     if (spec.homing) spec.homingTarget = target;
     const spread = d.spread || 0.16;
     for (let i = 0; i < count; i++) {
@@ -529,7 +529,7 @@
          first one moved, or every strike past the first swings at air. */
       const knock = first ? d.knockback * (w.mods.pull ? -0.6 : 1) : 0;
       if (knock && !e.boss && !e.finale) {
-        const [kx, ky] = WS.normalize(dx, dy);
+        const _ukx = WS.normalize(dx, dy), kx = _ukx[0], ky = _ukx[1];
         e.x += kx * knock; e.y += ky * knock;
       }
       const dealt = WS.Enemy.hit(e, dmg, w.id);
@@ -576,7 +576,7 @@
     spec.radius = 13 * (w.evolved ? 1.3 : 1);
     spec.life = (reach * (d.waveReach || 2.8)) / speed;
     spec.spinRate = 0;
-    const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
+    const _udx = WS.normalize(target.x - player.x, target.y - player.y), dx = _udx[0], dy = _udx[1];
     WS.Projectile.launchBolt(muzzleX(player, dx), muzzleY(player, dy), dx * speed, dy * speed, spec);
     const colour = w.mods.blend ? WS.mix(schoolColour(w), w.mods.blend, 0.45) : schoolColour(w);
     WS.FX.flash(player.x + dx * 20, player.y - 14 + dy * 20, 26, colour, 0.14, 5, 'physical');
@@ -617,7 +617,7 @@
     const count = countOf(player, w);
     spec.burst = count;
     const speed = speedOf(player, w);
-    const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
+    const _udx = WS.normalize(target.x - player.x, target.y - player.y), dx = _udx[0], dy = _udx[1];
     const nx = -dy, ny = dx;
     for (let i = 0; i < count; i++) {
       const side = (i - (count - 1) / 2);
@@ -653,7 +653,7 @@
     const count = countOf(player, w);
     spec.burst = count;
     const speed = speedOf(player, w);
-    const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
+    const _udx = WS.normalize(target.x - player.x, target.y - player.y), dx = _udx[0], dy = _udx[1];
     const spread = 0.42;
     for (let i = 0; i < count; i++) {
       const a = (i - (count - 1) / 2) * spread;
@@ -688,7 +688,7 @@
     const first = WS.Enemy.findNearest(player.x, player.y, range * WS.Config.chainFirstReach);
     if (!first) { w.cooldown = retry(); return false; }
     const chains = chainCount(player, w);
-    const [cdx, cdy] = WS.normalize(first.x - player.x, first.y - player.y);
+    const _ucdx = WS.normalize(first.x - player.x, first.y - player.y), cdx = _ucdx[0], cdy = _ucdx[1];
     Weapon.chainFrom(muzzleX(player, cdx), muzzleY(player, cdy),
       damageOf(player, w), chains, range, w.id,
       schoolColour(w), w);
@@ -816,7 +816,7 @@
     const count = 1 + (w.evolved ? 1 : 0);
     for (let i = 0; i < count; i++) {
       const t = i === 0 ? target : (WS.Enemy.findNearest(player.x, player.y, d.range || 600, new Set([target])) || target);
-      const [dx, dy] = WS.normalize(t.x - player.x, t.y - player.y);
+      const _udx = WS.normalize(t.x - player.x, t.y - player.y), dx = _udx[0], dy = _udx[1];
       WS.Projectile.launchBolt(player.x, player.y, dx * speed, dy * speed, spec);
     }
     return true;
@@ -826,7 +826,7 @@
     const d = w.data;
     const target = WS.Enemy.findNearest(player.x, player.y, d.range || 620);
     if (!target) { w.cooldown = retry(); return false; }
-    const [dx, dy] = WS.normalize(target.x - player.x, target.y - player.y);
+    const _udx = WS.normalize(target.x - player.x, target.y - player.y), dx = _udx[0], dy = _udx[1];
     const range = areaOf(player, w, d.range || 620);
     let width = areaOf(player, w, d.beamWidth || 26);
     if (player.metaTimer > 0) width *= (d.metaWidthMult || 1.8);

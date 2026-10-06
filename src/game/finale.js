@@ -276,7 +276,7 @@
     // Never on an opening still to come: pushed off it, just clear.
     const seal = this.sealing(tele, (ax, ay, pad) => WS.dist(x, y, ax, ay) < r + pad);
     if (seal) {
-      const [ux, uy, ud] = WS.normalize(x - seal.x, y - seal.y);
+      const _uux = WS.normalize(x - seal.x, y - seal.y), ux = _uux[0], uy = _uux[1], ud = _uux[2];
       const away = r + (WS.Game.player ? WS.Game.player.radius : 12) + 22;
       x = seal.x + (ud > 0.5 ? ux : 1) * away; y = seal.y + (ud > 0.5 ? uy : 0) * away;
     }
@@ -1012,7 +1012,7 @@
         if (!this.live(e)) { this.units.splice(i, 1); continue; }
         // How fast it is drifting, smoothed: a beam it is about to cast
         // turns about where it will be (F.clearArms).
-        if (e._lx !== undefined && dt > 0) {
+        if (e._lx === e._lx && dt > 0) {   // not NaN: it has a last position
           const k = WS.min(1, dt * 4);
           e.fvx = (e.fvx || 0) + ((e.x - e._lx) / dt - (e.fvx || 0)) * k;
           e.fvy = (e.fvy || 0) + ((e.y - e._ly) / dt - (e.fvy || 0)) * k;
@@ -1068,7 +1068,7 @@
       if (pod.frozen || pod.done) continue;
       const wp = pod.path[0];
       if (!wp) { pod.done = true; continue; }
-      const [dx, dy, d] = WS.normalize(wp[0] - pod.x, wp[1] - pod.y);
+      const _udx = WS.normalize(wp[0] - pod.x, wp[1] - pod.y), dx = _udx[0], dy = _udx[1], d = _udx[2];
       const step = pod.speed * dt;
       if (d <= step) {
         pod.x = wp[0]; pod.y = wp[1]; pod.path.shift();
@@ -1292,11 +1292,11 @@
      toward a point on the far side of where it already is. */
   function keepAway(F, e, dist, speed, dt, box) {
     const p = WS.Game.player;
-    const [dx, dy] = WS.normalize(e.x - p.x, e.y - p.y);
+    const _udx = WS.normalize(e.x - p.x, e.y - p.y), dx = _udx[0], dy = _udx[1];
     const b = box || { minX: 110, maxX: W() - 110, minY: 110, maxY: H() - 110 };
     const tx = WS.clamp(p.x + dx * dist, b.minX, b.maxX);
     const ty = WS.clamp(p.y + dy * dist, b.minY, b.maxY);
-    const [mx, my, d] = WS.normalize(tx - e.x, ty - e.y);
+    const _umx = WS.normalize(tx - e.x, ty - e.y), mx = _umx[0], my = _umx[1], d = _umx[2];
     const step = WS.min(d, speed * dt);
     e.x += mx * step; e.y += my * step;
     if (WS.abs(mx) > 0.1) e.facing = p.x < e.x ? -1 : 1;
@@ -1313,7 +1313,7 @@
      beat is the one a player reacts to. */
   function charge(e, windup, time, range, girth) {
     const p = WS.Game.player;
-    const [dx, dy] = WS.normalize(p.x - e.x, p.y - e.y);
+    const _udx = WS.normalize(p.x - e.x, p.y - e.y), dx = _udx[0], dy = _udx[1];
     WS.Enemy.beginCharge(e, dx, dy, windup, time, range, girth, WS.min(C().finaleChargeLock, windup * 0.6));
     WS.Audio.play('warn', e.x);
   }
@@ -1420,7 +1420,7 @@
           }
           return;
         }
-        const [dx, dy, d] = WS.normalize(p.x - s.mx, p.y - s.my);
+        const _udx = WS.normalize(p.x - s.mx, p.y - s.my), dx = _udx[0], dy = _udx[1], d = _udx[2];
         const step = WS.min(d, T.burrowSpeed * dt);
         s.mx += dx * step; s.my += dy * step;
         s.burrowT -= dt;
@@ -1646,11 +1646,11 @@
             charge(a, T.dashChainWindup, T.dashTime, T.dashRange, T.dashGirth);
           } else {
             // Circles you at a duelling distance.
-            const [dx, dy, d] = WS.normalize(a.x - p.x, a.y - p.y);
+            const _udx = WS.normalize(a.x - p.x, a.y - p.y), dx = _udx[0], dy = _udx[1], d = _udx[2];
             const ang = WS.atan2(dy, dx) + T.duelCircle * dt;
             const tx = WS.clamp(p.x + WS.cos(ang) * T.duelRange, 60, W() - 60);
             const ty = WS.clamp(p.y + WS.sin(ang) * T.duelRange, 60, H() - 60);
-            const [mx, my, md] = WS.normalize(tx - a.x, ty - a.y);
+            const _umx = WS.normalize(tx - a.x, ty - a.y), mx = _umx[0], my = _umx[1], md = _umx[2];
             const step = WS.min(md, T.duelSpeed * dt);
             a.x += mx * step; a.y += my * step;
             a.facing = p.x < a.x ? -1 : 1;

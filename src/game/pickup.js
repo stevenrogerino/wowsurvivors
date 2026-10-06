@@ -305,7 +305,7 @@
       // A watcher is not collected: you stand with them (Encounters.tend).
       if (pickup.kind === 'watcher') { i++; continue; }
       if (pickup.kind === 'calf') WS.Trials.amble(pickup, dt);
-      const [dx, dy, distance] = WS.normalize(player.x - pickup.x, player.y - pickup.y);
+      const _udx = WS.normalize(player.x - pickup.x, player.y - pickup.y), dx = _udx[0], dy = _udx[1], distance = _udx[2];
 
       if (!pickup.type.noMagnet && distance < player.pickupRadius) {
         const pull = WS.max(150, 380 * (1 - distance / player.pickupRadius));

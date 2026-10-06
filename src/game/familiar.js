@@ -280,7 +280,7 @@
             burst(fam, player, t, damage);
             continue;
           }
-          const [cx, cy] = WS.normalize(c.x - fam.x, c.y - fam.y);
+          const _ucx = WS.normalize(c.x - fam.x, c.y - fam.y), cx = _ucx[0], cy = _ucx[1];
           const sp = t.dashSpeed * speedMult * t.ghoulChargeMult;
           fam.x += cx * sp * dt; fam.y += cy * sp * dt;
           fam.facing = cx < 0 ? -1 : 1;

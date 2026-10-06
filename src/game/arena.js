@@ -261,7 +261,7 @@
         if (h.delay > 0) { h.delay -= dt; continue; }
         h.r += h.speed * dt;
         h.gapRot += h.spin * dt;
-        const [, , d] = WS.normalize(player.x - h.cx, player.y - h.cy);
+        const _uv = WS.normalize(player.x - h.cx, player.y - h.cy), d = _uv[2];
         if (!h.hit && WS.abs(d - h.r) < h.thick * 0.5 + player.radius * 0.5) {
           const a = WS.atan2(player.y - h.cy, player.x - h.cx);
           if (!inGap(h, a)) {
@@ -326,7 +326,7 @@
       }
       // The chains drag the survivor toward the centre while any remain.
       if (this.anchors.length) {
-        const [dx, dy] = WS.normalize(CX - player.x, CY - player.y);
+        const _udx = WS.normalize(CX - player.x, CY - player.y), dx = _udx[0], dy = _udx[1];
         const pull = 26 * this.anchors.length;
         player.x = WS.clamp(player.x + dx * pull * dt, BOUNDS.minX, BOUNDS.maxX);
         player.y = WS.clamp(player.y + dy * pull * dt, BOUNDS.minY, BOUNDS.maxY);

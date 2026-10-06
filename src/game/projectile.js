@@ -191,7 +191,7 @@
     }
     if (b.slowFactor) WS.Enemy.applySlow(e, b.slowFactor, b.slowDuration || 1.5);
     if (b.knock && !e._dead && !e.boss && !e.finale) {
-      const [kx, ky] = WS.normalize(b.vx, b.vy);
+      const _ukx = WS.normalize(b.vx, b.vy), kx = _ukx[0], ky = _ukx[1];
       e.x += kx * b.knock; e.y += ky * b.knock;
     }
     if (b.healPer && b.healPool && b.healPool.left > 0) {
@@ -257,7 +257,7 @@
             b.hitBy.clear();
           }
         } else {
-          const [hx, hy] = WS.normalize(player.x - b.x, player.y - b.y);
+          const _uhx = WS.normalize(player.x - b.x, player.y - b.y), hx = _uhx[0], hy = _uhx[1];
           b.vx = hx * b.speed * 1.1; b.vy = hy * b.speed * 1.1;
           if (WS.dist2(b.x, b.y, player.x, player.y) < 24 * 24) {
             this.bolts.releaseAt(i); continue;
@@ -285,8 +285,8 @@
              makes right after piercing something, it shed most of its speed in
              a few frames and settled into a hover, sitting on the field like a
              mine. Rotating cannot do that: direction changes, speed does not. */
-          const [tx, ty] = WS.normalize(b.homingTarget.x - b.x, b.homingTarget.y - b.y);
-          const [cx, cy] = WS.normalize(b.vx, b.vy);
+          const _utx = WS.normalize(b.homingTarget.x - b.x, b.homingTarget.y - b.y), tx = _utx[0], ty = _utx[1];
+          const _ucx = WS.normalize(b.vx, b.vy), cx = _ucx[0], cy = _ucx[1];
           // Signed angle from the current heading to the target heading.
           const cross = cx * ty - cy * tx;
           const dot = WS.clamp(cx * tx + cy * ty, -1, 1);
@@ -330,7 +330,7 @@
           const next = WS.Enemy.findNearest(b.x, b.y, 320, b.hitBy);
           if (next) {
             const speed = WS.sqrt(b.vx * b.vx + b.vy * b.vy);
-            const [nx, ny] = WS.normalize(next.x - b.x, next.y - b.y);
+            const _unx = WS.normalize(next.x - b.x, next.y - b.y), nx = _unx[0], ny = _unx[1];
             b.vx = nx * speed; b.vy = ny * speed;
             b.life = WS.max(b.life, 1.2);
           } else { this.bolts.releaseAt(i); continue; }

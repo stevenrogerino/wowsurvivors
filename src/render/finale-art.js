@@ -1811,7 +1811,7 @@
   function drawFence(ctx, m, time) {
     if (!WS.Finale.live(m.a) || !WS.Finale.live(m.b)) return;
     const ax = m.a.x, ay = m.a.y - m.a.radius * 1.6, bx = m.b.x, by = m.b.y - m.b.radius * 1.6;
-    const [nx, ny] = WS.normalize(-(by - ay), bx - ax);
+    const _unx = WS.normalize(-(by - ay), bx - ax), nx = _unx[0], ny = _unx[1];
     const pts = [];
     const segs = 14;
     for (let i = 0; i <= segs; i++) {

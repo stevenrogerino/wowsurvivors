@@ -139,7 +139,7 @@
     let i = 0;
     while (i < this.pool.count) {
       const gem = this.pool.active[i];
-      const [dx, dy, distance] = WS.normalize(player.x - gem.x, player.y - gem.y);
+      const _udx = WS.normalize(player.x - gem.x, player.y - gem.y), dx = _udx[0], dy = _udx[1], distance = _udx[2];
       if (gem.pop > 0) gem.pop -= dt;
       if (vacuum) {
         gem.x += dx * 900 * dt;

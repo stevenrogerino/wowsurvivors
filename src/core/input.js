@@ -112,7 +112,7 @@
     const target = this.chaseTarget;
     const p = WS.Game && WS.Game.player;
     if (target && p) {
-      const [nx, ny, len] = WS.normalize(target.x - p.x, target.y - p.y);
+      const _unx = WS.normalize(target.x - p.x, target.y - p.y), nx = _unx[0], ny = _unx[1], len = _unx[2];
       // Closer than this and re-aiming only makes the survivor twitch in
       // place, chasing a point it has effectively already reached.
       const ARRIVED = 10;
