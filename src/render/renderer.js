@@ -831,8 +831,10 @@
    * up, so `hold` notes the few properties they change and `release` puts
    * those back and returns the transform to the world's with setTransform,
    * which allocates nothing. The world transform is mirrored here in plain
-   * numbers as drawFrame builds it (WT). These are for drawing done at the
-   * world transform only, and they nest (a few deep). */
+   * numbers as drawFrame builds it (WT). Only the frame's own canvas, while
+   * drawFrame runs (WCTX), takes that path: the same draws aimed at any
+   * other canvas (the bestiary, a harness's tile) use the real save and
+   * restore, since their transform is not the world's. They nest a few deep. */
   const WT = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
   function wtSet(a, d) { WT.a = a; WT.b = 0; WT.c = 0; WT.d = d; WT.e = 0; WT.f = 0; }
   function wtTranslate(x, y) { WT.e += WT.a * x + WT.c * y; WT.f += WT.b * x + WT.d * y; }
@@ -841,8 +843,10 @@
   const hAlpha = new Float64Array(HELD), hOp = new Array(HELD).fill('source-over'),
     hFill = new Array(HELD).fill('#000'), hStroke = new Array(HELD).fill('#000'),
     hLine = new Float64Array(HELD);
-  let held = 0;
+  let held = 0, WCTX = null;
+  const hReal = new Uint8Array(HELD);
   function hold(ctx) {
+    if (ctx !== WCTX) { ctx.save(); hReal[held++] = 1; return; }
     if (R.checkWT) {   // a harness's check that the drawing really is at the world transform
       const m = ctx.getTransform();
       if (Math.abs(m.a - WT.a) + Math.abs(m.b - WT.b) + Math.abs(m.c - WT.c) + Math.abs(m.d - WT.d)
@@ -850,11 +854,13 @@
       R.wtChecked = (R.wtChecked || 0) + 1;
     }
     const i = held++;
+    hReal[i] = 0;
     hAlpha[i] = ctx.globalAlpha; hOp[i] = ctx.globalCompositeOperation;
     hFill[i] = ctx.fillStyle; hStroke[i] = ctx.strokeStyle; hLine[i] = ctx.lineWidth;
   }
   function release(ctx) {
     const i = --held;
+    if (hReal[i]) { ctx.restore(); return; }
     ctx.setTransform(WT.a, WT.b, WT.c, WT.d, WT.e, WT.f);
     ctx.globalAlpha = hAlpha[i];
     if (ctx.globalCompositeOperation !== hOp[i]) ctx.globalCompositeOperation = hOp[i];
@@ -1032,7 +1038,7 @@
     const dice = WS.random;
     WS.random = cosmetic;
     this.lerpIn();
-    try { this.drawFrame(time); } finally { this.lerpOut(); WS.random = dice; }
+    try { this.drawFrame(time); } finally { this.lerpOut(); WS.random = dice; WCTX = null; }
     this.warmOne();
   };
 
@@ -1084,6 +1090,7 @@
     ctx.scale(this.scale, this.scale);
     // The same transform in numbers, for release() (see hold above).
     wtSet(this.dpr, this.dpr); wtTranslate(tx, ty); wtScale(this.scale, this.scale);
+    WCTX = ctx;
     ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
     // The punch leans the field in toward the survivor (FX.punch).
     const punch = WS.FX.punchNow ? WS.FX.punchNow() : 0;

@@ -55,6 +55,7 @@
       // The renderer's: interpolation, sprite cache, draw order.
       _px: z, _py: z, _rx: z, _ry: z, _ra: undefined,
       _spr: null, _sprChill: -1, _sprSize: -1, _dq: 0, _dk: 0,
+      _aq: 0,   // damageAreaGrid's visit stamp
     };
   };
 
@@ -195,6 +196,8 @@
        drawing decision, not a balance one. */
     e.spriteSize = template.radius * (isBoss ? 3.4 : 3.0) * (template.spriteScale || 1);
     fresh(e);
+    // Into the grid now, so a splash this same tick can find it (damageAreaGrid).
+    if (this.grid) this.grid.insert(e);
     // Whatever Oaths the survivor swore for tonight (WS.Runs).
     if (WS.Runs) WS.Runs.applyToEnemy(e);
     return e;
@@ -738,6 +741,14 @@
    *  having to infer one from the pool count changing - which only ever told
    *  it about a kill. */
   Enemy.damageArea = function (x, y, radius, amount, hitBy, knockback, source) {
+    /* From the grid, not the whole horde. Every splash walked all three
+       hundred creatures to find the handful under it, and a late build
+       throws dozens a tick: in the busiest twentieth of frames that was
+       0.8ms of the simulation. The grid is the one findCollision reads,
+       rebuilt each tick, so the search widens by AREA_SLACK for what has
+       moved since, and the exact test below is on where each creature is
+       now. A blast the size of the field still walks the list. */
+    if (radius <= AREA_GRID_MAX && this.grid) return this.damageAreaGrid(x, y, radius, amount, hitBy, knockback, source);
     let i = 0, struck = 0;
     while (i < this.pool.count) {
       const e = this.pool.active[i];
@@ -754,6 +765,40 @@
         this.hit(e, amount, source);
         if (!e._dead) i++;
       } else i++;
+    }
+    return struck;
+  };
+
+  const AREA_GRID_MAX = 320, AREA_SLACK = 40;
+  let areaStamp = 0;
+  Enemy.damageAreaGrid = function (x, y, radius, amount, hitBy, knockback, source) {
+    const g = this.grid, c = g.cell, R = radius + AREA_SLACK;
+    const x0 = ((x - R) / c) | 0, x1 = ((x + R) / c) | 0;
+    const y0 = ((y - R) / c) | 0, y1 = ((y + R) / c) | 0;
+    let struck = 0;
+    // A slot that died and came back this tick can sit in two cells: visit it once.
+    const stamp = ++areaStamp;
+    for (let gy = y0; gy <= y1; gy++) {
+      for (let gx = x0; gx <= x1; gx++) {
+        const b = g.buckets.get(gy * 4096 + gx);
+        if (b === undefined) continue;
+        for (let i = 0; i < b.length; i++) {
+          const e = b[i];
+          if (e._dead || e.untargetable || e._aq === stamp) continue;
+          e._aq = stamp;
+          const reach = radius + e.radius;
+          if ((!hitBy || hitBy.get(e) !== e.spawnId) && WS.dist2(x, y, e.x, e.y) <= reach * reach) {
+            if (hitBy) hitBy.set(e, e.spawnId);
+            struck++;
+            if (knockback && !e.boss && !e.finale) {
+              const _uk = WS.normalize(e.x - x, e.y - y);
+              e.x += _uk[0] * knockback;
+              e.y += _uk[1] * knockback;
+            }
+            this.hit(e, amount, source);
+          }
+        }
+      }
     }
     return struck;
   };
