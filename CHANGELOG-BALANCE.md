@@ -62,7 +62,11 @@ the end was the ordinary horde.
   read.
 - **Cards:** the gold evolution seal moves to the top left. A red **!** at
   the bottom left marks a passive that a weapon you carry needs to evolve,
-  while you hold none of it. Dread Command's card opens with
+  while you hold none of it. Top right, a blue spark: taking this new weapon
+  sets off a discovery now, because its other half is already carried. A
+  violet diamond in the same place on an evolution means its union partner
+  is already evolved, so evolving this lets you forge the union. Each mark
+  has its own hover line. Dread Command's card opens with
   "**Unlocks Spirit Companion (wolves) and Grave Call (ghouls).**" in bold.
 
 ## 2026-10-05 (night): A weapon tuning pass that leaves the starting classes whole

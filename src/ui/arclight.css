@@ -516,6 +516,21 @@ html, body {
   background: radial-gradient(circle at 35% 30%, #ff9a86, #d8402c 65%, #84180e);
   box-shadow: 0 0 0 1.5px rgba(14,6,4,.9), 0 0 10px rgba(232,80,56,.6);
 }
+/* Top right: taking it sets off a discovery now. */
+.card .card-spark {
+  position: absolute; right: -9px; top: -9px; z-index: 2;
+  width: 22px; height: 22px; border-radius: 50%;
+  display: grid; place-items: center;
+  font: 700 13px/1 var(--ui); color: #f2fbff;
+  background: radial-gradient(circle at 35% 30%, #c9efff, #59bfff 62%, #1d5f8f);
+  box-shadow: 0 0 0 1.5px rgba(4,10,16,.9), 0 0 10px rgba(89,191,255,.65);
+  pointer-events: auto;
+}
+.card .card-spark.union {
+  font-size: 11px; color: #f4f0ff;
+  background: radial-gradient(circle at 35% 30%, #d9d0ff, #8f7bff 62%, #43308f);
+  box-shadow: 0 0 0 1.5px rgba(8,6,16,.9), 0 0 10px rgba(143,123,255,.65);
+}
 .card .card-heal {
   position: absolute; right: -9px; bottom: -9px; z-index: 2;
   width: 22px; height: 22px; border-radius: 50%;

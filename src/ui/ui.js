@@ -197,10 +197,15 @@
     const o = opts || {};
     node.removeAttribute('title');
     const open = (byPointer) => {
+      /* A mark inside this (a card's corner seals) with its own tip, waiting
+         to open or already up, keeps it: the pointer entered both at once. */
+      const inner = (x) => x && x !== node && node.contains(x);
+      if (inner(Tip.pending) || inner(Tip.anchor)) return;
       clearTimeout(Tip.timer);
       Tip.pending = node;
       Tip.timer = setTimeout(() => {
         Tip.pending = null;
+        if (inner(Tip.anchor)) return;
         if (node.isConnected) { showTip(node, build, o.prefer, o.live); Tip.byPointer = byPointer; }
       }, o.delay || 90);
     };
@@ -1440,6 +1445,31 @@
       const seal = el('span', 'card-evolve needed', '!');
       seal.dataset.tip = `Needed to evolve: your ${choice.evolveNeeded.weapon} becomes ${choice.evolveNeeded.into} at rank ${WS.WEAPON_MAX_LEVEL} once you hold ${choice.name}.`;
       plate.append(seal);
+    }
+    /* A spark top right: taking this sets off a discovery now, because the
+       other half is already carried. It was a small line under the text,
+       and the bonus players most often walked past. */
+    {
+      const disc = (choice.reacts || []).filter((r) => r.kind === 'discovery' && r.ready);
+      if (disc.length) {
+        const spark = el('span', 'card-spark', '\u2726');
+        spark.dataset.tip = disc.map((r) => {
+          const c = WS.Combos[r.id];
+          return c ? `Discovery: ${c.name}. ${WS.template(c.description, c)}` : r.text;
+        }).join('\n');
+        plate.append(spark);
+        card.classList.add('sparks');
+      }
+      /* The same corner on an evolution whose union partner is already
+         evolved: this evolution opens the union. (A discovery is only ever
+         ready on a new weapon, so the two never meet.) */
+      const uni = choice.type === 'evolve' && (choice.reacts || []).find((r) => r.kind === 'union' && r.ready);
+      if (uni) {
+        const mark = el('span', 'card-spark union', '\u25C6');
+        const res = WS.Weapons[uni.id], other = WS.Weapons[uni.with];
+        mark.dataset.tip = `Union ready: ${other ? other.name : uni.with} is already evolved, so evolving this lets you forge ${res ? res.name : 'their union'}.`;
+        plate.append(mark);
+      }
     }
     card.append(plate);
 

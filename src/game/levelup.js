@@ -59,7 +59,7 @@
       if (p.combosActive[cid]) continue;
       // A union answers for the weapons it was forged from (ComboSystem.find).
       const held = !!WS.ComboSystem.find(p, other);
-      out.push({ kind: 'discovery', ready: held && kind === 'new_weapon',
+      out.push({ kind: 'discovery', id: cid, ready: held && kind === 'new_weapon',
         text: held ? 'Discovery: ' + c.name
           : c.name + ' needs ' + (WS.Weapons[other] ? WS.Weapons[other].name : other) });
     }
@@ -84,7 +84,7 @@
       const other = u.from[0] === id ? u.from[1] : u.from[0];
       const ow = WS.Player.getWeapon(p, other);
       const res = WS.Weapons[u.result];
-      out.push({ kind: 'union', ready: !!(ow && ow.evolved),
+      out.push({ kind: 'union', id: u.result, with: other, ready: !!(ow && ow.evolved),
         text: (res ? res.name : 'Union') + ' once '
           + (WS.Weapons[other] ? WS.Weapons[other].name : other) + ' evolves' });
     }
