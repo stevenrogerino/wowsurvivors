@@ -39,7 +39,11 @@
    *  The card picks were fixed to 1-3, so a fourth card showed a 4 that did
    *  nothing, and they could not be moved for a tester on an unusual board. */
   Input.action = function (code) {
+    /* Esc and P always pause and resume, whatever pause is bound to: a page
+       hosting the game (the artifact viewer) can keep Esc for itself. P
+       yields if the player has bound it to something else. */
     if (code === Input.keyFor('pause') || code === 'Escape') return 'pause';
+    if (code === 'KeyP' && !Object.values((WS.Save && WS.Save.db && WS.Save.settings.keys) || {}).includes('KeyP')) return 'pause';
     for (const act of ['reroll', 'banish', 'pick1', 'pick2', 'pick3', 'pick4']) {
       if (code === Input.keyFor(act)) return act;
     }

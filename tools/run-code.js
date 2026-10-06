@@ -59,6 +59,16 @@ function decode(code) {
 /** Every version of the record, read into one shape: positions as absolute
  *  8px cells every second (s.t, s.x, s.y) and the slower figures in s5. */
 function normalise(L) {
+  /* Pickups counted by the minute (runlog.js TALLY) come back as events,
+     spread across their minute, so every reader below sees one shape. */
+  if (L.tally) {
+    for (const [what, kinds] of Object.entries(L.tally)) {
+      for (const [kind, row] of Object.entries(kinds)) {
+        row.forEach((n, m) => { for (let i = 0; i < n; i++) L.ev.push([m * 60 + (i + 0.5) * 60 / n, what, kind]); });
+      }
+    }
+    L.ev.sort((a, b) => a[0] - b[0]);
+  }
   if (L.v >= 2) {
     let x = 0, y = 0;
     L.s.x = L.s.dx.map((d) => (x += d)); L.s.y = L.s.dy.map((d) => (y += d));

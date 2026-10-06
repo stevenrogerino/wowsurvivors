@@ -236,6 +236,9 @@
           stats: WS.Weapon.statDiff(p, w.id, { level: w.level, evolved: w.evolved, mods: w.mods },
             { level: w.level + 1, evolved: w.evolved, mods: w.mods }),
           reacts: reactionsFor(p, w.id, 'weapon_rank', w.level + 1),
+          // Its evolution passive is already held: rank 8 evolves it.
+          evolveReady: !w.evolved && !!d.evolvePairing && (p.upgradeLevels[d.evolvePairing] || 0) > 0
+            ? { into: d.evolveName, with: WS.Upgrades[d.evolvePairing].name } : null,
         });
       } else if (!w.evolved && d.evolvePairing && (p.upgradeLevels[d.evolvePairing] || 0) > 0) {
         candidates.push({
@@ -281,6 +284,8 @@
           rank: 1, maxRank: WS.WEAPON_MAX_LEVEL,
           reacts: reactionsFor(p, id, 'new_weapon', 1),
           note: 'New weapon · pairs with ' + WS.Upgrades[d.evolvePairing].name,
+          evolveReady: (p.upgradeLevels[d.evolvePairing] || 0) > 0
+            ? { into: d.evolveName, with: WS.Upgrades[d.evolvePairing].name } : null,
           stats: WS.Weapon.statDiff(p, id, null, { level: 1, evolved: false }),
         });
       }

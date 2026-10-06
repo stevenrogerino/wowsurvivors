@@ -20,9 +20,14 @@
 (function (WS) {
 
   const V = 4;
-  const SAMPLE = 1;          // seconds between position samples
+  /* Shorter codes (a level-181 night came to 75k characters): positions
+     every 2s, meter snapshots every 30s, and the common pickups counted by
+     the minute (TALLY) instead of one event each. tools/run-code.js reads
+     the counts back as events, so nothing downstream changed. */
+  const SAMPLE = 2;          // seconds between position samples
   const SLOW = 5;            // seconds between health, crowd and damage samples
-  const METER_EVERY = 10;    // seconds between meter snapshots
+  const METER_EVERY = 30;    // seconds between meter snapshots
+  const TALLY = { chest: 1, potion: 1, stone: 1 };
   const NEAR = 320;          // "around you": creatures within this many px
   const BIG_HIT = 0.1;       // a blow worth recording, as a share of max health
   const MAX_EVENTS = 4000;
@@ -168,15 +173,26 @@
     if (amount >= p.maxHealth * BIG_HIT) ev('hit', k, Math.round(amount), Math.round(100 * WS.max(0, p.health) / p.maxHealth));
   };
 
+  // One more of `kind` this minute, in the per-minute counts (TALLY).
+  function tally(what, kind) {
+    const L = RunLog.log;
+    if (!L) return;
+    const t = (L.tally || (L.tally = {}))[what] || (L.tally[what] = {});
+    const row = t[kind] || (t[kind] = []);
+    const m = WS.floor(now() / 60);
+    while (row.length <= m) row.push(0);
+    row[m]++;
+  }
+
   RunLog.pickup = function (kind) {
     if (kind === 'coin') return;
-    ev('got', kind);
+    if (TALLY[kind]) tally('got', kind); else ev('got', kind);
   };
 
   /** A pickup put on the field (Pickup.spawn), whether or not it is ever
    *  collected: the drop rate is decided on these, not on what was picked up. */
   const DROPS = { bomb: 1, hourglass: 1, potion: 1, chest: 1, reliquary: 1, stone: 1, cache: 1 };
-  RunLog.drop = function (kind) { if (DROPS[kind]) ev('drop', kind); };
+  RunLog.drop = function (kind) { if (!DROPS[kind]) return; if (TALLY[kind]) tally('drop', kind); else ev('drop', kind); };
   RunLog.note = function (...a) { ev(...a); };
 
   // The callings' tallies (Calling.count) and the like, read at the end.
@@ -206,7 +222,34 @@
       const rep = WS.Runs.report();
       L.end.frames = rep.frames;
     } catch (e) { /* the record matters more than the frame figures */ }
+    // Every finished night keeps its code, so a forgotten copy is not lost.
+    const meta = { at: Date.now(), char: run.characterId, map: run.mapId, diff: run.difficulty,
+      nightly: !!run.nightly, outcome: reason, time: r1(run.time), score: run.score || 0 };
+    RunLog.code().then((text) => { if (text) RunLog.keep(Object.assign(meta, { code: text })); }).catch(() => {});
   };
+
+  /* -------------------------------------------------------- kept codes --
+     The last nights' codes, newest first, in their own storage key: a code
+     runs to tens of kilobytes and has no business inside the account. */
+  const KEPT_KEY = 'ember-watch-run-codes';
+  const KEPT_CAP = 12;
+  RunLog.kept = function () {
+    try {
+      const list = JSON.parse(localStorage.getItem(KEPT_KEY) || '[]');
+      return Array.isArray(list) ? list.filter((e) => e && typeof e.code === 'string') : [];
+    } catch (e) { return []; }
+  };
+  RunLog.keep = function (entry) {
+    let list = RunLog.kept();
+    list.unshift(entry);
+    list = list.slice(0, KEPT_CAP);
+    // If the browser runs out of room, drop the oldest until it fits.
+    while (list.length) {
+      try { localStorage.setItem(KEPT_KEY, JSON.stringify(list)); return true; } catch (e) { list.pop(); }
+    }
+    return false;
+  };
+  RunLog.forget = function () { try { localStorage.removeItem(KEPT_KEY); } catch (e) { /* nothing kept */ } };
 
   /* ---------------------------------------------------------- the code -- */
   const b64url = (bytes) => {

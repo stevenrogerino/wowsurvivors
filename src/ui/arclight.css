@@ -500,6 +500,16 @@ html, body {
 /* Heals you: a small green plus, seated on the plate's bottom-right corner
    like a wax seal. Drawn, not a glyph from the text face, so it is the same
    crisp cross at every size. */
+/* Evolution ready: a gold seal on the plate's bottom-left, an up-chevron. */
+.card .card-evolve {
+  position: absolute; left: -9px; bottom: -9px; z-index: 2;
+  width: 22px; height: 22px; border-radius: 50%;
+  display: grid; place-items: center;
+  font: 700 11px/1 var(--ui); color: #2a1a04;
+  background: radial-gradient(circle at 35% 30%, #ffe7a3, #e2a93c 65%, #9a6a1c);
+  box-shadow: 0 0 0 1.5px rgba(14,10,4,.9), 0 0 10px rgba(245,197,107,.6);
+  pointer-events: auto;
+}
 .card .card-heal {
   position: absolute; right: -9px; bottom: -9px; z-index: 2;
   width: 22px; height: 22px; border-radius: 50%;
@@ -3535,3 +3545,11 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .meter-block.folded > :not(.meter-fold) { display: none; }
 .meter-note { margin-top: 6px; }
 @media (prefers-reduced-motion: reduce) { .meter-fold .mf-caret { transition: none; } }
+/* Kept run codes under the ledger. */
+.run-codes-bar { display: flex; justify-content: flex-end; margin: 4px 0 8px; }
+.run-codes-list { display: flex; flex-direction: column; }
+.run-code-row { display: flex; align-items: center; gap: 12px; padding: 6px 8px; border-bottom: 1px solid var(--rim); font-size: var(--t-small); color: var(--ink-dim); }
+.run-code-row:hover { background: rgba(245,197,107,.04); }
+.run-code-row .rc-when { white-space: nowrap; min-width: 108px; }
+.run-code-row .rc-what { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+.run-code-row .rc-size { font-family: var(--fig); font-variant-numeric: tabular-nums; white-space: nowrap; }

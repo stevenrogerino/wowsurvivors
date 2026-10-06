@@ -1426,6 +1426,14 @@
       plus.title = 'Heals you';
       plate.append(plus);
     }
+    /* A gold seal on the other corner: you already hold this weapon's
+       evolution passive, so rank 8 is an evolution, not the end of it. */
+    if (choice.evolveReady) {
+      const seal = el('span', 'card-evolve', '\u25B2');
+      seal.dataset.tip = `Evolution ready: you hold ${choice.evolveReady.with}, so at rank ${WS.WEAPON_MAX_LEVEL} this becomes ${choice.evolveReady.into}.`;
+      plate.append(seal);
+      card.classList.add('evolve-ready');
+    }
     card.append(plate);
 
     /* A row that does not fit its half of the ledger is tightened first
@@ -2565,9 +2573,58 @@
       best.append(card);
     }
     wrap.append(grid, head, best);
-    wrap.append(ledgerSection());
+    wrap.append(ledgerSection(), runCodeSection());
     return wrap;
   };
+
+  /* KEPT RUN CODES: every finished night's code, so one that was never
+     copied on the results screen can still be sent. Copy one, or all of
+     them at once, a line each. */
+  function runCodeSection() {
+    const box = el('div', 'run-codes');
+    const kept = WS.RunLog ? WS.RunLog.kept() : [];
+    const head = el('div', 'codex-head');
+    head.style.marginTop = '24px';
+    head.append(el('div', 'card-body pane-intro', kept.length
+      ? `Run codes for the last ${kept.length === 1 ? 'night' : kept.length + ' nights'}, kept in this browser. Paste them to the developer.`
+      : 'No run codes kept yet. Each finished night leaves one here.'));
+    box.append(head);
+    if (!kept.length) return box;
+    const OUT = { defeated: 'Fell', victory: 'Dawn', abandoned: 'Left', arena_victory: 'Eclipse broken' };
+    const all = el('button', 'btn', 'Copy all');
+    all.dataset.tip = 'Every kept code, one per line, ready to paste in one go.';
+    all.addEventListener('click', async () => {
+      WS.Audio.play('ui');
+      const text = kept.map((e) => e.code).join('\n');
+      if (await copyText(text)) all.textContent = `Copied ${kept.length} (${WS.round(text.length / 1024)} KB)`;
+      else { all.textContent = 'Select and copy it below'; showCodeBox(box, text); }
+    });
+    const bar = el('div', 'run-codes-bar');
+    bar.append(all);
+    box.append(bar);
+    const list = el('div', 'run-codes-list');
+    for (const e of kept) {
+      const row = el('div', 'run-code-row');
+      const d = new Date(e.at);
+      const when = `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} ${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
+      const who = WS.Characters[e.char] ? WS.Characters[e.char].name : e.char;
+      const where = WS.Maps[e.map] ? WS.Maps[e.map].name : e.map;
+      const setting = e.nightly ? 'Nightly' : WS.Runs.diffLabel(e.diff);
+      row.append(el('span', 'rc-when', when),
+        el('span', 'rc-what', `${who} \u00b7 ${where} \u00b7 ${setting} \u00b7 ${OUT[e.outcome] || e.outcome} at ${WS.formatTime(e.time || 0)}`),
+        el('span', 'rc-size', `${WS.max(1, WS.round(e.code.length / 1024))} KB`));
+      const copy = el('button', 'btn small', 'Copy');
+      copy.addEventListener('click', async () => {
+        WS.Audio.play('ui');
+        if (await copyText(e.code)) copy.textContent = 'Copied';
+        else { copy.textContent = 'Below'; showCodeBox(box, e.code); }
+      });
+      row.append(copy);
+      list.append(row);
+    }
+    box.append(list);
+    return box;
+  }
 
   /* THE LEDGER: the last nights, newest first, one line each - who, where,
      how hard, how long, how it ended and what it was worth. Records per
@@ -3551,7 +3608,7 @@
     // The player's own bindings (Settings), so the manual never lies.
     const kb = WS.Save.settings.keys, kn = WS.Input.keyName;
     const bound = { kMove: [kb.up, kb.left, kb.down, kb.right].map(kn).join(''),
-      kReroll: kn(kb.reroll), kBanish: kn(kb.banish), kPause: kb.pause === 'Escape' ? 'Esc' : `${kn(kb.pause)} / Esc` };
+      kReroll: kn(kb.reroll), kBanish: kn(kb.banish), kPause: (kb.pause === 'Escape' ? 'Esc' : `${kn(kb.pause)} / Esc`) + ' / P' };
     for (const entry of (m.controls || [])) {
       const row = el('div', 'key-row');
       row.append(el('kbd', null, WS.template(entry.key, Object.assign({}, entry, bound))),
