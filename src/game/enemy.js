@@ -275,7 +275,8 @@
       e.chilled = inChill;
       if (e.slowTimer > 0) {
         e.slowTimer -= dt;
-        speed *= e.slowFactor;
+        // Death takes a slow at a fifth of its weight (Config.deathSlowTake).
+        speed *= t.family === 'death' ? 1 - (1 - e.slowFactor) * cfg.deathSlowTake : e.slowFactor;
       }
       if (e.rotTimer > 0) e.rotTimer -= dt;
       /* A creature's lunge: the boss charge at rank-and-file size. It only
@@ -625,6 +626,7 @@
        chain or a nova that one-shots trash was being credited with every
        point past the kill. */
     const landed = WS.min(amount, WS.max(0, e.health - (e.hpFloor > 0 ? e.hpFloor : 0)));
+    if (e.boss || e.finaleTag) WS.BossFight.record(e, landed);
     const rot = this._rot || 0;
     this._rot = 0;
     e.health -= amount;

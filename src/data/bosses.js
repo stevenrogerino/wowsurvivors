@@ -313,11 +313,11 @@
     },
 
     // Not on any schedule: at 30:00 Death itself arrives, and again every
-    // minute after. Technically killable, in the proud Survivors tradition.
+    // minute after. 368 (was 265): a reaper you can simply outwalk is not one. Technically killable, in the proud Survivors tradition.
     death_itself: {
       // His own art (src/render/villains.js): the hourglass is his mark.
       name: 'Death Itself', family: 'death', art: 'reaper', tint: [0.80, 0.90, 1.00],
-      health: 5400000, speed: 265, damage: 648, xp: 5000, radius: 46, gold: 999,
+      health: 5400000, speed: 368, damage: 648, xp: 5000, radius: 46, gold: 999,
       interval: 60, patterns: [{ type: 'charge' }],
       yell: 'Rest now. You have fought enough.',
     },

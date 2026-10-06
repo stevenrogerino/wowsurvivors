@@ -206,7 +206,9 @@
   /** ...and its ranks: a crit lands harder on anything left low, bosses too. */
   K.ruthlessCrit = function (p, e) {
     if (p.ruthless <= 0 || p.comboAttuned > 0 || e.health >= e.maxHealth * C().ruthlessLowLine) return 1;
-    return 1 + C().ruthlessLow * p.ruthless;
+    // Half as much against a boss: every boss spends a third of its fight below the line.
+    const share = e.boss || e.finale || e.finaleTag ? C().ruthlessBossShare : 1;
+    return 1 + C().ruthlessLow * p.ruthless * share;
   };
   K.execute = function (p, e, amount) {
     if (p.ruthless <= 0 || p.comboAttuned > 0) return amount;

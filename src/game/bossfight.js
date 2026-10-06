@@ -57,6 +57,38 @@
   };
 
   /** Called by Wave.spawnBoss once the boss is on the field. */
+  /* WHAT THE SURVIVOR REALLY DOES TO A BOSS. Every blow that lands on a
+   * boss, Death or a finale's machine is booked here with the time spent
+   * hitting it: a gap between blows counts up to half a second, and a boss's
+   * first blow a quarter, so travel and a boss off-screen cost nothing and a
+   * one-frame kill still has a duration. Older fights fade by
+   * Config.bossDpsHalfLife. Read by B.floor (Config.bossFloor*). */
+  B.record = function (e, landed) {
+    const run = WS.Game.run;
+    if (!run || !(landed > 0)) return;
+    const T = run.bossDps || (run.bossDps = { dealt: 0, time: 0, at: run.time });
+    const k = Math.pow(0.5, WS.max(0, run.time - T.at) / C().bossDpsHalfLife);
+    T.dealt *= k; T.time *= k; T.at = run.time;
+    const gap = e.lastStruck === undefined ? 0.25 : WS.clamp(run.time - e.lastStruck, 0, 0.5);
+    e.lastStruck = run.time;
+    T.dealt += landed;
+    T.time += gap;
+  };
+  /** Landed damage a second against bosses, recent fights weighted most; 0
+   *  until there is at least a few seconds of it to go on. */
+  B.observedDps = function () {
+    const T = WS.Game.run && WS.Game.run.bossDps;
+    return T && T.time >= 3 ? T.dealt / T.time : 0;
+  };
+  /** At least `seconds` of what this survivor lands on bosses, in health. */
+  B.floor = function (e, seconds) {
+    const want = B.observedDps() * seconds;
+    if (want > e.maxHealth) {
+      e.maxHealth = WS.floor(want);
+      e.health = e.maxHealth;
+    }
+  };
+
   B.arrive = function (e, time, overtime) {
     const t = e.template;
     if (!t || t.finale || t.arena || t.family === 'death') return;
@@ -67,6 +99,8 @@
     const m = overtime ? 1 + (B.healthMult(time) - 1) * C().bossHealthOvertime : B.healthMult(time);
     e.maxHealth = WS.floor(e.maxHealth * m);
     e.health = e.maxHealth;
+    if (overtime) B.floor(e, C().bossFloorOvertime);
+    else if (time >= C().bossFloorFrom) B.floor(e, C().bossFloorScheduled);
     e.fightAt = time;
     e.enraged = false;
     e.chainLeft = 0;

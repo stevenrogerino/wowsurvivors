@@ -77,6 +77,15 @@
     // Harder settings make the fight more dangerous in full, tougher only by
     // a root of the same product (Config.finaleHpDifficultyExp).
     this.hpScale = Math.pow(run.diffScale * hyper, WS.Config.finaleHpDifficultyExp) * this.power;
+    /* And never shorter than Config.bossFloorFinale seconds of what this
+       survivor has really been landing on bosses, for a fight the size of
+       Kael's (480k): the modelled damage above misses unions, pets, stones,
+       bombs and bleeds, and a level-181 Shaman ended Kael in six seconds. */
+    const floorScale = WS.BossFight.observedDps() * WS.Config.bossFloorFinale / 480000;
+    if (floorScale > this.hpScale) {
+      this.power *= floorScale / this.hpScale;
+      this.hpScale = floorScale;
+    }
     this.fightT = 0;
     this.sunrise = false;
     /* The fight hits like the thirty minutes before it. Damage used to be

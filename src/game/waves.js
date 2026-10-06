@@ -424,7 +424,11 @@
       WS.Game.announce('Something is coming.', 'Fifteen seconds.', 4.0);
       WS.Audio.play('warn');
     }
-    if (time >= deathTime) {
+    /* Death walks only once the dawn is banked. The wave director runs
+       before the dawn check in a frame, so on a battlefield with a finale he
+       used to arrive on the very frame the fight was called, for a second,
+       on top of the survivor. */
+    if (time >= deathTime && (run.victorious || run.mode === 'endless')) {
       const cfg = WS.Config, m = (time - deathTime) / 60;
       const deaths = this.deaths();
       this.deathTimer -= dt;
@@ -434,6 +438,8 @@
           const d = this.spawnBoss('death_itself', 1, false);
           // His touch is a share of your health, set as he arrives.
           if (d) d.damage = player.maxHealth * WS.min(1, cfg.deathContactBase + cfg.deathContactStep * m);
+          // And he stands at least this long against what you really do to bosses.
+          if (d) WS.BossFight.floor(d, cfg.bossFloorDeath + cfg.bossFloorDeathStep * m);
         }
       }
       if (deaths.length) {
@@ -522,6 +528,12 @@
       add('boss', nb.id, met(nb.id) && tpl ? tpl.name : 'A boss', nb.at - t, nb.at - prev, 'skull', tpl && tpl.tint);
     } else if (run.victorious || run.mode === 'endless') {
       add('boss', null, 'Overtime boss', this.endlessBossTimer, this.endlessBossEvery, 'skull', [0.9, 0.3, 0.3]);
+    }
+    // Death, once overtime is under way: when the next one walks in.
+    if ((run.victorious || run.mode === 'endless') && t >= WS.Config.deathTime) {
+      const cfg = WS.Config, m = (t - cfg.deathTime) / 60;
+      add('death', 'death_itself', 'Death', this.deathTimer,
+        WS.max(cfg.deathIntervalMin, cfg.deathInterval - cfg.deathIntervalStep * m), 'hourglass', [0.80, 0.90, 1.00]);
     }
 
     const ev = map.events[this.eventIndex];

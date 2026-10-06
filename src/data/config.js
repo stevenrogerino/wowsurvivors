@@ -139,6 +139,21 @@
        tools/bot/boss-snapshots.json finaleBuilds) the fights ran five to
        eight minutes; this takes about a sixth off (a factor of 0.82). */
     finaleRefSingle: 2000,
+    /* FIGHTS THAT LAST. A build's modelled damage (above) misses unions,
+       pets, waystones, bombs and bleeds, and a player's night (a Shaman at
+       level 181 on Highmoor) put 300k a second into Kael for a six-second
+       finale and 500k-700k into Death, who fell in eight. So every boss also
+       reads what the survivor has ACTUALLY been landing on bosses
+       (BossFight.observedDps: landed damage over time spent hitting them,
+       recent fights weighted most) and brings at least that many seconds of
+       it in health: bossFloorFinale for a finale, bossFloorDeath for Death
+       (plus bossFloorDeathStep a minute of overtime), bossFloorOvertime for
+       overtime's bosses, bossFloorScheduled for the night's own from
+       bossFloorFrom on. A build that already takes longer never notices. */
+    bossFloorFinale: 45, bossFloorDeath: 30, bossFloorDeathStep: 4,
+    bossFloorOvertime: 20, bossFloorScheduled: 14, bossFloorFrom: 600,
+    // How fast old fights fade from that reading: a half-life in seconds of night.
+    bossDpsHalfLife: 180,
     finalePowerExp: 0.7,
     finalePowerCap: 6,
     /* Difficulty and Hyper make a finale hit harder in full, and make it
@@ -403,6 +418,9 @@
        healing (x witherMult for witherTime s). A survivor at full speed who
        turns clears the ring; one who runs straight does not. */
     deathIntervalMin: 25, deathIntervalStep: 5,
+    /* Death can be slowed, but only a fifth as much as anything else
+       (1 = slows in full): a reaper you can pin in place is not one. */
+    deathSlowTake: 0.2,
     deathCapMax: 8, deathCapEvery: 2,
     deathContactBase: 0.30, deathContactStep: 0.05,
     deathBlinkPeriod: 15, deathBlinkMin: 6, deathBlinkFuse: 0.8, deathBlinkRadius: 110, deathBlinkLead: 0.4,
@@ -804,6 +822,8 @@
     // next to nothing past rank 1: late, a crit kills trash anyway.
     ruthlessEdge: 0.10, ruthlessBlow: 0.15, ruthlessRegroup: 0.3, ruthlessExecute: 0.06,
     ruthlessLow: 0.08, ruthlessLowLine: 0.35,
+    // Against a boss, a finale's machine or Death, Ruthless's low-health crits land at this share.
+    ruthlessBossShare: 0.5,
     // Stalker's Patience (The Quarry, no carry-over): a Quarry stalkerHaste
     // sooner, held stalkerLife seconds longer, taking stalkerBonus more.
     stalkerHaste: 0.06, stalkerLife: 1, stalkerBonus: 0.05,
