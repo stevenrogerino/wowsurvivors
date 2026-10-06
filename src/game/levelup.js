@@ -123,6 +123,102 @@
   }
   LevelUp.passiveReactions = passiveReactions;
 
+  /* A PASSIVE'S NUMBERS, AS A WEAPON CARD SHOWS THEM. Each row is what it
+   * comes to now and after this rank, the moving ones lit: the survivor's
+   * own figure where the passive adds to one (Damage x1.40 -> x1.50, which
+   * counts every other source too), and the passive's own total where it
+   * keeps one (Edge from a crit 30% -> 40%). Rows for the rank-kept
+   * passives come from the description on the card, so they always match
+   * what it says; the few numbers that do not grow with rank are left out. */
+  const fmtX = (v) => '×' + v.toFixed(2);
+  const fmtP = (v) => WS.round(v * 1000) / 10 + '%';
+  const fmtN = (v) => String(WS.round(v * 10) / 10);
+  const FLAT = {
+    might: (p, u) => [['Damage', p.damageMultiplier, p.damageMultiplier + u.v, fmtX]],
+    haste: (p, u) => [['Cooldown', p.cooldownMultiplier, p.cooldownMultiplier * u.v, fmtX]],
+    fleetfoot: (p, u) => [['Move speed', p.moveSpeed, p.moveSpeed * u.v, (v) => String(WS.round(v))]],
+    magnet: (p, u) => [['Pickup radius', p.pickupRadius, p.pickupRadius + u.v, (v) => String(WS.round(v))]],
+    vitality: (p, u) => [['Max health', p.maxHealth, p.maxHealth + u.v, (v) => String(WS.round(v))]],
+    armor: (p, u) => [['Armor', p.armor, p.armor + u.v, (v) => `${WS.round(v)} (${WS.round(v / (v + WS.Config.armorConstant) * 100)}%)`]],
+    precision: (p, u) => [['Crit chance', p.critChance, p.critChance + u.v, fmtP]],
+    ferocity: (p, u) => [['Crit damage', p.critDamage, p.critDamage + u.v, fmtX]],
+    area: (p, u) => [['Area', p.areaMultiplier, p.areaMultiplier + u.v, fmtX]],
+    quantity: (p, u) => [['Projectiles', p.projectileBonus, p.projectileBonus + u.v, (v) => '+' + v]],
+    luck: (p, u) => [['Luck', p.luck, p.luck + u.v, fmtX]],
+    wisdom: (p, u) => [['Experience', p.xpMultiplier, p.xpMultiplier + u.v, fmtX]],
+    recovery: (p, u) => [['Regeneration', p.healthRegen, p.healthRegen + u.v, (v) => v.toFixed(1) + '/s']],
+    velocity: (p, u) => [['Projectile speed', p.projectileSpeed, p.projectileSpeed + u.v, fmtX],
+      ['Hit harder', p.projectileImpact || 0, (p.projectileImpact || 0) + u.hit, (v) => '+' + fmtP(v)]],
+    dark_bargain: (p, u) => [['Experience', p.xpMultiplier, p.xpMultiplier + u.v, fmtX], ['Gold', p.goldMultiplier, p.goldMultiplier + u.v, fmtX],
+      ['More spawns', p.curse * WS.Config.curseSpawnRate, (p.curse + 1) * WS.Config.curseSpawnRate, (v) => '+' + fmtP(v)]],
+    warding_light: (p) => {
+      const c = WS.Config, iv = [0, c.blockInterval1, c.blockInterval2, c.blockInterval3];
+      return [['Block every', iv[WS.min(p.blockRank, 3)] || 0, iv[WS.min(p.blockRank + 1, 3)], (v) => (v ? v + 's' : '–')]];
+    },
+    chilling_presence: (p) => {
+      const c = WS.Config, r = p.chillRank;
+      return [['Slow', c.chillSlowPerRank * r, c.chillSlowPerRank * (r + 1), fmtP],
+        ['Aura radius', r ? (c.chillRangeBase + c.chillRangePerRank * r) * p.areaMultiplier : 0,
+          (c.chillRangeBase + c.chillRangePerRank * (r + 1)) * p.areaMultiplier, (v) => String(WS.round(v))]];
+    },
+    searing: (p) => {
+      const c = WS.Config, r = p.retRank;
+      const per = (k) => (k ? (c.retributionBase + c.retributionPerRank * k) * p.damageMultiplier * WS.CONST.PLAYER_DAMAGE_SCALE
+        * (1 + c.retributionArmorScale * WS.max(0, p.armor || 0)) / c.retributionTick : 0);
+      return [['Damage a second', per(r), per(r + 1), (v) => String(WS.round(v))],
+        ['Radius', r ? (c.retributionRange + c.retributionRangePerRank * r) * p.areaMultiplier : 0,
+          (c.retributionRange + c.retributionRangePerRank * (r + 1)) * p.areaMultiplier, (v) => String(WS.round(v))]];
+    },
+    dodge: (p, u) => [['Evasion', p.dodgeChance, p.dodgeChance + u.v, fmtP]],
+    perennial: (p, u) => [['Duration', p.durationMult || 1, (p.durationMult || 1) + u.v, fmtX]],
+    curdled: (p, u) => [['Healing turned to damage', p.curdleShare || 0, (p.curdleShare || 0) + u.v, fmtP]],
+    serration: (p) => [['Bleed per crit', WS.Config.serrationShare * p.serration, WS.Config.serrationShare * (p.serration + 1), fmtP]],
+    thorns: (p) => [['Thorns', p.thornsRank, p.thornsRank + 1,
+      (v) => (v ? `${WS.Config.thornsFlat * v} + ${fmtP(WS.Config.thornsDamagePct * v)}` : '–')]],
+    spirit_companion: (p, u, r) => [['Spirit wolves', r, r + 1, String]],
+    grave_call: (p, u, r) => [['Ghouls', r, r + 1, String]],
+  };
+  // The calling passives keep a count; their card text names the per-rank numbers.
+  const TOKEN_LABEL = {
+    felPerRank: 'Fel from overkill', metaDurationPerRank: 'Ruinform longer', metaRecoveryPerRank: 'Rests less after',
+    wildPerRank: 'Wild from a kill', formDurationPerRank: 'Longer in a shape', kinshipDamage: 'Damage in a shape', wildLockPerRank: 'Wild wakes sooner',
+    flowRechargePerRank: 'Steps return sooner', serenityStrike: 'Palms harder',
+    undertowFill: 'Flood fills faster', undertowTide: 'Tide runs longer', undertowCut: 'Cut off the slowest wait',
+    hallowedCap: 'Barrier holds more', hallowedBurst: 'Bursts harder', hallowedReach: 'Bursts wider', hallowedWard: 'Ward up to',
+    ruthlessEdge: 'Edge from a crit', ruthlessBlow: 'Cutthroat harder', ruthlessRegroup: 'Regroups sooner', ruthlessLow: 'Low-health crits harder',
+    stalkerHaste: 'Quarry sooner', stalkerLife: 'Quarry held longer', stalkerBonus: 'Quarry takes more',
+    slowBurnHeat: 'Heat builds faster', slowBurnCool: 'Cools slower', slowBurnBoil: 'Boils over longer', slowBurnStack: 'Damage a Smoulder stack',
+    bountifulFill: 'Tithe fills faster', bountifulReach: 'Reaping wider', bountifulHeal: 'Reaping heals more',
+    deepRootsLife: 'Waystones stand longer', deepRootsReach: 'Waystones reach farther',
+    fervorBuild: 'Conviction builds faster', fervorJudge: 'Judgement takes more', fervorAegis: 'Aegis holds longer',
+  };
+  const COUNTER = { ruin_hunger: 'soulRending', primal_kinship: 'kinship', serenity: 'serenity', undertow: 'undertow',
+    hallowed: 'hallowed', ruthless: 'ruthless', stalker: 'stalker', slow_burn: 'slowBurn', bountiful: 'bountiful',
+    deep_roots: 'deepRoots', fervor: 'fervor' };
+  function passiveStats(p, id, rank) {
+    const up = WS.Upgrades[id];
+    let rows = [];
+    if (FLAT[id]) rows = FLAT[id](p, up, rank);
+    else if (COUNTER[id]) {
+      const n = p[COUNTER[id]] || 0;
+      const text = up.alone && !(p[up.calling] > 0) ? up.alone : up.description;
+      const re = /\{Config\.(\w+)(%?)\}/g;
+      let m;
+      while ((m = re.exec(text))) {
+        const label = TOKEN_LABEL[m[1]];
+        const v = WS.Config[m[1]];
+        if (!label || typeof v !== 'number') continue;
+        const timed = !m[2];
+        rows.push([label, v * n, v * (n + 1), timed ? (x) => fmtN(x) + 's' : (x) => '+' + fmtP(x)]);
+      }
+    }
+    return rows.map(([label, a, b, f]) => {
+      const from = f(a), to = f(b);
+      return { label, from, to, changed: from !== to };
+    });
+  }
+  LevelUp.passiveStats = passiveStats;
+
   LevelUp.buildChoices = function (p) {
     const candidates = [];
 
@@ -202,6 +298,7 @@
           detail: WS.template(up.detail, up),
           rank: rank + 1, maxRank: up.max,
           note: `Rank ${rank + 1} of ${up.max}`,
+          stats: passiveStats(p, id, rank),
           reacts: (() => {
             /* A stat that only some weapons read says up front whether it
                reads any of yours - see src/data/scaling.js. */
