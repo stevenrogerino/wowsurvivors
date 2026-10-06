@@ -809,14 +809,58 @@
     }
     const w = e.radius * 2, h = champion ? 3 : 2;
     const x = e.x - w / 2, y = e.y - e.radius * 1.9;
-    ctx.save();
+    hold(ctx);
     ctx.globalAlpha = alpha;
     ctx.fillStyle = 'rgba(0,0,0,.55)';
     ctx.fillRect(x, y, w, h);
     ctx.fillStyle = e.boss ? '#e2483d' : e.elite ? '#f5c56b' : '#c6483d';
     ctx.fillRect(x, y, w * pct, h);
-    ctx.restore();
+    release(ctx);
   }
+
+  /* SAVE AND RESTORE WITHOUT THE BROWSER'S STACK.
+   *
+   * ctx.save() makes a state object on Blink's heap every time, and the late
+   * horde called it over 700 times a frame (a few per creature, per bolt, per
+   * corpse). That heap is swept by the same full collection as the game's,
+   * and it was the trigger for nearly all of them: with save and restore
+   * stubbed out, a 25:00 horde ran 9 full collections where it had run 58,
+   * and the simulation's p99 went from 11.5ms to 4.6ms.
+   *
+   * The per-object draws all start from the world transform drawFrame sets
+   * up, so `hold` notes the few properties they change and `release` puts
+   * those back and returns the transform to the world's with setTransform,
+   * which allocates nothing. The world transform is mirrored here in plain
+   * numbers as drawFrame builds it (WT). These are for drawing done at the
+   * world transform only, and they nest (a few deep). */
+  const WT = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+  function wtSet(a, d) { WT.a = a; WT.b = 0; WT.c = 0; WT.d = d; WT.e = 0; WT.f = 0; }
+  function wtTranslate(x, y) { WT.e += WT.a * x + WT.c * y; WT.f += WT.b * x + WT.d * y; }
+  function wtScale(sx, sy) { WT.a *= sx; WT.b *= sx; WT.c *= sy; WT.d *= sy; }
+  const HELD = 6;
+  const hAlpha = new Float64Array(HELD), hOp = new Array(HELD).fill('source-over'),
+    hFill = new Array(HELD).fill('#000'), hStroke = new Array(HELD).fill('#000'),
+    hLine = new Float64Array(HELD);
+  let held = 0;
+  function hold(ctx) {
+    if (R.checkWT) {   // a harness's check that the drawing really is at the world transform
+      const m = ctx.getTransform();
+      if (Math.abs(m.a - WT.a) + Math.abs(m.b - WT.b) + Math.abs(m.c - WT.c) + Math.abs(m.d - WT.d)
+        + Math.abs(m.e - WT.e) + Math.abs(m.f - WT.f) > 1e-3) R.wtMiss = (R.wtMiss || 0) + 1;
+      R.wtChecked = (R.wtChecked || 0) + 1;
+    }
+    const i = held++;
+    hAlpha[i] = ctx.globalAlpha; hOp[i] = ctx.globalCompositeOperation;
+    hFill[i] = ctx.fillStyle; hStroke[i] = ctx.strokeStyle; hLine[i] = ctx.lineWidth;
+  }
+  function release(ctx) {
+    const i = --held;
+    ctx.setTransform(WT.a, WT.b, WT.c, WT.d, WT.e, WT.f);
+    ctx.globalAlpha = hAlpha[i];
+    if (ctx.globalCompositeOperation !== hOp[i]) ctx.globalCompositeOperation = hOp[i];
+    ctx.fillStyle = hFill[i]; ctx.strokeStyle = hStroke[i]; ctx.lineWidth = hLine[i];
+  }
+  R._wt = WT;   // read by a test harness to check the mirror against the canvas
 
   /* Gradients drawn in an object's own frame (translated and rotated to it)
      depend only on their colour and size, so they are made once and reused.
@@ -1035,8 +1079,11 @@
     ctx.fillRect(0, 0, this.viewW, this.viewH);
 
     ctx.save();
-    ctx.translate(this.offsetX + WS.FX.shakeX * this.scale, this.offsetY + WS.FX.shakeY * this.scale);
+    const tx = this.offsetX + WS.FX.shakeX * this.scale, ty = this.offsetY + WS.FX.shakeY * this.scale;
+    ctx.translate(tx, ty);
     ctx.scale(this.scale, this.scale);
+    // The same transform in numbers, for release() (see hold above).
+    wtSet(this.dpr, this.dpr); wtTranslate(tx, ty); wtScale(this.scale, this.scale);
     ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
     // The punch leans the field in toward the survivor (FX.punch).
     const punch = WS.FX.punchNow ? WS.FX.punchNow() : 0;
@@ -1044,6 +1091,7 @@
       const at = WS.FX.punchAt;
       const px = at ? at.x : game.player.x, py = at ? at.y : game.player.y;
       ctx.translate(px, py); ctx.scale(1 + punch, 1 + punch); ctx.translate(-px, -py);
+      wtTranslate(px, py); wtScale(1 + punch, 1 + punch); wtTranslate(-px, -py);
     }
 
     /* The prologue owns the frame while it runs. It rides this loop rather
@@ -1092,7 +1140,7 @@
     for (const p of this.props) {
       const sh = p.shadow === undefined ? 0.3 : p.shadow;
       if (sh > 0) {
-        ctx.save();
+        hold(ctx);
         ctx.globalAlpha = p.alpha * sh;
         const r = p.size * 0.28;
         // Props never move, so the shadow's gradient is made once and kept.
@@ -1109,7 +1157,7 @@
         ctx.beginPath();
         ctx.ellipse(p.x + p.size * 0.05, p.y + p.size * 0.22, r, r * 0.42, 0, 0, WS.TAU);
         ctx.fill();
-        ctx.restore();
+        release(ctx);
       }
       ctx.globalAlpha = p.alpha;
       const sprite = WS.Sprites.prop(p.kind, p.size);
@@ -1126,12 +1174,12 @@
       const sway = SWAY[p.kind];
       if (sway) {
         const foot = p.y + p.size * 0.22;
-        ctx.save();
+        hold(ctx);
         ctx.translate(p.x, foot);
         ctx.rotate(WS.sin(time * 0.9 + p.phase) * sway
           + WS.sin(time * 2.3 + p.phase * 1.7) * sway * 0.35);
         ctx.drawImage(sprite, -p.size / 2, -p.size * 0.72, p.size, p.size);
-        ctx.restore();
+        release(ctx);
       } else {
         ctx.drawImage(sprite, p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
       }
@@ -1339,7 +1387,7 @@
       const t = 1 - WS.clamp(c.life / c.maxLife, 0, 1);
       const sprite = WS.Sprites.creature(c.art, c.tint, c.size, c.kit);
       const flip = c.facing > 0 ? -1 : 1;
-      ctx.save();
+      hold(ctx);
       if (c.style === 'topple') {
         // Over it goes, pivoting on its feet, away from the blow; gone as it lands.
         ctx.globalAlpha = 0.9 * (1 - t * t);
@@ -1376,7 +1424,7 @@
         ctx.scale(flip * (1 + t * 0.3), 1 - t * 0.55);
         ctx.drawImage(sprite, -c.size / 2, -c.size * 0.62, c.size, c.size);
       }
-      ctx.restore();
+      release(ctx);
       if (c.boss) {
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
@@ -1413,14 +1461,14 @@
 
     if (e.elite || e.boss) {
       // Champions get an arc-lit ground ring so they read out of a crowd.
-      ctx.save();
+      hold(ctx);
       ctx.globalAlpha = 0.55 + 0.2 * WS.sin(time * 3);
       ctx.strokeStyle = e.boss ? '#e05ad8' : '#f5c56b';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.ellipse(e.x, e.y + e.radius * 0.55, e.radius * 1.25, e.radius * 0.5, 0, 0, WS.TAU);
       ctx.stroke();
-      ctx.restore();
+      release(ctx);
     }
 
     /* Held on the creature, for the same reason as the gem above. The only
@@ -1432,7 +1480,7 @@
       e._sprChill = chill; e._sprSize = size;
     }
     const sprite = e._spr;
-    ctx.save();
+    hold(ctx);
     if (e.fade !== undefined && e.fade < 1) ctx.globalAlpha = e.fade;
     ctx.translate(e.x, e.y + bob);
     /* A creature that arrives where you can see it - a summon, a split, a
@@ -1499,13 +1547,13 @@
       ctx.globalCompositeOperation = 'lighter';
       ctx.drawImage(WS.SpellArt.flashOf(sprite, e.flashCrit ? '#ffd45c' : '#ff6b5c'), -size / 2, -size * 0.62, size, size);
     }
-    ctx.restore();
+    release(ctx);
     /* Rotting (a ghoul's rake, Familiar): a few sick-green motes lifting off
        the body, so the creatures your weapons will hit harder can be seen. */
     if (e.rotTimer > 0) {
       const now = WS.Game.run ? WS.Game.run.time : 0;
       const fade = WS.clamp(e.rotTimer / 0.6, 0, 1);
-      ctx.save();
+      hold(ctx);
       ctx.fillStyle = '#9fe06a';
       for (let k = 0; k < 3; k++) {
         const ph = (now * 0.9 + k / 3 + (e.spawnId || 0) * 0.37) % 1;
@@ -1514,7 +1562,7 @@
         const my = e.y + bob - size * (0.15 + ph * 0.55);
         ctx.fillRect(mx - 1.2, my - 1.2, 2.4, 2.4);
       }
-      ctx.restore();
+      release(ctx);
     }
 
     /* THE ONES THAT SHOOT.
@@ -1553,7 +1601,7 @@
         ctx.lineTo(cx - w, cy);
         ctx.closePath();
       };
-      ctx.save();
+      hold(ctx);
       ctx.fillStyle = 'rgba(3,5,9,.86)';
       kite(fx, fy, r * 1.55, r * 2.15); ctx.fill();
       ctx.fillStyle = WS.rgb(col, 0.55 + 0.45 * k);
@@ -1567,7 +1615,7 @@
         ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.arc(fx, fy, r * 3.0, 0, WS.TAU); ctx.stroke();
       }
-      ctx.restore();
+      release(ctx);
     }
 
     if (e.finale && WS.FinaleArt) WS.FinaleArt.adorn(ctx, e, time);
@@ -4256,7 +4304,7 @@
         // it just thickens the blob. At 0.055 it did exactly that.
         const len = WS.min(speed * 0.13 * heft, r * 14 * heft);
         if (len > r * 3) {
-          ctx.save();
+          hold(ctx);
           ctx.translate(b.x, b.y);
           ctx.rotate(WS.atan2(b.vy, b.vx));
           const row = gradRow(c, 0), lq = gq(len, 1);
@@ -4275,11 +4323,11 @@
           ctx.quadraticCurveTo(-len * 0.5, r * 0.24, 0, r * 0.8);
           ctx.closePath();
           ctx.fill();
-          ctx.restore();
+          release(ctx);
         }
       }
 
-      ctx.save();
+      hold(ctx);
       ctx.translate(b.x, b.y);
       const ang = b.spinRate ? b.spin : WS.atan2(b.vy, b.vx);
       ctx.rotate(ang);
@@ -4388,7 +4436,7 @@
         ctx.fill();
       }
       drawBoltShape(ctx, b, r, c);
-      ctx.restore();
+      release(ctx);
     }
     /* Hostile bolts, which must not be mistaken for something worth walking
      * into.
@@ -4427,7 +4475,7 @@
         ctx.lineTo(0, wide);
         ctx.closePath();
       };
-      ctx.save();
+      hold(ctx);
       ctx.translate(h.x, h.y);
       ctx.rotate(ang);
       if (!this.lite) {
@@ -4451,7 +4499,7 @@
       dart(r * 2.0, r * 0.88, r * 1.05); ctx.fill();
       ctx.fillStyle = 'rgba(255,255,255,.92)';
       dart(r * 0.95, r * 0.36, r * 0.5); ctx.fill();
-      ctx.restore();
+      release(ctx);
     }
     ctx.restore();
   };
