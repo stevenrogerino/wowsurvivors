@@ -135,6 +135,8 @@
       gold: 0,
       // The Classic Night (Oaths sheet): no Tides, a little less score.
       classicNight: false,
+      // Which meters on the pause and results sheet are folded away.
+      meterFold: { damage: false, overkill: false, healing: false, overheal: false },
       // Set the first time the manual is closed, so the primer greets a new
       // player once and never interrupts a returning one.
       seenManual: false,

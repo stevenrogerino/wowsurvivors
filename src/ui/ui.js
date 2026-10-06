@@ -128,7 +128,7 @@
     n.style.top = WS.round(y) + 'px';
   }
 
-  function showTip(anchor, build, prefer) {
+  function showTip(anchor, build, prefer, live) {
     const n = tipNode();
     const body = build();
     if (!body) return;
@@ -137,6 +137,16 @@
     Tip.anchor = anchor;
     placeTip(anchor, prefer);
     n.classList.add('shown');
+    /* A live tip (the HUD's meters) is rebuilt every `live` ms for as long
+       as it stays on its anchor, so the figures run while you read them. */
+    clearInterval(Tip.liveTimer);
+    if (live) {
+      Tip.liveTimer = setInterval(() => {
+        if (Tip.anchor !== anchor || !anchor.isConnected) { clearInterval(Tip.liveTimer); return; }
+        const next = build();
+        if (next) { n.replaceChildren(next); placeTip(anchor, prefer); }
+      }, live);
+    }
     /* A tip belongs to what it describes. Switching a tab, closing a screen
        or rebuilding a HUD slot removes that thing without any pointer ever
        leaving it, and the tip used to stay on screen describing nothing -
@@ -191,7 +201,7 @@
       Tip.pending = node;
       Tip.timer = setTimeout(() => {
         Tip.pending = null;
-        if (node.isConnected) { showTip(node, build, o.prefer); Tip.byPointer = byPointer; }
+        if (node.isConnected) { showTip(node, build, o.prefer, o.live); Tip.byPointer = byPointer; }
       }, o.delay || 90);
     };
     node.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') open(true); });
@@ -608,6 +618,25 @@
     const killV = tally('kills', 'slain');
     const dpsV = tally('dps', 'dps');
     const hpsV = tally('hps', 'hps');
+    /* Hover the dps or hps readout for the night's meter so far: what dealt
+       the damage, or what did the mending and what of it was spare. The
+       results sheet carries the same meters, foldable, once the run stops. */
+    const hudMeter = (parts, empty) => () => {
+      const run = WS.Game.run;
+      if (!run) return null;
+      const box = el('div', 'tip-body meter-tip hud-meter-tip');
+      for (const [title, table, tint, hits, raw] of parts(run)) {
+        const m = meterFor(title, table || {}, tint, hits, raw);
+        if (m) box.append(m);
+      }
+      if (!box.children.length) box.append(el('div', 'tip-desc', empty));
+      return box;
+    };
+    const meterTip = { prefer: ['left', 'below'], delay: 60, live: 1000, focus: false };
+    tipOn(dpsV.parentNode, hudMeter((run) => [['Damage meter', run.landedByWeapon || run.damageByWeapon, WS.CONST.COLORS.arc,
+      run.hitsBySource, run.landedByWeapon ? run.damageByWeapon : null]], 'Nothing has fallen to you yet.'), meterTip);
+    tipOn(hpsV.parentNode, hudMeter((run) => [['Healing meter', run.healingBySource, WS.CONST.COLORS.heal],
+      ['Overhealing', run.overhealBySource, WS.CONST.COLORS.shadow]], 'Nothing has mended you yet.'), meterTip);
 
     const weapons = el('div'); weapons.id = 'hud-weapons';
     const passives = el('div'); passives.id = 'hud-passives';
@@ -3643,6 +3672,105 @@
   }
   UI.blessingStrip = blessingStrip;
 
+  /* Two meters, built the same way: what you dealt, and what you mended.
+     A healing build had nothing to read at the end of a run - every number
+     it cared about was summed into one line called "Healing". */
+  /* Every row is named for the thing that did it - the weapon (by the name
+     it has now, so an evolved Axe Gyre reads as Gyrestorm), the passive,
+     the blessing, the companion - never a school or an internal key. A
+     heal used to be filed under "Holy" whichever weapon cast it. */
+  const SOURCE = {
+    regen: 'Regeneration', lifesteal: 'Leech Pact (lifesteal)', potion: 'Healing potions',
+    food: 'Bread', wolves: 'Spirit wolves', ghouls: 'Risen ghouls', ghoul_rot: 'Ghoul rot', bomb: 'Bombs',
+    maul: 'Bear maul', starfell: 'Owlbear stars', stillwater: 'Stillwater Step palms',
+    second_wind: 'Second Wind', storm: 'Storm cells', shrine_storm: 'Storm shrine',
+    soulbond: 'Soul lanterns', coolant: 'Burst coolant pipes', stormbond: 'Storm stones',
+    holy: 'Holy Light', other: 'Other', untagged: 'Other',
+  };
+  // The marks for sources that are not a weapon, passive or blessing.
+  const SOURCE_ART = { wolves: 'spiritwolf', ghouls: 'risen', ghoul_rot: 'risen', regen: 'leaf',
+    potion: 'potion', bomb: 'bomb' };
+  const sourceName = (key) => {
+    const w = WS.Weapons[key];
+    if (w) {
+      const mine = WS.Game.player && WS.Player.getWeapon(WS.Game.player, key);
+      return mine && mine.evolved && w.evolveName ? w.evolveName : w.name;
+    }
+    const named = SOURCE[key] || (WS.Upgrades[key] && WS.Upgrades[key].name)
+      || (WS.Blessings[key] && WS.Blessings[key].name);
+    return named || key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
+  };
+  const meterFor = (title, table, tint, hits, raw) => {
+    const entries = Object.entries(table).filter((e) => e[1] > 0).sort((a, b) => b[1] - a[1]);
+    if (!entries.length) return null;
+    const meter = el('div');
+    meter.append(el('h3', null, title));
+    const total = entries.reduce((sum, e) => sum + e[1], 0) || 1;
+    const top = entries[0][1];
+    /* Every weapon gets a row, however little it did - a short-range
+       weapon starved by the ranged ones is exactly what this is read to
+       find, and it used to be the row cut off the bottom. Past twelve rows
+       the smallest of the rest share one line. */
+    const MAX = 12;
+    const shown = [], rest = [];
+    for (const e of entries) {
+      if (shown.length < MAX - 1 || WS.Weapons[e[0]]) shown.push(e); else rest.push(e);
+    }
+    if (rest.length === 1) shown.push(rest.pop());
+    /* A ROW IS A BAR. It was a key and a value with a share drawn behind
+       them at 12% - every source the same dull green, grey names, and the
+       split only readable by squinting at the numbers. Now each row is its
+       source's mark, a name in bright ink, and a bar in that source's own
+       colour with a lit top edge, filled to its share of the leader; the
+       figure is bold and the percentage stands apart from it. */
+    const row = (label, value, colour, tip, art) => {
+      const line = el('div', 'meter-row');
+      line.style.setProperty('--share', WS.max(2, value / top * 100) + '%');
+      line.style.setProperty('--q', WS.hex(colour));
+      const mark = el('span', 'mr-mark');
+      if (art) {
+        const im = icon(art, colour, 20);
+        im.width = im.height = 20;
+        mark.append(im);
+      }
+      line.append(mark, el('span', 'mr-name', label),
+        el('span', 'mr-val', WS.formatNumber(value)),
+        el('span', 'mr-pct', WS.round(value / total * 100) + '%'));
+      if (tip) line.dataset.tip = tip;
+      meter.append(line);
+    };
+    for (const [key, value] of shown) {
+      const w = WS.Weapons[key];
+      const n = hits && hits[key];
+      const src = SOURCE_ART[key] || (WS.Upgrades[key] && WS.Upgrades[key].art)
+        || (WS.Blessings[key] && WS.Blessings[key].art);
+      // The hover says how much more the blows carried than they took.
+      const over = raw && raw[key] > value * 1.005 ? raw[key] - value : 0;
+      const tip = [n ? `${WS.formatNumber(n)} hits, ${WS.formatNumber(WS.round(value / n))} each` : null,
+        over ? `${WS.formatNumber(over)} more was overkill, past what the targets had left` : null,
+        key === 'ghoul_rot' ? 'What the ghouls\u2019 rot added to every other blow' : null].filter(Boolean).join('\n');
+      row(sourceName(key), value, w ? (WS.CONST.COLORS[w.school] || WS.CONST.COLORS.arc) : tint,
+        tip || null, w ? w.art : src);
+    }
+    if (rest.length) {
+      row(`${rest.length} more`, rest.reduce((sum, e) => sum + e[1], 0), tint,
+        rest.map((e) => sourceName(e[0])).join(', '));
+    }
+    return meter;
+  };
+
+  /** What the blows carried past the creatures' last health, by source. */
+  function overkillOf(run) {
+    const out = {};
+    if (!run.landedByWeapon) return out;
+    for (const [k, v] of Object.entries(run.damageByWeapon || {})) {
+      const d = v - (run.landedByWeapon[k] || 0);
+      if (d >= 1) out[k] = d;
+    }
+    return out;
+  }
+  const meterSum = (t) => Object.values(t || {}).reduce((a, b) => a + (b > 0 ? b : 0), 0);
+
   function buildSheet(results) {
     const p = WS.Game.player, run = WS.Game.run;
     const sheet = el('div', 'sheet');
@@ -3804,138 +3932,45 @@
     }
     if (!results) kv('Gold this run', WS.formatNumber(run.gold));
 
-    /* Two meters, built the same way: what you dealt, and what you mended.
-       A healing build had nothing to read at the end of a run - every number
-       it cared about was summed into one line called "Healing". */
-    /* Every row is named for the thing that did it - the weapon (by the name
-       it has now, so an evolved Axe Gyre reads as Gyrestorm), the passive,
-       the blessing, the companion - never a school or an internal key. A
-       heal used to be filed under "Holy" whichever weapon cast it. */
-    const SOURCE = {
-      regen: 'Regeneration', lifesteal: 'Leech Pact (lifesteal)', potion: 'Healing potions',
-      food: 'Bread', wolves: 'Spirit wolves', ghouls: 'Risen ghouls', ghoul_rot: 'Ghoul rot', bomb: 'Bombs',
-      maul: 'Bear maul', starfell: 'Owlbear stars', stillwater: 'Stillwater Step palms',
-      second_wind: 'Second Wind', storm: 'Storm cells', shrine_storm: 'Storm shrine',
-      soulbond: 'Soul lanterns', coolant: 'Burst coolant pipes', stormbond: 'Storm stones',
-      holy: 'Holy Light', other: 'Other', untagged: 'Other',
-    };
-    // The marks for sources that are not a weapon, passive or blessing.
-    const SOURCE_ART = { wolves: 'spiritwolf', ghouls: 'risen', ghoul_rot: 'risen', regen: 'leaf',
-      potion: 'potion', bomb: 'bomb' };
-    const sourceName = (key) => {
-      const w = WS.Weapons[key];
-      if (w) {
-        const mine = WS.Game.player && WS.Player.getWeapon(WS.Game.player, key);
-        return mine && mine.evolved && w.evolveName ? w.evolveName : w.name;
-      }
-      const named = SOURCE[key] || (WS.Upgrades[key] && WS.Upgrades[key].name)
-        || (WS.Blessings[key] && WS.Blessings[key].name);
-      return named || key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
-    };
-    const meterFor = (title, table, tint, hits, raw) => {
-      const entries = Object.entries(table).filter((e) => e[1] > 0).sort((a, b) => b[1] - a[1]);
-      if (!entries.length) return null;
-      const meter = el('div');
-      meter.append(el('h3', null, title));
-      const total = entries.reduce((sum, e) => sum + e[1], 0) || 1;
-      const top = entries[0][1];
-      /* Every weapon gets a row, however little it did - a short-range
-         weapon starved by the ranged ones is exactly what this is read to
-         find, and it used to be the row cut off the bottom. Past twelve rows
-         the smallest of the rest share one line. */
-      const MAX = 12;
-      const shown = [], rest = [];
-      for (const e of entries) {
-        if (shown.length < MAX - 1 || WS.Weapons[e[0]]) shown.push(e); else rest.push(e);
-      }
-      if (rest.length === 1) shown.push(rest.pop());
-      /* A ROW IS A BAR. It was a key and a value with a share drawn behind
-         them at 12% - every source the same dull green, grey names, and the
-         split only readable by squinting at the numbers. Now each row is its
-         source's mark, a name in bright ink, and a bar in that source's own
-         colour with a lit top edge, filled to its share of the leader; the
-         figure is bold and the percentage stands apart from it. */
-      const row = (label, value, colour, tip, art) => {
-        const line = el('div', 'meter-row');
-        line.style.setProperty('--share', WS.max(2, value / top * 100) + '%');
-        line.style.setProperty('--q', WS.hex(colour));
-        const mark = el('span', 'mr-mark');
-        if (art) {
-          const im = icon(art, colour, 20);
-          im.width = im.height = 20;
-          mark.append(im);
-        }
-        line.append(mark, el('span', 'mr-name', label),
-          el('span', 'mr-val', WS.formatNumber(value)),
-          el('span', 'mr-pct', WS.round(value / total * 100) + '%'));
-        if (tip) line.dataset.tip = tip;
-        meter.append(line);
+    /* FOUR METERS, EACH FOLDABLE. Healing and overkill used to sit behind a
+       hover on a chip, which a results screen read at leisure did not need:
+       now damage, overkill, healing and overhealing stack in that order, each
+       with its total on a header that folds it away (Save.db.meterFold, so a
+       fold is remembered). Damage is what landed, not what was swung: a blow
+       past a creature's last point of health took nothing more; its hover
+       keeps the overkill per weapon. */
+    const fold = WS.Save.db.meterFold || (WS.Save.db.meterFold = {});
+    const foldable = (key, title, table, tint, hits, raw, note) => {
+      const m = meterFor(title, table, tint, hits, raw);
+      if (!m) return false;
+      const head = m.querySelector('h3');
+      const btn = el('button', 'meter-fold');
+      btn.type = 'button';
+      btn.append(el('span', 'mf-caret'), el('span', 'mf-k', title), el('span', 'mf-v', WS.formatNumber(WS.round(meterSum(table)))));
+      head.replaceWith(btn);
+      if (note) m.append(el('p', 'sheet-empty meter-note', note));
+      const set = (shut) => {
+        m.classList.toggle('folded', shut);
+        btn.setAttribute('aria-expanded', String(!shut));
       };
-      for (const [key, value] of shown) {
-        const w = WS.Weapons[key];
-        const n = hits && hits[key];
-        const src = SOURCE_ART[key] || (WS.Upgrades[key] && WS.Upgrades[key].art)
-          || (WS.Blessings[key] && WS.Blessings[key].art);
-        // The hover says how much more the blows carried than they took.
-        const over = raw && raw[key] > value * 1.005 ? raw[key] - value : 0;
-        const tip = [n ? `${WS.formatNumber(n)} hits, ${WS.formatNumber(WS.round(value / n))} each` : null,
-          over ? `${WS.formatNumber(over)} more was overkill, past what the targets had left` : null,
-          key === 'ghoul_rot' ? 'What the ghouls\u2019 rot added to every other blow' : null].filter(Boolean).join('\n');
-        row(sourceName(key), value, w ? (WS.CONST.COLORS[w.school] || WS.CONST.COLORS.arc) : tint,
-          tip || null, w ? w.art : src);
-      }
-      if (rest.length) {
-        row(`${rest.length} more`, rest.reduce((sum, e) => sum + e[1], 0), tint,
-          rest.map((e) => sourceName(e[0])).join(', '));
-      }
-      return meter;
+      set(!!fold[key]);
+      btn.addEventListener('click', () => {
+        WS.Audio.play('ui');
+        fold[key] = !fold[key];
+        set(fold[key]);
+        WS.Save.save();
+      });
+      m.classList.add('meter-block');
+      third.append(m);
+      return true;
     };
-    /* What landed, not what was swung: a blow past a creature's last point
-       of health took nothing more, and counting it made the weapons that
-       one-shot the crowd look bigger than they are. The hover keeps it. */
-    const dmgMeter = meterFor('Damage meter', run.landedByWeapon || run.damageByWeapon, WS.CONST.COLORS.arc, run.hitsBySource,
+    let any = foldable('damage', 'Damage', run.landedByWeapon || run.damageByWeapon, WS.CONST.COLORS.arc, run.hitsBySource,
       run.landedByWeapon ? run.damageByWeapon : null);
-    if (dmgMeter) third.append(dmgMeter);
-    /* Healing and overkill are read on a hover, so the damage meter keeps
-       the panel: a line each with its total, and the whole meter in the tip.
-       Overkill is what the blows carried past the creatures' last health -
-       the counterpart of overhealing, and like it, not part of the meter. */
-    const overkill = {};
-    if (run.landedByWeapon) {
-      for (const [k, v] of Object.entries(run.damageByWeapon || {})) {
-        const d = v - (run.landedByWeapon[k] || 0);
-        if (d >= 1) overkill[k] = d;
-      }
-    }
-    const sum = (t) => Object.values(t || {}).reduce((a, b) => a + (b > 0 ? b : 0), 0);
-    const chips = el('div', 'meter-chips');
-    const chip = (label, total, build) => {
-      if (!(total > 0)) return;
-      const c = el('button', 'meter-chip');
-      c.type = 'button';
-      c.append(el('span', 'mc-k', label), el('span', 'mc-v', WS.formatNumber(WS.round(total))));
-      tipOn(c, build, { prefer: ['left', 'above'], delay: 60 });
-      chips.append(c);
-    };
-    chip('Healing', sum(run.healingBySource), () => {
-      const box = el('div', 'tip-body meter-tip');
-      const h = meterFor('Healing meter', run.healingBySource, WS.CONST.COLORS.heal);
-      const o = meterFor('Overhealing', run.overhealBySource, WS.CONST.COLORS.shadow);
-      if (h) box.append(h);
-      if (o) box.append(o);
-      return box;
-    });
-    chip('Overkill', sum(overkill), () => {
-      const box = el('div', 'tip-body meter-tip');
-      const m = meterFor('Overkill', overkill, WS.CONST.COLORS.shadow);
-      if (m) box.append(m);
-      box.append(el('p', 'sheet-empty', 'Damage past what the creatures had left. Not counted on the damage meter.'));
-      return box;
-    });
-    if (chips.children.length) third.append(chips);
-    if (!dmgMeter && !chips.children.length) {
-      third.append(el('h3', null, 'Damage meter'), el('p', 'sheet-empty', 'Nothing fell to you tonight.'));
-    }
+    any = foldable('overkill', 'Overkill', overkillOf(run), WS.CONST.COLORS.shadow, null, null,
+      'Damage past what the creatures had left. Not counted on the damage meter.') || any;
+    any = foldable('healing', 'Healing', run.healingBySource, WS.CONST.COLORS.heal) || any;
+    any = foldable('overheal', 'Overhealing', run.overhealBySource, WS.CONST.COLORS.shadow) || any;
+    if (!any) third.append(el('h3', null, 'Damage meter'), el('p', 'sheet-empty', 'Nothing fell to you tonight.'));
 
     sheet.classList.add('three');
     sheet.append(left.frame, right.frame, third.frame);

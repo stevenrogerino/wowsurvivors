@@ -1215,6 +1215,10 @@ body.nav-active .card:focus .card-pips i.next {
 #hud-stats .gold .v { color: var(--arc); }
 #hud-stats .dps .v { color: #ff9d6b; }
 #hud-stats .hps .v { color: var(--verdant); }
+/* The dps and hps readouts open the night's meters on hover. */
+#hud-stats .stat-line.dps, #hud-stats .stat-line.hps { pointer-events: auto; cursor: help; }
+#hud-stats .stat-line.dps:hover .label, #hud-stats .stat-line.hps:hover .label { color: var(--ink); }
+.hud-meter-tip { min-width: 300px; max-width: 380px; }
 
 /* -- weapon strip ------------------------------------------------------ */
 /* -- arsenal and passives ----------------------------------------------
@@ -3514,3 +3518,20 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .meter-chip:hover, .meter-chip:focus-visible { border-color: var(--arc-deep, #b98c3c); }
 .meter-chip .mc-k { color: var(--ink-dim, #8b93a7); font-weight: 500; }
 .meter-tip { min-width: 280px; }
+
+/* Foldable meters on the pause and results sheet: a header with the total
+   that folds its rows away; the fold is remembered. */
+.meter-block + .meter-block { margin-top: 14px; }
+.meter-fold { display: flex; align-items: baseline; gap: 8px; width: 100%; padding: 4px 2px 6px; margin: 0 0 6px;
+  background: none; border: 0; border-bottom: 1px solid var(--rule, #262a35); color: var(--ink, #e9edf6);
+  font: 600 var(--t-body, 14px) var(--ui); text-align: left; cursor: pointer; }
+.meter-fold:hover .mf-k, .meter-fold:focus-visible .mf-k { color: var(--arc, #f5c56b); }
+.meter-fold:focus-visible { outline: 1px solid var(--arc-deep, #b98c3c); outline-offset: 2px; }
+.meter-fold .mf-caret { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent;
+  border-top: 6px solid var(--ink-dim, #8b93a7); transition: transform .15s var(--ease, ease); align-self: center; }
+.meter-block.folded .mf-caret { transform: rotate(-90deg); }
+.meter-fold .mf-k { flex: 1; letter-spacing: .02em; }
+.meter-fold .mf-v { font-family: var(--fig, monospace); font-variant-numeric: tabular-nums; color: var(--ink-dim, #8b93a7); }
+.meter-block.folded > :not(.meter-fold) { display: none; }
+.meter-note { margin-top: 6px; }
+@media (prefers-reduced-motion: reduce) { .meter-fold .mf-caret { transition: none; } }
