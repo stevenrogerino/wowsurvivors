@@ -103,7 +103,7 @@
     warding_light: {
       name: 'Warding Light', art: 'aegis', quality: 'rare',
       description: 'Blocks the next single hit against you completely, then recharges.', max: 3,
-      detail: 'Blocks one hit every {Config.blockInterval1} / {Config.blockInterval2} / {Config.blockInterval3} seconds by rank.',
+      detail: 'Blocks one hit every {Config.blockInterval1} / {Config.blockInterval2} / {Config.blockInterval3} seconds by rank (half of a telegraphed boss or finale blow).',
       apply: (p) => {
         const c = WS.Config;
         const intervals = [c.blockInterval1, c.blockInterval2, c.blockInterval3];

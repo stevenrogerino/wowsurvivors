@@ -1203,7 +1203,7 @@
     this.drawCallingGround(ctx, player, time);
     if (WS.Arena.active) this.drawArena(ctx, time);
     if (WS.Finale.stage !== 'idle') WS.FinaleArt.drawGround(ctx, time);
-    else if (WS.Finale.marks.length) WS.FinaleArt.drawMarks(ctx, time);
+    else if (WS.Finale.marks.length || WS.Finale.impacts.length) WS.FinaleArt.drawMarks(ctx, time);
 
     this.drawCorpses(ctx);
     this.drawAirdropGround(ctx, time);
@@ -5292,30 +5292,9 @@
     for (const h of A.hazards) {
       if (h.shape === 'ring') {
         if (h.delay > 0) continue;
-        ctx.save();
-        ctx.lineWidth = h.thick;
-        ctx.strokeStyle = 'rgba(255,190,90,.45)';
-        // Draw the ring in segments, leaving the openings dark.
-        const steps = 180;
-        ctx.beginPath();
-        for (let i = 0; i < steps; i++) {
-          const a0 = (i / steps) * WS.TAU;
-          const inside = (() => {
-            const half = (h.gapWidth * WS.PI / 180) * 0.5;
-            for (let k = 0; k < h.gapCount; k++) {
-              const centre = h.gapBase + h.gapRot + (k / h.gapCount) * WS.TAU;
-              let d = ((a0 - centre + WS.PI * 3) % WS.TAU) - WS.PI;
-              if (WS.abs(d) <= half) return true;
-            }
-            return false;
-          })();
-          if (inside) continue;
-          ctx.moveTo(h.cx + WS.cos(a0) * h.r, h.cy + WS.sin(a0) * h.r);
-          ctx.arc(h.cx, h.cy, h.r, a0, a0 + WS.TAU / steps);
-        }
-        ctx.stroke();
-        ctx.restore();
-        WS.FinaleArt.ringGapEdges(ctx, h, [1.0, 0.75, 0.35]);
+        // The finale's wave, in the sun's colour (FinaleArt.drawRing).
+        h.tint = R.vivid() ? R.VIVID : [1.0, 0.75, 0.35];
+        WS.FinaleArt.drawRing(ctx, h);
 
       } else if (h.shape === 'square') {
         if (h.telegraph > 0) {
@@ -5402,6 +5381,21 @@
           ctx.lineTo(WS.cos(-h.half) * h.len, WS.sin(-h.half) * h.len);
           ctx.lineTo(WS.cos(h.half) * h.len, WS.sin(h.half) * h.len);
           ctx.closePath(); ctx.fill();
+          /* Live, each arm is a blade of light: a white core down its middle
+             and a soft halo, the way the finale's beams are drawn. */
+          if (!telegraphing) {
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = R.vivid() ? 'rgba(255,90,230,.18)' : 'rgba(255,170,90,.18)';
+            ctx.lineWidth = 26;
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(h.len, 0); ctx.stroke();
+            ctx.strokeStyle = `rgba(255,248,230,${R.calm() ? 0.8 : (0.7 + 0.2 * WS.sin(time * 47 + arm)).toFixed(3)})`;
+            ctx.lineWidth = 3.5;
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(h.len, 0); ctx.stroke();
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.globalAlpha = 0.75;
+          }
           ctx.restore();
         }
         ctx.restore();

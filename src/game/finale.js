@@ -11,7 +11,9 @@
  * a grid, safe ground in a field of doom - so all five fights share one
  * visual language: a shape appears, it tells you how long you have, and it
  * does exactly what it drew. Nothing reaches the survivor except through
- * Player.takeDamage, so armour, dodge, Warding Light and Thorns all work.
+ * Player.takeDamage, so armour, blocks, barriers and Thorns all work - but
+ * not a dodge roll or Stillwater's step: these are telegraphed, and reading
+ * the telegraph is the dodge.
  */
 'use strict';
 (function (WS) {
@@ -29,6 +31,7 @@
     t: 0, timer: 0, purgeR: 0,
     hpScale: 1, dmgScale: 1, power: 1,
     units: [], marks: [], queue: [], line: null,
+    impacts: [],          // what a landed shape leaves on the ground (finale-art draws them)
     pv: { x: 0, y: 0 },   // the survivor's smoothed heading, for F.lead
     wrecks: [], pods: [], booms: [],
     darkness: 0, darkTarget: 0,
@@ -42,7 +45,7 @@
     this.stage = 'idle';
     this.def = null; this.mapId = null; this.script = null; this.s = null;
     this.t = 0; this.timer = 0; this.purgeR = 0;
-    this.units.length = 0; this.marks.length = 0; this.queue.length = 0;
+    this.units.length = 0; this.marks.length = 0; this.queue.length = 0; this.impacts.length = 0;
     this.line = null;
     this.wrecks.length = 0; this.pods.length = 0; this.booms.length = 0;
     this.darkness = 0; this.darkTarget = 0;
@@ -303,6 +306,24 @@
     return m.src && (m.src._dead || m.src.spawnId !== m.srcId || !m.src.boss && !m.src.elite);
   }
 
+  /* WHAT A LANDED SHAPE LEAVES. A blast used to be a flash and nothing: the
+     telegraph vanished the instant it went off, so the hit itself was the
+     least visible moment of the mechanic. Now it lands - a shockwave out of
+     it, a hot core, a scorch that cools for a few seconds - so you see
+     where it hit and what it covered, and the field remembers the fight. */
+  F.impact = function (kind, x, y, r, tint, extra) {
+    if (this.impacts.length > 60) this.impacts.shift();
+    this.impacts.push(Object.assign({ kind, x, y, r, tint: tint || [1, 0.6, 0.3], life: 2.6, max: 2.6,
+      seed: Math.random() * 1000 }, extra || {}));
+  };
+  F.ageImpacts = function (dt) { ageImpacts(dt); };
+  function ageImpacts(dt) {
+    for (let i = F.impacts.length - 1; i >= 0; i--) {
+      F.impacts[i].life -= dt;
+      if (F.impacts[i].life <= 0) F.impacts.splice(i, 1);
+    }
+  }
+
   /** The marks, run outside the finale: a scheduled boss's telegraphs. */
   F.field = function (dt) {
     // The heading is kept up whether or not anything is on the field: a
@@ -315,6 +336,7 @@
       this.pv.y += ((p.y - this._py) / dt - this.pv.y) * a;
     }
     this._px = p.x; this._py = p.y;
+    if (this.impacts.length) ageImpacts(dt);
     if (!this.marks.length || WS.Enemy.freezeTimer > 0) return;   // a stopped clock stops these too
     updateMarks(dt);
   };
@@ -965,6 +987,7 @@
     }
     this._px = p.x; this._py = p.y;
     updateLines(dt);
+    if (this.impacts.length) ageImpacts(dt);
     this.darkness += (this.darkTarget - this.darkness) * WS.min(1, dt * 1.5);
     if (this.cinema > 0) {
       this.cinema -= dt;
@@ -1121,7 +1144,7 @@
   function hurt(m, amount) {
     const p = WS.Game.player;
     const before = p.health;
-    WS.Player.takeDamage(p, amount, m.name);
+    WS.Player.takeDamage(p, amount, m.name, true);
     if (m.name && before - p.health >= p.maxHealth * WS.Config.heavyHitShare) {
       WS.FX.notice(p.x, p.y - 14, m.name, '#ff9a7a');
       WS.FX.flash(p.x, p.y, 70, m.tint || [1, 0.4, 0.3], 0.3);
@@ -1147,6 +1170,9 @@
         if (m.tele <= 0) {
           if (WS.dist(p.x, p.y, m.x, m.y) < m.r + pr * 0.5) hurt(m, m.dmg);
           WS.FX.flash(m.x, m.y, m.r, m.tint, 0.35);
+          F.impact(m.style === 'ice' ? 'shatter' : m.style === 'hands' ? 'claw' : 'blast', m.x, m.y, m.r, m.tint);
+          WS.FX.burst(m.x, m.y, m.style === 'quiet' ? 3 : 9, WS.hex(m.tint), 220, 0.55, 3.5, true);
+          if (m.r >= 70 && m.style !== 'quiet') WS.FX.shake(2.5, 0.12);
           if (m.style !== 'quiet') WS.Audio.play('enemyHit', m.x);
           if (m.burn > 0) {
             WS.Hazard.spawn(m.x, m.y, { radius: m.r * 0.6, fuse: 0.2, life: m.burn,
@@ -1160,6 +1186,7 @@
           if (m.tele <= 0) {
             if (m.sound !== false) WS.Audio.play(m.sound || 'explode', m.x);
             WS.FX.shake(3, 0.15);
+            F.impact('strip', m.x, m.y, m.w, m.tint, { ang: m.ang, len: m.len, life: 1.8, max: 1.8 });
           }
         } else {
           m.active -= dt;
@@ -1210,6 +1237,7 @@
             if (c.safe) continue;
             if (p.x >= c.x && p.x <= c.x + c.w && p.y >= c.y && p.y <= c.y + c.h) hurt(m, m.dmg);
             WS.FX.flash(c.x + c.w / 2, c.y + c.h / 2, c.w * 0.45, m.tint, 0.3);
+            F.impact('spikes', c.x, c.y, 0, m.tint, { w: c.w, h: c.h, life: 1.6, max: 1.6 });
           }
           WS.Audio.play('explode');
           WS.FX.shake(5, 0.3);
@@ -2395,6 +2423,11 @@
     winter(F) {
       const s = F.s, T = F.def.tuning, L = s.lord;
       s.mode = 'winter';
+      /* The winter changes how he moves (an orbit becomes a pull to the
+         centre), so a cross already turning would no longer go where every
+         opening was placed to avoid it. It breaks as he changes; the
+         winter's own comes 1.5s later. */
+      for (let i = F.marks.length - 1; i >= 0; i--) if (F.marks[i].kind === 'sweep') F.marks.splice(i, 1);
       for (const q of s.shards) F.remove(q);
       s.shards = [];
       // Past the winter line: the next is the last of the Pale.

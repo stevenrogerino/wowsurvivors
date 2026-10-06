@@ -4349,6 +4349,9 @@ window.WS = window.WS || {};
     dodgeInvulnerable: 0.2,
 
     blockInterval1: 30, blockInterval2: 22, blockInterval3: 15,
+    // ...and against a telegraphed blow (a finale's, a boss's) it takes
+    // this share instead of all of it (Player.takeDamage).
+    blockTelegraphed: 0.5,
     /* The kit, and the rank ceiling. Read through WS.MAX_WEAPONS and
        WS.WEAPON_MAX_LEVEL, which are getters over these. */
     /* When the one extra blessing arrives, in seconds. Half of deathTime.
@@ -4380,7 +4383,13 @@ window.WS = window.WS || {};
     hyperScale: 1.4,
     /* One dial over every finale's damage (each also names its own scale,
        tuning.damage in data/finales.js). */
-    finaleDamage: 1.0,
+    /* 1.4, was 1.0. In bot nights every survivor who reached a finale on
+       the first battlefields won it with a median 0% of their bar lost -
+       their healing and barriers swallowed the little that landed. A
+       caught blow should take a real piece of the bar through all of that:
+       on Professional a lantern bomb is now about half of a median 30:00
+       build's 727 health before armour, a drill or a broadside more. */
+    finaleDamage: 1.4,
     /* The finales size their health to the build that reaches them: by
        (single / finaleRefSingle) ^ finalePowerExp, capped at finalePowerCap,
        so a stronger build still wins faster - 8x the damage ends the fight
@@ -4394,10 +4403,9 @@ window.WS = window.WS || {};
        it could not finish, and a harder map read as a stronger build (more
        health to chew through means less overkill wasted), so the Pale Lord
        came out at 10 to 20 times his health and nobody could kill him. */
-    /* 2000, was 1500: against the build that reaches 30:00 (bot nights,
-       tools/bot/boss-snapshots.json finaleBuilds) the fights ran five to
-       eight minutes; this takes about a sixth off (a factor of 0.82). */
-    finaleRefSingle: 2000,
+    /* 1500 (boss-balance: "finales hurt more", the shortening undone; it was
+       2000 for about a sixth off). */
+    finaleRefSingle: 1500,
     /* FIGHTS THAT LAST. A build's modelled damage (above) misses unions,
        pets, waystones, bombs and bleeds, and a player's night (a Shaman at
        level 181 on Highmoor) put 300k a second into Kael for a six-second
@@ -7762,7 +7770,7 @@ window.WS = window.WS || {};
     warding_light: {
       name: 'Warding Light', art: 'aegis', quality: 'rare',
       description: 'Blocks the next single hit against you completely, then recharges.', max: 3,
-      detail: 'Blocks one hit every {Config.blockInterval1} / {Config.blockInterval2} / {Config.blockInterval3} seconds by rank.',
+      detail: 'Blocks one hit every {Config.blockInterval1} / {Config.blockInterval2} / {Config.blockInterval3} seconds by rank (half of a telegraphed boss or finale blow).',
       apply: (p) => {
         const c = WS.Config;
         const intervals = [c.blockInterval1, c.blockInterval2, c.blockInterval3];
@@ -8276,7 +8284,7 @@ window.WS = window.WS || {};
     },
     stillwater: {
       name: 'Stillwater Step', art: 'step', quality: 'legendary',
-      description: 'You are not where the blow lands. {Config.flowSteps} steps: a hit you would take becomes a step through it, a palm on everything you pass, and a stack of Poise (+{Config.poiseDamage%}% damage each). Steps come back on their own.',
+      description: 'You are not where the blow lands. {Config.flowSteps} steps: a hit you would take becomes a step through it, a palm on everything you pass, and a stack of Poise (+{Config.poiseDamage%}% damage each). Steps come back on their own. A boss\u2019s or finale\u2019s telegraphed blow is not stepped: read it.',
       apply: (p) => {
         p.flowAttuned += 1;
         p.flowSteps = WS.Primal.maxSteps(p);
@@ -9184,9 +9192,7 @@ window.WS = window.WS || {};
   Object.assign(WS.Bosses, {
     candlecrawler: {
       name: 'The Candlecrawler', family: 'lampling', art: 'candlecrawler', machine: 'candlecrawler',
-      // 380k, was 460k: against the median 30:00 build (finale bench) the
-      // fight ran six minutes. Five is plenty, and denser.
-      tint: [0.95, 0.66, 0.30], health: 380000, speed: 0, damage: 34, xp: 900, radius: 64,
+      tint: [0.95, 0.66, 0.30], health: 460000, speed: 0, damage: 34, xp: 900, radius: 64,
       gold: 400, drawScale: 1.3, interval: 99, finale: true, stationary: true, school: 'fire',
       yell: 'Candlecrawler! Dig me out a thief!',
     },
@@ -9208,9 +9214,7 @@ window.WS = window.WS || {};
     },
     mordecai_bound: {
       name: 'Mordecai, Lantern-Bound', family: 'undead', art: 'mordecai',
-      // 320k, was 420k: seven and a half minutes of lanterns against the
-      // median 30:00 build (finale bench); about five now.
-      tint: [0.55, 0.92, 0.72], health: 320000, speed: 0, damage: 44, xp: 1200, radius: 42,
+      tint: [0.55, 0.92, 0.72], health: 420000, speed: 0, damage: 44, xp: 1200, radius: 42,
       gold: 500, interval: 99, finale: true, stationary: true, school: 'shadow',
       yell: 'Four lanterns, four lives. You have one.',
     },
@@ -9222,16 +9226,13 @@ window.WS = window.WS || {};
     },
     heart_drill: {
       name: 'The Heart-Drill', family: 'mechanical', art: 'heartdrill', machine: 'heartdrill',
-      // 330k, was 380k, and the Lord 600k, was 700k: the last fight ran
-      // six and a half minutes in bot nights at Professional.
-      tint: [0.86, 0.52, 0.26], health: 330000, speed: 0, damage: 56, xp: 1500, radius: 80,
+      tint: [0.86, 0.52, 0.26], health: 380000, speed: 0, damage: 56, xp: 1500, radius: 80,
       gold: 600, drawScale: 1.25, interval: 99, finale: true, stationary: true, school: 'fire',
       yell: 'One more meter and it is ALL mine!',
     },
     kael_stormbound: {
       name: 'Brother Kael, the Stormbound', family: 'highland', art: 'kael',
-      // 480k, was 560k: five and a half minutes; under five now.
-      tint: [0.62, 0.72, 1.00], health: 480000, speed: 0, damage: 60, xp: 2400, radius: 40,
+      tint: [0.62, 0.72, 1.00], health: 560000, speed: 0, damage: 60, xp: 2400, radius: 40,
       spriteScale: 1.15,
       gold: 1200, interval: 99, finale: true, stationary: true, school: 'nature',
       yell: 'Stand still. It is the only thing the storm cannot forgive.',
@@ -9239,7 +9240,7 @@ window.WS = window.WS || {};
     pale_lord: {
       // His own art (sprites.js), crown and all - no borrowed regalia.
       name: 'Marrowfrost, the Pale Lord', family: 'undead', art: 'marrowfrost',
-      tint: [0.62, 0.88, 1.00], health: 600000, speed: 0, damage: 64, xp: 3000, radius: 56,
+      tint: [0.62, 0.88, 1.00], health: 700000, speed: 0, damage: 64, xp: 3000, radius: 56,
       spriteScale: 1.25,
       gold: 1500, interval: 99, finale: true, stationary: true, school: 'frost',
       yell: 'Every night your kind burns my ember. Tonight I take it back.',
@@ -9262,11 +9263,7 @@ window.WS = window.WS || {};
     },
     soul_lantern: {
       name: 'Soul Lantern', family: 'undead', art: 'turret', machine: 'soullantern',
-      // 15k, was 28k: Mordecai's fight is paced by his lanterns, not his
-      // health (each window takes him one life, then they relight): 159s of
-      // a 182s fight was spent breaking them (check-finale --phases), and
-      // it ran six to seven minutes in bot nights.
-      tint: [0.55, 1.00, 0.75], health: 15000, speed: 0, damage: 20, xp: 120, radius: 26,
+      tint: [0.55, 1.00, 0.75], health: 28000, speed: 0, damage: 20, xp: 120, radius: 26,
       finale: true, part: true, stationary: true,
     },
     walker_leg: {
@@ -9345,12 +9342,13 @@ window.WS = window.WS || {};
         /* Paced for the build that gets here. In bot nights the strong player
            took a median 0% of its bar over a five-minute fight: one bomb
            volley every 3.4s and a drill every 8 never asked it to do two
-           things at once. Now bombs (three a turret) every 2.5s, a drill
-           every 6.5 (4.5 stripped), the candle-fire ring in every mode
-           (ringShielded while the turrets stand), and a shockwave as the
-           hull breaks the surface. */
-        every: { erupt: 2.4, trail: 0.1, drill: 6.5, drillStripped: 4.5, bomb: 2.5, bombStripped: 3,
-          hatch: 10, hatchStripped: 12, ring: 7, ringShielded: 10 },
+           things at once. Now bombs (three a turret) every 2s, a drill every
+           5 (3.5 stripped), the candle-fire ring in every mode (ringShielded
+           while the turrets stand), and a shockwave as the hull breaks the
+           surface - two or three things to read at once, every one of them
+           possible (tools/check-finale-fair.js). */
+        every: { erupt: 2.0, trail: 0.1, drill: 5, drillStripped: 3.5, bomb: 2.0, bombStripped: 2.4,
+          hatch: 9, hatchStripped: 10, ring: 6, ringShielded: 8 },
         opening: { bomb: 4, drill: 7, hatch: 7, ring: 9 },
         afterSurface: { drill: 3, ring: 5 },
       },
@@ -9379,21 +9377,17 @@ window.WS = window.WS || {};
       ],
       epilogue: ['The Admiral strikes her colours', 'The stolen ember was bound for Mourneholt.'],
       tuning: {
-        // 10, was 9, for the same reason as the Candlecrawler's - not 11: its
-        // grapeshot and pistols are bolts, not shapes, and at 11 a player a
-        // quarter-second slow lost the Hyper duel (finale bench, no healing).
-        damage: 10,   // x difficulty x Hyper x Config.finaleDamage
+        damage: 10,   // was 9, for the same reason as the Candlecrawler's
         sailSpeed: 70, broadsideDamage: 40, broadsideTele: 1.2, broadsideWidth: 64,
         grapeDamage: 26, kegDamage: 40, kegRadius: 80, kegTele: 1.2,
-        dashDamage: 42, dashWindup: 0.55, dashTime: 0.35, dashRange: 340,
-        // The second and third dash of a set: quicker, but still a human's
-        // reaction plus a step - below ~0.5s a lane this wide cannot be left.
-        dashChainWindup: 0.5,
-        /* 20, was 30: a fan of five at 340 px/s from duelling range is the
-           one thing in this fight with no telegraph but the bolts themselves,
-           and at 30 a player reacting a quarter-second late lost the whole
-           bar to it (finale bench: 114% a fight). Still ~17% a bolt. */
-        pistolDamage: 20, boarders: 8, rally: 4,
+        /* Her dashes land for a whole bar before armour now (finaleDamage),
+           so their warning is a human's reaction plus a real step: 0.7s for
+           the first, 0.6s for the chained (were 0.55 / 0.5). At the old
+           timings the strong bot lost 2 of 11 duels at Professional to the
+           chain alone. */
+        dashDamage: 42, dashWindup: 0.7, dashTime: 0.35, dashRange: 340,
+        dashChainWindup: 0.6,
+        pistolDamage: 30, boarders: 8, rally: 4,
         sailInSpeed: 260, crashTime: 2.6,
         // Broadsides fire straight down until the ship falls below aimBelow,
         // then at you; each port a broadsideStagger later than the last.
@@ -9406,8 +9400,8 @@ window.WS = window.WS || {};
         dashChain: 2, dashGirth: 1.8, pistolCount: 5, pistolSpread: 0.12, pistolSpeed: 340,
         duelKegRing: 4, duelKegRange: 110, duelKegScale: 0.8, duelKegDelay: 0.3,
         // Quicker throughout (was broadside 6.5, grape 4.2, keg 7, dash 5.5,
-        // duelKeg 8): a median 0% taken over 280s in bot nights.
-        every: { broadside: 5, grape: 3.2, keg: 5.2, board: 12, dash: 4.5, pistol: 2.6, duelKeg: 6, rally: 14 },
+        // pistol 2.6, duelKeg 8): a median 0% taken over 280s in bot nights.
+        every: { broadside: 4, grape: 2.6, keg: 4.2, board: 11, dash: 3.8, pistol: 2.2, duelKeg: 5, rally: 12 },
         opening: { broadside: 3.5, grape: 5, keg: 6.5, board: 8 },
         duelOpening: { dash: 3, pistol: 2, keg: 6, rally: 10 },
       },
@@ -9434,21 +9428,18 @@ window.WS = window.WS || {};
       epilogue: ['Grimtunnel steals the lantern-ember', 'His pod races east, over the Ochre Plains.'],
       tuning: {
         damage: 10.5,   // x difficulty x Hyper x Config.finaleDamage
-        /* exposed 16s at x1.8 (was 14s at x1.4): the fight is paced by its
-           windows, and against the median 30:00 build a window often ended
-           short of his next life - so the lanterns came back, again, and it
-           ran six to seven minutes. A window that is used should take a
-           life. */
-        lanternBond: 0.05, exposedTime: 16, exposedVuln: 1.8, relight: 3,
+        lanternBond: 0.05, exposedTime: 14, exposedVuln: 1.4, relight: 3,
         // His four lives: an exposed window cannot take him below the next.
         lives: [0.70, 0.45, 0.20],
         riseAt: 0.30, handDamage: 44, handRadius: 58, handTele: 1.0,
         knellDamage: 38, knellSpeed: 200, knellGap: 34,
         lanceDamage: 30, raise: 6,
         lanternHpGrowth: 0.15, lanternAdds: 2, riseSkeletons: 12, riseGhouls: 10, risenPace: 1.35,
-        hands: 3, lanceCount: 5, lanceSpread: 0.16, lanceSpeed: 260, knellGaps: 3,
+        hands: 4, lanceCount: 6, lanceSpread: 0.16, lanceSpeed: 260, knellGaps: 3,
         // knellFast once he is exposed or risen; handStep between the hands of one volley.
-        every: { spawn: 9, blink: 8, hand: 4.2, handStep: 0.45, lance: 4, knell: 9, knellFast: 6.5 },
+        // Quicker throughout (was hand 5, lance 4, knell 11 / 7.5): a median
+        // 0% taken in bot nights.
+        every: { spawn: 9, blink: 8, hand: 3.5, handStep: 0.45, lance: 3.2, knell: 8, knellFast: 5.5 },
         opening: { hand: 3, lance: 4, knell: 7, blink: 8, spawn: 6 },
       },
     },
@@ -9495,8 +9486,10 @@ window.WS = window.WS || {};
         shockSpeed: 230, shockGaps: 3, shockGapWidth: 42,
         enterSpeed: 120, walkSpeed: 38,
         karrash: 5,
-        every: { step: 1.3, sweep: 10, missile: 5.5, shock: 8, karrash: 13,
-          lighthouse: 10.5, fortMissile: 5, bolts: 6.5, fortKarrash: 15 },
+        // Quicker throughout (was step 1.3, sweep 10, missile 5.5, shock 8,
+        // lighthouse 10.5, fortMissile 5, bolts 6.5).
+        every: { step: 1.1, sweep: 8, missile: 4.5, shock: 6.5, karrash: 12,
+          lighthouse: 9, fortMissile: 4, bolts: 5, fortKarrash: 14 },
         opening: { step: 1.3, sweep: 6, missile: 5, karrash: 9 },
         fortOpening: { sweep: 3, missile: 2, bolts: 4 },
       },
@@ -9539,14 +9532,12 @@ window.WS = window.WS || {};
         gridDamage: 56, gridTele: 1.35, spikeDamage: 44,
         ghouls: 10,
         dropGravity: 1100, breachTime: 7.4,
-        debris: 4, debrisScatter: 190, debrisStagger: 0.15,
+        debris: 5, debrisScatter: 190, debrisStagger: 0.15,
         /* The vents: four arms. At 0.7 rad/s an arm 300px out moved at 210
            px/s, all but a survivor's running speed - there was no keeping
            ahead of it, only crossing it, and a crossing at Professional cost
            half the bar. 0.55 is 165 px/s there: a hard run, not a toll. */
-        // And 480 long, not 900: the far field is out of their reach, so
-        // there is a choice - dance close, or run for the edges.
-        ventLength: 480, ventWidth: 40, ventTime: 5, ventArms: 4,
+        ventLength: 900, ventWidth: 40, ventTime: 6, ventArms: 4,
         // Marrowfrost's frost cross, and the faster, wider one in the winter.
         crossSpin: 0.45, crossWidth: 34, crossTele: 1.2, crossTime: 6, crossArms: 2,
         // The winter's cross runs 9.2s (tele + time) and comes every 9.6s:
@@ -9558,8 +9549,11 @@ window.WS = window.WS || {};
         spikes: 14, spikeSpeed: 190, winterSpikes: 16, winterSpikeSpeed: 200,
         novaGaps: 3, novaSpin: 0.35, novaDelay: 1.3,
         shardCount: 4, tideSkeletons: 6, tideGhouls: 6,
-        every: { debris: 4, vent: 11, ghoul: 12, nova: 9, cross: 15, grid: 14, spike: 5, tide: 16,
-          winterCross: 9.6, winterNova: 7, winterGrid: 12, winterSpike: 4, winterEnd: 3 },
+        // Quicker throughout (was debris 4, vent 11, nova 9, cross 15, grid 14,
+        // spike 5; winter nova 7, grid 12, spike 4). The winter's cross stays
+        // at 9.6 so two never overlap turning opposite ways.
+        every: { debris: 3.2, vent: 9, ghoul: 11, nova: 7.5, cross: 12, grid: 11, spike: 4, tide: 14,
+          winterCross: 9.6, winterNova: 6, winterGrid: 10, winterSpike: 3.2, winterEnd: 3 },
         opening: { debris: 3, vent: 7, ghoul: 6 },
         lordOpening: { nova: 4, grid: 9, spike: 3, tide: 8 },
       },
@@ -9608,8 +9602,10 @@ window.WS = window.WS || {};
         armDamage: 38, armSpin: 0.45, armWidth: 30, armTele: 1.1, armTime: 7, arms: 3, stormArms: 4,
         wisps: 8, harpies: 4,
         drift: 150, driftSpeed: 0.35,
-        every: { bolt: 3.6, gale: 7.5, ring: 10, adds: 13, eye: 20, arm: 12,
-          stormBolt: 2.6, stormRing: 7, stormArm: 9, stormEye: 15 },
+        // Quicker throughout (was bolt 3.6, gale 7.5, ring 10, eye 20, arm 12;
+        // storm bolt 2.6, ring 7, arm 9, eye 15).
+        every: { bolt: 3.0, gale: 6, ring: 8, adds: 12, eye: 17, arm: 10,
+          stormBolt: 2.2, stormRing: 6, stormArm: 8, stormEye: 13 },
         opening: { bolt: 3, gale: 6, ring: 9, adds: 5, eye: 99, arm: 99 },
       },
     },
@@ -28099,7 +28095,9 @@ window.WS = window.WS || {};
         // The lunge (renderer): drawn only, never read by the simulation.
         e.swing = 0.24; e.swingDx = dx; e.swingDy = dy;
         // Run down by a boss's charge: the blow it telegraphed (BossFight.hit).
-        WS.Player.takeDamage(player, e.chargeTimer > 0 && e.chargeHit ? WS.max(e.damage, e.chargeHit) : e.damage, t.name);
+        // A charge ran down the lane it drew: telegraphed (Player.takeDamage).
+        WS.Player.takeDamage(player, e.chargeTimer > 0 && e.chargeHit ? WS.max(e.damage, e.chargeHit) : e.damage, t.name,
+          e.chargeTimer > 0 && (e.boss || e.finale));
         if (!WS.Game.running) return;
       }
 
@@ -30289,17 +30287,24 @@ window.WS = window.WS || {};
 
   /** True if the hit connected (false while invulnerable). A dodge still
    *  counts as connected - the attacker's swing is used up - but deals none. */
-  Player.takeDamage = function (p, amount, srcName) {
+  Player.takeDamage = function (p, amount, srcName, telegraphed) {
     if (p.invulnerable > 0) return false;
     const run = WS.Game.run;
 
+    /* A TELEGRAPHED BLOW IS DODGED BY READING IT. The finales', the arena's
+       and the bosses' shapes (`telegraphed`) said where they would land and
+       when; Stillwater's step and a dodge roll are for the blows nobody
+       could see coming. In bot nights a Stillwater survivor took every one
+       of a finale's hits on its step - 12 of 12, a whole fight at 0% - so
+       the fight asked nothing of them. Blocks still take one: they are
+       earned on a timer, one blow at a time. */
     // Stillwater: the blow finds only where they were.
-    if (WS.Primal.tryStep(p)) {
+    if (!telegraphed && WS.Primal.tryStep(p)) {
       run.damagePrevented += amount;
       return true;
     }
 
-    if (p.dodgeChance && WS.random() < p.dodgeChance) {
+    if (!telegraphed && p.dodgeChance && WS.random() < p.dodgeChance) {
       p.invulnerable = WS.Config.dodgeInvulnerable;
       run.damagePrevented += amount;
       WS.FX.notice(p.x, p.y, 'Dodge', '#bfe6ff');
@@ -30309,11 +30314,20 @@ window.WS = window.WS || {};
     if (p.blockReady) {
       p.blockReady = false;
       p.blockTimer = p.blockInterval;
-      p.invulnerable = WS.Config.hitInvulnerable;
-      run.damagePrevented += amount;
       WS.FX.notice(p.x, p.y, 'BLOCK', '#ffe08a');
       WS.FX.flash(p.x, p.y, 60, WS.CONST.COLORS.holy, 0.3);
-      return true;
+      /* Against a telegraphed blow a block takes half, not all. Those blows
+         come one every half-minute or so, and a block ready every 15s met
+         nearly every one of them: a block build stood in the shapes and
+         took nothing (bot nights: 10 of 11 finale blows blocked). */
+      if (telegraphed) {
+        run.damagePrevented += amount * WS.Config.blockTelegraphed;
+        amount *= 1 - WS.Config.blockTelegraphed;
+      } else {
+        p.invulnerable = WS.Config.hitInvulnerable;
+        run.damagePrevented += amount;
+        return true;
+      }
     }
 
     // Armor is a diminishing % reduction, never a flat subtraction, so it
@@ -34458,6 +34472,8 @@ window.WS = window.WS || {};
       }
     }
 
+    if (WS.Finale.impacts.length) WS.Finale.ageImpacts(dt);
+
     /* ---- hazard resolution ----------------------------------------------- */
     for (let i = this.hazards.length - 1; i >= 0; i--) {
       const h = this.hazards[i];
@@ -34473,7 +34489,7 @@ window.WS = window.WS || {};
           const a = WS.atan2(player.y - h.cy, player.x - h.cx);
           if (!inGap(h, a)) {
             h.hit = true;
-            WS.Player.takeDamage(player, h.damage * this.dmgScale, 'Solar Flare');
+            WS.Player.takeDamage(player, h.damage * this.dmgScale, 'Solar Flare', true);
           }
         }
         if (h.r > 900) this.hazards.splice(i, 1);
@@ -34486,9 +34502,10 @@ window.WS = window.WS || {};
             // The spear lands the moment the telegraph expires.
             if (player.x >= h.x && player.x <= h.x + h.w
               && player.y >= h.y && player.y <= h.y + h.h) {
-              WS.Player.takeDamage(player, h.damage * this.dmgScale, 'Sunfall Spear');
+              WS.Player.takeDamage(player, h.damage * this.dmgScale, 'Sunfall Spear', true);
             }
             WS.FX.flash(h.x + h.w / 2, h.y + h.h / 2, h.w * 0.5, [1.0, 0.86, 0.45], 0.3);
+            WS.Finale.impact('spikes', h.x, h.y, 0, [1.0, 0.86, 0.45], { w: h.w, h: h.h, life: 1.6, max: 1.6 });
             WS.Audio.play('hit');
           }
         }
@@ -34504,7 +34521,7 @@ window.WS = window.WS || {};
             let diff = ((pa - armAng + WS.PI * 3) % WS.TAU) - WS.PI;
             if (WS.abs(diff) <= h.half) {
               h.hitTimer = 0.8;
-              WS.Player.takeDamage(player, h.damage * this.dmgScale, 'Eclipse Cross');
+              WS.Player.takeDamage(player, h.damage * this.dmgScale, 'Eclipse Cross', true);
               break;
             }
           }
@@ -34576,7 +34593,9 @@ window.WS = window.WS || {};
  * a grid, safe ground in a field of doom - so all five fights share one
  * visual language: a shape appears, it tells you how long you have, and it
  * does exactly what it drew. Nothing reaches the survivor except through
- * Player.takeDamage, so armour, dodge, Warding Light and Thorns all work.
+ * Player.takeDamage, so armour, blocks, barriers and Thorns all work - but
+ * not a dodge roll or Stillwater's step: these are telegraphed, and reading
+ * the telegraph is the dodge.
  */
 'use strict';
 (function (WS) {
@@ -34594,6 +34613,7 @@ window.WS = window.WS || {};
     t: 0, timer: 0, purgeR: 0,
     hpScale: 1, dmgScale: 1, power: 1,
     units: [], marks: [], queue: [], line: null,
+    impacts: [],          // what a landed shape leaves on the ground (finale-art draws them)
     pv: { x: 0, y: 0 },   // the survivor's smoothed heading, for F.lead
     wrecks: [], pods: [], booms: [],
     darkness: 0, darkTarget: 0,
@@ -34607,7 +34627,7 @@ window.WS = window.WS || {};
     this.stage = 'idle';
     this.def = null; this.mapId = null; this.script = null; this.s = null;
     this.t = 0; this.timer = 0; this.purgeR = 0;
-    this.units.length = 0; this.marks.length = 0; this.queue.length = 0;
+    this.units.length = 0; this.marks.length = 0; this.queue.length = 0; this.impacts.length = 0;
     this.line = null;
     this.wrecks.length = 0; this.pods.length = 0; this.booms.length = 0;
     this.darkness = 0; this.darkTarget = 0;
@@ -34868,6 +34888,24 @@ window.WS = window.WS || {};
     return m.src && (m.src._dead || m.src.spawnId !== m.srcId || !m.src.boss && !m.src.elite);
   }
 
+  /* WHAT A LANDED SHAPE LEAVES. A blast used to be a flash and nothing: the
+     telegraph vanished the instant it went off, so the hit itself was the
+     least visible moment of the mechanic. Now it lands - a shockwave out of
+     it, a hot core, a scorch that cools for a few seconds - so you see
+     where it hit and what it covered, and the field remembers the fight. */
+  F.impact = function (kind, x, y, r, tint, extra) {
+    if (this.impacts.length > 60) this.impacts.shift();
+    this.impacts.push(Object.assign({ kind, x, y, r, tint: tint || [1, 0.6, 0.3], life: 2.6, max: 2.6,
+      seed: Math.random() * 1000 }, extra || {}));
+  };
+  F.ageImpacts = function (dt) { ageImpacts(dt); };
+  function ageImpacts(dt) {
+    for (let i = F.impacts.length - 1; i >= 0; i--) {
+      F.impacts[i].life -= dt;
+      if (F.impacts[i].life <= 0) F.impacts.splice(i, 1);
+    }
+  }
+
   /** The marks, run outside the finale: a scheduled boss's telegraphs. */
   F.field = function (dt) {
     // The heading is kept up whether or not anything is on the field: a
@@ -34880,6 +34918,7 @@ window.WS = window.WS || {};
       this.pv.y += ((p.y - this._py) / dt - this.pv.y) * a;
     }
     this._px = p.x; this._py = p.y;
+    if (this.impacts.length) ageImpacts(dt);
     if (!this.marks.length || WS.Enemy.freezeTimer > 0) return;   // a stopped clock stops these too
     updateMarks(dt);
   };
@@ -35530,6 +35569,7 @@ window.WS = window.WS || {};
     }
     this._px = p.x; this._py = p.y;
     updateLines(dt);
+    if (this.impacts.length) ageImpacts(dt);
     this.darkness += (this.darkTarget - this.darkness) * WS.min(1, dt * 1.5);
     if (this.cinema > 0) {
       this.cinema -= dt;
@@ -35686,7 +35726,7 @@ window.WS = window.WS || {};
   function hurt(m, amount) {
     const p = WS.Game.player;
     const before = p.health;
-    WS.Player.takeDamage(p, amount, m.name);
+    WS.Player.takeDamage(p, amount, m.name, true);
     if (m.name && before - p.health >= p.maxHealth * WS.Config.heavyHitShare) {
       WS.FX.notice(p.x, p.y - 14, m.name, '#ff9a7a');
       WS.FX.flash(p.x, p.y, 70, m.tint || [1, 0.4, 0.3], 0.3);
@@ -35712,6 +35752,9 @@ window.WS = window.WS || {};
         if (m.tele <= 0) {
           if (WS.dist(p.x, p.y, m.x, m.y) < m.r + pr * 0.5) hurt(m, m.dmg);
           WS.FX.flash(m.x, m.y, m.r, m.tint, 0.35);
+          F.impact(m.style === 'ice' ? 'shatter' : m.style === 'hands' ? 'claw' : 'blast', m.x, m.y, m.r, m.tint);
+          WS.FX.burst(m.x, m.y, m.style === 'quiet' ? 3 : 9, WS.hex(m.tint), 220, 0.55, 3.5, true);
+          if (m.r >= 70 && m.style !== 'quiet') WS.FX.shake(2.5, 0.12);
           if (m.style !== 'quiet') WS.Audio.play('enemyHit', m.x);
           if (m.burn > 0) {
             WS.Hazard.spawn(m.x, m.y, { radius: m.r * 0.6, fuse: 0.2, life: m.burn,
@@ -35725,6 +35768,7 @@ window.WS = window.WS || {};
           if (m.tele <= 0) {
             if (m.sound !== false) WS.Audio.play(m.sound || 'explode', m.x);
             WS.FX.shake(3, 0.15);
+            F.impact('strip', m.x, m.y, m.w, m.tint, { ang: m.ang, len: m.len, life: 1.8, max: 1.8 });
           }
         } else {
           m.active -= dt;
@@ -35775,6 +35819,7 @@ window.WS = window.WS || {};
             if (c.safe) continue;
             if (p.x >= c.x && p.x <= c.x + c.w && p.y >= c.y && p.y <= c.y + c.h) hurt(m, m.dmg);
             WS.FX.flash(c.x + c.w / 2, c.y + c.h / 2, c.w * 0.45, m.tint, 0.3);
+            F.impact('spikes', c.x, c.y, 0, m.tint, { w: c.w, h: c.h, life: 1.6, max: 1.6 });
           }
           WS.Audio.play('explode');
           WS.FX.shake(5, 0.3);
@@ -36960,6 +37005,11 @@ window.WS = window.WS || {};
     winter(F) {
       const s = F.s, T = F.def.tuning, L = s.lord;
       s.mode = 'winter';
+      /* The winter changes how he moves (an orbit becomes a pull to the
+         centre), so a cross already turning would no longer go where every
+         opening was placed to avoid it. It breaks as he changes; the
+         winter's own comes 1.5s later. */
+      for (let i = F.marks.length - 1; i >= 0; i--) if (F.marks[i].kind === 'sweep') F.marks.splice(i, 1);
       for (const q of s.shards) F.remove(q);
       s.shards = [];
       // Past the winter line: the next is the last of the Pale.
@@ -45109,6 +45159,39 @@ window.WS = window.WS || {};
     ctx.lineWidth = 2 + 1.5 * k;
     ctx.strokeStyle = rgba(WS.mix(c, [1, 1, 1], 0.3), 0.55 + 0.4 * k);
     ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, WS.TAU); ctx.stroke();
+    /* THE BLOW GATHERING. Heat builds in the middle as it comes (a glow that
+       grows with the square of the time gone, so the last third is the
+       bright part), a ring of runes turns inside the rim, a crosshair marks
+       its heart, and in the last quarter-second the rim goes white-hot: the
+       instant to be out is unmistakable. A lobbed shell throws a shadow
+       that tightens under it as it falls. Reduce Flashes stills the turning
+       and the flare's flicker. */
+    const calm = WS.Renderer.calm();
+    if (m.from) {
+      ctx.fillStyle = `rgba(0,0,0,${(0.12 + 0.3 * k).toFixed(3)})`;
+      ctx.beginPath(); ctx.ellipse(m.x, m.y, m.r * (0.9 - 0.6 * k), m.r * (0.4 - 0.25 * k), 0, 0, WS.TAU); ctx.fill();
+    }
+    glow(ctx, m.x, m.y, m.r * 0.95, c, 0.08 + 0.32 * k * k);
+    ctx.save();
+    ctx.setLineDash([5, 9]); ctx.lineDashOffset = calm ? 0 : -time * 30;
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = rgba(WS.mix(c, [1, 1, 1], 0.4), 0.2 + 0.45 * k);
+    ctx.beginPath(); ctx.arc(m.x, m.y, m.r * 0.78, 0, WS.TAU); ctx.stroke();
+    ctx.restore();
+    const ch = WS.max(6, m.r * 0.16);
+    ctx.lineWidth = 2; ctx.strokeStyle = rgba(WS.mix(c, [1, 1, 1], 0.6), 0.35 + 0.5 * k);
+    ctx.beginPath();
+    ctx.moveTo(m.x - ch, m.y); ctx.lineTo(m.x - ch * 0.35, m.y); ctx.moveTo(m.x + ch * 0.35, m.y); ctx.lineTo(m.x + ch, m.y);
+    ctx.moveTo(m.x, m.y - ch); ctx.lineTo(m.x, m.y - ch * 0.35); ctx.moveTo(m.x, m.y + ch * 0.35); ctx.lineTo(m.x, m.y + ch);
+    ctx.stroke();
+    if (m.tele < 0.25) {
+      const f = 1 - m.tele / 0.25;
+      const flick = calm ? 1 : 0.75 + 0.25 * WS.sin(time * 60);
+      ctx.lineWidth = 3 + 3 * f;
+      ctx.strokeStyle = `rgba(255,248,232,${(0.55 + 0.4 * f * flick).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, WS.TAU); ctx.stroke();
+      glow(ctx, m.x, m.y, m.r * 1.1, [1, 0.95, 0.85], 0.25 * f);
+    }
     /* The time left, as a clock hand would show it: an arc just outside the
        rim that empties toward the top as the blow comes. The fill says how
        close it is; this says how long that is, in a shape that reads in the
@@ -45184,12 +45267,25 @@ window.WS = window.WS || {};
         ctx.beginPath(); ctx.moveTo(d, -m.w * 0.2); ctx.lineTo(d + 14, 0); ctx.lineTo(d, m.w * 0.2); ctx.fill();
       }
     } else {
+      /* The shot itself: a muzzle flash where it leaves, a beam that is
+         white-hot at the core and burns out along its length, and a soft
+         halo twice its width - so the moment it fires reads as a blow, not
+         a rectangle changing colour. */
       ctx.globalCompositeOperation = 'lighter';
       const a = WS.clamp(m.active / 0.35, 0, 1);
-      ctx.fillStyle = rgba(c, 0.55 * a);
+      const g = ctx.createLinearGradient(0, 0, m.len, 0);
+      g.addColorStop(0, rgba(c, 0.75 * a)); g.addColorStop(1, rgba(c, 0.25 * a));
+      ctx.fillStyle = rgba(c, 0.14 * a);
+      ctx.fillRect(0, -m.w, m.len, m.w * 2);
+      ctx.fillStyle = g;
       ctx.fillRect(0, -m.w / 2, m.len, m.w);
-      ctx.fillStyle = `rgba(255,245,220,${(0.8 * a).toFixed(3)})`;
+      const gc = ctx.createLinearGradient(0, 0, m.len, 0);
+      gc.addColorStop(0, `rgba(255,250,235,${(0.95 * a).toFixed(3)})`); gc.addColorStop(1, `rgba(255,245,220,${(0.35 * a).toFixed(3)})`);
+      ctx.fillStyle = gc;
       ctx.fillRect(0, -m.w * 0.15, m.len, m.w * 0.3);
+      ctx.restore();
+      ctx.save();
+      glow(ctx, m.x, m.y, m.w * 1.4, WS.mix(c, [1, 1, 1], 0.5), 0.9 * a);
     }
     ctx.restore();
   }
@@ -45225,6 +45321,7 @@ window.WS = window.WS || {};
     ctx.restore();
   }
   A.ringGapEdges = ringGapEdges;
+  A.drawRing = (ctx, m) => drawRing(ctx, m);
 
   A.ringLanding = function (ctx, rings, p, time) {
     if (!p) return;
@@ -45297,17 +45394,41 @@ window.WS = window.WS || {};
       return;
     }
     ctx.save();
-    ctx.lineWidth = m.thick;
-    ctx.strokeStyle = rgba(m.tint, 0.5);
     const steps = 160;
-    ctx.beginPath();
-    for (let i = 0; i < steps; i++) {
-      const a0 = (i / steps) * WS.TAU;
-      if (WS.Finale.inGap(m, a0 + WS.TAU / steps / 2)) continue;
-      ctx.moveTo(m.cx + WS.cos(a0) * m.r, m.cy + WS.sin(a0) * m.r);
-      ctx.arc(m.cx, m.cy, m.r, a0, a0 + WS.TAU / steps);
+    /* A WAVE, NOT A STROKE. The band was one flat half-transparent line. It
+       is drawn as what it is now: a wake fading behind it, a soft glow, the
+       band, and a bright leading edge - the part that hits - with sparks
+       riding it. Openings are true gaps in all of it. */
+    const band = (r, lw, style) => {
+      if (r <= 0) return;
+      ctx.lineWidth = lw; ctx.strokeStyle = style;
+      ctx.beginPath();
+      for (let i = 0; i < steps; i++) {
+        const a0 = (i / steps) * WS.TAU;
+        if (WS.Finale.inGap(m, a0 + WS.TAU / steps / 2)) continue;
+        ctx.moveTo(m.cx + WS.cos(a0) * r, m.cy + WS.sin(a0) * r);
+        ctx.arc(m.cx, m.cy, r, a0, a0 + WS.TAU / steps);
+      }
+      ctx.stroke();
+    };
+    band(m.r - m.thick * 1.3, m.thick * 1.2, rgba(m.tint, 0.08));
+    ctx.globalCompositeOperation = 'lighter';
+    band(m.r, m.thick * 1.9, rgba(m.tint, 0.1));
+    ctx.globalCompositeOperation = 'source-over';
+    band(m.r, m.thick, rgba(m.tint, 0.5));
+    if (!WS.Renderer.lite) {
+      ctx.globalCompositeOperation = 'lighter';
+      const n = WS.min(90, WS.floor(m.r / 9));
+      const t = WS.Renderer.calm() ? 0 : (WS.Game.run ? WS.Game.run.time : 0);
+      ctx.fillStyle = rgba(WS.mix(m.tint, [1, 1, 1], 0.6), 0.75);
+      for (let i = 0; i < n; i++) {
+        const a0 = (i / n) * WS.TAU + i * 0.37;
+        if (WS.Finale.inGap(m, a0)) continue;
+        const rr = m.r + m.thick * 0.35 * WS.sin(t * 9 + i * 1.7);
+        ctx.beginPath(); ctx.arc(m.cx + WS.cos(a0) * rr, m.cy + WS.sin(a0) * rr, 1.6, 0, WS.TAU); ctx.fill();
+      }
+      ctx.globalCompositeOperation = 'source-over';
     }
-    ctx.stroke();
     ctx.lineWidth = 3;
     ctx.strokeStyle = rgba(WS.mix(m.tint, [1, 1, 1], 0.5), 0.9);
     ctx.beginPath();
@@ -45364,16 +45485,42 @@ window.WS = window.WS || {};
         ctx.lineTo(hx + WS.cos(tang - 2.5) * 10, hy + WS.sin(tang - 2.5) * 10);
         ctx.closePath(); ctx.fillStyle = rgba(m.tint, 1); ctx.fill();
       } else {
+        /* The beam live: an afterglow over the ground it has just crossed
+           (which way it is going, read from what it has done), a wide soft
+           halo, the beam, a flickering white core, a flare at its tip and
+           sparks thrown off along it. */
+        const calm = WS.Renderer.calm();
         ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = 'lighter';
+        const trail = -(m.spin >= 0 ? 1 : -1) * WS.min(0.45, WS.abs(m.spin) * 0.6);
+        ctx.fillStyle = rgba(m.tint, 0.1);
+        ctx.beginPath(); ctx.moveTo(m.cx, m.cy);
+        ctx.arc(m.cx, m.cy, m.len, ang, ang + trail, trail < 0);
+        ctx.closePath(); ctx.fill();
         ctx.lineCap = 'round';
-        ctx.strokeStyle = rgba(m.tint, 0.35);
-        ctx.lineWidth = m.w * (1 + 0.1 * WS.sin(time * 40));
+        ctx.strokeStyle = rgba(m.tint, 0.12);
+        ctx.lineWidth = m.w * 2.4;
         ctx.beginPath(); ctx.moveTo(m.cx, m.cy); ctx.lineTo(ex, ey); ctx.stroke();
-        ctx.strokeStyle = 'rgba(255,255,255,.85)';
+        ctx.strokeStyle = rgba(m.tint, 0.38);
+        ctx.lineWidth = m.w * (1 + (calm ? 0 : 0.1 * WS.sin(time * 40)));
+        ctx.beginPath(); ctx.moveTo(m.cx, m.cy); ctx.lineTo(ex, ey); ctx.stroke();
+        ctx.strokeStyle = `rgba(255,255,255,${calm ? 0.85 : (0.75 + 0.2 * WS.sin(time * 53 + a)).toFixed(3)})`;
         ctx.lineWidth = m.w * 0.28;
         ctx.beginPath(); ctx.moveTo(m.cx, m.cy); ctx.lineTo(ex, ey); ctx.stroke();
         ctx.globalCompositeOperation = 'source-over';
+        glow(ctx, ex, ey, m.w * 1.6, m.tint, 0.6);
+        glow(ctx, m.cx, m.cy, m.w * 1.4, WS.mix(m.tint, [1, 1, 1], 0.5), 0.7);
+        if (!WS.Renderer.lite) {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.fillStyle = rgba(WS.mix(m.tint, [1, 1, 1], 0.6), 0.8);
+          const cs = WS.cos(ang), sn = WS.sin(ang);
+          for (let i = 0; i < 14; i++) {
+            const d = ((i * 97 + time * (calm ? 0 : 420)) % m.len);
+            const off = (m.w * 0.7) * WS.sin(i * 2.3 + time * (calm ? 0 : 13));
+            ctx.beginPath(); ctx.arc(m.cx + cs * d - sn * off, m.cy + sn * d + cs * off, 1.8, 0, WS.TAU); ctx.fill();
+          }
+          ctx.globalCompositeOperation = 'source-over';
+        }
       }
     }
     ctx.restore();
@@ -45399,6 +45546,8 @@ window.WS = window.WS || {};
         ctx.restore();
         ctx.strokeStyle = rgba(m.tint, 0.5 + 0.45 * k); ctx.lineWidth = 2 + 1.5 * k;
         ctx.strokeRect(x, y, w, h);
+        // In the last quarter the spikes come up through it.
+        if (k > 0.72) spikeRow(ctx, x, y, w, h, (k - 0.72) / 0.28 * 0.55, m.tint, 1);
       }
     }
     ctx.restore();
@@ -45557,10 +45706,86 @@ window.WS = window.WS || {};
     A.drawMarks(ctx, time);
   };
 
+  /** A row of ice or bone spikes standing in a cell, `rise` of the way up. */
+  function spikeRow(ctx, x, y, w, h, rise, tint, a) {
+    const n = 5;
+    ctx.save();
+    for (let i = 0; i < n; i++) {
+      const cx = x + w * (i + 0.5) / n, base = y + h * (0.55 + 0.3 * ((i * 37) % 7) / 7);
+      const sh = h * rise * (0.7 + 0.3 * ((i * 53) % 5) / 5), sw = w / n * 0.42;
+      ctx.fillStyle = rgba(WS.mix(tint, [1, 1, 1], 0.55), 0.85 * a);
+      ctx.strokeStyle = rgba(WS.mix(tint, [0, 0, 0], 0.55), 0.9 * a); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(cx - sw, base); ctx.lineTo(cx, base - sh); ctx.lineTo(cx + sw, base); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /** What landed shapes left: Finale.impact. */
+  function drawImpacts(ctx, time) {
+    const F = WS.Finale;
+    const calm = WS.Renderer.calm(), vivid = WS.Renderer.vivid();
+    for (const q of F.impacts) {
+      const f = WS.clamp(q.life / q.max, 0, 1), age = q.max - q.life;
+      const c = vivid ? WS.Renderer.VIVID : q.tint;
+      ctx.save();
+      if (q.kind === 'strip') {
+        ctx.translate(q.x, q.y); ctx.rotate(q.ang);
+        ctx.fillStyle = `rgba(20,12,8,${(0.32 * f).toFixed(3)})`;
+        ctx.fillRect(0, -q.r * 0.35, q.len, q.r * 0.7);
+        ctx.fillStyle = rgba(c, 0.25 * f * f);
+        ctx.fillRect(0, -q.r * 0.12, q.len, q.r * 0.24);
+      } else if (q.kind === 'spikes') {
+        const a = age < 0.15 ? age / 0.15 : f;
+        spikeRow(ctx, q.x + 3, q.y + 3, q.w - 6, q.h - 6, 0.55, c, a);
+      } else {
+        // the scorch, cooling
+        const g = ctx.createRadialGradient(q.x, q.y, 0, q.x, q.y, q.r * 0.95);
+        g.addColorStop(0, `rgba(18,10,6,${(0.42 * f).toFixed(3)})`);
+        g.addColorStop(0.7, `rgba(18,10,6,${(0.22 * f).toFixed(3)})`);
+        g.addColorStop(1, 'rgba(18,10,6,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(q.x, q.y, q.r * 0.95, 0, WS.TAU); ctx.fill();
+        // embers in it, dying
+        if (q.kind === 'blast' && !WS.Renderer.lite) {
+          for (let i = 0; i < 7; i++) {
+            const a0 = q.seed + i * 2.4, rr = q.r * (0.2 + 0.6 * ((i * 41) % 9) / 9);
+            glow(ctx, q.x + WS.cos(a0) * rr, q.y + WS.sin(a0) * rr * 0.8, 7, c, 0.5 * f * f);
+          }
+        }
+        // the shockwave out of it
+        if (age < 0.45) {
+          const k = age / 0.45;
+          ctx.lineWidth = 5 * (1 - k) + 1;
+          ctx.strokeStyle = rgba(WS.mix(c, [1, 1, 1], 0.5), 0.85 * (1 - k));
+          ctx.beginPath(); ctx.arc(q.x, q.y, q.r * (0.5 + 0.8 * k), 0, WS.TAU); ctx.stroke();
+        }
+        // the hot core
+        if (age < 0.3 && !calm) glow(ctx, q.x, q.y, q.r * 1.05, WS.mix(c, [1, 1, 1], 0.4), 0.85 * (1 - age / 0.3));
+        if (q.kind === 'shatter') {
+          ctx.strokeStyle = rgba([0.85, 0.95, 1], 0.8 * f); ctx.lineWidth = 2;
+          for (let i = 0; i < 8; i++) {
+            const a0 = q.seed + i * WS.TAU / 8, r0 = q.r * 0.2, r1 = q.r * (0.5 + 0.35 * WS.min(1, age * 3));
+            ctx.beginPath(); ctx.moveTo(q.x + WS.cos(a0) * r0, q.y + WS.sin(a0) * r0);
+            ctx.lineTo(q.x + WS.cos(a0) * r1, q.y + WS.sin(a0) * r1); ctx.stroke();
+          }
+        } else if (q.kind === 'claw') {
+          ctx.strokeStyle = rgba([0.8, 1, 0.85], 0.7 * f); ctx.lineWidth = 3; ctx.lineCap = 'round';
+          for (let i = 0; i < 4; i++) {
+            const bx = q.x + (i - 1.5) * q.r * 0.3, up = q.r * 0.5 * WS.min(1, age * 4) * f;
+            ctx.beginPath(); ctx.moveTo(bx, q.y + q.r * 0.2); ctx.lineTo(bx + (i - 1.5) * 4, q.y + q.r * 0.2 - up); ctx.stroke();
+          }
+        }
+      }
+      ctx.restore();
+    }
+  }
+
   /** The ground half of the marks: the finale's, or a scheduled boss's
    *  (Finale.field) - the renderer calls this alone when no finale is on. */
   A.drawMarks = function (ctx, time) {
     const F = WS.Finale;
+    drawImpacts(ctx, time);
     // Vivid (Settings): every threat in the one colour, safe ground untouched.
     const vivid = WS.Renderer.vivid();
     for (const m of F.marks) {
@@ -47021,7 +47246,7 @@ window.WS = window.WS || {};
     this.drawCallingGround(ctx, player, time);
     if (WS.Arena.active) this.drawArena(ctx, time);
     if (WS.Finale.stage !== 'idle') WS.FinaleArt.drawGround(ctx, time);
-    else if (WS.Finale.marks.length) WS.FinaleArt.drawMarks(ctx, time);
+    else if (WS.Finale.marks.length || WS.Finale.impacts.length) WS.FinaleArt.drawMarks(ctx, time);
 
     this.drawCorpses(ctx);
     this.drawAirdropGround(ctx, time);
@@ -51110,30 +51335,9 @@ window.WS = window.WS || {};
     for (const h of A.hazards) {
       if (h.shape === 'ring') {
         if (h.delay > 0) continue;
-        ctx.save();
-        ctx.lineWidth = h.thick;
-        ctx.strokeStyle = 'rgba(255,190,90,.45)';
-        // Draw the ring in segments, leaving the openings dark.
-        const steps = 180;
-        ctx.beginPath();
-        for (let i = 0; i < steps; i++) {
-          const a0 = (i / steps) * WS.TAU;
-          const inside = (() => {
-            const half = (h.gapWidth * WS.PI / 180) * 0.5;
-            for (let k = 0; k < h.gapCount; k++) {
-              const centre = h.gapBase + h.gapRot + (k / h.gapCount) * WS.TAU;
-              let d = ((a0 - centre + WS.PI * 3) % WS.TAU) - WS.PI;
-              if (WS.abs(d) <= half) return true;
-            }
-            return false;
-          })();
-          if (inside) continue;
-          ctx.moveTo(h.cx + WS.cos(a0) * h.r, h.cy + WS.sin(a0) * h.r);
-          ctx.arc(h.cx, h.cy, h.r, a0, a0 + WS.TAU / steps);
-        }
-        ctx.stroke();
-        ctx.restore();
-        WS.FinaleArt.ringGapEdges(ctx, h, [1.0, 0.75, 0.35]);
+        // The finale's wave, in the sun's colour (FinaleArt.drawRing).
+        h.tint = R.vivid() ? R.VIVID : [1.0, 0.75, 0.35];
+        WS.FinaleArt.drawRing(ctx, h);
 
       } else if (h.shape === 'square') {
         if (h.telegraph > 0) {
@@ -51220,6 +51424,21 @@ window.WS = window.WS || {};
           ctx.lineTo(WS.cos(-h.half) * h.len, WS.sin(-h.half) * h.len);
           ctx.lineTo(WS.cos(h.half) * h.len, WS.sin(h.half) * h.len);
           ctx.closePath(); ctx.fill();
+          /* Live, each arm is a blade of light: a white core down its middle
+             and a soft halo, the way the finale's beams are drawn. */
+          if (!telegraphing) {
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = R.vivid() ? 'rgba(255,90,230,.18)' : 'rgba(255,170,90,.18)';
+            ctx.lineWidth = 26;
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(h.len, 0); ctx.stroke();
+            ctx.strokeStyle = `rgba(255,248,230,${R.calm() ? 0.8 : (0.7 + 0.2 * WS.sin(time * 47 + arm)).toFixed(3)})`;
+            ctx.lineWidth = 3.5;
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(h.len, 0); ctx.stroke();
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.globalAlpha = 0.75;
+          }
           ctx.restore();
         }
         ctx.restore();
