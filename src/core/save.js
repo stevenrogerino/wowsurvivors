@@ -163,6 +163,9 @@
       history: [],
       records: { map: {}, char: {} },
       nightly: {},
+      /* The Nightly board (WS.Board): this browser's private id, the name
+         it posts under, and the rank it last came back with. */
+      board: {},
       oaths: {},
       settings: Object.assign({}, WS.Config.defaultSettings),
       statistics: {
@@ -319,6 +322,10 @@
       }
     }
     if (!isPlain(db.nightly) || (db.nightly.day !== undefined && !Number.isFinite(db.nightly.score))) db.nightly = {};
+    if (!isPlain(db.board)) db.board = {};
+    if (typeof db.board.id !== 'string' || !/^[0-9a-f-]{36}$/.test(db.board.id)) delete db.board.id;
+    if (typeof db.board.name !== 'string' || !db.board.name.trim()) delete db.board.name;
+    if (!isPlain(db.board.posted)) delete db.board.posted;
     db.unlocks.characters = scrubMap(db.unlocks.characters, 'flag', WS.Characters);
     db.unlocks.maps = scrubMap(db.unlocks.maps, 'flag', WS.Maps);
     db.unlocks.hyper = scrubMap(db.unlocks.hyper, 'flag', WS.Maps);

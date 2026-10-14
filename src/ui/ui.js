@@ -2945,8 +2945,121 @@
     info.append(btns);
     card.append(pics, info);
     wrap.append(card);
+    if (WS.Board && WS.Board.available()) wrap.append(boardPanel(n.day));
     return wrap;
   };
+
+  /* The Nightly board: today's top twenty from everyone who posted, your own
+     place on it, and who held yesterday's night best. Filled in when the
+     board answers; the pane is already up by then. */
+  function boardPanel(day) {
+    const B = WS.Board;
+    const box = el('section', 'board');
+    const head = el('div', 'board-head');
+    head.append(el('h3', 'board-title', 'Tonight\u2019s board'));
+    const who = el('div', 'board-who');
+    head.append(who);
+    const list = el('ol', 'board-list');
+    const note = el('div', 'board-note', 'Reading the board\u2026');
+    const past = el('div', 'board-past');
+    box.append(head, note, list, past);
+
+    const drawWho = () => {
+      who.replaceChildren();
+      const me = B.me();
+      if (!me.name) {
+        who.append(nameForm('Post your Nightly runs under a name', () => { drawWho(); }));
+        return;
+      }
+      who.append(el('span', 'board-as', `Posting as `), el('b', 'board-name', me.name));
+      const change = el('button', 'btn small', 'Change');
+      change.addEventListener('click', () => {
+        who.replaceChildren(nameForm('A new name', () => { drawWho(); fill(); }, me.name));
+      });
+      who.append(change);
+    };
+
+    const row = (r, i, mine) => {
+      const li = el('li', 'board-row' + (mine ? ' mine' : ''));
+      li.append(el('span', 'br-rank', String(i + 1)), el('span', 'br-name', r.name),
+        el('span', 'br-time', WS.formatTime(r.time_held)), el('span', 'br-score', WS.formatNumber(r.score)));
+      li.title = `${WS.formatNumber(r.kills)} kills, level ${r.level}, ${r.tries} ${r.tries === 1 ? 'try' : 'tries'}`
+        + (r.outcome === 'victory' || r.outcome === 'arena_victory' ? ', held to dawn' : '');
+      return li;
+    };
+
+    const fill = async () => {
+      try {
+        const rows = await B.top(day);
+        const mine = B.rankOn(day);
+        const me = B.me();
+        list.replaceChildren(...rows.map((r, i) => row(r, i, mine && mine.rank === i + 1 && r.name === me.name)));
+        note.textContent = rows.length ? '' : 'Nobody has posted tonight yet. The first score up is the one to beat.';
+        if (mine && mine.rank > rows.length) {
+          note.textContent = `You are #${mine.rank} of ${mine.players} tonight with ${WS.formatNumber(mine.best)}.`;
+        }
+        const y = await B.top(B.yesterday(), 3);
+        past.replaceChildren();
+        if (y.length) {
+          past.append(el('span', 'bp-label', 'Last night\u2019s best: '),
+            el('span', 'bp-names', y.map((r, i) => `${i + 1}. ${r.name} ${WS.formatNumber(r.score)}`).join('  \u00b7  ')));
+        }
+      } catch (e) {
+        list.replaceChildren();
+        note.textContent = 'The board cannot be reached from here right now. Your scores are still kept on this device.';
+      }
+    };
+    drawWho();
+    fill();
+    return box;
+  }
+
+  /** A one-line name field for the board. Calls done() once a name is kept. */
+  function nameForm(label, done, value) {
+    const f = el('form', 'board-form');
+    const input = el('input', 'board-input');
+    input.type = 'text'; input.maxLength = 20; input.placeholder = 'Your name'; input.value = value || '';
+    input.setAttribute('aria-label', label);
+    input.autocomplete = 'nickname';
+    const ok = el('button', 'btn small primary', 'Keep');
+    ok.type = 'submit';
+    f.append(el('span', 'board-as', label + ':'), input, ok);
+    // Keys typed here are a name, not the game's controls.
+    input.addEventListener('keydown', (e) => e.stopPropagation());
+    f.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (WS.Board.setName(input.value)) { WS.Audio.play('ui'); done(); } else input.focus();
+    });
+    return f;
+  }
+
+  /* After a Nightly: post it to the board (once a name is kept), and say
+     where it landed. */
+  function boardPost(run) {
+    const B = WS.Board;
+    const strip = el('div', 'board-post');
+    const say = (t) => { strip.replaceChildren(el('span', 'board-as', t)); };
+    const post = async () => {
+      if (run.entry.boardPosted) return;
+      run.entry.boardPosted = true;
+      say('Posting to tonight\u2019s board\u2026');
+      try {
+        const code = WS.RunLog ? await WS.RunLog.code().catch(() => null) : null;
+        const r = await B.submit(run.entry, code);
+        const better = r.best > run.entry.score;
+        say(better
+          ? `Posted. Your best tonight is still ${WS.formatNumber(r.best)}: #${r.rank} of ${r.players}.`
+          : `Posted: #${r.rank} of ${r.players} on tonight\u2019s board.`);
+      } catch (e) {
+        run.entry.boardPosted = false;
+        say(e.message === 'too fast' ? 'Posted a moment ago; the board keeps your best.'
+          : 'The board could not be reached. This score is still kept on this device.');
+      }
+    };
+    if (B.me().name) post();
+    else strip.append(nameForm('Put this on tonight\u2019s board as', post));
+    return strip;
+  }
 
   /* -------------------------------------------------------------- Oaths -- */
   UI.openOaths = function () {
@@ -4666,6 +4779,7 @@
     s.body.append(verdict(kinds[reason] || 'neutral', titles[reason] || 'The run ends',
       (lines[reason] || sub) + bestsLine(run), runFigures(run, WS.Game.player), logEntry(run, WS.Game.player, reason)));
     s.body.classList.add('fitted');
+    if (run.nightly && run.entry && WS.Board && WS.Board.available()) s.body.append(boardPost(run));
     s.body.append(buildSheet(true));
     const again = el('button', 'btn primary', run.nightly ? 'Try the Nightly again' : 'Run again');
     again.addEventListener('click', () => WS.Game.startRun(run.mapId, run.characterId,

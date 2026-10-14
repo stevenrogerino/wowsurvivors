@@ -3328,6 +3328,31 @@ body.hud-rail #hud-toasts { width: min(300px, calc(27vw - 76px)); }
 .nightly-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 @media (max-width: 760px) { .nightly-card { grid-template-columns: 1fr; } }
 
+/* The Nightly board (WS.Board). */
+.board { margin-top: 16px; border: 1px solid var(--rim-lit); border-radius: 14px; padding: 14px 18px; background: rgba(11,13,18,.6); box-shadow: var(--bevel-deep); }
+.board-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.board-title { margin: 0; font-family: var(--voice); font-weight: 800; font-size: 20px; color: var(--arc-hot); }
+.board-who, .board-form, .board-post { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.board-as { color: var(--ink-dim); font-size: var(--t-small); }
+.board-name { color: var(--ink); }
+.board-input { width: 13em; max-width: 100%; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--rim-lit); background: var(--obsidian-2); color: var(--ink); font: inherit; }
+.board-input:focus { outline: none; border-color: var(--arc); }
+.board-note { color: var(--ink-dim); font-size: var(--t-small); }
+.board-note:empty { display: none; }
+.board-list { list-style: none; margin: 0; padding: 0; columns: 2 300px; column-gap: 24px; }
+.board-row { display: grid; grid-template-columns: 2.2em 1fr auto auto; gap: 10px; align-items: baseline; padding: 4px 6px; border-bottom: 1px solid var(--rim); break-inside: avoid; }
+.board-row .br-rank { font-family: var(--fig); color: var(--ink-faint); text-align: right; }
+.board-row .br-name { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.board-row .br-time { font-family: var(--fig); font-size: var(--t-small); color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.board-row .br-score { font-family: var(--fig); color: var(--arc); font-variant-numeric: tabular-nums; text-align: right; min-width: 6em; }
+.board-row:nth-child(-n+3) .br-rank { color: var(--arc); }
+.board-row.mine { background: rgba(245,197,107,.08); border-radius: 6px; }
+.board-past { margin-top: 10px; font-size: var(--t-small); color: var(--ink-dim); }
+.board-past:empty { display: none; }
+.board-past .bp-names { color: var(--ink); }
+.board-post .board-as { color: var(--ink); }
+.board-post { margin: 4px 0 10px; padding: 8px 12px; border: 1px solid var(--rim-arc); border-radius: 10px; background: rgba(245,197,107,.05); }
+
 .oath-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
 .oath-card {
   position: relative; display: grid; grid-template-columns: 48px 1fr; gap: 12px; align-items: center;
@@ -5350,6 +5375,9 @@ window.WS = window.WS || {};
       history: [],
       records: { map: {}, char: {} },
       nightly: {},
+      /* The Nightly board (WS.Board): this browser's private id, the name
+         it posts under, and the rank it last came back with. */
+      board: {},
       oaths: {},
       settings: Object.assign({}, WS.Config.defaultSettings),
       statistics: {
@@ -5506,6 +5534,10 @@ window.WS = window.WS || {};
       }
     }
     if (!isPlain(db.nightly) || (db.nightly.day !== undefined && !Number.isFinite(db.nightly.score))) db.nightly = {};
+    if (!isPlain(db.board)) db.board = {};
+    if (typeof db.board.id !== 'string' || !/^[0-9a-f-]{36}$/.test(db.board.id)) delete db.board.id;
+    if (typeof db.board.name !== 'string' || !db.board.name.trim()) delete db.board.name;
+    if (!isPlain(db.board.posted)) delete db.board.posted;
     db.unlocks.characters = scrubMap(db.unlocks.characters, 'flag', WS.Characters);
     db.unlocks.maps = scrubMap(db.unlocks.maps, 'flag', WS.Maps);
     db.unlocks.hyper = scrubMap(db.unlocks.hyper, 'flag', WS.Maps);
@@ -37822,6 +37854,130 @@ window.WS = window.WS || {};
 
 })(window.WS);
 
+/* ===== src/game/board.js ===== */
+/* The Nightly board: everyone's best score for the day, kept on Supabase.
+ *
+ * The game posts a finished Nightly (once the player has given a name) and
+ * reads the day's top twenty back. The key below is Supabase's publishable
+ * key - it is meant to sit in a web page. What it is allowed to do is set on
+ * the database side (supabase/nightly-board.sql): read the board, and post
+ * through submit_nightly(), which turns away scores no night could be worth
+ * and keeps each player's best.
+ *
+ * Nothing here is needed to play. Offline, in a sandbox that forbids the
+ * request, or under a test harness, the board simply says it cannot be
+ * reached and the Nightly plays exactly as before. */
+'use strict';
+(function (WS) {
+
+  const URL = 'https://rqnsptipbrxbgovxribg.supabase.co';
+  const KEY = 'sb_publishable__4GB6GyAffLUGuvHlIy-TQ_zUGMsu5t';
+  const TOP = 20;
+  const FRESH = 60 * 1000;
+
+  const Board = {};
+  const cache = new Map();
+
+  /** False where the board must not be touched: no fetch, or a test
+   *  harness driving the page (whose runs are not anyone's score). */
+  Board.available = function () {
+    return typeof fetch === 'function' && !(typeof navigator !== 'undefined' && navigator.webdriver);
+  };
+
+  /** This browser's place on the board: a private id, the name it posts
+   *  under, and the rank it last came back with. */
+  Board.me = function () {
+    const db = WS.Save.db;
+    const b = db.board;
+    if (!b.id) {
+      b.id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID()
+        : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => WS.floor(Math.random() * 16).toString(16));
+      WS.Save.save();
+    }
+    return b;
+  };
+
+  Board.cleanName = function (s) {
+    return String(s || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 20);
+  };
+
+  Board.setName = function (name) {
+    const n = Board.cleanName(name);
+    if (!n) return false;
+    Board.me().name = n;
+    WS.Save.save();
+    return true;
+  };
+
+  function headers(json) {
+    const h = { apikey: KEY, Accept: 'application/json' };
+    if (json) h['Content-Type'] = 'application/json';
+    return h;
+  }
+
+  async function call(path, init) {
+    const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    const timer = ctl ? setTimeout(() => ctl.abort(), 8000) : 0;
+    try {
+      const res = await fetch(URL + path, Object.assign({ signal: ctl ? ctl.signal : undefined }, init));
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        const err = new Error(body && body.message ? body.message : 'HTTP ' + res.status);
+        err.status = res.status;
+        throw err;
+      }
+      return body;
+    } finally { if (timer) clearTimeout(timer); }
+  }
+
+  /** The day's top twenty, best first. Cached for a minute. */
+  Board.top = async function (day, limit) {
+    if (!Board.available()) throw new Error('unavailable');
+    const n = limit || TOP;
+    const k = day + ':' + n;
+    const hit = cache.get(k);
+    if (hit && Date.now() - hit.at < FRESH) return hit.rows;
+    const rows = await call('/rest/v1/nightly_scores?select=name,score,time_held,kills,level,map,character,outcome,tries'
+      + `&day=eq.${encodeURIComponent(day)}&order=score.desc,updated_at.asc&limit=${n}`, { headers: headers(false) });
+    cache.set(k, { at: Date.now(), rows: Array.isArray(rows) ? rows : [] });
+    return cache.get(k).rows;
+  };
+
+  /** Posts a finished Nightly. Resolves to { rank, best, players }. */
+  Board.submit = async function (entry, code) {
+    if (!Board.available()) throw new Error('unavailable');
+    const me = Board.me();
+    if (!me.name) throw new Error('no name');
+    const out = await call('/rest/v1/rpc/submit_nightly', {
+      method: 'POST', headers: headers(true),
+      body: JSON.stringify({
+        p_day: entry.nightly, p_player: me.id, p_name: me.name, p_score: entry.score,
+        p_time: entry.time, p_kills: entry.kills, p_level: entry.level || 1,
+        p_map: entry.map, p_character: entry.char, p_outcome: entry.outcome, p_code: code || null,
+      }),
+    });
+    for (const k of [...cache.keys()]) if (k.startsWith(entry.nightly + ':')) cache.delete(k);
+    if (out && Number.isFinite(out.rank)) {
+      me.posted = { day: entry.nightly, rank: out.rank, best: out.best, players: out.players };
+      WS.Save.save();
+    }
+    return out;
+  };
+
+  /** The rank this browser last posted to `day`, or null. */
+  Board.rankOn = function (day) {
+    const p = WS.Save.db.board.posted;
+    return p && p.day === day ? p : null;
+  };
+
+  /** Yesterday's key, for the winners of the night just gone. */
+  Board.yesterday = function () {
+    return WS.Runs.dayKey(new Date(Date.now() - 86400000));
+  };
+
+  WS.Board = Board;
+})(window.WS);
+
 /* ===== src/game/game.js ===== */
 /* Orchestration: run lifecycle, the fixed-step simulation, banners and toasts,
  * gold, victory and defeat. The UI layer reads this state and never mutates the
@@ -55507,8 +55663,121 @@ window.WS = window.WS || {};
     info.append(btns);
     card.append(pics, info);
     wrap.append(card);
+    if (WS.Board && WS.Board.available()) wrap.append(boardPanel(n.day));
     return wrap;
   };
+
+  /* The Nightly board: today's top twenty from everyone who posted, your own
+     place on it, and who held yesterday's night best. Filled in when the
+     board answers; the pane is already up by then. */
+  function boardPanel(day) {
+    const B = WS.Board;
+    const box = el('section', 'board');
+    const head = el('div', 'board-head');
+    head.append(el('h3', 'board-title', 'Tonight\u2019s board'));
+    const who = el('div', 'board-who');
+    head.append(who);
+    const list = el('ol', 'board-list');
+    const note = el('div', 'board-note', 'Reading the board\u2026');
+    const past = el('div', 'board-past');
+    box.append(head, note, list, past);
+
+    const drawWho = () => {
+      who.replaceChildren();
+      const me = B.me();
+      if (!me.name) {
+        who.append(nameForm('Post your Nightly runs under a name', () => { drawWho(); }));
+        return;
+      }
+      who.append(el('span', 'board-as', `Posting as `), el('b', 'board-name', me.name));
+      const change = el('button', 'btn small', 'Change');
+      change.addEventListener('click', () => {
+        who.replaceChildren(nameForm('A new name', () => { drawWho(); fill(); }, me.name));
+      });
+      who.append(change);
+    };
+
+    const row = (r, i, mine) => {
+      const li = el('li', 'board-row' + (mine ? ' mine' : ''));
+      li.append(el('span', 'br-rank', String(i + 1)), el('span', 'br-name', r.name),
+        el('span', 'br-time', WS.formatTime(r.time_held)), el('span', 'br-score', WS.formatNumber(r.score)));
+      li.title = `${WS.formatNumber(r.kills)} kills, level ${r.level}, ${r.tries} ${r.tries === 1 ? 'try' : 'tries'}`
+        + (r.outcome === 'victory' || r.outcome === 'arena_victory' ? ', held to dawn' : '');
+      return li;
+    };
+
+    const fill = async () => {
+      try {
+        const rows = await B.top(day);
+        const mine = B.rankOn(day);
+        const me = B.me();
+        list.replaceChildren(...rows.map((r, i) => row(r, i, mine && mine.rank === i + 1 && r.name === me.name)));
+        note.textContent = rows.length ? '' : 'Nobody has posted tonight yet. The first score up is the one to beat.';
+        if (mine && mine.rank > rows.length) {
+          note.textContent = `You are #${mine.rank} of ${mine.players} tonight with ${WS.formatNumber(mine.best)}.`;
+        }
+        const y = await B.top(B.yesterday(), 3);
+        past.replaceChildren();
+        if (y.length) {
+          past.append(el('span', 'bp-label', 'Last night\u2019s best: '),
+            el('span', 'bp-names', y.map((r, i) => `${i + 1}. ${r.name} ${WS.formatNumber(r.score)}`).join('  \u00b7  ')));
+        }
+      } catch (e) {
+        list.replaceChildren();
+        note.textContent = 'The board cannot be reached from here right now. Your scores are still kept on this device.';
+      }
+    };
+    drawWho();
+    fill();
+    return box;
+  }
+
+  /** A one-line name field for the board. Calls done() once a name is kept. */
+  function nameForm(label, done, value) {
+    const f = el('form', 'board-form');
+    const input = el('input', 'board-input');
+    input.type = 'text'; input.maxLength = 20; input.placeholder = 'Your name'; input.value = value || '';
+    input.setAttribute('aria-label', label);
+    input.autocomplete = 'nickname';
+    const ok = el('button', 'btn small primary', 'Keep');
+    ok.type = 'submit';
+    f.append(el('span', 'board-as', label + ':'), input, ok);
+    // Keys typed here are a name, not the game's controls.
+    input.addEventListener('keydown', (e) => e.stopPropagation());
+    f.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (WS.Board.setName(input.value)) { WS.Audio.play('ui'); done(); } else input.focus();
+    });
+    return f;
+  }
+
+  /* After a Nightly: post it to the board (once a name is kept), and say
+     where it landed. */
+  function boardPost(run) {
+    const B = WS.Board;
+    const strip = el('div', 'board-post');
+    const say = (t) => { strip.replaceChildren(el('span', 'board-as', t)); };
+    const post = async () => {
+      if (run.entry.boardPosted) return;
+      run.entry.boardPosted = true;
+      say('Posting to tonight\u2019s board\u2026');
+      try {
+        const code = WS.RunLog ? await WS.RunLog.code().catch(() => null) : null;
+        const r = await B.submit(run.entry, code);
+        const better = r.best > run.entry.score;
+        say(better
+          ? `Posted. Your best tonight is still ${WS.formatNumber(r.best)}: #${r.rank} of ${r.players}.`
+          : `Posted: #${r.rank} of ${r.players} on tonight\u2019s board.`);
+      } catch (e) {
+        run.entry.boardPosted = false;
+        say(e.message === 'too fast' ? 'Posted a moment ago; the board keeps your best.'
+          : 'The board could not be reached. This score is still kept on this device.');
+      }
+    };
+    if (B.me().name) post();
+    else strip.append(nameForm('Put this on tonight\u2019s board as', post));
+    return strip;
+  }
 
   /* -------------------------------------------------------------- Oaths -- */
   UI.openOaths = function () {
@@ -57228,6 +57497,7 @@ window.WS = window.WS || {};
     s.body.append(verdict(kinds[reason] || 'neutral', titles[reason] || 'The run ends',
       (lines[reason] || sub) + bestsLine(run), runFigures(run, WS.Game.player), logEntry(run, WS.Game.player, reason)));
     s.body.classList.add('fitted');
+    if (run.nightly && run.entry && WS.Board && WS.Board.available()) s.body.append(boardPost(run));
     s.body.append(buildSheet(true));
     const again = el('button', 'btn primary', run.nightly ? 'Try the Nightly again' : 'Run again');
     again.addEventListener('click', () => WS.Game.startRun(run.mapId, run.characterId,
